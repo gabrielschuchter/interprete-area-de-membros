@@ -1,12 +1,32 @@
 import { createEnv } from "@t3-oss/env-nextjs";
 import { z } from "zod";
 
+const optionalUrl = z.preprocess((value) => {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const normalized = value.trim();
+
+  if (!normalized) {
+    return undefined;
+  }
+
+  try {
+    new URL(normalized);
+    return normalized;
+  } catch {
+    // Optional observability must not prevent an application build.
+    return undefined;
+  }
+}, z.url().optional());
+
 export const keys = () =>
   createEnv({
     skipValidation: process.env.SKIP_ENV_VALIDATION === "true",
     server: {
       BETTERSTACK_API_KEY: z.string().optional(),
-      BETTERSTACK_URL: z.url().optional(),
+      BETTERSTACK_URL: optionalUrl,
 
       // Added by Sentry Integration, Vercel Marketplace
       SENTRY_ORG: z.string().optional(),
