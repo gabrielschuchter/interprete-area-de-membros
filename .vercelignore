@@ -1,0 +1,15 @@
+# Local and generated state should never be uploaded by a CLI deployment.
+node_modules
+**/node_modules
+.next
+**/.next
+.turbo
+**/.turbo
+dist
+**/dist
+coverage
+**/coverage
+storybook-static
+**/storybook-static
+packages/database/generated
+apps/*/out
