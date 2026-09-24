@@ -1,0 +1,54 @@
+{
+  "name": "interprete-area-de-membros",
+  "version": "0.1.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gabrielschuchter/interprete-area-de-membros.git"
+  },
+  "scripts": {
+    "build": "turbo build",
+    "dev": "turbo dev",
+    "check": "ultracite check",
+    "fix": "ultracite fix",
+    "test": "turbo test",
+    "typecheck": "turbo typecheck",
+    "analyze": "turbo analyze",
+    "boundaries": "turbo boundaries",
+    "bump-deps": "bunx npm-check-updates --deep -u && bun install",
+    "bump-ui": "bunx shadcn@latest add --all --overwrite -c packages/design-system",
+    "migrate": "cd packages/database && bunx prisma format && bunx prisma generate && bunx prisma migrate dev",
+    "migrate:deploy": "cd packages/database && bunx prisma generate && bunx prisma migrate deploy",
+    "db:push": "cd packages/database && bunx prisma format && bunx prisma generate && bunx prisma db push",
+    "db:seed": "cd packages/database && bun run seed",
+    "clean": "git clean -xdf node_modules"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.4.6",
+    "@repo/typescript-config": "workspace:*",
+    "@turbo/gen": "^2.11.3",
+    "@types/node": "^25.3.5",
+    "turbo": "^2.11.3",
+    "typescript": "^5.9.3",
+    "ultracite": "7.2.5",
+    "vitest": "^4.1.11"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "packageManager": "bun@1.4.2",
+  "overrides": {
+    "parse5": "^7.2.1",
+    "@clerk/themes>@clerk/shared": "3.48.0",
+    "@clerk/types>@clerk/shared": "3.48.0",
+    "protobufjs": "7.6.6",
+    "vite": "7.3.6",
+    "engine.io>ws": "8.21.3",
+    "socket.io-adapter>ws": "8.21.3",
+    "webpack-bundle-analyzer>ws": "7.5.11"
+  },
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
+}

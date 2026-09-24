@@ -1,0 +1,52 @@
+@import "tailwindcss";
+@import "@repo/design-system/styles/globals.css";
+
+@layer components {
+  .lesson-document {
+    font-size: 1.0625rem;
+    line-height: 1.75;
+    color: var(--text-primary);
+  }
+
+  .lesson-document > div {
+    display: grid;
+    gap: 1.35rem;
+  }
+
+  .lesson-document p {
+    max-width: 68ch;
+  }
+
+  .lesson-document h1,
+  .lesson-document h2,
+  .lesson-document h3 {
+    margin-top: 1.75rem;
+    color: var(--brand-dark-amaranth);
+  }
+
+  .lesson-document h1:first-child,
+  .lesson-document h2:first-child,
+  .lesson-document h3:first-child {
+    margin-top: 0;
+  }
+
+  .lesson-document ul,
+  .lesson-document ol {
+    padding-left: 1.5rem;
+  }
+
+  .lesson-document blockquote {
+    padding-left: 1.25rem;
+    margin: 0.5rem 0;
+    font-family: var(--font-display-family);
+    font-size: 1.3rem;
+    line-height: 1.35;
+    color: var(--text-secondary);
+    border-left: 2px solid var(--brand-classic-crimson);
+  }
+
+  .lesson-document hr {
+    margin: 1rem 0;
+    border-color: var(--line-soft);
+  }
+}

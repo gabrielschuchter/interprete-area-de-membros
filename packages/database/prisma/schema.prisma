@@ -1,0 +1,368 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum ContentStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum LessonKind {
+  TEXT
+  VIDEO
+  READING
+  MIXED
+  MATERIAL
+}
+
+enum ResourceKind {
+  PDF
+  ARTICLE
+  EXTERNAL_LINK
+  FILE
+  RECOMMENDED_READING
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  COMPLETED
+}
+
+enum ProgressStatus {
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum MemberRole {
+  MEMBER
+  TEACHER
+  ADMIN
+}
+
+enum ActivitySubmissionStatus {
+  DRAFT
+  SUBMITTED
+  REVIEWED
+}
+
+enum CommunityVoteKind {
+  UP
+}
+
+enum LibraryItemKind {
+  ARTICLE
+  PDF
+  GUIDE
+  LINK
+  VIDEO
+}
+
+model Member {
+  id          String     @id
+  displayName String?
+  email       String?
+  avatarUrl   String?
+  role        MemberRole @default(MEMBER)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([role])
+}
+
+model LearningPath {
+  id          String        @id @default(cuid())
+  title       String
+  slug        String        @unique
+  description String?       @db.Text
+  coverUrl    String?
+  status      ContentStatus @default(DRAFT)
+  position    Int           @default(0)
+  publishedAt DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  courses     Course[]
+
+  @@index([status, position])
+}
+
+model Course {
+  id             String        @id @default(cuid())
+  title          String
+  slug           String        @unique
+  description    String?       @db.Text
+  coverUrl       String?
+  status         ContentStatus @default(DRAFT)
+  position       Int           @default(0)
+  publishedAt    DateTime?
+  createdBy      String?
+  updatedBy      String?
+  learningPathId String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  learningPath   LearningPath? @relation(fields: [learningPathId], references: [id], onDelete: SetNull)
+  modules        Module[]
+  enrollments    Enrollment[]
+  activities     Activity[]
+
+  @@unique([learningPathId, position])
+  @@index([status, position])
+  @@index([learningPathId, status, position])
+}
+
+model Module {
+  id        String        @id @default(cuid())
+  title     String
+  slug      String
+  position  Int           @default(0)
+  status    ContentStatus @default(DRAFT)
+  courseId  String
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  course    Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessons   Lesson[]
+
+  @@unique([courseId, slug])
+  @@unique([courseId, position])
+  @@index([status, courseId, position])
+}
+
+model Lesson {
+  id          String           @id @default(cuid())
+  title       String
+  slug        String
+  description String?          @db.Text
+  content     Json
+  kind        LessonKind       @default(TEXT)
+  status      ContentStatus    @default(DRAFT)
+  position    Int              @default(0)
+  publishedAt DateTime?
+  createdBy   String?
+  updatedBy   String?
+  moduleId    String
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  module      Module           @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  resources   LessonResource[]
+  progress    LessonProgress[]
+  activities  Activity[]
+
+  @@unique([moduleId, slug])
+  @@unique([moduleId, position])
+  @@index([status, moduleId, position])
+}
+
+model LessonResource {
+  id        String       @id @default(cuid())
+  title     String
+  kind      ResourceKind
+  url       String       @db.Text
+  position  Int          @default(0)
+  lessonId  String
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  lesson    Lesson       @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([lessonId, position])
+}
+
+model Enrollment {
+  id          String           @id @default(cuid())
+  memberId    String
+  courseId    String
+  status      EnrollmentStatus @default(ACTIVE)
+  startedAt   DateTime         @default(now())
+  completedAt DateTime?
+  course      Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([memberId, courseId])
+  @@index([courseId])
+  @@index([memberId, status])
+}
+
+model LessonProgress {
+  id          String         @id @default(cuid())
+  memberId    String
+  lessonId    String
+  status      ProgressStatus @default(IN_PROGRESS)
+  startedAt   DateTime       @default(now())
+  completedAt DateTime?
+  updatedAt   DateTime       @updatedAt
+  lesson      Lesson         @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([memberId, lessonId])
+  @@index([lessonId])
+  @@index([memberId, status])
+}
+
+model Activity {
+  id           String               @id @default(cuid())
+  title        String
+  slug         String               @unique
+  prompt       String               @db.Text
+  instructions String?              @db.Text
+  status       ContentStatus        @default(DRAFT)
+  position     Int                  @default(0)
+  dueAt        DateTime?
+  courseId     String?
+  lessonId     String?
+  createdBy    String?
+  updatedBy    String?
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  course       Course?              @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  lesson       Lesson?              @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+  submissions  ActivitySubmission[]
+
+  @@index([status, position])
+  @@index([courseId, status, position])
+  @@index([lessonId, status])
+}
+
+model ActivitySubmission {
+  id          String                   @id @default(cuid())
+  activityId  String
+  memberId    String
+  content     String                   @db.Text
+  status      ActivitySubmissionStatus @default(DRAFT)
+  submittedAt DateTime?
+  createdAt   DateTime                 @default(now())
+  updatedAt   DateTime                 @updatedAt
+  activity    Activity                 @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  feedback    Feedback?
+
+  @@unique([activityId, memberId])
+  @@index([memberId, status, updatedAt])
+  @@index([activityId, status])
+}
+
+model Feedback {
+  id           String             @id @default(cuid())
+  submissionId String             @unique
+  teacherId    String
+  content      String             @db.Text
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  submission   ActivitySubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+}
+
+model CommunitySpace {
+  id          String          @id @default(cuid())
+  title       String
+  slug        String          @unique
+  description String?         @db.Text
+  status      ContentStatus   @default(DRAFT)
+  position    Int             @default(0)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  posts       CommunityPost[]
+
+  @@index([status, position])
+}
+
+model CommunityPost {
+  id        String             @id @default(cuid())
+  spaceId   String
+  authorId  String
+  title     String
+  content   String             @db.Text
+  status    ContentStatus      @default(PUBLISHED)
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+  deletedAt DateTime?
+  space     CommunitySpace     @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  comments  CommunityComment[]
+  votes     PostVote[]
+
+  @@index([spaceId, status, createdAt])
+  @@index([authorId, createdAt])
+}
+
+model CommunityComment {
+  id        String             @id @default(cuid())
+  postId    String
+  authorId  String
+  parentId  String?
+  content   String             @db.Text
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+  deletedAt DateTime?
+  post      CommunityPost      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  parent    CommunityComment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: SetNull)
+  replies   CommunityComment[] @relation("CommentReplies")
+  votes     CommentVote[]
+
+  @@index([postId, createdAt])
+  @@index([parentId, createdAt])
+  @@index([authorId, createdAt])
+}
+
+model PostVote {
+  id        String            @id @default(cuid())
+  postId    String
+  memberId  String
+  kind      CommunityVoteKind @default(UP)
+  createdAt DateTime          @default(now())
+  post      CommunityPost     @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, memberId])
+  @@index([memberId, createdAt])
+}
+
+model CommentVote {
+  id        String            @id @default(cuid())
+  commentId String
+  memberId  String
+  kind      CommunityVoteKind @default(UP)
+  createdAt DateTime          @default(now())
+  comment   CommunityComment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@unique([commentId, memberId])
+  @@index([memberId, createdAt])
+}
+
+model Meeting {
+  id           String        @id @default(cuid())
+  title        String
+  description  String?       @db.Text
+  startsAt     DateTime
+  endsAt       DateTime?
+  timezone     String        @default("America/Sao_Paulo")
+  joinUrl      String        @db.Text
+  recordingUrl String?       @db.Text
+  status       ContentStatus @default(DRAFT)
+  teacherId    String?
+  position     Int           @default(0)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@index([status, startsAt])
+  @@index([teacherId, startsAt])
+}
+
+model LibraryItem {
+  id          String          @id @default(cuid())
+  title       String
+  description String?         @db.Text
+  kind        LibraryItemKind
+  category    String?
+  tags        String[]
+  url         String          @db.Text
+  status      ContentStatus   @default(DRAFT)
+  position    Int             @default(0)
+  createdBy   String?
+  updatedBy   String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([status, category, position])
+  @@index([status, createdAt])
+}
