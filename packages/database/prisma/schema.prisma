@@ -78,6 +78,29 @@ model Member {
   @@index([role])
 }
 
+model Profile {
+  id           String   @id @default(cuid())
+  clerkUserId  String   @unique
+  username     String   @unique
+  displayName  String?
+  avatarUrl    String?
+  headline     String?
+  bio          String?  @db.Text
+  occupation   String?
+  institution  String?
+  city         String?
+  state        String?
+  country      String?
+  website      String?
+  instagram    String?
+  linkedin     String?
+  interests    String[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([displayName])
+}
+
 model LearningPath {
   id          String        @id @default(cuid())
   title       String
@@ -259,6 +282,7 @@ model CommunitySpace {
   title       String
   slug        String          @unique
   description String?         @db.Text
+  icon        String?
   status      ContentStatus   @default(DRAFT)
   position    Int             @default(0)
   createdAt   DateTime        @default(now())
@@ -269,21 +293,24 @@ model CommunitySpace {
 }
 
 model CommunityPost {
-  id        String             @id @default(cuid())
-  spaceId   String
-  authorId  String
-  title     String
-  content   String             @db.Text
-  status    ContentStatus      @default(PUBLISHED)
-  createdAt DateTime           @default(now())
-  updatedAt DateTime           @updatedAt
-  deletedAt DateTime?
-  space     CommunitySpace     @relation(fields: [spaceId], references: [id], onDelete: Cascade)
-  comments  CommunityComment[]
-  votes     PostVote[]
+  id          String             @id @default(cuid())
+  spaceId     String
+  authorId    String
+  title       String
+  content     String             @db.Text
+  contentJson Json?
+  status      ContentStatus      @default(PUBLISHED)
+  isPinned    Boolean            @default(false)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  deletedAt   DateTime?
+  space       CommunitySpace     @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  comments    CommunityComment[]
+  votes       PostVote[]
 
   @@index([spaceId, status, createdAt])
   @@index([authorId, createdAt])
+  @@index([isPinned, status, createdAt])
 }
 
 model CommunityComment {

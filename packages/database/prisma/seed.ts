@@ -53,6 +53,18 @@ const seed = async () => {
       update: { role },
       create: { id: staffId, role },
     });
+
+    await database.profile.upsert({
+      where: { clerkUserId: staffId },
+      update: { displayName: process.env.SEED_STAFF_DISPLAY_NAME ?? null },
+      create: {
+        clerkUserId: staffId,
+        username:
+          process.env.SEED_STAFF_USERNAME?.trim().toLowerCase() || "professor",
+        displayName: process.env.SEED_STAFF_DISPLAY_NAME ?? null,
+        interests: [],
+      },
+    });
   }
 
   const learningPath = await database.learningPath.upsert({

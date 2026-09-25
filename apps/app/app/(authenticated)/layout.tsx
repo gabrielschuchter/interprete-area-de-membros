@@ -4,6 +4,7 @@ import { secure } from "@repo/security";
 import type { ReactNode } from "react";
 import { env } from "@/env";
 import { getMemberRole } from "@/lib/authorization";
+import { getOrCreateProfile } from "@/lib/profile";
 import { GlobalSidebar } from "./components/sidebar";
 
 interface AppLayoutProperties {
@@ -23,6 +24,7 @@ const AppLayout = async ({ children }: AppLayoutProperties) => {
   }
 
   const role = await getMemberRole(user.id);
+  await getOrCreateProfile(user.id);
 
   return (
     <SidebarProvider>
