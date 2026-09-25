@@ -51,7 +51,10 @@ export const TopicEditor = ({
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
-      StarterKit.configure({ heading: { levels: [2, 3] } }),
+      StarterKit.configure({
+        heading: { levels: [2, 3] },
+        link: false,
+      }),
       Image.configure({ allowBase64: false }),
       Link.configure({ openOnClick: false, autolink: true, linkOnPaste: true }),
     ],
