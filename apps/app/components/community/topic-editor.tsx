@@ -4,7 +4,6 @@ import { Button } from "@repo/design-system/components/ui/button";
 import { Input } from "@repo/design-system/components/ui/input";
 import type { JSONContent } from "@tiptap/core";
 import Image from "@tiptap/extension-image";
-import Link from "@tiptap/extension-link";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import {
@@ -53,10 +52,9 @@ export const TopicEditor = ({
     extensions: [
       StarterKit.configure({
         heading: { levels: [2, 3] },
-        link: false,
+        link: { openOnClick: false, autolink: true, linkOnPaste: true },
       }),
       Image.configure({ allowBase64: false }),
-      Link.configure({ openOnClick: false, autolink: true, linkOnPaste: true }),
     ],
     content: defaultValue ?? emptyDocument,
     editorProps: {
