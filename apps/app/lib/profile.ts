@@ -52,6 +52,52 @@ const uniqueUsername = async (base: string, clerkUserId: string) => {
   return `${prefix}-${suffix}`.slice(0, USERNAME_MAX_LENGTH);
 };
 
+const isUniqueConstraintError = (error: unknown) =>
+  typeof error === "object" &&
+  error !== null &&
+  "code" in error &&
+  error.code === "P2002";
+
+const createProfileSafely = async (data: {
+  clerkUserId: string;
+  username: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+}) => {
+  try {
+    return await database.profile.create({
+      data: {
+        ...data,
+        interests: [],
+      },
+    });
+  } catch (error) {
+    if (!isUniqueConstraintError(error)) {
+      throw error;
+    }
+
+    // Concurrent authenticated requests can race between findUnique and
+    // create. Prefer the row that won the race for this Clerk identity.
+    const existingProfile = await database.profile.findUnique({
+      where: { clerkUserId: data.clerkUserId },
+    });
+
+    if (existingProfile) {
+      return existingProfile;
+    }
+
+    // A different member may have claimed the same generated display name in
+    // the same window. The Clerk id suffix keeps the fallback deterministic.
+    return database.profile.create({
+      data: {
+        ...data,
+        username: await uniqueUsername(data.username, data.clerkUserId),
+        interests: [],
+      },
+    });
+  }
+};
+
 export const getOrCreateProfile = async (userId?: string) => {
   const user = await currentUser();
   const clerkUserId = userId ?? user?.id;
@@ -85,14 +131,11 @@ export const getOrCreateProfile = async (userId?: string) => {
     clerkUserId
   );
 
-  return database.profile.create({
-    data: {
-      clerkUserId,
-      username,
-      displayName,
-      avatarUrl,
-      interests: [],
-    },
+  return createProfileSafely({
+    clerkUserId,
+    username,
+    displayName,
+    avatarUrl,
   });
 };
 
