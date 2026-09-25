@@ -10,8 +10,9 @@ secrets.
   `wkclodjbrynerfgufmyb`, region `sa-east-1`.
 - Runtime database access: `@repo/database` through Prisma and
   `@prisma/adapter-pg`; no Supabase client is required by the application.
-- Authentication: the linked Clerk development instance for the Interprete
-  application. The embedded components use the `ptBR` localization from
+- Authentication: Clerk development is used locally and a separate production
+  instance is configured for the Interprete application. The embedded
+  components use the `ptBR` localization from
   `@clerk/localizations` and the shared Interprete appearance from
   `@repo/auth/appearance`.
 - Deployments: Vercel projects linked to
@@ -73,13 +74,14 @@ connection; use Prisma commands for that.
 The local runtime files do not use `SKIP_ENV_VALIDATION`; missing core values
 must remain visible instead of being hidden by a build bypass. In the current
 checkout, `apps/app/.env.local` and `packages/database/.env` contain database
-  placeholders, while `apps/api/.env.local` has no `DATABASE_URL`. The health
-  check and production build therefore correctly report the database as
-  unavailable until the official Supabase password is coordinated in all three
-  consumers. Private asset delivery additionally needs the server-only
-  `SUPABASE_SECRET_KEY`; it is intentionally not present in the repository.
-  No Clerk secret, database value, Storage secret, or signed URL is recorded
-  here.
+placeholders, while `apps/api/.env.local` has no `DATABASE_URL`. The health
+check and production build therefore correctly report the database as
+unavailable until the official Supabase password is coordinated in all three
+consumers. Private asset delivery additionally needs the server-only
+`SUPABASE_SECRET_KEY`; the production app environment has the server-only
+Storage configuration, but the secret is intentionally not present in the
+repository. No Clerk secret, database value, Storage secret, or signed URL is
+recorded here.
 
 ## Vercel projects
 
@@ -88,10 +90,14 @@ directory `apps/api`. The member application should use a separate Vercel
 project rooted at `apps/app`. Both projects must be linked to the same GitHub
 repository and receive only the variables consumed by that root.
 
-The API project is already connected to the repository. The member-app project
-exists with the correct root directory and Clerk variables, but its GitHub
-connection and first Preview deployment are still pending. The Clerk webhook
-route is implemented, but no endpoint/signing secret is registered yet.
+The API project is connected to the repository and the member-app project
+exists with the correct `apps/app` root directory. Manual Production deploys
+were attempted for both projects during the final checkpoint; neither reached
+`READY` because Vercel correctly stops at the missing `DATABASE_URL` validation
+gate. The production Clerk webhook endpoint is registered at the API route and
+its signing secret is configured only in the API Production environment. No
+Preview database is configured, intentionally avoiding accidental use of the
+production database from preview builds.
 
 Never create Vercel-native variables such as `VERCEL_URL` manually. Vercel
 provides those automatically. Do not place database passwords, Clerk secrets,

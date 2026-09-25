@@ -4,7 +4,7 @@ Este documento é a fonte de verdade da execução do produto. As fases são seq
 
 ## Matriz de execução atual
 
-Atualizada em 24/09/2026. A implementação de código avançou por todas as superfícies principais, mas nenhuma fase abaixo é marcada como `DONE` enquanto o processo local não tiver uma credencial PostgreSQL válida para provar migrations, seed, persistência, reload e E2E autenticado.
+Atualizada em 25/09/2026. A implementação de código avançou por todas as superfícies principais, mas nenhuma fase abaixo é marcada como `DONE` enquanto o processo local e os deploys não tiverem uma credencial PostgreSQL válida para provar migrations, seed, persistência, reload e E2E autenticado.
 
 | Fase | Escopo | Status | Evidência atual |
 | --- | --- | --- | --- |
@@ -22,9 +22,33 @@ Atualizada em 24/09/2026. A implementação de código avançou por todas as sup
 | 11 | QA funcional | IN PROGRESS | check/typecheck/boundaries/tests passam; build falha na validação de `apps/api` sem `DATABASE_URL` e o fluxo real autenticado segue bloqueado |
 | 12 | Branding/UX final | IN PROGRESS | tokens e superfícies Interprete preservados; QA visual de runtime pendente |
 | 13 | Hardening | IN PROGRESS | autorização centralizada, validação e RLS deny-by-default; auditoria runtime pendente |
-| 14 | Preparação de deploy | IN PROGRESS | projetos Vercel do app/API e variáveis Clerk existem; Preview aguarda `DATABASE_URL` real e validação runtime |
+| 14 | Preparação de deploy | IN PROGRESS | projetos Vercel do app/API, Clerk Production e webhook existem; deploys Production foram tentados e aguardam `DATABASE_URL` real e validação runtime |
 
 O bloqueio atual é específico: os arquivos locais `apps/app/.env.local` e `packages/database/.env` existem, mas as URLs do banco ainda são placeholders. Nenhum valor secreto é registrado neste documento.
+
+## Final checkpoint — 25/09/2026
+
+- Gates estáticos do checkout atual: `bun install --frozen-lockfile`, check,
+  typecheck, boundaries, testes, Prisma validate e Prisma generate passam.
+- O build isolado de `apps/app` passa; o build completo falha somente em
+  `apps/api` pela ausência de `DATABASE_URL`, e o build remoto do app falha no
+  mesmo gate.
+- O projeto Supabase oficial `wkclodjbrynerfgufmyb` está `ACTIVE_HEALTHY`, em
+  `sa-east-1`, PostgreSQL 17.6, com 16 migrations aplicadas e RLS habilitado
+  nas tabelas públicas. A sessão de inspeção disponível é read-only; não prova
+  a senha usada pelo Prisma da aplicação.
+- O schema remoto contém 1 trilha, 1 curso, 14 módulos e 99 aulas, mas ainda
+  não contém membros, perfis, progresso, atividades, comunidade, encontros,
+  biblioteca ou objetos no bucket `learning-assets`. A migração de conteúdo não
+  é declarada completa por causa desse estado real.
+- O Clerk Production foi criado, as chaves Production foram configuradas nos
+  projetos Vercel e o webhook `user.created`/`user.updated`/`user.deleted` foi
+  registrado no endpoint da API. Isso não substitui a validação de runtime,
+  que aguarda o banco.
+- Veredito operacional: `FOUNDATION_NOT_READY` / `NOT_READY` até obter a senha
+  PostgreSQL oficial (ou autorização do proprietário para uma rotação
+  coordenada) e preencher `DATABASE_URL`/`DIRECT_URL` localmente e nos dois
+  projetos Vercel.
 
 ## Kiwify migration checkpoint
 
