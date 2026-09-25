@@ -20,9 +20,11 @@ Leituras de membros aceitam apenas conteúdo `PUBLISHED`. Professor/admin é aut
 
 O fluxo é `CommunitySpace -> CommunityPost -> CommunityComment`. Comentários aceitam `parentId` e a UI limita a indentação visual. `PostVote` e `CommentVote` têm constraint única por membro/alvo e são removidos ao clicar novamente. Posts e comentários usam `deletedAt` para preservar a integridade da thread.
 
+O autor é apresentado por `Profile` em feed, tópico e resposta. O editor salva texto plano para busca/preview e JSON sanitizado para renderização rica; a identidade do autor sempre vem da sessão Clerk no servidor. Busca, ordenação recente/popular, drafts, bookmarks e diretório de membros são superfícies do mesmo domínio, não mocks separados.
+
 ## Meetings
 
-`Meeting` guarda contexto, horário, timezone e links externos. A área de membros destaca o próximo encontro; gravações são opcionais. A aplicação não implementa vídeo, WebRTC ou calendário próprio.
+`Meeting` guarda contexto, horário, timezone, links externos e vínculo opcional com `Course`. A área de membros destaca o próximo encontro e oferece detalhe com professor/curso; gravações são opcionais. A aplicação não implementa vídeo, WebRTC ou calendário próprio.
 
 ## Library
 

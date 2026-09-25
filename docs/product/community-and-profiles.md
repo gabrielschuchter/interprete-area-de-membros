@@ -6,6 +6,8 @@ O Clerk identifica a sessão. `Member.id` continua sendo o Clerk user ID e `Memb
 
 O perfil é criado sob demanda no layout autenticado. O primeiro username é derivado de dados do Clerk, normalizado e tornado único. Depois disso, os campos editoriais do perfil não são sobrescritos pela sincronização automática.
 
+`/membros` é o diretório público autenticado da escola, com busca por nome, username, headline ou interesse. `/membros/[username]` é a página pública interna do membro e exibe apenas campos editoriais, papel e atividade publicada. O admin pode ajustar `Member.role` em `/admin/membros`; a tela não expõe essa informação como autorização implícita e a mutation exige `requireAdmin`.
+
 ## Tópicos
 
 `CommunityPost.content` mantém texto plano para preview e busca. `contentJson` guarda o documento estruturado compatível com Tiptap e permite evoluir o editor sem invalidar publicações antigas. A renderização passa por `RichDocument`, que aceita apenas nós e marcas suportados e links `http`/`https`.
@@ -23,3 +25,5 @@ Todas as mutations derivam o autor da sessão Clerk. O formulário fornece apena
 As tabelas continuam com RLS habilitado e sem policies públicas porque o caminho oficial da aplicação é Prisma server-side. A evolução de schema está em `packages/database/prisma/migrations/20260924234500_profiles_and_rich_topics/migration.sql`; as migrations seguintes restringem o helper interno de RLS (`20260925010000_restrict_rls_helper` e `20260925011000_revoke_public_rls_helper`) e adicionam drafts/metadados/bookmarks (`20260925020000_community_drafts_bookmarks`). Todas foram aplicadas ao projeto Supabase oficial.
 
 O teste local de Prisma ainda depende de preencher a senha real do pooler nos arquivos ignorados `.env`/`.env.local`. A aplicação das DDLs via integração de gerenciamento do Supabase não substitui a verificação do histórico local do Prisma: o próximo passo, com a credencial disponível, é executar `prisma migrate status` e concluir o baseline/registro da história Prisma se necessário, antes de declarar a estratégia de migrations totalmente validada.
+
+As migrations `profile_member_identity` e `meeting_course_relation` foram aplicadas ao projeto oficial e validam, respectivamente, o vínculo obrigatório `Profile.clerkUserId -> Member.id` e o vínculo opcional `Meeting.courseId -> Course.id`. Não há dados de produção ou fixtures persistidos no banco remoto; o seed continua opt-in e somente para desenvolvimento.

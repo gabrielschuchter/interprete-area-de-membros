@@ -1,6 +1,6 @@
 # Interprete — área de membros
 
-Área de membros do Interprete. O projeto usa o next-forge como fundação de monorepo e evolui por fases documentadas em [`docs/implementation/roadmap.md`](docs/implementation/roadmap.md). A Phase 1 atual é Learning.
+Área de membros do Interprete. O projeto usa o next-forge como fundação de monorepo e evolui por fases documentadas em [`docs/implementation/roadmap.md`](docs/implementation/roadmap.md). A implementação local cobre Learning, autoria protegida, Atividades, Comunidade, Perfis, Encontros, Biblioteca e Home; o roadmap só marca uma fase como concluída após validação real contra o Supabase oficial.
 
 ## Fundação atual
 
@@ -10,7 +10,7 @@
 - `DATABASE_URL` para o pooler de transação em runtime/serverless.
 - `DIRECT_URL` para migrações e introspecção do Prisma.
 - `Lesson.content` armazena documento estruturado; progresso é persistido por membro/aula.
-- Teacher/Admin, atividades, comunidade, encontros, biblioteca e Home usam Prisma server-side, com autorização Clerk/`Member.role`.
+- Teacher/Admin, atividades, comunidade, perfis, encontros, biblioteca e Home usam Prisma server-side, com autorização Clerk/`Member.role`.
 - Design system do starter preservado e adaptado para uma escola contemporânea do Interprete., com tokens e superfícies editoriais compartilhadas.
 
 O projeto Supabase é `wkclodjbrynerfgufmyb`, na região `sa-east-1`. Nenhum segredo é versionado.
@@ -63,6 +63,10 @@ bun run db:seed
 
 O seed base é idempotente. Para fixtures opcionais dos domínios de produto, defina `SEED_DEVELOPMENT_DATA=true`; para provisionar um professor de desenvolvimento, informe `SEED_STAFF_CLERK_USER_ID` e, opcionalmente, `SEED_STAFF_ROLE=TEACHER` ou `ADMIN`. Nunca copie esses valores para produção.
 
+## Rotas principais
+
+A área autenticada possui `/`, `/aprender`, `/atividades`, `/comunidade`, `/encontros`, `/biblioteca` e `/perfil`. A comunidade inclui criação editorial, rascunhos, tópicos salvos, respostas, votos e `/comunidade/meus-topicos`. Perfis públicos ficam em `/membros/[username]`, o diretório em `/membros` e a gestão de papéis em `/admin/membros`. Encontros e itens da biblioteca possuem páginas de detalhe.
+
 ## Escopo atual
 
-A área autenticada possui Início, Aprender, Atividades, Comunidade, Biblioteca, Encontros e Perfil. A área de Professor/Admin possui rotas protegidas para conteúdo, atividades, comunidade, encontros e biblioteca. O status real e os gates de validação ficam em [`docs/implementation/roadmap.md`](docs/implementation/roadmap.md); conexão, seed, persistência e E2E continuam pendentes enquanto a credencial local do Supabase não for válida.
+A área de Professor/Admin possui rotas protegidas para conteúdo, atividades, comunidade, encontros, biblioteca e membros. O status real e os gates de validação ficam em [`docs/implementation/roadmap.md`](docs/implementation/roadmap.md); conexão, seed, persistência e E2E continuam pendentes enquanto a credencial local do Supabase não for válida. Esta execução não publica nem altera o Vercel.

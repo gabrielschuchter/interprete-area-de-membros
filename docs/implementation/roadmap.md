@@ -2,6 +2,30 @@
 
 Este documento é a fonte de verdade da execução do produto. As fases são sequenciais; uma fase só muda para `DONE` depois de cumprir seus critérios de aceite e os gates técnicos do repositório.
 
+## Matriz de execução atual
+
+Atualizada em 24/09/2026. A implementação de código avançou por todas as superfícies principais, mas nenhuma fase abaixo é marcada como `DONE` enquanto o processo local não tiver uma credencial PostgreSQL válida para provar migrations, seed, persistência, reload e E2E autenticado.
+
+| Fase | Escopo | Status | Evidência atual |
+| --- | --- | --- | --- |
+| 0 | Fundação next-forge, Bun, Prisma, Supabase, Clerk | IN PROGRESS | checks do monorepo passam; conexão Prisma local ainda bloqueada por env placeholder |
+| 1 | Aprender: trilhas, cursos, módulos, aulas, progresso | IN PROGRESS | código, schema, seed opt-in e guard server-side presentes; persistência/E2E pendentes |
+| 2 | Admin/Professor: autoria, editor, preview, publicação | IN PROGRESS | rotas protegidas, editor compartilhado e ordenação presentes; fluxo real pendente |
+| 3 | Atividades e feedback | IN PROGRESS | submissão, revisão, feedback e proteção de hierarquia presentes; banco real pendente |
+| 4 | Comunidade | IN PROGRESS | espaços, tópicos, rich text, drafts, respostas, votos, bookmarks e moderação presentes; fluxo entre usuários pendente |
+| 5 | Perfis e diretório de membros | IN PROGRESS | perfil privado/público, username, diretório e papéis presentes; dados reais pendentes |
+| 6 | Encontros | IN PROGRESS | agenda, detalhe, professor e vínculo opcional com curso presentes; dados reais pendentes |
+| 7 | Biblioteca | IN PROGRESS | curadoria, busca, filtros, detalhe e edição administrativa presentes; dados reais pendentes |
+| 8 | Home inteligente | IN PROGRESS | próxima ação determinística usa atividade, aula, encontro e discussão reais; integração DB pendente |
+| 9 | Integração entre domínios | IN PROGRESS | links entre aula/atividade, encontro/curso, perfil/comunidade e home presentes; E2E pendente |
+| 10 | Responsividade, loading, vazio e erro | IN PROGRESS | estados e layouts revisados em fonte; screenshots autenticados ainda bloqueados |
+| 11 | QA funcional | IN PROGRESS | check/typecheck/boundaries/tests/build passam; fluxo real autenticado não executado |
+| 12 | Branding/UX final | IN PROGRESS | tokens e superfícies Interprete preservados; QA visual de runtime pendente |
+| 13 | Hardening | IN PROGRESS | autorização centralizada, validação e RLS deny-by-default; auditoria runtime pendente |
+| 14 | Preparação de deploy | NOT STARTED | deliberadamente fora desta execução; Vercel não foi tocado |
+
+O bloqueio atual é específico: os arquivos locais `apps/app/.env.local` e `packages/database/.env` existem, mas as URLs do banco ainda são placeholders. Nenhum valor secreto é registrado neste documento.
+
 ## Phase 1 — Learning
 
 Status: IN PROGRESS

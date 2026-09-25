@@ -14,14 +14,22 @@
 | `/comunidade` | fonte revisada | fonte revisada | sala de discussão | espaços e descoberta | SOURCE_REVIEWED / RUNTIME_BLOCKED_DATABASE |
 | `/comunidade/[spaceSlug]` | fonte revisada | fonte revisada | fichas de discussão | feed e criação | SOURCE_REVIEWED / RUNTIME_BLOCKED_DATABASE |
 | `/comunidade/[spaceSlug]/[postId]` | fonte revisada | fonte revisada | margem/comentário | thread e respostas | SOURCE_REVIEWED / RUNTIME_BLOCKED_DATABASE |
+| `/comunidade/novo` | fonte revisada | fonte revisada | publicação editorial | editor, preview e autosave | SOURCE_REVIEWED / RUNTIME_BLOCKED_DATABASE |
+| `/comunidade/meus-topicos` | fonte revisada | fonte revisada | caderno de publicação | drafts e arquivados | SOURCE_REVIEWED / RUNTIME_BLOCKED_DATABASE |
+| `/comunidade/salvos` | fonte revisada | fonte revisada | arquivo pessoal | bookmarks | SOURCE_REVIEWED / RUNTIME_BLOCKED_DATABASE |
 | `/biblioteca` | fonte revisada | fonte revisada | arquivo curado | busca e filtros | SOURCE_REVIEWED / RUNTIME_BLOCKED_DATABASE |
+| `/biblioteca/[id]` | fonte revisada | fonte revisada | leitura curada | detalhe e link externo | SOURCE_REVIEWED / RUNTIME_BLOCKED_DATABASE |
 | `/encontros` | fonte revisada | fonte revisada | sala de aula | próximo encontro prioritário | SOURCE_REVIEWED / RUNTIME_BLOCKED_DATABASE |
+| `/encontros/[id]` | fonte revisada | fonte revisada | sala de aula | detalhe, professor e curso | SOURCE_REVIEWED / RUNTIME_BLOCKED_DATABASE |
 | `/perfil` | fonte revisada | fonte revisada | caderno do estudante | identidade e resumo real | SOURCE_REVIEWED / RUNTIME_BLOCKED_DATABASE |
+| `/membros` | fonte revisada | fonte revisada | comunidade escolar | busca e diretório | SOURCE_REVIEWED / RUNTIME_BLOCKED_DATABASE |
+| `/membros/[username]` | fonte revisada | fonte revisada | identidade pública | atividade publicada | SOURCE_REVIEWED / RUNTIME_BLOCKED_DATABASE |
 | `/admin/learning` | fonte revisada | fonte revisada | mesa do professor | autoria protegida | SOURCE_REVIEWED / RUNTIME_BLOCKED_DATABASE |
 | `/admin/activities` | fonte revisada | fonte revisada | prática e feedback | revisão protegida | SOURCE_REVIEWED / RUNTIME_BLOCKED_DATABASE |
 | `/admin/community` | fonte revisada | fonte revisada | moderação | espaços protegidos | SOURCE_REVIEWED / RUNTIME_BLOCKED_DATABASE |
 | `/admin/meetings` | fonte revisada | fonte revisada | agenda da turma | criação protegida | SOURCE_REVIEWED / RUNTIME_BLOCKED_DATABASE |
 | `/admin/library` | fonte revisada | fonte revisada | curadoria | itens protegidos | SOURCE_REVIEWED / RUNTIME_BLOCKED_DATABASE |
+| `/admin/membros` | fonte revisada | fonte revisada | escola protegida | papéis e diretório | SOURCE_REVIEWED / RUNTIME_BLOCKED_DATABASE |
 | `/sign-in` | fonte revisada | fonte revisada | auth brand shell | Clerk | RUNTIME_PARTIAL |
 | `/sign-up` | fonte revisada | fonte revisada | auth brand shell | Clerk | SOURCE_REVIEWED |
 
