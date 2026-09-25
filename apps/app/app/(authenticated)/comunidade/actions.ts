@@ -15,6 +15,7 @@ import {
   plainTextFromDocument,
   sanitizeRichDocument,
 } from "@/lib/community-content";
+import { createNotification } from "@/lib/notifications";
 import { getOrCreateProfile } from "@/lib/profile";
 
 const textValue = (value: FormDataEntryValue | null) =>
@@ -409,26 +410,52 @@ export const createComment = async (formData: FormData) => {
       deletedAt: null,
       space: { slug: spaceSlug, status: ContentStatus.PUBLISHED },
     },
-    select: { id: true },
+    select: {
+      id: true,
+      authorId: true,
+      title: true,
+      space: { select: { slug: true } },
+    },
   });
   if (!post) {
     return;
   }
 
+  let parentAuthorId: string | null = null;
   if (parentId) {
     const parent = await database.communityComment.findFirst({
       where: { id: parentId, postId, deletedAt: null },
-      select: { id: true },
+      select: { id: true, authorId: true },
     });
     if (!parent) {
       return;
     }
+    parentAuthorId = parent.authorId;
   }
 
   await getOrCreateProfile(userId);
   await database.communityComment.create({
     data: { postId, authorId: userId, content, parentId: parentId || null },
   });
+
+  const recipients = [post.authorId, parentAuthorId].filter(
+    (recipientId): recipientId is string =>
+      Boolean(recipientId && recipientId !== userId)
+  );
+  const uniqueRecipients = [...new Set(recipients)];
+  if (uniqueRecipients.length > 0) {
+    await Promise.all(
+      uniqueRecipients.map((recipientId) =>
+        createNotification({
+          memberId: recipientId,
+          type: "COMMUNITY_REPLY",
+          title: "Nova resposta na comunidade",
+          body: post.title,
+          href: `/comunidade/${post.space.slug}/${post.id}`,
+        })
+      )
+    );
+  }
   revalidateCommunity(spaceSlug, postId);
 };
 

@@ -8,6 +8,7 @@ import {
 } from "@repo/database";
 import { revalidatePath } from "next/cache";
 import { requireStaff } from "@/lib/authorization";
+import { createNotification } from "@/lib/notifications";
 
 const value = (formData: FormData, name: string) => {
   const entry = formData.get(name);
@@ -134,7 +135,10 @@ export const saveFeedback = async (formData: FormData) => {
 
   const submission = await database.activitySubmission.findUnique({
     where: { id: submissionId },
-    select: { activity: { select: { slug: true } } },
+    select: {
+      memberId: true,
+      activity: { select: { slug: true, title: true } },
+    },
   });
 
   if (!submission) {
@@ -152,6 +156,16 @@ export const saveFeedback = async (formData: FormData) => {
       data: { status: ActivitySubmissionStatus.REVIEWED },
     }),
   ]);
+
+  if (submission.memberId !== userId) {
+    await createNotification({
+      memberId: submission.memberId,
+      type: "ACTIVITY_FEEDBACK",
+      title: "Novo feedback disponível",
+      body: submission.activity.title,
+      href: `/atividades/${submission.activity.slug}`,
+    });
+  }
 
   revalidatePath("/admin/activities");
   revalidatePath(`/atividades/${submission.activity.slug}`);

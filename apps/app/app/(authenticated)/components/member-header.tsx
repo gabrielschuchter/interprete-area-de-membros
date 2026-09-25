@@ -1,6 +1,7 @@
 import { Separator } from "@repo/design-system/components/ui/separator";
 import { SidebarTrigger } from "@repo/design-system/components/ui/sidebar";
 import { BrandWordmark } from "@/components/brand/brand-mark";
+import { MemberHeaderControls } from "./member-header-controls";
 
 interface MemberHeaderProperties {
   readonly section: string;
@@ -16,5 +17,6 @@ export const MemberHeader = ({ section }: MemberHeaderProperties) => (
         Interprete. · {section}
       </p>
     </div>
+    <MemberHeaderControls />
   </header>
 );
