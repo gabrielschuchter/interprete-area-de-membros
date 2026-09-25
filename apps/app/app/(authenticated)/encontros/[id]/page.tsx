@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { requireMemberId } from "@/lib/learning";
 import { getPublishedMeeting } from "@/lib/meetings";
 import { MemberHeader } from "../../components/member-header";
 
@@ -23,7 +24,8 @@ const formatDate = (date: Date, timezone: string) =>
 
 const MeetingPage = async ({ params }: MeetingPageProperties) => {
   const { id } = await params;
-  const meeting = await getPublishedMeeting(id);
+  const memberId = await requireMemberId();
+  const meeting = await getPublishedMeeting(id, memberId);
 
   if (!meeting) {
     notFound();

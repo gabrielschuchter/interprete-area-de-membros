@@ -6,6 +6,7 @@ import {
   ExternalLinkIcon,
 } from "lucide-react";
 import Link from "next/link";
+import { requireMemberId } from "@/lib/learning";
 import { getMeetings } from "@/lib/meetings";
 import { MemberHeader } from "../components/member-header";
 
@@ -17,7 +18,8 @@ const formatDate = (date: Date, timezone: string) =>
   }).format(date);
 
 const MeetingsPage = async () => {
-  const { upcoming, past } = await getMeetings();
+  const memberId = await requireMemberId();
+  const { upcoming, past } = await getMeetings(memberId);
   const nextMeeting = upcoming[0];
 
   return (

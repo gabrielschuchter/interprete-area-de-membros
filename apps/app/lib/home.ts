@@ -11,7 +11,7 @@ export const getHomeData = async (memberId: string) => {
     await Promise.all([
       getPublishedLearningPaths(memberId),
       getPublishedActivities(memberId),
-      getMeetings(),
+      getMeetings(memberId),
       getCommunitySpaces(),
       database.activitySubmission.findFirst({
         where: {
