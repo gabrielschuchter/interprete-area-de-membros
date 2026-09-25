@@ -100,8 +100,8 @@ const PublicProfilePage = async ({ params }: PublicProfilePageProperties) => {
       <MemberHeader section="Membros" />
       <main className="mx-auto w-full max-w-[1120px] px-5 py-8 sm:px-8 lg:px-12 lg:py-14">
         <Button asChild className="-ml-3" variant="ghost">
-          <Link href="/comunidade">
-            <ArrowLeftIcon aria-hidden="true" /> Voltar para a comunidade
+          <Link href="/membros">
+            <ArrowLeftIcon aria-hidden="true" /> Voltar para os membros
           </Link>
         </Button>
 
@@ -118,7 +118,9 @@ const PublicProfilePage = async ({ params }: PublicProfilePageProperties) => {
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-3">
                 <h1 className="font-display text-4xl sm:text-5xl">{name}</h1>
-                <Badge variant="outline">{roleLabel(role)}</Badge>
+                <Badge variant="outline">
+                  {roleLabel(profile.member.role ?? role)}
+                </Badge>
               </div>
               <p className="mt-2 text-muted-foreground">
                 @{profile.username}

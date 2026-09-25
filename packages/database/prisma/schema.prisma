@@ -74,6 +74,7 @@ model Member {
   role        MemberRole @default(MEMBER)
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
+  profile     Profile?
 
   @@index([role])
 }
@@ -97,6 +98,7 @@ model Profile {
   interests    String[]
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+  member       Member   @relation(fields: [clerkUserId], references: [id], onDelete: Cascade)
 
   @@index([displayName])
 }
@@ -135,6 +137,7 @@ model Course {
   modules        Module[]
   enrollments    Enrollment[]
   activities     Activity[]
+  meetings       Meeting[]
 
   @@unique([learningPathId, position])
   @@index([status, position])
@@ -383,12 +386,15 @@ model Meeting {
   recordingUrl String?       @db.Text
   status       ContentStatus @default(DRAFT)
   teacherId    String?
+  courseId     String?
   position     Int           @default(0)
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
+  course       Course?       @relation(fields: [courseId], references: [id], onDelete: SetNull)
 
   @@index([status, startsAt])
   @@index([teacherId, startsAt])
+  @@index([courseId, startsAt])
 }
 
 model LibraryItem {

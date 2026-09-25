@@ -70,3 +70,46 @@ export const setLibraryStatus = async (formData: FormData) => {
   revalidatePath("/admin/library");
   revalidatePath("/biblioteca");
 };
+
+export const updateLibraryItem = async (formData: FormData) => {
+  const { userId } = await requireStaff();
+  const id = value(formData.get("id"));
+  const title = value(formData.get("title"));
+  const description = value(formData.get("description"));
+  const kind = value(formData.get("kind"));
+  const category = value(formData.get("category"));
+  const tags = value(formData.get("tags"));
+  const url = safeUrl(value(formData.get("url")));
+
+  if (
+    !(
+      id &&
+      title &&
+      url &&
+      Object.values(LibraryItemKind).includes(kind as LibraryItemKind)
+    )
+  ) {
+    return;
+  }
+
+  await database.libraryItem.update({
+    where: { id },
+    data: {
+      title,
+      description: description || null,
+      kind: kind as LibraryItemKind,
+      category: category || null,
+      tags: tags
+        .split(",")
+        .map((tag) => tag.trim().toLowerCase())
+        .filter(Boolean)
+        .slice(0, 12),
+      url,
+      updatedBy: userId,
+    },
+  });
+
+  revalidatePath("/admin/library");
+  revalidatePath("/biblioteca");
+  revalidatePath(`/biblioteca/${id}`);
+};

@@ -186,12 +186,26 @@ const LibraryPage = async ({ searchParams }: LibraryPageProperties) => {
                       )}
                     </div>
                     <h3 className="mt-5 font-display text-2xl leading-tight">
-                      {item.title}
+                      <Link
+                        className="hover:text-brand-structural"
+                        href={`/biblioteca/${item.id}`}
+                      >
+                        {item.title}
+                      </Link>
                     </h3>
                     {item.description && (
                       <p className="mt-3 line-clamp-3 text-muted-foreground text-sm leading-6">
                         {item.description}
                       </p>
+                    )}
+                    {item.tags.length > 0 && (
+                      <div className="mt-4 flex flex-wrap gap-1.5">
+                        {item.tags.slice(0, 3).map((tag) => (
+                          <Badge key={tag} variant="secondary">
+                            {tag}
+                          </Badge>
+                        ))}
+                      </div>
                     )}
                     <div className="mt-auto pt-6">
                       <a

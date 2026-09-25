@@ -3,6 +3,7 @@ import { Button } from "@repo/design-system/components/ui/button";
 import { Input } from "@repo/design-system/components/ui/input";
 import { Textarea } from "@repo/design-system/components/ui/textarea";
 import Link from "next/link";
+import { getCourseOptions } from "@/lib/admin-learning";
 import { getStaffMeetings } from "@/lib/meetings";
 
 const statusLabel = (status: string) => {
@@ -25,7 +26,10 @@ const formatDate = (date: Date, timezone: string) =>
   }).format(date);
 
 const AdminMeetingsPage = async () => {
-  const meetings = await getStaffMeetings();
+  const [meetings, courses] = await Promise.all([
+    getStaffMeetings(),
+    getCourseOptions(),
+  ]);
 
   return (
     <main className="mx-auto w-full max-w-[1280px] px-5 py-10 sm:px-8 lg:px-12 lg:py-14">
@@ -73,6 +77,11 @@ const AdminMeetingsPage = async () => {
                       <p className="mt-2 text-muted-foreground text-sm">
                         {formatDate(meeting.startsAt, meeting.timezone)}
                       </p>
+                      {meeting.course && (
+                        <p className="mt-1 text-muted-foreground text-sm">
+                          {meeting.course.title}
+                        </p>
+                      )}
                     </div>
                     <div className="flex gap-2">
                       {meeting.status !== "PUBLISHED" && (
@@ -155,6 +164,24 @@ const AdminMeetingsPage = async () => {
                 required
                 type="url"
               />
+            </label>
+            <label className="block" htmlFor="meeting-course">
+              <span className="brand-eyebrow">
+                Curso relacionado (opcional)
+              </span>
+              <select
+                className="mt-2 h-11 w-full rounded-sm border bg-transparent px-3 text-sm"
+                defaultValue=""
+                id="meeting-course"
+                name="courseId"
+              >
+                <option value="">Nenhum curso</option>
+                {courses.map((course) => (
+                  <option key={course.id} value={course.id}>
+                    {course.title}
+                  </option>
+                ))}
+              </select>
             </label>
             <label className="block" htmlFor="meeting-recording">
               <span className="brand-eyebrow">Gravação (opcional)</span>

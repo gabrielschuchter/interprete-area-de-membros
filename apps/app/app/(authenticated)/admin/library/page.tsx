@@ -15,7 +15,11 @@ const statusLabel = (status: string) => {
   return "Rascunho";
 };
 
-import { createLibraryItem, setLibraryStatus } from "../../biblioteca/actions";
+import {
+  createLibraryItem,
+  setLibraryStatus,
+  updateLibraryItem,
+} from "../../biblioteca/actions";
 
 const AdminLibraryPage = async () => {
   const items = await getStaffLibraryItems();
@@ -65,6 +69,57 @@ const AdminLibraryPage = async () => {
                     <p className="mt-1 text-muted-foreground text-sm">
                       {item.kind} · {item.category ?? "sem categoria"}
                     </p>
+                    <details className="mt-3">
+                      <summary className="cursor-pointer text-muted-foreground text-sm underline underline-offset-4">
+                        Editar material
+                      </summary>
+                      <form
+                        action={updateLibraryItem}
+                        className="mt-4 grid gap-3"
+                      >
+                        <input name="id" type="hidden" value={item.id} />
+                        <Input
+                          defaultValue={item.title}
+                          name="title"
+                          required
+                        />
+                        <Textarea
+                          defaultValue={item.description ?? ""}
+                          name="description"
+                          placeholder="Descrição"
+                        />
+                        <select
+                          className="h-11 rounded-sm border bg-transparent px-3 text-sm"
+                          defaultValue={item.kind}
+                          name="kind"
+                        >
+                          <option value="ARTICLE">Artigo</option>
+                          <option value="PDF">PDF</option>
+                          <option value="GUIDE">Guia</option>
+                          <option value="LINK">Link</option>
+                          <option value="VIDEO">Vídeo</option>
+                        </select>
+                        <Input
+                          defaultValue={item.category ?? ""}
+                          name="category"
+                          placeholder="Categoria"
+                        />
+                        <Input
+                          defaultValue={item.tags.join(", ")}
+                          name="tags"
+                          placeholder="Tags"
+                        />
+                        <Input
+                          defaultValue={item.url}
+                          name="url"
+                          required
+                          type="url"
+                        />
+                        <Button size="sm" type="submit">
+                          Salvar alterações
+                        </Button>
+                      </form>
+                    </details>
                   </div>
                   <div className="flex gap-2">
                     {item.status !== "PUBLISHED" && (

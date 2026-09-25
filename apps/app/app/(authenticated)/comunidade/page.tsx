@@ -79,6 +79,9 @@ const CommunityPage = async ({ searchParams }: CommunityPageProperties) => {
                 <BookmarkIcon aria-hidden="true" /> Salvos
               </Link>
             </Button>
+            <Button asChild variant="outline">
+              <Link href="/membros">Membros</Link>
+            </Button>
             <Button asChild className="shrink-0">
               <Link href="/comunidade/novo">
                 <PlusIcon aria-hidden="true" /> Criar tópico

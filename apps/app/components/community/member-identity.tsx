@@ -15,6 +15,7 @@ interface MemberIdentityProperties {
     displayName: string | null;
     headline: string | null;
     username: string;
+    member?: { role: "MEMBER" | "TEACHER" | "ADMIN" };
   };
   readonly showHeadline?: boolean;
 }
@@ -27,6 +28,16 @@ const initials = (displayName: string | null, username: string) =>
     .map((part) => part[0])
     .join("")
     .toUpperCase() || "M";
+
+const roleLabel = (role?: "MEMBER" | "TEACHER" | "ADMIN") => {
+  if (role === "TEACHER") {
+    return "Professor";
+  }
+  if (role === "ADMIN") {
+    return "Admin";
+  }
+  return null;
+};
 
 export const MemberIdentity = ({
   authorId,
@@ -53,7 +64,9 @@ export const MemberIdentity = ({
         </span>
         {showHeadline && (
           <span className="block truncate text-muted-foreground text-xs">
-            {profile?.headline ?? `@${username}`}
+            {profile?.headline ??
+              roleLabel(profile?.member?.role) ??
+              `@${username}`}
           </span>
         )}
       </span>

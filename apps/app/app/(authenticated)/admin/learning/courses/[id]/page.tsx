@@ -2,13 +2,17 @@ import { Badge } from "@repo/design-system/components/ui/badge";
 import { Button } from "@repo/design-system/components/ui/button";
 import { Input } from "@repo/design-system/components/ui/input";
 import { Textarea } from "@repo/design-system/components/ui/textarea";
-import { EyeIcon, PlusIcon } from "lucide-react";
+import type { JSONContent } from "@tiptap/core";
+import { ArrowDownIcon, ArrowUpIcon, EyeIcon, PlusIcon } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { TopicEditor } from "@/components/community/topic-editor";
 import { getAdminCourse } from "@/lib/admin-learning";
 import {
   createLesson,
   createModule,
+  moveLesson,
+  moveModule,
   setContentStatus,
   updateCourse,
   updateLesson,
@@ -148,6 +152,32 @@ const AdminCoursePage = async ({ params }: AdminCoursePageProperties) => {
                       {module.title}
                     </h3>
                   </div>
+                  <div className="flex gap-1">
+                    <form action={moveModule}>
+                      <input name="moduleId" type="hidden" value={module.id} />
+                      <input name="direction" type="hidden" value="up" />
+                      <Button
+                        aria-label="Mover módulo para cima"
+                        size="icon"
+                        type="submit"
+                        variant="ghost"
+                      >
+                        <ArrowUpIcon aria-hidden="true" />
+                      </Button>
+                    </form>
+                    <form action={moveModule}>
+                      <input name="moduleId" type="hidden" value={module.id} />
+                      <input name="direction" type="hidden" value="down" />
+                      <Button
+                        aria-label="Mover módulo para baixo"
+                        size="icon"
+                        type="submit"
+                        variant="ghost"
+                      >
+                        <ArrowDownIcon aria-hidden="true" />
+                      </Button>
+                    </form>
+                  </div>
                   <Badge
                     variant={
                       module.status === "PUBLISHED" ? "default" : "outline"
@@ -212,6 +242,44 @@ const AdminCoursePage = async ({ params }: AdminCoursePageProperties) => {
                             {lesson.description ?? "Sem descrição"}
                           </p>
                         </div>
+                        <div className="flex gap-1">
+                          <form action={moveLesson}>
+                            <input
+                              name="lessonId"
+                              type="hidden"
+                              value={lesson.id}
+                            />
+                            <input name="direction" type="hidden" value="up" />
+                            <Button
+                              aria-label="Mover aula para cima"
+                              size="icon"
+                              type="submit"
+                              variant="ghost"
+                            >
+                              <ArrowUpIcon aria-hidden="true" />
+                            </Button>
+                          </form>
+                          <form action={moveLesson}>
+                            <input
+                              name="lessonId"
+                              type="hidden"
+                              value={lesson.id}
+                            />
+                            <input
+                              name="direction"
+                              type="hidden"
+                              value="down"
+                            />
+                            <Button
+                              aria-label="Mover aula para baixo"
+                              size="icon"
+                              type="submit"
+                              variant="ghost"
+                            >
+                              <ArrowDownIcon aria-hidden="true" />
+                            </Button>
+                          </form>
+                        </div>
                         <Badge
                           variant={
                             lesson.status === "PUBLISHED"
@@ -242,15 +310,9 @@ const AdminCoursePage = async ({ params }: AdminCoursePageProperties) => {
                             name="description"
                             placeholder="Descrição curta"
                           />
-                          <Textarea
-                            className="min-h-48 font-data text-sm"
-                            defaultValue={JSON.stringify(
-                              lesson.content,
-                              null,
-                              2
-                            )}
-                            name="content"
-                            required
+                          <TopicEditor
+                            ariaLabel="Conteúdo da aula"
+                            defaultValue={lesson.content as JSONContent}
                           />
                           <div className="flex justify-end">
                             <Button size="sm" type="submit">
@@ -312,12 +374,7 @@ const AdminCoursePage = async ({ params }: AdminCoursePageProperties) => {
                       <option value="MATERIAL">Material</option>
                       <option value="VIDEO">Vídeo</option>
                     </select>
-                    <Textarea
-                      className="min-h-48 font-data text-sm"
-                      name="content"
-                      placeholder="Cole JSON de documento ou escreva parágrafos separados por uma linha em branco."
-                      required
-                    />
+                    <TopicEditor ariaLabel="Conteúdo da aula" />
                     <div className="flex justify-end">
                       <Button size="sm" type="submit">
                         Criar aula

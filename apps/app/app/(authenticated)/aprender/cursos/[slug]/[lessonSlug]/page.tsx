@@ -3,6 +3,7 @@ import {
   ArrowLeftIcon,
   ArrowRightIcon,
   CheckCircle2Icon,
+  ClipboardCheckIcon,
   ExternalLinkIcon,
   PaperclipIcon,
 } from "lucide-react";
@@ -214,6 +215,39 @@ const LessonPage = async ({ params }: LessonPageProperties) => {
                   );
                 })}
               </ul>
+            </section>
+          )}
+
+          {lesson.activities.length > 0 && (
+            <section className="border-brand-action/50 border-l-2 bg-brand-action/5 px-5 py-6 sm:px-7">
+              <div className="flex items-start gap-3">
+                <ClipboardCheckIcon
+                  aria-hidden="true"
+                  className="mt-1 size-5 text-brand-action"
+                />
+                <div>
+                  <p className="brand-eyebrow">Prática relacionada</p>
+                  <h2 className="mt-2 font-display text-2xl">
+                    Leve esta pergunta para o caderno.
+                  </h2>
+                  <ul className="mt-4 space-y-2">
+                    {lesson.activities.map((activity) => (
+                      <li key={activity.id}>
+                        <Link
+                          className="inline-flex min-h-11 items-center gap-2 text-brand-structural text-sm underline underline-offset-4"
+                          href={`/atividades/${activity.slug}`}
+                        >
+                          {activity.title}
+                          <ArrowRightIcon
+                            aria-hidden="true"
+                            className="size-4"
+                          />
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
             </section>
           )}
 

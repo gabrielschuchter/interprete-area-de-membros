@@ -4,24 +4,67 @@ import {
   ContentStatus,
   database,
   LessonKind,
+  MemberRole,
   type Prisma,
 } from "@repo/database";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireStaff } from "@/lib/authorization";
+import { requireAdmin, requireStaff } from "@/lib/authorization";
+import { sanitizeRichDocument } from "@/lib/community-content";
 
 const PARAGRAPH_SPLIT = /\r?\n\r?\n/;
 
 const asText = (value: FormDataEntryValue | null) =>
   typeof value === "string" ? value.trim() : "";
 
+const revalidateMemberSurfaces = (username?: string) => {
+  revalidatePath("/admin/membros");
+  revalidatePath("/membros");
+  revalidatePath("/comunidade");
+  revalidatePath("/perfil");
+  if (username) {
+    revalidatePath(`/membros/${username}`);
+  }
+};
+
+export const setMemberRole = async (formData: FormData) => {
+  const { userId } = await requireAdmin();
+  const memberId = asText(formData.get("memberId"));
+  const nextRole = asText(formData.get("role"));
+
+  if (
+    !(memberId && Object.values(MemberRole).includes(nextRole as MemberRole))
+  ) {
+    return;
+  }
+
+  if (memberId === userId && nextRole !== MemberRole.ADMIN) {
+    const adminCount = await database.member.count({
+      where: { role: MemberRole.ADMIN },
+    });
+
+    if (adminCount <= 1) {
+      return;
+    }
+  }
+
+  const member = await database.member.update({
+    where: { id: memberId },
+    data: { role: nextRole as MemberRole },
+    select: { profile: { select: { username: true } } },
+  });
+
+  revalidateMemberSurfaces(member.profile?.username);
+};
+
 const asContent = (value: string): Prisma.InputJsonValue => {
   if (value) {
     try {
       const parsed: unknown = JSON.parse(value);
+      const sanitized = sanitizeRichDocument(parsed);
 
-      if (parsed && typeof parsed === "object") {
-        return parsed as Prisma.InputJsonValue;
+      if (sanitized) {
+        return sanitized as Prisma.InputJsonValue;
       }
     } catch {
       // Plain text is deliberately converted to a safe document below.
@@ -143,7 +186,8 @@ export const createLesson = async (formData: FormData) => {
   const title = asText(formData.get("title"));
   const slug = asText(formData.get("slug")).toLowerCase();
   const description = asText(formData.get("description"));
-  const content = asText(formData.get("content"));
+  const content =
+    asText(formData.get("contentJson")) || asText(formData.get("content"));
   const kind = asText(formData.get("kind"));
 
   if (!(moduleId && title && slug && content)) {
@@ -185,7 +229,8 @@ export const updateLesson = async (formData: FormData) => {
   const lessonId = asText(formData.get("lessonId"));
   const title = asText(formData.get("title"));
   const description = asText(formData.get("description"));
-  const content = asText(formData.get("content"));
+  const content =
+    asText(formData.get("contentJson")) || asText(formData.get("content"));
 
   if (!(lessonId && title && content)) {
     return;
@@ -269,6 +314,102 @@ export const updateModule = async (formData: FormData) => {
   });
 
   revalidatePath(`/admin/learning/courses/${module.courseId}`);
+  revalidatePath("/aprender");
+};
+
+export const moveModule = async (formData: FormData) => {
+  await requireStaff();
+  const moduleId = asText(formData.get("moduleId"));
+  const direction = asText(formData.get("direction")) === "up" ? -1 : 1;
+
+  if (!moduleId) {
+    return;
+  }
+
+  const module = await database.module.findUnique({
+    where: { id: moduleId },
+    select: { courseId: true, position: true },
+  });
+
+  if (!module) {
+    return;
+  }
+
+  const neighbor = await database.module.findFirst({
+    where: { courseId: module.courseId, position: module.position + direction },
+    select: { id: true, position: true },
+  });
+
+  if (!neighbor) {
+    return;
+  }
+
+  await database.$transaction(async (transaction) => {
+    await transaction.module.update({
+      where: { id: moduleId },
+      data: { position: -1 },
+    });
+    await transaction.module.update({
+      where: { id: neighbor.id },
+      data: { position: module.position },
+    });
+    await transaction.module.update({
+      where: { id: moduleId },
+      data: { position: neighbor.position },
+    });
+  });
+
+  revalidatePath(`/admin/learning/courses/${module.courseId}`);
+  revalidatePath("/aprender");
+};
+
+export const moveLesson = async (formData: FormData) => {
+  await requireStaff();
+  const lessonId = asText(formData.get("lessonId"));
+  const direction = asText(formData.get("direction")) === "up" ? -1 : 1;
+
+  if (!lessonId) {
+    return;
+  }
+
+  const lesson = await database.lesson.findUnique({
+    where: { id: lessonId },
+    select: {
+      moduleId: true,
+      position: true,
+      module: { select: { courseId: true } },
+    },
+  });
+
+  if (!lesson) {
+    return;
+  }
+
+  const neighbor = await database.lesson.findFirst({
+    where: { moduleId: lesson.moduleId, position: lesson.position + direction },
+    select: { id: true, position: true },
+  });
+
+  if (!neighbor) {
+    return;
+  }
+
+  await database.$transaction(async (transaction) => {
+    await transaction.lesson.update({
+      where: { id: lessonId },
+      data: { position: -1 },
+    });
+    await transaction.lesson.update({
+      where: { id: neighbor.id },
+      data: { position: lesson.position },
+    });
+    await transaction.lesson.update({
+      where: { id: lessonId },
+      data: { position: neighbor.position },
+    });
+  });
+
+  revalidatePath(`/admin/learning/courses/${lesson.module.courseId}`);
   revalidatePath("/aprender");
 };
 

@@ -71,3 +71,24 @@ export const getAdminCourse = async (id: string) =>
       },
     },
   });
+
+export const getCourseOptions = async () =>
+  database.course.findMany({
+    orderBy: [{ status: "asc" }, { position: "asc" }, { title: "asc" }],
+    select: {
+      id: true,
+      title: true,
+      status: true,
+      modules: {
+        orderBy: { position: "asc" },
+        select: {
+          id: true,
+          title: true,
+          lessons: {
+            orderBy: { position: "asc" },
+            select: { id: true, title: true },
+          },
+        },
+      },
+    },
+  });

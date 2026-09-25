@@ -163,6 +163,11 @@ export const getPublishedLesson = async (
         orderBy: [{ position: "asc" }, { title: "asc" }],
         select: { id: true, title: true, kind: true, url: true },
       },
+      activities: {
+        where: { status: ContentStatus.PUBLISHED },
+        orderBy: [{ position: "asc" }, { title: "asc" }],
+        select: { id: true, title: true, slug: true, dueAt: true },
+      },
       progress: {
         where: { memberId },
         select: { status: true, completedAt: true },

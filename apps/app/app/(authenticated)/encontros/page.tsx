@@ -5,6 +5,7 @@ import {
   CalendarDaysIcon,
   ExternalLinkIcon,
 } from "lucide-react";
+import Link from "next/link";
 import { getMeetings } from "@/lib/meetings";
 import { MemberHeader } from "../components/member-header";
 
@@ -55,11 +56,22 @@ const MeetingsPage = async () => {
                   </p>
                 )}
               </div>
-              <Button asChild size="lg">
-                <a href={nextMeeting.joinUrl} rel="noreferrer" target="_blank">
-                  Entrar no encontro <ExternalLinkIcon aria-hidden="true" />
-                </a>
-              </Button>
+              <div className="flex flex-wrap gap-3">
+                <Button asChild size="lg" variant="outline">
+                  <Link href={`/encontros/${nextMeeting.id}`}>
+                    Ver detalhes
+                  </Link>
+                </Button>
+                <Button asChild size="lg">
+                  <a
+                    href={nextMeeting.joinUrl}
+                    rel="noreferrer"
+                    target="_blank"
+                  >
+                    Entrar no encontro <ExternalLinkIcon aria-hidden="true" />
+                  </a>
+                </Button>
+              </div>
             </div>
           </section>
         ) : (
@@ -104,6 +116,12 @@ const MeetingsPage = async () => {
                   Abrir acesso{" "}
                   <ArrowRightIcon aria-hidden="true" className="size-4" />
                 </a>
+                <Link
+                  className="mt-3 inline-flex items-center gap-2 text-muted-foreground text-sm underline underline-offset-4"
+                  href={`/encontros/${meeting.id}`}
+                >
+                  Ver detalhes
+                </Link>
               </article>
             ))}
           </div>
@@ -135,6 +153,12 @@ const MeetingsPage = async () => {
                     <h3 className="mt-2 font-display text-2xl">
                       {meeting.title}
                     </h3>
+                    <Link
+                      className="mt-2 inline-flex text-brand-structural text-sm underline underline-offset-4"
+                      href={`/encontros/${meeting.id}`}
+                    >
+                      Ver detalhes
+                    </Link>
                   </div>
                   {meeting.recordingUrl ? (
                     <Button asChild size="sm" variant="outline">

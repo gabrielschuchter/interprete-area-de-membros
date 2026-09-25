@@ -26,15 +26,23 @@ const ActivityRow = ({
   const submission = activity.submissions[0];
   const reviewed = submission?.status === "REVIEWED";
   const submitted = submission?.status === "SUBMITTED";
+  const overdue = Boolean(
+    activity.dueAt && activity.dueAt < new Date() && !reviewed
+  );
   let statusLabel = "Pendente";
   let actionLabel = "Abrir prática";
+  let badgeVariant: "default" | "destructive" | "outline" = "outline";
 
   if (reviewed) {
     statusLabel = "Feedback disponível";
     actionLabel = "Ler feedback";
+    badgeVariant = "default";
   } else if (submitted) {
     statusLabel = "Enviada";
     actionLabel = "Revisar envio";
+  } else if (overdue) {
+    statusLabel = "Atrasada";
+    badgeVariant = "destructive";
   }
 
   return (
@@ -45,9 +53,7 @@ const ActivityRow = ({
       <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
         <div className="max-w-3xl">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant={reviewed ? "default" : "outline"}>
-              {statusLabel}
-            </Badge>
+            <Badge variant={badgeVariant}>{statusLabel}</Badge>
             <span className="inline-flex items-center gap-1.5 text-muted-foreground text-xs">
               <Clock3Icon aria-hidden="true" className="size-3.5" />{" "}
               {formatDueDate(activity.dueAt)}

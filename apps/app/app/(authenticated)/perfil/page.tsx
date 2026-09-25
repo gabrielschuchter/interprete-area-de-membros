@@ -136,11 +136,16 @@ const ProfilePage = async ({ searchParams }: ProfilePageProperties) => {
                   </p>
                 </div>
               </div>
-              <Button asChild size="sm" variant="outline">
-                <Link href={`/membros/${profile.username}`}>
-                  Ver perfil público
-                </Link>
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button asChild size="sm" variant="outline">
+                  <Link href={`/membros/${profile.username}`}>
+                    Ver perfil público
+                  </Link>
+                </Button>
+                <Button asChild size="sm" variant="ghost">
+                  <Link href="/membros">Explorar membros</Link>
+                </Button>
+              </div>
             </div>
 
             <div className="mt-8 flex flex-wrap gap-x-5 gap-y-2 text-muted-foreground text-sm">

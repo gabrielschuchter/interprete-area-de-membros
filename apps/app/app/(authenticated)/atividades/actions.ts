@@ -9,6 +9,37 @@ import {
 import { revalidatePath } from "next/cache";
 import { requireStaff } from "@/lib/authorization";
 
+const value = (formData: FormData, name: string) => {
+  const entry = formData.get(name);
+  return typeof entry === "string" ? entry.trim() : "";
+};
+
+const validActivityRelations = async (courseId: string, lessonId: string) => {
+  if (courseId) {
+    const course = await database.course.findUnique({
+      where: { id: courseId },
+      select: { id: true },
+    });
+
+    if (!course) {
+      return false;
+    }
+  }
+
+  if (lessonId) {
+    const lesson = await database.lesson.findUnique({
+      where: { id: lessonId },
+      select: { module: { select: { courseId: true } } },
+    });
+
+    if (!lesson || (courseId && lesson.module.courseId !== courseId)) {
+      return false;
+    }
+  }
+
+  return true;
+};
+
 export const submitActivity = async (formData: FormData) => {
   const { userId } = await auth();
   const activityId = formData.get("activityId");
@@ -29,7 +60,36 @@ export const submitActivity = async (formData: FormData) => {
   }
 
   const activity = await database.activity.findFirst({
-    where: { id: activityId, status: ContentStatus.PUBLISHED },
+    where: {
+      id: activityId,
+      status: ContentStatus.PUBLISHED,
+      AND: [
+        {
+          OR: [
+            { courseId: null },
+            { course: { is: { status: ContentStatus.PUBLISHED } } },
+          ],
+        },
+        {
+          OR: [
+            { lessonId: null },
+            {
+              lesson: {
+                is: {
+                  status: ContentStatus.PUBLISHED,
+                  module: {
+                    status: ContentStatus.PUBLISHED,
+                    course: {
+                      is: { status: ContentStatus.PUBLISHED },
+                    },
+                  },
+                },
+              },
+            },
+          ],
+        },
+      ],
+    },
     select: { slug: true },
   });
 
@@ -104,6 +164,8 @@ export const createActivity = async (formData: FormData) => {
   const prompt = formData.get("prompt");
   const instructions = formData.get("instructions");
   const dueAt = formData.get("dueAt");
+  const courseId = value(formData, "courseId");
+  const lessonId = value(formData, "lessonId");
 
   if (
     typeof title !== "string" ||
@@ -123,6 +185,10 @@ export const createActivity = async (formData: FormData) => {
     return;
   }
 
+  if (!(await validActivityRelations(courseId, lessonId))) {
+    return;
+  }
+
   await database.activity.create({
     data: {
       title: title.trim(),
@@ -133,6 +199,8 @@ export const createActivity = async (formData: FormData) => {
           ? instructions.trim()
           : null,
       dueAt: dueDate,
+      courseId: courseId || null,
+      lessonId: lessonId || null,
       status: ContentStatus.DRAFT,
       createdBy: userId,
       updatedBy: userId,
@@ -140,6 +208,49 @@ export const createActivity = async (formData: FormData) => {
   });
 
   revalidatePath("/admin/activities");
+};
+
+export const updateActivity = async (formData: FormData) => {
+  const { userId } = await requireStaff();
+  const activityId = value(formData, "activityId");
+  const title = value(formData, "title");
+  const slug = value(formData, "slug");
+  const prompt = value(formData, "prompt");
+  const instructions = value(formData, "instructions");
+  const dueAt = value(formData, "dueAt");
+  const courseId = value(formData, "courseId");
+  const lessonId = value(formData, "lessonId");
+
+  if (!(activityId && title.trim() && slug.trim() && prompt.trim())) {
+    return;
+  }
+
+  const dueDate = dueAt.trim() ? new Date(dueAt) : null;
+
+  if (dueDate && Number.isNaN(dueDate.valueOf())) {
+    return;
+  }
+
+  if (!(await validActivityRelations(courseId, lessonId))) {
+    return;
+  }
+
+  await database.activity.update({
+    where: { id: activityId },
+    data: {
+      title: title.trim(),
+      slug: slug.trim().toLowerCase(),
+      prompt: prompt.trim(),
+      instructions: instructions.trim() || null,
+      dueAt: dueDate,
+      courseId: courseId || null,
+      lessonId: lessonId || null,
+      updatedBy: userId,
+    },
+  });
+
+  revalidatePath("/admin/activities");
+  revalidatePath("/atividades");
 };
 
 export const setActivityStatus = async (formData: FormData) => {

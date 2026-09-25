@@ -37,6 +37,7 @@ export const createMeeting = async (formData: FormData) => {
   const joinUrl = safeUrl(value(formData.get("joinUrl")));
   const recording = value(formData.get("recordingUrl"));
   const recordingUrl = recording ? safeUrl(recording) : null;
+  const courseId = value(formData.get("courseId"));
 
   if (!(title && startsAt && joinUrl && timezone)) {
     return;
@@ -44,6 +45,17 @@ export const createMeeting = async (formData: FormData) => {
   const parsedStartsAt = new Date(startsAt);
   if (Number.isNaN(parsedStartsAt.valueOf())) {
     return;
+  }
+
+  if (courseId) {
+    const course = await database.course.findUnique({
+      where: { id: courseId },
+      select: { id: true },
+    });
+
+    if (!course) {
+      return;
+    }
   }
 
   await database.meeting.create({
@@ -55,6 +67,7 @@ export const createMeeting = async (formData: FormData) => {
       joinUrl,
       recordingUrl,
       teacherId: userId,
+      courseId: courseId || null,
       status: ContentStatus.DRAFT,
     },
   });

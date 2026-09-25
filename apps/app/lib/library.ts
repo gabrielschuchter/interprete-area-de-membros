@@ -76,14 +76,31 @@ export const getLibraryCategories = async () => {
   return rows.flatMap((row) => (row.category ? [row.category] : []));
 };
 
+export const getPublishedLibraryItem = async (id: string) =>
+  database.libraryItem.findFirst({
+    where: { id, status: ContentStatus.PUBLISHED },
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      kind: true,
+      category: true,
+      tags: true,
+      url: true,
+      createdAt: true,
+    },
+  });
+
 export const getStaffLibraryItems = async () =>
   database.libraryItem.findMany({
     orderBy: [{ status: "asc" }, { position: "asc" }, { title: "asc" }],
     select: {
       id: true,
       title: true,
+      description: true,
       kind: true,
       category: true,
+      tags: true,
       url: true,
       status: true,
     },

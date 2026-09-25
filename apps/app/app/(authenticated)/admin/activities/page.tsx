@@ -4,6 +4,7 @@ import { Input } from "@repo/design-system/components/ui/input";
 import { Textarea } from "@repo/design-system/components/ui/textarea";
 import Link from "next/link";
 import { getStaffActivities } from "@/lib/activities";
+import { getCourseOptions } from "@/lib/admin-learning";
 
 const statusLabel = (status: string) => {
   if (status === "PUBLISHED") {
@@ -19,10 +20,14 @@ import {
   createActivity,
   saveFeedback,
   setActivityStatus,
+  updateActivity,
 } from "../../atividades/actions";
 
 const AdminActivitiesPage = async () => {
-  const activities = await getStaffActivities();
+  const [activities, courses] = await Promise.all([
+    getStaffActivities(),
+    getCourseOptions(),
+  ]);
 
   return (
     <main className="mx-auto w-full max-w-[1280px] px-5 py-10 sm:px-8 lg:px-12 lg:py-14">
@@ -70,6 +75,12 @@ const AdminActivitiesPage = async () => {
                       <p className="mt-2 text-muted-foreground leading-6">
                         {activity.prompt}
                       </p>
+                      {(activity.course || activity.lesson) && (
+                        <p className="mt-2 text-muted-foreground text-sm">
+                          {activity.course?.title}
+                          {activity.lesson ? ` · ${activity.lesson.title}` : ""}
+                        </p>
+                      )}
                     </div>
                     <span className="font-data text-muted-foreground text-xs">
                       {activity.submissions.length} envios
@@ -103,6 +114,78 @@ const AdminActivitiesPage = async () => {
                       </form>
                     )}
                   </div>
+                  <details className="mt-5 border-border border-t pt-4">
+                    <summary className="cursor-pointer text-muted-foreground text-sm underline underline-offset-4">
+                      Editar atividade
+                    </summary>
+                    <form action={updateActivity} className="mt-4 grid gap-3">
+                      <input
+                        name="activityId"
+                        type="hidden"
+                        value={activity.id}
+                      />
+                      <Input
+                        defaultValue={activity.title}
+                        name="title"
+                        required
+                      />
+                      <Input
+                        defaultValue={activity.slug}
+                        name="slug"
+                        required
+                      />
+                      <Textarea
+                        defaultValue={activity.prompt}
+                        name="prompt"
+                        required
+                      />
+                      <Textarea
+                        defaultValue={activity.instructions ?? ""}
+                        name="instructions"
+                        placeholder="Instruções"
+                      />
+                      <Input
+                        defaultValue={
+                          activity.dueAt?.toISOString().slice(0, 16) ?? ""
+                        }
+                        name="dueAt"
+                        type="datetime-local"
+                      />
+                      <select
+                        className="h-11 rounded-sm border bg-transparent px-3 text-sm"
+                        defaultValue={activity.courseId ?? ""}
+                        name="courseId"
+                      >
+                        <option value="">Nenhum curso</option>
+                        {courses.map((course) => (
+                          <option key={course.id} value={course.id}>
+                            {course.title}
+                          </option>
+                        ))}
+                      </select>
+                      <select
+                        className="h-11 rounded-sm border bg-transparent px-3 text-sm"
+                        defaultValue={activity.lessonId ?? ""}
+                        name="lessonId"
+                      >
+                        <option value="">Nenhuma aula</option>
+                        {courses.flatMap((course) =>
+                          course.modules.flatMap((module) =>
+                            module.lessons.map((lesson) => (
+                              <option key={lesson.id} value={lesson.id}>
+                                {course.title} · {lesson.title}
+                              </option>
+                            ))
+                          )
+                        )}
+                      </select>
+                      <div className="flex justify-end">
+                        <Button size="sm" type="submit">
+                          Salvar alterações
+                        </Button>
+                      </div>
+                    </form>
+                  </details>
                   {activity.submissions.length > 0 && (
                     <div className="mt-6 divide-y border-border border-y">
                       {activity.submissions.map((submission) => (
@@ -190,6 +273,44 @@ const AdminActivitiesPage = async () => {
                 name="dueAt"
                 type="datetime-local"
               />
+            </label>
+            <label className="block" htmlFor="activity-course">
+              <span className="brand-eyebrow">
+                Curso relacionado (opcional)
+              </span>
+              <select
+                className="mt-2 h-11 w-full rounded-sm border bg-transparent px-3 text-sm"
+                defaultValue=""
+                id="activity-course"
+                name="courseId"
+              >
+                <option value="">Nenhum curso</option>
+                {courses.map((course) => (
+                  <option key={course.id} value={course.id}>
+                    {course.title}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block" htmlFor="activity-lesson">
+              <span className="brand-eyebrow">Aula relacionada (opcional)</span>
+              <select
+                className="mt-2 h-11 w-full rounded-sm border bg-transparent px-3 text-sm"
+                defaultValue=""
+                id="activity-lesson"
+                name="lessonId"
+              >
+                <option value="">Nenhuma aula</option>
+                {courses.flatMap((course) =>
+                  course.modules.flatMap((module) =>
+                    module.lessons.map((lesson) => (
+                      <option key={lesson.id} value={lesson.id}>
+                        {course.title} · {lesson.title}
+                      </option>
+                    ))
+                  )
+                )}
+              </select>
             </label>
             <Button className="w-full" type="submit">
               Salvar como rascunho

@@ -7,6 +7,7 @@ import {
   CalendarDaysIcon,
   CheckCircle2Icon,
   MessageCircleIcon,
+  MessageSquareQuoteIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { getHomeData } from "@/lib/home";
@@ -18,7 +19,8 @@ const HomePage = async () => {
     requireMemberId(),
     currentUser(),
   ]);
-  const { paths, activities, meetings, spaces } = await getHomeData(memberId);
+  const { paths, activities, meetings, spaces, latestFeedback } =
+    await getHomeData(memberId);
   const firstName = user?.firstName ?? "estudante";
   const allCourses = paths.flatMap((path) =>
     path.courses.map((course) => ({ ...course, path }))
@@ -250,6 +252,60 @@ const HomePage = async () => {
             </Link>
           </section>
         </div>
+
+        {(latestFeedback || recentPost) && (
+          <section className="mt-10 grid gap-5 lg:grid-cols-2">
+            {latestFeedback && (
+              <article className="paper-surface border border-brand-action/35 p-6">
+                <div className="flex items-start gap-3">
+                  <MessageSquareQuoteIcon
+                    aria-hidden="true"
+                    className="mt-0.5 size-5 text-brand-action"
+                  />
+                  <div>
+                    <p className="brand-eyebrow">Feedback recente</p>
+                    <h2 className="mt-2 font-display text-2xl">
+                      {latestFeedback.activity.title}
+                    </h2>
+                    <p className="mt-2 text-muted-foreground text-sm leading-6">
+                      Há uma leitura do professor esperando sua atenção.
+                    </p>
+                    <Button
+                      asChild
+                      className="mt-5"
+                      size="sm"
+                      variant="outline"
+                    >
+                      <Link
+                        href={`/atividades/${latestFeedback.activity.slug}`}
+                      >
+                        Ler feedback <ArrowRightIcon aria-hidden="true" />
+                      </Link>
+                    </Button>
+                  </div>
+                </div>
+              </article>
+            )}
+            {recentPost && (
+              <article className="paper-surface border p-6">
+                <p className="brand-eyebrow">Discussão recente</p>
+                <h2 className="mt-2 font-display text-2xl">
+                  {recentPost.title}
+                </h2>
+                <p className="mt-2 text-muted-foreground text-sm leading-6">
+                  Uma conversa recente pode abrir uma nova linha de pensamento.
+                </p>
+                <Button asChild className="mt-5" size="sm" variant="outline">
+                  <Link
+                    href={`/comunidade/${spaces.find((space) => space.posts.some((post) => post.id === recentPost.id))?.slug ?? ""}/${recentPost.id}`}
+                  >
+                    Ler discussão <ArrowRightIcon aria-hidden="true" />
+                  </Link>
+                </Button>
+              </article>
+            )}
+          </section>
+        )}
 
         <section aria-labelledby="orientation-heading" className="mt-14">
           <div className="flex items-center justify-between border-border border-b pb-3">

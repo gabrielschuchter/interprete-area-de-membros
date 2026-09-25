@@ -113,6 +113,7 @@ export const getProfilesByClerkIds = async (
       displayName: true,
       avatarUrl: true,
       headline: true,
+      member: { select: { role: true } },
     },
   });
 
@@ -139,5 +140,68 @@ export const getPublicProfile = async (username: string) =>
       linkedin: true,
       interests: true,
       createdAt: true,
+      member: { select: { role: true } },
+    },
+  });
+
+export const getMemberDirectory = (query = "") => {
+  const normalizedQuery = query.trim().slice(0, 80);
+
+  return database.profile.findMany({
+    where: normalizedQuery
+      ? {
+          OR: [
+            {
+              username: {
+                contains: normalizedQuery.toLowerCase(),
+                mode: "insensitive",
+              },
+            },
+            {
+              displayName: {
+                contains: normalizedQuery,
+                mode: "insensitive",
+              },
+            },
+            {
+              headline: {
+                contains: normalizedQuery,
+                mode: "insensitive",
+              },
+            },
+            { interests: { has: normalizedQuery.toLowerCase() } },
+          ],
+        }
+      : undefined,
+    orderBy: [{ displayName: "asc" }, { username: "asc" }],
+    take: 48,
+    select: {
+      username: true,
+      displayName: true,
+      avatarUrl: true,
+      headline: true,
+      occupation: true,
+      interests: true,
+      member: { select: { role: true } },
+    },
+  });
+};
+
+export const getStaffMembers = () =>
+  database.member.findMany({
+    orderBy: [{ role: "desc" }, { displayName: "asc" }, { email: "asc" }],
+    select: {
+      id: true,
+      displayName: true,
+      email: true,
+      avatarUrl: true,
+      role: true,
+      createdAt: true,
+      profile: {
+        select: {
+          username: true,
+          headline: true,
+        },
+      },
     },
   });

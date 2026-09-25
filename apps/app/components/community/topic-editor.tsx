@@ -24,6 +24,7 @@ const emptyDocument: JSONContent = {
 };
 
 interface TopicEditorProperties {
+  readonly ariaLabel?: string;
   readonly defaultValue?: JSONContent;
   readonly name?: string;
   readonly onDocumentChange?: (value: JSONContent) => void;
@@ -33,6 +34,7 @@ export const TopicEditor = ({
   defaultValue,
   name = "contentJson",
   onDocumentChange,
+  ariaLabel = "Conteúdo do tópico",
 }: TopicEditorProperties) => {
   const [value, setValue] = useState<JSONContent>(
     defaultValue ?? emptyDocument
@@ -49,7 +51,7 @@ export const TopicEditor = ({
     editorProps: {
       attributes: {
         class: "prose-editor min-h-64 px-4 py-4 outline-none",
-        "aria-label": "Conteúdo do tópico",
+        "aria-label": ariaLabel,
       },
     },
     onUpdate: ({ editor: currentEditor }) => {

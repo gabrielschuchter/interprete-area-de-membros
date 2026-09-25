@@ -4,7 +4,37 @@ import { ContentStatus, database } from "@repo/database";
 
 export const getPublishedActivities = async (memberId: string) =>
   database.activity.findMany({
-    where: { status: ContentStatus.PUBLISHED },
+    where: {
+      status: ContentStatus.PUBLISHED,
+      AND: [
+        {
+          OR: [
+            { courseId: null },
+            { course: { is: { status: ContentStatus.PUBLISHED } } },
+          ],
+        },
+        {
+          OR: [
+            { lessonId: null },
+            {
+              lesson: {
+                is: {
+                  status: ContentStatus.PUBLISHED,
+                  module: {
+                    status: ContentStatus.PUBLISHED,
+                    course: {
+                      is: {
+                        status: ContentStatus.PUBLISHED,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          ],
+        },
+      ],
+    },
     orderBy: [
       { dueAt: { sort: "asc", nulls: "last" } },
       { position: "asc" },
@@ -33,7 +63,38 @@ export const getPublishedActivities = async (memberId: string) =>
 
 export const getPublishedActivity = async (slug: string, memberId: string) =>
   database.activity.findFirst({
-    where: { slug, status: ContentStatus.PUBLISHED },
+    where: {
+      slug,
+      status: ContentStatus.PUBLISHED,
+      AND: [
+        {
+          OR: [
+            { courseId: null },
+            { course: { is: { status: ContentStatus.PUBLISHED } } },
+          ],
+        },
+        {
+          OR: [
+            { lessonId: null },
+            {
+              lesson: {
+                is: {
+                  status: ContentStatus.PUBLISHED,
+                  module: {
+                    status: ContentStatus.PUBLISHED,
+                    course: {
+                      is: {
+                        status: ContentStatus.PUBLISHED,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          ],
+        },
+      ],
+    },
     select: {
       id: true,
       title: true,
@@ -66,8 +127,11 @@ export const getStaffActivities = async () =>
       title: true,
       slug: true,
       prompt: true,
+      instructions: true,
       status: true,
       dueAt: true,
+      courseId: true,
+      lessonId: true,
       submissions: {
         orderBy: { updatedAt: "desc" },
         select: {
@@ -79,5 +143,7 @@ export const getStaffActivities = async () =>
           feedback: { select: { content: true, teacherId: true } },
         },
       },
+      course: { select: { title: true, slug: true } },
+      lesson: { select: { title: true, slug: true } },
     },
   });
