@@ -5,7 +5,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPublishedActivity } from "@/lib/activities";
 import { requireMemberId } from "@/lib/learning";
-import { MemberHeader } from "../../components/member-header";
 import { submitActivity } from "../actions";
 
 interface ActivityPageProperties {
@@ -31,7 +30,6 @@ const ActivityPage = async ({ params }: ActivityPageProperties) => {
 
   return (
     <div className="min-h-svh bg-background">
-      <MemberHeader section="Atividades" />
       <main className="mx-auto w-full max-w-[1280px] px-5 py-8 sm:px-8 lg:px-12 lg:py-14">
         <Button asChild className="mb-10 -ml-3" variant="ghost">
           <Link href="/atividades">

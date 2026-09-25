@@ -4,7 +4,6 @@ import { ArrowRightIcon, CheckCircle2Icon, Clock3Icon } from "lucide-react";
 import Link from "next/link";
 import { getPublishedActivities } from "@/lib/activities";
 import { requireMemberId } from "@/lib/learning";
-import { MemberHeader } from "../components/member-header";
 
 const formatDueDate = (value: Date | null) =>
   value
@@ -90,7 +89,6 @@ const ActivitiesPage = async () => {
 
   return (
     <div className="min-h-svh bg-background">
-      <MemberHeader section="Atividades" />
       <main className="mx-auto w-full max-w-[1280px] px-5 py-10 sm:px-8 lg:px-12 lg:py-16">
         <header className="max-w-3xl">
           <p className="brand-eyebrow">Prática guiada · caderno de campo</p>

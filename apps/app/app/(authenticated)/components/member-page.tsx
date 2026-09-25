@@ -3,7 +3,6 @@ import { ArrowRightIcon } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { MemberHeader } from "./member-header";
 
 interface MemberPageProperties {
   readonly action?: { href: string; label: string };
@@ -25,7 +24,6 @@ export const MemberPage = ({
   title,
 }: MemberPageProperties) => (
   <div className="flex min-h-svh flex-1 flex-col bg-background">
-    <MemberHeader section="Área de membros" />
     <main className="flex flex-1 items-start px-5 py-8 sm:px-8 sm:py-12 lg:px-12 lg:py-16">
       <section className="paper-surface mx-auto grid w-full max-w-[1280px] gap-10 border p-6 text-left shadow-[var(--shadow-paper)] sm:p-10 lg:grid-cols-[minmax(0,0.9fr)_minmax(24rem,0.72fr)] lg:items-stretch lg:p-14">
         <div className="flex flex-col items-start justify-center lg:pr-8">

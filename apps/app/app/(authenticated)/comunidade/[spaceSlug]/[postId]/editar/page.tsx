@@ -10,7 +10,6 @@ import { RichDocument } from "@/components/learning/rich-document";
 import { getMemberRole } from "@/lib/authorization";
 import { getCommunitySpaces } from "@/lib/community";
 import { requireMemberId } from "@/lib/learning";
-import { MemberHeader } from "../../../../components/member-header";
 import { updatePost } from "../../../actions";
 
 interface EditTopicPageProperties {
@@ -61,7 +60,6 @@ const EditTopicPage = async ({
   if (filters.preview === "1") {
     return (
       <div className="min-h-svh bg-background">
-        <MemberHeader section="Comunidade" />
         <main className="mx-auto w-full max-w-[920px] px-5 py-8 sm:px-8 lg:py-14">
           <Button asChild className="-ml-3" variant="ghost">
             <Link href={`/comunidade/${post.space.slug}/${post.id}/editar`}>
@@ -100,7 +98,6 @@ const EditTopicPage = async ({
   if (post.status === "DRAFT") {
     return (
       <div className="min-h-svh bg-background">
-        <MemberHeader section="Comunidade" />
         <main className="mx-auto w-full max-w-[920px] px-5 py-8 sm:px-8 lg:py-14">
           <Button asChild className="-ml-3" variant="ghost">
             <Link href="/comunidade/meus-topicos">
@@ -134,7 +131,6 @@ const EditTopicPage = async ({
 
   return (
     <div className="min-h-svh bg-background">
-      <MemberHeader section="Comunidade" />
       <main className="mx-auto w-full max-w-[920px] px-5 py-8 sm:px-8 lg:py-14">
         <Button asChild className="-ml-3" variant="ghost">
           <Link href={`/comunidade/${post.space.slug}/${post.id}`}>

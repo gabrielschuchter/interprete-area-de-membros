@@ -5,6 +5,7 @@ import { env } from "@/env";
 import { getAuth } from "@/lib/auth";
 import { getMemberRole } from "@/lib/authorization";
 import { getOrCreateProfile } from "@/lib/profile";
+import { MemberHeader } from "./components/member-header";
 import { GlobalSidebar } from "./components/sidebar";
 
 interface AppLayoutProperties {
@@ -30,6 +31,7 @@ const AppLayout = async ({ children }: AppLayoutProperties) => {
   return (
     <SidebarProvider>
       <GlobalSidebar canManageContent={role === "TEACHER" || role === "ADMIN"}>
+        <MemberHeader />
         {children}
       </GlobalSidebar>
     </SidebarProvider>

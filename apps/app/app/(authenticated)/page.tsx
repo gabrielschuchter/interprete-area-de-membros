@@ -12,7 +12,6 @@ import Link from "next/link";
 import { getHomeData } from "@/lib/home";
 import { requireMemberId } from "@/lib/learning";
 import { getOrCreateProfile } from "@/lib/profile";
-import { MemberHeader } from "./components/member-header";
 
 const firstNamePattern = /\s+/;
 
@@ -105,7 +104,6 @@ const HomePage = async () => {
 
   return (
     <div className="min-h-svh bg-background">
-      <MemberHeader section="Início" />
       <main className="mx-auto w-full max-w-[1280px] px-5 py-10 sm:px-8 lg:px-12 lg:py-16">
         <header className="max-w-3xl">
           <p className="brand-eyebrow">Interprete. · seu espaço de estudo</p>

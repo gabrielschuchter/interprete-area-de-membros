@@ -4,7 +4,6 @@ import { ArrowLeftIcon, FileTextIcon, PlusIcon } from "lucide-react";
 import Link from "next/link";
 import { getMyCommunityPosts } from "@/lib/community";
 import { requireMemberId } from "@/lib/learning";
-import { MemberHeader } from "../../components/member-header";
 import { setPostStatus, softDeletePost } from "../actions";
 
 const statusLabel = (status: string) => {
@@ -23,7 +22,6 @@ const MyTopicsPage = async () => {
 
   return (
     <div className="min-h-svh bg-background">
-      <MemberHeader section="Comunidade" />
       <main className="mx-auto w-full max-w-[1120px] px-5 py-8 sm:px-8 lg:px-12 lg:py-14">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <Button asChild className="-ml-3" variant="ghost">

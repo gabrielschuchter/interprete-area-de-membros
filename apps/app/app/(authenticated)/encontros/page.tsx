@@ -8,7 +8,6 @@ import {
 import Link from "next/link";
 import { requireMemberId } from "@/lib/learning";
 import { getMeetings } from "@/lib/meetings";
-import { MemberHeader } from "../components/member-header";
 
 const formatDate = (date: Date, timezone: string) =>
   new Intl.DateTimeFormat("pt-BR", {
@@ -24,7 +23,6 @@ const MeetingsPage = async () => {
 
   return (
     <div className="min-h-svh bg-background">
-      <MemberHeader section="Encontros" />
       <main className="mx-auto w-full max-w-[1280px] px-5 py-10 sm:px-8 lg:px-12 lg:py-16">
         <header className="max-w-3xl">
           <p className="brand-eyebrow">Sala de aula · encontros</p>

@@ -10,7 +10,6 @@ import {
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPublishedLibraryItem } from "@/lib/library";
-import { MemberHeader } from "../../components/member-header";
 
 interface LibraryItemPageProperties {
   readonly params: Promise<{ id: string }>;
@@ -54,7 +53,6 @@ const LibraryItemPage = async ({ params }: LibraryItemPageProperties) => {
 
   return (
     <div className="min-h-svh bg-background">
-      <MemberHeader section="Biblioteca" />
       <main className="mx-auto w-full max-w-[960px] px-5 py-8 sm:px-8 lg:px-12 lg:py-14">
         <Button asChild className="-ml-3" variant="ghost">
           <Link href="/biblioteca">

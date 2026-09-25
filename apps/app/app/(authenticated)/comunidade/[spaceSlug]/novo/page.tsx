@@ -5,7 +5,6 @@ import { notFound } from "next/navigation";
 import { NewTopicComposer } from "@/components/community/new-topic-composer";
 import { getCommunitySpaces } from "@/lib/community";
 import { requireMemberId } from "@/lib/learning";
-import { MemberHeader } from "../../../components/member-header";
 
 interface NewPostPageProperties {
   readonly params: Promise<{ spaceSlug: string }>;
@@ -22,7 +21,6 @@ const NewPostPage = async ({ params }: NewPostPageProperties) => {
 
   return (
     <div className="min-h-svh bg-background">
-      <MemberHeader section="Comunidade" />
       <main className="mx-auto w-full max-w-[920px] px-5 py-8 sm:px-8 lg:py-14">
         <Button asChild className="-ml-3" variant="ghost">
           <Link href={`/comunidade/${space.slug}`}>

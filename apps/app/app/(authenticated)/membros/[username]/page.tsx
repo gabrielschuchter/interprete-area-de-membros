@@ -16,7 +16,6 @@ import { notFound } from "next/navigation";
 import { RichDocument } from "@/components/learning/rich-document";
 import { getMemberRole } from "@/lib/authorization";
 import { getPublicProfile } from "@/lib/profile";
-import { MemberHeader } from "../../components/member-header";
 
 interface PublicProfilePageProperties {
   readonly params: Promise<{ username: string }>;
@@ -98,7 +97,6 @@ const PublicProfilePage = async ({ params }: PublicProfilePageProperties) => {
 
   return (
     <div className="min-h-svh bg-background">
-      <MemberHeader section="Membros" />
       <main className="mx-auto w-full max-w-[1120px] px-5 py-8 sm:px-8 lg:px-12 lg:py-14">
         <Button asChild className="-ml-3" variant="ghost">
           <Link href="/membros">

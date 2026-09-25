@@ -10,7 +10,6 @@ import { notFound } from "next/navigation";
 import { MemberIdentity } from "@/components/community/member-identity";
 import { getCommunitySpace } from "@/lib/community";
 import { requireMemberId } from "@/lib/learning";
-import { MemberHeader } from "../../components/member-header";
 import { togglePostVote } from "../actions";
 
 interface CommunitySpacePageProperties {
@@ -34,7 +33,6 @@ const CommunitySpacePage = async ({
 
   return (
     <div className="min-h-svh bg-background">
-      <MemberHeader section="Comunidade" />
       <main className="mx-auto w-full max-w-[1120px] px-5 py-8 sm:px-8 lg:px-12 lg:py-14">
         <Button asChild className="-ml-3" variant="ghost">
           <Link href="/comunidade">

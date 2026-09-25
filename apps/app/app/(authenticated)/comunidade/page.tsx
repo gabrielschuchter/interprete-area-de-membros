@@ -13,7 +13,6 @@ import Link from "next/link";
 import { MemberIdentity } from "@/components/community/member-identity";
 import { getCommunityFeed, getCommunitySpaces } from "@/lib/community";
 import { requireMemberId } from "@/lib/learning";
-import { MemberHeader } from "../components/member-header";
 import { toggleBookmark, togglePostVote } from "./actions";
 
 interface CommunityPageProperties {
@@ -57,7 +56,6 @@ const CommunityPage = async ({ searchParams }: CommunityPageProperties) => {
 
   return (
     <div className="min-h-svh bg-background">
-      <MemberHeader section="Comunidade" />
       <main className="mx-auto w-full max-w-[1280px] px-5 py-10 sm:px-8 lg:px-12 lg:py-16">
         <header className="flex flex-col justify-between gap-7 border-border border-b pb-8 lg:flex-row lg:items-end">
           <div className="max-w-3xl">

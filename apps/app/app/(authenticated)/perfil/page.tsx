@@ -12,7 +12,6 @@ import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { getMemberRole } from "@/lib/authorization";
 import { getOrCreateProfile } from "@/lib/profile";
-import { MemberHeader } from "../components/member-header";
 import { updateProfile } from "./actions";
 
 const whitespacePattern = /\s+/;
@@ -88,7 +87,6 @@ const ProfilePage = async ({ searchParams }: ProfilePageProperties) => {
 
   return (
     <div className="min-h-svh bg-background">
-      <MemberHeader section="Perfil" />
       <main className="mx-auto w-full max-w-[1120px] px-5 py-10 sm:px-8 lg:px-12 lg:py-16">
         <header className="max-w-3xl">
           <p className="brand-eyebrow">Caderno do estudante · identidade</p>

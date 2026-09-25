@@ -13,7 +13,6 @@ import { RichDocument } from "@/components/learning/rich-document";
 import { getMemberRole } from "@/lib/authorization";
 import { getCommunityPost } from "@/lib/community";
 import { requireMemberId } from "@/lib/learning";
-import { MemberHeader } from "../../../components/member-header";
 import {
   createComment,
   setPostStatus,
@@ -291,7 +290,6 @@ const CommunityPostPage = async ({
   const topLevel = post.comments.filter((comment) => !comment.parentId);
   return (
     <div className="min-h-svh bg-background">
-      <MemberHeader section="Comunidade" />
       <main className="mx-auto w-full max-w-[960px] px-5 py-8 sm:px-8 lg:py-14">
         <Button asChild className="-ml-3" variant="ghost">
           <Link href={`/comunidade/${post.space.slug}`}>

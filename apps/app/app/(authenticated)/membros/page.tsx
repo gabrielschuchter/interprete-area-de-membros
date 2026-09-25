@@ -9,7 +9,6 @@ import { Input } from "@repo/design-system/components/ui/input";
 import { SearchIcon } from "lucide-react";
 import Link from "next/link";
 import { getMemberDirectory } from "@/lib/profile";
-import { MemberHeader } from "../components/member-header";
 
 interface MembersPageProperties {
   readonly searchParams: Promise<{ q?: string }>;
@@ -42,7 +41,6 @@ const MembersPage = async ({ searchParams }: MembersPageProperties) => {
 
   return (
     <div className="min-h-svh bg-background">
-      <MemberHeader section="Membros" />
       <main className="mx-auto w-full max-w-[1120px] px-5 py-10 sm:px-8 lg:px-12 lg:py-16">
         <header className="max-w-3xl">
           <p className="brand-eyebrow">Escola · pessoas</p>

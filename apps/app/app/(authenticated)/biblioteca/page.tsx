@@ -10,7 +10,6 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { getLibraryCategories, getLibraryItems } from "@/lib/library";
-import { MemberHeader } from "../components/member-header";
 
 interface LibraryPageProperties {
   readonly searchParams: Promise<{
@@ -78,7 +77,6 @@ const LibraryPage = async ({ searchParams }: LibraryPageProperties) => {
 
   return (
     <div className="min-h-svh bg-background">
-      <MemberHeader section="Biblioteca" />
       <main className="mx-auto w-full max-w-[1280px] px-5 py-10 sm:px-8 lg:px-12 lg:py-16">
         <header className="max-w-3xl">
           <p className="brand-eyebrow">Arquivo de estudo · curadoria</p>

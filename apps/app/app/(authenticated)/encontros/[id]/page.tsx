@@ -9,7 +9,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireMemberId } from "@/lib/learning";
 import { getPublishedMeeting } from "@/lib/meetings";
-import { MemberHeader } from "../../components/member-header";
 
 interface MeetingPageProperties {
   readonly params: Promise<{ id: string }>;
@@ -33,7 +32,6 @@ const MeetingPage = async ({ params }: MeetingPageProperties) => {
 
   return (
     <div className="min-h-svh bg-background">
-      <MemberHeader section="Encontros" />
       <main className="mx-auto w-full max-w-[960px] px-5 py-8 sm:px-8 lg:px-12 lg:py-14">
         <Button asChild className="-ml-3" variant="ghost">
           <Link href="/encontros">
