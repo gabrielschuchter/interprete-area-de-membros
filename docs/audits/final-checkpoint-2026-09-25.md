@@ -53,6 +53,23 @@ individual não está concluída.
 - Atualizada a documentação de ambiente, deploy e roadmap para refletir o
   estado comprovado.
 
+## Hardening após o checkpoint
+
+Depois do checkpoint, a auditoria estática encontrou e corrigiu três falhas
+de autorização/sincronização, todas enviadas para `main`:
+
+- `5774992`: conclusão de aula exige entitlement existente e não cria
+  `Enrollment` como efeito colateral; atividades publicadas e submissões
+  respeitam o escopo de acesso do membro.
+- `c4090df`: `user.deleted` do Clerk remove o `Member` interno de forma
+  idempotente, preservando conteúdo histórico sem perfil público.
+- `f33998c`: encontros vinculados a curso são filtrados por entitlement na
+  listagem, Home e rota de detalhe; encontros globais continuam disponíveis.
+
+Após essas correções: check, typecheck, testes, boundaries e build isolado de
+`apps/app` passaram. Isso não substitui o teste runtime: ainda não há senha
+PostgreSQL válida para o Prisma da aplicação.
+
 ## Bloqueio externo único
 
 A senha PostgreSQL do projeto Supabase não está disponível no ambiente local,
@@ -64,4 +81,3 @@ seed/persistência/E2E, ou obter um deployment `READY` no Vercel.
 ## Veredito
 
 `FOUNDATION_NOT_READY` / `NOT_READY`
-

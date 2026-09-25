@@ -45,6 +45,10 @@ O bloqueio atual é específico: os arquivos locais `apps/app/.env.local` e `pac
   projetos Vercel e o webhook `user.created`/`user.updated`/`user.deleted` foi
   registrado no endpoint da API. Isso não substitui a validação de runtime,
   que aguarda o banco.
+- Hardening posterior foi enviado para `main`: `5774992` protege progresso e
+  atividades por entitlement, `c4090df` sincroniza exclusão de usuário do
+  Clerk com o Member interno e `f33998c` aplica o escopo de acesso a encontros.
+  Os checks estáticos e o build isolado do app continuam passando.
 - Veredito operacional: `FOUNDATION_NOT_READY` / `NOT_READY` até obter a senha
   PostgreSQL oficial (ou autorização do proprietário para uma rotação
   coordenada) e preencher `DATABASE_URL`/`DIRECT_URL` localmente e nos dois
