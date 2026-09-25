@@ -1,0 +1,83 @@
+# Infrastructure environment inventory
+
+This inventory documents names and ownership only. It deliberately contains no
+secret values, connection strings with passwords, tokens, or webhook signing
+secrets.
+
+## Source of truth
+
+- PostgreSQL: Supabase project `wkclodjbrynerfgufmyb`, ref
+  `wkclodjbrynerfgufmyb`, region `sa-east-1`.
+- Runtime database access: `@repo/database` through Prisma and
+  `@prisma/adapter-pg`; no Supabase client is required by the application.
+- Authentication: the linked Clerk development instance for the Interprete
+  application.
+- Deployments: Vercel projects linked to
+  `gabrielschuchter/interprete-area-de-membros`.
+
+## Core variables
+
+| Variable | Consumer | Local source | Preview / Production | Required | Obtain or rotate at |
+| --- | --- | --- | --- | --- | --- |
+| `DATABASE_URL` | `apps/app`, `apps/api`, `@repo/database` runtime | `apps/*/.env.local` | Vercel project environments | Yes | Supabase Connect, transaction pooler (`6543`) |
+| `DIRECT_URL` | Prisma CLI and migrations | `packages/database/.env` | Normally not set; add only where Prisma CLI runs | Yes for Prisma CLI | Supabase Connect, session pooler (`5432`) |
+| `NEXT_PUBLIC_APP_URL` | Next config and metadata | app/API env file | Per Vercel environment | Yes | The current app origin for that environment |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk browser SDK | app/API env file | Preview / Production | Yes | Clerk Dashboard, API keys |
+| `CLERK_SECRET_KEY` | Clerk server SDK | app/API env file | Preview / Production | Yes | Clerk Dashboard, API keys |
+| `CLERK_WEBHOOK_SIGNING_SECRET` | API Clerk webhook route | API env file | Preview / Production when webhook is enabled | Feature | Clerk Dashboard webhook endpoint |
+
+`DATABASE_URL` is the transaction pooler URL for serverless runtime. `DIRECT_URL`
+is the session pooler URL used by `packages/database/prisma.config.ts` for
+migrations and introspection. The database password is not recoverable from the
+Supabase dashboard after creation; resetting it is a coordinated credential
+rotation and is not performed automatically.
+
+## Optional or dormant variables
+
+| Group | Variables | Status | Reason |
+| --- | --- | --- | --- |
+| Analytics | `NEXT_PUBLIC_POSTHOG_KEY`, `NEXT_PUBLIC_POSTHOG_HOST`, `NEXT_PUBLIC_GA_MEASUREMENT_ID` | Optional | The adapters are present but no provider is required for member-area operation. |
+| Observability | `NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_ORG`, `SENTRY_PROJECT`, `BETTERSTACK_API_KEY`, `BETTERSTACK_URL` | Optional | The integrations are safe when configured, but absent values do not block the product. |
+| Security | `ARCJET_KEY` | Optional | Arcjet protection is conditional; the app remains functional without a key. |
+| Email | `RESEND_TOKEN`, `RESEND_FROM` | Dormant | No current member-area flow sends email. |
+| Storage | `BLOB_READ_WRITE_TOKEN` | Dormant | No current production flow uses Vercel Blob uploads. |
+| Payments | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | Dormant | The payments webhook is retained as starter infrastructure, not an active product flow. |
+| Legacy webhook | `CLERK_WEBHOOK_SECRET` | Removed | The application uses the canonical `CLERK_WEBHOOK_SIGNING_SECRET` name. |
+| Legacy Clerk alias | `CLERK_PUBLISHABLE_KEY` | Unused | The application consumes `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`. |
+
+## Local files
+
+- `apps/app/.env.local`: member-area Next.js runtime.
+- `apps/api/.env.local`: API/webhook Next.js runtime.
+- `packages/database/.env`: Prisma CLI configuration loaded by
+  `prisma.config.ts` via `dotenv/config`; this is the only local source for
+  `DIRECT_URL`.
+- Root `.env.local` is not a supported application source and should not be
+  used for new variables.
+
+Run `bun env:check` to check names, prefixes, URL syntax, and placeholders
+without printing values. The command intentionally cannot prove a remote
+connection; use Prisma commands for that.
+
+The local runtime files do not use `SKIP_ENV_VALIDATION`; missing core values
+must remain visible instead of being hidden by a build bypass. The current
+local database values are still placeholders, so the runtime health check
+correctly reports the database as unavailable until the official Supabase
+password is coordinated.
+
+## Vercel projects
+
+The existing API project is `interprete-area-de-membros-api` with root
+directory `apps/api`. The member application should use a separate Vercel
+project rooted at `apps/app`. Both projects must be linked to the same GitHub
+repository and receive only the variables consumed by that root.
+
+The API project is already connected to the repository. The member-app project
+exists with the correct root directory and Clerk variables, but its GitHub
+connection and first Preview deployment are still pending. The Clerk webhook
+route is implemented, but no endpoint/signing secret is registered yet.
+
+Never create Vercel-native variables such as `VERCEL_URL` manually. Vercel
+provides those automatically. Do not place database passwords, Clerk secrets,
+service-role keys, or webhook secrets in Git, documentation, browser code, or
+client-visible variables.

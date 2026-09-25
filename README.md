@@ -54,6 +54,12 @@ bun run build
 
 O `build` percorre os apps do workspace. Testes que dependam de credenciais externas devem ser executados depois que os ambientes locais forem preenchidos.
 
+Para conferir nomes, placeholders e prefixos sem exibir valores sensíveis:
+
+```powershell
+bun run env:check
+```
+
 Para aplicar as migrations e carregar conteúdo de desenvolvimento explicitamente identificado:
 
 ```powershell
@@ -69,4 +75,4 @@ A área autenticada possui `/`, `/aprender`, `/atividades`, `/comunidade`, `/enc
 
 ## Escopo atual
 
-A área de Professor/Admin possui rotas protegidas para conteúdo, atividades, comunidade, encontros, biblioteca e membros. O status real e os gates de validação ficam em [`docs/implementation/roadmap.md`](docs/implementation/roadmap.md); conexão, seed, persistência e E2E continuam pendentes enquanto a credencial local do Supabase não for válida. Esta execução não publica nem altera o Vercel.
+A área de Professor/Admin possui rotas protegidas para conteúdo, atividades, comunidade, encontros, biblioteca e membros. O status real e os gates de validação ficam em [`docs/implementation/roadmap.md`](docs/implementation/roadmap.md); conexão, seed, persistência e E2E continuam pendentes enquanto a credencial local do Supabase não for válida. O inventário de ambientes e o estado dos projetos Vercel ficam em [`docs/infrastructure/environment.md`](docs/infrastructure/environment.md).
