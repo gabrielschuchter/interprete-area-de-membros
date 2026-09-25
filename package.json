@@ -14,6 +14,7 @@
     "typecheck": "turbo typecheck",
     "analyze": "turbo analyze",
     "boundaries": "turbo boundaries",
+    "env:check": "node scripts/env-check.mjs",
     "bump-deps": "bunx npm-check-updates --deep -u && bun install",
     "bump-ui": "bunx shadcn@latest add --all --overwrite -c packages/design-system",
     "migrate": "cd packages/database && bunx prisma format && bunx prisma generate && bunx prisma migrate dev",

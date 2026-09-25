@@ -1,21 +1,15 @@
+import { NextResponse } from "next/server";
+
 export const dynamic = "force-dynamic";
 
-export const GET = async (request?: Request): Promise<Response> => {
-  const deep = request
-    ? new URL(request.url).searchParams.get("deep") === "1"
-    : false;
-
-  if (!deep) {
-    return new Response("OK", { status: 200 });
-  }
-
+export const GET = async (): Promise<Response> => {
   const authConfigured = Boolean(
     process.env.CLERK_SECRET_KEY &&
       process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
   );
 
   if (!process.env.DATABASE_URL) {
-    return Response.json(
+    return NextResponse.json(
       {
         ok: false,
         checks: {
@@ -31,7 +25,7 @@ export const GET = async (request?: Request): Promise<Response> => {
     const { database } = await import("@repo/database");
     await database.$queryRaw`SELECT 1`;
 
-    return Response.json(
+    return NextResponse.json(
       {
         ok: authConfigured,
         checks: {
@@ -42,7 +36,7 @@ export const GET = async (request?: Request): Promise<Response> => {
       { status: authConfigured ? 200 : 503 }
     );
   } catch {
-    return Response.json(
+    return NextResponse.json(
       {
         ok: false,
         checks: {

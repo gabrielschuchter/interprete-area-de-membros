@@ -6,13 +6,121 @@ import type {
   UserJSON,
   WebhookEvent,
 } from "@repo/auth/server";
+import { database } from "@repo/database";
 import { log } from "@repo/observability/log";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { Webhook } from "svix";
 import { env } from "@/env";
 
-const handleUserCreated = (data: UserJSON) => {
+const normalizeUsername = (value: string) =>
+  value
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 30)
+    .replace(/-+$/g, "");
+
+const getUserFields = (data: UserJSON) => {
+  const displayName =
+    data.first_name || data.last_name
+      ? [data.first_name, data.last_name].filter(Boolean).join(" ")
+      : null;
+  const email = data.email_addresses.at(0)?.email_address ?? null;
+  const avatarUrl = data.image_url ?? null;
+  const base =
+    normalizeUsername(
+      data.username ?? displayName ?? email?.split("@")[0] ?? data.id
+    ) || "membro";
+  const suffix = normalizeUsername(data.id).slice(-8) || "member";
+  const fallback = `${base.slice(0, 30 - suffix.length - 1)}-${suffix}`;
+
+  return {
+    displayName,
+    email,
+    avatarUrl,
+    username: base.length >= 3 ? base : `membro-${suffix}`.slice(0, 30),
+    fallbackUsername: fallback.slice(0, 30).replace(/-+$/g, ""),
+  };
+};
+
+const syncMemberProfile = async (data: UserJSON) => {
+  const fields = getUserFields(data);
+
+  await database.member.upsert({
+    where: { id: data.id },
+    update: {
+      displayName: fields.displayName,
+      email: fields.email,
+      avatarUrl: fields.avatarUrl,
+    },
+    create: {
+      id: data.id,
+      displayName: fields.displayName,
+      email: fields.email,
+      avatarUrl: fields.avatarUrl,
+    },
+  });
+
+  const existing = await database.profile.findUnique({
+    where: { clerkUserId: data.id },
+    select: { id: true, username: true, displayName: true, avatarUrl: true },
+  });
+
+  if (existing) {
+    const profileUpdate = {
+      ...(existing.displayName ? {} : { displayName: fields.displayName }),
+      ...(existing.avatarUrl ? {} : { avatarUrl: fields.avatarUrl }),
+    };
+
+    if (Object.keys(profileUpdate).length > 0) {
+      await database.profile.update({
+        where: { id: existing.id },
+        data: profileUpdate,
+      });
+    }
+    return;
+  }
+
+  try {
+    await database.profile.create({
+      data: {
+        clerkUserId: data.id,
+        username: fields.username,
+        displayName: fields.displayName,
+        avatarUrl: fields.avatarUrl,
+        interests: [],
+      },
+    });
+  } catch {
+    // A concurrent request may have claimed the candidate username. The
+    // deterministic fallback keeps webhook delivery idempotent without
+    // overwriting an existing member profile.
+    const created = await database.profile.findUnique({
+      where: { clerkUserId: data.id },
+      select: { id: true },
+    });
+
+    if (created) {
+      return;
+    }
+
+    await database.profile.create({
+      data: {
+        clerkUserId: data.id,
+        username: fields.fallbackUsername,
+        displayName: fields.displayName,
+        avatarUrl: fields.avatarUrl,
+        interests: [],
+      },
+    });
+  }
+};
+
+const handleUserCreated = async (data: UserJSON) => {
+  await syncMemberProfile(data);
   analytics?.identify({
     distinctId: data.id,
     properties: {
@@ -33,7 +141,8 @@ const handleUserCreated = (data: UserJSON) => {
   return new Response("User created", { status: 201 });
 };
 
-const handleUserUpdated = (data: UserJSON) => {
+const handleUserUpdated = async (data: UserJSON) => {
+  await syncMemberProfile(data);
   analytics?.identify({
     distinctId: data.id,
     properties: {
@@ -145,7 +254,7 @@ const handleOrganizationMembershipDeleted = (
 };
 
 export const POST = async (request: Request): Promise<Response> => {
-  if (!env.CLERK_WEBHOOK_SECRET) {
+  if (!env.CLERK_WEBHOOK_SIGNING_SECRET) {
     return NextResponse.json(
       { message: "Not configured", ok: false },
       { status: 503 }
@@ -169,7 +278,7 @@ export const POST = async (request: Request): Promise<Response> => {
   const body = await request.text();
 
   // Create a new SVIX instance with your secret.
-  const webhook = new Webhook(env.CLERK_WEBHOOK_SECRET);
+  const webhook = new Webhook(env.CLERK_WEBHOOK_SIGNING_SECRET);
 
   let event: WebhookEvent | undefined;
 
@@ -197,11 +306,11 @@ export const POST = async (request: Request): Promise<Response> => {
 
   switch (eventType) {
     case "user.created": {
-      response = handleUserCreated(event.data);
+      response = await handleUserCreated(event.data);
       break;
     }
     case "user.updated": {
-      response = handleUserUpdated(event.data);
+      response = await handleUserUpdated(event.data);
       break;
     }
     case "user.deleted": {
