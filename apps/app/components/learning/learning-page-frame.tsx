@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import { MemberHeader } from "../../app/(authenticated)/components/member-header";
 
 interface LearningPageFrameProperties {
   readonly children: ReactNode;
@@ -15,7 +14,6 @@ export const LearningPageFrame = ({
   title,
 }: LearningPageFrameProperties) => (
   <div className="flex min-h-svh flex-1 flex-col bg-background">
-    <MemberHeader section="Aprender" />
     <main className="flex flex-1 flex-col gap-12 px-5 py-8 sm:px-8 sm:py-12 lg:px-12 lg:py-16">
       <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-12">
         <div className="max-w-[820px] space-y-5">

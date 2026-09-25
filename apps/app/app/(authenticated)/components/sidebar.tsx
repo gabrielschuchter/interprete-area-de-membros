@@ -89,7 +89,9 @@ export const GlobalSidebar = ({
               >
                 <Link href="/aprender/minhas-gravacoes">
                   <VideoIcon />
-                  <span>Minhas gravações</span>
+                  <span className="group-data-[collapsible=icon]:hidden">
+                    Minhas gravações
+                  </span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -102,7 +104,9 @@ export const GlobalSidebar = ({
               >
                 <Link href="/comunidade/salvos">
                   <BookmarkIcon />
-                  <span>Salvos</span>
+                  <span className="group-data-[collapsible=icon]:hidden">
+                    Salvos
+                  </span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -129,7 +133,9 @@ export const GlobalSidebar = ({
                   >
                     <Link href={item.href}>
                       <item.icon />
-                      <span>{item.label}</span>
+                      <span className="group-data-[collapsible=icon]:hidden">
+                        {item.label}
+                      </span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -144,7 +150,9 @@ export const GlobalSidebar = ({
                   >
                     <Link href="/admin/learning">
                       <BookOpenIcon />
-                      <span>Professor</span>
+                      <span className="group-data-[collapsible=icon]:hidden">
+                        Professor
+                      </span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -163,7 +171,9 @@ export const GlobalSidebar = ({
               >
                 <Link href="/comunidade/meus-topicos">
                   <MessageCircleIcon />
-                  <span>Meus tópicos</span>
+                  <span className="group-data-[collapsible=icon]:hidden">
+                    Meus tópicos
+                  </span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
