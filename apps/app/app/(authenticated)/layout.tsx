@@ -33,12 +33,22 @@ const AppLayout = async ({ children }: AppLayoutProperties) => {
     getMemberRole(userId),
     getOrCreateProfile(userId, false),
   ]);
+  const memberElapsed = performance.now() - memberDataStartedAt;
+  const totalElapsed = performance.now() - startedAt;
   console.error(
-    `[PERF_LAYOUT] secure=${secureElapsed.toFixed(1)}ms auth=${authElapsed.toFixed(1)}ms member=${(performance.now() - memberDataStartedAt).toFixed(1)}ms total=${(performance.now() - startedAt).toFixed(1)}ms`,
+    `[PERF_LAYOUT] secure=${secureElapsed.toFixed(1)}ms auth=${authElapsed.toFixed(1)}ms member=${memberElapsed.toFixed(1)}ms total=${totalElapsed.toFixed(1)}ms`,
   );
 
   return (
     <SidebarProvider>
+      <output className="sr-only" role="status">
+        PERF_LAYOUT {JSON.stringify({
+          secure: Number(secureElapsed.toFixed(1)),
+          auth: Number(authElapsed.toFixed(1)),
+          member: Number(memberElapsed.toFixed(1)),
+          total: Number(totalElapsed.toFixed(1)),
+        })}
+      </output>
       <GlobalSidebar canManageContent={role === "TEACHER" || role === "ADMIN"}>
         <MemberHeader />
         {children}
