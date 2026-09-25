@@ -13,20 +13,29 @@ interface AppLayoutProperties {
 }
 
 const AppLayout = async ({ children }: AppLayoutProperties) => {
+  const startedAt = performance.now();
+  const secureStartedAt = performance.now();
   if (env.ARCJET_KEY) {
     await secure(["CATEGORY:PREVIEW"]);
   }
+  const secureElapsed = performance.now() - secureStartedAt;
 
+  const authStartedAt = performance.now();
   const { userId, redirectToSignIn } = await getAuth();
+  const authElapsed = performance.now() - authStartedAt;
 
   if (!userId) {
     return redirectToSignIn();
   }
 
+  const memberDataStartedAt = performance.now();
   const [role] = await Promise.all([
     getMemberRole(userId),
     getOrCreateProfile(userId, false),
   ]);
+  console.info(
+    `[PERF_LAYOUT] secure=${secureElapsed.toFixed(1)}ms auth=${authElapsed.toFixed(1)}ms member=${(performance.now() - memberDataStartedAt).toFixed(1)}ms total=${(performance.now() - startedAt).toFixed(1)}ms`,
+  );
 
   return (
     <SidebarProvider>

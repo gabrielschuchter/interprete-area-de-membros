@@ -8,14 +8,26 @@ import { getPublishedLearningPaths } from "./learning";
 import { getMeetings } from "./meetings";
 
 export const getHomeData = async (memberId: string) => {
-  const accessScope = getLearningAccessScope(memberId);
+  const startedAt = performance.now();
+  const timed = async <T>(label: string, operation: () => Promise<T>) => {
+    const operationStartedAt = performance.now();
+    const result = await operation();
+    console.info(
+      `[PERF_HOME] ${label}=${(performance.now() - operationStartedAt).toFixed(1)}ms`,
+    );
+    return result;
+  };
+  const accessScope = timed("scope", () => getLearningAccessScope(memberId));
   const [paths, activities, meetings, spaces, latestFeedback] =
     await Promise.all([
-      getPublishedLearningPaths(memberId, undefined, accessScope),
-      getPublishedActivities(memberId, accessScope),
-      getMeetings(memberId, accessScope),
-      getCommunitySpaces(),
-      database.activitySubmission.findFirst({
+      timed("learning", () =>
+        getPublishedLearningPaths(memberId, undefined, accessScope),
+      ),
+      timed("activities", () => getPublishedActivities(memberId, accessScope)),
+      timed("meetings", () => getMeetings(memberId, accessScope)),
+      timed("community", () => getCommunitySpaces()),
+      timed("feedback", () =>
+        database.activitySubmission.findFirst({
         where: {
           memberId,
           status: "REVIEWED",
@@ -26,8 +38,13 @@ export const getHomeData = async (memberId: string) => {
           activity: { select: { title: true, slug: true } },
           feedback: { select: { updatedAt: true } },
         },
-      }),
+        }),
+      ),
     ]);
+
+  console.info(
+    `[PERF_HOME] total=${(performance.now() - startedAt).toFixed(1)}ms`,
+  );
 
   return { paths, activities, meetings, spaces, latestFeedback };
 };
