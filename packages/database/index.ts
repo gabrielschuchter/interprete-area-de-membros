@@ -3,6 +3,7 @@ import "server-only";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "./generated/client";
 import { keys } from "./keys";
+import { databaseSsl } from "./ssl";
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
@@ -29,7 +30,7 @@ const databaseWithConnection = DATABASE_URL
       adapter: new PrismaPg({
         connectionString: DATABASE_URL,
         max: 1,
-        ssl: { rejectUnauthorized: true },
+        ssl: databaseSsl,
       }),
     })
   : createUnavailableDatabase();

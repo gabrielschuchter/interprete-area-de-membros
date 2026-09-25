@@ -23,6 +23,7 @@ const AdminLayout = async ({ children }: { readonly children: ReactNode }) => {
             ["Encontros", "/admin/meetings"],
             ["Biblioteca", "/admin/library"],
             ["Membros", "/admin/membros"],
+            ["Acessos", "/admin/acessos"],
           ].map(([label, href]) => (
             <Button asChild key={href} size="sm" variant="ghost">
               <Link href={href}>{label}</Link>

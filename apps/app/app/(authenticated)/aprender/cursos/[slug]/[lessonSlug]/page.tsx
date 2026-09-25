@@ -12,6 +12,19 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CompleteLessonButton } from "@/components/learning/complete-lesson-button";
 import { LearningPageFrame } from "@/components/learning/learning-page-frame";
+import { LessonPlayer } from "@/components/learning/lesson-player";
+
+const assetKindLabel = (kind: string) => {
+  switch (kind) {
+    case "PDF":
+      return "PDF";
+    case "IMAGE":
+      return "Imagem";
+    default:
+      return "Material";
+  }
+};
+
 import { RichDocument } from "@/components/learning/rich-document";
 import { getPublishedLesson, requireMemberId } from "@/lib/learning";
 
@@ -165,6 +178,60 @@ const LessonPage = async ({ params }: LessonPageProperties) => {
               )}
             </div>
           </article>
+
+          {lesson.assets.length > 0 && (
+            <section className="border-y py-7 sm:py-8">
+              <div className="flex items-start gap-3">
+                <PaperclipIcon
+                  aria-hidden="true"
+                  className="mt-1 size-5 text-brand-action"
+                />
+                <div>
+                  <p className="brand-eyebrow">Materiais da aula</p>
+                  <h2 className="mt-2 font-display text-2xl">
+                    Arquivos e gravações
+                  </h2>
+                </div>
+              </div>
+              <div className="mt-6 space-y-6">
+                {lesson.assets.map((asset) =>
+                  asset.kind === "VIDEO" ? (
+                    <div className="space-y-3" key={asset.id}>
+                      <LessonPlayer
+                        assetId={asset.id}
+                        mimeType={asset.mimeType}
+                        title={asset.title}
+                      />
+                      {asset.scope === "INDIVIDUAL" && (
+                        <p className="font-data text-brand-action text-xs uppercase tracking-[0.12em]">
+                          Gravação protegida da sua aula
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <a
+                      className="group flex min-h-16 items-center gap-4 border-y py-4 transition-colors hover:text-brand-structural"
+                      href={`/api/learning/assets/${asset.id}`}
+                      key={asset.id}
+                      rel="noreferrer"
+                      target="_blank"
+                    >
+                      <span className="flex min-w-0 flex-1 flex-col gap-1">
+                        <span className="font-medium">{asset.title}</span>
+                        <span className="font-data text-muted-foreground text-xs uppercase tracking-[0.1em]">
+                          {assetKindLabel(asset.kind)}
+                        </span>
+                      </span>
+                      <ExternalLinkIcon
+                        aria-hidden="true"
+                        className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
+                      />
+                    </a>
+                  )
+                )}
+              </div>
+            </section>
+          )}
 
           {lesson.resources.length > 0 && (
             <section className="border-y py-7 sm:py-8">

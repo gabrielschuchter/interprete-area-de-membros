@@ -66,39 +66,88 @@ enum LibraryItemKind {
   VIDEO
 }
 
+enum LessonAssetKind {
+  VIDEO
+  PDF
+  IMAGE
+  AUDIO
+  FILE
+  OTHER
+}
+
+enum LessonAssetScope {
+  GENERAL
+  INDIVIDUAL
+}
+
+enum AccessResourceType {
+  COURSE
+  MODULE
+  LESSON
+  ASSET
+}
+
+enum AccessPermission {
+  VIEW
+}
+
+enum MigrationEntityType {
+  COURSE
+  MODULE
+  LESSON
+  ASSET
+  STUDENT
+}
+
+enum MigrationStatus {
+  DISCOVERED
+  IMPORTED
+  AMBIGUOUS
+  FAILED
+}
+
+enum MigrationStudentMatchStatus {
+  UNMATCHED
+  EXACT
+  AMBIGUOUS
+}
+
 model Member {
-  id          String     @id
-  displayName String?
-  email       String?
-  avatarUrl   String?
-  role        MemberRole @default(MEMBER)
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-  profile     Profile?
+  id                String             @id
+  displayName       String?
+  email             String?
+  avatarUrl         String?
+  role              MemberRole         @default(MEMBER)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  profile           Profile?
+  ownedAssets       LessonAsset[]      @relation("OwnedLessonAssets")
+  accessGrants      AccessGrant[]
+  migrationStudents MigrationStudent[] @relation("MigrationStudentMember")
 
   @@index([role])
 }
 
 model Profile {
-  id           String   @id @default(cuid())
-  clerkUserId  String   @unique
-  username     String   @unique
-  displayName  String?
-  avatarUrl    String?
-  headline     String?
-  bio          String?  @db.Text
-  occupation   String?
-  institution  String?
-  city         String?
-  state        String?
-  country      String?
-  website      String?
-  instagram    String?
-  linkedin     String?
-  interests    String[]
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  member       Member   @relation(fields: [clerkUserId], references: [id], onDelete: Cascade)
+  id          String   @id @default(cuid())
+  clerkUserId String   @unique
+  username    String   @unique
+  displayName String?
+  avatarUrl   String?
+  headline    String?
+  bio         String?  @db.Text
+  occupation  String?
+  institution String?
+  city        String?
+  state       String?
+  country     String?
+  website     String?
+  instagram   String?
+  linkedin    String?
+  interests   String[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  member      Member   @relation(fields: [clerkUserId], references: [id], onDelete: Cascade)
 
   @@index([displayName])
 }
@@ -178,6 +227,7 @@ model Lesson {
   updatedAt   DateTime         @updatedAt
   module      Module           @relation(fields: [moduleId], references: [id], onDelete: Cascade)
   resources   LessonResource[]
+  assets      LessonAsset[]
   progress    LessonProgress[]
   activities  Activity[]
 
@@ -200,6 +250,34 @@ model LessonResource {
   @@unique([lessonId, position])
 }
 
+model LessonAsset {
+  id              String           @id @default(cuid())
+  title           String
+  kind            LessonAssetKind
+  scope           LessonAssetScope @default(GENERAL)
+  storagePath     String?          @db.Text
+  externalUrl     String?          @db.Text
+  mimeType        String?
+  sizeBytes       BigInt?
+  durationSeconds Int?
+  checksum        String?
+  sourcePlatform  String?
+  sourceId        String?
+  originalTitle   String?
+  position        Int              @default(0)
+  ownerMemberId   String?
+  lessonId        String
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  lesson          Lesson           @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  ownerMember     Member?          @relation("OwnedLessonAssets", fields: [ownerMemberId], references: [id], onDelete: SetNull)
+
+  @@unique([lessonId, position])
+  @@unique([sourcePlatform, sourceId])
+  @@index([lessonId, kind, position])
+  @@index([ownerMemberId, scope])
+}
+
 model Enrollment {
   id          String           @id @default(cuid())
   memberId    String
@@ -212,6 +290,61 @@ model Enrollment {
   @@unique([memberId, courseId])
   @@index([courseId])
   @@index([memberId, status])
+}
+
+model AccessGrant {
+  id             String             @id @default(cuid())
+  memberId       String
+  resourceType   AccessResourceType
+  resourceId     String
+  permission     AccessPermission   @default(VIEW)
+  sourcePlatform String?
+  sourceId       String?
+  expiresAt      DateTime?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  member         Member             @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([memberId, resourceType, resourceId])
+  @@index([resourceType, resourceId])
+  @@index([memberId, expiresAt])
+}
+
+model MigrationRecord {
+  id             String              @id @default(cuid())
+  sourcePlatform String
+  entityType     MigrationEntityType
+  sourceId       String
+  targetId       String?
+  status         MigrationStatus     @default(DISCOVERED)
+  checksum       String?
+  metadata       Json?
+  lastError      String?             @db.Text
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  @@unique([sourcePlatform, entityType, sourceId])
+  @@index([status, sourcePlatform])
+  @@index([targetId])
+}
+
+model MigrationStudent {
+  id             String                      @id @default(cuid())
+  sourcePlatform String
+  sourceId       String
+  displayName    String
+  email          String?
+  memberId       String?
+  matchStatus    MigrationStudentMatchStatus @default(UNMATCHED)
+  notes          String?                     @db.Text
+  createdAt      DateTime                    @default(now())
+  updatedAt      DateTime                    @updatedAt
+  member         Member?                     @relation("MigrationStudentMember", fields: [memberId], references: [id], onDelete: SetNull)
+
+  @@unique([sourcePlatform, sourceId])
+  @@index([email])
+  @@index([memberId])
+  @@index([matchStatus])
 }
 
 model LessonProgress {

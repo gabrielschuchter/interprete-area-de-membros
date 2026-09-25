@@ -24,6 +24,7 @@ import {
   LibraryIcon,
   MessageCircleIcon,
   UserRoundIcon,
+  VideoIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -76,6 +77,19 @@ export const GlobalSidebar = ({
                   <span className="hidden font-display text-2xl text-sidebar-foreground group-data-[collapsible=icon]:inline">
                     I.
                   </span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                className="rounded-sm"
+                isActive={pathname.startsWith("/aprender/minhas-gravacoes")}
+                tooltip="Minhas gravações"
+              >
+                <Link href="/aprender/minhas-gravacoes">
+                  <VideoIcon />
+                  <span>Minhas gravações</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>

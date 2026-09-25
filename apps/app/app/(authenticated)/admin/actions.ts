@@ -1,6 +1,8 @@
 "use server";
 
 import {
+  AccessPermission,
+  AccessResourceType,
   ContentStatus,
   database,
   LessonKind,
@@ -55,6 +57,114 @@ export const setMemberRole = async (formData: FormData) => {
   });
 
   revalidateMemberSurfaces(member.profile?.username);
+};
+
+const isAccessResourceType = (value: string): value is AccessResourceType =>
+  Object.values(AccessResourceType).includes(value as AccessResourceType);
+
+const resourceExists = async (
+  resourceType: AccessResourceType,
+  resourceId: string
+) => {
+  switch (resourceType) {
+    case AccessResourceType.COURSE:
+      return Boolean(
+        await database.course.findUnique({
+          where: { id: resourceId },
+          select: { id: true },
+        })
+      );
+    case AccessResourceType.MODULE:
+      return Boolean(
+        await database.module.findUnique({
+          where: { id: resourceId },
+          select: { id: true },
+        })
+      );
+    case AccessResourceType.LESSON:
+      return Boolean(
+        await database.lesson.findUnique({
+          where: { id: resourceId },
+          select: { id: true },
+        })
+      );
+    case AccessResourceType.ASSET:
+      return Boolean(
+        await database.lessonAsset.findUnique({
+          where: { id: resourceId },
+          select: { id: true },
+        })
+      );
+    default:
+      return false;
+  }
+};
+
+export const setAccessGrant = async (formData: FormData) => {
+  await requireAdmin();
+
+  const memberId = asText(formData.get("memberId"));
+  const resourceTypeValue = asText(formData.get("resourceType"));
+  let resourceId = asText(formData.get("resourceId"));
+  let normalizedResourceType = resourceTypeValue;
+
+  if (!normalizedResourceType && resourceId.includes(":")) {
+    const separator = resourceId.indexOf(":");
+    normalizedResourceType = resourceId.slice(0, separator);
+    resourceId = resourceId.slice(separator + 1);
+  }
+
+  if (
+    !(memberId && resourceId && isAccessResourceType(normalizedResourceType))
+  ) {
+    return;
+  }
+
+  const resourceType = normalizedResourceType as AccessResourceType;
+  const [member, exists] = await Promise.all([
+    database.member.findUnique({
+      where: { id: memberId },
+      select: { id: true },
+    }),
+    resourceExists(resourceType, resourceId),
+  ]);
+
+  if (!(member && exists)) {
+    return;
+  }
+
+  await database.accessGrant.upsert({
+    where: {
+      memberId_resourceType_resourceId: {
+        memberId,
+        resourceType,
+        resourceId,
+      },
+    },
+    update: { permission: AccessPermission.VIEW },
+    create: {
+      memberId,
+      resourceType,
+      resourceId,
+      permission: AccessPermission.VIEW,
+    },
+  });
+
+  revalidatePath("/admin/acessos");
+  revalidatePath("/aprender");
+};
+
+export const removeAccessGrant = async (formData: FormData) => {
+  await requireAdmin();
+  const grantId = asText(formData.get("grantId"));
+
+  if (!grantId) {
+    return;
+  }
+
+  await database.accessGrant.deleteMany({ where: { id: grantId } });
+  revalidatePath("/admin/acessos");
+  revalidatePath("/aprender");
 };
 
 const asContent = (value: string): Prisma.InputJsonValue => {

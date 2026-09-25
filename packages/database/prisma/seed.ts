@@ -7,6 +7,7 @@ import {
   PrismaClient,
   ResourceKind,
 } from "../generated/client";
+import { databaseSsl } from "../ssl";
 
 const connectionString = process.env.DIRECT_URL ?? process.env.DATABASE_URL;
 
@@ -19,7 +20,7 @@ if (!connectionString) {
 const adapter = new PrismaPg({
   connectionString,
   max: 1,
-  ssl: { rejectUnauthorized: true },
+  ssl: databaseSsl,
 });
 
 const database = new PrismaClient({ adapter });

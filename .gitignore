@@ -275,6 +275,11 @@ packages/database/generated
 # Sentry
 .sentryclirc
 
+# Kiwify migration workspace: manifests, downloads, cookies and exports never enter Git.
+tmp/kiwify-migration/
+tmp/kiwify-downloads/
+tmp/kiwify-browser/
+
 # Documentation
 .contentlayer
 .content-collections
