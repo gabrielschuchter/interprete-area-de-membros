@@ -9,11 +9,15 @@ import { getMeetings } from "./meetings";
 
 export const getHomeData = async (memberId: string) => {
   const startedAt = performance.now();
+  const timings: Record<string, number> = {};
   const timed = async <T>(label: string, operation: () => Promise<T>) => {
     const operationStartedAt = performance.now();
     const result = await operation();
+    timings[label] = Number(
+      (performance.now() - operationStartedAt).toFixed(1),
+    );
     console.error(
-      `[PERF_HOME] ${label}=${(performance.now() - operationStartedAt).toFixed(1)}ms`,
+      `[PERF_HOME] ${label}=${timings[label]}ms`,
     );
     return result;
   };
@@ -44,5 +48,7 @@ export const getHomeData = async (memberId: string) => {
     `[PERF_HOME] total=${(performance.now() - startedAt).toFixed(1)}ms`,
   );
 
-  return { courses, activities, meetings, spaces, latestFeedback };
+  timings.total = Number((performance.now() - startedAt).toFixed(1));
+
+  return { courses, activities, meetings, spaces, latestFeedback, timings };
 };
