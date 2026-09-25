@@ -4,7 +4,6 @@ import type { ReactNode } from "react";
 import { env } from "@/env";
 import { getAuth } from "@/lib/auth";
 import { getMemberRole } from "@/lib/authorization";
-import { getOrCreateProfile } from "@/lib/profile";
 import { MemberHeader } from "./components/member-header";
 import { GlobalSidebar } from "./components/sidebar";
 
@@ -29,10 +28,7 @@ const AppLayout = async ({ children }: AppLayoutProperties) => {
   }
 
   const memberDataStartedAt = performance.now();
-  const [role] = await Promise.all([
-    getMemberRole(userId),
-    getOrCreateProfile(userId, false),
-  ]);
+  const role = await getMemberRole(userId);
   const memberElapsed = performance.now() - memberDataStartedAt;
   const totalElapsed = performance.now() - startedAt;
   console.error(
