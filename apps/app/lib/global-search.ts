@@ -67,17 +67,8 @@ export const searchGlobal = async (memberId: string, rawQuery: string) => {
     return [] satisfies GlobalSearchResult[];
   }
 
-  const scope = await getLearningAccessScope(memberId);
-  const [
-    paths,
-    courses,
-    modules,
-    lessons,
-    activities,
-    posts,
-    library,
-    profiles,
-  ] = await Promise.all([
+  const scopePromise = getLearningAccessScope(memberId);
+  const resultsPromise = Promise.all([
     database.learningPath.findMany({
       where: {
         ...published,
@@ -260,6 +251,10 @@ export const searchGlobal = async (memberId: string, rawQuery: string) => {
       },
     }),
   ]);
+  const [
+    scope,
+    [paths, courses, modules, lessons, activities, posts, library, profiles],
+  ] = await Promise.all([scopePromise, resultsPromise]);
 
   const pathResults = paths
     .filter((path) =>

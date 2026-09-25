@@ -2,15 +2,24 @@
 
 import { Button } from "@repo/design-system/components/ui/button";
 import { SearchIcon } from "lucide-react";
-import { useEffect, useState } from "react";
-import { GlobalSearch } from "./global-search";
+import dynamic from "next/dynamic";
+import { useCallback, useEffect, useState } from "react";
 import { NotificationsPopover } from "./notifications-popover";
+
+const GlobalSearch = dynamic(
+  () => import("./global-search").then((module) => module.GlobalSearch),
+  { ssr: false }
+);
 
 type ActiveOverlay = "search" | "notifications" | null;
 
 export const MemberHeaderControls = () => {
   const [activeOverlay, setActiveOverlay] = useState<ActiveOverlay>(null);
   const [unreadCount, setUnreadCount] = useState(0);
+  const handleUnreadCountChange = useCallback(
+    (count: number) => setUnreadCount(count),
+    []
+  );
 
   useEffect(() => {
     const handleShortcut = (event: KeyboardEvent) => {
@@ -56,7 +65,7 @@ export const MemberHeaderControls = () => {
 
       <NotificationsPopover
         onOpenChange={(open) => setActiveOverlay(open ? "notifications" : null)}
-        onUnreadCountChange={setUnreadCount}
+        onUnreadCountChange={handleUnreadCountChange}
         open={activeOverlay === "notifications"}
       />
 

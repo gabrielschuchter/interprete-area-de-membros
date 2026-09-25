@@ -97,9 +97,25 @@ export const NotificationsPopover = ({
     }
   }, [updateUnreadCount]);
 
+  const loadUnreadCount = useCallback(async () => {
+    try {
+      const response = await fetch("/api/notifications?summary=1", {
+        headers: { Accept: "application/json" },
+      });
+      const payload = (await response.json()) as NotificationsResponse;
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Notificações indisponíveis.");
+      }
+      updateUnreadCount(payload.unreadCount ?? 0);
+    } catch {
+      // The header remains usable when the optional notification badge is
+      // temporarily unavailable.
+    }
+  }, [updateUnreadCount]);
+
   useEffect(() => {
-    loadNotifications().catch(() => undefined);
-  }, [loadNotifications]);
+    loadUnreadCount().catch(() => undefined);
+  }, [loadUnreadCount]);
 
   useEffect(() => {
     if (open) {

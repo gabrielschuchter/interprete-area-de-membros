@@ -32,6 +32,9 @@ export const getNotifications = async (memberId: string) => {
   return { items, unreadCount };
 };
 
+export const getUnreadNotificationCount = (memberId: string) =>
+  database.notification.count({ where: { memberId, readAt: null } });
+
 export const createNotification = (input: NotificationInput) =>
   database.notification.create({
     data: {
