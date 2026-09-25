@@ -1,7 +1,8 @@
 import "server-only";
 
-import { currentUser } from "@repo/auth/server";
 import { database } from "@repo/database";
+import { cache } from "react";
+import { getCurrentUser } from "./auth";
 
 const USERNAME_MAX_LENGTH = 30;
 const USERNAME_PATTERN = /^[a-z0-9](?:[a-z0-9-]{1,28}[a-z0-9])?$/;
@@ -22,7 +23,7 @@ export const isValidUsername = (value: string) =>
   USERNAME_PATTERN.test(value);
 
 const usernameFromClerkUser = (
-  user: NonNullable<Awaited<ReturnType<typeof currentUser>>>
+  user: NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>
 ) => {
   const preferredName =
     user.fullName ??
@@ -98,46 +99,52 @@ const createProfileSafely = async (data: {
   }
 };
 
-export const getOrCreateProfile = async (userId?: string) => {
-  const user = await currentUser();
-  const clerkUserId = userId ?? user?.id;
+export const getOrCreateProfile = cache(
+  async (userId?: string, syncFromClerk = true) => {
+    if (userId && !syncFromClerk) {
+      return database.profile.findUnique({ where: { clerkUserId: userId } });
+    }
 
-  if (!(user && clerkUserId)) {
-    return null;
+    const user = await getCurrentUser();
+    const clerkUserId = userId ?? user?.id;
+
+    if (!(user && clerkUserId)) {
+      return null;
+    }
+
+    const displayName =
+      user.fullName ??
+      ([user.firstName, user.lastName].filter(Boolean).join(" ") || null);
+    const email = user.primaryEmailAddress?.emailAddress ?? null;
+    const avatarUrl = user.imageUrl ?? null;
+
+    await database.member.upsert({
+      where: { id: clerkUserId },
+      update: { displayName, email, avatarUrl },
+      create: { id: clerkUserId, displayName, email, avatarUrl },
+    });
+
+    const existing = await database.profile.findUnique({
+      where: { clerkUserId },
+    });
+
+    if (existing) {
+      return existing;
+    }
+
+    const username = await uniqueUsername(
+      usernameFromClerkUser(user),
+      clerkUserId
+    );
+
+    return createProfileSafely({
+      clerkUserId,
+      username,
+      displayName,
+      avatarUrl,
+    });
   }
-
-  const displayName =
-    user.fullName ??
-    ([user.firstName, user.lastName].filter(Boolean).join(" ") || null);
-  const email = user.primaryEmailAddress?.emailAddress ?? null;
-  const avatarUrl = user.imageUrl ?? null;
-
-  await database.member.upsert({
-    where: { id: clerkUserId },
-    update: { displayName, email, avatarUrl },
-    create: { id: clerkUserId, displayName, email, avatarUrl },
-  });
-
-  const existing = await database.profile.findUnique({
-    where: { clerkUserId },
-  });
-
-  if (existing) {
-    return existing;
-  }
-
-  const username = await uniqueUsername(
-    usernameFromClerkUser(user),
-    clerkUserId
-  );
-
-  return createProfileSafely({
-    clerkUserId,
-    username,
-    displayName,
-    avatarUrl,
-  });
-};
+);
 
 export const getProfilesByClerkIds = async (
   clerkUserIds: readonly string[]

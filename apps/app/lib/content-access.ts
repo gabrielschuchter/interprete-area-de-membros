@@ -1,6 +1,7 @@
 import "server-only";
 
 import { AccessResourceType, database, MemberRole } from "@repo/database";
+import { cache } from "react";
 import { getMemberRole } from "./authorization";
 
 const activeGrant = {
@@ -25,7 +26,7 @@ const emptyScope = (): LearningAccessScope => ({
   assetIds: new Set(),
 });
 
-export const getLearningAccessScope = async (
+const getLearningAccessScopeUncached = async (
   memberId: string
 ): Promise<LearningAccessScope> => {
   const role = await getMemberRole(memberId);
@@ -129,6 +130,8 @@ export const getLearningAccessScope = async (
     assetIds,
   };
 };
+
+export const getLearningAccessScope = cache(getLearningAccessScopeUncached);
 
 export const hasCourseAccess = (scope: LearningAccessScope, courseId: string) =>
   scope.fullAccess || scope.courseIds.has(courseId);

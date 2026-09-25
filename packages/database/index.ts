@@ -41,12 +41,13 @@ const normalizeRuntimeDatabaseUrl = (value: string) => {
 const runtimeDatabaseUrl = DATABASE_URL
   ? normalizeRuntimeDatabaseUrl(DATABASE_URL)
   : undefined;
+const runtimePoolMax = 2;
 
 const databaseWithConnection = runtimeDatabaseUrl
   ? new PrismaClient({
       adapter: new PrismaPg({
         connectionString: runtimeDatabaseUrl,
-        max: 1,
+        max: runtimePoolMax,
         ssl: databaseSsl,
       }),
     })

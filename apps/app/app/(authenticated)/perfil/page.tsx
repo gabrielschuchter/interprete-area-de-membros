@@ -1,4 +1,3 @@
-import { currentUser } from "@repo/auth/server";
 import { database } from "@repo/database";
 import {
   Avatar,
@@ -10,6 +9,7 @@ import { Input } from "@repo/design-system/components/ui/input";
 import { Textarea } from "@repo/design-system/components/ui/textarea";
 import { CheckCircle2Icon, ExternalLinkIcon, MailIcon } from "lucide-react";
 import Link from "next/link";
+import { getCurrentUser } from "@/lib/auth";
 import { getMemberRole } from "@/lib/authorization";
 import { getOrCreateProfile } from "@/lib/profile";
 import { MemberHeader } from "../components/member-header";
@@ -56,7 +56,7 @@ interface ProfilePageProperties {
 
 const ProfilePage = async ({ searchParams }: ProfilePageProperties) => {
   const filters = await searchParams;
-  const user = await currentUser();
+  const user = await getCurrentUser();
   const memberId = user?.id;
 
   if (!memberId) {

@@ -1,7 +1,11 @@
 import "server-only";
 
 import { ContentStatus, database } from "@repo/database";
-import { getLearningAccessScope, hasCourseAccess } from "./content-access";
+import {
+  getLearningAccessScope,
+  hasCourseAccess,
+  type LearningAccessScope,
+} from "./content-access";
 import { getProfilesByClerkIds } from "./profile";
 
 const meetingSelection = {
@@ -22,10 +26,15 @@ const canReadMeeting = (
   scope: Awaited<ReturnType<typeof getLearningAccessScope>>
 ) => !meeting.course || hasCourseAccess(scope, meeting.course.id);
 
-export const getMeetings = async (memberId: string) => {
+export const getMeetings = async (
+  memberId: string,
+  accessScope?: LearningAccessScope | Promise<LearningAccessScope>
+) => {
   const now = new Date();
-  const [scope, upcoming, past] = await Promise.all([
-    getLearningAccessScope(memberId),
+  const scopePromise = accessScope
+    ? Promise.resolve(accessScope)
+    : getLearningAccessScope(memberId);
+  const meetingsPromise = Promise.all([
     database.meeting.findMany({
       where: { status: ContentStatus.PUBLISHED, startsAt: { gte: now } },
       orderBy: [{ startsAt: "asc" }, { position: "asc" }],
@@ -38,6 +47,10 @@ export const getMeetings = async (memberId: string) => {
       take: 48,
       select: meetingSelection,
     }),
+  ]);
+  const [scope, [upcoming, past]] = await Promise.all([
+    scopePromise,
+    meetingsPromise,
   ]);
 
   return {

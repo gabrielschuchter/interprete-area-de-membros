@@ -1,11 +1,12 @@
 import "server-only";
 
-import { auth } from "@repo/auth/server";
 import { database, MemberRole } from "@repo/database";
 import { redirect } from "next/navigation";
+import { cache } from "react";
+import { getAuth } from "./auth";
 
 export const requireSession = async () => {
-  const { userId } = await auth();
+  const { userId } = await getAuth();
 
   if (!userId) {
     redirect("/sign-in");
@@ -14,14 +15,14 @@ export const requireSession = async () => {
   return userId;
 };
 
-export const getMemberRole = async (userId: string) => {
+export const getMemberRole = cache(async (userId: string) => {
   const member = await database.member.findUnique({
     where: { id: userId },
     select: { role: true },
   });
 
   return member?.role ?? MemberRole.MEMBER;
-};
+});
 
 export const requireStaff = async () => {
   const userId = await requireSession();

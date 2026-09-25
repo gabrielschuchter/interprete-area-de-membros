@@ -1,4 +1,3 @@
-import { currentUser } from "@repo/auth/server";
 import { Badge } from "@repo/design-system/components/ui/badge";
 import { Button } from "@repo/design-system/components/ui/button";
 import {
@@ -12,16 +11,18 @@ import {
 import Link from "next/link";
 import { getHomeData } from "@/lib/home";
 import { requireMemberId } from "@/lib/learning";
+import { getOrCreateProfile } from "@/lib/profile";
 import { MemberHeader } from "./components/member-header";
 
+const firstNamePattern = /\s+/;
+
 const HomePage = async () => {
-  const [memberId, user] = await Promise.all([
-    requireMemberId(),
-    currentUser(),
-  ]);
+  const memberId = await requireMemberId();
+  const profile = await getOrCreateProfile(memberId, false);
   const { paths, activities, meetings, spaces, latestFeedback } =
     await getHomeData(memberId);
-  const firstName = user?.firstName ?? "estudante";
+  const firstName =
+    profile?.displayName?.trim().split(firstNamePattern)[0] ?? "estudante";
   const allCourses = paths.flatMap((path) =>
     path.courses.map((course) => ({ ...course, path }))
   );

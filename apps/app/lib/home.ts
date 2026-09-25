@@ -3,15 +3,17 @@ import "server-only";
 import { database } from "@repo/database";
 import { getPublishedActivities } from "./activities";
 import { getCommunitySpaces } from "./community";
+import { getLearningAccessScope } from "./content-access";
 import { getPublishedLearningPaths } from "./learning";
 import { getMeetings } from "./meetings";
 
 export const getHomeData = async (memberId: string) => {
+  const accessScope = getLearningAccessScope(memberId);
   const [paths, activities, meetings, spaces, latestFeedback] =
     await Promise.all([
-      getPublishedLearningPaths(memberId),
-      getPublishedActivities(memberId),
-      getMeetings(memberId),
+      getPublishedLearningPaths(memberId, undefined, accessScope),
+      getPublishedActivities(memberId, accessScope),
+      getMeetings(memberId, accessScope),
       getCommunitySpaces(),
       database.activitySubmission.findFirst({
         where: {

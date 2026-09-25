@@ -13,14 +13,23 @@ const readingMinutes = (content: string) =>
     Math.ceil(content.trim().split(wordPattern).filter(Boolean).length / 180)
   );
 
-const enrichAuthors = async <T extends { authorId: string }>(
-  rows: readonly T[]
+type ProfileMap = Awaited<ReturnType<typeof getProfilesByClerkIds>>;
+
+const attachProfiles = <T extends { authorId: string }>(
+  rows: readonly T[],
+  profiles: ProfileMap
 ) => {
-  const profiles = await getProfilesByClerkIds(rows.map((row) => row.authorId));
   return rows.map((row) => ({
     ...row,
     profile: profiles.get(row.authorId) ?? null,
   }));
+};
+
+const enrichAuthors = async <T extends { authorId: string }>(
+  rows: readonly T[]
+) => {
+  const profiles = await getProfilesByClerkIds(rows.map((row) => row.authorId));
+  return attachProfiles(rows, profiles);
 };
 
 export const getCommunitySpaces = async () => {
@@ -57,12 +66,14 @@ export const getCommunitySpaces = async () => {
     },
   });
 
-  return Promise.all(
-    spaces.map(async (space) => ({
-      ...space,
-      posts: await enrichAuthors(space.posts),
-    }))
+  const profiles = await getProfilesByClerkIds(
+    spaces.flatMap((space) => space.posts.map((post) => post.authorId))
   );
+
+  return spaces.map((space) => ({
+    ...space,
+    posts: attachProfiles(space.posts, profiles),
+  }));
 };
 
 interface CommunityFeedOptions {
@@ -311,11 +322,15 @@ export const getCommunityPost = async (
   const visibleComments = comments.filter(({ id }) =>
     visibleCommentIds.has(id)
   );
+  const profiles = await getProfilesByClerkIds([
+    post.authorId,
+    ...visibleComments.map((comment) => comment.authorId),
+  ]);
+
   return {
     ...post,
-    profile:
-      (await getProfilesByClerkIds([post.authorId])).get(post.authorId) ?? null,
-    comments: await enrichAuthors(visibleComments),
+    profile: profiles.get(post.authorId) ?? null,
+    comments: attachProfiles(visibleComments, profiles),
     readingMinutes: readingMinutes(post.content),
     commentsPage: currentPage,
     hasMoreComments,

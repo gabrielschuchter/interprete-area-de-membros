@@ -1,7 +1,11 @@
 import "server-only";
 
 import { ContentStatus, database, type Prisma } from "@repo/database";
-import { getLearningAccessScope, hasLessonAccess } from "./content-access";
+import {
+  getLearningAccessScope,
+  hasLessonAccess,
+  type LearningAccessScope,
+} from "./content-access";
 
 const publishedActivityWhere = {
   status: ContentStatus.PUBLISHED,
@@ -84,45 +88,52 @@ export const canAccessPublishedActivity = async (
   return Boolean(activity && canReadActivity(activity, scope));
 };
 
-export const getPublishedActivities = async (memberId: string) => {
-  const [scope, activities] = await Promise.all([
-    getLearningAccessScope(memberId),
-    database.activity.findMany({
-      where: publishedActivityWhere,
-      orderBy: [
-        { dueAt: { sort: "asc", nulls: "last" } },
-        { position: "asc" },
-        { title: "asc" },
-      ],
-      select: {
-        id: true,
-        courseId: true,
-        title: true,
-        slug: true,
-        prompt: true,
-        instructions: true,
-        dueAt: true,
-        course: { select: { id: true, title: true, slug: true } },
-        lesson: {
-          select: {
-            id: true,
-            title: true,
-            slug: true,
-            module: { select: { id: true, courseId: true } },
-          },
-        },
-        submissions: {
-          where: { memberId },
-          select: {
-            id: true,
-            status: true,
-            submittedAt: true,
-            updatedAt: true,
-            feedback: { select: { content: true, updatedAt: true } },
-          },
+export const getPublishedActivities = async (
+  memberId: string,
+  accessScope?: LearningAccessScope | Promise<LearningAccessScope>
+) => {
+  const scopePromise = accessScope
+    ? Promise.resolve(accessScope)
+    : getLearningAccessScope(memberId);
+  const activitiesPromise = database.activity.findMany({
+    where: publishedActivityWhere,
+    orderBy: [
+      { dueAt: { sort: "asc", nulls: "last" } },
+      { position: "asc" },
+      { title: "asc" },
+    ],
+    select: {
+      id: true,
+      courseId: true,
+      title: true,
+      slug: true,
+      prompt: true,
+      instructions: true,
+      dueAt: true,
+      course: { select: { id: true, title: true, slug: true } },
+      lesson: {
+        select: {
+          id: true,
+          title: true,
+          slug: true,
+          module: { select: { id: true, courseId: true } },
         },
       },
-    }),
+      submissions: {
+        where: { memberId },
+        select: {
+          id: true,
+          status: true,
+          submittedAt: true,
+          updatedAt: true,
+          feedback: { select: { content: true, updatedAt: true } },
+        },
+      },
+    },
+  });
+  const [scope, activities] = await Promise.all([
+    scopePromise,
+    activitiesPromise,
   ]);
 
   return activities.filter((activity) => canReadActivity(activity, scope));

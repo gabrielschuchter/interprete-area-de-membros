@@ -1,8 +1,8 @@
-import { auth, currentUser } from "@repo/auth/server";
 import { SidebarProvider } from "@repo/design-system/components/ui/sidebar";
 import { secure } from "@repo/security";
 import type { ReactNode } from "react";
 import { env } from "@/env";
+import { getAuth } from "@/lib/auth";
 import { getMemberRole } from "@/lib/authorization";
 import { getOrCreateProfile } from "@/lib/profile";
 import { GlobalSidebar } from "./components/sidebar";
@@ -16,15 +16,16 @@ const AppLayout = async ({ children }: AppLayoutProperties) => {
     await secure(["CATEGORY:PREVIEW"]);
   }
 
-  const user = await currentUser();
-  const { redirectToSignIn } = await auth();
+  const { userId, redirectToSignIn } = await getAuth();
 
-  if (!user) {
+  if (!userId) {
     return redirectToSignIn();
   }
 
-  const role = await getMemberRole(user.id);
-  await getOrCreateProfile(user.id);
+  const [role] = await Promise.all([
+    getMemberRole(userId),
+    getOrCreateProfile(userId, false),
+  ]);
 
   return (
     <SidebarProvider>

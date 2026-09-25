@@ -9,6 +9,7 @@ import {
   hasFullCourseAccess,
   hasLessonAccess,
   hasModuleAccess,
+  type LearningAccessScope,
 } from "./content-access";
 import { calculateLearningProgress } from "./learning-progress";
 
@@ -59,10 +60,13 @@ const filterCourse = <
 
 export const getPublishedLearningPaths = async (
   memberId: string,
-  slug?: string
+  slug?: string,
+  accessScope?: LearningAccessScope | Promise<LearningAccessScope>
 ) => {
-  const scope = await getLearningAccessScope(memberId);
-  const paths = await database.learningPath.findMany({
+  const scopePromise = accessScope
+    ? Promise.resolve(accessScope)
+    : getLearningAccessScope(memberId);
+  const pathsPromise = database.learningPath.findMany({
     where: {
       ...published,
       ...(slug ? { slug } : {}),
@@ -109,6 +113,7 @@ export const getPublishedLearningPaths = async (
       },
     },
   });
+  const [scope, paths] = await Promise.all([scopePromise, pathsPromise]);
 
   return paths
     .map((path) => ({
