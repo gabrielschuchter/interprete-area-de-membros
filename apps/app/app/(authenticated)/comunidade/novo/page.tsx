@@ -4,20 +4,17 @@ import { ArrowLeftIcon, SaveIcon } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { TopicEditor } from "@/components/community/topic-editor";
-import { getCommunitySpace } from "@/lib/community";
+import { getCommunitySpaces } from "@/lib/community";
 import { requireMemberId } from "@/lib/learning";
-import { MemberHeader } from "../../../components/member-header";
-import { createPost } from "../../actions";
+import { MemberHeader } from "../../components/member-header";
+import { createPost } from "../actions";
 
-interface NewPostPageProperties {
-  readonly params: Promise<{ spaceSlug: string }>;
-}
+const NewCommunityTopicPage = async () => {
+  await requireMemberId();
+  const spaces = await getCommunitySpaces();
+  const firstSpace = spaces[0];
 
-const NewPostPage = async ({ params }: NewPostPageProperties) => {
-  const { spaceSlug } = await params;
-  const memberId = await requireMemberId();
-  const space = await getCommunitySpace(spaceSlug, memberId);
-  if (!space) {
+  if (!firstSpace) {
     notFound();
   }
 
@@ -26,15 +23,15 @@ const NewPostPage = async ({ params }: NewPostPageProperties) => {
       <MemberHeader section="Comunidade" />
       <main className="mx-auto w-full max-w-[920px] px-5 py-8 sm:px-8 lg:py-14">
         <Button asChild className="-ml-3" variant="ghost">
-          <Link href={`/comunidade/${space.slug}`}>
-            <ArrowLeftIcon aria-hidden="true" /> Voltar para {space.title}
+          <Link href="/comunidade">
+            <ArrowLeftIcon aria-hidden="true" /> Voltar para a comunidade
           </Link>
         </Button>
         <header className="mt-8 max-w-3xl">
-          <p className="brand-eyebrow">{space.title} · publicação editorial</p>
+          <p className="brand-eyebrow">Publicação editorial · comunidade</p>
           <span aria-hidden="true" className="brand-rule mt-4" />
           <h1 className="mt-6 font-display text-5xl leading-none sm:text-6xl">
-            O que você quer investigar?
+            Coloque uma pergunta em movimento.
           </h1>
           <p className="mt-5 text-muted-foreground leading-7">
             Dê contexto, registre o que você já observou e convide outras
@@ -45,15 +42,28 @@ const NewPostPage = async ({ params }: NewPostPageProperties) => {
           action={createPost}
           className="paper-surface mt-10 space-y-7 border p-5 sm:p-9"
         >
-          <input name="spaceId" type="hidden" value={space.id} />
-          <input name="spaceSlug" type="hidden" value={space.slug} />
-          <label className="block" htmlFor="post-title">
+          <label className="block" htmlFor="topic-space">
+            <span className="brand-eyebrow">Espaço</span>
+            <select
+              className="mt-2 h-10 w-full rounded-sm border bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/35"
+              defaultValue={firstSpace.id}
+              id="topic-space"
+              name="spaceId"
+            >
+              {spaces.map((space) => (
+                <option key={space.id} value={space.id}>
+                  {space.title}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block" htmlFor="topic-title">
             <span className="brand-eyebrow">Título</span>
             <Input
               className="mt-2 h-12 font-display text-xl"
-              id="post-title"
+              id="topic-title"
               name="title"
-              placeholder="Como vocês interpretam este resultado?"
+              placeholder="O que você quer investigar?"
               required
             />
           </label>
@@ -69,7 +79,7 @@ const NewPostPage = async ({ params }: NewPostPageProperties) => {
           </div>
           <div className="flex flex-col-reverse gap-3 border-border border-t pt-6 sm:flex-row sm:items-center sm:justify-between">
             <Button asChild variant="ghost">
-              <Link href={`/comunidade/${space.slug}`}>Cancelar</Link>
+              <Link href="/comunidade">Cancelar</Link>
             </Button>
             <div className="flex flex-wrap justify-end gap-3">
               <Button
@@ -91,4 +101,4 @@ const NewPostPage = async ({ params }: NewPostPageProperties) => {
   );
 };
 
-export default NewPostPage;
+export default NewCommunityTopicPage;

@@ -126,6 +126,19 @@ export const GlobalSidebar = ({
         <SidebarFooter>
           <SidebarMenu>
             <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                className="rounded-sm"
+                isActive={pathname === "/comunidade/meus-topicos"}
+                tooltip="Meus tópicos"
+              >
+                <Link href="/comunidade/meus-topicos">
+                  <MessageCircleIcon />
+                  <span>Meus tópicos</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
               <UserButton
                 appearance={{
                   elements: {

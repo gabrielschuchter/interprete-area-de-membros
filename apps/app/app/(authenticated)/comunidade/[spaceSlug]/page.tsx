@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { MemberIdentity } from "@/components/community/member-identity";
 import { getCommunitySpace } from "@/lib/community";
 import { requireMemberId } from "@/lib/learning";
 import { MemberHeader } from "../../components/member-header";
@@ -98,9 +99,22 @@ const CommunitySpacePage = async ({
                       </Button>
                     </form>
                     <div className="min-w-0 flex-1">
-                      <span className="text-muted-foreground text-xs">
-                        por membro · {post._count.comments} respostas
-                      </span>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <MemberIdentity
+                          authorId={post.authorId}
+                          compact
+                          profile={post.profile ?? undefined}
+                          showHeadline={false}
+                        />
+                        {post.isPinned && (
+                          <span className="brand-eyebrow text-brand-action">
+                            Fixado
+                          </span>
+                        )}
+                        <span className="text-muted-foreground text-xs">
+                          · {post._count.comments} respostas
+                        </span>
+                      </div>
                       <h3 className="mt-3 font-display text-2xl">
                         <Link
                           className="hover:text-brand-structural"
