@@ -17,10 +17,7 @@ const firstNamePattern = /\s+/;
 
 const HomePage = async () => {
   const memberId = await requireMemberId();
-  const [
-    profile,
-    { courses, activities, meetings, spaces, latestFeedback, timings },
-  ] =
+  const [profile, { courses, activities, meetings, spaces, latestFeedback }] =
     await Promise.all([
       getOrCreateProfile(memberId, false),
       getHomeData(memberId),
@@ -105,9 +102,6 @@ const HomePage = async () => {
 
   return (
     <div className="min-h-svh bg-background">
-      <output className="sr-only" role="status">
-        PERF_HOME {JSON.stringify(timings)}
-      </output>
       <main className="mx-auto w-full max-w-[1280px] px-5 py-10 sm:px-8 lg:px-12 lg:py-16">
         <header className="max-w-3xl">
           <p className="brand-eyebrow">Interprete. · seu espaço de estudo</p>
