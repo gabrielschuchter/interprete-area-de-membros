@@ -21,6 +21,9 @@
     "migrate:deploy": "cd packages/database && bunx prisma generate && bunx prisma migrate deploy",
     "db:push": "cd packages/database && bunx prisma format && bunx prisma generate && bunx prisma db push",
     "db:seed": "cd packages/database && bun run seed",
+    "kiwify:manifest": "node scripts/kiwify-migration-manifest.mjs",
+    "kiwify:import": "bun scripts/kiwify-import.mjs",
+    "kiwify:assets": "bun scripts/kiwify-assets-import.mjs",
     "clean": "git clean -xdf node_modules"
   },
   "devDependencies": {

@@ -26,6 +26,17 @@ Atualizada em 24/09/2026. A implementação de código avançou por todas as sup
 
 O bloqueio atual é específico: os arquivos locais `apps/app/.env.local` e `packages/database/.env` existem, mas as URLs do banco ainda são placeholders. Nenhum valor secreto é registrado neste documento.
 
+## Kiwify migration checkpoint
+
+The verified Kiwify hierarchy is now represented in the official Supabase
+project through idempotent migration inventory: 1 course, 14 modules, 99
+lessons and 16 student-match records. The repository also contains the
+server-side access model and private `learning-assets` bucket foundation.
+Videos, attachments and student access grants are intentionally not marked as
+migrated: the local database password is still a placeholder and the
+authenticated Kiwify browser did not expose downloadable media URLs. See
+`docs/migration/kiwify.md` for the exact resumption point.
+
 ## Phase 1 — Learning
 
 Status: IN PROGRESS
