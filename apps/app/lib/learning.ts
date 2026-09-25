@@ -139,7 +139,7 @@ export const getPublishedLearningPaths = async (
 
 export const getHomeLearningSummary = async (
   memberId: string,
-  accessScope?: LearningAccessScope | Promise<LearningAccessScope>,
+  accessScope?: LearningAccessScope | Promise<LearningAccessScope>
 ) => {
   const scopePromise = accessScope
     ? Promise.resolve(accessScope)
@@ -184,9 +184,7 @@ export const getHomeLearningSummary = async (
     .filter((course) => hasCourseAccess(scope, course.id))
     .map((course) => {
       const visibleCourse = filterCourse(course, scope);
-      const lessons = visibleCourse.modules.flatMap(
-        (module) => module.lessons,
-      );
+      const lessons = visibleCourse.modules.flatMap((module) => module.lessons);
 
       return {
         ...visibleCourse,
