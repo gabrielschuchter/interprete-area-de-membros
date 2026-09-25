@@ -16,6 +16,29 @@ const encodePath = (path: string) =>
     .map((segment) => encodeURIComponent(segment))
     .join("/");
 
+export const getLearningAssetStorageUrl = (storagePath: string) => {
+  const { supabaseUrl, bucket } = storageConfig();
+
+  if (!supabaseUrl) {
+    return null;
+  }
+
+  return `${supabaseUrl.replace(TRAILING_SLASH, "")}/storage/v1/object/${encodeURIComponent(bucket)}/${encodePath(storagePath)}`;
+};
+
+export const getLearningAssetStorageHeaders = () => {
+  const { secretKey } = storageConfig();
+
+  if (!secretKey) {
+    return null;
+  }
+
+  return {
+    Authorization: `Bearer ${secretKey}`,
+    apikey: secretKey,
+  };
+};
+
 export const createLearningAssetSignedUrl = async (
   storagePath: string,
   expiresIn = 60

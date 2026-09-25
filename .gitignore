@@ -279,6 +279,7 @@ packages/database/generated
 tmp/kiwify-migration/
 tmp/kiwify-downloads/
 tmp/kiwify-browser/
+*.part
 
 # Documentation
 .contentlayer

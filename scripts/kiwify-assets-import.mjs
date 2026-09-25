@@ -1,13 +1,17 @@
 import { createHash } from "node:crypto";
 import { createReadStream } from "node:fs";
-import { access, readFile, stat } from "node:fs/promises";
+import { access, readFile, rm, stat } from "node:fs/promises";
 import path from "node:path";
-import { databaseSsl } from "../packages/database/ssl.ts";
+import {
+  databaseSsl,
+  normalizeRuntimeDatabaseUrl,
+} from "../packages/database/ssl.ts";
 
 const ENV_LINE_SPLIT = /\r?\n/;
 const ENV_LINE_PATTERN = /^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/;
 const PLACEHOLDER_PASSWORD =
   /replace-with|your-password|change[-_]?me|password/i;
+const TRAILING_SLASH = /\/$/;
 const REPOSITORY_ROOT = process.cwd();
 const DEFAULT_INPUT = path.resolve(
   REPOSITORY_ROOT,
@@ -144,6 +148,9 @@ const sha256 = async (filePath) => {
   return hash.digest("hex");
 };
 
+const encodeTusMetadata = (value) =>
+  Buffer.from(String(value), "utf8").toString("base64");
+
 const uploadPrivateObject = async ({
   bucket,
   objectPath,
@@ -152,27 +159,108 @@ const uploadPrivateObject = async ({
   secret,
   sizeBytes,
 }) => {
-  const url = `${process.env.SUPABASE_URL}/storage/v1/object/${encodeURIComponent(bucket)}/${objectPath
+  const supabaseUrl = process.env.SUPABASE_URL.replace(TRAILING_SLASH, "");
+  const authorization = `Bearer ${secret}`;
+  const createResponse = await fetch(
+    `${supabaseUrl}/storage/v1/upload/resumable`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: authorization,
+        apikey: secret,
+        "Tus-Resumable": "1.0.0",
+        "Upload-Length": String(sizeBytes),
+        "Upload-Metadata": [
+          `bucketName ${encodeTusMetadata(bucket)}`,
+          `objectName ${encodeTusMetadata(objectPath)}`,
+          `contentType ${encodeTusMetadata(mimeType)}`,
+          `cacheControl ${encodeTusMetadata("3600")}`,
+        ].join(","),
+        "x-upsert": "true",
+      },
+    }
+  );
+  if (!createResponse.ok) {
+    const details = (await createResponse.text()).slice(0, 500);
+    throw new Error(
+      `Supabase resumable upload session failed (${createResponse.status}) for ${path.basename(filePath)}: ${details}`
+    );
+  }
+
+  const location = createResponse.headers.get("location");
+  if (!location) {
+    throw new Error(
+      "Supabase resumable upload did not return a session location."
+    );
+  }
+  const sessionUrl = new URL(location, supabaseUrl).href;
+  const chunkSize = 8 * 1024 * 1024;
+  let offset = Number(createResponse.headers.get("upload-offset") ?? 0);
+
+  while (offset < sizeBytes) {
+    const end = Math.min(offset + chunkSize, sizeBytes) - 1;
+    const patchResponse = await fetch(sessionUrl, {
+      method: "PATCH",
+      headers: {
+        Authorization: authorization,
+        apikey: secret,
+        "Tus-Resumable": "1.0.0",
+        "Upload-Offset": String(offset),
+        "Content-Type": "application/offset+octet-stream",
+        "Content-Length": String(end - offset + 1),
+      },
+      body: createReadStream(filePath, { start: offset, end }),
+      duplex: "half",
+    });
+    if (!patchResponse.ok) {
+      const details = (await patchResponse.text()).slice(0, 500);
+      throw new Error(
+        `Supabase resumable upload chunk failed (${patchResponse.status}) at offset ${offset}: ${details}`
+      );
+    }
+    const nextOffset = Number(
+      patchResponse.headers.get("upload-offset") ?? end + 1
+    );
+    if (!Number.isFinite(nextOffset) || nextOffset <= offset) {
+      throw new Error("Supabase resumable upload returned an invalid offset.");
+    }
+    offset = nextOffset;
+  }
+};
+
+const storageObjectUrl = (bucket, objectPath) =>
+  `${process.env.SUPABASE_URL}/storage/v1/object/${encodeURIComponent(bucket)}/${objectPath
     .split("/")
     .map(encodeURIComponent)
     .join("/")}`;
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${secret}`,
-      apikey: secret,
-      "Content-Type": mimeType,
-      "Content-Length": String(sizeBytes),
-      "x-upsert": "true",
-    },
-    body: globalThis.Bun?.file?.(filePath) ?? createReadStream(filePath),
-    ...(globalThis.Bun?.file ? {} : { duplex: "half" }),
-  });
-  if (!response.ok) {
+
+const validateRemoteObject = async ({
+  bucket,
+  objectPath,
+  secret,
+  expectedSize,
+}) => {
+  const url = storageObjectUrl(bucket, objectPath);
+  const headers = { Authorization: `Bearer ${secret}`, apikey: secret };
+  const head = await fetch(url, { headers, method: "HEAD" });
+  if (!head.ok) {
+    throw new Error(`Remote object validation failed (${head.status})`);
+  }
+
+  const remoteLength = Number(head.headers.get("content-length") ?? "NaN");
+  if (!Number.isFinite(remoteLength) || remoteLength !== expectedSize) {
     throw new Error(
-      `Supabase Storage upload failed (${response.status}) for ${path.basename(filePath)}`
+      `Remote object size mismatch (expected ${expectedSize}, got ${remoteLength})`
     );
   }
+
+  const probe = await fetch(url, {
+    headers: { ...headers, Range: "bytes=0-0" },
+  });
+  if (!(probe.ok && (probe.status === 200 || probe.status === 206))) {
+    throw new Error(`Remote object read validation failed (${probe.status})`);
+  }
+  await probe.body?.cancel();
 };
 
 const readInput = async () => {
@@ -201,6 +289,7 @@ const bucket = process.env.SUPABASE_STORAGE_BUCKET ?? "learning-assets";
 const secret =
   process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
 const assets = await readInput();
+const cleanupLocal = process.env.KIWIFY_CLEANUP_LOCAL === "true";
 
 const { PrismaPg } = await import(
   "../packages/database/node_modules/@prisma/adapter-pg/dist/index.mjs"
@@ -217,7 +306,7 @@ const {
 
 const database = new PrismaClient({
   adapter: new PrismaPg({
-    connectionString: process.env.DATABASE_URL,
+    connectionString: normalizeRuntimeDatabaseUrl(process.env.DATABASE_URL),
     max: 1,
     ssl: databaseSsl,
   }),
@@ -278,6 +367,15 @@ try {
             where: { sourcePlatform_sourceId: { sourcePlatform, sourceId } },
           });
       if (existingAsset?.checksum === checksum && existingAsset.storagePath) {
+        await validateRemoteObject({
+          bucket,
+          objectPath: existingAsset.storagePath,
+          secret,
+          expectedSize: fileInfo.size,
+        });
+        if (cleanupLocal) {
+          await rm(localPath, { force: false });
+        }
         results.skipped += 1;
         continue;
       }
@@ -308,6 +406,13 @@ try {
         mimeType,
         secret,
         sizeBytes: fileInfo.size,
+      });
+
+      await validateRemoteObject({
+        bucket,
+        objectPath,
+        secret,
+        expectedSize: fileInfo.size,
       });
 
       const data = {
@@ -393,6 +498,9 @@ try {
             sourceId,
           },
         });
+      }
+      if (cleanupLocal) {
+        await rm(localPath, { force: false });
       }
       results.imported += 1;
     } catch (error) {

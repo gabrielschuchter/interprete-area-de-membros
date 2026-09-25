@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface LessonPlayerProperties {
   readonly assetId: string;
@@ -17,6 +17,45 @@ export const LessonPlayer = ({
 }: LessonPlayerProperties) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [rate, setRate] = useState(1);
+  const source = `/api/learning/assets/${assetId}`;
+  const isHls =
+    mimeType === "application/vnd.apple.mpegurl" ||
+    mimeType === "application/x-mpegURL" ||
+    mimeType === "audio/mpegurl";
+
+  useEffect(() => {
+    if (!isHls) {
+      return;
+    }
+
+    const video = videoRef.current;
+    if (!video) {
+      return;
+    }
+    if (video.canPlayType("application/vnd.apple.mpegurl")) {
+      video.src = source;
+      return;
+    }
+
+    let destroyHls: (() => void) | null = null;
+    let disposed = false;
+    const loadHls = async () => {
+      const { default: Hls } = await import("hls.js");
+      if (disposed || !Hls.isSupported()) {
+        return;
+      }
+      const player = new Hls({ enableWorker: true });
+      player.loadSource(source);
+      player.attachMedia(video);
+      destroyHls = () => player.destroy();
+    };
+    loadHls().catch(() => undefined);
+
+    return () => {
+      disposed = true;
+      destroyHls?.();
+    };
+  }, [isHls, source]);
 
   const updateRate = (nextRate: number) => {
     setRate(nextRate);
@@ -35,7 +74,7 @@ export const LessonPlayer = ({
           playsInline
           preload="metadata"
           ref={videoRef}
-          src={`/api/learning/assets/${assetId}`}
+          src={isHls ? undefined : source}
           title={title}
         >
           <track

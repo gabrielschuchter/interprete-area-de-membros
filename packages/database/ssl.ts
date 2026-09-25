@@ -58,6 +58,19 @@ const readCertificate = () => {
 
 const ca = readCertificate();
 
+export const normalizeRuntimeDatabaseUrl = (value: string) => {
+  const url = new URL(value);
+
+  // node-postgres replaces the explicit `ssl` config whenever these options
+  // exist in the connection string. Remove them so the verified Supabase CA
+  // from databaseSsl remains authoritative in serverless and migration jobs.
+  for (const key of ["sslmode", "sslcert", "sslkey", "sslrootcert"]) {
+    url.searchParams.delete(key);
+  }
+
+  return url.toString();
+};
+
 export const databaseSsl = {
   rejectUnauthorized: true,
   ca,

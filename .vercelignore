@@ -13,3 +13,7 @@ storybook-static
 **/storybook-static
 packages/database/generated
 apps/*/out
+
+# Kiwify migration media and checkpoints are local-only and can be very large.
+tmp
+**/tmp

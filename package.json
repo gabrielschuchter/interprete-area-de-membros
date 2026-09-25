@@ -24,6 +24,7 @@
     "kiwify:manifest": "node scripts/kiwify-migration-manifest.mjs",
     "kiwify:import": "bun scripts/kiwify-import.mjs",
     "kiwify:assets": "bun scripts/kiwify-assets-import.mjs",
+    "kiwify:hls": "bun scripts/kiwify-hls-migrate.mjs",
     "clean": "git clean -xdf node_modules"
   },
   "devDependencies": {

@@ -3,7 +3,7 @@ import "server-only";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "./generated/client";
 import { keys } from "./keys";
-import { databaseSsl } from "./ssl";
+import { databaseSsl, normalizeRuntimeDatabaseUrl } from "./ssl";
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
@@ -24,19 +24,6 @@ const createUnavailableDatabase = () =>
       throw new Error(missingDatabaseMessage);
     },
   });
-
-const normalizeRuntimeDatabaseUrl = (value: string) => {
-  const url = new URL(value);
-
-  // node-postgres replaces the explicit `ssl` config whenever these options
-  // exist in the connection string. Remove them so the verified Supabase CA
-  // from databaseSsl remains authoritative in serverless runtimes.
-  for (const key of ["sslmode", "sslcert", "sslkey", "sslrootcert"]) {
-    url.searchParams.delete(key);
-  }
-
-  return url.toString();
-};
 
 const runtimeDatabaseUrl = DATABASE_URL
   ? normalizeRuntimeDatabaseUrl(DATABASE_URL)

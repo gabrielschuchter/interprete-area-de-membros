@@ -1,6 +1,9 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { databaseSsl } from "../packages/database/ssl.ts";
+import {
+  databaseSsl,
+  normalizeRuntimeDatabaseUrl,
+} from "../packages/database/ssl.ts";
 import { manifest } from "./kiwify-manifest-data.mjs";
 
 const ENV_LINE_SPLIT = /\r?\n/;
@@ -81,7 +84,7 @@ if (
 
 const database = new PrismaClient({
   adapter: new PrismaPg({
-    connectionString,
+    connectionString: normalizeRuntimeDatabaseUrl(connectionString),
     max: 1,
     ssl: databaseSsl,
   }),
