@@ -69,10 +69,12 @@ export const MemberHeaderControls = () => {
         open={activeOverlay === "notifications"}
       />
 
-      <GlobalSearch
-        onOpenChange={(open) => setActiveOverlay(open ? "search" : null)}
-        open={activeOverlay === "search"}
-      />
+      {activeOverlay === "search" && (
+        <GlobalSearch
+          onOpenChange={(open) => setActiveOverlay(open ? "search" : null)}
+          open
+        />
+      )}
 
       <span aria-live="polite" className="sr-only">
         {unreadCount > 0

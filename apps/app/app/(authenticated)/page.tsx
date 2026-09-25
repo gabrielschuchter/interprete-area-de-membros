@@ -18,9 +18,11 @@ const firstNamePattern = /\s+/;
 
 const HomePage = async () => {
   const memberId = await requireMemberId();
-  const profile = await getOrCreateProfile(memberId, false);
-  const { paths, activities, meetings, spaces, latestFeedback } =
-    await getHomeData(memberId);
+  const [profile, { paths, activities, meetings, spaces, latestFeedback }] =
+    await Promise.all([
+      getOrCreateProfile(memberId, false),
+      getHomeData(memberId),
+    ]);
   const firstName =
     profile?.displayName?.trim().split(firstNamePattern)[0] ?? "estudante";
   const allCourses = paths.flatMap((path) =>
