@@ -59,7 +59,10 @@ export const GET = async (request?: Request): Promise<Response> => {
       { status: authConfigured ? 200 : 503 }
     );
   } catch (error) {
-    console.error("[health] database check failed", sanitizeDatabaseError(error));
+    console.error(
+      "[health] database check failed",
+      sanitizeDatabaseError(error)
+    );
 
     return Response.json(
       {
