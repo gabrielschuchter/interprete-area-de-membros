@@ -1,13 +1,9 @@
 "use server";
 
 import { auth } from "@repo/auth/server";
-import {
-  ContentStatus,
-  database,
-  EnrollmentStatus,
-  ProgressStatus,
-} from "@repo/database";
+import { ContentStatus, database, ProgressStatus } from "@repo/database";
 import { revalidatePath } from "next/cache";
+import { getLearningAccessScope, hasLessonAccess } from "@/lib/content-access";
 
 export interface CompleteLessonState {
   readonly message?: string;
@@ -53,6 +49,7 @@ export const completeLesson = async (
       slug: true,
       module: {
         select: {
+          id: true,
           course: { select: { slug: true, id: true } },
         },
       },
@@ -61,6 +58,20 @@ export const completeLesson = async (
 
   if (!lesson) {
     return { message: "A aula não está disponível.", ok: false };
+  }
+
+  // Progress is not an entitlement. Never let a forged lesson id create an
+  // enrollment and thereby turn a single completion into course-wide access.
+  const accessScope = await getLearningAccessScope(userId);
+  if (
+    !hasLessonAccess(
+      accessScope,
+      lesson.module.course.id,
+      lesson.module.id,
+      lessonId
+    )
+  ) {
+    return { message: "Você não tem acesso a esta aula.", ok: false };
   }
 
   const completedAt = new Date();
@@ -74,21 +85,6 @@ export const completeLesson = async (
         },
       },
       select: { completedAt: true },
-    });
-
-    await transaction.enrollment.upsert({
-      where: {
-        memberId_courseId: {
-          memberId: userId,
-          courseId: lesson.module.course.id,
-        },
-      },
-      create: {
-        memberId: userId,
-        courseId: lesson.module.course.id,
-        status: EnrollmentStatus.ACTIVE,
-      },
-      update: { status: EnrollmentStatus.ACTIVE },
     });
 
     await transaction.lessonProgress.upsert({

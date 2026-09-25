@@ -7,6 +7,7 @@ import {
   database,
 } from "@repo/database";
 import { revalidatePath } from "next/cache";
+import { canAccessPublishedActivity } from "@/lib/activities";
 import { requireStaff } from "@/lib/authorization";
 import { createNotification } from "@/lib/notifications";
 
@@ -56,7 +57,11 @@ export const submitActivity = async (formData: FormData) => {
 
   const normalizedContent = content.trim();
 
-  if (!normalizedContent) {
+  if (!normalizedContent || normalizedContent.length > 40_000) {
+    return;
+  }
+
+  if (!(await canAccessPublishedActivity(activityId, userId))) {
     return;
   }
 
