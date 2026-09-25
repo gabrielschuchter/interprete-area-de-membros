@@ -137,6 +137,64 @@ export const getPublishedLearningPaths = async (
     .filter((path) => path.courses.length > 0);
 };
 
+export const getHomeLearningSummary = async (
+  memberId: string,
+  accessScope?: LearningAccessScope | Promise<LearningAccessScope>,
+) => {
+  const scopePromise = accessScope
+    ? Promise.resolve(accessScope)
+    : getLearningAccessScope(memberId);
+  const coursesPromise = database.course.findMany({
+    where: {
+      ...published,
+      learningPath: { is: published },
+    },
+    orderBy: [{ position: "asc" }, { title: "asc" }],
+    select: {
+      id: true,
+      title: true,
+      slug: true,
+      description: true,
+      modules: {
+        where: published,
+        orderBy: [{ position: "asc" }, { title: "asc" }],
+        select: {
+          id: true,
+          lessons: {
+            where: published,
+            orderBy: [{ position: "asc" }, { title: "asc" }],
+            select: {
+              id: true,
+              title: true,
+              slug: true,
+              description: true,
+              progress: {
+                where: { memberId },
+                select: { status: true },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+  const [scope, courses] = await Promise.all([scopePromise, coursesPromise]);
+
+  return courses
+    .filter((course) => hasCourseAccess(scope, course.id))
+    .map((course) => {
+      const visibleCourse = filterCourse(course, scope);
+      const lessons = visibleCourse.modules.flatMap(
+        (module) => module.lessons,
+      );
+
+      return {
+        ...visibleCourse,
+        progress: calculateLearningProgress(lessons),
+      };
+    });
+};
+
 export const getPublishedLearningPath = async (
   slug: string,
   memberId: string

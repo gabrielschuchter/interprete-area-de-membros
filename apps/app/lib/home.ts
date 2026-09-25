@@ -4,7 +4,7 @@ import { database } from "@repo/database";
 import { getPublishedActivities } from "./activities";
 import { getCommunitySpaces } from "./community";
 import { getLearningAccessScope } from "./content-access";
-import { getPublishedLearningPaths } from "./learning";
+import { getHomeLearningSummary } from "./learning";
 import { getMeetings } from "./meetings";
 
 export const getHomeData = async (memberId: string) => {
@@ -18,11 +18,9 @@ export const getHomeData = async (memberId: string) => {
     return result;
   };
   const accessScope = timed("scope", () => getLearningAccessScope(memberId));
-  const [paths, activities, meetings, spaces, latestFeedback] =
+  const [courses, activities, meetings, spaces, latestFeedback] =
     await Promise.all([
-      timed("learning", () =>
-        getPublishedLearningPaths(memberId, undefined, accessScope),
-      ),
+      timed("learning", () => getHomeLearningSummary(memberId, accessScope)),
       timed("activities", () => getPublishedActivities(memberId, accessScope)),
       timed("meetings", () => getMeetings(memberId, accessScope)),
       timed("community", () => getCommunitySpaces()),
@@ -46,5 +44,5 @@ export const getHomeData = async (memberId: string) => {
     `[PERF_HOME] total=${(performance.now() - startedAt).toFixed(1)}ms`,
   );
 
-  return { paths, activities, meetings, spaces, latestFeedback };
+  return { courses, activities, meetings, spaces, latestFeedback };
 };
