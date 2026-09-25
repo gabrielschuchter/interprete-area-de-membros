@@ -1,6 +1,15 @@
 import { createEnv } from "@t3-oss/env-nextjs";
 import { z } from "zod";
 
+const optionalUrl = z.preprocess((value) => {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const normalized = value.trim();
+  return normalized || undefined;
+}, z.url().optional());
+
 export const keys = () =>
   createEnv({
     skipValidation: process.env.SKIP_ENV_VALIDATION === "true",
@@ -19,9 +28,9 @@ export const keys = () =>
     },
     client: {
       NEXT_PUBLIC_APP_URL: z.url(),
-      NEXT_PUBLIC_WEB_URL: z.url().optional(),
-      NEXT_PUBLIC_API_URL: z.url().optional(),
-      NEXT_PUBLIC_DOCS_URL: z.url().optional(),
+      NEXT_PUBLIC_WEB_URL: optionalUrl,
+      NEXT_PUBLIC_API_URL: optionalUrl,
+      NEXT_PUBLIC_DOCS_URL: optionalUrl,
     },
     runtimeEnv: {
       ANALYZE: process.env.ANALYZE,
