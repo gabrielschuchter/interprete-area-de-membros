@@ -38,6 +38,7 @@ export const AuthProvider = ({
         theme: baseTheme,
       }}
       localization={ptBR}
+      proxyUrl={process.env.NEXT_PUBLIC_CLERK_PROXY_URL || "/__clerk"}
     />
   );
 };
