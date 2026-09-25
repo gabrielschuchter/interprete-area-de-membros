@@ -1,6 +1,14 @@
 import { createHash } from "node:crypto";
 import { createReadStream } from "node:fs";
-import { access, readFile, rm, stat } from "node:fs/promises";
+import {
+  access,
+  appendFile,
+  readFile,
+  rm,
+  stat,
+  statfs,
+  writeFile,
+} from "node:fs/promises";
 import path from "node:path";
 import {
   databaseSsl,
@@ -17,6 +25,15 @@ const DEFAULT_INPUT = path.resolve(
   REPOSITORY_ROOT,
   "tmp/kiwify-migration/assets.json"
 );
+const DEFAULT_CHECKPOINT = path.resolve(
+  REPOSITORY_ROOT,
+  "tmp/kiwify-migration/assets-checkpoint.json"
+);
+const DEFAULT_LOG = path.resolve(
+  REPOSITORY_ROOT,
+  "tmp/kiwify-migration/assets-migration.log"
+);
+const DEFAULT_MIN_FREE_BYTES = 1 * 1024 * 1024 * 1024;
 const ALLOWED_LOCAL_ROOTS = [
   path.resolve(REPOSITORY_ROOT, "tmp/kiwify-downloads"),
   path.resolve(REPOSITORY_ROOT, "tmp/kiwify-migration"),
@@ -63,6 +80,18 @@ const loadLocalEnvironment = async () => {
       // Optional local env files are intentionally ignored.
     }
   }
+};
+
+const readJson = async (filePath, fallback) => {
+  try {
+    return JSON.parse(await readFile(filePath, "utf8"));
+  } catch {
+    return fallback;
+  }
+};
+
+const writeJson = async (filePath, value) => {
+  await writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
 };
 
 const failIfMissing = (name, value) => {
@@ -290,6 +319,49 @@ const secret =
   process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
 const assets = await readInput();
 const cleanupLocal = process.env.KIWIFY_CLEANUP_LOCAL === "true";
+const configuredMinFreeBytes = Number(
+  process.env.KIWIFY_MIN_FREE_BYTES ?? DEFAULT_MIN_FREE_BYTES
+);
+const minFreeBytes =
+  Number.isFinite(configuredMinFreeBytes) && configuredMinFreeBytes > 0
+    ? configuredMinFreeBytes
+    : DEFAULT_MIN_FREE_BYTES;
+const checkpointPath = path.resolve(
+  REPOSITORY_ROOT,
+  process.env.KIWIFY_ASSETS_CHECKPOINT ?? DEFAULT_CHECKPOINT
+);
+const logPath = path.resolve(
+  REPOSITORY_ROOT,
+  process.env.KIWIFY_ASSETS_LOG ?? DEFAULT_LOG
+);
+const checkpoint = await readJson(checkpointPath, { version: 1, items: {} });
+checkpoint.items ??= {};
+
+const freeBytes = async () => {
+  try {
+    const stats = await statfs(REPOSITORY_ROOT);
+    return Number(stats.bavail) * Number(stats.bsize);
+  } catch {
+    return Number.POSITIVE_INFINITY;
+  }
+};
+
+const ensureFreeSpace = async () => {
+  const available = await freeBytes();
+  if (available < minFreeBytes) {
+    throw new Error(
+      `Local disk protection paused migration (${Math.round(available / 1024 / 1024)} MiB free; ${Math.round(minFreeBytes / 1024 / 1024)} MiB required).`
+    );
+  }
+};
+
+const logAssetEvent = async (event) => {
+  await appendFile(
+    logPath,
+    `${JSON.stringify({ at: new Date().toISOString(), ...event })}\n`,
+    "utf8"
+  );
+};
 
 const { PrismaPg } = await import(
   "../packages/database/node_modules/@prisma/adapter-pg/dist/index.mjs"
@@ -318,6 +390,14 @@ const results = { imported: 0, skipped: 0, failed: 0 };
 try {
   for (const [index, asset] of assets.entries()) {
     const sourceId = asset.sourceId;
+    let checkpointItem = null;
+    if (sourceId) {
+      checkpointItem = checkpoint.items[sourceId];
+      if (!checkpointItem) {
+        checkpointItem = { sourceId, status: "PENDING" };
+        checkpoint.items[sourceId] = checkpointItem;
+      }
+    }
     try {
       if (
         !(sourceId && asset.lessonSourceId && asset.localPath && asset.title)
@@ -325,6 +405,10 @@ try {
         throw new Error(
           "sourceId, lessonSourceId, localPath and title are required"
         );
+      }
+      if (checkpointItem?.status === "LOCAL_CLEANED") {
+        results.skipped += 1;
+        continue;
       }
       const localPath = ensureLocalPath(asset.localPath);
       await access(localPath);
@@ -350,6 +434,13 @@ try {
       const mimeType = asset.mimeType ?? mimeFromPath(localPath);
       const kind = normalizeAssetKind(asset.kind, localPath);
       const scope = asset.scope === "INDIVIDUAL" ? "INDIVIDUAL" : "GENERAL";
+      if (checkpointItem) {
+        checkpointItem.status = "VALIDATED";
+        checkpointItem.sizeBytes = fileInfo.size;
+        checkpointItem.checksum = checksum;
+        await writeJson(checkpointPath, checkpoint);
+        await logAssetEvent({ sourceId, status: checkpointItem.status });
+      }
       const existingRecord = await database.migrationRecord.findUnique({
         where: {
           sourcePlatform_entityType_sourceId: {
@@ -375,6 +466,15 @@ try {
         });
         if (cleanupLocal) {
           await rm(localPath, { force: false });
+          if (checkpointItem) {
+            checkpointItem.status = "LOCAL_CLEANED";
+            checkpointItem.storagePath = existingAsset.storagePath;
+            await writeJson(checkpointPath, checkpoint);
+            await logAssetEvent({
+              sourceId,
+              status: checkpointItem.status,
+            });
+          }
         }
         results.skipped += 1;
         continue;
@@ -399,6 +499,14 @@ try {
         existingAsset?.position ?? (aggregate._max.position ?? -1) + 1;
       const objectPath = `kiwify/${lessonRecord.targetId}/${String(position).padStart(3, "0")}-${safeName(asset.originalTitle ?? asset.title)}`;
 
+      await ensureFreeSpace();
+      if (checkpointItem) {
+        checkpointItem.status = "UPLOADING";
+        checkpointItem.storagePath = objectPath;
+        await writeJson(checkpointPath, checkpoint);
+        await logAssetEvent({ sourceId, status: checkpointItem.status });
+      }
+
       await uploadPrivateObject({
         bucket,
         objectPath,
@@ -414,6 +522,11 @@ try {
         secret,
         expectedSize: fileInfo.size,
       });
+      if (checkpointItem) {
+        checkpointItem.status = "REMOTE_VALIDATED";
+        await writeJson(checkpointPath, checkpoint);
+        await logAssetEvent({ sourceId, status: checkpointItem.status });
+      }
 
       const data = {
         title: asset.title,
@@ -499,8 +612,20 @@ try {
           },
         });
       }
+      if (checkpointItem) {
+        checkpointItem.status = "IMPORTED";
+        checkpointItem.storagePath = objectPath;
+        checkpointItem.targetId = savedAsset.id;
+        await writeJson(checkpointPath, checkpoint);
+        await logAssetEvent({ sourceId, status: checkpointItem.status });
+      }
       if (cleanupLocal) {
         await rm(localPath, { force: false });
+        if (checkpointItem) {
+          checkpointItem.status = "LOCAL_CLEANED";
+          await writeJson(checkpointPath, checkpoint);
+          await logAssetEvent({ sourceId, status: checkpointItem.status });
+        }
       }
       results.imported += 1;
     } catch (error) {
@@ -508,6 +633,16 @@ try {
       const message =
         error instanceof Error ? error.message : "Unknown asset import error";
       if (sourceId) {
+        if (checkpointItem) {
+          checkpointItem.status = "FAILED";
+          checkpointItem.error = message;
+          await writeJson(checkpointPath, checkpoint);
+          await logAssetEvent({
+            sourceId,
+            status: checkpointItem.status,
+            error: message,
+          });
+        }
         await database.migrationRecord.upsert({
           where: {
             sourcePlatform_entityType_sourceId: {
