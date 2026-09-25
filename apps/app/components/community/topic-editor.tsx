@@ -26,11 +26,13 @@ const emptyDocument: JSONContent = {
 interface TopicEditorProperties {
   readonly defaultValue?: JSONContent;
   readonly name?: string;
+  readonly onDocumentChange?: (value: JSONContent) => void;
 }
 
 export const TopicEditor = ({
   defaultValue,
   name = "contentJson",
+  onDocumentChange,
 }: TopicEditorProperties) => {
   const [value, setValue] = useState<JSONContent>(
     defaultValue ?? emptyDocument
@@ -50,7 +52,11 @@ export const TopicEditor = ({
         "aria-label": "Conteúdo do tópico",
       },
     },
-    onUpdate: ({ editor: currentEditor }) => setValue(currentEditor.getJSON()),
+    onUpdate: ({ editor: currentEditor }) => {
+      const document = currentEditor.getJSON();
+      setValue(document);
+      onDocumentChange?.(document);
+    },
   });
 
   useEffect(() => {

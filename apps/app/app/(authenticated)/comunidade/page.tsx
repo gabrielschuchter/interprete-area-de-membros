@@ -2,6 +2,7 @@ import { Badge } from "@repo/design-system/components/ui/badge";
 import { Button } from "@repo/design-system/components/ui/button";
 import {
   ArrowRightIcon,
+  BookmarkIcon,
   MessageCircleIcon,
   PinIcon,
   PlusIcon,
@@ -13,7 +14,7 @@ import { MemberIdentity } from "@/components/community/member-identity";
 import { getCommunityFeed, getCommunitySpaces } from "@/lib/community";
 import { requireMemberId } from "@/lib/learning";
 import { MemberHeader } from "../components/member-header";
-import { togglePostVote } from "./actions";
+import { toggleBookmark, togglePostVote } from "./actions";
 
 interface CommunityPageProperties {
   readonly searchParams: Promise<{
@@ -72,11 +73,18 @@ const CommunityPage = async ({ searchParams }: CommunityPageProperties) => {
               construir raciocínios sem transformar conversa em ruído.
             </p>
           </div>
-          <Button asChild className="shrink-0">
-            <Link href="/comunidade/novo">
-              <PlusIcon aria-hidden="true" /> Criar tópico
-            </Link>
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button asChild variant="outline">
+              <Link href="/comunidade/salvos">
+                <BookmarkIcon aria-hidden="true" /> Salvos
+              </Link>
+            </Button>
+            <Button asChild className="shrink-0">
+              <Link href="/comunidade/novo">
+                <PlusIcon aria-hidden="true" /> Criar tópico
+              </Link>
+            </Button>
+          </div>
         </header>
 
         <div className="mt-10 grid gap-10 lg:grid-cols-[minmax(0,1fr)_18rem]">
@@ -230,6 +238,16 @@ const CommunityPage = async ({ searchParams }: CommunityPageProperties) => {
                         <p className="mt-3 line-clamp-3 text-muted-foreground leading-7">
                           {post.content}
                         </p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {post.tags.map((tag) => (
+                            <span
+                              className="text-muted-foreground text-xs"
+                              key={tag}
+                            >
+                              #{tag}
+                            </span>
+                          ))}
+                        </div>
                         <div className="mt-4 flex flex-wrap items-center gap-4 text-muted-foreground text-xs">
                           <span className="inline-flex items-center gap-1.5">
                             <MessageCircleIcon
@@ -241,6 +259,34 @@ const CommunityPage = async ({ searchParams }: CommunityPageProperties) => {
                           <span className="sm:hidden">
                             {post._count.votes} apoios
                           </span>
+                          <span>{post.readingMinutes} min de leitura</span>
+                          <form action={toggleBookmark}>
+                            <input
+                              name="postId"
+                              type="hidden"
+                              value={post.id}
+                            />
+                            <input
+                              name="spaceSlug"
+                              type="hidden"
+                              value={post.space.slug}
+                            />
+                            <button
+                              className="inline-flex items-center gap-1.5 underline-offset-4 hover:underline"
+                              type="submit"
+                            >
+                              <BookmarkIcon
+                                aria-hidden="true"
+                                className="size-3.5"
+                                fill={
+                                  post.bookmarks.length > 0
+                                    ? "currentColor"
+                                    : "none"
+                                }
+                              />
+                              {post.bookmarks.length > 0 ? "Salvo" : "Salvar"}
+                            </button>
+                          </form>
                           {post.profile?.headline && (
                             <span>{post.profile.headline}</span>
                           )}

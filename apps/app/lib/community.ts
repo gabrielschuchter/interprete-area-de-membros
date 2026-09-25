@@ -5,6 +5,13 @@ import { getProfilesByClerkIds } from "@/lib/profile";
 
 const POST_PAGE_SIZE = 20;
 const COMMENT_PAGE_SIZE = 40;
+const wordPattern = /\s+/;
+
+const readingMinutes = (content: string) =>
+  Math.max(
+    1,
+    Math.ceil(content.trim().split(wordPattern).filter(Boolean).length / 180)
+  );
 
 const enrichAuthors = async <T extends { authorId: string }>(
   rows: readonly T[]
@@ -105,6 +112,7 @@ export const getCommunityFeed = async (
             OR: [
               { title: { contains: query, mode: "insensitive" } },
               { content: { contains: query, mode: "insensitive" } },
+              { tags: { has: query.toLowerCase() } },
               { space: { title: { contains: query, mode: "insensitive" } } },
               ...(authorIds && authorIds.length > 0
                 ? [{ authorId: { in: authorIds } }]
@@ -126,23 +134,32 @@ export const getCommunityFeed = async (
     select: {
       id: true,
       title: true,
+      slug: true,
       content: true,
       contentJson: true,
+      tags: true,
       authorId: true,
       status: true,
       isPinned: true,
+      publishedAt: true,
       createdAt: true,
       space: { select: { title: true, slug: true } },
       _count: {
         select: { comments: { where: { deletedAt: null } }, votes: true },
       },
       votes: { where: { memberId }, select: { id: true } },
+      bookmarks: { where: { memberId }, select: { id: true } },
     },
   });
 
   const hasMore = posts.length > POST_PAGE_SIZE;
   return {
-    posts: await enrichAuthors(posts.slice(0, POST_PAGE_SIZE)),
+    posts: (await enrichAuthors(posts.slice(0, POST_PAGE_SIZE))).map(
+      (post) => ({
+        ...post,
+        readingMinutes: readingMinutes(post.content),
+      })
+    ),
     page,
     hasMore,
     query,
@@ -173,15 +190,19 @@ export const getCommunitySpace = async (
         select: {
           id: true,
           title: true,
+          slug: true,
           content: true,
           contentJson: true,
+          tags: true,
           authorId: true,
           isPinned: true,
+          publishedAt: true,
           createdAt: true,
           _count: {
             select: { comments: { where: { deletedAt: null } }, votes: true },
           },
           votes: { where: { memberId }, select: { id: true } },
+          bookmarks: { where: { memberId }, select: { id: true } },
         },
       },
     },
@@ -192,7 +213,12 @@ export const getCommunitySpace = async (
   const hasMorePosts = space.posts.length > POST_PAGE_SIZE;
   return {
     ...space,
-    posts: await enrichAuthors(space.posts.slice(0, POST_PAGE_SIZE)),
+    posts: (await enrichAuthors(space.posts.slice(0, POST_PAGE_SIZE))).map(
+      (post) => ({
+        ...post,
+        readingMinutes: readingMinutes(post.content),
+      })
+    ),
     page: currentPage,
     hasMorePosts,
   };
@@ -217,16 +243,20 @@ export const getCommunityPost = async (
       select: {
         id: true,
         title: true,
+        slug: true,
         content: true,
         contentJson: true,
+        tags: true,
         authorId: true,
         isPinned: true,
+        publishedAt: true,
         createdAt: true,
         space: { select: { title: true, slug: true } },
         _count: {
           select: { comments: { where: { deletedAt: null } }, votes: true },
         },
         votes: { where: { memberId }, select: { id: true } },
+        bookmarks: { where: { memberId }, select: { id: true } },
       },
     }),
     database.communityComment.findMany({
@@ -286,6 +316,7 @@ export const getCommunityPost = async (
     profile:
       (await getProfilesByClerkIds([post.authorId])).get(post.authorId) ?? null,
     comments: await enrichAuthors(visibleComments),
+    readingMinutes: readingMinutes(post.content),
     commentsPage: currentPage,
     hasMoreComments,
   };
@@ -298,8 +329,10 @@ export const getMyCommunityPosts = async (memberId: string) => {
     select: {
       id: true,
       title: true,
+      slug: true,
       content: true,
       status: true,
+      tags: true,
       isPinned: true,
       createdAt: true,
       updatedAt: true,
@@ -310,6 +343,41 @@ export const getMyCommunityPosts = async (memberId: string) => {
     },
   });
   return posts;
+};
+
+export const getSavedCommunityPosts = async (memberId: string) => {
+  const bookmarks = await database.communityBookmark.findMany({
+    where: {
+      memberId,
+      post: { status: ContentStatus.PUBLISHED, deletedAt: null },
+    },
+    orderBy: { createdAt: "desc" },
+    select: {
+      createdAt: true,
+      post: {
+        select: {
+          id: true,
+          title: true,
+          slug: true,
+          content: true,
+          tags: true,
+          publishedAt: true,
+          createdAt: true,
+          authorId: true,
+          space: { select: { title: true, slug: true } },
+          _count: {
+            select: { comments: { where: { deletedAt: null } }, votes: true },
+          },
+        },
+      },
+    },
+  });
+
+  const posts = bookmarks.map(({ createdAt: savedAt, post }) => ({
+    ...post,
+    savedAt,
+  }));
+  return enrichAuthors(posts);
 };
 
 export const getStaffCommunitySpaces = async () =>

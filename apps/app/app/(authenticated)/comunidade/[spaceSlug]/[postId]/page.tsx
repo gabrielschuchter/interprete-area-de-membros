@@ -1,6 +1,11 @@
 import { Badge } from "@repo/design-system/components/ui/badge";
 import { Button } from "@repo/design-system/components/ui/button";
-import { ArrowLeftIcon, MessageCircleIcon, ThumbsUpIcon } from "lucide-react";
+import {
+  ArrowLeftIcon,
+  BookmarkIcon,
+  MessageCircleIcon,
+  ThumbsUpIcon,
+} from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MemberIdentity } from "@/components/community/member-identity";
@@ -13,6 +18,7 @@ import {
   createComment,
   setPostStatus,
   softDeletePost,
+  toggleBookmark,
   toggleCommentVote,
   togglePostPin,
   togglePostVote,
@@ -146,6 +152,122 @@ const CommentThread = ({
   );
 };
 
+type CommunityPost = NonNullable<Awaited<ReturnType<typeof getCommunityPost>>>;
+
+interface CommunityPostHeaderProperties {
+  readonly memberId: string;
+  readonly post: CommunityPost;
+  readonly role: string;
+}
+
+const CommunityPostHeader = ({
+  memberId,
+  post,
+  role,
+}: CommunityPostHeaderProperties) => (
+  <article className="mt-8 border-border border-b pb-10">
+    <div className="flex flex-wrap items-center gap-2">
+      <Badge variant={post.votes.length > 0 ? "default" : "outline"}>
+        <ThumbsUpIcon aria-hidden="true" /> {post._count.votes} apoios
+      </Badge>
+      <span className="text-muted-foreground text-xs">
+        {post._count.comments} respostas
+      </span>
+      {post.isPinned && <Badge variant="secondary">Fixado</Badge>}
+    </div>
+    <div className="mt-5">
+      <MemberIdentity
+        authorId={post.authorId}
+        profile={post.profile ?? undefined}
+      />
+    </div>
+    <h1 className="mt-5 max-w-4xl font-display text-5xl leading-[1.02] sm:text-6xl">
+      {post.title}
+    </h1>
+    <div className="lesson-document mt-7 max-w-3xl text-lg">
+      {post.contentJson ? (
+        <RichDocument value={post.contentJson} />
+      ) : (
+        <p className="whitespace-pre-wrap text-muted-foreground leading-8">
+          {post.content}
+        </p>
+      )}
+    </div>
+    <div className="mt-7 flex flex-wrap items-center gap-3">
+      <form action={togglePostVote}>
+        <input name="postId" type="hidden" value={post.id} />
+        <input name="spaceSlug" type="hidden" value={post.space.slug} />
+        <Button
+          size="sm"
+          type="submit"
+          variant={post.votes.length > 0 ? "default" : "outline"}
+        >
+          <ThumbsUpIcon aria-hidden="true" />{" "}
+          {post.votes.length > 0 ? "Apoiado" : "Apoiar"}
+        </Button>
+      </form>
+      <form action={toggleBookmark}>
+        <input name="postId" type="hidden" value={post.id} />
+        <input name="spaceSlug" type="hidden" value={post.space.slug} />
+        <Button size="sm" type="submit" variant="ghost">
+          <BookmarkIcon
+            aria-hidden="true"
+            fill={post.bookmarks.length > 0 ? "currentColor" : "none"}
+          />{" "}
+          {post.bookmarks.length > 0 ? "Salvo" : "Salvar"}
+        </Button>
+      </form>
+      <span className="text-muted-foreground text-xs">
+        {post.readingMinutes} min de leitura
+      </span>
+    </div>
+    <div className="mt-4 flex flex-wrap gap-2">
+      {post.tags.map((tag) => (
+        <span className="text-muted-foreground text-xs" key={tag}>
+          #{tag}
+        </span>
+      ))}
+    </div>
+    {(post.authorId === memberId || role === "TEACHER" || role === "ADMIN") && (
+      <div className="mt-4 flex flex-wrap gap-3 border-border border-t pt-4">
+        {post.authorId === memberId && (
+          <Button asChild size="sm" variant="outline">
+            <Link href={`/comunidade/${post.space.slug}/${post.id}/editar`}>
+              Editar tópico
+            </Link>
+          </Button>
+        )}
+        <form action={setPostStatus}>
+          <input name="postId" type="hidden" value={post.id} />
+          <input name="spaceSlug" type="hidden" value={post.space.slug} />
+          <input name="status" type="hidden" value="ARCHIVED" />
+          <Button size="sm" type="submit" variant="ghost">
+            Arquivar
+          </Button>
+        </form>
+        {(role === "TEACHER" || role === "ADMIN") && (
+          <form action={togglePostPin}>
+            <input name="postId" type="hidden" value={post.id} />
+            <input name="spaceSlug" type="hidden" value={post.space.slug} />
+            <Button size="sm" type="submit" variant="ghost">
+              {post.isPinned ? "Desfixar" : "Fixar tópico"}
+            </Button>
+          </form>
+        )}
+        {post.authorId === memberId && (
+          <form action={softDeletePost}>
+            <input name="postId" type="hidden" value={post.id} />
+            <input name="spaceSlug" type="hidden" value={post.space.slug} />
+            <Button size="sm" type="submit" variant="ghost">
+              Excluir
+            </Button>
+          </form>
+        )}
+      </div>
+    )}
+  </article>
+);
+
 const CommunityPostPage = async ({
   params,
   searchParams,
@@ -176,96 +298,7 @@ const CommunityPostPage = async ({
             <ArrowLeftIcon aria-hidden="true" /> {post.space.title}
           </Link>
         </Button>
-        <article className="mt-8 border-border border-b pb-10">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant={post.votes.length > 0 ? "default" : "outline"}>
-              <ThumbsUpIcon aria-hidden="true" /> {post._count.votes} apoios
-            </Badge>
-            <span className="text-muted-foreground text-xs">
-              {post._count.comments} respostas
-            </span>
-            {post.isPinned && <Badge variant="secondary">Fixado</Badge>}
-          </div>
-          <div className="mt-5">
-            <MemberIdentity
-              authorId={post.authorId}
-              profile={post.profile ?? undefined}
-            />
-          </div>
-          <h1 className="mt-5 max-w-4xl font-display text-5xl leading-[1.02] sm:text-6xl">
-            {post.title}
-          </h1>
-          <div className="lesson-document mt-7 max-w-3xl text-lg">
-            {post.contentJson ? (
-              <RichDocument value={post.contentJson} />
-            ) : (
-              <p className="whitespace-pre-wrap text-muted-foreground leading-8">
-                {post.content}
-              </p>
-            )}
-          </div>
-          <form action={togglePostVote} className="mt-7">
-            <input name="postId" type="hidden" value={post.id} />
-            <input name="spaceSlug" type="hidden" value={post.space.slug} />
-            <Button
-              size="sm"
-              type="submit"
-              variant={post.votes.length > 0 ? "default" : "outline"}
-            >
-              <ThumbsUpIcon aria-hidden="true" />{" "}
-              {post.votes.length > 0 ? "Apoiado" : "Apoiar"}
-            </Button>
-          </form>
-          {(post.authorId === memberId ||
-            role === "TEACHER" ||
-            role === "ADMIN") && (
-            <div className="mt-4 flex flex-wrap gap-3 border-border border-t pt-4">
-              {post.authorId === memberId && (
-                <Button asChild size="sm" variant="outline">
-                  <Link
-                    href={`/comunidade/${post.space.slug}/${post.id}/editar`}
-                  >
-                    Editar tópico
-                  </Link>
-                </Button>
-              )}
-              <form action={setPostStatus}>
-                <input name="postId" type="hidden" value={post.id} />
-                <input name="spaceSlug" type="hidden" value={post.space.slug} />
-                <input name="status" type="hidden" value="ARCHIVED" />
-                <Button size="sm" type="submit" variant="ghost">
-                  Arquivar
-                </Button>
-              </form>
-              {(role === "TEACHER" || role === "ADMIN") && (
-                <form action={togglePostPin}>
-                  <input name="postId" type="hidden" value={post.id} />
-                  <input
-                    name="spaceSlug"
-                    type="hidden"
-                    value={post.space.slug}
-                  />
-                  <Button size="sm" type="submit" variant="ghost">
-                    {post.isPinned ? "Desfixar" : "Fixar tópico"}
-                  </Button>
-                </form>
-              )}
-              {post.authorId === memberId && (
-                <form action={softDeletePost}>
-                  <input name="postId" type="hidden" value={post.id} />
-                  <input
-                    name="spaceSlug"
-                    type="hidden"
-                    value={post.space.slug}
-                  />
-                  <Button size="sm" type="submit" variant="ghost">
-                    Excluir
-                  </Button>
-                </form>
-              )}
-            </div>
-          )}
-        </article>
+        <CommunityPostHeader memberId={memberId} post={post} role={role} />
         <section aria-labelledby="comments-heading" className="mt-10">
           <div className="flex items-center justify-between border-border border-b pb-3">
             <h2 className="font-display text-3xl" id="comments-heading">

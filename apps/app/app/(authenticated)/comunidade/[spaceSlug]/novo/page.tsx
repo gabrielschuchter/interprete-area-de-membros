@@ -1,13 +1,11 @@
 import { Button } from "@repo/design-system/components/ui/button";
-import { Input } from "@repo/design-system/components/ui/input";
-import { ArrowLeftIcon, SaveIcon } from "lucide-react";
+import { ArrowLeftIcon } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { TopicEditor } from "@/components/community/topic-editor";
-import { getCommunitySpace } from "@/lib/community";
+import { NewTopicComposer } from "@/components/community/new-topic-composer";
+import { getCommunitySpaces } from "@/lib/community";
 import { requireMemberId } from "@/lib/learning";
 import { MemberHeader } from "../../../components/member-header";
-import { createPost } from "../../actions";
 
 interface NewPostPageProperties {
   readonly params: Promise<{ spaceSlug: string }>;
@@ -15,8 +13,9 @@ interface NewPostPageProperties {
 
 const NewPostPage = async ({ params }: NewPostPageProperties) => {
   const { spaceSlug } = await params;
-  const memberId = await requireMemberId();
-  const space = await getCommunitySpace(spaceSlug, memberId);
+  await requireMemberId();
+  const spaces = await getCommunitySpaces();
+  const space = spaces.find(({ slug }) => slug === spaceSlug);
   if (!space) {
     notFound();
   }
@@ -41,51 +40,11 @@ const NewPostPage = async ({ params }: NewPostPageProperties) => {
             pessoas a pensar junto.
           </p>
         </header>
-        <form
-          action={createPost}
-          className="paper-surface mt-10 space-y-7 border p-5 sm:p-9"
-        >
-          <input name="spaceId" type="hidden" value={space.id} />
-          <input name="spaceSlug" type="hidden" value={space.slug} />
-          <label className="block" htmlFor="post-title">
-            <span className="brand-eyebrow">Título</span>
-            <Input
-              className="mt-2 h-12 font-display text-xl"
-              id="post-title"
-              name="title"
-              placeholder="Como vocês interpretam este resultado?"
-              required
-            />
-          </label>
-          <div className="block">
-            <span className="brand-eyebrow">Texto</span>
-            <span className="mt-2 block text-muted-foreground text-sm">
-              Use títulos, listas, citações e links para dar forma ao
-              raciocínio.
-            </span>
-            <div className="mt-3">
-              <TopicEditor />
-            </div>
-          </div>
-          <div className="flex flex-col-reverse gap-3 border-border border-t pt-6 sm:flex-row sm:items-center sm:justify-between">
-            <Button asChild variant="ghost">
-              <Link href={`/comunidade/${space.slug}`}>Cancelar</Link>
-            </Button>
-            <div className="flex flex-wrap justify-end gap-3">
-              <Button
-                name="status"
-                type="submit"
-                value="DRAFT"
-                variant="outline"
-              >
-                <SaveIcon aria-hidden="true" /> Salvar rascunho
-              </Button>
-              <Button name="status" type="submit" value="PUBLISHED">
-                Publicar tópico
-              </Button>
-            </div>
-          </div>
-        </form>
+        <NewTopicComposer
+          initialSpaceId={space.id}
+          initialSpaceSlug={space.slug}
+          spaces={spaces.map(({ id, slug, title }) => ({ id, slug, title }))}
+        />
       </main>
     </div>
   );

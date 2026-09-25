@@ -15,6 +15,7 @@ import {
   useSidebar,
 } from "@repo/design-system/components/ui/sidebar";
 import {
+  BookmarkIcon,
   BookOpenIcon,
   CalendarDaysIcon,
   CheckSquareIcon,
@@ -74,6 +75,19 @@ export const GlobalSidebar = ({
                   <span className="hidden font-display text-2xl text-sidebar-foreground group-data-[collapsible=icon]:inline">
                     I.
                   </span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                className="rounded-sm"
+                isActive={pathname === "/comunidade/salvos"}
+                tooltip="Salvos"
+              >
+                <Link href="/comunidade/salvos">
+                  <BookmarkIcon />
+                  <span>Salvos</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>

@@ -1,22 +1,15 @@
 import { Button } from "@repo/design-system/components/ui/button";
-import { Input } from "@repo/design-system/components/ui/input";
-import { ArrowLeftIcon, SaveIcon } from "lucide-react";
+import { ArrowLeftIcon } from "lucide-react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
-import { TopicEditor } from "@/components/community/topic-editor";
+import { NewTopicComposer } from "@/components/community/new-topic-composer";
 import { getCommunitySpaces } from "@/lib/community";
 import { requireMemberId } from "@/lib/learning";
 import { MemberHeader } from "../../components/member-header";
-import { createPost } from "../actions";
 
 const NewCommunityTopicPage = async () => {
   await requireMemberId();
   const spaces = await getCommunitySpaces();
   const firstSpace = spaces[0];
-
-  if (!firstSpace) {
-    notFound();
-  }
 
   return (
     <div className="min-h-svh bg-background">
@@ -38,64 +31,17 @@ const NewCommunityTopicPage = async () => {
             pessoas a pensar junto.
           </p>
         </header>
-        <form
-          action={createPost}
-          className="paper-surface mt-10 space-y-7 border p-5 sm:p-9"
-        >
-          <label className="block" htmlFor="topic-space">
-            <span className="brand-eyebrow">Espaço</span>
-            <select
-              className="mt-2 h-10 w-full rounded-sm border bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/35"
-              defaultValue={firstSpace.id}
-              id="topic-space"
-              name="spaceId"
-            >
-              {spaces.map((space) => (
-                <option key={space.id} value={space.id}>
-                  {space.title}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="block" htmlFor="topic-title">
-            <span className="brand-eyebrow">Título</span>
-            <Input
-              className="mt-2 h-12 font-display text-xl"
-              id="topic-title"
-              name="title"
-              placeholder="O que você quer investigar?"
-              required
-            />
-          </label>
-          <div className="block">
-            <span className="brand-eyebrow">Texto</span>
-            <span className="mt-2 block text-muted-foreground text-sm">
-              Use títulos, listas, citações e links para dar forma ao
-              raciocínio.
-            </span>
-            <div className="mt-3">
-              <TopicEditor />
-            </div>
+        {firstSpace ? (
+          <NewTopicComposer
+            initialSpaceId={firstSpace.id}
+            initialSpaceSlug={firstSpace.slug}
+            spaces={spaces.map(({ id, slug, title }) => ({ id, slug, title }))}
+          />
+        ) : (
+          <div className="paper-surface mt-10 border p-8 text-muted-foreground">
+            Ainda não há um espaço publicado para receber tópicos.
           </div>
-          <div className="flex flex-col-reverse gap-3 border-border border-t pt-6 sm:flex-row sm:items-center sm:justify-between">
-            <Button asChild variant="ghost">
-              <Link href="/comunidade">Cancelar</Link>
-            </Button>
-            <div className="flex flex-wrap justify-end gap-3">
-              <Button
-                name="status"
-                type="submit"
-                value="DRAFT"
-                variant="outline"
-              >
-                <SaveIcon aria-hidden="true" /> Salvar rascunho
-              </Button>
-              <Button name="status" type="submit" value="PUBLISHED">
-                Publicar tópico
-              </Button>
-            </div>
-          </div>
-        </form>
+        )}
       </main>
     </div>
   );

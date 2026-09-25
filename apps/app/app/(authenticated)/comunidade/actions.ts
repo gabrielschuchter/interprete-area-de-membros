@@ -30,6 +30,59 @@ const postInput = z.object({
   content: z.string().trim().min(1).max(40_000),
 });
 
+const draftTitle = "Rascunho sem título";
+const tagSeparatorPattern = /[\n,]/;
+const tagPrefixPattern = /^#/;
+const tagCharactersPattern = /[^a-z0-9áàâãéêíóôõúçü -]/gi;
+
+const emptyDocument = {
+  type: "doc",
+  content: [{ type: "paragraph" }],
+} as const;
+
+const parseTags = (value: FormDataEntryValue | null) =>
+  [
+    ...new Set(
+      textValue(value)
+        .split(tagSeparatorPattern)
+        .map((tag) =>
+          tag
+            .trim()
+            .replace(tagPrefixPattern, "")
+            .toLowerCase()
+            .replace(tagCharactersPattern, "")
+        )
+        .filter(Boolean)
+        .map((tag) => tag.slice(0, 32))
+    ),
+  ].slice(0, 5);
+
+const slugFromTitle = (value: string) =>
+  value
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 70) || "topico";
+
+const uniquePostSlug = async (title: string, postId?: string) => {
+  const base = slugFromTitle(title);
+  let slug = base;
+  let suffix = 2;
+  while (true) {
+    const existing = await database.communityPost.findUnique({
+      where: { slug },
+      select: { id: true },
+    });
+    if (!existing || existing.id === postId) {
+      return slug;
+    }
+    slug = `${base}-${suffix}`.slice(0, 80);
+    suffix += 1;
+  }
+};
+
 const contentFromForm = (formData: FormData) => {
   const rawJson = textValue(formData.get("contentJson"));
   const rawContent = textValue(formData.get("content"));
@@ -76,6 +129,7 @@ export const createPost = async (formData: FormData) => {
   }
 
   const { document, plainText } = contentFromForm(formData);
+  const tags = parseTags(formData.get("tags"));
   const parsed = postInput.safeParse({
     title: textValue(formData.get("title")),
     content: plainText,
@@ -98,6 +152,10 @@ export const createPost = async (formData: FormData) => {
   }
 
   await getOrCreateProfile(userId);
+  const slug =
+    status === ContentStatus.PUBLISHED
+      ? await uniquePostSlug(parsed.data.title)
+      : null;
   const post = await database.communityPost.create({
     data: {
       spaceId,
@@ -105,7 +163,10 @@ export const createPost = async (formData: FormData) => {
       title: parsed.data.title,
       content: parsed.data.content,
       contentJson: document as Prisma.InputJsonValue | undefined,
+      tags,
+      slug,
       status,
+      publishedAt: status === ContentStatus.PUBLISHED ? new Date() : null,
     },
     select: { id: true },
   });
@@ -118,6 +179,91 @@ export const createPost = async (formData: FormData) => {
   );
 };
 
+export const createDraft = async (formData: FormData) => {
+  const userId = await currentUserId();
+  const spaceId = textValue(formData.get("spaceId"));
+  if (!(userId && spaceId)) {
+    return { ok: false as const };
+  }
+
+  const space = await database.communitySpace.findFirst({
+    where: { id: spaceId, status: ContentStatus.PUBLISHED },
+    select: { id: true, slug: true },
+  });
+  if (!space) {
+    return { ok: false as const };
+  }
+
+  await getOrCreateProfile(userId);
+  const post = await database.communityPost.create({
+    data: {
+      spaceId: space.id,
+      authorId: userId,
+      title: draftTitle,
+      content: "",
+      contentJson: emptyDocument as Prisma.InputJsonValue,
+      status: ContentStatus.DRAFT,
+      tags: [],
+    },
+    select: { id: true },
+  });
+
+  revalidateCommunity(space.slug, post.id);
+  return { ok: true as const, postId: post.id, spaceSlug: space.slug };
+};
+
+export const updateDraft = async (formData: FormData) => {
+  const userId = await currentUserId();
+  const postId = textValue(formData.get("postId"));
+  const spaceId = textValue(formData.get("spaceId"));
+  const currentSpaceSlug = textValue(formData.get("spaceSlug"));
+  if (!(userId && postId && spaceId)) {
+    return { ok: false as const };
+  }
+
+  const space = await database.communitySpace.findFirst({
+    where: { id: spaceId, status: ContentStatus.PUBLISHED },
+    select: { id: true, slug: true },
+  });
+  if (!space) {
+    return { ok: false as const };
+  }
+
+  const { document, plainText } = contentFromForm(formData);
+  const post = await database.communityPost.findFirst({
+    where: {
+      id: postId,
+      authorId: userId,
+      status: ContentStatus.DRAFT,
+      deletedAt: null,
+    },
+    select: { id: true },
+  });
+  if (!post) {
+    return { ok: false as const };
+  }
+
+  const title = textValue(formData.get("title")) || draftTitle;
+  await database.communityPost.update({
+    where: { id: post.id },
+    data: {
+      spaceId: space.id,
+      title: title.slice(0, 180),
+      content: plainText.slice(0, 40_000),
+      contentJson: document as Prisma.InputJsonValue | undefined,
+      tags: parseTags(formData.get("tags")),
+    },
+  });
+
+  revalidateCommunity(currentSpaceSlug, post.id);
+  revalidateCommunity(space.slug, post.id);
+  return {
+    ok: true as const,
+    savedAt: new Date().toISOString(),
+    spaceSlug: space.slug,
+  };
+};
+
 export const updatePost = async (formData: FormData) => {
   const userId = await currentUserId();
   const postId = textValue(formData.get("postId"));
@@ -127,6 +273,7 @@ export const updatePost = async (formData: FormData) => {
   }
 
   const { document, plainText } = contentFromForm(formData);
+  const tags = parseTags(formData.get("tags"));
   const parsed = postInput.safeParse({
     title: textValue(formData.get("title")),
     content: plainText,
@@ -137,7 +284,7 @@ export const updatePost = async (formData: FormData) => {
 
   const post = await database.communityPost.findFirst({
     where: { id: postId, space: { slug: spaceSlug }, deletedAt: null },
-    select: { id: true, authorId: true },
+    select: { id: true, authorId: true, status: true, slug: true },
   });
   if (!post || post.authorId !== userId) {
     return;
@@ -149,6 +296,10 @@ export const updatePost = async (formData: FormData) => {
       title: parsed.data.title,
       content: parsed.data.content,
       contentJson: document as Prisma.InputJsonValue | undefined,
+      tags,
+      ...(post.status === ContentStatus.PUBLISHED && !post.slug
+        ? { slug: await uniquePostSlug(parsed.data.title, post.id) }
+        : {}),
     },
   });
   revalidateCommunity(spaceSlug, postId);
@@ -177,7 +328,7 @@ export const setPostStatus = async (formData: FormData) => {
 
   const post = await database.communityPost.findFirst({
     where: { id: postId, space: { slug: spaceSlug }, deletedAt: null },
-    select: { authorId: true },
+    select: { authorId: true, title: true, slug: true, publishedAt: true },
   });
   const role = await getMemberRole(userId);
   if (!(post && canManagePost(post.authorId, userId, role))) {
@@ -186,7 +337,15 @@ export const setPostStatus = async (formData: FormData) => {
 
   await database.communityPost.update({
     where: { id: postId },
-    data: { status: requestedStatus as ContentStatus },
+    data: {
+      status: requestedStatus as ContentStatus,
+      ...(requestedStatus === ContentStatus.PUBLISHED
+        ? {
+            publishedAt: post.publishedAt ?? new Date(),
+            slug: post.slug ?? (await uniquePostSlug(post.title, postId)),
+          }
+        : {}),
+    },
   });
   revalidateCommunity(spaceSlug, postId);
   let destination = `/comunidade/${spaceSlug}/${postId}`;
@@ -196,6 +355,41 @@ export const setPostStatus = async (formData: FormData) => {
     destination = "/comunidade/meus-topicos";
   }
   redirect(destination);
+};
+
+export const toggleBookmark = async (formData: FormData) => {
+  const userId = await currentUserId();
+  const postId = textValue(formData.get("postId"));
+  const spaceSlug = textValue(formData.get("spaceSlug"));
+  if (!(userId && postId && spaceSlug)) {
+    return;
+  }
+
+  const post = await database.communityPost.findFirst({
+    where: {
+      id: postId,
+      status: ContentStatus.PUBLISHED,
+      deletedAt: null,
+      space: { slug: spaceSlug, status: ContentStatus.PUBLISHED },
+    },
+    select: { id: true },
+  });
+  if (!post) {
+    return;
+  }
+
+  const existing = await database.communityBookmark.findUnique({
+    where: { postId_memberId: { postId, memberId: userId } },
+    select: { id: true },
+  });
+  if (existing) {
+    await database.communityBookmark.delete({ where: { id: existing.id } });
+  } else {
+    await database.communityBookmark.create({
+      data: { postId, memberId: userId },
+    });
+  }
+  revalidateCommunity(spaceSlug, postId);
 };
 
 export const createComment = async (formData: FormData) => {
