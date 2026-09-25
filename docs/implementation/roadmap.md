@@ -185,6 +185,9 @@ Criar espaços de discussão com posts, comentários threadados e reação posit
 - posts rich-text;
 - comentários com nesting;
 - voto/reação única e reversível;
+- rascunho com autosave persistente;
+- bookmarks/salvos por membro;
+- tags simples e metadados de publicação;
 - moderação mínima e soft delete.
 
 ### Principais entidades
@@ -194,6 +197,7 @@ Criar espaços de discussão com posts, comentários threadados e reação posit
 - `CommunityComment`
 - `PostVote`
 - `CommentVote`
+- `CommunityBookmark`
 - `Profile` (vinculado ao `clerkUserId`, enquanto `Member.role` permanece a fonte de autorização)
 
 ### Principais rotas
@@ -201,6 +205,7 @@ Criar espaços de discussão com posts, comentários threadados e reação posit
 - `/comunidade`
 - `/comunidade/novo`
 - `/comunidade/meus-topicos`
+- `/comunidade/salvos`
 - `/comunidade/[spaceSlug]`
 - `/comunidade/[spaceSlug]/novo`
 - `/comunidade/[spaceSlug]/[postId]`
@@ -210,6 +215,8 @@ Criar espaços de discussão com posts, comentários threadados e reação posit
 
 - membro cria post, comenta e vota conforme autorização;
 - constraints impedem voto duplicado;
+- rascunho é salvo automaticamente e pode ser retomado após reload;
+- membro salva/remove tópico e encontra a publicação em `/comunidade/salvos`;
 - threads continuam íntegras após soft delete;
 - feed e comentários possuem paginação e funcionam no mobile.
 
@@ -229,6 +236,8 @@ Criar espaços de discussão com posts, comentários threadados e reação posit
 - tópicos suportam `DRAFT`, `PUBLISHED` e `ARCHIVED`, edição do autor, soft delete, fixação para professor/admin e consulta em `/comunidade/meus-topicos`;
 - respostas são editáveis pelo próprio autor, possuem identidade pública e preservam `parentId` para threading futuro;
 - `/perfil` edita username, avatar URL opcional, bio, contexto, links e interesses; `/membros/[username]` omite e-mail e exibe apenas atividade publicada;
+- rascunhos são criados no início do composer, salvos por server action com debounce, possuem preview baseado no mesmo renderer publicado e podem receber até cinco tags;
+- tópicos publicados recebem slug/metadados de publicação, e `/comunidade/salvos` persiste bookmarks com unique composto;
 - lint, typecheck, boundaries, testes e build foram executados após essa evolução; E2E autenticado e persistência via processo Prisma continuam pendentes por credencial local.
 
 ## Phase 5 — Meetings
