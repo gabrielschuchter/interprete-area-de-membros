@@ -1,5 +1,22 @@
 export const dynamic = "force-dynamic";
 
+const sanitizeDatabaseError = (error: unknown) => {
+  if (!(error instanceof Error)) {
+    return { name: "UnknownError", message: "Unknown database error" };
+  }
+
+  const candidate = error as Error & { code?: string };
+  const message = error.message
+    .replace(/postgres(?:ql)?:\/\/\S+/gi, "[REDACTED_DATABASE_URL]")
+    .replace(/password=[^\s&]+/gi, "password=[REDACTED]");
+
+  return {
+    name: error.name,
+    code: candidate.code,
+    message,
+  };
+};
+
 export const GET = async (request?: Request): Promise<Response> => {
   const deep = request
     ? new URL(request.url).searchParams.get("deep") === "1"
@@ -41,7 +58,9 @@ export const GET = async (request?: Request): Promise<Response> => {
       },
       { status: authConfigured ? 200 : 503 }
     );
-  } catch {
+  } catch (error) {
+    console.error("[health] database check failed", sanitizeDatabaseError(error));
+
     return Response.json(
       {
         ok: false,
