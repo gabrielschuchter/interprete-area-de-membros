@@ -22,7 +22,7 @@ Atualizada em 24/09/2026. A implementação de código avançou por todas as sup
 | 11 | QA funcional | IN PROGRESS | check/typecheck/boundaries/tests/build passam; fluxo real autenticado não executado |
 | 12 | Branding/UX final | IN PROGRESS | tokens e superfícies Interprete preservados; QA visual de runtime pendente |
 | 13 | Hardening | IN PROGRESS | autorização centralizada, validação e RLS deny-by-default; auditoria runtime pendente |
-| 14 | Preparação de deploy | NOT STARTED | deliberadamente fora desta execução; Vercel não foi tocado |
+| 14 | Preparação de deploy | IN PROGRESS | projetos Vercel do app/API e variáveis Clerk existem; Preview aguarda `DATABASE_URL` real e validação runtime |
 
 O bloqueio atual é específico: os arquivos locais `apps/app/.env.local` e `packages/database/.env` existem, mas as URLs do banco ainda são placeholders. Nenhum valor secreto é registrado neste documento.
 
