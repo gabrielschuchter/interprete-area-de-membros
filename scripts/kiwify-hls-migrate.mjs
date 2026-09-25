@@ -41,6 +41,14 @@ const minFreeBytes =
   Number.isFinite(configuredMinFreeBytes) && configuredMinFreeBytes > 0
     ? configuredMinFreeBytes
     : DEFAULT_MIN_FREE_BYTES;
+const configuredSegmentConcurrency = Number(
+  process.env.KIWIFY_SEGMENT_CONCURRENCY ?? 3
+);
+const segmentConcurrency =
+  Number.isFinite(configuredSegmentConcurrency) &&
+  configuredSegmentConcurrency > 0
+    ? Math.min(3, Math.floor(configuredSegmentConcurrency))
+    : 3;
 
 class LowDiskSpaceError extends Error {}
 class ProtectedMediaError extends Error {}
@@ -233,6 +241,7 @@ const parseVariant = (text, variantUrl) => {
       .reverse()
       .find((candidate) => candidate.startsWith("#EXTINF:"));
     segments.push({
+      lineIndex: index,
       sourceUrl: new URL(line, variantUrl).href,
       durationSeconds: Number(
         durationLine?.match(HLS_DURATION_PATTERN)?.[1] ?? 0
@@ -421,57 +430,70 @@ try {
       const playlistLines = [...parsed.lines];
       let totalBytes = 0;
       let totalDuration = 0;
-      let segmentNumber = 0;
       for (
-        let lineIndex = 0;
-        lineIndex < playlistLines.length;
-        lineIndex += 1
+        let batchStart = 0;
+        batchStart < parsed.segments.length;
+        batchStart += segmentConcurrency
       ) {
-        const line = playlistLines[lineIndex].trim();
-        if (!line || line.startsWith("#")) {
-          continue;
-        }
-        const segment = parsed.segments[segmentNumber];
-        const segmentName = `segment-${String(segmentNumber).padStart(6, "0")}.ts`;
-        const objectPath = `${basePath}/${segmentName}`;
-        let segmentState = item.segments[segmentNumber];
-        if (!segmentState) {
-          segmentState = {
-            objectPath,
-            sourceUrl: segment.sourceUrl,
-            status: "PENDING",
-          };
-          item.segments[segmentNumber] = segmentState;
-        }
-        let segmentSize = Number(segmentState.sizeBytes ?? 0);
-        let segmentIsValid = segmentState.status === "REMOTE_VALIDATED";
-        if (!segmentIsValid && segmentSize > 0) {
-          segmentIsValid = await validateRemoteObject(objectPath, segmentSize);
-        }
-        if (!segmentIsValid) {
-          await ensureFreeSpace();
-          segmentState.status = "UPLOADING";
-          await writeJson(checkpointPath, checkpoint);
-          segmentSize = await uploadSegment(segment, objectPath);
-          segmentState.sizeBytes = segmentSize;
-          if (!(await validateRemoteObject(objectPath, segmentSize))) {
-            throw new Error(
-              `Remote segment validation failed at ${segmentNumber}.`
-            );
-          }
-          segmentState.status = "REMOTE_VALIDATED";
+        const batch = parsed.segments.slice(
+          batchStart,
+          batchStart + segmentConcurrency
+        );
+        const results = await Promise.all(
+          batch.map(async (segment, batchOffset) => {
+            const segmentNumber = batchStart + batchOffset;
+            const segmentName = `segment-${String(segmentNumber).padStart(6, "0")}.ts`;
+            const objectPath = `${basePath}/${segmentName}`;
+            let segmentState = item.segments[segmentNumber];
+            if (!segmentState) {
+              segmentState = {
+                objectPath,
+                sourceUrl: segment.sourceUrl,
+                status: "PENDING",
+              };
+              item.segments[segmentNumber] = segmentState;
+            }
+            let segmentSize = Number(segmentState.sizeBytes ?? 0);
+            let segmentIsValid = segmentState.status === "REMOTE_VALIDATED";
+            if (!segmentIsValid && segmentSize > 0) {
+              segmentIsValid = await validateRemoteObject(
+                objectPath,
+                segmentSize
+              );
+            }
+            if (!segmentIsValid) {
+              await ensureFreeSpace();
+              segmentState.status = "UPLOADING";
+              segmentSize = await uploadSegment(segment, objectPath);
+              segmentState.sizeBytes = segmentSize;
+              if (!(await validateRemoteObject(objectPath, segmentSize))) {
+                throw new Error(
+                  `Remote segment validation failed at ${segmentNumber}.`
+                );
+              }
+              segmentState.status = "REMOTE_VALIDATED";
+            }
+            return {
+              segment,
+              segmentName,
+              segmentNumber,
+              segmentSize,
+            };
+          })
+        );
+
+        for (const result of results) {
+          totalBytes += result.segmentSize;
+          totalDuration += result.segment.durationSeconds;
+          playlistLines[result.segment.lineIndex] = result.segmentName;
           await log({
             key,
             index: entry.index,
             status: "REMOTE_VALIDATED",
-            segment: segmentNumber,
+            segment: result.segmentNumber,
           });
-          await writeJson(checkpointPath, checkpoint);
         }
-        totalBytes += segmentSize;
-        totalDuration += segment.durationSeconds;
-        playlistLines[lineIndex] = segmentName;
-        segmentNumber += 1;
+        await writeJson(checkpointPath, checkpoint);
       }
 
       const playlistPath = `${basePath}/index.m3u8`;
