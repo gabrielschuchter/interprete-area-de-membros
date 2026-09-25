@@ -37,4 +37,27 @@ describe("community rich content", () => {
   test("rejects a non-document root", () => {
     expect(sanitizeRichDocument({ type: "paragraph", content: [] })).toBeNull();
   });
+
+  test("allows safe images and removes unsafe image sources", () => {
+    const document = sanitizeRichDocument({
+      type: "doc",
+      content: [
+        {
+          type: "image",
+          attrs: {
+            src: "https://cdn.example.com/figure.png",
+            alt: "Figura de estudo",
+          },
+        },
+        {
+          type: "image",
+          attrs: { src: "javascript:alert(1)" },
+        },
+      ],
+    });
+
+    expect(document).not.toBeNull();
+    expect(JSON.stringify(document)).toContain("cdn.example.com/figure.png");
+    expect(JSON.stringify(document)).not.toContain("javascript:");
+  });
 });

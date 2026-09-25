@@ -10,6 +10,7 @@ const allowedNodes = new Set([
   "blockquote",
   "horizontalRule",
   "codeBlock",
+  "image",
 ]);
 
 const allowedMarks = new Set(["bold", "italic", "code", "link"]);
@@ -37,13 +38,15 @@ const sanitizeAttrs = (value: unknown) => {
   }
   const attrs: Record<string, string | number> = {};
   for (const [key, attr] of Object.entries(value)) {
-    if (key === "href" && typeof attr === "string") {
+    if ((key === "href" || key === "src") && typeof attr === "string") {
       const href = safeHref(attr);
       if (href) {
         attrs[key] = href;
       }
     } else if (key === "level" && typeof attr === "number") {
       attrs[key] = Math.min(3, Math.max(2, attr));
+    } else if ((key === "alt" || key === "title") && typeof attr === "string") {
+      attrs[key] = attr.slice(0, 240);
     }
   }
   return Object.keys(attrs).length > 0 ? attrs : undefined;
@@ -89,6 +92,9 @@ const sanitizeNode = (
   }
   const attrs = sanitizeAttrs(value.attrs);
   const marks = sanitizeMarks(value.marks);
+  if (value.type === "image" && (!attrs || typeof attrs.src !== "string")) {
+    return null;
+  }
   if (attrs) {
     node.attrs = attrs;
   }

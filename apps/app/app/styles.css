@@ -50,6 +50,15 @@
     border-color: var(--line-soft);
   }
 
+  .lesson-document img {
+    width: 100%;
+    height: auto;
+    max-height: 42rem;
+    object-fit: contain;
+    border: 1px solid var(--line-soft);
+    border-radius: 0.125rem;
+  }
+
   .prose-editor {
     font-size: 1rem;
     line-height: 1.75;
@@ -87,6 +96,14 @@
     font-family: var(--font-data-family);
     font-size: 0.875rem;
     background: var(--surface-muted);
+    border: 1px solid var(--line-soft);
+  }
+
+  .prose-editor img {
+    width: 100%;
+    height: auto;
+    max-height: 28rem;
+    object-fit: contain;
     border: 1px solid var(--line-soft);
   }
 }

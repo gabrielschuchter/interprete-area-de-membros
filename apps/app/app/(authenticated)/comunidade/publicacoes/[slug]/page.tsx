@@ -1,29 +1,24 @@
 import { notFound } from "next/navigation";
 import { CommunityPostView } from "@/components/community/community-post-view";
 import { getMemberRole } from "@/lib/authorization";
-import { getCommunityPost } from "@/lib/community";
+import { getCommunityPostBySlug } from "@/lib/community";
 import { requireMemberId } from "@/lib/learning";
 
-interface LegacyCommunityPostPageProperties {
-  readonly params: Promise<{ postId: string; spaceSlug: string }>;
+interface CommunityPublicationPageProperties {
+  readonly params: Promise<{ slug: string }>;
   readonly searchParams: Promise<{ commentsPage?: string }>;
 }
 
-const LegacyCommunityPostPage = async ({
+const CommunityPublicationPage = async ({
   params,
   searchParams,
-}: LegacyCommunityPostPageProperties) => {
-  const { postId, spaceSlug } = await params;
+}: CommunityPublicationPageProperties) => {
+  const { slug } = await params;
   const filters = await searchParams;
   const memberId = await requireMemberId();
   const role = await getMemberRole(memberId);
   const commentsPage = Number.parseInt(filters.commentsPage ?? "1", 10);
-  const post = await getCommunityPost(
-    spaceSlug,
-    postId,
-    memberId,
-    commentsPage
-  );
+  const post = await getCommunityPostBySlug(slug, memberId, commentsPage);
 
   if (!post) {
     notFound();
@@ -32,4 +27,4 @@ const LegacyCommunityPostPage = async ({
   return <CommunityPostView memberId={memberId} post={post} role={role} />;
 };
 
-export default LegacyCommunityPostPage;
+export default CommunityPublicationPage;

@@ -3,6 +3,7 @@
 import { Button } from "@repo/design-system/components/ui/button";
 import { Input } from "@repo/design-system/components/ui/input";
 import type { JSONContent } from "@tiptap/core";
+import Image from "@tiptap/extension-image";
 import Link from "@tiptap/extension-link";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
@@ -10,13 +11,15 @@ import {
   BoldIcon,
   Code2Icon,
   Heading2Icon,
+  ImageIcon,
   ItalicIcon,
   LinkIcon,
   ListIcon,
   ListOrderedIcon,
+  MinusIcon,
   QuoteIcon,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 const emptyDocument: JSONContent = {
   type: "doc",
@@ -28,23 +31,28 @@ interface TopicEditorProperties {
   readonly defaultValue?: JSONContent;
   readonly name?: string;
   readonly onDocumentChange?: (value: JSONContent) => void;
+  readonly onEditorBlur?: () => void;
 }
 
 export const TopicEditor = ({
   defaultValue,
   name = "contentJson",
   onDocumentChange,
+  onEditorBlur,
   ariaLabel = "Conteúdo do tópico",
 }: TopicEditorProperties) => {
   const [value, setValue] = useState<JSONContent>(
     defaultValue ?? emptyDocument
   );
+  const [imageUrl, setImageUrl] = useState("");
   const [linkUrl, setLinkUrl] = useState("");
+  const [showImageField, setShowImageField] = useState(false);
   const [showLinkField, setShowLinkField] = useState(false);
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
       StarterKit.configure({ heading: { levels: [2, 3] } }),
+      Image.configure({ allowBase64: false }),
       Link.configure({ openOnClick: false, autolink: true, linkOnPaste: true }),
     ],
     content: defaultValue ?? emptyDocument,
@@ -53,6 +61,12 @@ export const TopicEditor = ({
         class: "prose-editor min-h-64 px-4 py-4 outline-none",
         "aria-label": ariaLabel,
       },
+      handleDOMEvents: {
+        blur: () => {
+          onEditorBlur?.();
+          return false;
+        },
+      },
     },
     onUpdate: ({ editor: currentEditor }) => {
       const document = currentEditor.getJSON();
@@ -60,13 +74,6 @@ export const TopicEditor = ({
       onDocumentChange?.(document);
     },
   });
-
-  useEffect(() => {
-    if (editor && defaultValue) {
-      editor.commands.setContent(defaultValue);
-      setValue(defaultValue);
-    }
-  }, [defaultValue, editor]);
 
   if (!editor) {
     return <div className="min-h-64 animate-pulse bg-muted" />;
@@ -187,6 +194,54 @@ export const TopicEditor = ({
             </Button>
           </div>
         )}
+        <Button
+          aria-label="Adicionar imagem"
+          onClick={() => setShowImageField((visible) => !visible)}
+          size="icon"
+          type="button"
+          variant="ghost"
+        >
+          <ImageIcon aria-hidden="true" />
+        </Button>
+        {showImageField && (
+          <div className="flex min-w-60 flex-1 gap-2">
+            <Input
+              aria-label="Endereço da imagem"
+              autoFocus
+              className="h-9"
+              onChange={(event) => setImageUrl(event.target.value)}
+              placeholder="https://exemplo.com/imagem.jpg"
+              value={imageUrl}
+            />
+            <Button
+              onClick={() => {
+                if (imageUrl.trim()) {
+                  action(() =>
+                    editor
+                      .chain()
+                      .setImage({ src: imageUrl.trim(), alt: "" })
+                      .run()
+                  );
+                  setImageUrl("");
+                  setShowImageField(false);
+                }
+              }}
+              size="sm"
+              type="button"
+            >
+              Inserir
+            </Button>
+          </div>
+        )}
+        <Button
+          aria-label="Adicionar divisor"
+          onClick={() => action(() => editor.chain().setHorizontalRule().run())}
+          size="icon"
+          type="button"
+          variant="ghost"
+        >
+          <MinusIcon aria-hidden="true" />
+        </Button>
       </div>
       <EditorContent editor={editor} />
       <input name={name} type="hidden" value={JSON.stringify(value)} />

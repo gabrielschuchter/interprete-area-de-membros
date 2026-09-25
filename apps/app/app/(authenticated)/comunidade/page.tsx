@@ -11,7 +11,11 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { MemberIdentity } from "@/components/community/member-identity";
-import { getCommunityFeed, getCommunitySpaces } from "@/lib/community";
+import {
+  communityPostHref,
+  getCommunityFeed,
+  getCommunitySpaces,
+} from "@/lib/community";
 import { requireMemberId } from "@/lib/learning";
 import { toggleBookmark, togglePostVote } from "./actions";
 
@@ -59,30 +63,28 @@ const CommunityPage = async ({ searchParams }: CommunityPageProperties) => {
       <main className="mx-auto w-full max-w-[1280px] px-5 py-10 sm:px-8 lg:px-12 lg:py-16">
         <header className="flex flex-col justify-between gap-7 border-border border-b pb-8 lg:flex-row lg:items-end">
           <div className="max-w-3xl">
-            <p className="brand-eyebrow">
-              Sala de discussão · pensamento em público
-            </p>
+            <p className="brand-eyebrow">Escrita · leitura · discussão</p>
             <span aria-hidden="true" className="brand-rule mt-4" />
             <h1 className="mt-6 font-display text-5xl leading-[0.98] tracking-tight sm:text-7xl">
-              Perguntas melhores começam em companhia.
+              Ideias melhores crescem em companhia.
             </h1>
             <p className="mt-6 max-w-2xl text-base text-muted-foreground leading-7 sm:text-lg">
-              Um lugar para compartilhar dúvidas, ler outras perspectivas e
-              construir raciocínios sem transformar conversa em ruído.
+              Um espaço para ler, escrever e discutir evidências sem transformar
+              conversa em ruído. Qualquer membro pode publicar.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
+            <Button asChild variant="outline">
+              <Link href="/comunidade/meus-topicos">Minhas publicações</Link>
+            </Button>
             <Button asChild variant="outline">
               <Link href="/comunidade/salvos">
                 <BookmarkIcon aria-hidden="true" /> Salvos
               </Link>
             </Button>
-            <Button asChild variant="outline">
-              <Link href="/membros">Membros</Link>
-            </Button>
             <Button asChild className="shrink-0">
               <Link href="/comunidade/novo">
-                <PlusIcon aria-hidden="true" /> Criar tópico
+                <PlusIcon aria-hidden="true" /> Criar
               </Link>
             </Button>
           </div>
@@ -94,7 +96,7 @@ const CommunityPage = async ({ searchParams }: CommunityPageProperties) => {
               <div>
                 <p className="brand-eyebrow">Feed da comunidade</p>
                 <h2 className="mt-2 font-display text-3xl" id="feed-heading">
-                  O que está sendo investigado
+                  O que está sendo pensado
                 </h2>
               </div>
               <div className="flex gap-2 text-sm">
@@ -133,7 +135,7 @@ const CommunityPage = async ({ searchParams }: CommunityPageProperties) => {
                   className="h-10 w-full rounded-sm border bg-background pr-3 pl-10 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/35"
                   defaultValue={filters.q ?? ""}
                   name="q"
-                  placeholder="Buscar por título, texto ou autor"
+                  placeholder="Buscar publicações, discussões ou autores"
                 />
               </label>
               <select
@@ -157,145 +159,166 @@ const CommunityPage = async ({ searchParams }: CommunityPageProperties) => {
 
             {feed.posts.length === 0 ? (
               <div className="paper-surface mt-6 border p-8 sm:p-12">
-                <p className="brand-eyebrow">Nenhum tópico encontrado</p>
+                <p className="brand-eyebrow">Nenhum conteúdo encontrado</p>
                 <h3 className="mt-4 font-display text-3xl">
-                  A primeira pergunta pode começar aqui.
+                  A primeira ideia pode começar aqui.
                 </h3>
                 <p className="mt-3 max-w-2xl text-muted-foreground leading-7">
-                  Tente outra busca ou abra um tópico para colocar uma dúvida em
-                  movimento.
+                  Tente outra busca ou escreva uma publicação para colocar uma
+                  ideia em movimento.
                 </p>
                 <Button asChild className="mt-6">
                   <Link href="/comunidade/novo">
-                    <PlusIcon aria-hidden="true" /> Criar tópico
+                    <PlusIcon aria-hidden="true" /> Criar conteúdo
                   </Link>
                 </Button>
               </div>
             ) : (
               <div className="mt-6 divide-y border-border border-y">
-                {feed.posts.map((post) => (
-                  <article className="py-6" key={post.id}>
-                    <div className="flex gap-4">
-                      <form
-                        action={togglePostVote}
-                        className="hidden shrink-0 pt-1 sm:block"
-                      >
-                        <input name="postId" type="hidden" value={post.id} />
-                        <input
-                          name="spaceSlug"
-                          type="hidden"
-                          value={post.space.slug}
-                        />
-                        <Button
-                          aria-label={
-                            post.votes.length > 0
-                              ? "Remover apoio"
-                              : "Apoiar tópico"
-                          }
-                          size="sm"
-                          type="submit"
-                          variant={post.votes.length > 0 ? "default" : "ghost"}
+                {feed.posts.map(
+                  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: each feed item intentionally composes its author, content, social actions, and metadata in one readable row.
+                  (post) => (
+                    <article className="py-6" key={post.id}>
+                      <div className="flex gap-4">
+                        <form
+                          action={togglePostVote}
+                          className="hidden shrink-0 pt-1 sm:block"
                         >
-                          <ThumbsUpIcon aria-hidden="true" />{" "}
-                          {post._count.votes}
-                        </Button>
-                      </form>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-muted-foreground text-xs">
-                          <MemberIdentity
-                            authorId={post.authorId}
-                            compact
-                            profile={post.profile ?? undefined}
-                            showHeadline={false}
+                          <input name="postId" type="hidden" value={post.id} />
+                          <input
+                            name="spaceSlug"
+                            type="hidden"
+                            value={post.space?.slug ?? ""}
                           />
-                          <span>·</span>
-                          <Link
-                            className="hover:text-brand-structural"
-                            href={`/comunidade/${post.space.slug}`}
+                          <Button
+                            aria-label={
+                              post.votes.length > 0
+                                ? "Remover apoio"
+                                : "Apoiar conteúdo"
+                            }
+                            size="sm"
+                            type="submit"
+                            variant={
+                              post.votes.length > 0 ? "default" : "ghost"
+                            }
                           >
-                            {post.space.title}
-                          </Link>
-                          <span>·</span>
-                          <time dateTime={post.createdAt.toISOString()}>
-                            {post.createdAt.toLocaleDateString("pt-BR")}
-                          </time>
-                        </div>
-                        <div className="mt-4 flex items-start gap-3">
-                          {post.isPinned && (
-                            <PinIcon
-                              aria-label="Fixado"
-                              className="mt-1 size-4 shrink-0 text-brand-action"
+                            <ThumbsUpIcon aria-hidden="true" />{" "}
+                            {post._count.votes}
+                          </Button>
+                        </form>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-muted-foreground text-xs">
+                            <MemberIdentity
+                              authorId={post.authorId}
+                              compact
+                              profile={post.profile ?? undefined}
+                              showHeadline={false}
                             />
-                          )}
-                          <h3 className="font-display text-2xl leading-tight">
-                            <Link
-                              className="hover:text-brand-structural"
-                              href={`/comunidade/${post.space.slug}/${post.id}`}
+                            <span>·</span>
+                            {post.space ? (
+                              <Link
+                                className="hover:text-brand-structural"
+                                href={`/comunidade/${post.space.slug}`}
+                              >
+                                {post.space.title}
+                              </Link>
+                            ) : (
+                              <span>Feed geral</span>
+                            )}
+                            <span>·</span>
+                            <time
+                              dateTime={(
+                                post.publishedAt ?? post.createdAt
+                              ).toISOString()}
                             >
-                              {post.title}
-                            </Link>
-                          </h3>
-                        </div>
-                        <p className="mt-3 line-clamp-3 text-muted-foreground leading-7">
-                          {post.content}
-                        </p>
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          {post.tags.map((tag) => (
-                            <span
-                              className="text-muted-foreground text-xs"
-                              key={tag}
-                            >
-                              #{tag}
-                            </span>
-                          ))}
-                        </div>
-                        <div className="mt-4 flex flex-wrap items-center gap-4 text-muted-foreground text-xs">
-                          <span className="inline-flex items-center gap-1.5">
-                            <MessageCircleIcon
-                              aria-hidden="true"
-                              className="size-3.5"
-                            />{" "}
-                            {post._count.comments} respostas
-                          </span>
-                          <span className="sm:hidden">
-                            {post._count.votes} apoios
-                          </span>
-                          <span>{post.readingMinutes} min de leitura</span>
-                          <form action={toggleBookmark}>
-                            <input
-                              name="postId"
-                              type="hidden"
-                              value={post.id}
-                            />
-                            <input
-                              name="spaceSlug"
-                              type="hidden"
-                              value={post.space.slug}
-                            />
-                            <button
-                              className="inline-flex items-center gap-1.5 underline-offset-4 hover:underline"
-                              type="submit"
-                            >
-                              <BookmarkIcon
+                              {(
+                                post.publishedAt ?? post.createdAt
+                              ).toLocaleDateString("pt-BR")}
+                            </time>
+                          </div>
+                          <div className="mt-4 flex items-start gap-3">
+                            {post.isPinned && (
+                              <PinIcon
+                                aria-label="Fixado"
+                                className="mt-1 size-4 shrink-0 text-brand-action"
+                              />
+                            )}
+                            <div className="min-w-0">
+                              <div className="mb-2 flex flex-wrap gap-2">
+                                <Badge variant="outline">
+                                  {post.kind === "PUBLICATION"
+                                    ? "Publicação"
+                                    : "Discussão"}
+                                </Badge>
+                              </div>
+                              <h3 className="font-display text-2xl leading-tight">
+                                <Link
+                                  className="hover:text-brand-structural"
+                                  href={communityPostHref(post)}
+                                >
+                                  {post.title}
+                                </Link>
+                              </h3>
+                            </div>
+                          </div>
+                          <p className="mt-3 line-clamp-3 text-muted-foreground leading-7">
+                            {post.subtitle ?? post.excerpt}
+                          </p>
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {post.tags.map((tag) => (
+                              <span
+                                className="text-muted-foreground text-xs"
+                                key={tag}
+                              >
+                                #{tag}
+                              </span>
+                            ))}
+                          </div>
+                          <div className="mt-4 flex flex-wrap items-center gap-4 text-muted-foreground text-xs">
+                            <span className="inline-flex items-center gap-1.5">
+                              <MessageCircleIcon
                                 aria-hidden="true"
                                 className="size-3.5"
-                                fill={
-                                  post.bookmarks.length > 0
-                                    ? "currentColor"
-                                    : "none"
-                                }
+                              />{" "}
+                              {post._count.comments} respostas
+                            </span>
+                            <span className="sm:hidden">
+                              {post._count.votes} apoios
+                            </span>
+                            <span>{post.readingMinutes} min de leitura</span>
+                            <form action={toggleBookmark}>
+                              <input
+                                name="postId"
+                                type="hidden"
+                                value={post.id}
                               />
-                              {post.bookmarks.length > 0 ? "Salvo" : "Salvar"}
-                            </button>
-                          </form>
-                          {post.profile?.headline && (
-                            <span>{post.profile.headline}</span>
-                          )}
+                              <input
+                                name="spaceSlug"
+                                type="hidden"
+                                value={post.space?.slug ?? ""}
+                              />
+                              <button
+                                className="inline-flex items-center gap-1.5 underline-offset-4 hover:underline"
+                                type="submit"
+                              >
+                                <BookmarkIcon
+                                  aria-hidden="true"
+                                  className="size-3.5"
+                                  fill={
+                                    post.bookmarks.length > 0
+                                      ? "currentColor"
+                                      : "none"
+                                  }
+                                />
+                                {post.bookmarks.length > 0 ? "Salvo" : "Salvar"}
+                              </button>
+                            </form>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </article>
-                ))}
+                    </article>
+                  )
+                )}
               </div>
             )}
             {(feed.page > 1 || feed.hasMore) && (
@@ -313,7 +336,7 @@ const CommunityPage = async ({ searchParams }: CommunityPageProperties) => {
                 {feed.hasMore && (
                   <Button asChild variant="outline">
                     <Link href={queryString(feed.page + 1)}>
-                      Mais tópicos <ArrowRightIcon aria-hidden="true" />
+                      Mais conteúdo <ArrowRightIcon aria-hidden="true" />
                     </Link>
                   </Button>
                 )}
@@ -331,28 +354,35 @@ const CommunityPage = async ({ searchParams }: CommunityPageProperties) => {
               </div>
               <Badge variant="outline">{spaces.length}</Badge>
             </div>
-            <div className="divide-y border-border border-b">
-              {spaces.map((space) => (
-                <Link
-                  className="group block py-4"
-                  href={`/comunidade/${space.slug}`}
-                  key={space.id}
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="font-medium group-hover:text-brand-structural">
-                      {space.title}
+            {spaces.length === 0 ? (
+              <p className="border-border border-b py-5 text-muted-foreground text-sm leading-6">
+                O feed geral está aberto. Espaços temáticos podem ser criados
+                pela equipe quando fizerem sentido.
+              </p>
+            ) : (
+              <div className="divide-y border-border border-b">
+                {spaces.map((space) => (
+                  <Link
+                    className="group block py-4"
+                    href={`/comunidade/${space.slug}`}
+                    key={space.id}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="font-medium group-hover:text-brand-structural">
+                        {space.title}
+                      </span>
+                      <ArrowRightIcon
+                        aria-hidden="true"
+                        className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1"
+                      />
+                    </div>
+                    <span className="mt-1 block text-muted-foreground text-xs">
+                      {space._count.posts} conteúdos
                     </span>
-                    <ArrowRightIcon
-                      aria-hidden="true"
-                      className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1"
-                    />
-                  </div>
-                  <span className="mt-1 block text-muted-foreground text-xs">
-                    {space._count.posts} tópicos
-                  </span>
-                </Link>
-              ))}
-            </div>
+                  </Link>
+                ))}
+              </div>
+            )}
           </aside>
         </div>
       </main>

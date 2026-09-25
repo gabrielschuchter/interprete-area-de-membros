@@ -1,6 +1,7 @@
 import "server-only";
 
 import { ContentStatus, database } from "@repo/database";
+import { communityPostHref } from "@/lib/community";
 import {
   getLearningAccessScope,
   hasCourseAccess,
@@ -199,11 +200,21 @@ export const searchGlobal = async (memberId: string, rawQuery: string) => {
       where: {
         status: ContentStatus.PUBLISHED,
         deletedAt: null,
-        space: { is: { status: ContentStatus.PUBLISHED } },
-        OR: [
-          { title: contains(query) },
-          { content: contains(query) },
-          { space: { is: { title: contains(query) } } },
+        AND: [
+          {
+            OR: [
+              { space: null },
+              { space: { is: { status: ContentStatus.PUBLISHED } } },
+            ],
+          },
+          {
+            OR: [
+              { title: contains(query) },
+              { content: contains(query) },
+              { excerpt: contains(query) },
+              { space: { is: { title: contains(query) } } },
+            ],
+          },
         ],
       },
       orderBy: [{ isPinned: "desc" }, { createdAt: "desc" }],
@@ -211,7 +222,9 @@ export const searchGlobal = async (memberId: string, rawQuery: string) => {
       select: {
         id: true,
         title: true,
+        slug: true,
         content: true,
+        excerpt: true,
         space: { select: { title: true, slug: true } },
       },
     }),
@@ -341,8 +354,8 @@ export const searchGlobal = async (memberId: string, rawQuery: string) => {
       post.title,
       "community",
       "Comunidade",
-      `${post.space.title} · ${preview(post.content) ?? "Discussão"}`,
-      `/comunidade/${post.space.slug}/${post.id}`
+      `${post.space?.title ?? "Feed geral"} · ${preview(post.excerpt ?? post.content) ?? "Discussão"}`,
+      communityPostHref(post)
     )
   );
   const libraryResults = library.map((item) =>

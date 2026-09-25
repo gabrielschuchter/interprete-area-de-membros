@@ -182,6 +182,32 @@ const renderBlock = (node: RichNode, key: string): ReactNode => {
       );
     case "horizontalRule":
       return <hr className="border-border" key={key} />;
+    case "image": {
+      const src = safeHref(node.attrs?.src);
+      if (!src) {
+        return null;
+      }
+
+      return (
+        <figure className="space-y-2" key={key}>
+          {/* biome-ignore lint/performance/noImgElement: document images are sanitized external URLs and may come from hosts not configured for next/image. */}
+          <img
+            alt={typeof node.attrs?.alt === "string" ? node.attrs.alt : ""}
+            className="h-auto max-h-[42rem] w-full rounded-sm border object-contain"
+            height={675}
+            loading="lazy"
+            referrerPolicy="no-referrer"
+            src={src}
+            width={1200}
+          />
+          {typeof node.attrs?.title === "string" && node.attrs.title && (
+            <figcaption className="text-muted-foreground text-sm">
+              {node.attrs.title}
+            </figcaption>
+          )}
+        </figure>
+      );
+    }
     case "codeBlock":
       return (
         <pre

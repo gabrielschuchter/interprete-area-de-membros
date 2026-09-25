@@ -15,6 +15,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { RichDocument } from "@/components/learning/rich-document";
 import { getMemberRole } from "@/lib/authorization";
+import { communityPostHref } from "@/lib/community";
 import { getPublicProfile } from "@/lib/profile";
 
 interface PublicProfilePageProperties {
@@ -69,14 +70,18 @@ const PublicProfilePage = async ({ params }: PublicProfilePageProperties) => {
         authorId: profile.clerkUserId,
         status: "PUBLISHED",
         deletedAt: null,
-        space: { status: "PUBLISHED" },
+        OR: [{ space: null }, { space: { is: { status: "PUBLISHED" } } }],
       },
       orderBy: [{ isPinned: "desc" }, { createdAt: "desc" }],
       take: 12,
       select: {
         id: true,
         title: true,
+        subtitle: true,
+        slug: true,
+        kind: true,
         content: true,
+        excerpt: true,
         contentJson: true,
         createdAt: true,
         space: { select: { title: true, slug: true } },
@@ -194,7 +199,7 @@ const PublicProfilePage = async ({ params }: PublicProfilePageProperties) => {
               {topics.map((topic) => (
                 <article className="py-6" key={topic.id}>
                   <div className="flex flex-wrap items-center gap-2 text-muted-foreground text-xs">
-                    <span>{topic.space.title}</span>
+                    <span>{topic.space?.title ?? "Feed geral"}</span>
                     <span>·</span>
                     <span>{topic._count.comments} respostas</span>
                     <span>·</span>
@@ -203,12 +208,15 @@ const PublicProfilePage = async ({ params }: PublicProfilePageProperties) => {
                   <h3 className="mt-3 font-display text-2xl">
                     <Link
                       className="hover:text-brand-structural"
-                      href={`/comunidade/${topic.space.slug}/${topic.id}`}
+                      href={communityPostHref(topic)}
                     >
                       {topic.title}
                     </Link>
                   </h3>
                   <div className="mt-3 line-clamp-3 text-muted-foreground leading-7">
+                    {topic.subtitle && (
+                      <p className="mb-2 line-clamp-2">{topic.subtitle}</p>
+                    )}
                     {topic.contentJson ? (
                       <RichDocument value={topic.contentJson} />
                     ) : (
@@ -217,7 +225,7 @@ const PublicProfilePage = async ({ params }: PublicProfilePageProperties) => {
                   </div>
                   <Link
                     className="mt-4 inline-flex items-center gap-2 text-brand-structural text-sm underline underline-offset-4"
-                    href={`/comunidade/${topic.space.slug}/${topic.id}`}
+                    href={communityPostHref(topic)}
                   >
                     Ler tópico{" "}
                     <MessageCircleIcon aria-hidden="true" className="size-4" />

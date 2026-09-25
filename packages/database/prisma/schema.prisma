@@ -58,6 +58,11 @@ enum CommunityVoteKind {
   UP
 }
 
+enum CommunityPostKind {
+  DISCUSSION
+  PUBLICATION
+}
+
 enum LibraryItemKind {
   ARTICLE
   PDF
@@ -145,7 +150,7 @@ model Profile {
   website     String?
   instagram   String?
   linkedin    String?
-  interests   String[]
+  interests   String[] @default([])
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   member      Member   @relation(fields: [clerkUserId], references: [id], onDelete: Cascade)
@@ -445,11 +450,14 @@ model CommunitySpace {
 
 model CommunityPost {
   id          String              @id @default(cuid())
-  spaceId     String
+  spaceId     String?
   authorId    String
+  kind        CommunityPostKind   @default(DISCUSSION)
   title       String
+  subtitle    String?             @db.Text
   slug        String?             @unique
   content     String              @db.Text
+  excerpt     String?             @db.Text
   contentJson Json?
   tags        String[]            @default([])
   coverUrl    String?
@@ -459,12 +467,14 @@ model CommunityPost {
   createdAt   DateTime            @default(now())
   updatedAt   DateTime            @updatedAt
   deletedAt   DateTime?
-  space       CommunitySpace      @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  space       CommunitySpace?     @relation(fields: [spaceId], references: [id], onDelete: SetNull)
   comments    CommunityComment[]
   votes       PostVote[]
   bookmarks   CommunityBookmark[]
 
   @@index([spaceId, status, createdAt])
+  @@index([kind, status, createdAt])
+  @@index([status, publishedAt, createdAt])
   @@index([authorId, createdAt])
   @@index([isPinned, status, createdAt])
 }

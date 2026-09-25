@@ -3,7 +3,7 @@ import { Button } from "@repo/design-system/components/ui/button";
 import { ArrowLeftIcon, BookmarkIcon } from "lucide-react";
 import Link from "next/link";
 import { MemberIdentity } from "@/components/community/member-identity";
-import { getSavedCommunityPosts } from "@/lib/community";
+import { communityPostHref, getSavedCommunityPosts } from "@/lib/community";
 import { requireMemberId } from "@/lib/learning";
 import { toggleBookmark } from "../actions";
 
@@ -23,14 +23,13 @@ const SavedCommunityPage = async () => {
           <p className="brand-eyebrow">Caderno de leitura</p>
           <span aria-hidden="true" className="brand-rule mt-4" />
           <h1 className="mt-6 font-display text-5xl leading-none sm:text-6xl">
-            Tópicos salvos.
+            Salvos.
           </h1>
           <p className="mt-5 text-muted-foreground leading-7">
-            Guarde discussões para voltar a elas quando tiver tempo de ler com
-            atenção.
+            Guarde publicações e discussões para voltar a elas quando tiver
+            tempo de ler com atenção.
           </p>
         </header>
-
         {posts.length === 0 ? (
           <div className="paper-surface mt-10 border p-8 sm:p-12">
             <BookmarkIcon
@@ -41,8 +40,8 @@ const SavedCommunityPage = async () => {
               Nenhuma leitura foi salva.
             </h2>
             <p className="mt-3 max-w-xl text-muted-foreground leading-7">
-              Quando um tópico merecer uma segunda leitura, use o botão Salvar
-              para encontrá-lo aqui.
+              Quando um conteúdo merecer uma segunda leitura, use Salvar para
+              encontrá-lo aqui.
             </p>
             <Button asChild className="mt-6">
               <Link href="/comunidade">Explorar a comunidade</Link>
@@ -62,20 +61,27 @@ const SavedCommunityPage = async () => {
                         showHeadline={false}
                       />
                       <span>·</span>
-                      <span>{post.space.title}</span>
+                      <span>{post.space?.title ?? "Feed geral"}</span>
                       <span>·</span>
                       <span>{post._count.comments} respostas</span>
                     </div>
-                    <h2 className="mt-4 font-display text-2xl">
-                      <Link
-                        className="hover:text-brand-structural"
-                        href={`/comunidade/${post.space.slug}/${post.id}`}
-                      >
-                        {post.title}
-                      </Link>
-                    </h2>
+                    <div className="mt-4 flex flex-wrap items-center gap-2">
+                      <Badge variant="outline">
+                        {post.kind === "PUBLICATION"
+                          ? "Publicação"
+                          : "Discussão"}
+                      </Badge>
+                      <h2 className="font-display text-2xl">
+                        <Link
+                          className="hover:text-brand-structural"
+                          href={communityPostHref(post)}
+                        >
+                          {post.title}
+                        </Link>
+                      </h2>
+                    </div>
                     <p className="mt-2 line-clamp-2 text-muted-foreground leading-7">
-                      {post.content}
+                      {post.subtitle ?? post.excerpt}
                     </p>
                     <div className="mt-3 flex flex-wrap gap-2">
                       {post.tags.map((tag) => (
@@ -90,10 +96,10 @@ const SavedCommunityPage = async () => {
                     <input
                       name="spaceSlug"
                       type="hidden"
-                      value={post.space.slug}
+                      value={post.space?.slug ?? ""}
                     />
                     <Button size="sm" type="submit" variant="ghost">
-                      <BookmarkIcon aria-hidden="true" fill="currentColor" />
+                      <BookmarkIcon aria-hidden="true" fill="currentColor" />{" "}
                       Remover
                     </Button>
                   </form>

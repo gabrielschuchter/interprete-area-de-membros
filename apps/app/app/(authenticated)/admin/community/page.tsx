@@ -3,7 +3,11 @@ import { Button } from "@repo/design-system/components/ui/button";
 import { Input } from "@repo/design-system/components/ui/input";
 import { Textarea } from "@repo/design-system/components/ui/textarea";
 import Link from "next/link";
-import { getStaffCommunitySpaces } from "@/lib/community";
+import {
+  communityPostHref,
+  getStaffCommunityPosts,
+  getStaffCommunitySpaces,
+} from "@/lib/community";
 import {
   createSpace,
   setSpaceStatus,
@@ -11,7 +15,10 @@ import {
 } from "../../comunidade/actions";
 
 const AdminCommunityPage = async () => {
-  const spaces = await getStaffCommunitySpaces();
+  const [spaces, posts] = await Promise.all([
+    getStaffCommunitySpaces(),
+    getStaffCommunityPosts(),
+  ]);
 
   return (
     <main className="mx-auto w-full max-w-[1280px] px-5 py-10 sm:px-8 lg:px-12 lg:py-14">
@@ -31,6 +38,67 @@ const AdminCommunityPage = async () => {
           sair. O soft delete preserva o fio da conversa.
         </p>
       </header>
+      <section className="paper-surface mt-10 border p-6 sm:p-8">
+        <div className="flex flex-wrap items-end justify-between gap-3 border-border border-b pb-4">
+          <div>
+            <p className="brand-eyebrow">Moderação</p>
+            <h2 className="mt-2 font-display text-3xl">Todo o conteúdo</h2>
+          </div>
+          <span className="font-data text-muted-foreground text-xs">
+            {posts.length} itens recentes
+          </span>
+        </div>
+        {posts.length === 0 ? (
+          <p className="py-6 text-muted-foreground">
+            Ainda não há publicações ou discussões.
+          </p>
+        ) : (
+          <div className="divide-y border-border border-b">
+            {posts.map((post) => (
+              <div
+                className="flex flex-wrap items-center justify-between gap-4 py-4"
+                key={post.id}
+              >
+                <div className="min-w-0">
+                  <div className="flex flex-wrap gap-2 text-muted-foreground text-xs">
+                    <Badge variant="outline">
+                      {post.kind === "PUBLICATION" ? "Publicação" : "Discussão"}
+                    </Badge>
+                    <Badge
+                      variant={
+                        post.status === "PUBLISHED" ? "default" : "outline"
+                      }
+                    >
+                      {post.status}
+                    </Badge>
+                    <span>{post.space?.title ?? "Feed geral"}</span>
+                  </div>
+                  <p className="mt-2 font-medium">{post.title}</p>
+                  {post.status === "PUBLISHED" && (
+                    <Link
+                      className="mt-1 inline-block text-brand-structural text-xs underline underline-offset-4"
+                      href={communityPostHref(post)}
+                    >
+                      Abrir publicação
+                    </Link>
+                  )}
+                </div>
+                <form action={softDeletePost}>
+                  <input name="postId" type="hidden" value={post.id} />
+                  <input
+                    name="spaceSlug"
+                    type="hidden"
+                    value={post.space?.slug ?? ""}
+                  />
+                  <Button size="sm" type="submit" variant="outline">
+                    Remover
+                  </Button>
+                </form>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
       <div className="mt-10 grid gap-10 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
         <section>
           <h2 className="border-border border-b pb-3 font-display text-3xl">
