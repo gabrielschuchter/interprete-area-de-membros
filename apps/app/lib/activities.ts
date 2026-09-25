@@ -108,7 +108,6 @@ export const getPublishedActivities = async (
       title: true,
       slug: true,
       prompt: true,
-      instructions: true,
       dueAt: true,
       course: { select: { id: true, title: true, slug: true } },
       lesson: {
