@@ -246,12 +246,12 @@ const notifyCommunityMembers = async (input: {
     uniqueRecipients.map((memberId) =>
       createNotification({
         memberId,
-        type: mentionedIds.length > 0
-          ? "COMMUNITY_ACTIVITY"
-          : "COMMUNITY_REPLY",
-        title: mentionedIds.length > 0
-          ? "Você foi mencionado na comunidade"
-          : "Nova resposta na comunidade",
+        type:
+          mentionedIds.length > 0 ? "COMMUNITY_ACTIVITY" : "COMMUNITY_REPLY",
+        title:
+          mentionedIds.length > 0
+            ? "Você foi mencionado na comunidade"
+            : "Nova resposta na comunidade",
         body: input.postTitle,
         href: input.href,
       })
