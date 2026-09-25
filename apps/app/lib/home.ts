@@ -12,7 +12,7 @@ export const getHomeData = async (memberId: string) => {
   const timed = async <T>(label: string, operation: () => Promise<T>) => {
     const operationStartedAt = performance.now();
     const result = await operation();
-    console.info(
+    console.error(
       `[PERF_HOME] ${label}=${(performance.now() - operationStartedAt).toFixed(1)}ms`,
     );
     return result;
@@ -42,7 +42,7 @@ export const getHomeData = async (memberId: string) => {
       ),
     ]);
 
-  console.info(
+  console.error(
     `[PERF_HOME] total=${(performance.now() - startedAt).toFixed(1)}ms`,
   );
 

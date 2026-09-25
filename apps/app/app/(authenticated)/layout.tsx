@@ -33,7 +33,7 @@ const AppLayout = async ({ children }: AppLayoutProperties) => {
     getMemberRole(userId),
     getOrCreateProfile(userId, false),
   ]);
-  console.info(
+  console.error(
     `[PERF_LAYOUT] secure=${secureElapsed.toFixed(1)}ms auth=${authElapsed.toFixed(1)}ms member=${(performance.now() - memberDataStartedAt).toFixed(1)}ms total=${(performance.now() - startedAt).toFixed(1)}ms`,
   );
 
