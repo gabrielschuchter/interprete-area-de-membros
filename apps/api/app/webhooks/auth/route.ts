@@ -163,8 +163,13 @@ const handleUserUpdated = async (data: UserJSON) => {
   return new Response("User updated", { status: 201 });
 };
 
-const handleUserDeleted = (data: DeletedObjectJSON) => {
+const handleUserDeleted = async (data: DeletedObjectJSON) => {
   if (data.id) {
+    // Keep historical community content, but remove the internal identity and
+    // all data whose lifecycle is owned by the member. deleteMany makes a
+    // retried Clerk delivery idempotent.
+    await database.member.deleteMany({ where: { id: data.id } });
+
     analytics?.identify({
       distinctId: data.id,
       properties: {
@@ -314,7 +319,7 @@ export const POST = async (request: Request): Promise<Response> => {
       break;
     }
     case "user.deleted": {
-      response = handleUserDeleted(event.data);
+      response = await handleUserDeleted(event.data);
       break;
     }
     case "organization.created": {
