@@ -194,13 +194,17 @@ Criar espaços de discussão com posts, comentários threadados e reação posit
 - `CommunityComment`
 - `PostVote`
 - `CommentVote`
+- `Profile` (vinculado ao `clerkUserId`, enquanto `Member.role` permanece a fonte de autorização)
 
 ### Principais rotas
 
 - `/comunidade`
+- `/comunidade/novo`
+- `/comunidade/meus-topicos`
 - `/comunidade/[spaceSlug]`
 - `/comunidade/[spaceSlug]/novo`
 - `/comunidade/[spaceSlug]/[postId]`
+- `/membros/[username]`
 
 ### Critérios de aceite
 
@@ -219,6 +223,13 @@ Criar espaços de discussão com posts, comentários threadados e reação posit
 - posts, comentários e votos validam a relação entre espaço, post e comentário antes de mutar;
 - feed e discussões têm paginação; a paginação da discussão é por comentários-raiz e inclui toda a descendência carregada, evitando separar uma resposta do seu pai;
 - contagens públicas excluem posts/comentários removidos e a moderação permanece em soft delete.
+- a migration `profiles_and_rich_topics` foi aplicada ao Supabase oficial e adiciona `Profile`, `contentJson`, `isPinned` e `CommunitySpace.icon`, mantendo RLS deny-by-default;
+- o membro autenticado recebe um perfil básico sincronizado com Clerk sem sobrescrever os campos editoriais já preenchidos;
+- `/comunidade` agora possui feed plano com busca textual, filtro de espaço, ordenação recente/popular, autor identificável e criação editorial com Tiptap;
+- tópicos suportam `DRAFT`, `PUBLISHED` e `ARCHIVED`, edição do autor, soft delete, fixação para professor/admin e consulta em `/comunidade/meus-topicos`;
+- respostas são editáveis pelo próprio autor, possuem identidade pública e preservam `parentId` para threading futuro;
+- `/perfil` edita username, avatar URL opcional, bio, contexto, links e interesses; `/membros/[username]` omite e-mail e exibe apenas atividade publicada;
+- lint, typecheck, boundaries, testes e build foram executados após essa evolução; E2E autenticado e persistência via processo Prisma continuam pendentes por credencial local.
 
 ## Phase 5 — Meetings
 
