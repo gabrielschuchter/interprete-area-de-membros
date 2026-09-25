@@ -1,5 +1,6 @@
 "use client";
 
+import { interpreteAuthAppearance } from "@repo/auth/appearance";
 import { UserButton } from "@repo/auth/client";
 import {
   Sidebar,
@@ -164,6 +165,7 @@ export const GlobalSidebar = ({
                   },
                 }}
                 showName={sidebar.open}
+                userProfileProps={{ appearance: interpreteAuthAppearance }}
               />
             </SidebarMenuItem>
           </SidebarMenu>

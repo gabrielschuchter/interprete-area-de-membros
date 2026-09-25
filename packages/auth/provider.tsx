@@ -1,10 +1,11 @@
 "use client";
 
+import { ptBR } from "@clerk/localizations/pt-BR";
 import { ClerkProvider } from "@clerk/nextjs";
 import { dark } from "@clerk/themes";
-import type { Theme } from "@clerk/types";
 import { useTheme } from "next-themes";
 import type { ComponentProps } from "react";
+import { interpreteAuthAppearance } from "./appearance";
 
 type AuthProviderProperties = ComponentProps<typeof ClerkProvider> & {
   privacyUrl?: string;
@@ -22,22 +23,6 @@ export const AuthProvider = ({
   const isDark = resolvedTheme === "dark";
   const baseTheme = isDark ? dark : undefined;
 
-  const variables: Theme["variables"] = {
-    fontFamily: "var(--font-sans-family)",
-    fontFamilyButtons: "var(--font-sans-family)",
-    fontWeight: {
-      bold: "var(--font-weight-semibold)",
-      normal: "var(--font-weight-normal)",
-      medium: "var(--font-weight-medium)",
-    },
-  };
-
-  const elements: Theme["elements"] = {
-    dividerLine: "bg-border",
-    socialButtonsIconButton: "bg-card",
-    navbarButton: "text-foreground",
-  };
-
   const options = {
     privacyPageUrl: privacyUrl,
     termsPageUrl: termsUrl,
@@ -47,7 +32,12 @@ export const AuthProvider = ({
   return (
     <ClerkProvider
       {...properties}
-      appearance={{ elements, options, theme: baseTheme, variables }}
+      appearance={{
+        ...interpreteAuthAppearance,
+        options,
+        theme: baseTheme,
+      }}
+      localization={ptBR}
     />
   );
 };
