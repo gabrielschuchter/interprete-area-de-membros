@@ -506,7 +506,12 @@ export const togglePostVote = async (formData: FormData) => {
   }
 
   const post = await database.communityPost.findFirst({
-    where: { id: postId, status: ContentStatus.PUBLISHED, deletedAt: null },
+    where: {
+      id: postId,
+      status: ContentStatus.PUBLISHED,
+      deletedAt: null,
+      space: { slug: spaceSlug, status: ContentStatus.PUBLISHED },
+    },
     select: { id: true },
   });
   if (!post) {

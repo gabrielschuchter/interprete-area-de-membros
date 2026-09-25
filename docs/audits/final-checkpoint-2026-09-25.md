@@ -65,6 +65,9 @@ de autorização/sincronização, todas enviadas para `main`:
   idempotente, preservando conteúdo histórico sem perfil público.
 - `f33998c`: encontros vinculados a curso são filtrados por entitlement na
   listagem, Home e rota de detalhe; encontros globais continuam disponíveis.
+- O fechamento desta auditoria também restringiu a atividade pública de membro
+  a espaços publicados e fez o voto de tópico validar o espaço publicado no
+  servidor, evitando ações sobre contexto arquivado/stale.
 
 Após essas correções: check, typecheck, testes, boundaries e build isolado de
 `apps/app` passaram. Isso não substitui o teste runtime: ainda não há senha

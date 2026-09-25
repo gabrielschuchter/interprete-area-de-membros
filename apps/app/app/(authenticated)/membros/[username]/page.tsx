@@ -70,6 +70,7 @@ const PublicProfilePage = async ({ params }: PublicProfilePageProperties) => {
         authorId: profile.clerkUserId,
         status: "PUBLISHED",
         deletedAt: null,
+        space: { status: "PUBLISHED" },
       },
       orderBy: [{ isPinned: "desc" }, { createdAt: "desc" }],
       take: 12,
