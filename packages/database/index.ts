@@ -25,10 +25,27 @@ const createUnavailableDatabase = () =>
     },
   });
 
-const databaseWithConnection = DATABASE_URL
+const normalizeRuntimeDatabaseUrl = (value: string) => {
+  const url = new URL(value);
+
+  // node-postgres replaces the explicit `ssl` config whenever these options
+  // exist in the connection string. Remove them so the verified Supabase CA
+  // from databaseSsl remains authoritative in serverless runtimes.
+  for (const key of ["sslmode", "sslcert", "sslkey", "sslrootcert"]) {
+    url.searchParams.delete(key);
+  }
+
+  return url.toString();
+};
+
+const runtimeDatabaseUrl = DATABASE_URL
+  ? normalizeRuntimeDatabaseUrl(DATABASE_URL)
+  : undefined;
+
+const databaseWithConnection = runtimeDatabaseUrl
   ? new PrismaClient({
       adapter: new PrismaPg({
-        connectionString: DATABASE_URL,
+        connectionString: runtimeDatabaseUrl,
         max: 1,
         ssl: databaseSsl,
       }),
@@ -37,7 +54,7 @@ const databaseWithConnection = DATABASE_URL
 
 export const database = globalForPrisma.prisma ?? databaseWithConnection;
 
-if (process.env.NODE_ENV !== "production" && DATABASE_URL) {
+if (process.env.NODE_ENV !== "production" && runtimeDatabaseUrl) {
   globalForPrisma.prisma = database;
 }
 
