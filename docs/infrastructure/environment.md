@@ -11,7 +11,9 @@ secrets.
 - Runtime database access: `@repo/database` through Prisma and
   `@prisma/adapter-pg`; no Supabase client is required by the application.
 - Authentication: the linked Clerk development instance for the Interprete
-  application.
+  application. The embedded components use the `ptBR` localization from
+  `@clerk/localizations` and the shared Interprete appearance from
+  `@repo/auth/appearance`.
 - Deployments: Vercel projects linked to
   `gabrielschuchter/interprete-area-de-membros`.
 
@@ -60,10 +62,12 @@ without printing values. The command intentionally cannot prove a remote
 connection; use Prisma commands for that.
 
 The local runtime files do not use `SKIP_ENV_VALIDATION`; missing core values
-must remain visible instead of being hidden by a build bypass. The current
-local database values are still placeholders, so the runtime health check
-correctly reports the database as unavailable until the official Supabase
-password is coordinated.
+must remain visible instead of being hidden by a build bypass. In the current
+checkout, `apps/app/.env.local` and `packages/database/.env` contain database
+placeholders, while `apps/api/.env.local` has no `DATABASE_URL`. The health
+check and production build therefore correctly report the database as
+unavailable until the official Supabase password is coordinated in all three
+consumers. No Clerk secret or database value is recorded here.
 
 ## Vercel projects
 

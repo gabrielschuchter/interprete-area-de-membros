@@ -8,7 +8,7 @@ Atualizada em 24/09/2026. A implementação de código avançou por todas as sup
 
 | Fase | Escopo | Status | Evidência atual |
 | --- | --- | --- | --- |
-| 0 | Fundação next-forge, Bun, Prisma, Supabase, Clerk | IN PROGRESS | checks do monorepo passam; conexão Prisma local ainda bloqueada por env placeholder |
+| 0 | Fundação next-forge, Bun, Prisma, Supabase, Clerk | IN PROGRESS | check, typecheck, boundaries e testes passam; build e conexão Prisma local estão bloqueados por env de banco ausente/placeholder |
 | 1 | Aprender: trilhas, cursos, módulos, aulas, progresso | IN PROGRESS | código, schema, seed opt-in e guard server-side presentes; persistência/E2E pendentes |
 | 2 | Admin/Professor: autoria, editor, preview, publicação | IN PROGRESS | rotas protegidas, editor compartilhado e ordenação presentes; fluxo real pendente |
 | 3 | Atividades e feedback | IN PROGRESS | submissão, revisão, feedback e proteção de hierarquia presentes; banco real pendente |
@@ -19,7 +19,7 @@ Atualizada em 24/09/2026. A implementação de código avançou por todas as sup
 | 8 | Home inteligente | IN PROGRESS | próxima ação determinística usa atividade, aula, encontro e discussão reais; integração DB pendente |
 | 9 | Integração entre domínios | IN PROGRESS | links entre aula/atividade, encontro/curso, perfil/comunidade e home presentes; E2E pendente |
 | 10 | Responsividade, loading, vazio e erro | IN PROGRESS | estados e layouts revisados em fonte; screenshots autenticados ainda bloqueados |
-| 11 | QA funcional | IN PROGRESS | check/typecheck/boundaries/tests/build passam; fluxo real autenticado não executado |
+| 11 | QA funcional | IN PROGRESS | check/typecheck/boundaries/tests passam; build falha na validação de `apps/api` sem `DATABASE_URL` e o fluxo real autenticado segue bloqueado |
 | 12 | Branding/UX final | IN PROGRESS | tokens e superfícies Interprete preservados; QA visual de runtime pendente |
 | 13 | Hardening | IN PROGRESS | autorização centralizada, validação e RLS deny-by-default; auditoria runtime pendente |
 | 14 | Preparação de deploy | IN PROGRESS | projetos Vercel do app/API e variáveis Clerk existem; Preview aguarda `DATABASE_URL` real e validação runtime |
@@ -85,11 +85,11 @@ Autoria de cursos, módulos e aulas, edição rich-text e publicação administr
 ### Evidência desta execução
 
 - schema Prisma, migration SQL, seed de desenvolvimento e fluxo de leitura/progresso foram implementados;
-- `bun install --frozen-lockfile`, `bun run check`, `bun run typecheck`, `bun run boundaries`, `bun run test` e `bun run build` passaram após a correção do empacotamento de `pg`;
+- `bun run check`, `bun run typecheck`, `bun run boundaries` e `bun run test` passam no checkout atual; `bun run build` é interrompido pela validação de `apps/api` sem `DATABASE_URL`;
 - o projeto Supabase oficial `wkclodjbrynerfgufmyb` foi confirmado `ACTIVE_HEALTHY` em `sa-east-1`, PostgreSQL 17.6, com as duas migrations da fundação aplicadas;
 - as sete tabelas da aprendizagem existem no Supabase com RLS habilitado e índices de cobertura das FKs;
 - Clerk CLI, proxy, login real e acesso autenticado ao shell foram validados; o percurso do membro até `/aprender` chega ao guard e ao carregamento server-side;
-- a consulta real da aplicação ainda falha localmente porque `DATABASE_URL` está sendo executada com placeholder: persistência, conteúdo e conclusão da aula continuam `BLOCKED_BY_CREDENTIALS`;
+- a consulta real da aplicação ainda falha localmente porque `DATABASE_URL` está sendo executada com placeholder e o API não possui essa variável: persistência, conteúdo e conclusão da aula continuam `BLOCKED_BY_CREDENTIALS`;
 - a Phase 1 permanece `IN PROGRESS` até validar o processo Prisma da aplicação com credenciais PostgreSQL locais e executar o fluxo completo com seed de desenvolvimento.
 - a proteção das páginas de membro usa o mesmo guard server-side da aplicação; sem sessão, `/` e `/aprender` respondem com redirect 307 para o fluxo do Clerk.
 
