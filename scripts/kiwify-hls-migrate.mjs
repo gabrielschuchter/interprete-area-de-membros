@@ -31,6 +31,7 @@ const ENV_LINE_PATTERN = /^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/;
 const HLS_RESOLUTION_PATTERN = /RESOLUTION=(\d+)x(\d+)/i;
 const HLS_BANDWIDTH_PATTERN = /BANDWIDTH=(\d+)/i;
 const HLS_DURATION_PATTERN = /#EXTINF:([0-9.]+)/;
+const HLS_METHOD_PATTERN = /METHOD=([^,]+)/i;
 const CONTENT_RANGE_SIZE_PATTERN = /\/(\d+)$/;
 const DEFAULT_MIN_FREE_BYTES = 1 * 1024 * 1024 * 1024;
 const configuredMinFreeBytes = Number(
@@ -42,6 +43,7 @@ const minFreeBytes =
     : DEFAULT_MIN_FREE_BYTES;
 
 class LowDiskSpaceError extends Error {}
+class ProtectedMediaError extends Error {}
 
 const parseEnvironment = (contents) => {
   const values = {};
@@ -172,8 +174,23 @@ const fetchText = async (url) => {
   return response.text();
 };
 
+const assertNoUnsupportedEncryption = (playlist) => {
+  for (const line of playlist.split(ENV_LINE_SPLIT)) {
+    if (!line.startsWith("#EXT-X-KEY:")) {
+      continue;
+    }
+    const method = line.match(HLS_METHOD_PATTERN)?.[1]?.trim().toUpperCase();
+    if (method && method !== "NONE") {
+      throw new ProtectedMediaError(
+        `BLOCKED_DRM: encrypted HLS playlist uses ${method}; extraction would require handling protected media.`
+      );
+    }
+  }
+};
+
 const chooseVariant = async (masterUrl) => {
   const text = await fetchText(masterUrl);
+  assertNoUnsupportedEncryption(text);
   if (!text.includes("#EXT-X-STREAM-INF")) {
     return masterUrl;
   }
@@ -351,6 +368,7 @@ const { database, enums } = await loadDatabase();
 let migrated = 0;
 const skipped = 0;
 let failed = 0;
+let blocked = 0;
 let pausedForLowDisk = false;
 
 try {
@@ -382,6 +400,7 @@ try {
       }
       const variantUrl = await chooseVariant(entry.manifestUrl);
       const variantText = await fetchText(variantUrl);
+      assertNoUnsupportedEncryption(variantText);
       const parsed = parseVariant(variantText, variantUrl);
       if (parsed.segments.length === 0) {
         throw new Error("HLS playlist has no segments.");
@@ -621,6 +640,19 @@ try {
         });
         break;
       }
+      if (error instanceof ProtectedMediaError) {
+        blocked += 1;
+        item.status = "BLOCKED_DRM";
+        item.error = error.message;
+        await writeJson(checkpointPath, checkpoint);
+        await log({
+          key,
+          index: entry.index,
+          status: item.status,
+          error: item.error,
+        });
+        continue;
+      }
       failed += 1;
       item.status = "FAILED";
       item.error = (
@@ -647,6 +679,7 @@ console.log(
       migrated,
       skipped,
       failed,
+      blocked,
       pausedForLowDisk,
       checkpoint: path.relative(repositoryRoot, checkpointPath),
     },
