@@ -9,6 +9,7 @@ export const getAdminLearningOverview = async () =>
       id: true,
       title: true,
       slug: true,
+      description: true,
       status: true,
       courses: {
         orderBy: [{ position: "asc" }, { title: "asc" }],

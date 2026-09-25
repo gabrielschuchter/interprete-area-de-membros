@@ -1,6 +1,7 @@
 import { Button } from "@repo/design-system/components/ui/button";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { RichDocument } from "@/components/learning/rich-document";
 import { getAdminCourse } from "@/lib/admin-learning";
 
 interface PreviewPageProperties {
@@ -50,6 +51,9 @@ const PreviewPage = async ({ params }: PreviewPageProperties) => {
                     <p className="mt-3 text-muted-foreground leading-7">
                       {lesson.description}
                     </p>
+                    <div className="mt-6 border-t pt-6">
+                      <RichDocument value={lesson.content} />
+                    </div>
                   </article>
                 ))}
               </div>

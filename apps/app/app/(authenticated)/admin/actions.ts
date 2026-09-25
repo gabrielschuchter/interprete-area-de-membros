@@ -51,14 +51,20 @@ export const createLearningPath = async (formData: FormData) => {
     return;
   }
 
-  await database.learningPath.create({
-    data: {
-      title,
-      slug,
-      description: description || null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    },
+  await database.$transaction(async (transaction) => {
+    const lastPath = await transaction.learningPath.findFirst({
+      orderBy: { position: "desc" },
+      select: { position: true },
+    });
+
+    await transaction.learningPath.create({
+      data: {
+        title,
+        slug,
+        description: description || null,
+        position: (lastPath?.position ?? -1) + 1,
+      },
+    });
   });
 
   revalidatePath("/admin/learning");
@@ -76,15 +82,24 @@ export const createCourse = async (formData: FormData) => {
     return;
   }
 
-  const course = await database.course.create({
-    data: {
-      title,
-      slug,
-      description: description || null,
-      learningPathId: learningPathId || null,
-      createdBy: userId,
-      updatedBy: userId,
-    },
+  const course = await database.$transaction(async (transaction) => {
+    const lastCourse = await transaction.course.findFirst({
+      where: { learningPathId: learningPathId || null },
+      orderBy: { position: "desc" },
+      select: { position: true },
+    });
+
+    return transaction.course.create({
+      data: {
+        title,
+        slug,
+        description: description || null,
+        learningPathId: learningPathId || null,
+        position: (lastCourse?.position ?? -1) + 1,
+        createdBy: userId,
+        updatedBy: userId,
+      },
+    });
   });
 
   revalidatePath("/admin/learning");
@@ -101,14 +116,21 @@ export const createModule = async (formData: FormData) => {
     return;
   }
 
-  await database.module.create({
-    data: {
-      courseId,
-      title,
-      slug,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    },
+  await database.$transaction(async (transaction) => {
+    const lastModule = await transaction.module.findFirst({
+      where: { courseId },
+      orderBy: { position: "desc" },
+      select: { position: true },
+    });
+
+    await transaction.module.create({
+      data: {
+        courseId,
+        title,
+        slug,
+        position: (lastModule?.position ?? -1) + 1,
+      },
+    });
   });
 
   revalidatePath(`/admin/learning/courses/${courseId}`);
@@ -132,18 +154,27 @@ export const createLesson = async (formData: FormData) => {
     ? (kind as LessonKind)
     : LessonKind.TEXT;
 
-  const lesson = await database.lesson.create({
-    data: {
-      moduleId,
-      title,
-      slug,
-      description: description || null,
-      content: asContent(content),
-      kind: selectedKind,
-      createdBy: userId,
-      updatedBy: userId,
-    },
-    select: { module: { select: { courseId: true } } },
+  const lesson = await database.$transaction(async (transaction) => {
+    const lastLesson = await transaction.lesson.findFirst({
+      where: { moduleId },
+      orderBy: { position: "desc" },
+      select: { position: true },
+    });
+
+    return transaction.lesson.create({
+      data: {
+        moduleId,
+        title,
+        slug,
+        description: description || null,
+        content: asContent(content),
+        kind: selectedKind,
+        position: (lastLesson?.position ?? -1) + 1,
+        createdBy: userId,
+        updatedBy: userId,
+      },
+      select: { module: { select: { courseId: true } } },
+    });
   });
 
   revalidatePath(`/admin/learning/courses/${lesson.module.courseId}`);
@@ -174,8 +205,75 @@ export const updateLesson = async (formData: FormData) => {
   revalidatePath(`/admin/learning/courses/${lesson.module.courseId}`);
 };
 
-export const setContentStatus = async (formData: FormData) => {
+export const updateLearningPath = async (formData: FormData) => {
   await requireStaff();
+  const pathId = asText(formData.get("pathId"));
+  const title = asText(formData.get("title"));
+  const slug = asText(formData.get("slug")).toLowerCase();
+  const description = asText(formData.get("description"));
+
+  if (!(pathId && title && slug)) {
+    return;
+  }
+
+  await database.learningPath.update({
+    where: { id: pathId },
+    data: { title, slug, description: description || null },
+  });
+
+  revalidatePath("/admin/learning");
+  revalidatePath("/aprender");
+};
+
+export const updateCourse = async (formData: FormData) => {
+  const { userId } = await requireStaff();
+  const courseId = asText(formData.get("courseId"));
+  const title = asText(formData.get("title"));
+  const slug = asText(formData.get("slug")).toLowerCase();
+  const description = asText(formData.get("description"));
+
+  if (!(courseId && title && slug)) {
+    return;
+  }
+
+  await database.course.update({
+    where: { id: courseId },
+    data: {
+      title,
+      slug,
+      description: description || null,
+      updatedBy: userId,
+    },
+  });
+
+  revalidatePath(`/admin/learning/courses/${courseId}`);
+  revalidatePath(`/admin/learning/courses/${courseId}/preview`);
+  revalidatePath("/admin/learning");
+  revalidatePath("/aprender");
+};
+
+export const updateModule = async (formData: FormData) => {
+  await requireStaff();
+  const moduleId = asText(formData.get("moduleId"));
+  const title = asText(formData.get("title"));
+  const slug = asText(formData.get("slug")).toLowerCase();
+
+  if (!(moduleId && title && slug)) {
+    return;
+  }
+
+  const module = await database.module.update({
+    where: { id: moduleId },
+    data: { title, slug },
+    select: { courseId: true },
+  });
+
+  revalidatePath(`/admin/learning/courses/${module.courseId}`);
+  revalidatePath("/aprender");
+};
+
+export const setContentStatus = async (formData: FormData) => {
+  const { userId } = await requireStaff();
   const entity = asText(formData.get("entity"));
   const id = asText(formData.get("id"));
   const nextStatus = asText(formData.get("status"));
@@ -202,7 +300,7 @@ export const setContentStatus = async (formData: FormData) => {
   if (entity === "course") {
     await database.course.update({
       where: { id },
-      data: { status, publishedAt },
+      data: { status, publishedAt, updatedBy: userId },
     });
     revalidatePath("/admin/learning");
     revalidatePath(`/admin/learning/courses/${id}`);
@@ -223,7 +321,7 @@ export const setContentStatus = async (formData: FormData) => {
   if (entity === "lesson") {
     const lesson = await database.lesson.update({
       where: { id },
-      data: { status, publishedAt },
+      data: { status, publishedAt, updatedBy: userId },
       select: { module: { select: { courseId: true } } },
     });
     revalidatePath(`/admin/learning/courses/${lesson.module.courseId}`);

@@ -17,6 +17,7 @@ interface LibraryPageProperties {
     q?: string;
     kind?: string;
     category?: string;
+    page?: string;
   }>;
 }
 
@@ -48,14 +49,32 @@ const labelFor = (kind: string) => {
 
 const LibraryPage = async ({ searchParams }: LibraryPageProperties) => {
   const filters = await searchParams;
-  const [items, categories] = await Promise.all([
+  const currentPage = Number.parseInt(filters.page ?? "1", 10);
+  const [library, categories] = await Promise.all([
     getLibraryItems({
       query: filters.q,
       kind: filters.kind,
       category: filters.category,
+      page: currentPage,
     }),
     getLibraryCategories(),
   ]);
+  const { items, hasMore, page } = library;
+  const queryString = new URLSearchParams();
+  if (filters.q) {
+    queryString.set("q", filters.q);
+  }
+  if (filters.kind) {
+    queryString.set("kind", filters.kind);
+  }
+  if (filters.category) {
+    queryString.set("category", filters.category);
+  }
+  const pageHref = (targetPage: number) => {
+    const nextQuery = new URLSearchParams(queryString);
+    nextQuery.set("page", String(targetPage));
+    return `/biblioteca?${nextQuery.toString()}`;
+  };
 
   return (
     <div className="min-h-svh bg-background">
@@ -192,6 +211,25 @@ const LibraryPage = async ({ searchParams }: LibraryPageProperties) => {
                 );
               })}
             </div>
+          )}
+          {items.length > 0 && (page > 1 || hasMore) && (
+            <nav
+              aria-label="Paginação da biblioteca"
+              className="mt-8 flex flex-wrap justify-between gap-3"
+            >
+              {page > 1 ? (
+                <Button asChild variant="outline">
+                  <Link href={pageHref(page - 1)}>Página anterior</Link>
+                </Button>
+              ) : (
+                <span />
+              )}
+              {hasMore && (
+                <Button asChild variant="outline">
+                  <Link href={pageHref(page + 1)}>Próxima página</Link>
+                </Button>
+              )}
+            </nav>
           )}
         </section>
       </main>

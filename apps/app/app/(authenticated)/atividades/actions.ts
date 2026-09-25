@@ -103,6 +103,7 @@ export const createActivity = async (formData: FormData) => {
   const slug = formData.get("slug");
   const prompt = formData.get("prompt");
   const instructions = formData.get("instructions");
+  const dueAt = formData.get("dueAt");
 
   if (
     typeof title !== "string" ||
@@ -115,6 +116,13 @@ export const createActivity = async (formData: FormData) => {
     return;
   }
 
+  const dueDate =
+    typeof dueAt === "string" && dueAt.trim() ? new Date(dueAt) : null;
+
+  if (dueDate && Number.isNaN(dueDate.valueOf())) {
+    return;
+  }
+
   await database.activity.create({
     data: {
       title: title.trim(),
@@ -124,6 +132,7 @@ export const createActivity = async (formData: FormData) => {
         typeof instructions === "string" && instructions.trim()
           ? instructions.trim()
           : null,
+      dueAt: dueDate,
       status: ContentStatus.DRAFT,
       createdBy: userId,
       updatedBy: userId,
@@ -131,4 +140,26 @@ export const createActivity = async (formData: FormData) => {
   });
 
   revalidatePath("/admin/activities");
+};
+
+export const setActivityStatus = async (formData: FormData) => {
+  const { userId } = await requireStaff();
+  const activityId = formData.get("activityId");
+  const status = formData.get("status");
+
+  if (
+    typeof activityId !== "string" ||
+    typeof status !== "string" ||
+    !Object.values(ContentStatus).includes(status as ContentStatus)
+  ) {
+    return;
+  }
+
+  await database.activity.update({
+    where: { id: activityId },
+    data: { status: status as ContentStatus, updatedBy: userId },
+  });
+
+  revalidatePath("/admin/activities");
+  revalidatePath("/atividades");
 };

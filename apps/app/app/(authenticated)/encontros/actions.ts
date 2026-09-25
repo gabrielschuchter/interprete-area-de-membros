@@ -18,17 +18,27 @@ const safeUrl = (entry: string) => {
   }
 };
 
+const safeTimezone = (entry: string) => {
+  try {
+    new Intl.DateTimeFormat("pt-BR", { timeZone: entry }).format();
+    return entry;
+  } catch {
+    return null;
+  }
+};
+
 export const createMeeting = async (formData: FormData) => {
   const { userId } = await requireStaff();
   const title = value(formData.get("title"));
   const description = value(formData.get("description"));
   const startsAt = value(formData.get("startsAt"));
-  const timezone = value(formData.get("timezone")) || "America/Sao_Paulo";
+  const timezoneValue = value(formData.get("timezone")) || "America/Sao_Paulo";
+  const timezone = safeTimezone(timezoneValue);
   const joinUrl = safeUrl(value(formData.get("joinUrl")));
   const recording = value(formData.get("recordingUrl"));
   const recordingUrl = recording ? safeUrl(recording) : null;
 
-  if (!(title && startsAt && joinUrl)) {
+  if (!(title && startsAt && joinUrl && timezone)) {
     return;
   }
   const parsedStartsAt = new Date(startsAt);

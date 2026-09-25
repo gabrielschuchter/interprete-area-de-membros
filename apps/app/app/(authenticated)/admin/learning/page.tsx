@@ -5,7 +5,11 @@ import { Textarea } from "@repo/design-system/components/ui/textarea";
 import { ArrowRightIcon, PlusIcon } from "lucide-react";
 import Link from "next/link";
 import { getAdminLearningOverview } from "@/lib/admin-learning";
-import { createLearningPath } from "../actions";
+import {
+  createLearningPath,
+  setContentStatus,
+  updateLearningPath,
+} from "../actions";
 
 const statusLabel = (status: string) => {
   if (status === "PUBLISHED") {
@@ -119,6 +123,51 @@ const AdminLearningPage = async () => {
                       ))
                     )}
                   </div>
+                  <div className="mt-5 flex flex-wrap gap-2">
+                    {path.status !== "PUBLISHED" && (
+                      <form action={setContentStatus}>
+                        <input name="entity" type="hidden" value="path" />
+                        <input name="id" type="hidden" value={path.id} />
+                        <input name="status" type="hidden" value="PUBLISHED" />
+                        <Button size="sm" type="submit">
+                          Publicar percurso
+                        </Button>
+                      </form>
+                    )}
+                    {path.status === "PUBLISHED" && (
+                      <form action={setContentStatus}>
+                        <input name="entity" type="hidden" value="path" />
+                        <input name="id" type="hidden" value={path.id} />
+                        <input name="status" type="hidden" value="ARCHIVED" />
+                        <Button size="sm" type="submit" variant="outline">
+                          Arquivar percurso
+                        </Button>
+                      </form>
+                    )}
+                  </div>
+                  <details className="mt-5 border-border border-t pt-5">
+                    <summary className="cursor-pointer text-muted-foreground text-sm underline underline-offset-4">
+                      Editar percurso
+                    </summary>
+                    <form
+                      action={updateLearningPath}
+                      className="mt-4 grid gap-3"
+                    >
+                      <input name="pathId" type="hidden" value={path.id} />
+                      <Input defaultValue={path.title} name="title" required />
+                      <Input defaultValue={path.slug} name="slug" required />
+                      <Textarea
+                        defaultValue={path.description ?? ""}
+                        name="description"
+                        placeholder="Descrição"
+                      />
+                      <div className="flex justify-end">
+                        <Button size="sm" type="submit">
+                          Salvar percurso
+                        </Button>
+                      </div>
+                    </form>
+                  </details>
                 </article>
               ))}
             </div>

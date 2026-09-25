@@ -15,7 +15,11 @@ const statusLabel = (status: string) => {
   return "Rascunho";
 };
 
-import { createActivity, saveFeedback } from "../../atividades/actions";
+import {
+  createActivity,
+  saveFeedback,
+  setActivityStatus,
+} from "../../atividades/actions";
 
 const AdminActivitiesPage = async () => {
   const activities = await getStaffActivities();
@@ -70,6 +74,34 @@ const AdminActivitiesPage = async () => {
                     <span className="font-data text-muted-foreground text-xs">
                       {activity.submissions.length} envios
                     </span>
+                  </div>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {activity.status !== "PUBLISHED" && (
+                      <form action={setActivityStatus}>
+                        <input
+                          name="activityId"
+                          type="hidden"
+                          value={activity.id}
+                        />
+                        <input name="status" type="hidden" value="PUBLISHED" />
+                        <Button size="sm" type="submit">
+                          Publicar atividade
+                        </Button>
+                      </form>
+                    )}
+                    {activity.status === "PUBLISHED" && (
+                      <form action={setActivityStatus}>
+                        <input
+                          name="activityId"
+                          type="hidden"
+                          value={activity.id}
+                        />
+                        <input name="status" type="hidden" value="ARCHIVED" />
+                        <Button size="sm" type="submit" variant="outline">
+                          Arquivar atividade
+                        </Button>
+                      </form>
+                    )}
                   </div>
                   {activity.submissions.length > 0 && (
                     <div className="mt-6 divide-y border-border border-y">
@@ -148,6 +180,15 @@ const AdminActivitiesPage = async () => {
                 className="mt-2 min-h-24"
                 id="activity-instructions"
                 name="instructions"
+              />
+            </label>
+            <label className="block" htmlFor="activity-due-at">
+              <span className="brand-eyebrow">Prazo (opcional)</span>
+              <Input
+                className="mt-2"
+                id="activity-due-at"
+                name="dueAt"
+                type="datetime-local"
               />
             </label>
             <Button className="w-full" type="submit">

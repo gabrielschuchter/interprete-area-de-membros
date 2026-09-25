@@ -14,12 +14,18 @@ import { togglePostVote } from "../actions";
 
 interface CommunitySpacePageProperties {
   readonly params: Promise<{ spaceSlug: string }>;
+  readonly searchParams: Promise<{ page?: string }>;
 }
 
-const CommunitySpacePage = async ({ params }: CommunitySpacePageProperties) => {
+const CommunitySpacePage = async ({
+  params,
+  searchParams,
+}: CommunitySpacePageProperties) => {
   const { spaceSlug } = await params;
+  const filters = await searchParams;
   const memberId = await requireMemberId();
-  const space = await getCommunitySpace(spaceSlug, memberId);
+  const page = Number.parseInt(filters.page ?? "1", 10);
+  const space = await getCommunitySpace(spaceSlug, memberId, page);
 
   if (!space) {
     notFound();
@@ -56,7 +62,7 @@ const CommunitySpacePage = async ({ params }: CommunitySpacePageProperties) => {
               Perguntas recentes
             </h2>
             <span className="font-data text-muted-foreground text-xs">
-              {space.posts.length.toString().padStart(2, "0")}
+              Página {space.page}
             </span>
           </div>
           {space.posts.length === 0 ? (
@@ -118,6 +124,33 @@ const CommunitySpacePage = async ({ params }: CommunitySpacePageProperties) => {
                 </article>
               ))}
             </div>
+          )}
+          {(space.page > 1 || space.hasMorePosts) && (
+            <nav
+              aria-label="Paginação da sala"
+              className="mt-8 flex flex-wrap justify-between gap-3"
+            >
+              {space.page > 1 ? (
+                <Button asChild variant="outline">
+                  <Link
+                    href={`/comunidade/${space.slug}?page=${space.page - 1}`}
+                  >
+                    Página anterior
+                  </Link>
+                </Button>
+              ) : (
+                <span />
+              )}
+              {space.hasMorePosts && (
+                <Button asChild variant="outline">
+                  <Link
+                    href={`/comunidade/${space.slug}?page=${space.page + 1}`}
+                  >
+                    Próxima página
+                  </Link>
+                </Button>
+              )}
+            </nav>
           )}
         </section>
       </main>

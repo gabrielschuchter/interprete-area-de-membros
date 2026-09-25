@@ -14,21 +14,123 @@ import {
 
 interface CommunityPostPageProperties {
   readonly params: Promise<{ spaceSlug: string; postId: string }>;
+  readonly searchParams: Promise<{ commentsPage?: string }>;
 }
 
-const CommunityPostPage = async ({ params }: CommunityPostPageProperties) => {
+type CommunityComment = NonNullable<
+  Awaited<ReturnType<typeof getCommunityPost>>
+>["comments"][number];
+
+interface CommentThreadProperties {
+  readonly comment: CommunityComment;
+  readonly comments: readonly CommunityComment[];
+  readonly depth: number;
+  readonly postId: string;
+  readonly spaceSlug: string;
+}
+
+const CommentThread = ({
+  comment,
+  comments,
+  postId,
+  spaceSlug,
+  depth,
+}: CommentThreadProperties) => {
+  const replies = comments.filter(({ parentId }) => parentId === comment.id);
+
+  return (
+    <div
+      className={
+        depth === 0
+          ? "border-border border-l-2 pl-4 sm:pl-6"
+          : "border-border border-t pt-5 pl-4 sm:pl-6"
+      }
+    >
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="brand-eyebrow">
+          Membro{depth > 0 ? " · resposta" : ""}
+        </span>
+        <span className="text-muted-foreground text-xs">
+          · {comment._count.votes} apoios
+        </span>
+      </div>
+      <p className="mt-2 whitespace-pre-wrap leading-7">{comment.content}</p>
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <form action={toggleCommentVote}>
+          <input name="commentId" type="hidden" value={comment.id} />
+          <input name="postId" type="hidden" value={postId} />
+          <input name="spaceSlug" type="hidden" value={spaceSlug} />
+          <Button
+            size="sm"
+            type="submit"
+            variant={comment.votes.length > 0 ? "default" : "ghost"}
+          >
+            <ThumbsUpIcon aria-hidden="true" />{" "}
+            {comment.votes.length > 0 ? "Apoiado" : "Apoiar"}
+          </Button>
+        </form>
+        <span className="text-muted-foreground text-xs">
+          {replies.length} respostas
+        </span>
+        <details>
+          <summary className="cursor-pointer text-muted-foreground text-xs underline underline-offset-4">
+            Responder
+          </summary>
+          <form action={createComment} className="mt-3 grid gap-3">
+            <input name="postId" type="hidden" value={postId} />
+            <input name="spaceSlug" type="hidden" value={spaceSlug} />
+            <input name="parentId" type="hidden" value={comment.id} />
+            <textarea
+              aria-label={`Responder a ${comment.content.slice(0, 40)}`}
+              className="min-h-24 w-full rounded-sm border bg-background px-3 py-2 text-sm leading-6 outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/35"
+              name="content"
+              placeholder="Escreva uma resposta..."
+              required
+            />
+            <Button className="w-fit" size="sm" type="submit">
+              Enviar resposta
+            </Button>
+          </form>
+        </details>
+      </div>
+      {replies.length > 0 && (
+        <div className="mt-5 space-y-5">
+          {replies.map((reply) => (
+            <CommentThread
+              comment={reply}
+              comments={comments}
+              depth={depth + 1}
+              key={reply.id}
+              postId={postId}
+              spaceSlug={spaceSlug}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const CommunityPostPage = async ({
+  params,
+  searchParams,
+}: CommunityPostPageProperties) => {
   const { spaceSlug, postId } = await params;
+  const filters = await searchParams;
   const memberId = await requireMemberId();
-  const post = await getCommunityPost(spaceSlug, postId, memberId);
+  const commentsPage = Number.parseInt(filters.commentsPage ?? "1", 10);
+  const post = await getCommunityPost(
+    spaceSlug,
+    postId,
+    memberId,
+    commentsPage
+  );
 
   if (!post) {
     notFound();
   }
 
   const topLevel = post.comments.filter((comment) => !comment.parentId);
-  const repliesFor = (parentId: string) =>
-    post.comments.filter((comment) => comment.parentId === parentId);
-
   return (
     <div className="min-h-svh bg-background">
       <MemberHeader section="Comunidade" />
@@ -72,7 +174,7 @@ const CommunityPostPage = async ({ params }: CommunityPostPageProperties) => {
               Discussão
             </h2>
             <span className="flex items-center gap-2 text-muted-foreground text-xs">
-              <MessageCircleIcon aria-hidden="true" /> {post.comments.length}
+              <MessageCircleIcon aria-hidden="true" /> {post._count.comments}
             </span>
           </div>
           <form
@@ -102,100 +204,45 @@ const CommunityPostPage = async ({ params }: CommunityPostPageProperties) => {
               </p>
             ) : (
               topLevel.map((comment) => (
-                <div
-                  className="border-border border-l-2 pl-4 sm:pl-6"
+                <CommentThread
+                  comment={comment}
+                  comments={post.comments}
+                  depth={0}
                   key={comment.id}
-                >
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="brand-eyebrow">Membro</span>
-                    <span className="text-muted-foreground text-xs">
-                      · {comment._count.votes} apoios
-                    </span>
-                  </div>
-                  <p className="mt-2 whitespace-pre-wrap leading-7">
-                    {comment.content}
-                  </p>
-                  <div className="mt-3 flex flex-wrap items-center gap-3">
-                    <form action={toggleCommentVote}>
-                      <input
-                        name="commentId"
-                        type="hidden"
-                        value={comment.id}
-                      />
-                      <input name="postId" type="hidden" value={post.id} />
-                      <input
-                        name="spaceSlug"
-                        type="hidden"
-                        value={post.space.slug}
-                      />
-                      <Button
-                        size="sm"
-                        type="submit"
-                        variant={comment.votes.length > 0 ? "default" : "ghost"}
-                      >
-                        <ThumbsUpIcon aria-hidden="true" />{" "}
-                        {comment.votes.length > 0 ? "Apoiado" : "Apoiar"}
-                      </Button>
-                    </form>
-                    <span className="text-muted-foreground text-xs">
-                      {repliesFor(comment.id).length} respostas
-                    </span>
-                  </div>
-                  {repliesFor(comment.id).map((reply) => (
-                    <div
-                      className="mt-5 border-border border-t pt-5 pl-4 sm:pl-6"
-                      key={reply.id}
-                    >
-                      <span className="brand-eyebrow">Membro · resposta</span>
-                      <p className="mt-2 whitespace-pre-wrap leading-7">
-                        {reply.content}
-                      </p>
-                      <form action={toggleCommentVote} className="mt-2">
-                        <input
-                          name="commentId"
-                          type="hidden"
-                          value={reply.id}
-                        />
-                        <input name="postId" type="hidden" value={post.id} />
-                        <input
-                          name="spaceSlug"
-                          type="hidden"
-                          value={post.space.slug}
-                        />
-                        <Button
-                          size="sm"
-                          type="submit"
-                          variant={reply.votes.length > 0 ? "default" : "ghost"}
-                        >
-                          <ThumbsUpIcon aria-hidden="true" />{" "}
-                          {reply.votes.length > 0 ? "Apoiado" : "Apoiar"}
-                        </Button>
-                      </form>
-                    </div>
-                  ))}
-                </div>
+                  postId={post.id}
+                  spaceSlug={post.space.slug}
+                />
               ))
             )}
           </div>
+          {(post.commentsPage > 1 || post.hasMoreComments) && (
+            <nav
+              aria-label="Paginação da discussão"
+              className="mt-8 flex flex-wrap justify-between gap-3"
+            >
+              {post.commentsPage > 1 ? (
+                <Button asChild variant="outline">
+                  <Link
+                    href={`/comunidade/${post.space.slug}/${post.id}?commentsPage=${post.commentsPage - 1}`}
+                  >
+                    Respostas anteriores
+                  </Link>
+                </Button>
+              ) : (
+                <span />
+              )}
+              {post.hasMoreComments && (
+                <Button asChild variant="outline">
+                  <Link
+                    href={`/comunidade/${post.space.slug}/${post.id}?commentsPage=${post.commentsPage + 1}`}
+                  >
+                    Mais respostas
+                  </Link>
+                </Button>
+              )}
+            </nav>
+          )}
         </section>
-        <form
-          action={createComment}
-          className="mt-8 border-border border-t pt-8"
-        >
-          <input name="postId" type="hidden" value={post.id} />
-          <input name="spaceSlug" type="hidden" value={post.space.slug} />
-          <input name="parentId" type="hidden" value={topLevel[0]?.id ?? ""} />
-          <input
-            aria-label="Responder à primeira contribuição"
-            className="h-11 w-full rounded-sm border bg-background px-3 text-sm"
-            name="content"
-            placeholder="Responder à primeira contribuição..."
-            required
-          />
-          <Button className="mt-3" size="sm" type="submit">
-            Enviar resposta
-          </Button>
-        </form>
       </main>
     </div>
   );

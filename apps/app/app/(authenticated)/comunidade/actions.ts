@@ -25,7 +25,11 @@ export const createPost = async (formData: FormData) => {
   }
 
   const space = await database.communitySpace.findFirst({
-    where: { id: spaceId, status: ContentStatus.PUBLISHED },
+    where: {
+      id: spaceId,
+      slug: spaceSlug,
+      status: ContentStatus.PUBLISHED,
+    },
     select: { id: true },
   });
 
@@ -60,12 +64,28 @@ export const createComment = async (formData: FormData) => {
   }
 
   const post = await database.communityPost.findFirst({
-    where: { id: postId, status: ContentStatus.PUBLISHED, deletedAt: null },
+    where: {
+      id: postId,
+      status: ContentStatus.PUBLISHED,
+      deletedAt: null,
+      space: { slug: spaceSlug, status: ContentStatus.PUBLISHED },
+    },
     select: { id: true },
   });
 
   if (!post) {
     return;
+  }
+
+  if (parentId) {
+    const parent = await database.communityComment.findFirst({
+      where: { id: parentId, postId, deletedAt: null },
+      select: { id: true },
+    });
+
+    if (!parent) {
+      return;
+    }
   }
 
   await database.communityComment.create({
@@ -125,6 +145,24 @@ export const toggleCommentVote = async (formData: FormData) => {
     return;
   }
 
+  const comment = await database.communityComment.findFirst({
+    where: {
+      id: commentId,
+      postId,
+      deletedAt: null,
+      post: {
+        status: ContentStatus.PUBLISHED,
+        deletedAt: null,
+        space: { slug: spaceSlug, status: ContentStatus.PUBLISHED },
+      },
+    },
+    select: { id: true },
+  });
+
+  if (!comment) {
+    return;
+  }
+
   const existing = await database.commentVote.findUnique({
     where: { commentId_memberId: { commentId, memberId: userId } },
     select: { id: true },
@@ -150,8 +188,8 @@ export const softDeletePost = async (formData: FormData) => {
     return;
   }
 
-  const post = await database.communityPost.findUnique({
-    where: { id: postId },
+  const post = await database.communityPost.findFirst({
+    where: { id: postId, space: { slug: spaceSlug } },
     select: { authorId: true },
   });
   const role = await getMemberRole(userId);
@@ -181,14 +219,16 @@ export const softDeleteComment = async (formData: FormData) => {
     return;
   }
 
-  const comment = await database.communityComment.findUnique({
-    where: { id: commentId },
-    select: { authorId: true },
+  const comment = await database.communityComment.findFirst({
+    where: { id: commentId, post: { id: postId, space: { slug: spaceSlug } } },
+    select: { authorId: true, postId: true, deletedAt: true },
   });
   const role = await getMemberRole(userId);
 
   if (
     !comment ||
+    comment.postId !== postId ||
+    comment.deletedAt ||
     (comment.authorId !== userId && role !== "TEACHER" && role !== "ADMIN")
   ) {
     return;
@@ -221,4 +261,24 @@ export const createSpace = async (formData: FormData) => {
     },
   });
   revalidatePath("/admin/community");
+};
+
+export const setSpaceStatus = async (formData: FormData) => {
+  await requireStaff();
+  const spaceId = textValue(formData.get("spaceId"));
+  const status = textValue(formData.get("status"));
+
+  if (
+    !(spaceId && Object.values(ContentStatus).includes(status as ContentStatus))
+  ) {
+    return;
+  }
+
+  await database.communitySpace.update({
+    where: { id: spaceId },
+    data: { status: status as ContentStatus },
+  });
+
+  revalidatePath("/admin/community");
+  revalidatePath("/comunidade");
 };

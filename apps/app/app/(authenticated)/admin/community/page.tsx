@@ -4,7 +4,11 @@ import { Input } from "@repo/design-system/components/ui/input";
 import { Textarea } from "@repo/design-system/components/ui/textarea";
 import Link from "next/link";
 import { getStaffCommunitySpaces } from "@/lib/community";
-import { createSpace, softDeletePost } from "../../comunidade/actions";
+import {
+  createSpace,
+  setSpaceStatus,
+  softDeletePost,
+} from "../../comunidade/actions";
 
 const AdminCommunityPage = async () => {
   const spaces = await getStaffCommunitySpaces();
@@ -52,6 +56,26 @@ const AdminCommunityPage = async () => {
                     >
                       {space.status}
                     </Badge>
+                  </div>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {space.status !== "PUBLISHED" && (
+                      <form action={setSpaceStatus}>
+                        <input name="spaceId" type="hidden" value={space.id} />
+                        <input name="status" type="hidden" value="PUBLISHED" />
+                        <Button size="sm" type="submit">
+                          Publicar sala
+                        </Button>
+                      </form>
+                    )}
+                    {space.status === "PUBLISHED" && (
+                      <form action={setSpaceStatus}>
+                        <input name="spaceId" type="hidden" value={space.id} />
+                        <input name="status" type="hidden" value="ARCHIVED" />
+                        <Button size="sm" type="submit" variant="outline">
+                          Arquivar sala
+                        </Button>
+                      </form>
+                    )}
                   </div>
                   <div className="mt-5 divide-y border-border border-y">
                     {space.posts.length === 0 ? (

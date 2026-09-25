@@ -67,6 +67,7 @@ Autoria de cursos, módulos e aulas, edição rich-text e publicação administr
 - Clerk CLI, proxy, login real e acesso autenticado ao shell foram validados; o percurso do membro até `/aprender` chega ao guard e ao carregamento server-side;
 - a consulta real da aplicação ainda falha localmente porque `DATABASE_URL` está sendo executada com placeholder: persistência, conteúdo e conclusão da aula continuam `BLOCKED_BY_CREDENTIALS`;
 - a Phase 1 permanece `IN PROGRESS` até validar o processo Prisma da aplicação com credenciais PostgreSQL locais e executar o fluxo completo com seed de desenvolvimento.
+- a proteção das páginas de membro usa o mesmo guard server-side da aplicação; sem sessão, `/` e `/aprender` respondem com redirect 307 para o fluxo do Clerk.
 
 ## Phase 2 — Teacher/Admin
 
@@ -121,6 +122,9 @@ Permitir que professor/admin crie, edite, ordene, visualize e publique conteúdo
 - `Member.role` foi criado como fonte server-side de autorização;
 - professor/admin possui rotas protegidas para conteúdo, preview, publish/archive, atividades, comunidade, encontros e biblioteca;
 - o fluxo de criação e publicação está implementado, mas ainda não foi executado com dados persistidos por causa do bloqueio de credenciais.
+- o fluxo administrativo agora inclui edição de percurso, curso, módulo e aula, preview com o documento estruturado renderizado e controles de publicar/arquivar;
+- novas entidades recebem a próxima posição persistida dentro de transação, evitando colisões da constraint de ordenação ao criar o segundo curso, módulo ou aula;
+- as ações administrativas mantêm autorização server-side por `Member.role` e atualizam o responsável por alterações onde o modelo oferece esse campo.
 
 ## Phase 3 — Activities
 
@@ -161,6 +165,11 @@ Permitir prática deliberada, entrega do membro e feedback autorizado do profess
 
 - validação de persistência e E2E depende do PostgreSQL acessível;
 - sem anexos ou workflow acadêmico além de `DRAFT`, `SUBMITTED` e `REVIEWED`.
+
+### Evidência desta execução
+
+- criação de atividades aceita prazo opcional validado, e o admin possui publicação/arquivamento;
+- submissão própria, feedback staff e estados `DRAFT`/`SUBMITTED`/`REVIEWED` continuam protegidos por ações server-side.
 
 ## Phase 4 — Community
 
@@ -205,6 +214,12 @@ Criar espaços de discussão com posts, comentários threadados e reação posit
 - validação do fluxo entre membros depende do PostgreSQL acessível;
 - não há chat, DM, karma, leaderboard ou badges.
 
+### Evidência desta execução
+
+- posts, comentários e votos validam a relação entre espaço, post e comentário antes de mutar;
+- feed e discussões têm paginação; a paginação da discussão é por comentários-raiz e inclui toda a descendência carregada, evitando separar uma resposta do seu pai;
+- contagens públicas excluem posts/comentários removidos e a moderação permanece em soft delete.
+
 ## Phase 5 — Meetings
 
 Status: IN PROGRESS
@@ -241,6 +256,11 @@ Exibir próximos e passados encontros com clareza, usando links externos.
 - links externos são aceitos somente com `http`/`https`;
 - não foi criado provider de vídeo nem integração de calendário.
 
+### Evidência desta execução
+
+- timezone informado pelo professor é validado com `Intl.DateTimeFormat` antes de persistir, evitando falha posterior de renderização;
+- próximo e passados continuam separados server-side por data e status publicado.
+
 ## Phase 6 — Library
 
 Status: IN PROGRESS
@@ -276,6 +296,11 @@ Centralizar recursos curados com busca simples e filtros úteis.
 
 - URLs externas estão implementadas; upload/Storage fica pendente até haver necessidade real e policy validada;
 - não há busca semântica ou IA.
+
+### Evidência desta execução
+
+- busca e filtros da biblioteca agora retornam páginas de tamanho limitado, preservando query, tipo e categoria nos links de navegação;
+- itens publicados continuam sendo a única superfície de membro e URLs são validadas na criação administrativa.
 
 ## Phase 7 — Smart Home
 

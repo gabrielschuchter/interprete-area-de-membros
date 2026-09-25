@@ -5,7 +5,11 @@ import { ContentStatus, database } from "@repo/database";
 export const getPublishedActivities = async (memberId: string) =>
   database.activity.findMany({
     where: { status: ContentStatus.PUBLISHED },
-    orderBy: [{ dueAt: "asc" }, { position: "asc" }, { title: "asc" }],
+    orderBy: [
+      { dueAt: { sort: "asc", nulls: "last" } },
+      { position: "asc" },
+      { title: "asc" },
+    ],
     select: {
       id: true,
       title: true,

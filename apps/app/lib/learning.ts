@@ -1,18 +1,10 @@
 import "server-only";
 
-import { auth } from "@repo/auth/server";
 import { ContentStatus, database, ProgressStatus } from "@repo/database";
+import { requireSession } from "./authorization";
 import { calculateLearningProgress } from "./learning-progress";
 
-export const requireMemberId = async () => {
-  const { userId } = await auth();
-
-  if (!userId) {
-    throw new Error("A member session is required to access learning data.");
-  }
-
-  return userId;
-};
+export const requireMemberId = requireSession;
 
 const published = { status: ContentStatus.PUBLISHED } as const;
 const publishedCourse = {

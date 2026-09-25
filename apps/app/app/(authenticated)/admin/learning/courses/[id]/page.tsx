@@ -10,7 +10,9 @@ import {
   createLesson,
   createModule,
   setContentStatus,
+  updateCourse,
   updateLesson,
+  updateModule,
 } from "../../../actions";
 
 interface AdminCoursePageProperties {
@@ -93,6 +95,26 @@ const AdminCoursePage = async ({ params }: AdminCoursePageProperties) => {
             </form>
           )}
         </div>
+        <details className="mt-6 max-w-2xl border-border border-t pt-5">
+          <summary className="cursor-pointer text-muted-foreground text-sm underline underline-offset-4">
+            Editar curso
+          </summary>
+          <form action={updateCourse} className="mt-4 grid gap-3">
+            <input name="courseId" type="hidden" value={course.id} />
+            <Input defaultValue={course.title} name="title" required />
+            <Input defaultValue={course.slug} name="slug" required />
+            <Textarea
+              defaultValue={course.description ?? ""}
+              name="description"
+              placeholder="Descrição"
+            />
+            <div className="flex justify-end">
+              <Button size="sm" type="submit">
+                Salvar curso
+              </Button>
+            </div>
+          </form>
+        </details>
       </header>
 
       <div className="mt-10 grid gap-10 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
@@ -134,6 +156,43 @@ const AdminCoursePage = async ({ params }: AdminCoursePageProperties) => {
                     {statusLabel(module.status)}
                   </Badge>
                 </div>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {module.status !== "PUBLISHED" && (
+                    <form action={setContentStatus}>
+                      <input name="entity" type="hidden" value="module" />
+                      <input name="id" type="hidden" value={module.id} />
+                      <input name="status" type="hidden" value="PUBLISHED" />
+                      <Button size="sm" type="submit" variant="outline">
+                        Publicar módulo
+                      </Button>
+                    </form>
+                  )}
+                  {module.status === "PUBLISHED" && (
+                    <form action={setContentStatus}>
+                      <input name="entity" type="hidden" value="module" />
+                      <input name="id" type="hidden" value={module.id} />
+                      <input name="status" type="hidden" value="ARCHIVED" />
+                      <Button size="sm" type="submit" variant="ghost">
+                        Arquivar módulo
+                      </Button>
+                    </form>
+                  )}
+                </div>
+                <details className="mt-5 border-border border-t pt-5">
+                  <summary className="cursor-pointer text-muted-foreground text-sm underline underline-offset-4">
+                    Editar módulo
+                  </summary>
+                  <form action={updateModule} className="mt-4 grid gap-3">
+                    <input name="moduleId" type="hidden" value={module.id} />
+                    <Input defaultValue={module.title} name="title" required />
+                    <Input defaultValue={module.slug} name="slug" required />
+                    <div className="flex justify-end">
+                      <Button size="sm" type="submit">
+                        Salvar módulo
+                      </Button>
+                    </div>
+                  </form>
+                </details>
                 <div className="mt-6 divide-y border-border border-y">
                   {module.lessons.length === 0 && (
                     <p className="py-4 text-muted-foreground text-sm">

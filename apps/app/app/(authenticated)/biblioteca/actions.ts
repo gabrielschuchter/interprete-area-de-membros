@@ -57,7 +57,7 @@ export const createLibraryItem = async (formData: FormData) => {
 };
 
 export const setLibraryStatus = async (formData: FormData) => {
-  await requireStaff();
+  const { userId } = await requireStaff();
   const id = value(formData.get("id"));
   const status = value(formData.get("status"));
   if (!(id && Object.values(ContentStatus).includes(status as ContentStatus))) {
@@ -65,7 +65,7 @@ export const setLibraryStatus = async (formData: FormData) => {
   }
   await database.libraryItem.update({
     where: { id },
-    data: { status: status as ContentStatus },
+    data: { status: status as ContentStatus, updatedBy: userId },
   });
   revalidatePath("/admin/library");
   revalidatePath("/biblioteca");
