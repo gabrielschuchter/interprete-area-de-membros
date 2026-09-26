@@ -9,8 +9,19 @@ import { createCommunityComment } from "@/lib/community-mutations";
 import { readIdempotencyKey } from "@/lib/mutation-contract";
 import { isMutationRateLimitError } from "@/lib/mutation-reliability";
 
+const noStoreHeaders = { "Cache-Control": "private, no-store" } as const;
+
+const expectedCommentErrors = new Set([
+  "Revise o conteúdo do comentário antes de enviar.",
+  "Esta discussão não está disponível para comentários.",
+  "A resposta original não está mais disponível.",
+]);
+
 const errorResponse = (error: string, status: number) =>
-  NextResponse.json({ ok: false, error }, { status });
+  NextResponse.json(
+    { ok: false, error },
+    { status, headers: noStoreHeaders }
+  );
 
 const contentFromRequest = (
   body: Record<string, unknown>,
@@ -75,7 +86,10 @@ export async function POST(request: Request) {
       spaceSlug,
     });
 
-    return NextResponse.json({ ok: true, ...result });
+    return NextResponse.json(
+      { ok: true, ...result },
+      { headers: noStoreHeaders }
+    );
   } catch (error) {
     if (isMutationRateLimitError(error)) {
       return NextResponse.json(
@@ -88,16 +102,19 @@ export async function POST(request: Request) {
         },
         {
           status: 429,
-          headers: { "Retry-After": String(error.retryAfterSeconds) },
+          headers: {
+            ...noStoreHeaders,
+            "Retry-After": String(error.retryAfterSeconds),
+          },
         }
       );
     }
 
-    return errorResponse(
-      error instanceof Error
-        ? error.message
-        : "Não foi possível publicar o comentário.",
-      409
-    );
+    if (error instanceof Error && expectedCommentErrors.has(error.message)) {
+      return errorResponse(error.message, 409);
+    }
+
+    console.error("Community comment creation failed", error);
+    return errorResponse("Não foi possível publicar o comentário.", 500);
   }
 }

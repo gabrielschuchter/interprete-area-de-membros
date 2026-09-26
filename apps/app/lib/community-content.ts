@@ -46,23 +46,25 @@ const safeHref = (value: unknown) => {
   if (typeof value !== "string") {
     return null;
   }
-  if (isMemberAssetUrl(value)) {
-    return value;
-  }
   try {
     const url = new URL(value);
-    return url.protocol === "http:" || url.protocol === "https:"
-      ? url.toString()
-      : null;
+    return url.protocol === "https:" ? url.toString() : null;
   } catch {
     return null;
   }
 };
 
+const safeImageSrc = (value: unknown) =>
+  typeof value === "string" && isMemberAssetUrl(value) ? value : null;
+
 const sanitizeAttr = (key: string, value: unknown) => {
-  if ((key === "href" || key === "src") && typeof value === "string") {
+  if (key === "href") {
     const href = safeHref(value);
     return href ? ([key, href] as const) : null;
+  }
+  if (key === "src") {
+    const src = safeImageSrc(value);
+    return src ? ([key, src] as const) : null;
   }
   if (key === "level" && typeof value === "number") {
     return [key, Math.min(3, Math.max(2, value))] as const;

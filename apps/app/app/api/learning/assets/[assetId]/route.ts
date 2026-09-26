@@ -33,24 +33,27 @@ const isHlsAsset = (mimeType: string | null) =>
   mimeType === "audio/mpegurl";
 const hlsLineBreaks = /\r?\n/;
 const hlsUriAttribute = /URI="([^"]+)"/;
-const HLS_TOKEN_TTL_SECONDS = 60 * 60 * 6;
+const HLS_TOKEN_TTL_SECONDS = 60 * 30;
 
 interface HlsPlaybackTokenPayload {
   readonly assetId: string;
   readonly directory: string;
   readonly expiresAt: number;
+  readonly memberId: string;
 }
 
 const encodeTokenPart = (value: string) =>
   Buffer.from(value, "utf8").toString("base64url");
 
 const hlsTokenSecret = () =>
+  process.env.LEARNING_ASSET_TOKEN_SECRET ??
   process.env.SUPABASE_SECRET_KEY ??
   process.env.SUPABASE_SERVICE_ROLE_KEY ??
   null;
 
 const signHlsPlaybackToken = (
   assetId: string,
+  memberId: string,
   directory: string,
   expiresInSeconds = HLS_TOKEN_TTL_SECONDS
 ) => {
@@ -61,6 +64,7 @@ const signHlsPlaybackToken = (
 
   const payload: HlsPlaybackTokenPayload = {
     assetId,
+    memberId,
     directory,
     expiresAt: Math.floor(Date.now() / 1000) + expiresInSeconds,
   };
@@ -74,6 +78,7 @@ const signHlsPlaybackToken = (
 const verifyHlsPlaybackToken = (
   token: string | null,
   assetId: string,
+  memberId: string,
   storagePath: string
 ) => {
   const secret = hlsTokenSecret();
@@ -107,20 +112,28 @@ const verifyHlsPlaybackToken = (
       storagePath.lastIndexOf("/") + 1
     );
     const tokenAssetId = payload.assetId;
+    const tokenMemberId = payload.memberId;
     const directory = payload.directory;
     const expiresAt = payload.expiresAt;
     if (
       typeof tokenAssetId !== "string" ||
+      typeof tokenMemberId !== "string" ||
       typeof directory !== "string" ||
       typeof expiresAt !== "number" ||
       tokenAssetId !== assetId ||
+      tokenMemberId !== memberId ||
       directory !== playlistDirectory ||
       !Number.isInteger(expiresAt) ||
       expiresAt <= Math.floor(Date.now() / 1000)
     ) {
       return null;
     }
-    return { assetId: tokenAssetId, directory, expiresAt };
+    return {
+      assetId: tokenAssetId,
+      memberId: tokenMemberId,
+      directory,
+      expiresAt,
+    };
   } catch {
     return null;
   }
@@ -222,10 +235,16 @@ const isSafeHlsSegmentPath = (storagePath: string, directory: string) =>
 const serveTokenizedHlsSegment = (
   request: Request,
   assetId: string,
+  memberId: string,
   hlsPart: string,
   hlsToken: string
 ) => {
-  const tokenPayload = verifyHlsPlaybackToken(hlsToken, assetId, hlsPart);
+  const tokenPayload = verifyHlsPlaybackToken(
+    hlsToken,
+    assetId,
+    memberId,
+    hlsPart
+  );
   if (!tokenPayload) {
     return invalidHlsSegmentResponse();
   }
@@ -252,6 +271,7 @@ const serveTokenizedHlsSegment = (
 const rewriteHlsPlaylist = (
   request: Request,
   assetId: string,
+  memberId: string,
   storagePath: string,
   playlist: string
 ) => {
@@ -259,7 +279,11 @@ const rewriteHlsPlaylist = (
     0,
     storagePath.lastIndexOf("/") + 1
   );
-  const playbackToken = signHlsPlaybackToken(assetId, playlistDirectory);
+  const playbackToken = signHlsPlaybackToken(
+    assetId,
+    memberId,
+    playlistDirectory
+  );
   if (!playbackToken) {
     return null;
   }
@@ -288,6 +312,7 @@ const rewriteHlsPlaylist = (
 const serveHlsPlaylist = async (
   request: Request,
   assetId: string,
+  memberId: string,
   storagePath: string,
   signedUrl: string
 ) => {
@@ -302,6 +327,7 @@ const serveHlsPlaylist = async (
   const rewritten = rewriteHlsPlaylist(
     request,
     assetId,
+    memberId,
     storagePath,
     await upstream.text()
   );
@@ -324,6 +350,7 @@ const serveHlsPlaylist = async (
 const serveStoredAsset = async (
   request: Request,
   assetId: string,
+  memberId: string,
   asset: AccessibleAsset,
   hlsPart: string | null
 ) => {
@@ -360,7 +387,7 @@ const serveStoredAsset = async (
     );
   }
   return isHlsAsset(asset.mimeType)
-    ? serveHlsPlaylist(request, assetId, storagePath, signedUrl)
+    ? serveHlsPlaylist(request, assetId, memberId, storagePath, signedUrl)
     : proxyStorageResponse(request, signedUrl);
 };
 
@@ -372,16 +399,21 @@ export const GET = async (
   const requestUrl = new URL(request.url);
   const hlsPart = requestUrl.searchParams.get("hlsPart");
   const hlsToken = requestUrl.searchParams.get("hlsToken");
+  const memberId = await requireMemberId();
 
-  // The playlist request performs the full member/asset authorization once.
-  // Subsequent segment requests use a short-lived, asset-bound capability
-  // instead of repeating a Prisma query and a Supabase signing request for
-  // every 1–8 MB HLS segment.
+  // Every request must carry a valid Clerk session. The short-lived capability
+  // is bound to this member + asset + directory and only avoids repeating
+  // Prisma authorization and Supabase signing for every HLS segment.
   if (hlsPart && hlsToken) {
-    return serveTokenizedHlsSegment(request, assetId, hlsPart, hlsToken);
+    return serveTokenizedHlsSegment(
+      request,
+      assetId,
+      memberId,
+      hlsPart,
+      hlsToken
+    );
   }
 
-  const memberId = await requireMemberId();
   const asset = await getAccessibleAsset(assetId, memberId);
 
   if (!asset) {
@@ -389,7 +421,7 @@ export const GET = async (
   }
 
   if (asset.storagePath) {
-    return serveStoredAsset(request, assetId, asset, hlsPart);
+    return serveStoredAsset(request, assetId, memberId, asset, hlsPart);
   }
 
   const externalUrl = safeExternalUrl(asset.externalUrl);

@@ -1,6 +1,10 @@
 import { auth } from "@repo/auth/server";
 import { NextResponse } from "next/server";
 import {
+  consumeMutationRateLimit,
+  isMutationRateLimitError,
+} from "@/lib/mutation-reliability";
+import {
   markNotificationRead,
   markNotificationUnread,
 } from "@/lib/notifications";
@@ -27,6 +31,10 @@ export const PATCH = async (
   }
 
   try {
+    await consumeMutationRateLimit({
+      action: "notification.mutation",
+      memberId: userId,
+    });
     let markUnread = false;
     try {
       const payload = (await _request.clone().json()) as { read?: unknown };
@@ -39,8 +47,20 @@ export const PATCH = async (
     } else {
       await markNotificationRead(userId, notificationId);
     }
-    return NextResponse.json({ ok: true });
+    return NextResponse.json(
+      { ok: true },
+      { headers: { "Cache-Control": "private, no-store" } }
+    );
   } catch (error) {
+    if (isMutationRateLimitError(error)) {
+      return NextResponse.json(
+        { error: "Você está fazendo muitas ações em sequência." },
+        {
+          status: 429,
+          headers: { "Retry-After": String(error.retryAfterSeconds) },
+        }
+      );
+    }
     console.error("Notification update failed", error);
     return NextResponse.json(
       { error: "Não foi possível atualizar a notificação." },

@@ -8,6 +8,9 @@ import {
 } from "@/lib/mutation-reliability";
 import { getMemberDirectory } from "@/lib/profile";
 
+const noStoreHeaders = { "Cache-Control": "private, no-store" } as const;
+const MAX_QUERY_LENGTH = 80;
+
 const groupFor = (input: {
   readonly displayName: string;
   readonly id: string;
@@ -23,7 +26,10 @@ const groupFor = (input: {
 export const GET = async (request: Request) => {
   const { userId } = await auth();
   if (!userId) {
-    return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
+    return NextResponse.json(
+      { error: "Não autenticado" },
+      { status: 401, headers: noStoreHeaders }
+    );
   }
 
   try {
@@ -40,7 +46,10 @@ export const GET = async (request: Request) => {
         },
         {
           status: 429,
-          headers: { "Retry-After": String(error.retryAfterSeconds) },
+          headers: {
+            ...noStoreHeaders,
+            "Retry-After": String(error.retryAfterSeconds),
+          },
         }
       );
     }
@@ -48,6 +57,13 @@ export const GET = async (request: Request) => {
   }
 
   const query = new URL(request.url).searchParams.get("q") ?? "";
+  if (query.length > MAX_QUERY_LENGTH) {
+    return NextResponse.json(
+      { error: "Busca longa demais." },
+      { status: 400, headers: noStoreHeaders }
+    );
+  }
+
   try {
     const [profiles, role] = await Promise.all([
       getMemberDirectory(query),
@@ -110,24 +126,27 @@ export const GET = async (request: Request) => {
             group.displayName.toLowerCase().includes(normalizedQuery)
         )
       : groups;
-    return NextResponse.json({
-      items: [
-        ...matchingGroups,
-        ...profiles.map((profile) => ({
-          id: profile.clerkUserId,
-          username: profile.username,
-          displayName: profile.displayName,
-          avatarUrl: profile.avatarUrl,
-          kind: "USER" as const,
-          role: profile.member.role,
-        })),
-      ].slice(0, 48),
-    });
+    return NextResponse.json(
+      {
+        items: [
+          ...matchingGroups,
+          ...profiles.map((profile) => ({
+            id: profile.clerkUserId,
+            username: profile.username,
+            displayName: profile.displayName,
+            avatarUrl: profile.avatarUrl,
+            kind: "USER" as const,
+            role: profile.member.role,
+          })),
+        ].slice(0, 48),
+      },
+      { headers: noStoreHeaders }
+    );
   } catch (error) {
     console.error("Member search failed", error);
     return NextResponse.json(
       { error: "Não foi possível buscar membros." },
-      { status: 500 }
+      { status: 500, headers: noStoreHeaders }
     );
   }
 };
