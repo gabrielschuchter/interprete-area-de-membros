@@ -29,6 +29,13 @@ export const AuthProvider = ({
     helpPageUrl: helpUrl,
   };
 
+  // Keep the frontend API proxy on the same canonical host as the app. An
+  // absolute value from an older deployment would move Clerk requests and
+  // session cookies to a different Vercel project.
+  const clerkProxyUrl = process.env.NEXT_PUBLIC_CLERK_PROXY_URL?.startsWith("/")
+    ? process.env.NEXT_PUBLIC_CLERK_PROXY_URL
+    : "/__clerk";
+
   return (
     <ClerkProvider
       {...properties}
@@ -38,7 +45,7 @@ export const AuthProvider = ({
         theme: baseTheme,
       }}
       localization={ptBR}
-      proxyUrl={process.env.NEXT_PUBLIC_CLERK_PROXY_URL || "/__clerk"}
+      proxyUrl={clerkProxyUrl}
     />
   );
 };
