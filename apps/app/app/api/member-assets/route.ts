@@ -1,7 +1,6 @@
 import { auth } from "@repo/auth/server";
 import { database, MemberRole } from "@repo/database";
 import { NextResponse } from "next/server";
-import { MemberImageError, normalizeMemberImage } from "@/lib/member-image";
 import {
   createMemberAssetPath,
   createMemberAssetSignedUrl,
@@ -205,6 +204,7 @@ export async function POST(request: Request) {
 
   if (imageTypes.has(file.type)) {
     try {
+      const { normalizeMemberImage } = await import("@/lib/member-image");
       const normalized = await normalizeMemberImage(file, kind);
       body = normalized.body.buffer.slice(
         normalized.body.byteOffset,
@@ -216,7 +216,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error:
-            error instanceof MemberImageError
+            error instanceof Error && error.name === "MemberImageError"
               ? error.message
               : "Não foi possível processar a imagem.",
         },
