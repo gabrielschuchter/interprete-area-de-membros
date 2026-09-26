@@ -209,7 +209,11 @@ const AdminActivitiesPage = async () => {
                   {activity.submissions.length > 0 && (
                     <div className="mt-6 divide-y border-border border-y">
                       {activity.submissions.map((submission) => (
-                        <div className="py-5" key={submission.id}>
+                        <div
+                          className="py-5"
+                          id={submission.id}
+                          key={submission.id}
+                        >
                           <div className="flex flex-wrap items-center justify-between gap-3">
                             <p className="brand-eyebrow">
                               Membro · {submission.status}
