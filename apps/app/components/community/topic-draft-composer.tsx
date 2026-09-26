@@ -60,6 +60,7 @@ export const TopicDraftComposer = ({
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const requestQueue = useRef(Promise.resolve());
   const requestVersion = useRef(0);
+  const groupMentionConfirmedRef = useRef(false);
 
   const scheduleSave = ({
     nextContent,
@@ -87,6 +88,10 @@ export const TopicDraftComposer = ({
       formData.set("spaceSlug", nextSpaceSlug);
       formData.set("title", nextTitle);
       formData.set("tags", nextTags);
+      formData.set(
+        "confirmGroupMention",
+        groupMentionConfirmedRef.current ? "1" : "0"
+      );
       if (nextContent) {
         formData.set("contentJson", JSON.stringify(nextContent));
       }
@@ -134,6 +139,11 @@ export const TopicDraftComposer = ({
             <input name="postId" type="hidden" value={postId} />
             <input name="spaceSlug" type="hidden" value={spaceSlug} />
             <input name="status" type="hidden" value="PUBLISHED" />
+            <input
+              name="confirmGroupMention"
+              type="hidden"
+              value={groupMentionConfirmedRef.current ? "1" : "0"}
+            />
             <Button size="sm" type="submit">
               Publicar tópico
             </Button>
@@ -194,6 +204,9 @@ export const TopicDraftComposer = ({
             <TopicEditor
               defaultValue={initialContent}
               onDocumentChange={(nextContent) => scheduleSave({ nextContent })}
+              onGroupMentionChange={(_hasGroupMention, confirmed) => {
+                groupMentionConfirmedRef.current = confirmed;
+              }}
             />
           </div>
         </div>

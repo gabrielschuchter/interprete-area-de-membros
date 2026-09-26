@@ -3,6 +3,8 @@ import { NextResponse } from "next/server";
 import {
   getNotifications,
   getUnreadNotificationCount,
+  getUnseenNotificationCount,
+  type NotificationFilter,
 } from "@/lib/notifications";
 
 export const GET = async (request: Request) => {
@@ -12,11 +14,30 @@ export const GET = async (request: Request) => {
   }
 
   try {
-    const summaryOnly =
-      new URL(request.url).searchParams.get("summary") === "1";
+    const searchParams = new URL(request.url).searchParams;
+    const summaryOnly = searchParams.get("summary") === "1";
+    const filterValue = searchParams.get("filter") ?? "ALL";
+    const filters = [
+      "ALL",
+      "MENTIONS",
+      "COMMUNITY",
+      "ACTIVITIES",
+      "LEARNING",
+    ] as const;
+    const filter = filters.includes(filterValue as (typeof filters)[number])
+      ? (filterValue as NotificationFilter)
+      : "ALL";
     const notifications = summaryOnly
-      ? { items: [], unreadCount: await getUnreadNotificationCount(userId) }
-      : await getNotifications(userId);
+      ? {
+          items: [],
+          unreadCount: await getUnreadNotificationCount(userId),
+          unseenCount: await getUnseenNotificationCount(userId),
+        }
+      : await getNotifications(userId, {
+          cursor: searchParams.get("cursor") ?? undefined,
+          filter,
+          limit: Number(searchParams.get("limit") ?? 24),
+        });
     return NextResponse.json(notifications, {
       headers: { "Cache-Control": "private, no-store" },
     });

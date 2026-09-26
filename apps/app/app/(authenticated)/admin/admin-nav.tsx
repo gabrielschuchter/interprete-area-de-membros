@@ -11,6 +11,7 @@ const groups = [
       ["Visão geral", "/admin"],
       ["Atividades", "/admin/activities"],
       ["Encontros", "/admin/meetings"],
+      ["Avisos", "/admin/avisos"],
     ],
   },
   {

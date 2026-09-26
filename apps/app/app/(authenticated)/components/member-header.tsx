@@ -7,6 +7,7 @@ import { BrandWordmark } from "@/components/brand/brand-mark";
 import { MemberHeaderControls } from "./member-header-controls";
 
 interface MemberHeaderProperties {
+  readonly memberId: string;
   readonly section?: string;
 }
 
@@ -38,7 +39,7 @@ const sectionForPathname = (pathname: string) => {
   return "Início";
 };
 
-export const MemberHeader = ({ section }: MemberHeaderProperties) => {
+export const MemberHeader = ({ memberId, section }: MemberHeaderProperties) => {
   const pathname = usePathname();
   const resolvedSection = section ?? sectionForPathname(pathname);
 
@@ -52,7 +53,7 @@ export const MemberHeader = ({ section }: MemberHeaderProperties) => {
           Interprete. · {resolvedSection}
         </p>
       </div>
-      <MemberHeaderControls />
+      <MemberHeaderControls memberId={memberId} />
     </header>
   );
 };

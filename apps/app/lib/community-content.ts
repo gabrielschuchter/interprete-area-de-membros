@@ -11,6 +11,7 @@ const allowedNodes = new Set([
   "horizontalRule",
   "codeBlock",
   "image",
+  "mention",
 ]);
 
 const allowedMarks = new Set(["bold", "italic", "code", "link"]);
@@ -58,21 +59,41 @@ const safeHref = (value: unknown) => {
   }
 };
 
+const sanitizeAttr = (key: string, value: unknown) => {
+  if ((key === "href" || key === "src") && typeof value === "string") {
+    const href = safeHref(value);
+    return href ? ([key, href] as const) : null;
+  }
+  if (key === "level" && typeof value === "number") {
+    return [key, Math.min(3, Math.max(2, value))] as const;
+  }
+  if ((key === "alt" || key === "title") && typeof value === "string") {
+    return [key, value.slice(0, 240)] as const;
+  }
+  if (
+    (key === "id" || key === "username" || key === "label") &&
+    typeof value === "string"
+  ) {
+    return [key, value.slice(0, 120)] as const;
+  }
+  if (key === "kind" && (value === "USER" || value === "GROUP")) {
+    return [key, value] as const;
+  }
+  if (key === "recipientCount" && typeof value === "number") {
+    return [key, Math.min(100_000, Math.max(0, Math.floor(value)))] as const;
+  }
+  return null;
+};
+
 const sanitizeAttrs = (value: unknown) => {
   if (!isRecord(value)) {
     return undefined;
   }
   const attrs: Record<string, string | number> = {};
   for (const [key, attr] of Object.entries(value)) {
-    if ((key === "href" || key === "src") && typeof attr === "string") {
-      const href = safeHref(attr);
-      if (href) {
-        attrs[key] = href;
-      }
-    } else if (key === "level" && typeof attr === "number") {
-      attrs[key] = Math.min(3, Math.max(2, attr));
-    } else if ((key === "alt" || key === "title") && typeof attr === "string") {
-      attrs[key] = attr.slice(0, 240);
+    const sanitized = sanitizeAttr(key, attr);
+    if (sanitized) {
+      attrs[sanitized[0]] = sanitized[1];
     }
   }
   return Object.keys(attrs).length > 0 ? attrs : undefined;
@@ -121,6 +142,14 @@ const sanitizeNode = (
   if (value.type === "image" && (!attrs || typeof attrs.src !== "string")) {
     return null;
   }
+  if (
+    value.type === "mention" &&
+    (!attrs ||
+      typeof attrs.id !== "string" ||
+      typeof attrs.username !== "string")
+  ) {
+    return null;
+  }
   if (attrs) {
     node.attrs = attrs;
   }
@@ -152,17 +181,30 @@ export const plainTextFromDocument = (value: unknown) => {
     if (node.type === "hardBreak") {
       return "\n";
     }
-    if (!Array.isArray(node.content)) {
-      return "";
+    if (node.type === "mention") {
+      const attrs = isRecord(node.attrs) ? node.attrs : {};
+      const username =
+        typeof attrs.username === "string" ? attrs.username : "membro";
+      return `@${username}`;
     }
-    const content = node.content.map(collect).join("");
-    return node.type === "paragraph" || node.type === "heading"
-      ? `${content}\n`
-      : content;
+    return collectChildren(node, collect);
   };
 
   return collect(value)
     .replace(/\n{3,}/g, "\n\n")
     .trim()
     .slice(0, 40_000);
+};
+
+const collectChildren = (
+  node: Record<string, unknown>,
+  collect: (child: unknown) => string
+) => {
+  if (!Array.isArray(node.content)) {
+    return "";
+  }
+  const content = node.content.map(collect).join("");
+  return node.type === "paragraph" || node.type === "heading"
+    ? `${content}\n`
+    : content;
 };

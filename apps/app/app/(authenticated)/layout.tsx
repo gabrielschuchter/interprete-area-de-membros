@@ -37,7 +37,7 @@ const AppLayout = async ({ children }: AppLayoutProperties) => {
         canManageContent={role === "TEACHER" || role === "ADMIN"}
         displayName={profile?.displayName ?? user?.firstName ?? "Membro"}
       >
-        <MemberHeader />
+        <MemberHeader memberId={userId} />
         <RouteMotion>{children}</RouteMotion>
       </GlobalSidebar>
     </SidebarProvider>

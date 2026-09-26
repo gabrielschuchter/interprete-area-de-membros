@@ -94,6 +94,7 @@ export function CommunityComposer({
   const [isUploadingInlineImage, setIsUploadingInlineImage] = useState(false);
   const coverInputRef = useRef<HTMLInputElement>(null);
   const uploadedCoverUrlRef = useRef<string | null>(null);
+  const groupMentionConfirmedRef = useRef(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const requestQueue = useRef(Promise.resolve());
   const requestVersion = useRef(0);
@@ -120,6 +121,10 @@ export function CommunityComposer({
     formData.set("spaceId", current.spaceId);
     formData.set("spaceSlug", current.spaceSlug);
     formData.set("contentJson", JSON.stringify(current.content));
+    formData.set(
+      "confirmGroupMention",
+      groupMentionConfirmedRef.current ? "1" : "0"
+    );
     return formData;
   };
 
@@ -466,6 +471,9 @@ export function CommunityComposer({
               updateSnapshot({ content: nextContent });
             }}
             onEditorBlur={() => flushSave().catch(() => undefined)}
+            onGroupMentionChange={(_hasGroupMention, confirmed) => {
+              groupMentionConfirmedRef.current = confirmed;
+            }}
             onUploadStateChange={setIsUploadingInlineImage}
           />
         </div>

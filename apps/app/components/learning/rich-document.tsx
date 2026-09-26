@@ -109,7 +109,11 @@ const applyMark = (
   }
 };
 
-const renderInline = (node: RichNode, key: string): ReactNode => {
+const renderInline = (
+  node: RichNode,
+  key: string,
+  currentMemberId?: string
+): ReactNode => {
   if (node.type === "text") {
     let content: ReactNode = node.text ?? "";
 
@@ -124,17 +128,44 @@ const renderInline = (node: RichNode, key: string): ReactNode => {
     return <br key={key} />;
   }
 
+  if (node.type === "mention") {
+    const id = typeof node.attrs?.id === "string" ? node.attrs.id : "";
+    let username = "membro";
+    if (typeof node.attrs?.username === "string") {
+      username = node.attrs.username;
+    } else if (typeof node.attrs?.label === "string") {
+      username = node.attrs.label;
+    }
+    return (
+      <span
+        className={
+          id && id === currentMemberId
+            ? "community-mention community-mention-current"
+            : "community-mention"
+        }
+        data-mention-id={id || undefined}
+        key={key}
+      >
+        @{username}
+      </span>
+    );
+  }
+
   return getChildren(node).map((child, index) =>
-    renderInline(child, `${key}-${index}`)
+    renderInline(child, `${key}-${index}`, currentMemberId)
   );
 };
 
-const renderBlock = (node: RichNode, key: string): ReactNode => {
+const renderBlock = (
+  node: RichNode,
+  key: string,
+  currentMemberId?: string
+): ReactNode => {
   const children = getChildren(node);
   const renderedChildren = children.map((child, index) =>
     node.type === "paragraph" || node.type === "heading"
-      ? renderInline(child, `${key}-${index}`)
-      : renderBlock(child, `${key}-${index}`)
+      ? renderInline(child, `${key}-${index}`, currentMemberId)
+      : renderBlock(child, `${key}-${index}`, currentMemberId)
   );
 
   switch (node.type) {
@@ -242,7 +273,7 @@ const renderBlock = (node: RichNode, key: string): ReactNode => {
         >
           <code>
             {children.map((child, index) =>
-              renderInline(child, `${key}-${index}`)
+              renderInline(child, `${key}-${index}`, currentMemberId)
             )}
           </code>
         </pre>
@@ -257,15 +288,23 @@ const renderBlock = (node: RichNode, key: string): ReactNode => {
 };
 
 interface RichDocumentProperties {
+  readonly currentMemberId?: string;
   readonly value: unknown;
 }
 
-export const RichDocument = ({ value }: RichDocumentProperties) => {
+export const RichDocument = ({
+  currentMemberId,
+  value,
+}: RichDocumentProperties) => {
   const document = asRichNode(value);
 
   if (!document) {
     return null;
   }
 
-  return <div className="space-y-5">{renderBlock(document, "document")}</div>;
+  return (
+    <div className="space-y-5">
+      {renderBlock(document, "document", currentMemberId)}
+    </div>
+  );
 };

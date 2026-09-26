@@ -4,6 +4,7 @@ import { Button } from "@repo/design-system/components/ui/button";
 import { SearchIcon } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useState } from "react";
+import { NotificationRealtime } from "./notification-realtime";
 import { NotificationsPopover } from "./notifications-popover";
 
 const GlobalSearch = dynamic(
@@ -13,9 +14,20 @@ const GlobalSearch = dynamic(
 
 type ActiveOverlay = "search" | "notifications" | null;
 
-export const MemberHeaderControls = () => {
+interface MemberHeaderControlsProperties {
+  readonly memberId: string;
+}
+
+export const MemberHeaderControls = ({
+  memberId,
+}: MemberHeaderControlsProperties) => {
   const [activeOverlay, setActiveOverlay] = useState<ActiveOverlay>(null);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [refreshSignal, setRefreshSignal] = useState(0);
+  const handleRealtimeNotification = useCallback(
+    () => setRefreshSignal((current) => current + 1),
+    []
+  );
   const handleUnreadCountChange = useCallback(
     (count: number) => setUnreadCount(count),
     []
@@ -67,6 +79,12 @@ export const MemberHeaderControls = () => {
         onOpenChange={(open) => setActiveOverlay(open ? "notifications" : null)}
         onUnreadCountChange={handleUnreadCountChange}
         open={activeOverlay === "notifications"}
+        refreshSignal={refreshSignal}
+      />
+
+      <NotificationRealtime
+        memberId={memberId}
+        onNotification={handleRealtimeNotification}
       />
 
       {activeOverlay === "search" && (

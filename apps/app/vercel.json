@@ -1,5 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "regions": ["gru1"],
-  "ignoreCommand": "node scripts/skip-ci.js"
+  "crons": [
+    {
+      "path": "/api/cron/activity-deadlines",
+      "schedule": "0 12 * * *"
+    }
+  ]
 }

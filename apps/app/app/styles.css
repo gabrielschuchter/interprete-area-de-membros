@@ -106,4 +106,38 @@
     object-fit: contain;
     border: 1px solid var(--line-soft);
   }
+
+  .community-mention {
+    font-weight: 600;
+    color: var(--brand-dark-amaranth);
+  }
+
+  .community-mention-current {
+    padding: 0.05rem 0.25rem;
+    background: color-mix(
+      in srgb,
+      var(--brand-classic-crimson) 12%,
+      transparent
+    );
+    border-radius: 0.2rem;
+  }
+
+  .community-comment:target {
+    animation: community-comment-focus 2s var(--motion-ease-out) both;
+  }
+
+  @keyframes community-comment-focus {
+    0%,
+    100% {
+      background: transparent;
+    }
+
+    18% {
+      background: color-mix(
+        in srgb,
+        var(--brand-classic-crimson) 10%,
+        transparent
+      );
+    }
+  }
 }

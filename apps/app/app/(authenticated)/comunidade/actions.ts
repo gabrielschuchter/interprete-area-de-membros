@@ -21,14 +21,19 @@ import {
   isOwnedMemberAssetPath,
   memberAssetPathFromUrl,
 } from "@/lib/member-storage";
-import { createNotification } from "@/lib/notifications";
+import {
+  documentHasGroupMention,
+  extractMentionIdsFromDocument,
+  extractMentionUsernames,
+  notifyCommunityComment,
+  notifyCommunityPost,
+} from "@/lib/notifications";
 import { getOrCreateProfile } from "@/lib/profile";
 
 const draftTitle = "Rascunho sem título";
 const tagSeparatorPattern = /[\n,]/;
 const tagPrefixPattern = /^#/;
 const tagCharactersPattern = /[^a-z0-9áàâãéêíóôõúçü -]/gi;
-const mentionPattern = /@([a-z0-9](?:[a-z0-9-]{1,28}[a-z0-9])?)/gi;
 
 const emptyDocument = {
   type: "doc",
@@ -120,7 +125,9 @@ const safeImageUrl = (value: string, memberId: string) => {
 };
 
 const contentFromForm = (formData: FormData) => {
-  const rawJson = textValue(formData.get("contentJson"));
+  const rawJson =
+    textValue(formData.get("contentJson")) ||
+    textValue(formData.get("contentDocument"));
   const rawContent = textValue(formData.get("content"));
   let document: ReturnType<typeof sanitizeRichDocument> = null;
   if (rawJson) {
@@ -133,6 +140,18 @@ const contentFromForm = (formData: FormData) => {
   const plainText = document ? plainTextFromDocument(document) : rawContent;
   return { document, plainText };
 };
+
+const publishRequestIsValid = (
+  post: {
+    readonly content: string;
+    readonly contentJson: unknown;
+    readonly title: string;
+  },
+  formData: FormData
+) =>
+  postInput.safeParse({ title: post.title, content: post.content }).success &&
+  (!documentHasGroupMention(post.contentJson) ||
+    textValue(formData.get("confirmGroupMention")) === "1");
 
 const documentAssetPaths = (value: unknown, result = new Set<string>()) => {
   if (!value || typeof value !== "object") {
@@ -276,60 +295,15 @@ const canModerate = (role: string) => role === "TEACHER" || role === "ADMIN";
 const canManagePost = (authorId: string, userId: string, role: string) =>
   authorId === userId || canModerate(role);
 
-const mentionedMemberIds = async (content: string) => {
-  const usernames = [
-    ...new Set(
-      [...content.matchAll(mentionPattern)].map((match) =>
-        match[1].toLowerCase()
-      )
-    ),
-  ].slice(0, 20);
-  if (usernames.length === 0) {
-    return [];
-  }
-  const profiles = await database.profile.findMany({
-    where: { username: { in: usernames } },
-    select: { clerkUserId: true },
+const ensureTopicFollow = (userId: string, topicId: string) =>
+  database.topicFollow.upsert({
+    where: { userId_topicId: { userId, topicId } },
+    create: { userId, topicId },
+    // A reply should follow a discussion automatically, but it must not
+    // silently undo a deliberate mute chosen by the member.
+    update: {},
+    select: { id: true },
   });
-  return profiles.map((profile) => profile.clerkUserId);
-};
-
-const notifyCommunityMembers = async (input: {
-  readonly authorId: string;
-  readonly content: string;
-  readonly postAuthorId: string;
-  readonly postTitle: string;
-  readonly href: string;
-  readonly parentAuthorId?: string | null;
-}) => {
-  const mentionedIds = await mentionedMemberIds(input.content);
-  const recipients = [
-    input.postAuthorId,
-    input.parentAuthorId,
-    ...mentionedIds,
-  ].filter((recipient): recipient is string =>
-    Boolean(recipient && recipient !== input.authorId)
-  );
-  const uniqueRecipients = [...new Set(recipients)];
-  if (uniqueRecipients.length === 0) {
-    return;
-  }
-  await Promise.all(
-    uniqueRecipients.map((memberId) =>
-      createNotification({
-        memberId,
-        type:
-          mentionedIds.length > 0 ? "COMMUNITY_ACTIVITY" : "COMMUNITY_REPLY",
-        title:
-          mentionedIds.length > 0
-            ? "Você foi mencionado na comunidade"
-            : "Nova resposta na comunidade",
-        body: input.postTitle,
-        href: input.href,
-      })
-    )
-  );
-};
 
 export const startDraft = async (formData: FormData) => {
   const userId = await currentUserId();
@@ -352,6 +326,7 @@ export const startDraft = async (formData: FormData) => {
     },
     select: { id: true },
   });
+  await ensureTopicFollow(userId, post.id);
   revalidateCommunity(space?.slug, post.id);
   redirect(`/comunidade/editor/${post.id}`);
 };
@@ -377,6 +352,7 @@ export const createDraft = async (formData: FormData) => {
     },
     select: { id: true },
   });
+  await ensureTopicFollow(userId, post.id);
   revalidateCommunity(space?.slug, post.id);
   return { ok: true as const, postId: post.id, spaceSlug: space?.slug ?? "" };
 };
@@ -388,6 +364,12 @@ export const createPost = async (formData: FormData) => {
   }
   const { space } = await spaceData(formData);
   const { document, plainText } = contentFromForm(formData);
+  if (
+    documentHasGroupMention(document) &&
+    textValue(formData.get("confirmGroupMention")) !== "1"
+  ) {
+    return;
+  }
   const parsed = postInput.safeParse({
     title: textValue(formData.get("title")),
     content: plainText,
@@ -414,6 +396,15 @@ export const createPost = async (formData: FormData) => {
       publishedAt: new Date(),
     },
     select: { id: true, slug: true, space: { select: { slug: true } } },
+  });
+  await ensureTopicFollow(userId, post.id);
+  await notifyCommunityPost({
+    actorId: userId,
+    postId: post.id,
+    postTitle: parsed.data.title,
+    commentContent: parsed.data.content,
+    document,
+    href: communityHref(post),
   });
   revalidateCommunity(space?.slug, post.id, post.slug ?? undefined);
   redirect(communityHref(post));
@@ -487,6 +478,15 @@ export const publishPost = async (formData: FormData) => {
   }
   const { spaceId, space } = await spaceData(formData);
   const { document, plainText } = contentFromForm(formData);
+  if (
+    documentHasGroupMention(document) &&
+    textValue(formData.get("confirmGroupMention")) !== "1"
+  ) {
+    return {
+      ok: false as const,
+      error: "Confirme que deseja notificar o grupo antes de publicar.",
+    };
+  }
   const parsed = postInput.safeParse({
     title: textValue(formData.get("title")),
     content: plainText,
@@ -518,7 +518,7 @@ export const publishPost = async (formData: FormData) => {
     };
   }
   const slug = await uniquePostSlug(parsed.data.title, post.id);
-  await database.communityPost.update({
+  const updatedPost = await database.communityPost.update({
     where: { id: post.id },
     data: {
       spaceId,
@@ -535,6 +535,15 @@ export const publishPost = async (formData: FormData) => {
       publishedAt: new Date(),
     },
     select: { id: true, slug: true, space: { select: { slug: true } } },
+  });
+  await ensureTopicFollow(userId, updatedPost.id);
+  await notifyCommunityPost({
+    actorId: userId,
+    postId: updatedPost.id,
+    postTitle: parsed.data.title,
+    commentContent: parsed.data.content,
+    document,
+    href: `/comunidade/publicacoes/${slug}`,
   });
   const nextCoverUrl = safeImageUrl(
     textValue(formData.get("coverUrl")),
@@ -560,6 +569,12 @@ export const updatePost = async (formData: FormData) => {
   }
   const { spaceId, space } = await spaceData(formData);
   const { document, plainText } = contentFromForm(formData);
+  if (
+    documentHasGroupMention(document) &&
+    textValue(formData.get("confirmGroupMention")) !== "1"
+  ) {
+    return;
+  }
   const parsed = postInput.safeParse({
     title: textValue(formData.get("title")),
     content: plainText,
@@ -600,6 +615,18 @@ export const updatePost = async (formData: FormData) => {
       slug,
     },
   });
+  if (post.status === ContentStatus.PUBLISHED) {
+    await notifyCommunityPost({
+      actorId: userId,
+      postId: post.id,
+      postTitle: parsed.data.title,
+      commentContent: parsed.data.content,
+      document,
+      href: slug
+        ? `/comunidade/publicacoes/${slug}`
+        : `/comunidade/publicacoes/${post.id}`,
+    });
+  }
   const nextCoverUrl = safeImageUrl(
     textValue(formData.get("coverUrl")),
     userId
@@ -642,6 +669,7 @@ export const setPostStatus = async (formData: FormData) => {
       authorId: true,
       title: true,
       content: true,
+      contentJson: true,
       slug: true,
       publishedAt: true,
       space: { select: { slug: true } },
@@ -659,7 +687,7 @@ export const setPostStatus = async (formData: FormData) => {
   }
   if (
     requestedStatus === ContentStatus.PUBLISHED &&
-    !postInput.safeParse({ title: post.title, content: post.content }).success
+    !publishRequestIsValid(post, formData)
   ) {
     return;
   }
@@ -676,6 +704,19 @@ export const setPostStatus = async (formData: FormData) => {
         : {}),
     },
   });
+  if (requestedStatus === ContentStatus.PUBLISHED) {
+    await ensureTopicFollow(post.authorId, postId);
+    await notifyCommunityPost({
+      actorId: userId,
+      postId,
+      postTitle: post.title,
+      commentContent: post.content,
+      document: post.contentJson,
+      href: slug
+        ? `/comunidade/publicacoes/${slug}`
+        : `/comunidade/publicacoes/${postId}`,
+    });
+  }
   revalidateCommunity(post.space?.slug, postId, slug ?? undefined);
   if (requestedStatus === ContentStatus.ARCHIVED) {
     redirect("/comunidade");
@@ -714,10 +755,74 @@ export const toggleBookmark = async (formData: FormData) => {
   revalidateCommunity(post.space?.slug, postId, post.slug ?? undefined);
 };
 
+export const toggleTopicFollow = async (formData: FormData) => {
+  const userId = await currentUserId();
+  const postId = textValue(formData.get("postId"));
+  const spaceSlug = textValue(formData.get("spaceSlug"));
+  if (!(userId && postId)) {
+    return;
+  }
+  const post = await database.communityPost.findFirst({
+    where: publishedPostWhere(postId, spaceSlug || undefined),
+    select: { id: true, slug: true, space: { select: { slug: true } } },
+  });
+  if (!post) {
+    return;
+  }
+  const existing = await database.topicFollow.findUnique({
+    where: { userId_topicId: { userId, topicId: postId } },
+    select: { id: true },
+  });
+  if (existing) {
+    await database.topicFollow.delete({ where: { id: existing.id } });
+  } else {
+    await database.topicFollow.create({ data: { userId, topicId: postId } });
+  }
+  revalidateCommunity(post.space?.slug, postId, post.slug ?? undefined);
+};
+
+export const toggleTopicMute = async (formData: FormData) => {
+  const userId = await currentUserId();
+  const postId = textValue(formData.get("postId"));
+  const spaceSlug = textValue(formData.get("spaceSlug"));
+  if (!(userId && postId)) {
+    return;
+  }
+  const post = await database.communityPost.findFirst({
+    where: publishedPostWhere(postId, spaceSlug || undefined),
+    select: { id: true, slug: true, space: { select: { slug: true } } },
+  });
+  if (!post) {
+    return;
+  }
+  const existing = await database.topicFollow.findUnique({
+    where: { userId_topicId: { userId, topicId: postId } },
+    select: { id: true, mutedAt: true },
+  });
+  if (existing) {
+    await database.topicFollow.update({
+      where: { id: existing.id },
+      data: { mutedAt: existing.mutedAt ? null : new Date() },
+    });
+  } else {
+    await database.topicFollow.create({
+      data: { userId, topicId: postId, mutedAt: new Date() },
+    });
+  }
+  revalidateCommunity(post.space?.slug, postId, post.slug ?? undefined);
+};
+
 export const createComment = async (formData: FormData) => {
   const userId = await currentUserId();
   const postId = textValue(formData.get("postId"));
   const content = textValue(formData.get("content"));
+  const { document } = contentFromForm(formData);
+  if (
+    documentHasGroupMention(document) &&
+    textValue(formData.get("confirmGroupMention")) !== "1"
+  ) {
+    return;
+  }
   const parentId = textValue(formData.get("parentId"));
   const spaceSlug = textValue(formData.get("spaceSlug"));
   if (!(userId && postId && content) || content.length > 10_000) {
@@ -751,16 +856,28 @@ export const createComment = async (formData: FormData) => {
     parentAuthorId = parent.authorId;
   }
   await getOrCreateProfile(userId);
-  await database.communityComment.create({
-    data: { postId, authorId: userId, content, parentId: parentId || null },
+  const comment = await database.communityComment.create({
+    data: {
+      postId,
+      authorId: userId,
+      content,
+      contentJson: document as Prisma.InputJsonValue | undefined,
+      parentId: parentId || null,
+    },
+    select: { id: true },
   });
-  await notifyCommunityMembers({
-    authorId: userId,
-    content,
+  await ensureTopicFollow(userId, post.id);
+  await notifyCommunityComment({
+    actorId: userId,
+    postId: post.id,
+    commentId: comment.id,
+    commentContent: content,
     postAuthorId: post.authorId,
     postTitle: post.title,
+    parentCommentId: parentId || null,
     parentAuthorId,
     href: communityHref(post),
+    document,
   });
   revalidateCommunity(post.space?.slug, postId, post.slug ?? undefined);
 };
@@ -770,6 +887,13 @@ export const updateComment = async (formData: FormData) => {
   const commentId = textValue(formData.get("commentId"));
   const postId = textValue(formData.get("postId"));
   const content = textValue(formData.get("content"));
+  const { document } = contentFromForm(formData);
+  if (
+    documentHasGroupMention(document) &&
+    textValue(formData.get("confirmGroupMention")) !== "1"
+  ) {
+    return;
+  }
   const spaceSlug = textValue(formData.get("spaceSlug"));
   if (!(userId && commentId && postId && content) || content.length > 10_000) {
     return;
@@ -782,15 +906,55 @@ export const updateComment = async (formData: FormData) => {
       deletedAt: null,
       post: { is: publishedPostWhere(postId, spaceSlug || undefined) },
     },
-    select: { id: true },
+    select: {
+      id: true,
+      parentId: true,
+      post: {
+        select: {
+          authorId: true,
+          id: true,
+          slug: true,
+          space: { select: { slug: true } },
+          title: true,
+        },
+      },
+    },
   });
   if (!comment) {
     return;
   }
   await database.communityComment.update({
     where: { id: commentId },
-    data: { content },
+    data: {
+      content,
+      contentJson: document as Prisma.InputJsonValue | undefined,
+    },
   });
+  if (
+    extractMentionIdsFromDocument(document).length > 0 ||
+    extractMentionUsernames(content).length > 0
+  ) {
+    let parentAuthorId: string | null = null;
+    if (comment.parentId) {
+      const parent = await database.communityComment.findUnique({
+        where: { id: comment.parentId },
+        select: { authorId: true },
+      });
+      parentAuthorId = parent?.authorId ?? null;
+    }
+    await notifyCommunityComment({
+      actorId: userId,
+      postId: comment.post.id,
+      commentId: comment.id,
+      commentContent: content,
+      postAuthorId: comment.post.authorId,
+      postTitle: comment.post.title,
+      parentCommentId: comment.parentId,
+      parentAuthorId,
+      href: communityHref(comment.post),
+      document,
+    });
+  }
   revalidateCommunity(spaceSlug || undefined, postId);
 };
 

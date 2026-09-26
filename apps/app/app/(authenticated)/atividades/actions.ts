@@ -15,7 +15,10 @@ import {
   deleteMemberAsset,
   uploadMemberAsset,
 } from "@/lib/member-storage";
-import { createNotification } from "@/lib/notifications";
+import {
+  notifyActivityAssigned,
+  notifyFeedbackReceived,
+} from "@/lib/notifications";
 
 const value = (formData: FormData, name: string) => {
   const entry = formData.get(name);
@@ -275,7 +278,7 @@ export const saveFeedback = async (formData: FormData) => {
     where: { id: submissionId },
     select: {
       memberId: true,
-      activity: { select: { slug: true, title: true } },
+      activity: { select: { id: true, slug: true, title: true } },
     },
   });
 
@@ -296,11 +299,11 @@ export const saveFeedback = async (formData: FormData) => {
   ]);
 
   if (submission.memberId !== userId) {
-    await createNotification({
-      memberId: submission.memberId,
-      type: "ACTIVITY_FEEDBACK",
-      title: "Novo feedback disponível",
-      body: submission.activity.title,
+    await notifyFeedbackReceived({
+      recipientId: submission.memberId,
+      actorId: userId,
+      submissionId,
+      activityTitle: submission.activity.title,
       href: `/atividades/${submission.activity.slug}`,
     });
   }
@@ -419,6 +422,14 @@ export const updateActivity = async (formData: FormData) => {
     return;
   }
 
+  const existingActivity = await database.activity.findUnique({
+    where: { id: activityId },
+    select: { status: true },
+  });
+  if (!existingActivity) {
+    return;
+  }
+
   const deliveryKind = Object.values(ActivityDeliveryKind).includes(
     deliveryKindValue as ActivityDeliveryKind
   )
@@ -463,6 +474,33 @@ export const updateActivity = async (formData: FormData) => {
 
   revalidatePath("/admin/activities");
   revalidatePath("/atividades");
+
+  if (
+    existingActivity.status === ContentStatus.PUBLISHED &&
+    formData.has("memberIds")
+  ) {
+    const activity = await database.activity.findUnique({
+      where: { id: activityId },
+      select: { id: true, slug: true, title: true },
+    });
+    const assignments = await database.activityAssignment.findMany({
+      where: { activityId },
+      select: { memberId: true },
+    });
+    if (activity) {
+      await Promise.all(
+        assignments.map(({ memberId }) =>
+          notifyActivityAssigned({
+            recipientId: memberId,
+            actorId: userId,
+            activityId: activity.id,
+            activityTitle: activity.title,
+            href: `/atividades/${activity.slug}`,
+          })
+        )
+      );
+    }
+  }
 };
 
 export const setActivityStatus = async (formData: FormData) => {
@@ -478,10 +516,29 @@ export const setActivityStatus = async (formData: FormData) => {
     return;
   }
 
-  await database.activity.update({
+  const activity = await database.activity.update({
     where: { id: activityId },
     data: { status: status as ContentStatus, updatedBy: userId },
+    select: { id: true, title: true, slug: true, status: true },
   });
+
+  if (activity.status === ContentStatus.PUBLISHED) {
+    const assignments = await database.activityAssignment.findMany({
+      where: { activityId: activity.id },
+      select: { memberId: true },
+    });
+    await Promise.all(
+      assignments.map(({ memberId }) =>
+        notifyActivityAssigned({
+          recipientId: memberId,
+          actorId: userId,
+          activityId: activity.id,
+          activityTitle: activity.title,
+          href: `/atividades/${activity.slug}`,
+        })
+      )
+    );
+  }
 
   revalidatePath("/admin/activities");
   revalidatePath("/atividades");

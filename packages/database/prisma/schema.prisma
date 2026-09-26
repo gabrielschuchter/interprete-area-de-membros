@@ -133,22 +133,27 @@ enum MigrationStudentMatchStatus {
 }
 
 model Member {
-  id                String             @id
-  displayName       String?
-  email             String?
-  avatarUrl         String?
-  role              MemberRole         @default(MEMBER)
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
-  profile           Profile?
-  ownedAssets       LessonAsset[]      @relation("OwnedLessonAssets")
-  accessGrants      AccessGrant[]
-  migrationStudents MigrationStudent[] @relation("MigrationStudentMember")
-  notifications     Notification[]
-  activityAssignments ActivityAssignment[]
-  activitySubmissions ActivitySubmission[]
-  libraryBookmarks  LibraryBookmark[]
-  meetingParticipations MeetingParticipant[]
+  id                     String                  @id
+  displayName            String?
+  email                  String?
+  avatarUrl              String?
+  role                   MemberRole              @default(MEMBER)
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+  profile                Profile?
+  ownedAssets            LessonAsset[]           @relation("OwnedLessonAssets")
+  accessGrants           AccessGrant[]
+  migrationStudents      MigrationStudent[]      @relation("MigrationStudentMember")
+  notifications          Notification[]          @relation("NotificationRecipient")
+  notificationsAsActor   Notification[]          @relation("NotificationActor")
+  mentionsSent           Mention[]               @relation("MentionActor")
+  mentionsReceived       Mention[]               @relation("MentionTarget")
+  notificationPreference NotificationPreference?
+  topicFollows           TopicFollow[]
+  activityAssignments    ActivityAssignment[]
+  activitySubmissions    ActivitySubmission[]
+  libraryBookmarks       LibraryBookmark[]
+  meetingParticipations  MeetingParticipant[]
 
   @@index([role])
 }
@@ -194,31 +199,31 @@ model LearningPath {
 }
 
 model Course {
-  id             String        @id @default(cuid())
-  title          String
-  subtitle       String?       @db.Text
-  slug           String        @unique
-  description    String?       @db.Text
-  coverUrl       String?
-  format         String?
-  category       String?
-  level          String?
+  id              String        @id @default(cuid())
+  title           String
+  subtitle        String?       @db.Text
+  slug            String        @unique
+  description     String?       @db.Text
+  coverUrl        String?
+  format          String?
+  category        String?
+  level           String?
   durationMinutes Int?
-  tags           String[]      @default([])
-  teacherId      String?
-  status         ContentStatus @default(DRAFT)
-  position       Int           @default(0)
-  publishedAt    DateTime?
-  createdBy      String?
-  updatedBy      String?
-  learningPathId String?
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-  learningPath   LearningPath? @relation(fields: [learningPathId], references: [id], onDelete: SetNull)
-  modules        Module[]
-  enrollments    Enrollment[]
-  activities     Activity[]
-  meetings       Meeting[]
+  tags            String[]      @default([])
+  teacherId       String?
+  status          ContentStatus @default(DRAFT)
+  position        Int           @default(0)
+  publishedAt     DateTime?
+  createdBy       String?
+  updatedBy       String?
+  learningPathId  String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  learningPath    LearningPath? @relation(fields: [learningPathId], references: [id], onDelete: SetNull)
+  modules         Module[]
+  enrollments     Enrollment[]
+  activities      Activity[]
+  meetings        Meeting[]
 
   @@unique([learningPathId, position])
   @@index([status, position])
@@ -226,18 +231,18 @@ model Course {
 }
 
 model Module {
-  id        String        @id @default(cuid())
-  title     String
-  slug      String
-  description String?     @db.Text
-  objectives String[]     @default([])
-  position  Int           @default(0)
-  status    ContentStatus @default(DRAFT)
-  courseId  String
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
-  course    Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  lessons   Lesson[]
+  id          String        @id @default(cuid())
+  title       String
+  slug        String
+  description String?       @db.Text
+  objectives  String[]      @default([])
+  position    Int           @default(0)
+  status      ContentStatus @default(DRAFT)
+  courseId    String
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  course      Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessons     Lesson[]
 
   @@unique([courseId, slug])
   @@unique([courseId, position])
@@ -245,27 +250,27 @@ model Module {
 }
 
 model Lesson {
-  id          String           @id @default(cuid())
-  title       String
-  slug        String
-  description String?          @db.Text
-  objectives  String[]         @default([])
-  content     Json
-  kind        LessonKind       @default(TEXT)
-  status      ContentStatus    @default(DRAFT)
-  position    Int              @default(0)
-  publishedAt DateTime?
-  createdBy   String?
-  updatedBy   String?
-  moduleId    String
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
-  module      Module           @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-  resources   LessonResource[]
+  id           String           @id @default(cuid())
+  title        String
+  slug         String
+  description  String?          @db.Text
+  objectives   String[]         @default([])
+  content      Json
+  kind         LessonKind       @default(TEXT)
+  status       ContentStatus    @default(DRAFT)
+  position     Int              @default(0)
+  publishedAt  DateTime?
+  createdBy    String?
+  updatedBy    String?
+  moduleId     String
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  module       Module           @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  resources    LessonResource[]
   libraryItems LibraryItem[]
-  assets      LessonAsset[]
-  progress    LessonProgress[]
-  activities  Activity[]
+  assets       LessonAsset[]
+  progress     LessonProgress[]
+  activities   Activity[]
 
   @@unique([moduleId, slug])
   @@unique([moduleId, position])
@@ -399,28 +404,28 @@ model LessonProgress {
 }
 
 model Activity {
-  id           String               @id @default(cuid())
-  title        String
-  slug         String               @unique
-  prompt       String               @db.Text
-  instructions String?              @db.Text
-  deliveryKind ActivityDeliveryKind @default(TEXT)
-  status       ContentStatus        @default(DRAFT)
-  position     Int                  @default(0)
-  dueAt        DateTime?
-  courseId     String?
-  lessonId     String?
+  id                   String               @id @default(cuid())
+  title                String
+  slug                 String               @unique
+  prompt               String               @db.Text
+  instructions         String?              @db.Text
+  deliveryKind         ActivityDeliveryKind @default(TEXT)
+  status               ContentStatus        @default(DRAFT)
+  position             Int                  @default(0)
+  dueAt                DateTime?
+  courseId             String?
+  lessonId             String?
   relatedLibraryItemId String?
-  createdBy    String?
-  updatedBy    String?
-  createdAt    DateTime             @default(now())
-  updatedAt    DateTime             @updatedAt
-  course       Course?              @relation(fields: [courseId], references: [id], onDelete: SetNull)
-  lesson       Lesson?              @relation(fields: [lessonId], references: [id], onDelete: SetNull)
-  submissions  ActivitySubmission[]
-  assignments  ActivityAssignment[]
-  meetings     Meeting[]            @relation("MeetingActivity")
-  relatedLibraryItem LibraryItem?    @relation("ActivityLibraryItem", fields: [relatedLibraryItemId], references: [id], onDelete: SetNull)
+  createdBy            String?
+  updatedBy            String?
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  course               Course?              @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  lesson               Lesson?              @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+  submissions          ActivitySubmission[]
+  assignments          ActivityAssignment[]
+  meetings             Meeting[]            @relation("MeetingActivity")
+  relatedLibraryItem   LibraryItem?         @relation("ActivityLibraryItem", fields: [relatedLibraryItemId], references: [id], onDelete: SetNull)
 
   @@index([status, position])
   @@index([courseId, status, position])
@@ -429,21 +434,21 @@ model Activity {
 }
 
 model ActivitySubmission {
-  id          String                   @id @default(cuid())
-  activityId  String
-  memberId    String
-  content     String                   @db.Text
-  status      ActivitySubmissionStatus @default(DRAFT)
-  attachmentPath      String?          @db.Text
+  id                  String                   @id @default(cuid())
+  activityId          String
+  memberId            String
+  content             String                   @db.Text
+  status              ActivitySubmissionStatus @default(DRAFT)
+  attachmentPath      String?                  @db.Text
   attachmentName      String?
   attachmentMimeType  String?
   attachmentSizeBytes BigInt?
-  submittedAt DateTime?
-  createdAt   DateTime                 @default(now())
-  updatedAt   DateTime                 @updatedAt
-  activity    Activity                 @relation(fields: [activityId], references: [id], onDelete: Cascade)
-  member      Member                   @relation(fields: [memberId], references: [id], onDelete: Cascade)
-  feedback    Feedback?
+  submittedAt         DateTime?
+  createdAt           DateTime                 @default(now())
+  updatedAt           DateTime                 @updatedAt
+  activity            Activity                 @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  member              Member                   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  feedback            Feedback?
 
   @@unique([activityId, memberId])
   @@index([memberId, status, updatedAt])
@@ -476,31 +481,92 @@ model Feedback {
 }
 
 model Notification {
-  id        String    @id @default(cuid())
-  memberId  String
-  type      String
-  title     String
-  body      String?   @db.Text
-  href      String?   @db.Text
-  readAt    DateTime?
-  createdAt DateTime  @default(now())
-  member    Member    @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  id               String    @id @default(cuid())
+  memberId         String
+  actorId          String?
+  type             String
+  entityType       String?
+  entityId         String?
+  parentEntityType String?
+  parentEntityId   String?
+  metadata         Json?
+  groupKey         String?
+  dedupeKey        String?   @unique
+  priority         Int       @default(0)
+  title            String
+  body             String?   @db.Text
+  href             String?   @db.Text
+  seenAt           DateTime?
+  readAt           DateTime?
+  createdAt        DateTime  @default(now())
+  member           Member    @relation("NotificationRecipient", fields: [memberId], references: [id], onDelete: Cascade)
+  actor            Member?   @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
 
   @@index([memberId, readAt, createdAt])
+  @@index([memberId, seenAt, createdAt])
+  @@index([memberId, type, createdAt])
+  @@index([groupKey, createdAt])
+}
+
+model Mention {
+  id              String   @id @default(cuid())
+  actorId         String
+  mentionedUserId String
+  entityType      String
+  entityId        String
+  createdAt       DateTime @default(now())
+  actor           Member   @relation("MentionActor", fields: [actorId], references: [id], onDelete: Cascade)
+  mentionedUser   Member   @relation("MentionTarget", fields: [mentionedUserId], references: [id], onDelete: Cascade)
+
+  @@unique([actorId, mentionedUserId, entityType, entityId])
+  @@index([mentionedUserId, createdAt])
+  @@index([entityType, entityId])
+}
+
+model NotificationPreference {
+  id                    String   @id @default(cuid())
+  memberId              String   @unique
+  mentions              Boolean  @default(true)
+  commentReplies        Boolean  @default(true)
+  topicComments         Boolean  @default(true)
+  followedTopicActivity Boolean  @default(true)
+  lessonAvailable       Boolean  @default(true)
+  moduleAvailable       Boolean  @default(true)
+  activityAssigned      Boolean  @default(true)
+  feedbackReceived      Boolean  @default(true)
+  activityDeadline      Boolean  @default(true)
+  announcements         Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  member                Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+}
+
+model TopicFollow {
+  id        String        @id @default(cuid())
+  userId    String
+  topicId   String
+  createdAt DateTime      @default(now())
+  mutedAt   DateTime?
+  user      Member        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  topic     CommunityPost @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, topicId])
+  @@index([topicId, mutedAt, createdAt])
+  @@index([userId, mutedAt, createdAt])
 }
 
 model CommunitySpace {
-  id          String          @id @default(cuid())
-  title       String
-  slug        String          @unique
-  description String?         @db.Text
-  icon        String?
-  commentsClosed Boolean       @default(false)
-  status      ContentStatus   @default(DRAFT)
-  position    Int             @default(0)
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
-  posts       CommunityPost[]
+  id             String          @id @default(cuid())
+  title          String
+  slug           String          @unique
+  description    String?         @db.Text
+  icon           String?
+  commentsClosed Boolean         @default(false)
+  status         ContentStatus   @default(DRAFT)
+  position       Int             @default(0)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  posts          CommunityPost[]
 
   @@index([status, position])
 }
@@ -530,6 +596,7 @@ model CommunityPost {
   comments    CommunityComment[]
   votes       PostVote[]
   bookmarks   CommunityBookmark[]
+  followers   TopicFollow[]
 
   @@index([spaceId, status, createdAt])
   @@index([kind, status, createdAt])
@@ -550,18 +617,19 @@ model CommunityBookmark {
 }
 
 model CommunityComment {
-  id        String             @id @default(cuid())
-  postId    String
-  authorId  String
-  parentId  String?
-  content   String             @db.Text
-  createdAt DateTime           @default(now())
-  updatedAt DateTime           @updatedAt
-  deletedAt DateTime?
-  post      CommunityPost      @relation(fields: [postId], references: [id], onDelete: Cascade)
-  parent    CommunityComment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: SetNull)
-  replies   CommunityComment[] @relation("CommentReplies")
-  votes     CommentVote[]
+  id          String             @id @default(cuid())
+  postId      String
+  authorId    String
+  parentId    String?
+  content     String             @db.Text
+  contentJson Json?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  deletedAt   DateTime?
+  post        CommunityPost      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  parent      CommunityComment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: SetNull)
+  replies     CommunityComment[] @relation("CommentReplies")
+  votes       CommentVote[]
 
   @@index([postId, createdAt])
   @@index([parentId, createdAt])
@@ -593,29 +661,29 @@ model CommentVote {
 }
 
 model Meeting {
-  id           String        @id @default(cuid())
-  title        String
-  description  String?       @db.Text
-  startsAt     DateTime
-  endsAt       DateTime?
-  timezone     String        @default("America/Sao_Paulo")
-  joinUrl      String        @db.Text
-  recordingUrl String?       @db.Text
-  status       ContentStatus @default(DRAFT)
-  teacherId    String?
-  courseId     String?
-  position     Int           @default(0)
-  kind         MeetingKind   @default(OTHER)
-  recurrenceRule String?
-  demoKey      String?       @unique
+  id                   String               @id @default(cuid())
+  title                String
+  description          String?              @db.Text
+  startsAt             DateTime
+  endsAt               DateTime?
+  timezone             String               @default("America/Sao_Paulo")
+  joinUrl              String               @db.Text
+  recordingUrl         String?              @db.Text
+  status               ContentStatus        @default(DRAFT)
+  teacherId            String?
+  courseId             String?
+  position             Int                  @default(0)
+  kind                 MeetingKind          @default(OTHER)
+  recurrenceRule       String?
+  demoKey              String?              @unique
   relatedActivityId    String?
   relatedLibraryItemId String?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  course       Course?       @relation(fields: [courseId], references: [id], onDelete: SetNull)
-  relatedActivity    Activity?    @relation("MeetingActivity", fields: [relatedActivityId], references: [id], onDelete: SetNull)
-  relatedLibraryItem LibraryItem? @relation("MeetingLibraryItem", fields: [relatedLibraryItemId], references: [id], onDelete: SetNull)
-  participants MeetingParticipant[]
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  course               Course?              @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  relatedActivity      Activity?            @relation("MeetingActivity", fields: [relatedActivityId], references: [id], onDelete: SetNull)
+  relatedLibraryItem   LibraryItem?         @relation("MeetingLibraryItem", fields: [relatedLibraryItemId], references: [id], onDelete: SetNull)
+  participants         MeetingParticipant[]
 
   @@index([status, startsAt])
   @@index([teacherId, startsAt])
@@ -637,31 +705,31 @@ model MeetingParticipant {
 }
 
 model LibraryItem {
-  id          String          @id @default(cuid())
+  id          String            @id @default(cuid())
   title       String
-  description String?         @db.Text
+  description String?           @db.Text
   kind        LibraryItemKind
   category    String?
   tags        String[]
-  url         String          @db.Text
-  authors     String?         @db.Text
+  url         String            @db.Text
+  authors     String?           @db.Text
   year        Int?
   doi         String?
   pmid        String?
-  storagePath String?         @db.Text
+  storagePath String?           @db.Text
   mimeType    String?
   sizeBytes   BigInt?
-  status      ContentStatus   @default(DRAFT)
-  position    Int             @default(0)
+  status      ContentStatus     @default(DRAFT)
+  position    Int               @default(0)
   createdBy   String?
   updatedBy   String?
   lessonId    String?
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
   bookmarks   LibraryBookmark[]
-  meetings    Meeting[]       @relation("MeetingLibraryItem")
-  lesson      Lesson?         @relation(fields: [lessonId], references: [id], onDelete: SetNull)
-  activities  Activity[]      @relation("ActivityLibraryItem")
+  meetings    Meeting[]         @relation("MeetingLibraryItem")
+  lesson      Lesson?           @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+  activities  Activity[]        @relation("ActivityLibraryItem")
 
   @@index([status, category, position])
   @@index([status, createdAt])

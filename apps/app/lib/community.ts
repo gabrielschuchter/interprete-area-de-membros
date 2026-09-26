@@ -363,6 +363,10 @@ const getPublishedPost = (
       ...communityPostSelect,
       votes: { where: { memberId }, select: { id: true } },
       bookmarks: { where: { memberId }, select: { id: true } },
+      followers: {
+        where: { userId: memberId },
+        select: { id: true, mutedAt: true },
+      },
     },
   });
 
@@ -373,7 +377,7 @@ const getPostWithComments = async (
 ) => {
   const commentRoots = await database.communityComment.findMany({
     where: { postId: post.id, parentId: null, deletedAt: null },
-    orderBy: { createdAt: "asc" },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
     skip: (commentsPage - 1) * COMMENT_PAGE_SIZE,
     take: COMMENT_PAGE_SIZE + 1,
     select: { id: true },
@@ -394,12 +398,13 @@ const getPostWithComments = async (
               { parentId: { in: visibleRootIds } },
             ],
           },
-          orderBy: { createdAt: "asc" },
+          orderBy: [{ createdAt: "asc" }, { id: "asc" }],
           select: {
             id: true,
             parentId: true,
             authorId: true,
             content: true,
+            contentJson: true,
             createdAt: true,
             updatedAt: true,
             _count: { select: { votes: true } },
@@ -425,27 +430,79 @@ const getPostWithComments = async (
 const normalizeCommentsPage = (page: number) =>
   Number.isInteger(page) && page > 0 ? page : 1;
 
+export const getCommunityCommentPage = async (
+  postId: string,
+  commentId: string
+) => {
+  const initialComment = await database.communityComment.findFirst({
+    where: { id: commentId, postId, deletedAt: null },
+    select: { id: true, parentId: true, createdAt: true },
+  });
+
+  if (!initialComment) {
+    return 1;
+  }
+
+  let comment = initialComment;
+  const visited = new Set<string>();
+  while (comment.parentId && !visited.has(comment.id)) {
+    visited.add(comment.id);
+    const parentComment = await database.communityComment.findFirst({
+      where: { id: comment.parentId, postId, deletedAt: null },
+      select: { id: true, parentId: true, createdAt: true },
+    });
+    if (!parentComment) {
+      break;
+    }
+    comment = parentComment;
+  }
+
+  const rootsBefore = await database.communityComment.count({
+    where: {
+      postId,
+      parentId: null,
+      deletedAt: null,
+      OR: [
+        { createdAt: { lt: comment.createdAt } },
+        { createdAt: comment.createdAt, id: { lte: comment.id } },
+      ],
+    },
+  });
+
+  return Math.max(1, Math.ceil(rootsBefore / COMMENT_PAGE_SIZE));
+};
+
 export const getCommunityPost = async (
   spaceSlug: string,
   postId: string,
   memberId: string,
-  commentsPage = 1
+  commentsPage = 1,
+  commentId?: string
 ) => {
   const post = await getPublishedPost({ spaceSlug, id: postId }, memberId);
-  return post
-    ? getPostWithComments(post, memberId, normalizeCommentsPage(commentsPage))
-    : null;
+  if (!post) {
+    return null;
+  }
+  const resolvedCommentsPage = commentId
+    ? await getCommunityCommentPage(post.id, commentId)
+    : normalizeCommentsPage(commentsPage);
+  return getPostWithComments(post, memberId, resolvedCommentsPage);
 };
 
 export const getCommunityPostBySlug = async (
   slug: string,
   memberId: string,
-  commentsPage = 1
+  commentsPage = 1,
+  commentId?: string
 ) => {
   const post = await getPublishedPost({ slug }, memberId);
-  return post
-    ? getPostWithComments(post, memberId, normalizeCommentsPage(commentsPage))
-    : null;
+  if (!post) {
+    return null;
+  }
+  const resolvedCommentsPage = commentId
+    ? await getCommunityCommentPage(post.id, commentId)
+    : normalizeCommentsPage(commentsPage);
+  return getPostWithComments(post, memberId, resolvedCommentsPage);
 };
 
 export const getCommunityEditorPost = async (

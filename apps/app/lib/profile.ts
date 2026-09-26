@@ -228,6 +228,7 @@ export const getMemberDirectory = (query = "") => {
     orderBy: [{ displayName: "asc" }, { username: "asc" }],
     take: 48,
     select: {
+      clerkUserId: true,
       username: true,
       displayName: true,
       avatarUrl: true,

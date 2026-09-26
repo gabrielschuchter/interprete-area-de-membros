@@ -4,6 +4,7 @@ import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { getOrCreateProfile } from "@/lib/profile";
 import { ManageAccountButton, SignOutButton } from "./account-actions";
+import { NotificationPreferences } from "./notification-preferences";
 
 const SettingsPage = async () => {
   const user = await getCurrentUser();
@@ -110,6 +111,9 @@ const SettingsPage = async () => {
               </Button>
             </div>
           </section>
+        </div>
+        <div className="mt-6">
+          <NotificationPreferences />
         </div>
       </div>
     </main>

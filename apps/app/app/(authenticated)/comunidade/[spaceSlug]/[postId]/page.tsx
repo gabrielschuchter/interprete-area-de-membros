@@ -6,7 +6,7 @@ import { requireMemberId } from "@/lib/learning";
 
 interface LegacyCommunityPostPageProperties {
   readonly params: Promise<{ postId: string; spaceSlug: string }>;
-  readonly searchParams: Promise<{ commentsPage?: string }>;
+  readonly searchParams: Promise<{ commentId?: string; commentsPage?: string }>;
 }
 
 const LegacyCommunityPostPage = async ({
@@ -22,7 +22,8 @@ const LegacyCommunityPostPage = async ({
     spaceSlug,
     postId,
     memberId,
-    commentsPage
+    commentsPage,
+    filters.commentId
   );
 
   if (!post) {

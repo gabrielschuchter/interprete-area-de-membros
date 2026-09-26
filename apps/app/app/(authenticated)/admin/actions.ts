@@ -1,10 +1,12 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import {
   AccessPermission,
   AccessResourceType,
   ContentStatus,
   database,
+  EnrollmentStatus,
   LessonKind,
   MemberRole,
   type Prisma,
@@ -14,6 +16,11 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin, requireStaff } from "@/lib/authorization";
 import { sanitizeRichDocument } from "@/lib/community-content";
+import {
+  notifyAnnouncement,
+  notifyLessonAvailable,
+  notifyModuleAvailable,
+} from "@/lib/notifications";
 
 const PARAGRAPH_SPLIT = /\r?\n\r?\n/;
 const LIST_SPLIT = /[\n,]/;
@@ -56,6 +63,174 @@ const revalidateMemberSurfaces = (username?: string) => {
   revalidatePath("/perfil");
   if (username) {
     revalidatePath(`/membros/${username}`);
+  }
+};
+
+interface NotificationResource {
+  readonly courseIds: string[];
+  readonly lesson?: {
+    readonly id: string;
+    readonly module: {
+      readonly course: { readonly slug: string };
+      readonly id: string;
+    };
+    readonly slug: string;
+    readonly title: string;
+  };
+  readonly module?: {
+    readonly course: { readonly id: string; readonly slug: string };
+    readonly id: string;
+    readonly title: string;
+  };
+  readonly resourceIds: string[];
+}
+
+const loadNotificationResource = async (
+  resourceType: AccessResourceType,
+  resourceId: string
+): Promise<NotificationResource | null> => {
+  if (resourceType === AccessResourceType.COURSE) {
+    const course = await database.course.findUnique({
+      where: { id: resourceId },
+      select: { id: true, status: true },
+    });
+    return course?.status === ContentStatus.PUBLISHED
+      ? { courseIds: [course.id], resourceIds: [resourceId] }
+      : null;
+  }
+
+  if (resourceType === AccessResourceType.MODULE) {
+    const module = await database.module.findUnique({
+      where: { id: resourceId },
+      select: {
+        id: true,
+        title: true,
+        status: true,
+        course: { select: { id: true, slug: true, status: true } },
+      },
+    });
+    if (
+      !module ||
+      module.status !== ContentStatus.PUBLISHED ||
+      module.course.status !== ContentStatus.PUBLISHED
+    ) {
+      return null;
+    }
+    return {
+      courseIds: [module.course.id],
+      module: {
+        course: { id: module.course.id, slug: module.course.slug },
+        id: module.id,
+        title: module.title,
+      },
+      resourceIds: [resourceId, module.id],
+    };
+  }
+
+  if (resourceType === AccessResourceType.LESSON) {
+    const lesson = await database.lesson.findUnique({
+      where: { id: resourceId },
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        status: true,
+        module: {
+          select: {
+            id: true,
+            status: true,
+            course: { select: { id: true, slug: true, status: true } },
+          },
+        },
+      },
+    });
+    if (
+      !lesson ||
+      lesson.status !== ContentStatus.PUBLISHED ||
+      lesson.module.status !== ContentStatus.PUBLISHED ||
+      lesson.module.course.status !== ContentStatus.PUBLISHED
+    ) {
+      return null;
+    }
+    return {
+      courseIds: [lesson.module.course.id],
+      lesson: {
+        id: lesson.id,
+        module: {
+          course: { slug: lesson.module.course.slug },
+          id: lesson.module.id,
+        },
+        slug: lesson.slug,
+        title: lesson.title,
+      },
+      resourceIds: [resourceId, lesson.id, lesson.module.id],
+    };
+  }
+
+  return null;
+};
+
+const notifyAvailableMembers = async (
+  resourceType: AccessResourceType,
+  resourceId: string,
+  actorId: string
+) => {
+  const resource = await loadNotificationResource(resourceType, resourceId);
+  if (!resource) {
+    return;
+  }
+
+  const accessGrants = await database.accessGrant.findMany({
+    where: {
+      OR: [
+        { resourceType, resourceId: { in: resource.resourceIds } },
+        {
+          resourceType: AccessResourceType.COURSE,
+          resourceId: { in: resource.courseIds },
+        },
+      ],
+    },
+    select: { memberId: true },
+  });
+  const enrollments = await database.enrollment.findMany({
+    where: {
+      courseId: { in: resource.courseIds },
+      status: EnrollmentStatus.ACTIVE,
+    },
+    select: { memberId: true },
+  });
+  const memberIds = [
+    ...new Set(
+      [...accessGrants, ...enrollments].map(({ memberId }) => memberId)
+    ),
+  ];
+  if (resource.module) {
+    const module = resource.module;
+    await Promise.all(
+      memberIds.map((memberId) =>
+        notifyModuleAvailable({
+          recipientId: memberId,
+          actorId,
+          moduleId: module.id,
+          moduleTitle: module.title,
+          href: `/aprender/cursos/${module.course.slug}`,
+        })
+      )
+    );
+  }
+  if (resource.lesson) {
+    const lesson = resource.lesson;
+    await Promise.all(
+      memberIds.map((memberId) =>
+        notifyLessonAvailable({
+          recipientId: memberId,
+          actorId,
+          lessonId: lesson.id,
+          lessonTitle: lesson.title,
+          href: `/aprender/cursos/${lesson.module.course.slug}/${lesson.slug}`,
+        })
+      )
+    );
   }
 };
 
@@ -1024,6 +1199,9 @@ export const setContentStatus = async (formData: FormData) => {
       data: { status },
       select: { courseId: true },
     });
+    if (status === ContentStatus.PUBLISHED) {
+      await notifyAvailableMembers(AccessResourceType.MODULE, id, userId);
+    }
     revalidatePath(`/admin/learning/courses/${module.courseId}`);
     return;
   }
@@ -1034,7 +1212,67 @@ export const setContentStatus = async (formData: FormData) => {
       data: { status, publishedAt, updatedBy: userId },
       select: { module: { select: { courseId: true } } },
     });
+    if (status === ContentStatus.PUBLISHED) {
+      await notifyAvailableMembers(AccessResourceType.LESSON, id, userId);
+    }
     revalidatePath(`/admin/learning/courses/${lesson.module.courseId}`);
     revalidatePath("/aprender", "page");
   }
+};
+
+const announcementAudiences = ["ALL", "STAFF", "SELECTED"] as const;
+type AnnouncementAudience = (typeof announcementAudiences)[number];
+
+const isAnnouncementAudience = (value: string): value is AnnouncementAudience =>
+  announcementAudiences.includes(value as AnnouncementAudience);
+
+export const createAnnouncement = async (formData: FormData) => {
+  const { userId } = await requireStaff();
+  const title = asText(formData.get("title")).slice(0, 180);
+  const body = asText(formData.get("body")).slice(0, 10_000);
+  const audienceValue = asText(formData.get("audience"));
+  const href = asText(formData.get("href"));
+  const recipientIds = asList(formData.get("recipientIds"), 200);
+
+  if (!(title && body && isAnnouncementAudience(audienceValue))) {
+    return;
+  }
+
+  const audience = audienceValue as AnnouncementAudience;
+  let recipients: { id: string }[];
+  if (audience === "ALL") {
+    recipients = await database.member.findMany({ select: { id: true } });
+  } else if (audience === "STAFF") {
+    recipients = await database.member.findMany({
+      where: { role: { in: [MemberRole.TEACHER, MemberRole.ADMIN] } },
+      select: { id: true },
+    });
+  } else {
+    recipients = await database.member.findMany({
+      where: { id: { in: recipientIds } },
+      select: { id: true },
+    });
+  }
+
+  if (recipients.length === 0) {
+    return;
+  }
+
+  const announcementId = randomUUID();
+  const safeHref = href.startsWith("/") ? href.slice(0, 500) : asHttpUrl(href);
+
+  await Promise.all(
+    recipients.map(({ id }) =>
+      notifyAnnouncement({
+        actorId: userId,
+        announcementId,
+        body,
+        href: safeHref ?? undefined,
+        recipientId: id,
+        title,
+      })
+    )
+  );
+
+  revalidatePath("/admin/avisos");
 };

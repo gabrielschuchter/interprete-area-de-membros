@@ -33,7 +33,16 @@ export const AuthProvider = ({
   // absolute value from an older deployment would move Clerk requests and
   // session cookies to a different Vercel project.
   const configuredClerkProxyUrl = process.env.NEXT_PUBLIC_CLERK_PROXY_URL;
-  const clerkProxyUrl = configuredClerkProxyUrl || "/__clerk";
+  // Never let a stale deployment alias receive the app's Clerk traffic. A
+  // relative proxy path keeps the frontend API and session cookies on the
+  // host the member is currently visiting.
+  const isLocalDevelopment = process.env.NODE_ENV === "development";
+  let clerkProxyUrl: string | undefined;
+  if (!isLocalDevelopment) {
+    clerkProxyUrl = configuredClerkProxyUrl?.startsWith("/")
+      ? configuredClerkProxyUrl
+      : "/__clerk";
+  }
 
   return (
     <ClerkProvider
@@ -44,7 +53,7 @@ export const AuthProvider = ({
         theme: baseTheme,
       }}
       localization={ptBR}
-      proxyUrl={clerkProxyUrl}
+      {...(clerkProxyUrl ? { proxyUrl: clerkProxyUrl } : {})}
     />
   );
 };

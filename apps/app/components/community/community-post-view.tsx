@@ -18,6 +18,8 @@ import {
   togglePostFeatured,
   togglePostPin,
   togglePostVote,
+  toggleTopicFollow,
+  toggleTopicMute,
   updateComment,
 } from "@/app/(authenticated)/comunidade/actions";
 import {
@@ -26,6 +28,7 @@ import {
 } from "@/lib/community";
 import { RichDocument } from "../learning/rich-document";
 import { MemberIdentity } from "./member-identity";
+import { MentionTextarea } from "./mention-textarea";
 
 type CommunityPost = NonNullable<
   Awaited<ReturnType<typeof getCommunityPostBySlug>>
@@ -54,11 +57,8 @@ const CommentThread = ({
 
   return (
     <div
-      className={
-        depth === 0
-          ? "border-border border-l-2 pl-4 sm:pl-6"
-          : "border-border border-t pt-5 pl-4 sm:pl-6"
-      }
+      className={`${depth === 0 ? "border-border border-l-2 pl-4 sm:pl-6" : "border-border border-t pt-5 pl-4 sm:pl-6"} community-comment scroll-mt-24`}
+      id={`comment-${comment.id}`}
     >
       <div className="flex flex-wrap items-center gap-2">
         <MemberIdentity
@@ -72,7 +72,16 @@ const CommentThread = ({
           · {comment._count.votes} apoios
         </span>
       </div>
-      <p className="mt-2 whitespace-pre-wrap leading-7">{comment.content}</p>
+      {comment.contentJson ? (
+        <div className="mt-2">
+          <RichDocument
+            currentMemberId={memberId}
+            value={comment.contentJson}
+          />
+        </div>
+      ) : (
+        <p className="mt-2 whitespace-pre-wrap leading-7">{comment.content}</p>
+      )}
       <div className="mt-3 flex flex-wrap items-center gap-3">
         <form action={toggleCommentVote}>
           <input name="commentId" type="hidden" value={comment.id} />
@@ -107,7 +116,7 @@ const CommentThread = ({
                 value={post.space?.slug ?? ""}
               />
               <input name="parentId" type="hidden" value={comment.id} />
-              <textarea
+              <MentionTextarea
                 aria-label={`Responder a ${comment.content.slice(0, 40)}`}
                 className="min-h-24 w-full rounded-sm border bg-background px-3 py-2 text-sm leading-6 outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/35"
                 name="content"
@@ -133,8 +142,9 @@ const CommentThread = ({
                 type="hidden"
                 value={post.space?.slug ?? ""}
               />
-              <textarea
+              <MentionTextarea
                 className="min-h-24 w-full rounded-sm border bg-background px-3 py-2 text-sm leading-6 outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/35"
+                defaultDocument={comment.contentJson}
                 defaultValue={comment.content}
                 name="content"
                 required
@@ -271,7 +281,10 @@ export function CommunityPostView({
           </div>
           <div className="lesson-document mt-8 max-w-3xl text-lg">
             {post.contentJson ? (
-              <RichDocument value={post.contentJson} />
+              <RichDocument
+                currentMemberId={memberId}
+                value={post.contentJson}
+              />
             ) : (
               <p className="whitespace-pre-wrap text-muted-foreground leading-8">
                 {post.content}
@@ -310,6 +323,34 @@ export function CommunityPostView({
                 {post.bookmarks.length > 0 ? "Salvo" : "Salvar"}
               </Button>
             </form>
+            <form action={toggleTopicFollow}>
+              <input name="postId" type="hidden" value={post.id} />
+              <input
+                name="spaceSlug"
+                type="hidden"
+                value={post.space?.slug ?? ""}
+              />
+              <Button size="sm" type="submit" variant="ghost">
+                {post.followers.length > 0
+                  ? "Seguindo discussão"
+                  : "Seguir discussão"}
+              </Button>
+            </form>
+            {post.followers.length > 0 && (
+              <form action={toggleTopicMute}>
+                <input name="postId" type="hidden" value={post.id} />
+                <input
+                  name="spaceSlug"
+                  type="hidden"
+                  value={post.space?.slug ?? ""}
+                />
+                <Button size="sm" type="submit" variant="ghost">
+                  {post.followers[0]?.mutedAt
+                    ? "Ativar atualizações"
+                    : "Silenciar discussão"}
+                </Button>
+              </form>
+            )}
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
             {post.tags.map((tag) => (
@@ -408,7 +449,7 @@ export function CommunityPostView({
               />
               <label className="block" htmlFor="comment-content">
                 <span className="brand-eyebrow">Sua contribuição</span>
-                <textarea
+                <MentionTextarea
                   className="mt-3 min-h-32 w-full rounded-sm border bg-background px-3 py-3 text-base leading-7 outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/35"
                   id="comment-content"
                   name="content"
