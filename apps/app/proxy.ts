@@ -9,24 +9,30 @@ const canonicalAppHost = "interprete-area-de-membros-app.vercel.app";
 const legacyAppHost = "interprete-area-de-membros.vercel.app";
 const clerkProxyPrefix = "/__clerk";
 const safeMethods = new Set(["GET", "HEAD", "OPTIONS"]);
+const canonicalHome = `https://${canonicalAppHost}/`;
 
 const redirectLegacyAppHost = (req: NextRequest) => {
   const url = req.nextUrl.clone();
+  url.protocol = "https:";
   url.hostname = canonicalAppHost;
 
   const redirectUrl = url.searchParams.get("redirect_url");
   if (redirectUrl) {
     try {
       const redirect = new URL(redirectUrl);
-      if (redirect.hostname === legacyAppHost) {
+      if (redirect.protocol !== "https:") {
+        url.searchParams.set("redirect_url", canonicalHome);
+      } else if (redirect.hostname === legacyAppHost) {
         redirect.hostname = canonicalAppHost;
         url.searchParams.set("redirect_url", redirect.toString());
+      } else if (redirect.hostname !== canonicalAppHost) {
+        url.searchParams.set("redirect_url", canonicalHome);
       }
     } catch {
-      // Clerk will apply its normal fallback for malformed redirect URLs.
+      url.searchParams.set("redirect_url", canonicalHome);
     }
   } else {
-    url.searchParams.set("redirect_url", `https://${canonicalAppHost}/`);
+    url.searchParams.set("redirect_url", canonicalHome);
   }
 
   return NextResponse.redirect(url, 308);
