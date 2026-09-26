@@ -15,6 +15,8 @@ export const memberImageInputTypes = new Set([
   "image/webp",
 ]);
 
+const MAX_INPUT_PIXELS = 40_000_000;
+
 const limits: Record<
   MemberImageKind,
   { readonly width: number; readonly height: number }
@@ -33,6 +35,13 @@ export class MemberImageError extends Error {
   }
 }
 
+const imagePipeline = (input: Buffer) =>
+  sharp(input, {
+    failOn: "error",
+    limitInputPixels: MAX_INPUT_PIXELS,
+    sequentialRead: true,
+  });
+
 export const normalizeMemberImage = async (
   file: File,
   kind: MemberImageKind
@@ -45,20 +54,26 @@ export const normalizeMemberImage = async (
   let inputMetadata: { format?: string; width?: number; height?: number };
 
   try {
-    inputMetadata = await sharp(input).metadata();
+    inputMetadata = await imagePipeline(input).metadata();
   } catch {
-    throw new MemberImageError("O arquivo enviado não é uma imagem válida.");
+    throw new MemberImageError(
+      "O arquivo enviado não é uma imagem válida ou excede o limite de resolução."
+    );
   }
 
   if (!(inputMetadata.format && inputMetadata.width && inputMetadata.height)) {
     throw new MemberImageError("Não foi possível ler as dimensões da imagem.");
   }
 
+  if (inputMetadata.width * inputMetadata.height > MAX_INPUT_PIXELS) {
+    throw new MemberImageError("A resolução desta imagem é grande demais.");
+  }
+
   const limit = limits[kind];
   let output: Buffer;
 
   try {
-    output = await sharp(input)
+    output = await imagePipeline(input)
       // Applies EXIF orientation before writing and omits the original EXIF,
       // including GPS/camera metadata, from the resulting asset.
       .rotate()
@@ -74,7 +89,9 @@ export const normalizeMemberImage = async (
     throw new MemberImageError("Não foi possível otimizar esta imagem.");
   }
 
-  const outputMetadata = await sharp(output).metadata();
+  const outputMetadata = await sharp(output, {
+    limitInputPixels: MAX_INPUT_PIXELS,
+  }).metadata();
   if (!(outputMetadata.width && outputMetadata.height && output.length > 0)) {
     throw new MemberImageError("A imagem otimizada ficou inválida.");
   }
