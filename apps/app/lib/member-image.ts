@@ -37,7 +37,7 @@ export class MemberImageError extends Error {
 
 const imagePipeline = (input: Buffer) =>
   sharp(input, {
-    failOn: "error",
+    failOn: "warning",
     limitInputPixels: MAX_INPUT_PIXELS,
     sequentialRead: true,
   });
