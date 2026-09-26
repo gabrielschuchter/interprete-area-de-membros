@@ -185,7 +185,10 @@ export const SignIn = () => {
       return;
     }
 
-    if (result.status === "needs_second_factor") {
+    if (
+      result.status === "needs_second_factor" ||
+      result.status === "needs_client_trust"
+    ) {
       const emailCodeFactor = result.supportedSecondFactors?.find(
         (factor) => factor.strategy === "email_code"
       );
