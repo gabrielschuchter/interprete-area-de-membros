@@ -29,19 +29,16 @@ export const AuthProvider = ({
     helpPageUrl: helpUrl,
   };
 
-  // Keep the frontend API proxy on the same canonical host as the app. An
-  // absolute value from an older deployment would move Clerk requests and
-  // session cookies to a different Vercel project.
-  const configuredClerkProxyUrl = process.env.NEXT_PUBLIC_CLERK_PROXY_URL;
-  // Never let a stale deployment alias receive the app's Clerk traffic. A
-  // relative proxy path keeps the frontend API and session cookies on the
-  // host the member is currently visiting.
+  // Clerk production instances with a custom frontend API proxy require the
+  // browser to use the exact proxy URL configured for that instance. The
+  // value is deliberately environment-controlled so local, preview, and
+  // production can each use their own valid proxy host.
+  const configuredClerkProxyUrl =
+    process.env.NEXT_PUBLIC_CLERK_PROXY_URL?.trim();
   const isLocalDevelopment = process.env.NODE_ENV === "development";
   let clerkProxyUrl: string | undefined;
   if (!isLocalDevelopment) {
-    clerkProxyUrl = configuredClerkProxyUrl?.startsWith("/")
-      ? configuredClerkProxyUrl
-      : "/__clerk";
+    clerkProxyUrl = configuredClerkProxyUrl || "/__clerk";
   }
 
   return (
