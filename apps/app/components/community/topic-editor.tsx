@@ -18,7 +18,7 @@ import {
   MinusIcon,
   QuoteIcon,
 } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 const emptyDocument: JSONContent = {
   type: "doc",
@@ -47,6 +47,8 @@ export const TopicEditor = ({
   const [linkUrl, setLinkUrl] = useState("");
   const [showImageField, setShowImageField] = useState(false);
   const [showLinkField, setShowLinkField] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
@@ -85,8 +87,56 @@ export const TopicEditor = ({
     editor.commands.focus();
   };
 
+  const uploadImage = async (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      return;
+    }
+
+    setIsUploadingImage(true);
+    try {
+      const formData = new FormData();
+      formData.set("file", file);
+      formData.set("assetType", "community-inline");
+      const response = await fetch("/api/member-assets", {
+        method: "POST",
+        body: formData,
+      });
+      const payload = (await response.json()) as { url?: string };
+      if (response.ok && payload.url) {
+        editor.chain().focus().setImage({ src: payload.url, alt: "" }).run();
+      }
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  const startUpload = (file: File) => {
+    uploadImage(file).catch(() => undefined);
+  };
+
   return (
-    <div className="overflow-hidden rounded-sm border bg-background">
+    // biome-ignore lint/a11y/noNoninteractiveElementInteractions: the editor surface accepts intentional drag-and-drop and clipboard paste events for image uploads.
+    <div
+      className="overflow-hidden rounded-sm border bg-background"
+      onDragOver={(event) => event.preventDefault()}
+      onDrop={(event) => {
+        event.preventDefault();
+        const file = event.dataTransfer.files[0];
+        if (file) {
+          startUpload(file);
+        }
+      }}
+      onPaste={(event) => {
+        const file = Array.from(event.clipboardData.files).find((item) =>
+          item.type.startsWith("image/")
+        );
+        if (file) {
+          event.preventDefault();
+          startUpload(file);
+        }
+      }}
+      role="application"
+    >
       <div
         aria-label="Ferramentas de formatação"
         className="flex flex-wrap gap-1 border-border border-b bg-muted/40 p-2"
@@ -197,13 +247,39 @@ export const TopicEditor = ({
         )}
         <Button
           aria-label="Adicionar imagem"
-          onClick={() => setShowImageField((visible) => !visible)}
+          onClick={() => imageInputRef.current?.click()}
           size="icon"
           type="button"
           variant="ghost"
         >
           <ImageIcon aria-hidden="true" />
         </Button>
+        <Button
+          onClick={() => setShowImageField((visible) => !visible)}
+          size="sm"
+          type="button"
+          variant="ghost"
+        >
+          URL
+        </Button>
+        <input
+          accept="image/jpeg,image/png,image/webp"
+          className="sr-only"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            if (file) {
+              startUpload(file);
+            }
+            event.currentTarget.value = "";
+          }}
+          ref={imageInputRef}
+          type="file"
+        />
+        {isUploadingImage ? (
+          <span className="self-center px-2 text-muted-foreground text-xs">
+            Enviando imagem…
+          </span>
+        ) : null}
         {showImageField && (
           <div className="flex min-w-60 flex-1 gap-2">
             <Input

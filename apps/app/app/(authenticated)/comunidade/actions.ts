@@ -16,6 +16,11 @@ import {
   plainTextFromDocument,
   sanitizeRichDocument,
 } from "@/lib/community-content";
+import {
+  deleteMemberAsset,
+  isOwnedMemberAssetPath,
+  memberAssetPathFromUrl,
+} from "@/lib/member-storage";
 import { createNotification } from "@/lib/notifications";
 import { getOrCreateProfile } from "@/lib/profile";
 
@@ -91,10 +96,21 @@ const uniquePostSlug = async (title: string, postId?: string) => {
   }
 };
 
-const safeImageUrl = (value: string) => {
+const safeImageUrl = (value: string, memberId: string) => {
   if (!value) {
     return null;
   }
+
+  const assetPath = memberAssetPathFromUrl(value);
+  if (
+    assetPath &&
+    (assetPath.startsWith("community-assets/covers/") ||
+      assetPath.startsWith("community-assets/inline/")) &&
+    isOwnedMemberAssetPath(assetPath, memberId)
+  ) {
+    return value.slice(0, 2000);
+  }
+
   try {
     const url = new URL(value);
     return url.protocol === "https:" ? url.toString().slice(0, 2000) : null;
@@ -116,6 +132,62 @@ const contentFromForm = (formData: FormData) => {
   }
   const plainText = document ? plainTextFromDocument(document) : rawContent;
   return { document, plainText };
+};
+
+const documentAssetPaths = (value: unknown, result = new Set<string>()) => {
+  if (!value || typeof value !== "object") {
+    return result;
+  }
+  if (Array.isArray(value)) {
+    for (const child of value) {
+      documentAssetPaths(child, result);
+    }
+    return result;
+  }
+  const record = value as Record<string, unknown>;
+  if (record.attrs && typeof record.attrs === "object") {
+    const src = (record.attrs as Record<string, unknown>).src;
+    const path = memberAssetPathFromUrl(typeof src === "string" ? src : null);
+    if (path?.startsWith("community-assets/inline/")) {
+      result.add(path);
+    }
+  }
+  for (const child of Object.values(record)) {
+    documentAssetPaths(child, result);
+  }
+  return result;
+};
+
+const cleanupRemovedAssets = async ({
+  memberId,
+  previousCoverUrl,
+  previousContentJson,
+  nextCoverUrl,
+  nextContentJson,
+}: {
+  readonly memberId: string;
+  readonly previousCoverUrl: string | null;
+  readonly previousContentJson: unknown;
+  readonly nextCoverUrl: string | null;
+  readonly nextContentJson: unknown;
+}) => {
+  const previousPaths = documentAssetPaths(previousContentJson);
+  const previousCoverPath = memberAssetPathFromUrl(previousCoverUrl);
+  if (previousCoverPath?.startsWith("community-assets/covers/")) {
+    previousPaths.add(previousCoverPath);
+  }
+  const nextPaths = documentAssetPaths(nextContentJson);
+  const nextCoverPath = memberAssetPathFromUrl(nextCoverUrl);
+  if (nextCoverPath) {
+    nextPaths.add(nextCoverPath);
+  }
+  await Promise.all(
+    [...previousPaths]
+      .filter(
+        (path) => !nextPaths.has(path) && isOwnedMemberAssetPath(path, memberId)
+      )
+      .map((path) => deleteMemberAsset(path))
+  );
 };
 
 const excerptFrom = (content: string) => {
@@ -332,7 +404,7 @@ export const createPost = async (formData: FormData) => {
       kind: parseKind(formData.get("kind")),
       title: parsed.data.title,
       subtitle: textValue(formData.get("subtitle")) || null,
-      coverUrl: safeImageUrl(textValue(formData.get("coverUrl"))),
+      coverUrl: safeImageUrl(textValue(formData.get("coverUrl")), userId),
       content: parsed.data.content,
       excerpt: excerptFrom(parsed.data.content),
       contentJson: document as Prisma.InputJsonValue | undefined,
@@ -362,7 +434,12 @@ export const updateDraft = async (formData: FormData) => {
       status: ContentStatus.DRAFT,
       deletedAt: null,
     },
-    select: { id: true, space: { select: { slug: true } } },
+    select: {
+      id: true,
+      coverUrl: true,
+      contentJson: true,
+      space: { select: { slug: true } },
+    },
   });
   if (!post) {
     return { ok: false as const, error: "Você não pode editar este rascunho." };
@@ -375,12 +452,23 @@ export const updateDraft = async (formData: FormData) => {
       kind: parseKind(formData.get("kind")),
       title: title.slice(0, 180),
       subtitle: textValue(formData.get("subtitle")).slice(0, 1000) || null,
-      coverUrl: safeImageUrl(textValue(formData.get("coverUrl"))),
+      coverUrl: safeImageUrl(textValue(formData.get("coverUrl")), userId),
       content: plainText.slice(0, 40_000),
       excerpt: excerptFrom(plainText),
       contentJson: document as Prisma.InputJsonValue | undefined,
       tags: parseTags(formData.get("tags")),
     },
+  });
+  const nextCoverUrl = safeImageUrl(
+    textValue(formData.get("coverUrl")),
+    userId
+  );
+  await cleanupRemovedAssets({
+    memberId: userId,
+    previousCoverUrl: post.coverUrl,
+    previousContentJson: post.contentJson,
+    nextCoverUrl,
+    nextContentJson: document,
   });
   revalidateCommunity(post.space?.slug, post.id);
   revalidateCommunity(space?.slug, post.id);
@@ -416,7 +504,12 @@ export const publishPost = async (formData: FormData) => {
       status: ContentStatus.DRAFT,
       deletedAt: null,
     },
-    select: { id: true, space: { select: { slug: true } } },
+    select: {
+      id: true,
+      coverUrl: true,
+      contentJson: true,
+      space: { select: { slug: true } },
+    },
   });
   if (!post) {
     return {
@@ -432,7 +525,7 @@ export const publishPost = async (formData: FormData) => {
       kind: parseKind(formData.get("kind")),
       title: parsed.data.title,
       subtitle: textValue(formData.get("subtitle")).slice(0, 1000) || null,
-      coverUrl: safeImageUrl(textValue(formData.get("coverUrl"))),
+      coverUrl: safeImageUrl(textValue(formData.get("coverUrl")), userId),
       content: parsed.data.content,
       excerpt: excerptFrom(parsed.data.content),
       contentJson: document as Prisma.InputJsonValue | undefined,
@@ -442,6 +535,17 @@ export const publishPost = async (formData: FormData) => {
       publishedAt: new Date(),
     },
     select: { id: true, slug: true, space: { select: { slug: true } } },
+  });
+  const nextCoverUrl = safeImageUrl(
+    textValue(formData.get("coverUrl")),
+    userId
+  );
+  await cleanupRemovedAssets({
+    memberId: userId,
+    previousCoverUrl: post.coverUrl,
+    previousContentJson: post.contentJson,
+    nextCoverUrl,
+    nextContentJson: document,
   });
   revalidateCommunity(post.space?.slug, post.id, slug);
   revalidateCommunity(space?.slug, post.id, slug);
@@ -469,6 +573,8 @@ export const updatePost = async (formData: FormData) => {
       id: true,
       slug: true,
       status: true,
+      coverUrl: true,
+      contentJson: true,
       space: { select: { slug: true } },
     },
   });
@@ -486,13 +592,24 @@ export const updatePost = async (formData: FormData) => {
       kind: parseKind(formData.get("kind")),
       title: parsed.data.title,
       subtitle: textValue(formData.get("subtitle")).slice(0, 1000) || null,
-      coverUrl: safeImageUrl(textValue(formData.get("coverUrl"))),
+      coverUrl: safeImageUrl(textValue(formData.get("coverUrl")), userId),
       content: parsed.data.content,
       excerpt: excerptFrom(parsed.data.content),
       contentJson: document as Prisma.InputJsonValue | undefined,
       tags: parseTags(formData.get("tags")),
       slug,
     },
+  });
+  const nextCoverUrl = safeImageUrl(
+    textValue(formData.get("coverUrl")),
+    userId
+  );
+  await cleanupRemovedAssets({
+    memberId: userId,
+    previousCoverUrl: post.coverUrl,
+    previousContentJson: post.contentJson,
+    nextCoverUrl,
+    nextContentJson: document,
   });
   revalidateCommunity(post.space?.slug, post.id, slug ?? undefined);
   revalidateCommunity(space?.slug, post.id, slug ?? undefined);

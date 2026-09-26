@@ -116,16 +116,15 @@ export const getOrCreateProfile = cache(
       user.fullName ??
       ([user.firstName, user.lastName].filter(Boolean).join(" ") || null);
     const email = user.primaryEmailAddress?.emailAddress ?? null;
-    const avatarUrl = user.imageUrl ?? null;
+    const existing = await database.profile.findUnique({
+      where: { clerkUserId },
+    });
+    const avatarUrl = existing?.avatarUrl ?? user.imageUrl ?? null;
 
     await database.member.upsert({
       where: { id: clerkUserId },
       update: { displayName, email, avatarUrl },
       create: { id: clerkUserId, displayName, email, avatarUrl },
-    });
-
-    const existing = await database.profile.findUnique({
-      where: { clerkUserId },
     });
 
     if (existing) {

@@ -24,9 +24,35 @@ const asRichNode = (value: unknown): RichNode | null => {
 const getChildren = (node: RichNode) =>
   Array.isArray(node.content) ? node.content : [];
 
+const isMemberAssetUrl = (value: string) => {
+  if (!value.startsWith("/api/member-assets?path=")) {
+    return false;
+  }
+  try {
+    const path = new URL(value, "https://interprete.local").searchParams.get(
+      "path"
+    );
+    return Boolean(
+      path &&
+        !path.includes("..") &&
+        [
+          "community-assets/inline/",
+          "community-assets/covers/",
+          "profile-assets/avatars/",
+        ].some((prefix) => path.startsWith(prefix))
+    );
+  } catch {
+    return false;
+  }
+};
+
 const safeHref = (value: unknown) => {
   if (typeof value !== "string") {
     return null;
+  }
+
+  if (isMemberAssetUrl(value)) {
+    return value;
   }
 
   try {

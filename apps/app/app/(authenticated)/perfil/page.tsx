@@ -9,6 +9,7 @@ import { Input } from "@repo/design-system/components/ui/input";
 import { Textarea } from "@repo/design-system/components/ui/textarea";
 import { CheckCircle2Icon, ExternalLinkIcon, MailIcon } from "lucide-react";
 import Link from "next/link";
+import { AvatarUploader } from "@/components/profile/avatar-uploader";
 import { getCurrentUser } from "@/lib/auth";
 import { getMemberRole } from "@/lib/authorization";
 import { getOrCreateProfile } from "@/lib/profile";
@@ -111,6 +112,11 @@ const ProfilePage = async ({ searchParams }: ProfilePageProperties) => {
             números e hífens.
           </p>
         )}
+        {filters.error === "avatar" && (
+          <p className="mt-6 border-destructive border-l-2 bg-destructive/10 px-4 py-3 text-sm">
+            A foto enviada não pertence a este perfil.
+          </p>
+        )}
 
         <div className="mt-12 grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
           <section className="paper-surface border p-6 sm:p-10">
@@ -184,19 +190,13 @@ const ProfilePage = async ({ searchParams }: ProfilePageProperties) => {
                     </span>
                   </label>
                 </div>
-                <label className="mt-5 block" htmlFor="profile-avatar-url">
-                  <span className="text-sm">Foto de perfil (URL opcional)</span>
-                  <Input
-                    className="mt-2"
-                    defaultValue={profile.avatarUrl ?? ""}
-                    id="profile-avatar-url"
-                    name="avatarUrl"
-                    placeholder="https://..."
+                <div>
+                  <span className="text-sm">Foto de perfil</span>
+                  <AvatarUploader
+                    initials={initials(name)}
+                    initialUrl={profile.avatarUrl}
                   />
-                  <span className="mt-1 block text-muted-foreground text-xs">
-                    Se ficar vazio, usamos a foto do Clerk ou suas iniciais.
-                  </span>
-                </label>
+                </div>
                 <label className="mt-5 block" htmlFor="profile-headline">
                   <span className="text-sm">Identificação curta</span>
                   <Input

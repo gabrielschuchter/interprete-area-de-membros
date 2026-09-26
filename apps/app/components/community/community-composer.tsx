@@ -3,7 +3,13 @@
 import { Button } from "@repo/design-system/components/ui/button";
 import { Input } from "@repo/design-system/components/ui/input";
 import type { JSONContent } from "@tiptap/core";
-import { EyeIcon, FileTextIcon, ImageIcon, SaveIcon } from "lucide-react";
+import {
+  EyeIcon,
+  FileTextIcon,
+  ImageIcon,
+  SaveIcon,
+  XIcon,
+} from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -83,6 +89,8 @@ export function CommunityComposer({
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [errorMessage, setErrorMessage] = useState("");
   const [publishing, setPublishing] = useState(false);
+  const [isUploadingCover, setIsUploadingCover] = useState(false);
+  const coverInputRef = useRef<HTMLInputElement>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const requestQueue = useRef(Promise.resolve());
   const requestVersion = useRef(0);
@@ -159,6 +167,41 @@ export function CommunityComposer({
   const updateSnapshot = (patch: Partial<typeof snapshot.current>) => {
     snapshot.current = { ...snapshot.current, ...patch };
     scheduleSave();
+  };
+
+  const uploadCover = async (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      return;
+    }
+
+    setIsUploadingCover(true);
+    setErrorMessage("");
+    try {
+      const formData = new FormData();
+      formData.set("file", file);
+      formData.set("assetType", "community-cover");
+      const response = await fetch("/api/member-assets", {
+        method: "POST",
+        body: formData,
+      });
+      const payload = (await response.json()) as {
+        error?: string;
+        url?: string;
+      };
+      if (!(response.ok && payload.url)) {
+        throw new Error(payload.error ?? "Não foi possível enviar a capa.");
+      }
+      setCoverUrl(payload.url);
+      updateSnapshot({ coverUrl: payload.url });
+    } catch (uploadError) {
+      setErrorMessage(
+        uploadError instanceof Error
+          ? uploadError.message
+          : "Não foi possível enviar a capa."
+      );
+    } finally {
+      setIsUploadingCover(false);
+    }
   };
 
   useEffect(() => {
@@ -312,28 +355,63 @@ export function CommunityComposer({
             />
           )}
 
-          {isPublication && (
-            <label
-              className="flex items-center gap-2 text-muted-foreground text-sm"
-              htmlFor="community-editor-cover"
-            >
+          <div className="border-border border-y py-4">
+            <div className="flex flex-wrap items-center gap-3">
               <ImageIcon aria-hidden="true" className="size-4" />
-              <span className="sr-only">Imagem de capa</span>
-              <Input
-                className="h-9"
-                id="community-editor-cover"
-                name="coverUrl"
+              <span className="text-muted-foreground text-sm">
+                {isPublication ? "Capa da publicação" : "Imagem de capa"}
+              </span>
+              <Button
+                onClick={() => coverInputRef.current?.click()}
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                {isUploadingCover ? "Enviando…" : "Escolher imagem"}
+              </Button>
+              {coverUrl ? (
+                <Button
+                  aria-label="Remover capa"
+                  onClick={() => {
+                    setCoverUrl("");
+                    updateSnapshot({ coverUrl: "" });
+                  }}
+                  size="icon"
+                  type="button"
+                  variant="ghost"
+                >
+                  <XIcon aria-hidden="true" />
+                </Button>
+              ) : null}
+              <input
+                accept="image/jpeg,image/png,image/webp"
+                className="sr-only"
                 onChange={(event) => {
-                  const nextCoverUrl = event.target.value;
-                  setCoverUrl(nextCoverUrl);
-                  updateSnapshot({ coverUrl: nextCoverUrl });
+                  const file = event.target.files?.[0];
+                  if (file) {
+                    uploadCover(file).catch(() => undefined);
+                  }
+                  event.currentTarget.value = "";
                 }}
-                placeholder="Imagem de capa HTTPS opcional"
-                type="url"
-                value={coverUrl}
+                ref={coverInputRef}
+                type="file"
               />
-            </label>
-          )}
+            </div>
+            {coverUrl ? (
+              // The authenticated media route resolves the private object.
+              // biome-ignore lint/performance/noImgElement: this is a small upload preview.
+              <img
+                alt="Prévia da capa"
+                className="mt-4 max-h-56 w-full rounded-sm border object-cover"
+                height={224}
+                src={coverUrl}
+                width={900}
+              />
+            ) : null}
+            <p className="mt-2 text-muted-foreground text-xs">
+              JPG, PNG ou WebP · até 5 MB. O upload é salvo junto do rascunho.
+            </p>
+          </div>
         </div>
 
         <div>

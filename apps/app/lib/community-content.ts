@@ -18,9 +18,35 @@ const allowedMarks = new Set(["bold", "italic", "code", "link"]);
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === "object" && !Array.isArray(value);
 
+const isMemberAssetUrl = (value: string) => {
+  if (!value.startsWith("/api/member-assets?path=")) {
+    return false;
+  }
+
+  try {
+    const path = new URL(value, "https://interprete.local").searchParams.get(
+      "path"
+    );
+    return Boolean(
+      path &&
+        !path.includes("..") &&
+        [
+          "community-assets/inline/",
+          "community-assets/covers/",
+          "profile-assets/avatars/",
+        ].some((prefix) => path.startsWith(prefix))
+    );
+  } catch {
+    return false;
+  }
+};
+
 const safeHref = (value: unknown) => {
   if (typeof value !== "string") {
     return null;
+  }
+  if (isMemberAssetUrl(value)) {
+    return value;
   }
   try {
     const url = new URL(value);

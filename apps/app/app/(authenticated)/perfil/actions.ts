@@ -5,6 +5,11 @@ import { database } from "@repo/database";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import {
+  deleteMemberAsset,
+  isOwnedMemberAssetPath,
+  memberAssetPathFromUrl,
+} from "@/lib/member-storage";
+import {
   getOrCreateProfile,
   isValidUsername,
   normalizeUsername,
@@ -35,9 +40,29 @@ const optionalUrl = (max: number) =>
     }, "Use um endereço http:// ou https:// válido.")
     .transform((value) => value || null);
 
+const optionalAvatar = z
+  .string()
+  .trim()
+  .max(500)
+  .refine((value) => {
+    if (!value) {
+      return true;
+    }
+    if (value.startsWith("/api/member-assets?path=")) {
+      return true;
+    }
+    try {
+      const url = new URL(value);
+      return url.protocol === "http:" || url.protocol === "https:";
+    } catch {
+      return false;
+    }
+  }, "Use uma imagem enviada ou um endereço http:// ou https:// válido.")
+  .transform((value) => value || null);
+
 const profileSchema = z.object({
   username: z.string().trim().toLowerCase().max(30),
-  avatarUrl: optionalUrl(500),
+  avatarUrl: optionalAvatar,
   displayName: optionalText(80),
   headline: optionalText(120),
   bio: optionalText(1200),
@@ -91,6 +116,11 @@ export const updateProfile = async (formData: FormData) => {
     redirect("/sign-in");
   }
 
+  const nextAvatarPath = memberAssetPathFromUrl(parsed.data.avatarUrl);
+  if (nextAvatarPath && !isOwnedMemberAssetPath(nextAvatarPath, userId)) {
+    redirect("/perfil?error=avatar");
+  }
+
   const interests = parsed.data.interests
     .split(",")
     .map((interest) => interest.trim())
@@ -98,25 +128,36 @@ export const updateProfile = async (formData: FormData) => {
     .slice(0, 12);
 
   try {
-    await database.profile.update({
-      where: { clerkUserId: userId },
-      data: {
-        username: parsed.data.username,
-        avatarUrl: parsed.data.avatarUrl,
-        displayName: parsed.data.displayName,
-        headline: parsed.data.headline,
-        bio: parsed.data.bio,
-        occupation: parsed.data.occupation,
-        institution: parsed.data.institution,
-        city: parsed.data.city,
-        state: parsed.data.state,
-        country: parsed.data.country,
-        website: parsed.data.website,
-        instagram: parsed.data.instagram,
-        linkedin: parsed.data.linkedin,
-        interests,
-      },
-    });
+    await database.$transaction([
+      database.profile.update({
+        where: { clerkUserId: userId },
+        data: {
+          username: parsed.data.username,
+          avatarUrl: parsed.data.avatarUrl,
+          displayName: parsed.data.displayName,
+          headline: parsed.data.headline,
+          bio: parsed.data.bio,
+          occupation: parsed.data.occupation,
+          institution: parsed.data.institution,
+          city: parsed.data.city,
+          state: parsed.data.state,
+          country: parsed.data.country,
+          website: parsed.data.website,
+          instagram: parsed.data.instagram,
+          linkedin: parsed.data.linkedin,
+          interests,
+        },
+      }),
+      database.member.update({
+        where: { id: userId },
+        data: { avatarUrl: parsed.data.avatarUrl },
+      }),
+    ]);
+
+    const previousAvatarPath = memberAssetPathFromUrl(existing.avatarUrl);
+    if (previousAvatarPath && previousAvatarPath !== nextAvatarPath) {
+      await deleteMemberAsset(previousAvatarPath);
+    }
   } catch {
     redirect("/perfil?error=username");
   }
