@@ -1,11 +1,11 @@
 import type { ReactNode } from "react";
 import { BrandWordmark } from "@/components/brand/brand-mark";
 
-interface AuthLayoutProps {
+interface SignUpLayoutProps {
   readonly children: ReactNode;
 }
 
-const AuthLayout = ({ children }: AuthLayoutProps) => (
+const SignUpLayout = ({ children }: SignUpLayoutProps) => (
   <div className="grid min-h-dvh bg-background lg:grid-cols-[minmax(0,1fr)_minmax(24rem,0.72fr)]">
     <div className="relative hidden min-h-dvh overflow-hidden bg-brand-depth p-10 text-primary-foreground lg:flex lg:flex-col">
       <div className="relative z-10">
@@ -34,4 +34,4 @@ const AuthLayout = ({ children }: AuthLayoutProps) => (
   </div>
 );
 
-export default AuthLayout;
+export default SignUpLayout;
