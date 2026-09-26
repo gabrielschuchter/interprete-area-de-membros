@@ -3,7 +3,7 @@ import { requireStaff } from "@/lib/authorization";
 import { AdminNav } from "./admin-nav";
 
 const AdminLayout = async ({ children }: { readonly children: ReactNode }) => {
-  await requireStaff();
+  const { role } = await requireStaff();
 
   return (
     <div className="min-h-svh bg-background">
@@ -11,7 +11,7 @@ const AdminLayout = async ({ children }: { readonly children: ReactNode }) => {
         aria-label="Navegação administrativa"
         className="border-border border-b bg-muted/20"
       >
-        <AdminNav />
+        <AdminNav isAdmin={role === "ADMIN"} />
       </nav>
       {children}
     </div>

@@ -9,6 +9,7 @@ import {
   UsersIcon,
 } from "lucide-react";
 import Link from "next/link";
+import { Stagger } from "@/components/motion/motion";
 import { getAdminOverview } from "@/lib/admin-overview";
 import { communityPostHref } from "@/lib/community";
 
@@ -64,7 +65,7 @@ const AdminPage = async () => {
         </p>
       </header>
 
-      <section
+      <Stagger
         aria-label="Resumo"
         className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
       >
@@ -77,7 +78,10 @@ const AdminPage = async () => {
           ];
 
           return (
-            <article className="paper-surface border p-5" key={label}>
+            <article
+              className="motion-card paper-surface border p-5"
+              key={label}
+            >
               <div className="flex items-start justify-between gap-3">
                 <p className="brand-eyebrow">{label}</p>
                 <Icon
@@ -89,7 +93,7 @@ const AdminPage = async () => {
             </article>
           );
         })}
-      </section>
+      </Stagger>
 
       <section aria-labelledby="attention-heading" className="mt-10">
         <div className="flex items-end justify-between border-border border-b pb-3">
@@ -98,8 +102,8 @@ const AdminPage = async () => {
           </h2>
           <span className="font-data text-muted-foreground text-xs">agora</span>
         </div>
-        <div className="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <article className="paper-surface border p-5">
+        <Stagger className="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <article className="motion-card paper-surface border p-5">
             <p className="brand-eyebrow">Feedback</p>
             <h3 className="mt-3 font-display text-2xl">
               {overview.counts.pendingFeedback === 0
@@ -114,7 +118,7 @@ const AdminPage = async () => {
               <ArrowRightIcon aria-hidden="true" className="size-4" />
             </Link>
           </article>
-          <article className="paper-surface border p-5">
+          <article className="motion-card paper-surface border p-5">
             <p className="brand-eyebrow">Próximo encontro</p>
             <h3 className="mt-3 font-display text-2xl">
               {nextMeeting?.title ?? "Nenhum encontro próximo."}
@@ -132,7 +136,7 @@ const AdminPage = async () => {
               <ArrowRightIcon aria-hidden="true" className="size-4" />
             </Link>
           </article>
-          <article className="paper-surface border p-5">
+          <article className="motion-card paper-surface border p-5">
             <p className="brand-eyebrow">Conteúdo</p>
             <h3 className="mt-3 font-display text-2xl">
               {overview.counts.drafts === 0
@@ -147,7 +151,7 @@ const AdminPage = async () => {
               <ArrowRightIcon aria-hidden="true" className="size-4" />
             </Link>
           </article>
-          <article className="paper-surface border p-5">
+          <article className="motion-card paper-surface border p-5">
             <p className="brand-eyebrow">Prazo</p>
             <h3 className="mt-3 font-display text-2xl">
               {overview.counts.overdue === 0
@@ -162,7 +166,7 @@ const AdminPage = async () => {
               <ArrowRightIcon aria-hidden="true" className="size-4" />
             </Link>
           </article>
-        </div>
+        </Stagger>
       </section>
 
       <div className="mt-10 grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.72fr)] lg:items-start">

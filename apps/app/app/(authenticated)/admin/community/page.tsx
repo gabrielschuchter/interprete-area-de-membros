@@ -12,6 +12,10 @@ import {
   createSpace,
   setSpaceStatus,
   softDeletePost,
+  togglePostFeatured,
+  togglePostPin,
+  toggleSpaceComments,
+  updateSpace,
 } from "../../comunidade/actions";
 
 const AdminCommunityPage = async () => {
@@ -83,17 +87,45 @@ const AdminCommunityPage = async () => {
                     </Link>
                   )}
                 </div>
-                <form action={softDeletePost}>
-                  <input name="postId" type="hidden" value={post.id} />
-                  <input
-                    name="spaceSlug"
-                    type="hidden"
-                    value={post.space?.slug ?? ""}
-                  />
-                  <Button size="sm" type="submit" variant="outline">
-                    Remover
-                  </Button>
-                </form>
+                <div className="flex flex-wrap gap-2">
+                  {post.status === "PUBLISHED" && (
+                    <>
+                      <form action={togglePostPin}>
+                        <input name="postId" type="hidden" value={post.id} />
+                        <input
+                          name="spaceSlug"
+                          type="hidden"
+                          value={post.space?.slug ?? ""}
+                        />
+                        <Button size="sm" type="submit" variant="outline">
+                          {post.isPinned ? "Desafixar" : "Fixar"}
+                        </Button>
+                      </form>
+                      <form action={togglePostFeatured}>
+                        <input name="postId" type="hidden" value={post.id} />
+                        <input
+                          name="spaceSlug"
+                          type="hidden"
+                          value={post.space?.slug ?? ""}
+                        />
+                        <Button size="sm" type="submit" variant="outline">
+                          {post.isFeatured ? "Retirar destaque" : "Destacar"}
+                        </Button>
+                      </form>
+                    </>
+                  )}
+                  <form action={softDeletePost}>
+                    <input name="postId" type="hidden" value={post.id} />
+                    <input
+                      name="spaceSlug"
+                      type="hidden"
+                      value={post.space?.slug ?? ""}
+                    />
+                    <Button size="sm" type="submit" variant="outline">
+                      Remover
+                    </Button>
+                  </form>
+                </div>
               </div>
             ))}
           </div>
@@ -144,7 +176,33 @@ const AdminCommunityPage = async () => {
                         </Button>
                       </form>
                     )}
+                    <form action={toggleSpaceComments}>
+                      <input name="spaceId" type="hidden" value={space.id} />
+                      <Button size="sm" type="submit" variant="outline">
+                        {space.commentsClosed
+                          ? "Reabrir comentários"
+                          : "Fechar comentários"}
+                      </Button>
+                    </form>
                   </div>
+                  <details className="mt-5 border-border border-t pt-4">
+                    <summary className="cursor-pointer text-muted-foreground text-sm underline underline-offset-4">
+                      Editar espaço
+                    </summary>
+                    <form action={updateSpace} className="mt-4 grid gap-3">
+                      <input name="spaceId" type="hidden" value={space.id} />
+                      <Input defaultValue={space.title} name="title" required />
+                      <Input defaultValue={space.slug} name="slug" required />
+                      <Textarea
+                        defaultValue={space.description ?? ""}
+                        name="description"
+                        placeholder="Descrição"
+                      />
+                      <Button size="sm" type="submit">
+                        Salvar espaço
+                      </Button>
+                    </form>
+                  </details>
                   <div className="mt-5 divide-y border-border border-y">
                     {space.posts.length === 0 ? (
                       <p className="py-4 text-muted-foreground text-sm">

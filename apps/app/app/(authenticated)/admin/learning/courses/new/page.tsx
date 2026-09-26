@@ -41,6 +41,15 @@ const NewCoursePage = async () => {
             required
           />
         </label>
+        <label className="block" htmlFor="course-subtitle">
+          <span className="brand-eyebrow">Subtítulo</span>
+          <Input
+            className="mt-2"
+            id="course-subtitle"
+            name="subtitle"
+            placeholder="Uma frase que orienta a promessa do curso"
+          />
+        </label>
         <label className="block" htmlFor="course-slug">
           <span className="brand-eyebrow">Slug</span>
           <Input
@@ -74,6 +83,54 @@ const NewCoursePage = async () => {
             id="course-description"
             name="description"
             placeholder="O que o membro vai conseguir compreender?"
+          />
+        </label>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <label className="block" htmlFor="course-format">
+            <span className="brand-eyebrow">Formato</span>
+            <Input
+              className="mt-2"
+              id="course-format"
+              name="format"
+              placeholder="Curso, trilha..."
+            />
+          </label>
+          <label className="block" htmlFor="course-level">
+            <span className="brand-eyebrow">Nível</span>
+            <Input
+              className="mt-2"
+              id="course-level"
+              name="level"
+              placeholder="Inicial, intermediário..."
+            />
+          </label>
+          <label className="block" htmlFor="course-duration">
+            <span className="brand-eyebrow">Duração (min)</span>
+            <Input
+              className="mt-2"
+              id="course-duration"
+              min="1"
+              name="durationMinutes"
+              type="number"
+            />
+          </label>
+        </div>
+        <label className="block" htmlFor="course-category">
+          <span className="brand-eyebrow">Categoria</span>
+          <Input
+            className="mt-2"
+            id="course-category"
+            name="category"
+            placeholder="Fundamentos de PBE"
+          />
+        </label>
+        <label className="block" htmlFor="course-tags">
+          <span className="brand-eyebrow">Tags separadas por vírgula</span>
+          <Input
+            className="mt-2"
+            id="course-tags"
+            name="tags"
+            placeholder="pbe, leitura crítica"
           />
         </label>
         <div className="flex flex-wrap justify-end gap-3 border-border border-t pt-6">

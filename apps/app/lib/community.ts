@@ -57,6 +57,7 @@ export const getCommunitySpaces = async () => {
       slug: true,
       description: true,
       icon: true,
+      commentsClosed: true,
       _count: {
         select: {
           posts: {
@@ -66,12 +67,18 @@ export const getCommunitySpaces = async () => {
       },
       posts: {
         where: { status: ContentStatus.PUBLISHED, deletedAt: null },
-        orderBy: [{ isPinned: "desc" }, { createdAt: "desc" }],
+        orderBy: [
+          { isFeatured: "desc" },
+          { isPinned: "desc" },
+          { createdAt: "desc" },
+        ],
         take: 3,
         select: {
           id: true,
           title: true,
           authorId: true,
+          isFeatured: true,
+          isPinned: true,
           createdAt: true,
           _count: {
             select: { comments: { where: { deletedAt: null } }, votes: true },
@@ -90,6 +97,30 @@ export const getCommunitySpaces = async () => {
     posts: attachProfiles(space.posts, profiles),
   }));
 };
+
+export const getLatestCommunityPost = async () =>
+  database.communityPost.findFirst({
+    where: {
+      status: ContentStatus.PUBLISHED,
+      deletedAt: null,
+      OR: [
+        { space: null },
+        { space: { is: { status: ContentStatus.PUBLISHED } } },
+      ],
+    },
+    orderBy: [
+      { isFeatured: "desc" },
+      { isPinned: "desc" },
+      { publishedAt: "desc" },
+      { createdAt: "desc" },
+    ],
+    select: {
+      id: true,
+      title: true,
+      slug: true,
+      space: { select: { slug: true } },
+    },
+  });
 
 interface CommunityFeedOptions {
   readonly page?: number;
@@ -157,12 +188,14 @@ export const getCommunityFeed = async (
     orderBy:
       options.sort === "popular"
         ? [
+            { isFeatured: "desc" },
             { isPinned: "desc" },
             { votes: { _count: "desc" } },
             { publishedAt: "desc" },
             { createdAt: "desc" },
           ]
         : [
+            { isFeatured: "desc" },
             { isPinned: "desc" },
             { publishedAt: "desc" },
             { createdAt: "desc" },
@@ -180,6 +213,7 @@ export const getCommunityFeed = async (
       authorId: true,
       status: true,
       isPinned: true,
+      isFeatured: true,
       publishedAt: true,
       createdAt: true,
       space: { select: { title: true, slug: true } },
@@ -223,6 +257,7 @@ export const getCommunitySpace = async (
       slug: true,
       description: true,
       icon: true,
+      commentsClosed: true,
       posts: {
         where: { status: ContentStatus.PUBLISHED, deletedAt: null },
         orderBy: [
@@ -284,10 +319,14 @@ const communityPostSelect = {
   coverUrl: true,
   authorId: true,
   isPinned: true,
+  isFeatured: true,
+  featuredAt: true,
   publishedAt: true,
   createdAt: true,
   updatedAt: true,
-  space: { select: { id: true, title: true, slug: true } },
+  space: {
+    select: { id: true, title: true, slug: true, commentsClosed: true },
+  },
   _count: {
     select: { comments: { where: { deletedAt: null } }, votes: true },
   },
@@ -508,7 +547,9 @@ export const getStaffCommunitySpaces = async () =>
       id: true,
       title: true,
       slug: true,
+      description: true,
       status: true,
+      commentsClosed: true,
       posts: {
         where: { deletedAt: null },
         orderBy: { createdAt: "desc" },
@@ -536,6 +577,8 @@ export const getStaffCommunityPosts = async () =>
       status: true,
       kind: true,
       slug: true,
+      isPinned: true,
+      isFeatured: true,
       createdAt: true,
       space: { select: { title: true, slug: true } },
     },

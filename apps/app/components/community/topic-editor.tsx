@@ -31,6 +31,7 @@ interface TopicEditorProperties {
   readonly name?: string;
   readonly onDocumentChange?: (value: JSONContent) => void;
   readonly onEditorBlur?: () => void;
+  readonly onUploadStateChange?: (uploading: boolean) => void;
 }
 
 export const TopicEditor = ({
@@ -38,6 +39,7 @@ export const TopicEditor = ({
   name = "contentJson",
   onDocumentChange,
   onEditorBlur,
+  onUploadStateChange,
   ariaLabel = "Conteúdo do tópico",
 }: TopicEditorProperties) => {
   const [value, setValue] = useState<JSONContent>(
@@ -48,7 +50,10 @@ export const TopicEditor = ({
   const [showImageField, setShowImageField] = useState(false);
   const [showLinkField, setShowLinkField] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [uploadError, setUploadError] = useState("");
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const pendingPreviewUrls = useRef(new Set<string>());
+  const pendingUploads = useRef(0);
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
@@ -74,7 +79,18 @@ export const TopicEditor = ({
     onUpdate: ({ editor: currentEditor }) => {
       const document = currentEditor.getJSON();
       setValue(document);
-      onDocumentChange?.(document);
+      // Do not autosave a blob URL. The local image is intentionally visible
+      // while the server processes it, then the persisted member-asset URL is
+      // emitted once the node is replaced.
+      if (pendingUploads.current === 0) {
+        onDocumentChange?.(document);
+      }
+    },
+    onDestroy: () => {
+      for (const previewUrl of pendingPreviewUrls.current) {
+        URL.revokeObjectURL(previewUrl);
+      }
+      pendingPreviewUrls.current.clear();
     },
   });
 
@@ -87,12 +103,67 @@ export const TopicEditor = ({
     editor.commands.focus();
   };
 
+  const removePreviewNode = (previewUrl: string) => {
+    const positions: number[] = [];
+    editor.state.doc.descendants((node, position) => {
+      if (node.type.name === "image" && node.attrs.src === previewUrl) {
+        positions.push(position);
+      }
+    });
+    if (positions.length > 0) {
+      const transaction = editor.state.tr;
+      for (const position of positions.reverse()) {
+        const node = editor.state.doc.nodeAt(position);
+        if (node) {
+          transaction.delete(position, position + node.nodeSize);
+        }
+      }
+      editor.view.dispatch(transaction);
+    }
+  };
+
+  const replacePreviewNode = (previewUrl: string, persistedUrl: string) => {
+    const transaction = editor.state.tr;
+    let replaced = false;
+    editor.state.doc.descendants((node, position) => {
+      if (node.type.name === "image" && node.attrs.src === previewUrl) {
+        transaction.setNodeMarkup(position, undefined, {
+          ...node.attrs,
+          src: persistedUrl,
+          alt: "",
+        });
+        replaced = true;
+      }
+    });
+    if (replaced) {
+      editor.view.dispatch(transaction);
+    }
+  };
+
   const uploadImage = async (file: File) => {
-    if (!file.type.startsWith("image/")) {
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      setUploadError("Envie uma imagem JPG, PNG ou WebP.");
+      return;
+    }
+    if (file.size <= 0 || file.size > 5 * 1024 * 1024) {
+      setUploadError("A imagem deve ter entre 1 byte e 5 MB.");
       return;
     }
 
+    setUploadError("");
+    const previewUrl = URL.createObjectURL(file);
+    pendingPreviewUrls.current.add(previewUrl);
+    editor
+      .chain()
+      .focus()
+      .setImage({
+        src: previewUrl,
+        alt: "Enviando imagem…",
+      })
+      .run();
+    pendingUploads.current += 1;
     setIsUploadingImage(true);
+    onUploadStateChange?.(true);
     try {
       const formData = new FormData();
       formData.set("file", file);
@@ -101,12 +172,33 @@ export const TopicEditor = ({
         method: "POST",
         body: formData,
       });
-      const payload = (await response.json()) as { url?: string };
-      if (response.ok && payload.url) {
-        editor.chain().focus().setImage({ src: payload.url, alt: "" }).run();
+      const payload = (await response.json()) as {
+        error?: string;
+        url?: string;
+      };
+      if (!(response.ok && payload.url)) {
+        throw new Error(payload.error ?? "Não foi possível enviar a imagem.");
       }
+      replacePreviewNode(previewUrl, payload.url);
+      pendingPreviewUrls.current.delete(previewUrl);
+      setTimeout(() => URL.revokeObjectURL(previewUrl), 0);
+    } catch (error) {
+      removePreviewNode(previewUrl);
+      setUploadError(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível enviar a imagem."
+      );
+      setTimeout(() => URL.revokeObjectURL(previewUrl), 0);
     } finally {
-      setIsUploadingImage(false);
+      pendingUploads.current = Math.max(0, pendingUploads.current - 1);
+      if (pendingUploads.current === 0) {
+        const document = editor.getJSON();
+        setValue(document);
+        onDocumentChange?.(document);
+      }
+      onUploadStateChange?.(pendingUploads.current > 0);
+      setIsUploadingImage(pendingUploads.current > 0);
     }
   };
 
@@ -219,7 +311,7 @@ export const TopicEditor = ({
           <LinkIcon aria-hidden="true" />
         </Button>
         {showLinkField && (
-          <div className="flex min-w-60 flex-1 gap-2">
+          <div className="motion-reveal-fast flex min-w-60 flex-1 gap-2">
             <Input
               aria-label="Endereço do link"
               autoFocus
@@ -280,8 +372,16 @@ export const TopicEditor = ({
             Enviando imagem…
           </span>
         ) : null}
+        {uploadError ? (
+          <span
+            className="basis-full px-2 text-destructive text-xs"
+            role="alert"
+          >
+            {uploadError}
+          </span>
+        ) : null}
         {showImageField && (
-          <div className="flex min-w-60 flex-1 gap-2">
+          <div className="motion-reveal-fast flex min-w-60 flex-1 gap-2">
             <Input
               aria-label="Endereço da imagem"
               autoFocus

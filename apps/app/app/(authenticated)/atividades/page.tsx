@@ -2,6 +2,7 @@ import { Badge } from "@repo/design-system/components/ui/badge";
 import { Button } from "@repo/design-system/components/ui/button";
 import { ArrowRightIcon, CheckCircle2Icon, Clock3Icon } from "lucide-react";
 import Link from "next/link";
+import { Stagger } from "@/components/motion/motion";
 import { getPublishedActivities } from "@/lib/activities";
 import { requireMemberId } from "@/lib/learning";
 
@@ -45,7 +46,7 @@ const ActivityRow = ({
 
   return (
     <article
-      className="paper-surface border p-6 transition-[border-color,transform] duration-180 hover:-translate-y-0.5 hover:border-brand-action sm:p-8"
+      className="motion-card paper-surface border p-6 hover:border-brand-action sm:p-8"
       key={activity.id}
     >
       <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
@@ -134,11 +135,11 @@ const ActivitiesPage = async () => {
               </Button>
             </div>
           ) : (
-            <div className="mt-6 grid gap-4">
+            <Stagger className="mt-6 grid gap-4">
               {activities.map((activity) => (
                 <ActivityRow activity={activity} key={activity.id} />
               ))}
-            </div>
+            </Stagger>
           )}
         </section>
       </main>

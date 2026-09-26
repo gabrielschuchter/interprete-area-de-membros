@@ -8,6 +8,7 @@ import {
   LessonKind,
   MemberRole,
   type Prisma,
+  ResourceKind,
 } from "@repo/database";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -15,9 +16,38 @@ import { requireAdmin, requireStaff } from "@/lib/authorization";
 import { sanitizeRichDocument } from "@/lib/community-content";
 
 const PARAGRAPH_SPLIT = /\r?\n\r?\n/;
+const LIST_SPLIT = /[\n,]/;
 
 const asText = (value: FormDataEntryValue | null) =>
   typeof value === "string" ? value.trim() : "";
+
+const asList = (value: FormDataEntryValue | null, limit = 20) =>
+  typeof value === "string"
+    ? [
+        ...new Set(
+          value
+            .split(LIST_SPLIT)
+            .map((item) => item.trim())
+            .filter(Boolean)
+        ),
+      ].slice(0, limit)
+    : [];
+
+const asPositiveInteger = (value: FormDataEntryValue | null) => {
+  const parsed = Number(asText(value));
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+};
+
+const asHttpUrl = (value: string) => {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:"
+      ? url.toString().slice(0, 2000)
+      : null;
+  } catch {
+    return null;
+  }
+};
 
 const revalidateMemberSurfaces = (username?: string) => {
   revalidatePath("/admin/membros");
@@ -107,6 +137,7 @@ export const setAccessGrant = async (formData: FormData) => {
   const resourceTypeValue = asText(formData.get("resourceType"));
   let resourceId = asText(formData.get("resourceId"));
   let normalizedResourceType = resourceTypeValue;
+  const expiresAtValue = asText(formData.get("expiresAt"));
 
   if (!normalizedResourceType && resourceId.includes(":")) {
     const separator = resourceId.indexOf(":");
@@ -121,6 +152,10 @@ export const setAccessGrant = async (formData: FormData) => {
   }
 
   const resourceType = normalizedResourceType as AccessResourceType;
+  const expiresAt = expiresAtValue ? new Date(expiresAtValue) : null;
+  if (expiresAt && Number.isNaN(expiresAt.valueOf())) {
+    return;
+  }
   const [member, exists] = await Promise.all([
     database.member.findUnique({
       where: { id: memberId },
@@ -141,12 +176,13 @@ export const setAccessGrant = async (formData: FormData) => {
         resourceId,
       },
     },
-    update: { permission: AccessPermission.VIEW },
+    update: { permission: AccessPermission.VIEW, expiresAt },
     create: {
       memberId,
       resourceType,
       resourceId,
       permission: AccessPermission.VIEW,
+      expiresAt,
     },
   });
 
@@ -227,8 +263,14 @@ export const createLearningPath = async (formData: FormData) => {
 export const createCourse = async (formData: FormData) => {
   const { userId } = await requireStaff();
   const title = asText(formData.get("title"));
+  const subtitle = asText(formData.get("subtitle"));
   const slug = asText(formData.get("slug")).toLowerCase();
   const description = asText(formData.get("description"));
+  const format = asText(formData.get("format"));
+  const category = asText(formData.get("category"));
+  const level = asText(formData.get("level"));
+  const durationMinutes = asPositiveInteger(formData.get("durationMinutes"));
+  const tags = asList(formData.get("tags"));
   const learningPathId = asText(formData.get("learningPathId"));
 
   if (!(title && slug)) {
@@ -245,8 +287,15 @@ export const createCourse = async (formData: FormData) => {
     return transaction.course.create({
       data: {
         title,
+        subtitle: subtitle || null,
         slug,
         description: description || null,
+        format: format || null,
+        category: category || null,
+        level: level || null,
+        durationMinutes,
+        tags,
+        teacherId: userId,
         learningPathId: learningPathId || null,
         position: (lastCourse?.position ?? -1) + 1,
         createdBy: userId,
@@ -259,11 +308,142 @@ export const createCourse = async (formData: FormData) => {
   redirect(`/admin/learning/courses/${course.id}`);
 };
 
+const copySlug = (slug: string) =>
+  `${slug}-copia-${Date.now().toString(36)}`.slice(0, 80);
+
+export const duplicateCourse = async (formData: FormData) => {
+  const { userId } = await requireStaff();
+  const courseId = asText(formData.get("courseId"));
+  if (!courseId) {
+    return;
+  }
+  const source = await database.course.findUnique({
+    where: { id: courseId },
+    select: {
+      title: true,
+      subtitle: true,
+      description: true,
+      coverUrl: true,
+      format: true,
+      category: true,
+      level: true,
+      durationMinutes: true,
+      tags: true,
+      learningPathId: true,
+      modules: {
+        orderBy: { position: "asc" },
+        select: {
+          title: true,
+          slug: true,
+          description: true,
+          objectives: true,
+          lessons: {
+            orderBy: { position: "asc" },
+            select: {
+              title: true,
+              slug: true,
+              description: true,
+              objectives: true,
+              content: true,
+              kind: true,
+              resources: {
+                orderBy: { position: "asc" },
+                select: { title: true, kind: true, url: true, position: true },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+  if (!source) {
+    return;
+  }
+
+  const copy = await database.$transaction(async (transaction) => {
+    const lastCourse = await transaction.course.findFirst({
+      where: { learningPathId: source.learningPathId },
+      orderBy: { position: "desc" },
+      select: { position: true },
+    });
+    const course = await transaction.course.create({
+      data: {
+        title: `${source.title} (cópia)`,
+        subtitle: source.subtitle,
+        description: source.description,
+        coverUrl: source.coverUrl,
+        format: source.format,
+        category: source.category,
+        level: source.level,
+        durationMinutes: source.durationMinutes,
+        tags: source.tags,
+        slug: copySlug(source.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")),
+        learningPathId: source.learningPathId,
+        position: (lastCourse?.position ?? -1) + 1,
+        status: ContentStatus.DRAFT,
+        createdBy: userId,
+        updatedBy: userId,
+      },
+      select: { id: true },
+    });
+
+    for (const [moduleIndex, module] of source.modules.entries()) {
+      const createdModule = await transaction.module.create({
+        data: {
+          courseId: course.id,
+          title: module.title,
+          slug: copySlug(module.slug),
+          description: module.description,
+          objectives: module.objectives,
+          position: moduleIndex,
+          status: ContentStatus.DRAFT,
+        },
+        select: { id: true },
+      });
+      for (const [lessonIndex, lesson] of module.lessons.entries()) {
+        const createdLesson = await transaction.lesson.create({
+          data: {
+            moduleId: createdModule.id,
+            title: lesson.title,
+            slug: copySlug(lesson.slug),
+            description: lesson.description,
+            objectives: lesson.objectives,
+            content: lesson.content as Prisma.InputJsonValue,
+            kind: lesson.kind,
+            position: lessonIndex,
+            status: ContentStatus.DRAFT,
+            createdBy: userId,
+            updatedBy: userId,
+          },
+          select: { id: true },
+        });
+        if (lesson.resources.length > 0) {
+          await transaction.lessonResource.createMany({
+            data: lesson.resources.map((resource) => ({
+              lessonId: createdLesson.id,
+              title: resource.title,
+              kind: resource.kind,
+              url: resource.url,
+              position: resource.position,
+            })),
+          });
+        }
+      }
+    }
+    return course;
+  });
+
+  revalidatePath("/admin/learning");
+  redirect(`/admin/learning/courses/${copy.id}`);
+};
+
 export const createModule = async (formData: FormData) => {
   await requireStaff();
   const courseId = asText(formData.get("courseId"));
   const title = asText(formData.get("title"));
   const slug = asText(formData.get("slug")).toLowerCase();
+  const description = asText(formData.get("description"));
+  const objectives = asList(formData.get("objectives"));
 
   if (!(courseId && title && slug)) {
     return;
@@ -281,6 +461,8 @@ export const createModule = async (formData: FormData) => {
         courseId,
         title,
         slug,
+        description: description || null,
+        objectives,
         position: (lastModule?.position ?? -1) + 1,
       },
     });
@@ -290,12 +472,98 @@ export const createModule = async (formData: FormData) => {
   revalidatePath("/aprender", "page");
 };
 
+export const duplicateModule = async (formData: FormData) => {
+  const { userId } = await requireStaff();
+  const moduleId = asText(formData.get("moduleId"));
+  if (!moduleId) {
+    return;
+  }
+  const source = await database.module.findUnique({
+    where: { id: moduleId },
+    select: {
+      courseId: true,
+      title: true,
+      slug: true,
+      description: true,
+      objectives: true,
+      lessons: {
+        orderBy: { position: "asc" },
+        select: {
+          title: true,
+          slug: true,
+          description: true,
+          objectives: true,
+          content: true,
+          kind: true,
+          resources: {
+            orderBy: { position: "asc" },
+            select: { title: true, kind: true, url: true, position: true },
+          },
+        },
+      },
+    },
+  });
+  if (!source) {
+    return;
+  }
+  const copy = await database.$transaction(async (transaction) => {
+    const lastModule = await transaction.module.findFirst({
+      where: { courseId: source.courseId },
+      orderBy: { position: "desc" },
+      select: { position: true },
+    });
+    const createdModule = await transaction.module.create({
+      data: {
+        courseId: source.courseId,
+        title: `${source.title} (cópia)`,
+        slug: copySlug(source.slug),
+        description: source.description,
+        objectives: source.objectives,
+        position: (lastModule?.position ?? -1) + 1,
+        status: ContentStatus.DRAFT,
+      },
+      select: { id: true },
+    });
+    for (const [lessonIndex, lesson] of source.lessons.entries()) {
+      const createdLesson = await transaction.lesson.create({
+        data: {
+          moduleId: createdModule.id,
+          title: lesson.title,
+          slug: copySlug(lesson.slug),
+          description: lesson.description,
+          objectives: lesson.objectives,
+          content: lesson.content as Prisma.InputJsonValue,
+          kind: lesson.kind,
+          position: lessonIndex,
+          status: ContentStatus.DRAFT,
+          createdBy: userId,
+          updatedBy: userId,
+        },
+        select: { id: true },
+      });
+      await transaction.lessonResource.createMany({
+        data: lesson.resources.map((resource) => ({
+          lessonId: createdLesson.id,
+          title: resource.title,
+          kind: resource.kind,
+          url: resource.url,
+          position: resource.position,
+        })),
+      });
+    }
+    return createdModule;
+  });
+  revalidatePath(`/admin/learning/courses/${source.courseId}`);
+  redirect(`/admin/learning/courses/${source.courseId}#module-${copy.id}`);
+};
+
 export const createLesson = async (formData: FormData) => {
   const { userId } = await requireStaff();
   const moduleId = asText(formData.get("moduleId"));
   const title = asText(formData.get("title"));
   const slug = asText(formData.get("slug")).toLowerCase();
   const description = asText(formData.get("description"));
+  const objectives = asList(formData.get("objectives"));
   const content =
     asText(formData.get("contentJson")) || asText(formData.get("content"));
   const kind = asText(formData.get("kind"));
@@ -321,6 +589,7 @@ export const createLesson = async (formData: FormData) => {
         title,
         slug,
         description: description || null,
+        objectives,
         content: asContent(content),
         kind: selectedKind,
         position: (lastLesson?.position ?? -1) + 1,
@@ -334,24 +603,98 @@ export const createLesson = async (formData: FormData) => {
   revalidatePath(`/admin/learning/courses/${lesson.module.courseId}`);
 };
 
+export const duplicateLesson = async (formData: FormData) => {
+  const { userId } = await requireStaff();
+  const lessonId = asText(formData.get("lessonId"));
+  if (!lessonId) {
+    return;
+  }
+  const source = await database.lesson.findUnique({
+    where: { id: lessonId },
+    select: {
+      moduleId: true,
+      title: true,
+      slug: true,
+      description: true,
+      objectives: true,
+      content: true,
+      kind: true,
+      module: { select: { courseId: true } },
+      resources: {
+        orderBy: { position: "asc" },
+        select: { title: true, kind: true, url: true, position: true },
+      },
+    },
+  });
+  if (!source) {
+    return;
+  }
+  const copy = await database.$transaction(async (transaction) => {
+    const lastLesson = await transaction.lesson.findFirst({
+      where: { moduleId: source.moduleId },
+      orderBy: { position: "desc" },
+      select: { position: true },
+    });
+    const createdLesson = await transaction.lesson.create({
+      data: {
+        moduleId: source.moduleId,
+        title: `${source.title} (cópia)`,
+        slug: copySlug(source.slug),
+        description: source.description,
+        objectives: source.objectives,
+        content: source.content as Prisma.InputJsonValue,
+        kind: source.kind,
+        position: (lastLesson?.position ?? -1) + 1,
+        status: ContentStatus.DRAFT,
+        createdBy: userId,
+        updatedBy: userId,
+      },
+      select: { id: true },
+    });
+    await transaction.lessonResource.createMany({
+      data: source.resources.map((resource) => ({
+        lessonId: createdLesson.id,
+        title: resource.title,
+        kind: resource.kind,
+        url: resource.url,
+        position: resource.position,
+      })),
+    });
+    return createdLesson;
+  });
+  revalidatePath(`/admin/learning/courses/${source.module.courseId}`);
+  redirect(
+    `/admin/learning/courses/${source.module.courseId}#lesson-${copy.id}`
+  );
+};
+
 export const updateLesson = async (formData: FormData) => {
   const { userId } = await requireStaff();
   const lessonId = asText(formData.get("lessonId"));
   const title = asText(formData.get("title"));
+  const slug = asText(formData.get("slug")).toLowerCase();
   const description = asText(formData.get("description"));
+  const objectives = asList(formData.get("objectives"));
   const content =
     asText(formData.get("contentJson")) || asText(formData.get("content"));
+  const kindValue = asText(formData.get("kind"));
 
-  if (!(lessonId && title && content)) {
+  if (!(lessonId && title && slug && content)) {
     return;
   }
+  const kind = Object.values(LessonKind).includes(kindValue as LessonKind)
+    ? (kindValue as LessonKind)
+    : LessonKind.TEXT;
 
   const lesson = await database.lesson.update({
     where: { id: lessonId },
     data: {
       title,
+      slug,
       description: description || null,
+      objectives,
       content: asContent(content),
+      kind,
       updatedBy: userId,
     },
     select: { module: { select: { courseId: true } } },
@@ -384,8 +727,14 @@ export const updateCourse = async (formData: FormData) => {
   const { userId } = await requireStaff();
   const courseId = asText(formData.get("courseId"));
   const title = asText(formData.get("title"));
+  const subtitle = asText(formData.get("subtitle"));
   const slug = asText(formData.get("slug")).toLowerCase();
   const description = asText(formData.get("description"));
+  const format = asText(formData.get("format"));
+  const category = asText(formData.get("category"));
+  const level = asText(formData.get("level"));
+  const durationMinutes = asPositiveInteger(formData.get("durationMinutes"));
+  const tags = asList(formData.get("tags"));
 
   if (!(courseId && title && slug)) {
     return;
@@ -395,8 +744,14 @@ export const updateCourse = async (formData: FormData) => {
     where: { id: courseId },
     data: {
       title,
+      subtitle: subtitle || null,
       slug,
       description: description || null,
+      format: format || null,
+      category: category || null,
+      level: level || null,
+      durationMinutes,
+      tags,
       updatedBy: userId,
     },
   });
@@ -412,6 +767,8 @@ export const updateModule = async (formData: FormData) => {
   const moduleId = asText(formData.get("moduleId"));
   const title = asText(formData.get("title"));
   const slug = asText(formData.get("slug")).toLowerCase();
+  const description = asText(formData.get("description"));
+  const objectives = asList(formData.get("objectives"));
 
   if (!(moduleId && title && slug)) {
     return;
@@ -419,12 +776,114 @@ export const updateModule = async (formData: FormData) => {
 
   const module = await database.module.update({
     where: { id: moduleId },
-    data: { title, slug },
+    data: { title, slug, description: description || null, objectives },
     select: { courseId: true },
   });
 
   revalidatePath(`/admin/learning/courses/${module.courseId}`);
   revalidatePath("/aprender");
+};
+
+export const createLessonResource = async (formData: FormData) => {
+  await requireStaff();
+  const lessonId = asText(formData.get("lessonId"));
+  const title = asText(formData.get("title"));
+  const kindValue = asText(formData.get("kind"));
+  const url = asHttpUrl(asText(formData.get("url")));
+
+  if (
+    !(
+      lessonId &&
+      title &&
+      url &&
+      Object.values(ResourceKind).includes(kindValue as ResourceKind)
+    )
+  ) {
+    return;
+  }
+
+  const lesson = await database.lesson.findUnique({
+    where: { id: lessonId },
+    select: { module: { select: { courseId: true } } },
+  });
+
+  if (!lesson) {
+    return;
+  }
+
+  const lastResource = await database.lessonResource.findFirst({
+    where: { lessonId },
+    orderBy: { position: "desc" },
+    select: { position: true },
+  });
+
+  await database.lessonResource.create({
+    data: {
+      lessonId,
+      title,
+      kind: kindValue as ResourceKind,
+      url,
+      position: (lastResource?.position ?? -1) + 1,
+    },
+  });
+
+  revalidatePath(`/admin/learning/courses/${lesson.module.courseId}`);
+};
+
+export const updateLessonResource = async (formData: FormData) => {
+  await requireStaff();
+  const resourceId = asText(formData.get("resourceId"));
+  const title = asText(formData.get("title"));
+  const kindValue = asText(formData.get("kind"));
+  const url = asHttpUrl(asText(formData.get("url")));
+
+  if (
+    !(
+      resourceId &&
+      title &&
+      url &&
+      Object.values(ResourceKind).includes(kindValue as ResourceKind)
+    )
+  ) {
+    return;
+  }
+
+  const resource = await database.lessonResource.findUnique({
+    where: { id: resourceId },
+    select: {
+      lesson: { select: { module: { select: { courseId: true } } } },
+    },
+  });
+  if (!resource) {
+    return;
+  }
+
+  await database.lessonResource.update({
+    where: { id: resourceId },
+    data: { title, kind: kindValue as ResourceKind, url },
+  });
+
+  revalidatePath(`/admin/learning/courses/${resource.lesson.module.courseId}`);
+};
+
+export const removeLessonResource = async (formData: FormData) => {
+  await requireStaff();
+  const resourceId = asText(formData.get("resourceId"));
+  if (!resourceId) {
+    return;
+  }
+
+  const resource = await database.lessonResource.findUnique({
+    where: { id: resourceId },
+    select: { lesson: { select: { module: { select: { courseId: true } } } } },
+  });
+
+  if (!resource) {
+    return;
+  }
+
+  await database.lessonResource.delete({ where: { id: resourceId } });
+  revalidatePath(`/admin/learning/courses/${resource.lesson.module.courseId}`);
 };
 
 export const moveModule = async (formData: FormData) => {

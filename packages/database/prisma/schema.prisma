@@ -54,6 +54,12 @@ enum ActivitySubmissionStatus {
   REVIEWED
 }
 
+enum ActivityDeliveryKind {
+  TEXT
+  FILE
+  TEXT_AND_FILE
+}
+
 enum CommunityVoteKind {
   UP
 }
@@ -140,7 +146,9 @@ model Member {
   migrationStudents MigrationStudent[] @relation("MigrationStudentMember")
   notifications     Notification[]
   activityAssignments ActivityAssignment[]
+  activitySubmissions ActivitySubmission[]
   libraryBookmarks  LibraryBookmark[]
+  meetingParticipations MeetingParticipant[]
 
   @@index([role])
 }
@@ -188,9 +196,16 @@ model LearningPath {
 model Course {
   id             String        @id @default(cuid())
   title          String
+  subtitle       String?       @db.Text
   slug           String        @unique
   description    String?       @db.Text
   coverUrl       String?
+  format         String?
+  category       String?
+  level          String?
+  durationMinutes Int?
+  tags           String[]      @default([])
+  teacherId      String?
   status         ContentStatus @default(DRAFT)
   position       Int           @default(0)
   publishedAt    DateTime?
@@ -214,6 +229,8 @@ model Module {
   id        String        @id @default(cuid())
   title     String
   slug      String
+  description String?     @db.Text
+  objectives String[]     @default([])
   position  Int           @default(0)
   status    ContentStatus @default(DRAFT)
   courseId  String
@@ -232,6 +249,7 @@ model Lesson {
   title       String
   slug        String
   description String?          @db.Text
+  objectives  String[]         @default([])
   content     Json
   kind        LessonKind       @default(TEXT)
   status      ContentStatus    @default(DRAFT)
@@ -244,6 +262,7 @@ model Lesson {
   updatedAt   DateTime         @updatedAt
   module      Module           @relation(fields: [moduleId], references: [id], onDelete: Cascade)
   resources   LessonResource[]
+  libraryItems LibraryItem[]
   assets      LessonAsset[]
   progress    LessonProgress[]
   activities  Activity[]
@@ -385,11 +404,13 @@ model Activity {
   slug         String               @unique
   prompt       String               @db.Text
   instructions String?              @db.Text
+  deliveryKind ActivityDeliveryKind @default(TEXT)
   status       ContentStatus        @default(DRAFT)
   position     Int                  @default(0)
   dueAt        DateTime?
   courseId     String?
   lessonId     String?
+  relatedLibraryItemId String?
   createdBy    String?
   updatedBy    String?
   createdAt    DateTime             @default(now())
@@ -399,10 +420,12 @@ model Activity {
   submissions  ActivitySubmission[]
   assignments  ActivityAssignment[]
   meetings     Meeting[]            @relation("MeetingActivity")
+  relatedLibraryItem LibraryItem?    @relation("ActivityLibraryItem", fields: [relatedLibraryItemId], references: [id], onDelete: SetNull)
 
   @@index([status, position])
   @@index([courseId, status, position])
   @@index([lessonId, status])
+  @@index([relatedLibraryItemId])
 }
 
 model ActivitySubmission {
@@ -419,6 +442,7 @@ model ActivitySubmission {
   createdAt   DateTime                 @default(now())
   updatedAt   DateTime                 @updatedAt
   activity    Activity                 @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  member      Member                   @relation(fields: [memberId], references: [id], onDelete: Cascade)
   feedback    Feedback?
 
   @@unique([activityId, memberId])
@@ -471,6 +495,7 @@ model CommunitySpace {
   slug        String          @unique
   description String?         @db.Text
   icon        String?
+  commentsClosed Boolean       @default(false)
   status      ContentStatus   @default(DRAFT)
   position    Int             @default(0)
   createdAt   DateTime        @default(now())
@@ -495,6 +520,8 @@ model CommunityPost {
   coverUrl    String?
   status      ContentStatus       @default(PUBLISHED)
   isPinned    Boolean             @default(false)
+  isFeatured  Boolean             @default(false)
+  featuredAt  DateTime?
   publishedAt DateTime?
   createdAt   DateTime            @default(now())
   updatedAt   DateTime            @updatedAt
@@ -579,6 +606,7 @@ model Meeting {
   courseId     String?
   position     Int           @default(0)
   kind         MeetingKind   @default(OTHER)
+  recurrenceRule String?
   demoKey      String?       @unique
   relatedActivityId    String?
   relatedLibraryItemId String?
@@ -587,12 +615,25 @@ model Meeting {
   course       Course?       @relation(fields: [courseId], references: [id], onDelete: SetNull)
   relatedActivity    Activity?    @relation("MeetingActivity", fields: [relatedActivityId], references: [id], onDelete: SetNull)
   relatedLibraryItem LibraryItem? @relation("MeetingLibraryItem", fields: [relatedLibraryItemId], references: [id], onDelete: SetNull)
+  participants MeetingParticipant[]
 
   @@index([status, startsAt])
   @@index([teacherId, startsAt])
   @@index([courseId, startsAt])
   @@index([relatedActivityId])
   @@index([relatedLibraryItemId])
+}
+
+model MeetingParticipant {
+  id        String   @id @default(cuid())
+  meetingId String
+  memberId  String
+  createdAt DateTime @default(now())
+  meeting   Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  member    Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([meetingId, memberId])
+  @@index([memberId, meetingId])
 }
 
 model LibraryItem {
@@ -606,6 +647,7 @@ model LibraryItem {
   authors     String?         @db.Text
   year        Int?
   doi         String?
+  pmid        String?
   storagePath String?         @db.Text
   mimeType    String?
   sizeBytes   BigInt?
@@ -613,13 +655,17 @@ model LibraryItem {
   position    Int             @default(0)
   createdBy   String?
   updatedBy   String?
+  lessonId    String?
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
   bookmarks   LibraryBookmark[]
   meetings    Meeting[]       @relation("MeetingLibraryItem")
+  lesson      Lesson?         @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+  activities  Activity[]      @relation("ActivityLibraryItem")
 
   @@index([status, category, position])
   @@index([status, createdAt])
+  @@index([lessonId])
 }
 
 model LibraryBookmark {

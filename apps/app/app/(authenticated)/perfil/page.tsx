@@ -123,8 +123,11 @@ const ProfilePage = async ({ searchParams }: ProfilePageProperties) => {
             <div className="flex flex-wrap items-start justify-between gap-5">
               <div className="flex min-w-0 items-center gap-4">
                 <Avatar className="size-16 shrink-0">
-                  {profile.avatarUrl ? (
-                    <AvatarImage alt="" src={profile.avatarUrl} />
+                  {(profile.avatarUrl ?? user.imageUrl) ? (
+                    <AvatarImage
+                      alt=""
+                      src={profile.avatarUrl ?? user.imageUrl ?? undefined}
+                    />
                   ) : null}
                   <AvatarFallback className="bg-brand-structural text-primary-foreground">
                     {initials(name)}

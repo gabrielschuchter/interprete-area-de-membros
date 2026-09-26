@@ -119,7 +119,10 @@ export const getOrCreateProfile = cache(
     const existing = await database.profile.findUnique({
       where: { clerkUserId },
     });
-    const avatarUrl = existing?.avatarUrl ?? user.imageUrl ?? null;
+    // A profile row is the application source of truth once it exists. The
+    // Clerk image is only the creation-time fallback and is resolved by the
+    // shell/profile view when the member has no custom avatar.
+    const avatarUrl = existing ? existing.avatarUrl : (user.imageUrl ?? null);
 
     await database.member.upsert({
       where: { id: clerkUserId },

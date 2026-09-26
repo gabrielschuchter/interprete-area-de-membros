@@ -3,6 +3,11 @@
 import { interpreteAuthAppearance } from "@repo/auth/appearance";
 import { UserButton } from "@repo/auth/client";
 import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@repo/design-system/components/ui/avatar";
+import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
@@ -13,7 +18,6 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  useSidebar,
 } from "@repo/design-system/components/ui/sidebar";
 import {
   BookmarkIcon,
@@ -26,14 +30,18 @@ import {
   UserRoundIcon,
   VideoIcon,
 } from "lucide-react";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { BrandWordmark } from "@/components/brand/brand-mark";
+import { IntentLink } from "./intent-link";
+
+const whitespacePattern = /\s+/;
 
 interface GlobalSidebarProperties {
+  readonly avatarUrl: string | null;
   readonly canManageContent: boolean;
   readonly children: ReactNode;
+  readonly displayName: string;
 }
 
 const navigation = [
@@ -51,10 +59,11 @@ const navigation = [
 ] as const;
 
 export const GlobalSidebar = ({
+  avatarUrl,
   canManageContent,
   children,
+  displayName,
 }: GlobalSidebarProperties) => {
-  const sidebar = useSidebar();
   const pathname = usePathname();
 
   return (
@@ -69,7 +78,7 @@ export const GlobalSidebar = ({
                 size="lg"
                 tooltip="Interprete."
               >
-                <Link href="/">
+                <IntentLink href="/">
                   <BrandWordmark
                     className="w-[7.25rem] group-data-[collapsible=icon]:hidden"
                     tone="branco"
@@ -77,7 +86,7 @@ export const GlobalSidebar = ({
                   <span className="hidden font-display text-2xl text-sidebar-foreground group-data-[collapsible=icon]:inline">
                     I.
                   </span>
-                </Link>
+                </IntentLink>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
@@ -87,12 +96,12 @@ export const GlobalSidebar = ({
                 isActive={pathname.startsWith("/aprender/minhas-gravacoes")}
                 tooltip="Minhas gravações"
               >
-                <Link href="/aprender/minhas-gravacoes">
+                <IntentLink href="/aprender/minhas-gravacoes">
                   <VideoIcon />
                   <span className="group-data-[collapsible=icon]:hidden">
                     Minhas gravações
                   </span>
-                </Link>
+                </IntentLink>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
@@ -102,12 +111,12 @@ export const GlobalSidebar = ({
                 isActive={pathname === "/comunidade/salvos"}
                 tooltip="Salvos"
               >
-                <Link href="/comunidade/salvos">
+                <IntentLink href="/comunidade/salvos">
                   <BookmarkIcon />
                   <span className="group-data-[collapsible=icon]:hidden">
                     Salvos
                   </span>
-                </Link>
+                </IntentLink>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
@@ -131,12 +140,12 @@ export const GlobalSidebar = ({
                     }
                     tooltip={item.label}
                   >
-                    <Link href={item.href}>
+                    <IntentLink href={item.href}>
                       <item.icon />
                       <span className="group-data-[collapsible=icon]:hidden">
                         {item.label}
                       </span>
-                    </Link>
+                    </IntentLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
@@ -148,12 +157,12 @@ export const GlobalSidebar = ({
                     isActive={pathname.startsWith("/admin")}
                     tooltip="Professor"
                   >
-                    <Link href="/admin/learning">
+                    <IntentLink href="/admin">
                       <BookOpenIcon />
                       <span className="group-data-[collapsible=icon]:hidden">
                         Professor
                       </span>
-                    </Link>
+                    </IntentLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               )}
@@ -169,28 +178,49 @@ export const GlobalSidebar = ({
                 isActive={pathname === "/comunidade/meus-topicos"}
                 tooltip="Meus tópicos"
               >
-                <Link href="/comunidade/meus-topicos">
+                <IntentLink href="/comunidade/meus-topicos">
                   <MessageCircleIcon />
                   <span className="group-data-[collapsible=icon]:hidden">
                     Meus tópicos
                   </span>
-                </Link>
+                </IntentLink>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <UserButton
-                appearance={{
-                  elements: {
-                    rootBox: "flex min-w-0 flex-1 overflow-hidden",
-                    userButtonBox:
-                      "flex-row-reverse rounded-sm px-2 py-2 hover:bg-sidebar-accent",
-                    userButtonOuterIdentifier:
-                      "truncate pl-0 text-sidebar-foreground",
-                  },
-                }}
-                showName={sidebar.open}
-                userProfileProps={{ appearance: interpreteAuthAppearance }}
-              />
+              <div className="flex min-w-0 flex-1 items-center gap-2 px-2 py-1">
+                <IntentLink
+                  aria-label="Abrir meu perfil"
+                  className="flex min-w-0 flex-1 items-center gap-2 rounded-sm py-1 text-sidebar-foreground hover:bg-sidebar-accent"
+                  href="/perfil"
+                >
+                  <Avatar className="size-7 shrink-0">
+                    {avatarUrl ? <AvatarImage alt="" src={avatarUrl} /> : null}
+                    <AvatarFallback className="bg-brand-action text-primary-foreground text-xs">
+                      {displayName
+                        .split(whitespacePattern)
+                        .filter(Boolean)
+                        .slice(0, 2)
+                        .map((part) => part[0])
+                        .join("")
+                        .toUpperCase() || "M"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="truncate text-sm group-data-[collapsible=icon]:hidden">
+                    {displayName}
+                  </span>
+                </IntentLink>
+                <UserButton
+                  appearance={{
+                    elements: {
+                      rootBox: "shrink-0",
+                      userButtonBox: "rounded-sm p-1 hover:bg-sidebar-accent",
+                      userButtonAvatarBox: "size-6",
+                    },
+                  }}
+                  showName={false}
+                  userProfileProps={{ appearance: interpreteAuthAppearance }}
+                />
+              </div>
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarFooter>

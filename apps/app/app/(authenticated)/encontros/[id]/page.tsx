@@ -77,6 +77,11 @@ const MeetingPage = async ({ params }: MeetingPageProperties) => {
               minutos
             </p>
           ) : null}
+          {meeting.recurrenceRule ? (
+            <p className="mt-2 text-muted-foreground text-sm">
+              Recorrência: {meeting.recurrenceRule}
+            </p>
+          ) : null}
           {meeting.description && (
             <p className="mt-8 max-w-2xl whitespace-pre-wrap text-muted-foreground leading-7">
               {meeting.description}

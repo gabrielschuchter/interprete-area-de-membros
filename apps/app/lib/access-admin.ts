@@ -51,32 +51,42 @@ export const getAccessAdminOverview = async () => {
     }),
   ]);
 
-  const resources = courses.flatMap((course) => [
-    {
-      id: course.id,
-      type: "COURSE" as const,
-      label: `Curso · ${course.title}`,
-    },
-    ...course.modules.flatMap((module) => [
+  const resourceGroups = courses.map((course) => {
+    const resources = [
       {
-        id: module.id,
-        type: "MODULE" as const,
-        label: `${course.title} · módulo · ${module.title}`,
+        id: course.id,
+        type: "COURSE" as const,
+        label: `Curso · ${course.title}`,
       },
-      ...module.lessons.flatMap((lesson) => [
+      ...course.modules.flatMap((module) => [
         {
-          id: lesson.id,
-          type: "LESSON" as const,
-          label: `${course.title} · aula · ${lesson.title}`,
+          id: module.id,
+          type: "MODULE" as const,
+          label: `Módulo · ${module.title}`,
         },
-        ...lesson.assets.map((asset) => ({
-          id: asset.id,
-          type: "ASSET" as const,
-          label: `${course.title} · material · ${asset.title}`,
-        })),
+        ...module.lessons.flatMap((lesson) => [
+          {
+            id: lesson.id,
+            type: "LESSON" as const,
+            label: `Aula · ${lesson.title}`,
+          },
+          ...lesson.assets.map((asset) => ({
+            id: asset.id,
+            type: "ASSET" as const,
+            label: `Material · ${asset.title}`,
+          })),
+        ]),
       ]),
-    ]),
-  ]);
+    ];
+    return { courseId: course.id, courseTitle: course.title, resources };
+  });
 
-  return { members, resources };
+  const resources = resourceGroups.flatMap(({ courseTitle, resources }) =>
+    resources.map((resource) => ({
+      ...resource,
+      label: `${courseTitle} · ${resource.label}`,
+    }))
+  );
+
+  return { members, resources, resourceGroups };
 };

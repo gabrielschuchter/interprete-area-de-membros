@@ -52,11 +52,16 @@ const CommunitySpacePage = async ({
               </p>
             )}
           </div>
-          <Button asChild>
-            <Link href={`/comunidade/${space.slug}/novo`}>
-              <PlusIcon aria-hidden="true" /> Criar aqui
-            </Link>
-          </Button>
+          <div className="flex flex-wrap items-center gap-3">
+            {space.commentsClosed && (
+              <Badge variant="outline">Comentários fechados</Badge>
+            )}
+            <Button asChild>
+              <Link href={`/comunidade/${space.slug}/novo`}>
+                <PlusIcon aria-hidden="true" /> Criar aqui
+              </Link>
+            </Button>
+          </div>
         </header>
         <section aria-labelledby="posts-heading" className="mt-10">
           <div className="flex items-end justify-between border-border border-b pb-3">

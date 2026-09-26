@@ -23,6 +23,12 @@ const ActivityPage = async ({ params }: ActivityPageProperties) => {
 
   const submission = activity.submissions[0];
   const dueAt = activity.assignments[0]?.dueAt ?? activity.dueAt;
+  const requiresText =
+    activity.deliveryKind === "TEXT" ||
+    activity.deliveryKind === "TEXT_AND_FILE";
+  const requiresFile =
+    activity.deliveryKind === "FILE" ||
+    activity.deliveryKind === "TEXT_AND_FILE";
   const isReviewed = submission?.status === "REVIEWED";
   let submissionLabel = "Rascunho";
 
@@ -99,29 +105,35 @@ const ActivityPage = async ({ params }: ActivityPageProperties) => {
             ) : null}
             <form action={submitActivity} className="mt-6 space-y-4">
               <input name="activityId" type="hidden" value={activity.id} />
-              <label className="block" htmlFor="activity-response">
-                <span className="brand-eyebrow">O que você pensa?</span>
-                <textarea
-                  className="mt-3 min-h-64 w-full resize-y rounded-sm border bg-background px-4 py-3 text-base leading-7 outline-none transition-[border-color,box-shadow] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/35"
-                  defaultValue={submission?.content ?? ""}
-                  id="activity-response"
-                  name="content"
-                  placeholder="Escreva seu raciocínio, uma dúvida ou uma hipótese..."
-                />
-              </label>
-              <label className="block" htmlFor="activity-attachment">
-                <span className="brand-eyebrow">Arquivo opcional</span>
-                <input
-                  accept="application/pdf,image/jpeg,image/png,image/webp,text/plain"
-                  className="mt-3 block w-full rounded-sm border bg-background px-3 py-3 text-sm"
-                  id="activity-attachment"
-                  name="attachment"
-                  type="file"
-                />
-                <span className="mt-2 block text-muted-foreground text-xs">
-                  PDF, imagem ou texto · até 10 MB.
-                </span>
-              </label>
+              {requiresText && (
+                <label className="block" htmlFor="activity-response">
+                  <span className="brand-eyebrow">O que você pensa?</span>
+                  <textarea
+                    className="mt-3 min-h-64 w-full resize-y rounded-sm border bg-background px-4 py-3 text-base leading-7 outline-none transition-[border-color,box-shadow] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/35"
+                    defaultValue={submission?.content ?? ""}
+                    id="activity-response"
+                    name="content"
+                    placeholder="Escreva seu raciocínio, uma dúvida ou uma hipótese..."
+                    required
+                  />
+                </label>
+              )}
+              {requiresFile && (
+                <label className="block" htmlFor="activity-attachment">
+                  <span className="brand-eyebrow">Arquivo obrigatório</span>
+                  <input
+                    accept="application/pdf,image/jpeg,image/png,image/webp,text/plain"
+                    className="mt-3 block w-full rounded-sm border bg-background px-3 py-3 text-sm"
+                    id="activity-attachment"
+                    name="attachment"
+                    required
+                    type="file"
+                  />
+                  <span className="mt-2 block text-muted-foreground text-xs">
+                    PDF, imagem ou texto · até 10 MB.
+                  </span>
+                </label>
+              )}
               {submission?.attachmentPath ? (
                 <a
                   className="text-brand-structural text-sm underline underline-offset-4"

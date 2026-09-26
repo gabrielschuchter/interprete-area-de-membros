@@ -106,7 +106,7 @@ Motion deve comunicar descoberta, raciocínio, camada, anotação, foco, conexã
 - Desenho de anotação: 500–900ms, apenas quando houver motivo.
 - Easing padrão: `cubic-bezier(.2, 0, 0, 1)`; desenho: `cubic-bezier(.16, 1, .3, 1)`.
 
-Por viewport haverá um gesto dominante e no máximo dois gestos de apoio. Nada de parallax, bounce, partículas, scroll hijacking, cursor gimmick, loop decorativo ou blur pesado. `prefers-reduced-motion` é obrigatório.
+Por viewport haverá um gesto dominante e no máximo dois gestos de apoio. Nada de parallax, bounce, partículas, scroll hijacking, cursor gimmick, loop decorativo ou blur pesado. A experiência de motion é única, deliberadamente controlada e sem configurações paralelas.
 
 ## Voz e UX
 

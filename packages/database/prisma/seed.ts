@@ -1,5 +1,6 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import {
+  ActivityDeliveryKind,
   ActivitySubmissionStatus,
   ContentStatus,
   LessonKind,
@@ -122,12 +123,24 @@ const seed = async () => {
       },
     },
     update: {
+      description:
+        "Uma sequência para transformar dúvidas em perguntas investigáveis.",
+      objectives: [
+        "Delimitar uma pergunta de prática baseada em evidências.",
+        "Reconhecer os elementos de uma pergunta clínica.",
+      ],
       position: 0,
       status: ContentStatus.PUBLISHED,
     },
     create: {
       title: "Primeiros conceitos",
       slug: "primeiros-conceitos",
+      description:
+        "Uma sequência para transformar dúvidas em perguntas investigáveis.",
+      objectives: [
+        "Delimitar uma pergunta de prática baseada em evidências.",
+        "Reconhecer os elementos de uma pergunta clínica.",
+      ],
       position: 0,
       status: ContentStatus.PUBLISHED,
       courseId: course.id,
@@ -170,6 +183,10 @@ const seed = async () => {
       update: {
         title: lesson.title,
         description: lesson.description,
+        objectives: [
+          "Identificar a decisão que precisa ser esclarecida.",
+          "Relacionar contexto, evidência e aplicabilidade.",
+        ],
         content: lesson.content,
         kind: LessonKind.TEXT,
         position: lesson.position,
@@ -181,6 +198,10 @@ const seed = async () => {
         slug: lesson.slug,
         description: lesson.description,
         content: lesson.content,
+        objectives: [
+          "Identificar a decisão que precisa ser esclarecida.",
+          "Relacionar contexto, evidência e aplicabilidade.",
+        ],
         kind: LessonKind.TEXT,
         position: lesson.position,
         status: ContentStatus.PUBLISHED,
@@ -397,6 +418,8 @@ const seed = async () => {
           "Escolha uma dúvida da sua prática ou área de interesse e transforme-a em uma pergunta estruturada utilizando PICO ou outro framework adequado.",
         instructions:
           "Indique população, intervenção ou exposição, comparação e desfecho. Explique por que essa pergunta importa.",
+        deliveryKind: ActivityDeliveryKind.TEXT,
+        libraryTitle: "Evidence-Based Medicine Tools",
         dueDays: 5,
       },
       {
@@ -406,6 +429,9 @@ const seed = async () => {
           "Leia o artigo indicado e registre três pontos que podem alterar sua confiança nos resultados.",
         instructions:
           "Observe desenho, perdas, análise e aplicabilidade. Você pode escrever ou anexar uma anotação.",
+        deliveryKind: ActivityDeliveryKind.TEXT_AND_FILE,
+        libraryTitle:
+          "CONSORT 2010 Statement: updated guidelines for reporting parallel group randomised trials",
         dueDays: 14,
       },
       {
@@ -415,6 +441,8 @@ const seed = async () => {
           "Uma intervenção produziu diferença média de -2,4 pontos (IC 95% -4,8 a 0,1). Como você interpreta esse intervalo para uma decisão clínica?",
         instructions:
           "Escreva uma interpretação curta distinguindo precisão, compatibilidade dos efeitos e relevância clínica.",
+        deliveryKind: ActivityDeliveryKind.TEXT,
+        libraryTitle: undefined,
         dueDays: -2,
       },
       {
@@ -426,6 +454,8 @@ const seed = async () => {
           "Nomeie o contexto, a população envolvida e a evidência que você gostaria de encontrar.",
         // Deliberately overdue and without a submission so the member area
         // exercises the overdue state in the development/demo fixture.
+        deliveryKind: ActivityDeliveryKind.TEXT,
+        libraryTitle: "Causal Inference: What If",
         dueDays: -4,
       },
       {
@@ -435,6 +465,9 @@ const seed = async () => {
           "Escolha um estudo que você conhece e identifique três pontos que podem reduzir a confiança nos seus resultados.",
         instructions:
           "Relacione cada ponto ao tipo de viés e ao efeito que ele pode produzir na interpretação.",
+        deliveryKind: ActivityDeliveryKind.TEXT_AND_FILE,
+        libraryTitle:
+          "RoB 2: a revised tool for assessing risk of bias in randomised trials",
         dueDays: -7,
       },
     ];
@@ -453,6 +486,10 @@ const seed = async () => {
           instructions: definition.instructions,
           dueAt,
           position,
+          deliveryKind: definition.deliveryKind,
+          relatedLibraryItemId: definition.libraryTitle
+            ? (libraryItems.get(definition.libraryTitle)?.id ?? null)
+            : null,
           status: ContentStatus.PUBLISHED,
           updatedBy: actorId,
         },
@@ -463,6 +500,10 @@ const seed = async () => {
           instructions: definition.instructions,
           dueAt,
           position,
+          deliveryKind: definition.deliveryKind,
+          relatedLibraryItemId: definition.libraryTitle
+            ? (libraryItems.get(definition.libraryTitle)?.id ?? null)
+            : null,
           status: ContentStatus.PUBLISHED,
           createdBy: actorId,
           updatedBy: actorId,
@@ -667,7 +708,7 @@ const seed = async () => {
       const startsAt = new Date(now + meeting.days * 86_400_000);
       startsAt.setHours(19, 0, 0, 0);
       const endsAt = new Date(startsAt.getTime() + meeting.duration * 60_000);
-      await database.meeting.upsert({
+      const savedMeeting = await database.meeting.upsert({
         where: { demoKey: meeting.demoKey },
         update: {
           title: meeting.title,
@@ -700,6 +741,14 @@ const seed = async () => {
           position,
         },
       });
+      if (demoMember) {
+        await database.meetingParticipant.deleteMany({
+          where: { meetingId: savedMeeting.id },
+        });
+        await database.meetingParticipant.create({
+          data: { meetingId: savedMeeting.id, memberId: demoMember.id },
+        });
+      }
     }
 
     console.log(

@@ -203,43 +203,45 @@ export const getPublishedLearningPath = async (
 };
 
 export const getPublishedCourse = async (slug: string, memberId: string) => {
-  const scope = await getLearningAccessScope(memberId);
-  const course = await database.course.findFirst({
-    where: { slug, ...publishedCourse },
-    select: {
-      id: true,
-      title: true,
-      slug: true,
-      description: true,
-      learningPath: {
-        select: { title: true, slug: true },
-      },
-      modules: {
-        where: published,
-        orderBy: [{ position: "asc" }, { title: "asc" }],
-        select: {
-          id: true,
-          title: true,
-          slug: true,
-          lessons: {
-            where: published,
-            orderBy: [{ position: "asc" }, { title: "asc" }],
-            select: {
-              id: true,
-              title: true,
-              slug: true,
-              description: true,
-              kind: true,
-              progress: {
-                where: { memberId },
-                select: { status: true },
+  const [scope, course] = await Promise.all([
+    getLearningAccessScope(memberId),
+    database.course.findFirst({
+      where: { slug, ...publishedCourse },
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        description: true,
+        learningPath: {
+          select: { title: true, slug: true },
+        },
+        modules: {
+          where: published,
+          orderBy: [{ position: "asc" }, { title: "asc" }],
+          select: {
+            id: true,
+            title: true,
+            slug: true,
+            lessons: {
+              where: published,
+              orderBy: [{ position: "asc" }, { title: "asc" }],
+              select: {
+                id: true,
+                title: true,
+                slug: true,
+                description: true,
+                kind: true,
+                progress: {
+                  where: { memberId },
+                  select: { status: true },
+                },
               },
             },
           },
         },
       },
-    },
-  });
+    }),
+  ]);
 
   if (!(course && hasCourseAccess(scope, course.id))) {
     return null;
@@ -259,78 +261,80 @@ export const getPublishedLesson = async (
   lessonSlug: string,
   memberId: string
 ) => {
-  const scope = await getLearningAccessScope(memberId);
-  const lesson = await database.lesson.findFirst({
-    where: {
-      slug: lessonSlug,
-      ...published,
-      module: {
+  const [scope, lesson] = await Promise.all([
+    getLearningAccessScope(memberId),
+    database.lesson.findFirst({
+      where: {
+        slug: lessonSlug,
         ...published,
-        course: { slug: courseSlug, ...publishedCourse },
-      },
-    },
-    select: {
-      id: true,
-      title: true,
-      slug: true,
-      description: true,
-      content: true,
-      kind: true,
-      resources: {
-        orderBy: [{ position: "asc" }, { title: "asc" }],
-        select: { id: true, title: true, kind: true, url: true },
-      },
-      assets: {
-        orderBy: [{ position: "asc" }, { title: "asc" }],
-        select: {
-          id: true,
-          title: true,
-          kind: true,
-          scope: true,
-          storagePath: true,
-          externalUrl: true,
-          mimeType: true,
-          ownerMemberId: true,
-          position: true,
+        module: {
+          ...published,
+          course: { slug: courseSlug, ...publishedCourse },
         },
       },
-      activities: {
-        where: { status: ContentStatus.PUBLISHED },
-        orderBy: [{ position: "asc" }, { title: "asc" }],
-        select: { id: true, title: true, slug: true, dueAt: true },
-      },
-      progress: {
-        where: { memberId },
-        select: { status: true, completedAt: true },
-      },
-      module: {
-        select: {
-          id: true,
-          title: true,
-          slug: true,
-          course: {
-            select: {
-              id: true,
-              title: true,
-              slug: true,
-              modules: {
-                where: published,
-                orderBy: [{ position: "asc" }, { title: "asc" }],
-                select: {
-                  id: true,
-                  title: true,
-                  slug: true,
-                  lessons: {
-                    where: published,
-                    orderBy: [{ position: "asc" }, { title: "asc" }],
-                    select: {
-                      id: true,
-                      title: true,
-                      slug: true,
-                      position: true,
-                      progress: {
-                        where: { memberId },
-                        select: { status: true },
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        description: true,
+        content: true,
+        kind: true,
+        resources: {
+          orderBy: [{ position: "asc" }, { title: "asc" }],
+          select: { id: true, title: true, kind: true, url: true },
+        },
+        assets: {
+          orderBy: [{ position: "asc" }, { title: "asc" }],
+          select: {
+            id: true,
+            title: true,
+            kind: true,
+            scope: true,
+            storagePath: true,
+            externalUrl: true,
+            mimeType: true,
+            ownerMemberId: true,
+            position: true,
+          },
+        },
+        activities: {
+          where: { status: ContentStatus.PUBLISHED },
+          orderBy: [{ position: "asc" }, { title: "asc" }],
+          select: { id: true, title: true, slug: true, dueAt: true },
+        },
+        progress: {
+          where: { memberId },
+          select: { status: true, completedAt: true },
+        },
+        module: {
+          select: {
+            id: true,
+            title: true,
+            slug: true,
+            course: {
+              select: {
+                id: true,
+                title: true,
+                slug: true,
+                modules: {
+                  where: published,
+                  orderBy: [{ position: "asc" }, { title: "asc" }],
+                  select: {
+                    id: true,
+                    title: true,
+                    slug: true,
+                    lessons: {
+                      where: published,
+                      orderBy: [{ position: "asc" }, { title: "asc" }],
+                      select: {
+                        id: true,
+                        title: true,
+                        slug: true,
+                        position: true,
+                        progress: {
+                          where: { memberId },
+                          select: { status: true },
+                        },
                       },
                     },
                   },
@@ -340,8 +344,8 @@ export const getPublishedLesson = async (
           },
         },
       },
-    },
-  });
+    }),
+  ]);
 
   if (!lesson) {
     return null;

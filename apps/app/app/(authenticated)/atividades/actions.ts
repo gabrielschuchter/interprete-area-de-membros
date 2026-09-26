@@ -2,6 +2,7 @@
 
 import { auth } from "@repo/auth/server";
 import {
+  ActivityDeliveryKind,
   ActivitySubmissionStatus,
   ContentStatus,
   database,
@@ -26,8 +27,11 @@ const memberIdSeparator = /[\n,]/;
 const assignmentIds = (formData: FormData) =>
   [
     ...new Set(
-      value(formData, "memberIds")
-        .split(memberIdSeparator)
+      formData
+        .getAll("memberIds")
+        .flatMap((entry) =>
+          typeof entry === "string" ? entry.split(memberIdSeparator) : []
+        )
         .map((id) => id.trim())
         .filter(Boolean)
     ),
@@ -85,7 +89,11 @@ const uploadSubmissionAttachment = async ({
   };
 };
 
-const validActivityRelations = async (courseId: string, lessonId: string) => {
+const validActivityRelations = async (
+  courseId: string,
+  lessonId: string,
+  relatedLibraryItemId: string
+) => {
   if (courseId) {
     const course = await database.course.findUnique({
       where: { id: courseId },
@@ -104,6 +112,16 @@ const validActivityRelations = async (courseId: string, lessonId: string) => {
     });
 
     if (!lesson || (courseId && lesson.module.courseId !== courseId)) {
+      return false;
+    }
+  }
+
+  if (relatedLibraryItemId) {
+    const libraryItem = await database.libraryItem.findUnique({
+      where: { id: relatedLibraryItemId },
+      select: { id: true },
+    });
+    if (!libraryItem) {
       return false;
     }
   }
@@ -173,10 +191,22 @@ export const submitActivity = async (formData: FormData) => {
         },
       ],
     },
-    select: { slug: true },
+    select: { slug: true, deliveryKind: true },
   });
 
   if (!activity) {
+    return;
+  }
+  const requiresText =
+    activity.deliveryKind === ActivityDeliveryKind.TEXT ||
+    activity.deliveryKind === ActivityDeliveryKind.TEXT_AND_FILE;
+  const requiresFile =
+    activity.deliveryKind === ActivityDeliveryKind.FILE ||
+    activity.deliveryKind === ActivityDeliveryKind.TEXT_AND_FILE;
+  if (
+    (requiresText && !normalizedContent) ||
+    (requiresFile && !validAttachment)
+  ) {
     return;
   }
 
@@ -285,9 +315,11 @@ export const createActivity = async (formData: FormData) => {
   const slug = formData.get("slug");
   const prompt = formData.get("prompt");
   const instructions = formData.get("instructions");
+  const deliveryKindValue = value(formData, "deliveryKind");
   const dueAt = formData.get("dueAt");
   const courseId = value(formData, "courseId");
   const lessonId = value(formData, "lessonId");
+  const relatedLibraryItemId = value(formData, "relatedLibraryItemId");
 
   if (
     typeof title !== "string" ||
@@ -307,9 +339,17 @@ export const createActivity = async (formData: FormData) => {
     return;
   }
 
-  if (!(await validActivityRelations(courseId, lessonId))) {
+  if (
+    !(await validActivityRelations(courseId, lessonId, relatedLibraryItemId))
+  ) {
     return;
   }
+
+  const deliveryKind = Object.values(ActivityDeliveryKind).includes(
+    deliveryKindValue as ActivityDeliveryKind
+  )
+    ? (deliveryKindValue as ActivityDeliveryKind)
+    : ActivityDeliveryKind.TEXT;
 
   const activity = await database.activity.create({
     data: {
@@ -320,9 +360,11 @@ export const createActivity = async (formData: FormData) => {
         typeof instructions === "string" && instructions.trim()
           ? instructions.trim()
           : null,
+      deliveryKind,
       dueAt: dueDate,
       courseId: courseId || null,
       lessonId: lessonId || null,
+      relatedLibraryItemId: relatedLibraryItemId || null,
       status: ContentStatus.DRAFT,
       createdBy: userId,
       updatedBy: userId,
@@ -355,9 +397,11 @@ export const updateActivity = async (formData: FormData) => {
   const slug = value(formData, "slug");
   const prompt = value(formData, "prompt");
   const instructions = value(formData, "instructions");
+  const deliveryKindValue = value(formData, "deliveryKind");
   const dueAt = value(formData, "dueAt");
   const courseId = value(formData, "courseId");
   const lessonId = value(formData, "lessonId");
+  const relatedLibraryItemId = value(formData, "relatedLibraryItemId");
 
   if (!(activityId && title.trim() && slug.trim() && prompt.trim())) {
     return;
@@ -369,9 +413,17 @@ export const updateActivity = async (formData: FormData) => {
     return;
   }
 
-  if (!(await validActivityRelations(courseId, lessonId))) {
+  if (
+    !(await validActivityRelations(courseId, lessonId, relatedLibraryItemId))
+  ) {
     return;
   }
+
+  const deliveryKind = Object.values(ActivityDeliveryKind).includes(
+    deliveryKindValue as ActivityDeliveryKind
+  )
+    ? (deliveryKindValue as ActivityDeliveryKind)
+    : ActivityDeliveryKind.TEXT;
 
   await database.$transaction(async (transaction) => {
     await transaction.activity.update({
@@ -381,9 +433,11 @@ export const updateActivity = async (formData: FormData) => {
         slug: slug.trim().toLowerCase(),
         prompt: prompt.trim(),
         instructions: instructions.trim() || null,
+        deliveryKind,
         dueAt: dueDate,
         courseId: courseId || null,
         lessonId: lessonId || null,
+        relatedLibraryItemId: relatedLibraryItemId || null,
         updatedBy: userId,
       },
     });

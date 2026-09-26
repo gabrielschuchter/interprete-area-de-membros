@@ -81,12 +81,27 @@
   --shadow-subtle: 0 2px 10px rgb(64 34 47 / 8%);
   --shadow-float: 0 10px 30px rgb(64 34 47 / 12%);
   --shadow-paper: 0 1px 0 rgb(64 34 47 / 8%), 0 10px 26px rgb(64 34 47 / 6%);
-  --motion-fast: 120ms;
-  --motion-base: 180ms;
-  --motion-layer: 280ms;
-  --motion-editorial: 520ms;
-  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
-  --ease-drawn: cubic-bezier(0.16, 1, 0.3, 1);
+  /* Motion is part of the Interprete grammar: calm, editorial and purposeful. */
+  --motion-duration-instant: 120ms;
+  --motion-duration-fast: 180ms;
+  --motion-duration-normal: 280ms;
+  --motion-duration-slow: 420ms;
+  --motion-duration-editorial: 560ms;
+  --motion-distance-micro: 2px;
+  --motion-distance-small: 8px;
+  --motion-stagger-tight: 48ms;
+  --motion-stagger-normal: 80ms;
+  --motion-ease-out: cubic-bezier(0.2, 0, 0, 1);
+  --motion-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --motion-ease-emphasis: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Backwards-compatible aliases for existing primitives. */
+  --motion-fast: var(--motion-duration-instant);
+  --motion-base: var(--motion-duration-fast);
+  --motion-layer: var(--motion-duration-normal);
+  --motion-editorial: var(--motion-duration-editorial);
+  --ease-standard: var(--motion-ease-out);
+  --ease-drawn: var(--motion-ease-emphasis);
   color-scheme: light;
 }
 
@@ -266,6 +281,9 @@
   width: 2.5rem;
   height: 2px;
   background: var(--brand-classic-crimson);
+  transform-origin: left center;
+  animation: interprete-annotation-line var(--motion-duration-editorial)
+    var(--motion-ease-emphasis) both;
 }
 
 @utility paper-surface {
@@ -299,18 +317,210 @@
     content: "";
     background: var(--brand-classic-crimson);
     opacity: 0.7;
-    transform: rotate(-1deg);
+    transform: rotate(-1deg) scaleX(0);
+    transform-origin: left center;
+    animation: interprete-annotation-line var(--motion-duration-editorial)
+      var(--motion-ease-emphasis) both;
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    scroll-behavior: auto !important;
-    transition-duration: 0.01ms !important;
+@keyframes interprete-reveal {
+  from {
+    opacity: 0;
+    transform: translate3d(0, var(--motion-distance-small), 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes interprete-focus {
+  from {
+    opacity: 0;
+    transform: translate3d(0, var(--motion-distance-micro), 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes interprete-annotation-line {
+  from {
+    transform: rotate(-1deg) scaleX(0);
+  }
+
+  to {
+    transform: rotate(-1deg) scaleX(1);
+  }
+}
+
+@keyframes interprete-overlay-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes interprete-overlay-out {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes interprete-layer-in {
+  from {
+    opacity: 0;
+    translate: 0 var(--motion-distance-small);
+    scale: 0.995;
+  }
+
+  to {
+    opacity: 1;
+    translate: 0 0;
+    scale: 1;
+  }
+}
+
+@keyframes interprete-layer-out {
+  from {
+    opacity: 1;
+    translate: 0 0;
+    scale: 1;
+  }
+
+  to {
+    opacity: 0;
+    translate: 0 var(--motion-distance-micro);
+    scale: 0.998;
+  }
+}
+
+@layer components {
+  .motion-route {
+    animation: interprete-reveal var(--motion-duration-normal)
+      var(--motion-ease-out) both;
+  }
+
+  .motion-reveal,
+  .motion-reveal-normal,
+  .motion-reveal-fast,
+  .motion-reveal-editorial {
+    animation-delay: var(--motion-delay, 0ms);
+    animation-fill-mode: both;
+  }
+
+  .motion-reveal {
+    animation-name: interprete-reveal;
+    animation-duration: var(--motion-duration-editorial);
+    animation-timing-function: var(--motion-ease-out);
+  }
+
+  .motion-reveal-normal {
+    animation-name: interprete-reveal;
+    animation-duration: var(--motion-duration-normal);
+    animation-timing-function: var(--motion-ease-out);
+  }
+
+  .motion-reveal-fast {
+    animation-name: interprete-focus;
+    animation-duration: var(--motion-duration-fast);
+    animation-timing-function: var(--motion-ease-out);
+  }
+
+  .motion-reveal-editorial {
+    animation-name: interprete-reveal;
+    animation-duration: var(--motion-duration-editorial);
+    animation-timing-function: var(--motion-ease-emphasis);
+  }
+
+  .motion-stagger > * {
+    animation: interprete-reveal var(--motion-duration-normal)
+      var(--motion-ease-out) both;
+  }
+
+  .motion-stagger > :nth-child(1) {
+    animation-delay: 0ms;
+  }
+
+  .motion-stagger > :nth-child(2) {
+    animation-delay: var(--motion-stagger-tight);
+  }
+
+  .motion-stagger > :nth-child(3) {
+    animation-delay: calc(var(--motion-stagger-tight) * 2);
+  }
+
+  .motion-stagger > :nth-child(4) {
+    animation-delay: calc(var(--motion-stagger-tight) * 3);
+  }
+
+  .motion-stagger > :nth-child(5) {
+    animation-delay: calc(var(--motion-stagger-tight) * 4);
+  }
+
+  .motion-stagger > :nth-child(6) {
+    animation-delay: calc(var(--motion-stagger-tight) * 5);
+  }
+
+  .motion-layer[data-state="open"] {
+    animation: interprete-layer-in var(--motion-duration-normal)
+      var(--motion-ease-out) both;
+  }
+
+  .motion-layer[data-state="closed"] {
+    animation: interprete-layer-out var(--motion-duration-fast)
+      var(--motion-ease-in-out) both;
+  }
+
+  .motion-overlay[data-state="open"] {
+    animation: interprete-overlay-in var(--motion-duration-normal)
+      var(--motion-ease-out) both;
+  }
+
+  .motion-overlay[data-state="closed"] {
+    animation: interprete-overlay-out var(--motion-duration-fast)
+      var(--motion-ease-in-out) both;
+  }
+
+  .motion-card {
+    transition:
+      background-color var(--motion-duration-fast) var(--motion-ease-out),
+      border-color var(--motion-duration-fast) var(--motion-ease-out),
+      box-shadow var(--motion-duration-fast) var(--motion-ease-out),
+      transform var(--motion-duration-fast) var(--motion-ease-out);
+  }
+
+  .motion-card:hover {
+    transform: translateY(calc(var(--motion-distance-micro) * -1));
+  }
+
+  .motion-focus {
+    animation: interprete-focus var(--motion-duration-fast)
+      var(--motion-ease-out) both;
+  }
+
+  .motion-annotation {
+    transform-origin: left center;
+    animation: interprete-annotation-line var(--motion-duration-editorial)
+      var(--motion-ease-emphasis) both;
+  }
+
+  .motion-progress {
+    transition:
+      transform var(--motion-duration-normal) var(--motion-ease-out),
+      width var(--motion-duration-normal) var(--motion-ease-out),
+      background-color var(--motion-duration-fast) var(--motion-ease-out);
   }
 }
 

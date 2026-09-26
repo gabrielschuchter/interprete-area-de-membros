@@ -1,7 +1,7 @@
 "use client";
 
 import { ImagePlusIcon, XIcon } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface AvatarUploaderProperties {
   readonly initials: string;
@@ -13,11 +13,52 @@ export const AvatarUploader = ({
   initials,
 }: AvatarUploaderProperties) => {
   const [url, setUrl] = useState(initialUrl ?? "");
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState("");
+  const uploadedUrlRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
+
+  const removeTemporaryUpload = async (value: string) => {
+    if (!value || value === initialUrl) {
+      return;
+    }
+
+    try {
+      const path = new URL(value, window.location.origin).searchParams.get(
+        "path"
+      );
+      if (path) {
+        await fetch(`/api/member-assets?path=${encodeURIComponent(path)}`, {
+          method: "DELETE",
+        });
+      }
+    } catch {
+      // The profile save remains the source of truth. A cleanup failure is
+      // harmless and can be reconciled by the scheduled orphan cleanup.
+    }
+  };
 
   const upload = async (file: File) => {
+    if (!new Set(["image/jpeg", "image/png", "image/webp"]).has(file.type)) {
+      setError("Envie uma imagem JPG, PNG ou WebP.");
+      return;
+    }
+    if (file.size <= 0 || file.size > 5 * 1024 * 1024) {
+      setError("A imagem deve ter entre 1 byte e 5 MB.");
+      return;
+    }
+
     setError("");
+    const localPreviewUrl = URL.createObjectURL(file);
+    setPreviewUrl(localPreviewUrl);
     setIsUploading(true);
 
     try {
@@ -38,6 +79,8 @@ export const AvatarUploader = ({
       }
 
       setUrl(payload.url);
+      uploadedUrlRef.current = payload.url;
+      setPreviewUrl(null);
     } catch (uploadError) {
       setError(
         uploadError instanceof Error
@@ -52,15 +95,15 @@ export const AvatarUploader = ({
   return (
     <div className="mt-5 flex flex-wrap items-center gap-4">
       <div className="relative flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand-structural text-2xl text-primary-foreground">
-        {url ? (
+        {(previewUrl ?? url) ? (
           // The source is either an authenticated member-asset route or a legacy
           // external URL already stored for this profile.
           // biome-ignore lint/performance/noImgElement: avatar URLs are resolved by the private media route.
           <img
             alt="Prévia do avatar"
-            className="size-full object-cover"
+            className="motion-reveal-fast size-full object-cover"
             height={80}
-            src={url}
+            src={previewUrl ?? url}
             width={80}
           />
         ) : (
@@ -86,10 +129,16 @@ export const AvatarUploader = ({
             type="file"
           />
         </label>
-        {url ? (
+        {url || previewUrl ? (
           <button
             className="flex items-center gap-1 text-muted-foreground text-xs underline underline-offset-4"
-            onClick={() => setUrl("")}
+            onClick={() => {
+              const currentUrl = uploadedUrlRef.current ?? url;
+              removeTemporaryUpload(currentUrl).catch(() => undefined);
+              uploadedUrlRef.current = null;
+              setPreviewUrl(null);
+              setUrl("");
+            }}
             type="button"
           >
             <XIcon aria-hidden="true" className="size-3" /> Remover foto

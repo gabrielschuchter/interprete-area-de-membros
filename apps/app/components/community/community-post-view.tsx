@@ -15,6 +15,7 @@ import {
   softDeletePost,
   toggleBookmark,
   toggleCommentVote,
+  togglePostFeatured,
   togglePostPin,
   togglePostVote,
   updateComment,
@@ -93,30 +94,32 @@ const CommentThread = ({
         <span className="text-muted-foreground text-xs">
           {replies.length} respostas
         </span>
-        <details>
-          <summary className="cursor-pointer text-muted-foreground text-xs underline underline-offset-4">
-            Responder
-          </summary>
-          <form action={createComment} className="mt-3 grid gap-3">
-            <input name="postId" type="hidden" value={post.id} />
-            <input
-              name="spaceSlug"
-              type="hidden"
-              value={post.space?.slug ?? ""}
-            />
-            <input name="parentId" type="hidden" value={comment.id} />
-            <textarea
-              aria-label={`Responder a ${comment.content.slice(0, 40)}`}
-              className="min-h-24 w-full rounded-sm border bg-background px-3 py-2 text-sm leading-6 outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/35"
-              name="content"
-              placeholder="Escreva uma resposta... Use @nome para mencionar alguém."
-              required
-            />
-            <Button className="w-fit" size="sm" type="submit">
-              Enviar resposta
-            </Button>
-          </form>
-        </details>
+        {!post.space?.commentsClosed && (
+          <details>
+            <summary className="cursor-pointer text-muted-foreground text-xs underline underline-offset-4">
+              Responder
+            </summary>
+            <form action={createComment} className="mt-3 grid gap-3">
+              <input name="postId" type="hidden" value={post.id} />
+              <input
+                name="spaceSlug"
+                type="hidden"
+                value={post.space?.slug ?? ""}
+              />
+              <input name="parentId" type="hidden" value={comment.id} />
+              <textarea
+                aria-label={`Responder a ${comment.content.slice(0, 40)}`}
+                className="min-h-24 w-full rounded-sm border bg-background px-3 py-2 text-sm leading-6 outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/35"
+                name="content"
+                placeholder="Escreva uma resposta... Use @nome para mencionar alguém."
+                required
+              />
+              <Button className="w-fit" size="sm" type="submit">
+                Enviar resposta
+              </Button>
+            </form>
+          </details>
+        )}
         {comment.authorId === memberId && (
           <details>
             <summary className="cursor-pointer text-muted-foreground text-xs underline underline-offset-4">
@@ -232,6 +235,7 @@ export function CommunityPostView({
                 <PinIcon aria-hidden="true" /> Fixado
               </Badge>
             )}
+            {post.isFeatured && <Badge>Em destaque</Badge>}
           </div>
           <div className="mt-5">
             <MemberIdentity
@@ -334,6 +338,19 @@ export function CommunityPostView({
                   </Button>
                 </form>
               )}
+              {canStaffManage && (
+                <form action={togglePostFeatured}>
+                  <input name="postId" type="hidden" value={post.id} />
+                  <input
+                    name="spaceSlug"
+                    type="hidden"
+                    value={post.space?.slug ?? ""}
+                  />
+                  <Button size="sm" type="submit" variant="ghost">
+                    {post.isFeatured ? "Retirar destaque" : "Destacar"}
+                  </Button>
+                </form>
+              )}
               <form action={softDeletePost}>
                 <input name="postId" type="hidden" value={post.id} />
                 <input
@@ -374,30 +391,36 @@ export function CommunityPostView({
               <MessageCircleIcon aria-hidden="true" /> {post._count.comments}
             </span>
           </div>
-          <form
-            action={createComment}
-            className="paper-surface mt-5 border p-5 sm:p-6"
-          >
-            <input name="postId" type="hidden" value={post.id} />
-            <input
-              name="spaceSlug"
-              type="hidden"
-              value={post.space?.slug ?? ""}
-            />
-            <label className="block" htmlFor="comment-content">
-              <span className="brand-eyebrow">Sua contribuição</span>
-              <textarea
-                className="mt-3 min-h-32 w-full rounded-sm border bg-background px-3 py-3 text-base leading-7 outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/35"
-                id="comment-content"
-                name="content"
-                placeholder="Acrescente uma leitura, uma pergunta ou uma referência... Use @nome para mencionar alguém."
-                required
+          {post.space?.commentsClosed ? (
+            <p className="paper-surface mt-5 border p-5 text-muted-foreground sm:p-6">
+              Os comentários deste espaço estão fechados pela equipe.
+            </p>
+          ) : (
+            <form
+              action={createComment}
+              className="paper-surface mt-5 border p-5 sm:p-6"
+            >
+              <input name="postId" type="hidden" value={post.id} />
+              <input
+                name="spaceSlug"
+                type="hidden"
+                value={post.space?.slug ?? ""}
               />
-            </label>
-            <div className="mt-4 flex justify-end">
-              <Button type="submit">Comentar</Button>
-            </div>
-          </form>
+              <label className="block" htmlFor="comment-content">
+                <span className="brand-eyebrow">Sua contribuição</span>
+                <textarea
+                  className="mt-3 min-h-32 w-full rounded-sm border bg-background px-3 py-3 text-base leading-7 outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/35"
+                  id="comment-content"
+                  name="content"
+                  placeholder="Acrescente uma leitura, uma pergunta ou uma referência... Use @nome para mencionar alguém."
+                  required
+                />
+              </label>
+              <div className="mt-4 flex justify-end">
+                <Button type="submit">Comentar</Button>
+              </div>
+            </form>
+          )}
           <div className="mt-8 space-y-5">
             {topLevel.length === 0 ? (
               <p className="text-muted-foreground">

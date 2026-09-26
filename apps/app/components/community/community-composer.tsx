@@ -79,6 +79,7 @@ export function CommunityComposer({
   const [title, setTitle] = useState(initialTitle);
   const [subtitle, setSubtitle] = useState(initialSubtitle ?? "");
   const [coverUrl, setCoverUrl] = useState(initialCoverUrl ?? "");
+  const [coverPreviewUrl, setCoverPreviewUrl] = useState<string | null>(null);
   const [tags, setTags] = useState(initialTags.join(", "));
   const [kind, setKind] = useState<PostKind>(initialKind);
   const [spaceId, setSpaceId] = useState(initialSpaceId ?? "");
@@ -90,7 +91,9 @@ export function CommunityComposer({
   const [errorMessage, setErrorMessage] = useState("");
   const [publishing, setPublishing] = useState(false);
   const [isUploadingCover, setIsUploadingCover] = useState(false);
+  const [isUploadingInlineImage, setIsUploadingInlineImage] = useState(false);
   const coverInputRef = useRef<HTMLInputElement>(null);
+  const uploadedCoverUrlRef = useRef<string | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const requestQueue = useRef(Promise.resolve());
   const requestVersion = useRef(0);
@@ -170,10 +173,16 @@ export function CommunityComposer({
   };
 
   const uploadCover = async (file: File) => {
-    if (!file.type.startsWith("image/")) {
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      setErrorMessage("Envie uma imagem JPG, PNG ou WebP.");
+      return;
+    }
+    if (file.size <= 0 || file.size > 5 * 1024 * 1024) {
+      setErrorMessage("A imagem deve ter entre 1 byte e 5 MB.");
       return;
     }
 
+    setCoverPreviewUrl(URL.createObjectURL(file));
     setIsUploadingCover(true);
     setErrorMessage("");
     try {
@@ -192,6 +201,8 @@ export function CommunityComposer({
         throw new Error(payload.error ?? "Não foi possível enviar a capa.");
       }
       setCoverUrl(payload.url);
+      uploadedCoverUrlRef.current = payload.url;
+      setCoverPreviewUrl(null);
       updateSnapshot({ coverUrl: payload.url });
     } catch (uploadError) {
       setErrorMessage(
@@ -209,8 +220,30 @@ export function CommunityComposer({
       if (timer.current) {
         clearTimeout(timer.current);
       }
+      if (coverPreviewUrl) {
+        URL.revokeObjectURL(coverPreviewUrl);
+      }
     };
-  }, []);
+  }, [coverPreviewUrl]);
+
+  const removeTemporaryCover = async () => {
+    const value = uploadedCoverUrlRef.current;
+    if (!value) {
+      return;
+    }
+    try {
+      const path = new URL(value, window.location.origin).searchParams.get(
+        "path"
+      );
+      if (path) {
+        await fetch(`/api/member-assets?path=${encodeURIComponent(path)}`, {
+          method: "DELETE",
+        });
+      }
+    } finally {
+      uploadedCoverUrlRef.current = null;
+    }
+  };
 
   const handlePublish = async () => {
     setPublishing(true);
@@ -250,7 +283,13 @@ export function CommunityComposer({
             </Link>
           </Button>
           {status === "DRAFT" ? (
-            <Button disabled={publishing} onClick={handlePublish} size="sm">
+            <Button
+              disabled={
+                publishing || isUploadingCover || isUploadingInlineImage
+              }
+              onClick={handlePublish}
+              size="sm"
+            >
               {publishing ? "Publicando…" : "Publicar"}
             </Button>
           ) : (
@@ -369,10 +408,12 @@ export function CommunityComposer({
               >
                 {isUploadingCover ? "Enviando…" : "Escolher imagem"}
               </Button>
-              {coverUrl ? (
+              {coverUrl || coverPreviewUrl ? (
                 <Button
                   aria-label="Remover capa"
                   onClick={() => {
+                    removeTemporaryCover().catch(() => undefined);
+                    setCoverPreviewUrl(null);
                     setCoverUrl("");
                     updateSnapshot({ coverUrl: "" });
                   }}
@@ -397,14 +438,14 @@ export function CommunityComposer({
                 type="file"
               />
             </div>
-            {coverUrl ? (
+            {coverUrl || coverPreviewUrl ? (
               // The authenticated media route resolves the private object.
               // biome-ignore lint/performance/noImgElement: this is a small upload preview.
               <img
                 alt="Prévia da capa"
-                className="mt-4 max-h-56 w-full rounded-sm border object-cover"
+                className="motion-reveal-fast mt-4 max-h-56 w-full rounded-sm border object-cover"
                 height={224}
-                src={coverUrl}
+                src={coverPreviewUrl ?? coverUrl}
                 width={900}
               />
             ) : null}
@@ -425,6 +466,7 @@ export function CommunityComposer({
               updateSnapshot({ content: nextContent });
             }}
             onEditorBlur={() => flushSave().catch(() => undefined)}
+            onUploadStateChange={setIsUploadingInlineImage}
           />
         </div>
 

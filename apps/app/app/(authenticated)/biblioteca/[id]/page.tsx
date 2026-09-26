@@ -11,6 +11,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireMemberId } from "@/lib/learning";
 import { getPublishedLibraryItem } from "@/lib/library";
+import { memberAssetUrl } from "@/lib/member-storage";
 import { toggleLibraryBookmark } from "../actions";
 
 interface LibraryItemPageProperties {
@@ -83,6 +84,7 @@ const LibraryItemPage = async ({ params }: LibraryItemPageProperties) => {
             {item.year ? <span>{item.year}</span> : null}
             {item.authors ? <span>{item.authors}</span> : null}
             {item.doi ? <span>DOI: {item.doi}</span> : null}
+            {item.pmid ? <span>PMID: {item.pmid}</span> : null}
             <form action={toggleLibraryBookmark}>
               <input name="itemId" type="hidden" value={item.id} />
               <Button size="sm" type="submit" variant="outline">
@@ -101,7 +103,13 @@ const LibraryItemPage = async ({ params }: LibraryItemPageProperties) => {
           )}
           <div className="mt-10 border-border border-t pt-7">
             <Button asChild size="lg">
-              <a href={item.url} rel="noreferrer" target="_blank">
+              <a
+                href={
+                  item.storagePath ? memberAssetUrl(item.storagePath) : item.url
+                }
+                rel="noreferrer"
+                target="_blank"
+              >
                 Abrir material <ArrowUpRightIcon aria-hidden="true" />
               </a>
             </Button>

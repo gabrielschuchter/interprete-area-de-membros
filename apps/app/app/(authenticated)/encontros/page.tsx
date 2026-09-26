@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { MeetingsCalendar } from "@/components/meetings/meetings-calendar";
+import { Stagger } from "@/components/motion/motion";
 import { requireMemberId } from "@/lib/learning";
 import { getMeetings } from "@/lib/meetings";
 
@@ -116,6 +117,7 @@ const MeetingsPage = async () => {
             timezone: meeting.timezone,
             joinUrl: meeting.joinUrl,
             recordingUrl: meeting.recordingUrl,
+            recurrenceRule: meeting.recurrenceRule,
             kind: meeting.kind,
             course: meeting.course
               ? { title: meeting.course.title, slug: meeting.course.slug }
@@ -140,9 +142,12 @@ const MeetingsPage = async () => {
               {upcoming.length.toString().padStart(2, "0")}
             </span>
           </div>
-          <div className="mt-5 grid gap-4 md:grid-cols-2">
+          <Stagger className="mt-5 grid gap-4 md:grid-cols-2">
             {upcoming.slice(1).map((meeting) => (
-              <article className="paper-surface border p-6" key={meeting.id}>
+              <article
+                className="motion-card paper-surface border p-6"
+                key={meeting.id}
+              >
                 <p className="brand-eyebrow">
                   {formatDate(meeting.startsAt, meeting.timezone)}
                 </p>
@@ -169,7 +174,7 @@ const MeetingsPage = async () => {
                 </Link>
               </article>
             ))}
-          </div>
+          </Stagger>
         </section>
         <section aria-labelledby="past-heading" className="mt-14">
           <div className="flex items-end justify-between border-border border-b pb-3">
@@ -185,7 +190,7 @@ const MeetingsPage = async () => {
               As gravações aparecerão aqui quando houver encontros anteriores.
             </p>
           ) : (
-            <div className="mt-5 divide-y border-border border-y">
+            <Stagger className="mt-5 divide-y border-border border-y">
               {past.map((meeting) => (
                 <div
                   className="flex flex-col justify-between gap-4 py-5 sm:flex-row sm:items-center"
@@ -222,7 +227,7 @@ const MeetingsPage = async () => {
                   )}
                 </div>
               ))}
-            </div>
+            </Stagger>
           )}
         </section>
       </main>

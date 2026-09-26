@@ -187,7 +187,7 @@ export const GlobalSearch = ({
   return (
     <Dialog onOpenChange={onOpenChange} open={open}>
       <DialogContent
-        className="top-[11vh] max-h-[min(76vh,42rem)] translate-y-0 overflow-hidden rounded-[1.15rem] border-border/70 bg-background/95 p-0 shadow-[var(--shadow-floating)] backdrop-blur-xl duration-200 sm:max-w-2xl"
+        className="top-[11vh] max-h-[min(76vh,42rem)] translate-y-0 overflow-hidden rounded-[1.15rem] border-border/70 bg-background/95 p-0 shadow-[var(--shadow-floating)] backdrop-blur-xl duration-[var(--motion-duration-normal)] sm:max-w-2xl"
         onOpenAutoFocus={(event) => {
           event.preventDefault();
           focusInput(inputRef);
@@ -295,7 +295,7 @@ export const GlobalSearch = ({
           {state === "ready" && results.length > 0 && (
             <div
               aria-label="Resultados da busca"
-              className="space-y-1"
+              className="motion-stagger space-y-1"
               id="global-search-results"
               role="listbox"
             >

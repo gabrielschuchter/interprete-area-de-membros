@@ -2,9 +2,11 @@ import { SidebarProvider } from "@repo/design-system/components/ui/sidebar";
 import { secure } from "@repo/security";
 import type { ReactNode } from "react";
 import { env } from "@/env";
-import { getAuth } from "@/lib/auth";
+import { getAuth, getCurrentUser } from "@/lib/auth";
 import { getMemberRole } from "@/lib/authorization";
+import { getOrCreateProfile } from "@/lib/profile";
 import { MemberHeader } from "./components/member-header";
+import { RouteMotion } from "./components/route-motion";
 import { GlobalSidebar } from "./components/sidebar";
 
 interface AppLayoutProperties {
@@ -22,13 +24,21 @@ const AppLayout = async ({ children }: AppLayoutProperties) => {
     return redirectToSignIn();
   }
 
-  const role = await getMemberRole(userId);
+  const [role, profile, user] = await Promise.all([
+    getMemberRole(userId),
+    getOrCreateProfile(userId),
+    getCurrentUser(),
+  ]);
 
   return (
     <SidebarProvider>
-      <GlobalSidebar canManageContent={role === "TEACHER" || role === "ADMIN"}>
+      <GlobalSidebar
+        avatarUrl={profile?.avatarUrl ?? user?.imageUrl ?? null}
+        canManageContent={role === "TEACHER" || role === "ADMIN"}
+        displayName={profile?.displayName ?? user?.firstName ?? "Membro"}
+      >
         <MemberHeader />
-        {children}
+        <RouteMotion>{children}</RouteMotion>
       </GlobalSidebar>
     </SidebarProvider>
   );

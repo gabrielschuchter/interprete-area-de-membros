@@ -56,7 +56,7 @@ Os primitives continuam em `@repo/design-system` para preservar acessibilidade e
 
 ## Motion
 
-Tokens: `--motion-fast` 120ms, `--motion-base` 180ms, `--motion-layer` 280ms e `--motion-editorial` 520ms. Easing padrão `--ease-standard`; `prefers-reduced-motion` reduz transições e animações globalmente. Motion deve comunicar foco, mudança de camada, seleção e progresso. Não adicionar parallax, bounce, partículas ou animações simultâneas sem função.
+Tokens: `--motion-duration-instant` 120ms, `--motion-duration-fast` 180ms, `--motion-duration-normal` 280ms, `--motion-duration-slow` 420ms e `--motion-duration-editorial` 560ms. As curvas vivem em `--motion-ease-out`, `--motion-ease-in-out` e `--motion-ease-emphasis`. Motion deve comunicar foco, mudança de camada, seleção e progresso; a experiência padrão é deliberadamente controlada e não possui toggle de movimento. Não adicionar parallax, bounce, partículas ou animações simultâneas sem função.
 
 ## Regras de UX
 

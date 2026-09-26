@@ -100,7 +100,7 @@ const MembersPage = async ({ searchParams }: MembersPageProperties) => {
 
                 return (
                   <Link
-                    className="paper-surface group border p-5 transition-[border-color,transform] duration-180 hover:-translate-y-0.5 hover:border-brand-action"
+                    className="motion-card paper-surface group border p-5 hover:border-brand-action"
                     href={`/membros/${member.username}`}
                     key={member.username}
                   >

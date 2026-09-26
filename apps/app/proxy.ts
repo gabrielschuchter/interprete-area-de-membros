@@ -4,29 +4,29 @@ import { type NextProxy, type NextRequest, NextResponse } from "next/server";
 
 const securityHeaders = securityMiddleware(noseconeOptions);
 const canonicalAppHost = "interprete-area-de-membros-app.vercel.app";
-const clerkPrimaryHost = "interprete-area-de-membros.vercel.app";
-const clerkAuthPaths = new Set(["/sign-in", "/sign-up"]);
+const legacyAppHost = "interprete-area-de-membros.vercel.app";
+const clerkProxyPrefix = "/__clerk";
 
-const redirectToClerkPrimaryHost = (req: NextRequest) => {
+const redirectLegacyAppHost = (req: NextRequest) => {
   const url = req.nextUrl.clone();
-  url.hostname = clerkPrimaryHost;
+  url.hostname = canonicalAppHost;
 
   const redirectUrl = url.searchParams.get("redirect_url");
   if (redirectUrl) {
     try {
       const redirect = new URL(redirectUrl);
-      if (redirect.hostname === canonicalAppHost) {
-        redirect.hostname = clerkPrimaryHost;
+      if (redirect.hostname === legacyAppHost) {
+        redirect.hostname = canonicalAppHost;
         url.searchParams.set("redirect_url", redirect.toString());
       }
     } catch {
       // Clerk will apply its normal fallback for malformed redirect URLs.
     }
   } else {
-    url.searchParams.set("redirect_url", `https://${clerkPrimaryHost}/`);
+    url.searchParams.set("redirect_url", `https://${canonicalAppHost}/`);
   }
 
-  return NextResponse.redirect(url);
+  return NextResponse.redirect(url, 308);
 };
 
 // Clerk middleware wraps other middleware in its callback
@@ -34,15 +34,13 @@ const redirectToClerkPrimaryHost = (req: NextRequest) => {
 // For apps without Clerk, use createNEMO for composition (see apps/web)
 export default authMiddleware(
   (_auth, req) => {
-    // Clerk's production instance is currently attached to the primary
-    // Vercel host. Keep the canonical app URL usable by handing only the
-    // authentication screens to that host until a custom Clerk domain is
-    // configured; protected application routes remain on the app project.
+    // Keep one visible application host. The legacy alias remains available
+    // only as a temporary Clerk proxy endpoint for already-issued sessions.
     if (
-      req.nextUrl.hostname === canonicalAppHost &&
-      clerkAuthPaths.has(req.nextUrl.pathname)
+      req.nextUrl.hostname === legacyAppHost &&
+      !req.nextUrl.pathname.startsWith(clerkProxyPrefix)
     ) {
-      return redirectToClerkPrimaryHost(req);
+      return redirectLegacyAppHost(req);
     }
 
     return securityHeaders();

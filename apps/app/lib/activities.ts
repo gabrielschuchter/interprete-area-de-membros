@@ -113,6 +113,7 @@ export const getPublishedActivities = async (
       title: true,
       slug: true,
       prompt: true,
+      deliveryKind: true,
       dueAt: true,
       assignments: {
         where: { memberId },
@@ -127,6 +128,7 @@ export const getPublishedActivities = async (
           module: { select: { id: true, courseId: true } },
         },
       },
+      relatedLibraryItem: { select: { id: true, title: true } },
       submissions: {
         where: { memberId },
         select: {
@@ -159,6 +161,7 @@ export const getPublishedActivity = async (slug: string, memberId: string) => {
         slug: true,
         prompt: true,
         instructions: true,
+        deliveryKind: true,
         dueAt: true,
         assignments: {
           where: { memberId },
@@ -173,6 +176,7 @@ export const getPublishedActivity = async (slug: string, memberId: string) => {
             module: { select: { id: true, courseId: true } },
           },
         },
+        relatedLibraryItem: { select: { id: true, title: true } },
         submissions: {
           where: { memberId },
           select: {
@@ -205,6 +209,7 @@ export const getStaffActivities = async () =>
       slug: true,
       prompt: true,
       instructions: true,
+      deliveryKind: true,
       status: true,
       dueAt: true,
       assignments: {
@@ -216,6 +221,7 @@ export const getStaffActivities = async () =>
       },
       courseId: true,
       lessonId: true,
+      relatedLibraryItem: { select: { id: true, title: true } },
       submissions: {
         orderBy: { updatedAt: "desc" },
         select: {
@@ -229,6 +235,7 @@ export const getStaffActivities = async () =>
           attachmentMimeType: true,
           attachmentSizeBytes: true,
           feedback: { select: { content: true, teacherId: true } },
+          member: { select: { displayName: true, email: true } },
         },
       },
       course: { select: { title: true, slug: true } },

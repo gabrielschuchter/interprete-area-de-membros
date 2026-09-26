@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import {
   CircleCheckIcon,
@@ -6,32 +6,69 @@ import {
   Loader2Icon,
   OctagonXIcon,
   TriangleAlertIcon,
-} from "lucide-react"
-import { Toaster as Sonner, type ToasterProps } from "sonner"
+  XIcon,
+} from "lucide-react";
+import { useSyncExternalStore } from "react";
+import { cn } from "@repo/design-system/lib/utils";
+import {
+  getServerToastSnapshot,
+  getToastSnapshot,
+  subscribeToToasts,
+  toast,
+  type ToastType,
+} from "../../lib/toast";
 
-const Toaster = ({ ...props }: ToasterProps) => {
+const iconByType: Record<ToastType, typeof CircleCheckIcon> = {
+  error: OctagonXIcon,
+  info: InfoIcon,
+  loading: Loader2Icon,
+  success: CircleCheckIcon,
+  warning: TriangleAlertIcon,
+};
+
+const Toaster = () => {
+  const records = useSyncExternalStore(
+    subscribeToToasts,
+    getToastSnapshot,
+    getServerToastSnapshot
+  );
+
   return (
-    <Sonner
-      theme="light"
-      className="toaster group"
-      icons={{
-        success: <CircleCheckIcon className="size-4" />,
-        info: <InfoIcon className="size-4" />,
-        warning: <TriangleAlertIcon className="size-4" />,
-        error: <OctagonXIcon className="size-4" />,
-        loading: <Loader2Icon className="size-4 animate-spin" />,
-      }}
-      style={
-        {
-          "--normal-bg": "var(--popover)",
-          "--normal-text": "var(--popover-foreground)",
-          "--normal-border": "var(--border)",
-          "--border-radius": "var(--radius)",
-        } as React.CSSProperties
-      }
-      {...props}
-    />
-  )
-}
+    <ol
+      aria-label="Notificações"
+      aria-live="polite"
+      className="pointer-events-none fixed right-4 bottom-4 z-50 flex w-[min(24rem,calc(100vw-2rem))] flex-col gap-2"
+    >
+      {records.map((record) => {
+        const Icon = iconByType[record.type];
 
-export { Toaster }
+        return (
+          <li
+            className="motion-reveal-fast paper-surface pointer-events-auto flex items-start gap-3 border p-4 shadow-[var(--shadow-floating)]"
+            key={record.id}
+            role="status"
+          >
+            <Icon
+              aria-hidden="true"
+              className={cn(
+                "mt-0.5 size-4 shrink-0 text-brand-action",
+                record.type === "loading" && "animate-spin"
+              )}
+            />
+            <p className="min-w-0 flex-1 text-sm leading-6">{record.message}</p>
+            <button
+              aria-label="Fechar notificação"
+              className="-m-1 rounded-sm p-1 text-muted-foreground transition-colors hover:text-foreground"
+              onClick={() => toast.dismiss(record.id)}
+              type="button"
+            >
+              <XIcon aria-hidden="true" className="size-4" />
+            </button>
+          </li>
+        );
+      })}
+    </ol>
+  );
+};
+
+export { Toaster };

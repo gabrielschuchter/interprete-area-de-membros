@@ -9,8 +9,10 @@ import {
   SearchIcon,
 } from "lucide-react";
 import Link from "next/link";
+import { Stagger } from "@/components/motion/motion";
 import { requireMemberId } from "@/lib/learning";
 import { getLibraryCategories, getLibraryItems } from "@/lib/library";
+import { memberAssetUrl } from "@/lib/member-storage";
 import { toggleLibraryBookmark } from "./actions";
 
 interface LibraryPageProperties {
@@ -185,12 +187,12 @@ const LibraryPage = async ({ searchParams }: LibraryPageProperties) => {
               </Button>
             </div>
           ) : (
-            <div className="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <Stagger className="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {items.map((item) => {
                 const Icon = iconFor(item.kind);
                 return (
                   <article
-                    className="paper-surface flex min-h-56 flex-col border p-6 transition-[border-color,transform] duration-180 hover:-translate-y-0.5 hover:border-brand-action"
+                    className="motion-card paper-surface flex min-h-56 flex-col border p-6 hover:border-brand-action"
                     key={item.id}
                   >
                     <div className="flex items-start justify-between gap-3">
@@ -247,7 +249,11 @@ const LibraryPage = async ({ searchParams }: LibraryPageProperties) => {
                     <div className="mt-auto pt-6">
                       <a
                         className="inline-flex items-center gap-2 font-medium text-brand-structural text-sm underline underline-offset-4"
-                        href={item.url}
+                        href={
+                          item.storagePath
+                            ? memberAssetUrl(item.storagePath)
+                            : item.url
+                        }
                         rel="noreferrer"
                         target="_blank"
                       >
@@ -261,7 +267,7 @@ const LibraryPage = async ({ searchParams }: LibraryPageProperties) => {
                   </article>
                 );
               })}
-            </div>
+            </Stagger>
           )}
           {items.length > 0 && (page > 1 || hasMore) && (
             <nav

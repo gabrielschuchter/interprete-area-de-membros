@@ -2,19 +2,19 @@ import "server-only";
 
 import { database } from "@repo/database";
 import { getPublishedActivities } from "./activities";
-import { getCommunitySpaces } from "./community";
+import { getLatestCommunityPost } from "./community";
 import { getLearningAccessScope } from "./content-access";
 import { getHomeLearningSummary } from "./learning";
-import { getMeetings } from "./meetings";
+import { getUpcomingMeetings } from "./meetings";
 
 export const getHomeData = async (memberId: string) => {
   const accessScope = getLearningAccessScope(memberId);
-  const [courses, activities, meetings, spaces, latestFeedback] =
+  const [courses, activities, upcomingMeetings, recentPost, latestFeedback] =
     await Promise.all([
       getHomeLearningSummary(memberId, accessScope),
       getPublishedActivities(memberId, accessScope),
-      getMeetings(memberId, accessScope),
-      getCommunitySpaces(),
+      getUpcomingMeetings(memberId, accessScope),
+      getLatestCommunityPost(),
       database.activitySubmission.findFirst({
         where: {
           memberId,
@@ -29,5 +29,11 @@ export const getHomeData = async (memberId: string) => {
       }),
     ]);
 
-  return { courses, activities, meetings, spaces, latestFeedback };
+  return {
+    courses,
+    activities,
+    meetings: { upcoming: upcomingMeetings },
+    recentPost,
+    latestFeedback,
+  };
 };

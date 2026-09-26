@@ -730,10 +730,13 @@ export const createComment = async (formData: FormData) => {
       authorId: true,
       title: true,
       slug: true,
-      space: { select: { slug: true } },
+      space: { select: { slug: true, commentsClosed: true } },
     },
   });
   if (!post) {
+    return;
+  }
+  if (post.space?.commentsClosed) {
     return;
   }
   let parentAuthorId: string | null = null;
@@ -938,6 +941,36 @@ export const togglePostPin = async (formData: FormData) => {
   revalidateCommunity(post.space?.slug, postId, post.slug ?? undefined);
 };
 
+export const togglePostFeatured = async (formData: FormData) => {
+  await requireStaff();
+  const postId = textValue(formData.get("postId"));
+  const spaceSlug = textValue(formData.get("spaceSlug"));
+  if (!postId) {
+    return;
+  }
+  const post = await database.communityPost.findFirst({
+    where: { ...publishedPostWhere(postId, spaceSlug || undefined) },
+    select: {
+      id: true,
+      isFeatured: true,
+      slug: true,
+      space: { select: { slug: true } },
+    },
+  });
+  if (!post) {
+    return;
+  }
+  await database.communityPost.update({
+    where: { id: postId },
+    data: {
+      isFeatured: !post.isFeatured,
+      featuredAt: post.isFeatured ? null : new Date(),
+    },
+  });
+  revalidateCommunity(post.space?.slug, postId, post.slug ?? undefined);
+  revalidatePath("/admin/community");
+};
+
 export const createSpace = async (formData: FormData) => {
   await requireStaff();
   const title = textValue(formData.get("title"));
@@ -975,4 +1008,53 @@ export const setSpaceStatus = async (formData: FormData) => {
   });
   revalidatePath("/admin/community");
   revalidatePath("/comunidade");
+};
+
+export const updateSpace = async (formData: FormData) => {
+  await requireStaff();
+  const spaceId = textValue(formData.get("spaceId"));
+  const title = textValue(formData.get("title"));
+  const slug = textValue(formData.get("slug"))
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  const description = textValue(formData.get("description"));
+  if (!(spaceId && title && slug)) {
+    return;
+  }
+  const duplicate = await database.communitySpace.findFirst({
+    where: { slug, NOT: { id: spaceId } },
+    select: { id: true },
+  });
+  if (duplicate) {
+    return;
+  }
+  await database.communitySpace.update({
+    where: { id: spaceId },
+    data: { title, slug, description: description || null },
+  });
+  revalidatePath("/admin/community");
+  revalidatePath("/comunidade");
+  revalidatePath(`/comunidade/${slug}`);
+};
+
+export const toggleSpaceComments = async (formData: FormData) => {
+  await requireStaff();
+  const spaceId = textValue(formData.get("spaceId"));
+  if (!spaceId) {
+    return;
+  }
+  const space = await database.communitySpace.findUnique({
+    where: { id: spaceId },
+    select: { id: true, slug: true, commentsClosed: true },
+  });
+  if (!space) {
+    return;
+  }
+  await database.communitySpace.update({
+    where: { id: space.id },
+    data: { commentsClosed: !space.commentsClosed },
+  });
+  revalidatePath("/admin/community");
+  revalidatePath(`/comunidade/${space.slug}`);
 };

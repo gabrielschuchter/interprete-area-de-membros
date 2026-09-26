@@ -3,6 +3,7 @@ import { ArrowRightIcon } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { DrawAnnotation } from "@/components/motion/motion";
 
 interface MemberPageProperties {
   readonly action?: { href: string; label: string };
@@ -28,7 +29,7 @@ export const MemberPage = ({
       <section className="paper-surface mx-auto grid w-full max-w-[1280px] gap-10 border p-6 text-left shadow-[var(--shadow-paper)] sm:p-10 lg:grid-cols-[minmax(0,0.9fr)_minmax(24rem,0.72fr)] lg:items-stretch lg:p-14">
         <div className="flex flex-col items-start justify-center lg:pr-8">
           <p className="brand-eyebrow">{eyebrow}</p>
-          <span aria-hidden="true" className="brand-rule mt-4" />
+          <DrawAnnotation className="brand-rule mt-4" />
           <h1 className="mt-7 max-w-[680px] font-display text-4xl leading-[1.05] tracking-tight sm:text-6xl">
             {title}
           </h1>

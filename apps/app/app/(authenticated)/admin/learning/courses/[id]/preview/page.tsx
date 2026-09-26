@@ -30,6 +30,11 @@ const PreviewPage = async ({ params }: PreviewPageProperties) => {
         <h1 className="mt-10 font-display text-6xl leading-none">
           {course.title}
         </h1>
+        {course.subtitle && (
+          <p className="mt-4 font-display text-2xl text-muted-foreground leading-snug">
+            {course.subtitle}
+          </p>
+        )}
         {course.description && (
           <p className="mt-6 font-display text-2xl text-muted-foreground leading-snug">
             {course.description}
@@ -39,6 +44,18 @@ const PreviewPage = async ({ params }: PreviewPageProperties) => {
           {course.modules.map((module) => (
             <section className="border-border border-t pt-6" key={module.id}>
               <p className="brand-eyebrow">{module.title}</p>
+              {module.description && (
+                <p className="mt-3 text-muted-foreground leading-7">
+                  {module.description}
+                </p>
+              )}
+              {module.objectives.length > 0 && (
+                <ul className="mt-4 list-disc space-y-1 pl-5 text-muted-foreground text-sm">
+                  {module.objectives.map((objective) => (
+                    <li key={objective}>{objective}</li>
+                  ))}
+                </ul>
+              )}
               <div className="mt-5 space-y-6">
                 {module.lessons.map((lesson) => (
                   <article className="paper-surface border p-6" key={lesson.id}>
@@ -51,6 +68,13 @@ const PreviewPage = async ({ params }: PreviewPageProperties) => {
                     <p className="mt-3 text-muted-foreground leading-7">
                       {lesson.description}
                     </p>
+                    {lesson.objectives.length > 0 && (
+                      <ul className="mt-4 list-disc space-y-1 pl-5 text-muted-foreground text-sm">
+                        {lesson.objectives.map((objective) => (
+                          <li key={objective}>{objective}</li>
+                        ))}
+                      </ul>
+                    )}
                     <div className="mt-6 border-t pt-6">
                       <RichDocument value={lesson.content} />
                     </div>

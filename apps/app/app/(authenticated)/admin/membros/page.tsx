@@ -135,6 +135,11 @@ const AdminMembersPage = async () => {
                       </Link>
                     </Button>
                   )}
+                  <Button asChild size="sm" variant="outline">
+                    <Link href={`/admin/membros/${member.id}`}>
+                      Acompanhar aluno
+                    </Link>
+                  </Button>
                 </form>
               </article>
             ))}

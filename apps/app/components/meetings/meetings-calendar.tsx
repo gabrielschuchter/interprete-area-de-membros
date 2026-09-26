@@ -12,6 +12,7 @@ export interface CalendarMeeting {
   readonly joinUrl: string;
   readonly kind: string;
   readonly recordingUrl: string | null;
+  readonly recurrenceRule: string | null;
   readonly relatedActivity: {
     readonly title: string;
     readonly slug: string;
@@ -242,6 +243,11 @@ export const MeetingsCalendar = ({ meetings }: MeetingsCalendarProperties) => {
           {selected.description ? (
             <p className="mt-4 max-w-2xl whitespace-pre-wrap text-muted-foreground leading-7">
               {selected.description}
+            </p>
+          ) : null}
+          {selected.recurrenceRule ? (
+            <p className="mt-4 text-muted-foreground text-sm">
+              Recorrência: {selected.recurrenceRule}
             </p>
           ) : null}
           {selected.course ? (

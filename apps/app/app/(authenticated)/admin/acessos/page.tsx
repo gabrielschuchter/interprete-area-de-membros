@@ -14,7 +14,7 @@ const resourceTypeLabel: Record<string, string> = {
 
 const AccessAdminPage = async () => {
   await requireAdmin();
-  const { members, resources } = await getAccessAdminOverview();
+  const { members, resources, resourceGroups } = await getAccessAdminOverview();
   const resourceLabels = new Map(
     resources.map((resource) => [
       `${resource.type}:${resource.id}`,
@@ -65,7 +65,7 @@ const AccessAdminPage = async () => {
         ) : (
           <form
             action={setAccessGrant}
-            className="mt-5 grid gap-4 lg:grid-cols-[1fr_1fr_auto] lg:items-end"
+            className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_minmax(0,1fr)_auto] lg:items-end"
           >
             <label className="grid gap-2 text-sm">
               <span className="font-medium">Membro</span>
@@ -93,15 +93,27 @@ const AccessAdminPage = async () => {
                 required
               >
                 <option value="">Escolha um recurso</option>
-                {resources.map((resource) => (
-                  <option
-                    key={`${resource.type}:${resource.id}`}
-                    value={`${resource.type}:${resource.id}`}
-                  >
-                    {resource.label}
-                  </option>
+                {resourceGroups.map((group) => (
+                  <optgroup key={group.courseId} label={group.courseTitle}>
+                    {group.resources.map((resource) => (
+                      <option
+                        key={`${resource.type}:${resource.id}`}
+                        value={`${resource.type}:${resource.id}`}
+                      >
+                        {resource.label}
+                      </option>
+                    ))}
+                  </optgroup>
                 ))}
               </select>
+            </label>
+            <label className="grid gap-2 text-sm">
+              <span className="font-medium">Expira em (opcional)</span>
+              <input
+                className="h-10 rounded-md border border-input bg-background px-3"
+                name="expiresAt"
+                type="datetime-local"
+              />
             </label>
             <Button type="submit">Conceder acesso</Button>
           </form>

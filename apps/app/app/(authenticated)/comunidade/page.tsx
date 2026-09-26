@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { MemberIdentity } from "@/components/community/member-identity";
+import { Stagger } from "@/components/motion/motion";
 import {
   communityPostHref,
   getCommunityFeed,
@@ -174,7 +175,7 @@ const CommunityPage = async ({ searchParams }: CommunityPageProperties) => {
                 </Button>
               </div>
             ) : (
-              <div className="mt-6 divide-y border-border border-y">
+              <Stagger className="mt-6 divide-y border-border border-y">
                 {feed.posts.map(
                   // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: each feed item intentionally composes its author, content, social actions, and metadata in one readable row.
                   (post) => (
@@ -319,7 +320,7 @@ const CommunityPage = async ({ searchParams }: CommunityPageProperties) => {
                     </article>
                   )
                 )}
-              </div>
+              </Stagger>
             )}
             {(feed.page > 1 || feed.hasMore) && (
               <nav

@@ -247,7 +247,7 @@ export const NotificationsPopover = ({
           )}
 
           {state === "ready" && items.length > 0 && (
-            <div className="space-y-1">
+            <div className="motion-stagger space-y-1">
               {items.map((item) => (
                 <button
                   className={cn(

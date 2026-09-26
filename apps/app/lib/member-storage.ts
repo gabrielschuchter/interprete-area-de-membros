@@ -33,6 +33,9 @@ const extensionByMimeType: Record<string, string> = {
   "text/plain": "txt",
 };
 
+const safePathSegment = (value: string) =>
+  value.replace(/[^a-zA-Z0-9_-]/g, "-").slice(0, 120) || "unassigned";
+
 export const memberAssetUrl = (storagePath: string) =>
   `/api/member-assets?path=${encodeURIComponent(storagePath)}`;
 
@@ -94,7 +97,7 @@ export const createMemberAssetPath = ({
     avatar: `profile-assets/avatars/${memberId}`,
     cover: `community-assets/covers/${memberId}`,
     inline: `community-assets/inline/${memberId}`,
-    submission: `activity-assets/submissions/${memberId}/${entityId ?? "unassigned"}`,
+    submission: `activity-assets/submissions/${memberId}/${safePathSegment(entityId ?? "unassigned")}`,
     library: "library-assets",
   }[kind];
 

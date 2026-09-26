@@ -9,6 +9,8 @@ import {
   MessageSquareQuoteIcon,
 } from "lucide-react";
 import Link from "next/link";
+import { Stagger } from "@/components/motion/motion";
+import { communityPostHref } from "@/lib/community";
 import { getHomeData } from "@/lib/home";
 import { requireMemberId } from "@/lib/learning";
 import { getOrCreateProfile } from "@/lib/profile";
@@ -17,11 +19,13 @@ const firstNamePattern = /\s+/;
 
 const HomePage = async () => {
   const memberId = await requireMemberId();
-  const [profile, { courses, activities, meetings, spaces, latestFeedback }] =
-    await Promise.all([
-      getOrCreateProfile(memberId, false),
-      getHomeData(memberId),
-    ]);
+  const [
+    profile,
+    { courses, activities, meetings, recentPost, latestFeedback },
+  ] = await Promise.all([
+    getOrCreateProfile(memberId, false),
+    getHomeData(memberId),
+  ]);
   const firstName =
     profile?.displayName?.trim().split(firstNamePattern)[0] ?? "estudante";
   const allCourses = courses;
@@ -46,7 +50,6 @@ const HomePage = async () => {
       !activity.submissions[0] || activity.submissions[0].status === "DRAFT"
   );
   const nextMeeting = meetings.upcoming[0];
-  const recentPost = spaces.find((space) => space.posts.length > 0)?.posts[0];
 
   let primaryHref = "/aprender";
   let primaryLabel = "Escolher uma trilha";
@@ -80,10 +83,7 @@ const HomePage = async () => {
     primaryDescription = "Uma sala de aula está esperando por você.";
     PrimaryIcon = CalendarDaysIcon;
   } else if (recentPost) {
-    const recentSpace = spaces.find((space) =>
-      space.posts.some((post) => post.id === recentPost.id)
-    );
-    primaryHref = `/comunidade/${recentSpace?.slug ?? ""}/${recentPost.id}`;
+    primaryHref = communityPostHref(recentPost);
     primaryLabel = "Ler discussão";
     primaryTitle = recentPost.title;
     primaryDescription =
@@ -140,10 +140,10 @@ const HomePage = async () => {
           </div>
         </section>
 
-        <div className="mt-10 grid gap-5 lg:grid-cols-3">
+        <Stagger className="mt-10 grid gap-5 lg:grid-cols-3">
           <section
             aria-labelledby="progress-heading"
-            className="paper-surface border p-6"
+            className="motion-card paper-surface border p-6"
           >
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -176,7 +176,7 @@ const HomePage = async () => {
           </section>
           <section
             aria-labelledby="activity-heading"
-            className="paper-surface border p-6"
+            className="motion-card paper-surface border p-6"
           >
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -211,7 +211,7 @@ const HomePage = async () => {
           </section>
           <section
             aria-labelledby="meeting-heading"
-            className="paper-surface border p-6"
+            className="motion-card paper-surface border p-6"
           >
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -250,7 +250,7 @@ const HomePage = async () => {
               <ArrowRightIcon aria-hidden="true" className="size-4" />
             </Link>
           </section>
-        </div>
+        </Stagger>
 
         {(latestFeedback || recentPost) && (
           <section className="mt-10 grid gap-5 lg:grid-cols-2">
@@ -295,9 +295,7 @@ const HomePage = async () => {
                   Uma conversa recente pode abrir uma nova linha de pensamento.
                 </p>
                 <Button asChild className="mt-5" size="sm" variant="outline">
-                  <Link
-                    href={`/comunidade/${spaces.find((space) => space.posts.some((post) => post.id === recentPost.id))?.slug ?? ""}/${recentPost.id}`}
-                  >
+                  <Link href={communityPostHref(recentPost)}>
                     Ler discussão <ArrowRightIcon aria-hidden="true" />
                   </Link>
                 </Button>

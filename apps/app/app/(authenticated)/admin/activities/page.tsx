@@ -17,6 +17,16 @@ const statusLabel = (status: string) => {
   return "Rascunho";
 };
 
+const deliveryLabel = (kind: string) => {
+  if (kind === "FILE") {
+    return "arquivo";
+  }
+  if (kind === "TEXT_AND_FILE") {
+    return "texto e arquivo";
+  }
+  return "texto";
+};
+
 import {
   createActivity,
   saveFeedback,
@@ -25,12 +35,17 @@ import {
 } from "../../atividades/actions";
 
 const AdminActivitiesPage = async () => {
-  const [activities, courses, members] = await Promise.all([
+  const [activities, courses, members, libraryItems] = await Promise.all([
     getStaffActivities(),
     getCourseOptions(),
     database.member.findMany({
       orderBy: { displayName: "asc" },
       select: { id: true, displayName: true, email: true },
+      take: 200,
+    }),
+    database.libraryItem.findMany({
+      orderBy: { title: "asc" },
+      select: { id: true, title: true },
       take: 200,
     }),
   ]);
@@ -81,10 +96,18 @@ const AdminActivitiesPage = async () => {
                       <p className="mt-2 text-muted-foreground leading-6">
                         {activity.prompt}
                       </p>
+                      <p className="mt-2 text-muted-foreground text-xs">
+                        Entrega: {deliveryLabel(activity.deliveryKind)}
+                      </p>
                       {(activity.course || activity.lesson) && (
                         <p className="mt-2 text-muted-foreground text-sm">
                           {activity.course?.title}
                           {activity.lesson ? ` · ${activity.lesson.title}` : ""}
+                        </p>
+                      )}
+                      {activity.relatedLibraryItem && (
+                        <p className="mt-2 text-muted-foreground text-sm">
+                          Leitura: {activity.relatedLibraryItem.title}
                         </p>
                       )}
                     </div>
@@ -151,6 +174,27 @@ const AdminActivitiesPage = async () => {
                         name="instructions"
                         placeholder="Instruções"
                       />
+                      <select
+                        className="h-11 rounded-sm border bg-transparent px-3 text-sm"
+                        defaultValue={activity.deliveryKind}
+                        name="deliveryKind"
+                      >
+                        <option value="TEXT">Resposta em texto</option>
+                        <option value="FILE">Arquivo</option>
+                        <option value="TEXT_AND_FILE">Texto e arquivo</option>
+                      </select>
+                      <select
+                        className="h-11 rounded-sm border bg-transparent px-3 text-sm"
+                        defaultValue={activity.relatedLibraryItem?.id ?? ""}
+                        name="relatedLibraryItemId"
+                      >
+                        <option value="">Nenhuma leitura relacionada</option>
+                        {libraryItems.map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {item.title}
+                          </option>
+                        ))}
+                      </select>
                       <Input
                         defaultValue={
                           activity.dueAt?.toISOString().slice(0, 16) ?? ""
@@ -174,14 +218,24 @@ const AdminActivitiesPage = async () => {
                         <span className="brand-eyebrow">
                           Membros atribuídos
                         </span>
-                        <textarea
-                          className="mt-2 min-h-20 w-full rounded-sm border bg-background px-3 py-2 text-sm"
-                          defaultValue={activity.assignments
-                            .map((assignment) => assignment.memberId)
-                            .join(", ")}
+                        <select
+                          className="mt-2 min-h-32 w-full rounded-sm border bg-background px-3 py-2 text-sm"
+                          defaultValue={activity.assignments.map(
+                            (assignment) => assignment.memberId
+                          )}
+                          multiple
                           name="memberIds"
-                          placeholder="IDs Clerk separados por vírgula"
-                        />
+                        >
+                          {members.map((member) => (
+                            <option key={member.id} value={member.id}>
+                              {member.displayName} · {member.email}
+                            </option>
+                          ))}
+                        </select>
+                        <span className="mt-2 block text-muted-foreground text-xs">
+                          Use Ctrl/Cmd para selecionar mais de um membro. Sem
+                          seleção, a atividade fica aberta para o curso.
+                        </span>
                       </label>
                       <select
                         className="h-11 rounded-sm border bg-transparent px-3 text-sm"
@@ -216,7 +270,10 @@ const AdminActivitiesPage = async () => {
                         >
                           <div className="flex flex-wrap items-center justify-between gap-3">
                             <p className="brand-eyebrow">
-                              Membro · {submission.status}
+                              {submission.member.displayName ??
+                                submission.member.email ??
+                                "Membro"}{" "}
+                              · {submission.status}
                             </p>
                             {submission.feedback && (
                               <Badge variant="outline">Feedback enviado</Badge>
@@ -298,6 +355,19 @@ const AdminActivitiesPage = async () => {
                 type="datetime-local"
               />
             </label>
+            <label className="block" htmlFor="activity-delivery-kind">
+              <span className="brand-eyebrow">Formato da entrega</span>
+              <select
+                className="mt-2 h-11 w-full rounded-sm border bg-transparent px-3 text-sm"
+                defaultValue="TEXT"
+                id="activity-delivery-kind"
+                name="deliveryKind"
+              >
+                <option value="TEXT">Resposta em texto</option>
+                <option value="FILE">Arquivo</option>
+                <option value="TEXT_AND_FILE">Texto e arquivo</option>
+              </select>
+            </label>
             <label className="block" htmlFor="activity-course">
               <span className="brand-eyebrow">
                 Curso relacionado (opcional)
@@ -336,21 +406,42 @@ const AdminActivitiesPage = async () => {
                 )}
               </select>
             </label>
+            <label className="block" htmlFor="activity-library-item">
+              <span className="brand-eyebrow">
+                Leitura relacionada (opcional)
+              </span>
+              <select
+                className="mt-2 h-11 w-full rounded-sm border bg-transparent px-3 text-sm"
+                defaultValue=""
+                id="activity-library-item"
+                name="relatedLibraryItemId"
+              >
+                <option value="">Nenhuma leitura</option>
+                {libraryItems.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.title}
+                  </option>
+                ))}
+              </select>
+            </label>
             <label className="block" htmlFor="activity-member-ids">
               <span className="brand-eyebrow">
                 Atribuir a membros (opcional)
               </span>
-              <textarea
-                className="mt-2 min-h-20 w-full rounded-sm border bg-background px-3 py-2 text-sm"
+              <select
+                className="mt-2 min-h-32 w-full rounded-sm border bg-background px-3 py-2 text-sm"
                 id="activity-member-ids"
+                multiple
                 name="memberIds"
-                placeholder={members
-                  .slice(0, 3)
-                  .map((member) => member.id)
-                  .join(", ")}
-              />
+              >
+                {members.map((member) => (
+                  <option key={member.id} value={member.id}>
+                    {member.displayName} · {member.email}
+                  </option>
+                ))}
+              </select>
               <span className="mt-2 block text-muted-foreground text-xs">
-                Use IDs Clerk separados por vírgula. Membros disponíveis:{" "}
+                Selecione os alunos que receberão a tarefa. Membros disponíveis:{" "}
                 {members.length}.
               </span>
             </label>

@@ -3,6 +3,7 @@ import { Button } from "@repo/design-system/components/ui/button";
 import { Input } from "@repo/design-system/components/ui/input";
 import { Textarea } from "@repo/design-system/components/ui/textarea";
 import Link from "next/link";
+import { getCourseOptions } from "@/lib/admin-learning";
 import { getStaffLibraryItems } from "@/lib/library";
 
 const statusLabel = (status: string) => {
@@ -22,7 +23,10 @@ import {
 } from "../../biblioteca/actions";
 
 const AdminLibraryPage = async () => {
-  const items = await getStaffLibraryItems();
+  const [items, courses] = await Promise.all([
+    getStaffLibraryItems(),
+    getCourseOptions(),
+  ]);
 
   return (
     <main className="mx-auto w-full max-w-[1280px] px-5 py-10 sm:px-8 lg:px-12 lg:py-14">
@@ -52,6 +56,7 @@ const AdminLibraryPage = async () => {
             {items.length === 0 ? (
               <p className="py-5 text-muted-foreground">Nenhum item criado.</p>
             ) : (
+              // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: the card keeps reference editing, relations, and publishing controls together.
               items.map((item) => (
                 <article
                   className="flex flex-col justify-between gap-4 py-5 sm:flex-row sm:items-center"
@@ -69,6 +74,14 @@ const AdminLibraryPage = async () => {
                     <p className="mt-1 text-muted-foreground text-sm">
                       {item.kind} · {item.category ?? "sem categoria"}
                     </p>
+                    {(item.lesson || item.activities.length > 0) && (
+                      <p className="mt-1 text-muted-foreground text-xs">
+                        {item.lesson ? `Aula: ${item.lesson.title}` : ""}
+                        {item.activities.length > 0
+                          ? `${item.lesson ? " · " : ""}Atividade: ${item.activities[0].title}`
+                          : ""}
+                      </p>
+                    )}
                     <details className="mt-3">
                       <summary className="cursor-pointer text-muted-foreground text-sm underline underline-offset-4">
                         Editar material
@@ -76,6 +89,7 @@ const AdminLibraryPage = async () => {
                       <form
                         action={updateLibraryItem}
                         className="mt-4 grid gap-3"
+                        encType="multipart/form-data"
                       >
                         <input name="id" type="hidden" value={item.id} />
                         <Input
@@ -109,12 +123,21 @@ const AdminLibraryPage = async () => {
                           name="tags"
                           placeholder="Tags"
                         />
-                        <Input
-                          defaultValue={item.url}
-                          name="url"
-                          required
-                          type="url"
-                        />
+                        <Input defaultValue={item.url} name="url" type="url" />
+                        <label
+                          className="grid gap-2 text-sm"
+                          htmlFor={`library-file-${item.id}`}
+                        >
+                          <span className="brand-eyebrow">
+                            Substituir arquivo
+                          </span>
+                          <Input
+                            accept="application/pdf,image/jpeg,image/png,image/webp,text/plain"
+                            id={`library-file-${item.id}`}
+                            name="file"
+                            type="file"
+                          />
+                        </label>
                         <Input
                           defaultValue={item.authors ?? ""}
                           name="authors"
@@ -131,6 +154,27 @@ const AdminLibraryPage = async () => {
                           name="doi"
                           placeholder="DOI (opcional)"
                         />
+                        <Input
+                          defaultValue={item.pmid ?? ""}
+                          name="pmid"
+                          placeholder="PMID (opcional)"
+                        />
+                        <select
+                          className="h-11 rounded-sm border bg-transparent px-3 text-sm"
+                          defaultValue={item.lesson?.id ?? ""}
+                          name="lessonId"
+                        >
+                          <option value="">Nenhuma aula relacionada</option>
+                          {courses.flatMap((course) =>
+                            course.modules.flatMap((module) =>
+                              module.lessons.map((lesson) => (
+                                <option key={lesson.id} value={lesson.id}>
+                                  {course.title} · {lesson.title}
+                                </option>
+                              ))
+                            )
+                          )}
+                        </select>
                         <Button size="sm" type="submit">
                           Salvar alterações
                         </Button>
@@ -164,7 +208,11 @@ const AdminLibraryPage = async () => {
         </section>
         <aside className="paper-surface border p-6 lg:sticky lg:top-24">
           <p className="brand-eyebrow">Novo material</p>
-          <form action={createLibraryItem} className="mt-5 space-y-4">
+          <form
+            action={createLibraryItem}
+            className="mt-5 space-y-4"
+            encType="multipart/form-data"
+          >
             <label className="block" htmlFor="library-title">
               <span className="brand-eyebrow">Título</span>
               <Input
@@ -211,19 +259,48 @@ const AdminLibraryPage = async () => {
               />
             </label>
             <label className="block" htmlFor="library-url">
-              <span className="brand-eyebrow">URL</span>
+              <span className="brand-eyebrow">URL externa (opcional)</span>
               <Input
                 className="mt-2"
                 id="library-url"
                 name="url"
                 placeholder="https://..."
-                required
                 type="url"
               />
+            </label>
+            <label className="block" htmlFor="library-file">
+              <span className="brand-eyebrow">Ou envie um arquivo</span>
+              <Input
+                accept="application/pdf,image/jpeg,image/png,image/webp,text/plain"
+                className="mt-2"
+                id="library-file"
+                name="file"
+                type="file"
+              />
+              <span className="mt-2 block text-muted-foreground text-xs">
+                PDF, imagem ou texto · até 20 MB.
+              </span>
             </label>
             <Input name="authors" placeholder="Autores" />
             <Input name="year" placeholder="Ano" type="number" />
             <Input name="doi" placeholder="DOI (opcional)" />
+            <Input name="pmid" placeholder="PMID (opcional)" />
+            <select
+              className="h-11 rounded-sm border bg-transparent px-3 text-sm"
+              defaultValue=""
+              name="lessonId"
+            >
+              <option value="">Nenhuma aula relacionada</option>
+              {courses.flatMap((course) =>
+                course.modules.flatMap((module) =>
+                  module.lessons.map((lesson) => (
+                    <option key={lesson.id} value={lesson.id}>
+                      {course.title} · {lesson.title}
+                    </option>
+                  ))
+                )
+              )}
+            </select>
             <Button className="w-full" type="submit">
               Salvar como rascunho
             </Button>
