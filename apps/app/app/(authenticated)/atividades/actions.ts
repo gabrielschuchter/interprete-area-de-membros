@@ -9,11 +9,80 @@ import {
 import { revalidatePath } from "next/cache";
 import { canAccessPublishedActivity } from "@/lib/activities";
 import { requireStaff } from "@/lib/authorization";
+import {
+  createMemberAssetPath,
+  deleteMemberAsset,
+  uploadMemberAsset,
+} from "@/lib/member-storage";
 import { createNotification } from "@/lib/notifications";
 
 const value = (formData: FormData, name: string) => {
   const entry = formData.get(name);
   return typeof entry === "string" ? entry.trim() : "";
+};
+
+const memberIdSeparator = /[\n,]/;
+
+const assignmentIds = (formData: FormData) =>
+  [
+    ...new Set(
+      value(formData, "memberIds")
+        .split(memberIdSeparator)
+        .map((id) => id.trim())
+        .filter(Boolean)
+    ),
+  ].slice(0, 200);
+
+const allowedAttachmentTypes = new Set([
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "text/plain",
+]);
+const attachmentExtensions: Record<string, string> = {
+  "application/pdf": "pdf",
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "text/plain": "txt",
+};
+
+const getSubmissionAttachment = (entry: FormDataEntryValue | null) =>
+  entry instanceof File && entry.size > 0 ? entry : null;
+
+const uploadSubmissionAttachment = async ({
+  activityId,
+  file,
+  memberId,
+}: {
+  activityId: string;
+  file: File;
+  memberId: string;
+}) => {
+  const extension = attachmentExtensions[file.type];
+  const path = createMemberAssetPath({
+    kind: "submission",
+    memberId,
+    entityId: activityId,
+    mimeType: file.type,
+  });
+  if (!(path && extension)) {
+    return null;
+  }
+
+  const attachmentPath = await uploadMemberAsset({
+    storagePath: path,
+    body: await file.arrayBuffer(),
+    mimeType: file.type,
+  });
+
+  return {
+    attachmentMimeType: file.type,
+    attachmentName: file.name.slice(0, 180),
+    attachmentPath,
+    attachmentSizeBytes: file.size,
+  };
 };
 
 const validActivityRelations = async (courseId: string, lessonId: string) => {
@@ -42,6 +111,7 @@ const validActivityRelations = async (courseId: string, lessonId: string) => {
   return true;
 };
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: submission handling intentionally keeps validation, ownership, file checks, persistence, and cleanup in one server-side boundary.
 export const submitActivity = async (formData: FormData) => {
   const { userId } = await auth();
   const activityId = formData.get("activityId");
@@ -56,8 +126,15 @@ export const submitActivity = async (formData: FormData) => {
   }
 
   const normalizedContent = content.trim();
+  const validAttachment = getSubmissionAttachment(formData.get("attachment"));
 
-  if (!normalizedContent || normalizedContent.length > 40_000) {
+  if (
+    ((!normalizedContent || normalizedContent.length > 40_000) &&
+      !validAttachment) ||
+    (validAttachment &&
+      (!allowedAttachmentTypes.has(validAttachment.type) ||
+        validAttachment.size > 10 * 1024 * 1024))
+  ) {
     return;
   }
 
@@ -103,21 +180,47 @@ export const submitActivity = async (formData: FormData) => {
     return;
   }
 
+  const previous = await database.activitySubmission.findUnique({
+    where: { activityId_memberId: { activityId, memberId: userId } },
+    select: { attachmentPath: true },
+  });
+  const uploadedAttachment = validAttachment
+    ? await uploadSubmissionAttachment({
+        activityId,
+        file: validAttachment,
+        memberId: userId,
+      })
+    : null;
+  if (validAttachment && !uploadedAttachment) {
+    return;
+  }
+  const attachmentPath =
+    uploadedAttachment?.attachmentPath ?? previous?.attachmentPath ?? null;
+
   await database.activitySubmission.upsert({
     where: { activityId_memberId: { activityId, memberId: userId } },
     create: {
       activityId,
       memberId: userId,
-      content: normalizedContent,
+      content: normalizedContent || "(entrega em arquivo)",
       status: ActivitySubmissionStatus.SUBMITTED,
+      attachmentPath,
+      attachmentName: uploadedAttachment?.attachmentName ?? null,
+      attachmentMimeType: uploadedAttachment?.attachmentMimeType ?? null,
+      attachmentSizeBytes: uploadedAttachment?.attachmentSizeBytes ?? null,
       submittedAt: new Date(),
     },
     update: {
-      content: normalizedContent,
+      content: normalizedContent || "(entrega em arquivo)",
       status: ActivitySubmissionStatus.SUBMITTED,
+      ...(uploadedAttachment ?? {}),
       submittedAt: new Date(),
     },
   });
+
+  if (previous?.attachmentPath && previous.attachmentPath !== attachmentPath) {
+    await deleteMemberAsset(previous.attachmentPath);
+  }
 
   revalidatePath("/atividades");
   revalidatePath(`/atividades/${activity.slug}`);
@@ -208,7 +311,7 @@ export const createActivity = async (formData: FormData) => {
     return;
   }
 
-  await database.activity.create({
+  const activity = await database.activity.create({
     data: {
       title: title.trim(),
       slug: slug.trim().toLowerCase(),
@@ -225,6 +328,22 @@ export const createActivity = async (formData: FormData) => {
       updatedBy: userId,
     },
   });
+
+  const memberIds = assignmentIds(formData);
+  if (memberIds.length > 0) {
+    const members = await database.member.findMany({
+      where: { id: { in: memberIds } },
+      select: { id: true },
+    });
+    await database.activityAssignment.createMany({
+      data: members.map((member) => ({
+        activityId: activity.id,
+        memberId: member.id,
+        dueAt: dueDate,
+      })),
+      skipDuplicates: true,
+    });
+  }
 
   revalidatePath("/admin/activities");
 };
@@ -254,18 +373,38 @@ export const updateActivity = async (formData: FormData) => {
     return;
   }
 
-  await database.activity.update({
-    where: { id: activityId },
-    data: {
-      title: title.trim(),
-      slug: slug.trim().toLowerCase(),
-      prompt: prompt.trim(),
-      instructions: instructions.trim() || null,
-      dueAt: dueDate,
-      courseId: courseId || null,
-      lessonId: lessonId || null,
-      updatedBy: userId,
-    },
+  await database.$transaction(async (transaction) => {
+    await transaction.activity.update({
+      where: { id: activityId },
+      data: {
+        title: title.trim(),
+        slug: slug.trim().toLowerCase(),
+        prompt: prompt.trim(),
+        instructions: instructions.trim() || null,
+        dueAt: dueDate,
+        courseId: courseId || null,
+        lessonId: lessonId || null,
+        updatedBy: userId,
+      },
+    });
+    if (formData.has("memberIds")) {
+      const memberIds = assignmentIds(formData);
+      const members = await transaction.member.findMany({
+        where: { id: { in: memberIds } },
+        select: { id: true },
+      });
+      await transaction.activityAssignment.deleteMany({
+        where: { activityId },
+      });
+      await transaction.activityAssignment.createMany({
+        data: members.map((member) => ({
+          activityId,
+          memberId: member.id,
+          dueAt: dueDate,
+        })),
+        skipDuplicates: true,
+      });
+    }
   });
 
   revalidatePath("/admin/activities");

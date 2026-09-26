@@ -1,6 +1,6 @@
 "use server";
 
-import { ContentStatus, database } from "@repo/database";
+import { ContentStatus, database, MeetingKind } from "@repo/database";
 import { revalidatePath } from "next/cache";
 import { requireStaff } from "@/lib/authorization";
 
@@ -32,6 +32,8 @@ export const createMeeting = async (formData: FormData) => {
   const title = value(formData.get("title"));
   const description = value(formData.get("description"));
   const startsAt = value(formData.get("startsAt"));
+  const endsAt = value(formData.get("endsAt"));
+  const kindValue = value(formData.get("kind"));
   const timezoneValue = value(formData.get("timezone")) || "America/Sao_Paulo";
   const timezone = safeTimezone(timezoneValue);
   const joinUrl = safeUrl(value(formData.get("joinUrl")));
@@ -46,6 +48,13 @@ export const createMeeting = async (formData: FormData) => {
   if (Number.isNaN(parsedStartsAt.valueOf())) {
     return;
   }
+  const parsedEndsAt = endsAt ? new Date(endsAt) : null;
+  if (parsedEndsAt && Number.isNaN(parsedEndsAt.valueOf())) {
+    return;
+  }
+  const kind = Object.values(MeetingKind).includes(kindValue as MeetingKind)
+    ? (kindValue as MeetingKind)
+    : MeetingKind.OTHER;
 
   if (courseId) {
     const course = await database.course.findUnique({
@@ -63,12 +72,14 @@ export const createMeeting = async (formData: FormData) => {
       title,
       description: description || null,
       startsAt: parsedStartsAt,
+      endsAt: parsedEndsAt,
       timezone,
       joinUrl,
       recordingUrl,
       teacherId: userId,
       courseId: courseId || null,
       status: ContentStatus.DRAFT,
+      kind,
     },
   });
 

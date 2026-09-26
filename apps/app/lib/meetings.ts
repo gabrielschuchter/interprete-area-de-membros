@@ -18,6 +18,9 @@ const meetingSelection = {
   joinUrl: true,
   recordingUrl: true,
   teacherId: true,
+  kind: true,
+  relatedActivity: { select: { id: true, title: true, slug: true } },
+  relatedLibraryItem: { select: { id: true, title: true } },
   course: { select: { id: true, title: true, slug: true } },
 } as const;
 
@@ -31,6 +34,8 @@ export const getMeetings = async (
   accessScope?: LearningAccessScope | Promise<LearningAccessScope>
 ) => {
   const now = new Date();
+  const calendarStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const calendarEnd = new Date(now.getFullYear(), now.getMonth() + 3, 1);
   const scopePromise = accessScope
     ? Promise.resolve(accessScope)
     : getLearningAccessScope(memberId);
@@ -47,8 +52,17 @@ export const getMeetings = async (
       take: 48,
       select: meetingSelection,
     }),
+    database.meeting.findMany({
+      where: {
+        status: ContentStatus.PUBLISHED,
+        startsAt: { gte: calendarStart, lt: calendarEnd },
+      },
+      orderBy: [{ startsAt: "asc" }, { position: "asc" }],
+      take: 120,
+      select: meetingSelection,
+    }),
   ]);
-  const [scope, [upcoming, past]] = await Promise.all([
+  const [scope, [upcoming, past, calendar]] = await Promise.all([
     scopePromise,
     meetingsPromise,
   ]);
@@ -58,6 +72,7 @@ export const getMeetings = async (
       .filter((meeting) => canReadMeeting(meeting, scope))
       .slice(0, 12),
     past: past.filter((meeting) => canReadMeeting(meeting, scope)).slice(0, 12),
+    calendar: calendar.filter((meeting) => canReadMeeting(meeting, scope)),
   };
 };
 

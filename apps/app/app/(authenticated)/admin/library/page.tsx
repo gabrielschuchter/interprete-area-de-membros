@@ -115,6 +115,22 @@ const AdminLibraryPage = async () => {
                           required
                           type="url"
                         />
+                        <Input
+                          defaultValue={item.authors ?? ""}
+                          name="authors"
+                          placeholder="Autores"
+                        />
+                        <Input
+                          defaultValue={item.year ?? ""}
+                          name="year"
+                          placeholder="Ano"
+                          type="number"
+                        />
+                        <Input
+                          defaultValue={item.doi ?? ""}
+                          name="doi"
+                          placeholder="DOI (opcional)"
+                        />
                         <Button size="sm" type="submit">
                           Salvar alterações
                         </Button>
@@ -205,6 +221,9 @@ const AdminLibraryPage = async () => {
                 type="url"
               />
             </label>
+            <Input name="authors" placeholder="Autores" />
+            <Input name="year" placeholder="Ano" type="number" />
+            <Input name="doi" placeholder="DOI (opcional)" />
             <Button className="w-full" type="submit">
               Salvar como rascunho
             </Button>

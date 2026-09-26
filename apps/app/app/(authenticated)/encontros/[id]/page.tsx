@@ -21,6 +21,19 @@ const formatDate = (date: Date, timezone: string) =>
     timeZone: timezone,
   }).format(date);
 
+const meetingKindLabel = (kind: string) => {
+  if (kind === "INDIVIDUAL") {
+    return "Mentoria individual";
+  }
+  if (kind === "GROUP") {
+    return "Encontro em grupo";
+  }
+  if (kind === "LESSON") {
+    return "Aula";
+  }
+  return "Encontro";
+};
+
 const MeetingPage = async ({ params }: MeetingPageProperties) => {
   const { id } = await params;
   const memberId = await requireMemberId();
@@ -40,7 +53,7 @@ const MeetingPage = async ({ params }: MeetingPageProperties) => {
         </Button>
 
         <article className="paper-surface mt-8 border p-6 shadow-[var(--shadow-paper)] sm:p-10 lg:p-14">
-          <Badge>Encontro</Badge>
+          <Badge>{meetingKindLabel(meeting.kind)}</Badge>
           <h1 className="mt-5 font-display text-5xl leading-tight sm:text-6xl">
             {meeting.title}
           </h1>
@@ -51,6 +64,19 @@ const MeetingPage = async ({ params }: MeetingPageProperties) => {
             />
             {formatDate(meeting.startsAt, meeting.timezone)}
           </p>
+          {meeting.endsAt ? (
+            <p className="mt-2 text-muted-foreground text-sm">
+              Duração:{" "}
+              {Math.max(
+                1,
+                Math.round(
+                  (meeting.endsAt.getTime() - meeting.startsAt.getTime()) /
+                    60_000
+                )
+              )}{" "}
+              minutos
+            </p>
+          ) : null}
           {meeting.description && (
             <p className="mt-8 max-w-2xl whitespace-pre-wrap text-muted-foreground leading-7">
               {meeting.description}
@@ -71,6 +97,22 @@ const MeetingPage = async ({ params }: MeetingPageProperties) => {
               Percurso relacionado: {meeting.course.title}
             </p>
           )}
+          {meeting.relatedActivity ? (
+            <p className="mt-3 text-muted-foreground text-sm">
+              Atividade relacionada:{" "}
+              <Link
+                className="underline"
+                href={`/atividades/${meeting.relatedActivity.slug}`}
+              >
+                {meeting.relatedActivity.title}
+              </Link>
+            </p>
+          ) : null}
+          {meeting.relatedLibraryItem ? (
+            <p className="mt-3 text-muted-foreground text-sm">
+              Leitura relacionada: {meeting.relatedLibraryItem.title}
+            </p>
+          ) : null}
           <div className="mt-10 flex flex-wrap gap-3">
             <Button asChild size="lg">
               <a href={meeting.joinUrl} rel="noreferrer" target="_blank">

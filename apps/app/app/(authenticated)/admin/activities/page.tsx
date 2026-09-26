@@ -1,3 +1,4 @@
+import { database } from "@repo/database";
 import { Badge } from "@repo/design-system/components/ui/badge";
 import { Button } from "@repo/design-system/components/ui/button";
 import { Input } from "@repo/design-system/components/ui/input";
@@ -24,9 +25,14 @@ import {
 } from "../../atividades/actions";
 
 const AdminActivitiesPage = async () => {
-  const [activities, courses] = await Promise.all([
+  const [activities, courses, members] = await Promise.all([
     getStaffActivities(),
     getCourseOptions(),
+    database.member.findMany({
+      orderBy: { displayName: "asc" },
+      select: { id: true, displayName: true, email: true },
+      take: 200,
+    }),
   ]);
 
   return (
@@ -83,7 +89,8 @@ const AdminActivitiesPage = async () => {
                       )}
                     </div>
                     <span className="font-data text-muted-foreground text-xs">
-                      {activity.submissions.length} envios
+                      {activity.submissions.length} envios ·{" "}
+                      {activity.assignments.length} atribuídos
                     </span>
                   </div>
                   <div className="mt-4 flex flex-wrap gap-2">
@@ -163,6 +170,19 @@ const AdminActivitiesPage = async () => {
                           </option>
                         ))}
                       </select>
+                      <label className="block">
+                        <span className="brand-eyebrow">
+                          Membros atribuídos
+                        </span>
+                        <textarea
+                          className="mt-2 min-h-20 w-full rounded-sm border bg-background px-3 py-2 text-sm"
+                          defaultValue={activity.assignments
+                            .map((assignment) => assignment.memberId)
+                            .join(", ")}
+                          name="memberIds"
+                          placeholder="IDs Clerk separados por vírgula"
+                        />
+                      </label>
                       <select
                         className="h-11 rounded-sm border bg-transparent px-3 text-sm"
                         defaultValue={activity.lessonId ?? ""}
@@ -311,6 +331,24 @@ const AdminActivitiesPage = async () => {
                   )
                 )}
               </select>
+            </label>
+            <label className="block" htmlFor="activity-member-ids">
+              <span className="brand-eyebrow">
+                Atribuir a membros (opcional)
+              </span>
+              <textarea
+                className="mt-2 min-h-20 w-full rounded-sm border bg-background px-3 py-2 text-sm"
+                id="activity-member-ids"
+                name="memberIds"
+                placeholder={members
+                  .slice(0, 3)
+                  .map((member) => member.id)
+                  .join(", ")}
+              />
+              <span className="mt-2 block text-muted-foreground text-xs">
+                Use IDs Clerk separados por vírgula. Membros disponíveis:{" "}
+                {members.length}.
+              </span>
             </label>
             <Button className="w-full" type="submit">
               Salvar como rascunho

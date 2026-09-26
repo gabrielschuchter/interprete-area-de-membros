@@ -35,6 +35,11 @@ const publishedActivityWhere = {
   ],
 } satisfies Prisma.ActivityWhereInput;
 
+const memberActivityWhere = (memberId: string): Prisma.ActivityWhereInput => ({
+  ...publishedActivityWhere,
+  OR: [{ assignments: { none: {} } }, { assignments: { some: { memberId } } }],
+});
+
 interface ActivityAccessContext {
   readonly courseId: string | null;
   readonly lesson: {
@@ -71,7 +76,7 @@ export const canAccessPublishedActivity = async (
 ) => {
   const [activity, scope] = await Promise.all([
     database.activity.findFirst({
-      where: { id: activityId, ...publishedActivityWhere },
+      where: { id: activityId, ...memberActivityWhere(memberId) },
       select: {
         courseId: true,
         lesson: {
@@ -96,7 +101,7 @@ export const getPublishedActivities = async (
     ? Promise.resolve(accessScope)
     : getLearningAccessScope(memberId);
   const activitiesPromise = database.activity.findMany({
-    where: publishedActivityWhere,
+    where: memberActivityWhere(memberId),
     orderBy: [
       { dueAt: { sort: "asc", nulls: "last" } },
       { position: "asc" },
@@ -109,6 +114,10 @@ export const getPublishedActivities = async (
       slug: true,
       prompt: true,
       dueAt: true,
+      assignments: {
+        where: { memberId },
+        select: { dueAt: true },
+      },
       course: { select: { id: true, title: true, slug: true } },
       lesson: {
         select: {
@@ -142,7 +151,7 @@ export const getPublishedActivity = async (slug: string, memberId: string) => {
   const [scope, activity] = await Promise.all([
     getLearningAccessScope(memberId),
     database.activity.findFirst({
-      where: { slug, ...publishedActivityWhere },
+      where: { slug, ...memberActivityWhere(memberId) },
       select: {
         id: true,
         courseId: true,
@@ -151,6 +160,10 @@ export const getPublishedActivity = async (slug: string, memberId: string) => {
         prompt: true,
         instructions: true,
         dueAt: true,
+        assignments: {
+          where: { memberId },
+          select: { dueAt: true },
+        },
         course: { select: { id: true, title: true, slug: true } },
         lesson: {
           select: {
@@ -167,6 +180,10 @@ export const getPublishedActivity = async (slug: string, memberId: string) => {
             content: true,
             status: true,
             submittedAt: true,
+            attachmentPath: true,
+            attachmentName: true,
+            attachmentMimeType: true,
+            attachmentSizeBytes: true,
             feedback: {
               select: { content: true, updatedAt: true, teacherId: true },
             },
@@ -190,6 +207,13 @@ export const getStaffActivities = async () =>
       instructions: true,
       status: true,
       dueAt: true,
+      assignments: {
+        select: {
+          memberId: true,
+          dueAt: true,
+          member: { select: { displayName: true, email: true } },
+        },
+      },
       courseId: true,
       lessonId: true,
       submissions: {
@@ -200,6 +224,10 @@ export const getStaffActivities = async () =>
           content: true,
           status: true,
           submittedAt: true,
+          attachmentPath: true,
+          attachmentName: true,
+          attachmentMimeType: true,
+          attachmentSizeBytes: true,
           feedback: { select: { content: true, teacherId: true } },
         },
       },

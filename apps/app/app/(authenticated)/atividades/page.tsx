@@ -23,11 +23,10 @@ const ActivityRow = ({
   readonly activity: PublishedActivity;
 }) => {
   const submission = activity.submissions[0];
+  const dueAt = activity.assignments[0]?.dueAt ?? activity.dueAt;
   const reviewed = submission?.status === "REVIEWED";
   const submitted = submission?.status === "SUBMITTED";
-  const overdue = Boolean(
-    activity.dueAt && activity.dueAt < new Date() && !reviewed
-  );
+  const overdue = Boolean(dueAt && dueAt < new Date() && !reviewed);
   let statusLabel = "Pendente";
   let actionLabel = "Abrir prática";
   let badgeVariant: "default" | "destructive" | "outline" = "outline";
@@ -55,7 +54,7 @@ const ActivityRow = ({
             <Badge variant={badgeVariant}>{statusLabel}</Badge>
             <span className="inline-flex items-center gap-1.5 text-muted-foreground text-xs">
               <Clock3Icon aria-hidden="true" className="size-3.5" />{" "}
-              {formatDueDate(activity.dueAt)}
+              {formatDueDate(dueAt)}
             </span>
           </div>
           <h3 className="mt-4 font-display text-3xl leading-tight">

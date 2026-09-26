@@ -9,7 +9,9 @@ import {
   SearchIcon,
 } from "lucide-react";
 import Link from "next/link";
+import { requireMemberId } from "@/lib/learning";
 import { getLibraryCategories, getLibraryItems } from "@/lib/library";
+import { toggleLibraryBookmark } from "./actions";
 
 interface LibraryPageProperties {
   readonly searchParams: Promise<{
@@ -17,6 +19,7 @@ interface LibraryPageProperties {
     kind?: string;
     category?: string;
     page?: string;
+    sort?: "recent" | "title" | "year";
   }>;
 }
 
@@ -48,6 +51,7 @@ const labelFor = (kind: string) => {
 
 const LibraryPage = async ({ searchParams }: LibraryPageProperties) => {
   const filters = await searchParams;
+  const memberId = await requireMemberId();
   const currentPage = Number.parseInt(filters.page ?? "1", 10);
   const [library, categories] = await Promise.all([
     getLibraryItems({
@@ -55,6 +59,8 @@ const LibraryPage = async ({ searchParams }: LibraryPageProperties) => {
       kind: filters.kind,
       category: filters.category,
       page: currentPage,
+      sort: filters.sort,
+      memberId,
     }),
     getLibraryCategories(),
   ]);
@@ -68,6 +74,9 @@ const LibraryPage = async ({ searchParams }: LibraryPageProperties) => {
   }
   if (filters.category) {
     queryString.set("category", filters.category);
+  }
+  if (filters.sort) {
+    queryString.set("sort", filters.sort);
   }
   const pageHref = (targetPage: number) => {
     const nextQuery = new URLSearchParams(queryString);
@@ -141,6 +150,15 @@ const LibraryPage = async ({ searchParams }: LibraryPageProperties) => {
               </option>
             ))}
           </select>
+          <select
+            className="h-11 rounded-sm border bg-transparent px-3 text-sm"
+            defaultValue={filters.sort ?? "recent"}
+            name="sort"
+          >
+            <option value="recent">Mais recentes</option>
+            <option value="title">Título</option>
+            <option value="year">Ano</option>
+          </select>
           <Button type="submit">Filtrar</Button>
         </form>
         <section aria-labelledby="library-heading" className="mt-12">
@@ -182,6 +200,27 @@ const LibraryPage = async ({ searchParams }: LibraryPageProperties) => {
                       {item.category && (
                         <span className="brand-eyebrow">{item.category}</span>
                       )}
+                    </div>
+                    <div className="mt-3 flex items-center justify-between gap-3 text-muted-foreground text-xs">
+                      <span>
+                        {item.year ?? ""}
+                        {item.authors ? ` · ${item.authors}` : ""}
+                      </span>
+                      <form action={toggleLibraryBookmark}>
+                        <input name="itemId" type="hidden" value={item.id} />
+                        <Button
+                          aria-label={
+                            item.isBookmarked
+                              ? "Remover dos salvos"
+                              : "Salvar na biblioteca"
+                          }
+                          size="sm"
+                          type="submit"
+                          variant="ghost"
+                        >
+                          {item.isBookmarked ? "Salvo" : "Salvar"}
+                        </Button>
+                      </form>
                     </div>
                     <h3 className="mt-5 font-display text-2xl leading-tight">
                       <Link

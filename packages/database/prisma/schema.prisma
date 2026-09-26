@@ -71,6 +71,15 @@ enum LibraryItemKind {
   VIDEO
 }
 
+enum MeetingKind {
+  INDIVIDUAL
+  LESSON
+  GROUP
+  WORKSHOP
+  FEEDBACK
+  OTHER
+}
+
 enum LessonAssetKind {
   VIDEO
   PDF
@@ -130,6 +139,8 @@ model Member {
   accessGrants      AccessGrant[]
   migrationStudents MigrationStudent[] @relation("MigrationStudentMember")
   notifications     Notification[]
+  activityAssignments ActivityAssignment[]
+  libraryBookmarks  LibraryBookmark[]
 
   @@index([role])
 }
@@ -386,6 +397,8 @@ model Activity {
   course       Course?              @relation(fields: [courseId], references: [id], onDelete: SetNull)
   lesson       Lesson?              @relation(fields: [lessonId], references: [id], onDelete: SetNull)
   submissions  ActivitySubmission[]
+  assignments  ActivityAssignment[]
+  meetings     Meeting[]            @relation("MeetingActivity")
 
   @@index([status, position])
   @@index([courseId, status, position])
@@ -398,6 +411,10 @@ model ActivitySubmission {
   memberId    String
   content     String                   @db.Text
   status      ActivitySubmissionStatus @default(DRAFT)
+  attachmentPath      String?          @db.Text
+  attachmentName      String?
+  attachmentMimeType  String?
+  attachmentSizeBytes BigInt?
   submittedAt DateTime?
   createdAt   DateTime                 @default(now())
   updatedAt   DateTime                 @updatedAt
@@ -407,6 +424,21 @@ model ActivitySubmission {
   @@unique([activityId, memberId])
   @@index([memberId, status, updatedAt])
   @@index([activityId, status])
+}
+
+model ActivityAssignment {
+  id         String    @id @default(cuid())
+  activityId String
+  memberId   String
+  dueAt      DateTime?
+  assignedAt DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  activity   Activity  @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  member     Member    @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([activityId, memberId])
+  @@index([memberId, dueAt])
+  @@index([activityId, dueAt])
 }
 
 model Feedback {
@@ -546,13 +578,21 @@ model Meeting {
   teacherId    String?
   courseId     String?
   position     Int           @default(0)
+  kind         MeetingKind   @default(OTHER)
+  demoKey      String?       @unique
+  relatedActivityId    String?
+  relatedLibraryItemId String?
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   course       Course?       @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  relatedActivity    Activity?    @relation("MeetingActivity", fields: [relatedActivityId], references: [id], onDelete: SetNull)
+  relatedLibraryItem LibraryItem? @relation("MeetingLibraryItem", fields: [relatedLibraryItemId], references: [id], onDelete: SetNull)
 
   @@index([status, startsAt])
   @@index([teacherId, startsAt])
   @@index([courseId, startsAt])
+  @@index([relatedActivityId])
+  @@index([relatedLibraryItemId])
 }
 
 model LibraryItem {
@@ -563,13 +603,33 @@ model LibraryItem {
   category    String?
   tags        String[]
   url         String          @db.Text
+  authors     String?         @db.Text
+  year        Int?
+  doi         String?
+  storagePath String?         @db.Text
+  mimeType    String?
+  sizeBytes   BigInt?
   status      ContentStatus   @default(DRAFT)
   position    Int             @default(0)
   createdBy   String?
   updatedBy   String?
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
+  bookmarks   LibraryBookmark[]
+  meetings    Meeting[]       @relation("MeetingLibraryItem")
 
   @@index([status, category, position])
   @@index([status, createdAt])
+}
+
+model LibraryBookmark {
+  id        String      @id @default(cuid())
+  itemId    String
+  memberId  String
+  createdAt DateTime    @default(now())
+  item      LibraryItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  member    Member      @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([itemId, memberId])
+  @@index([memberId, createdAt])
 }

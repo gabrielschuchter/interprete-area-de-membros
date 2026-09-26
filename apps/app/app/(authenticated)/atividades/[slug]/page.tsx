@@ -5,6 +5,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPublishedActivity } from "@/lib/activities";
 import { requireMemberId } from "@/lib/learning";
+import { memberAssetUrl } from "@/lib/member-storage";
 import { submitActivity } from "../actions";
 
 interface ActivityPageProperties {
@@ -21,6 +22,7 @@ const ActivityPage = async ({ params }: ActivityPageProperties) => {
   }
 
   const submission = activity.submissions[0];
+  const dueAt = activity.assignments[0]?.dueAt ?? activity.dueAt;
   const isReviewed = submission?.status === "REVIEWED";
   let submissionLabel = "Rascunho";
 
@@ -65,6 +67,15 @@ const ActivityPage = async ({ params }: ActivityPageProperties) => {
                 .
               </p>
             )}
+            <p className="mt-8 text-muted-foreground text-sm">
+              Prazo:{" "}
+              {dueAt
+                ? new Intl.DateTimeFormat("pt-BR", {
+                    dateStyle: "full",
+                    timeZone: "America/Sao_Paulo",
+                  }).format(dueAt)
+                : "sem prazo definido"}
+            </p>
           </article>
 
           <aside className="paper-surface border p-6 shadow-[var(--shadow-paper)] sm:p-8 lg:sticky lg:top-24">
@@ -96,9 +107,31 @@ const ActivityPage = async ({ params }: ActivityPageProperties) => {
                   id="activity-response"
                   name="content"
                   placeholder="Escreva seu raciocínio, uma dúvida ou uma hipótese..."
-                  required
                 />
               </label>
+              <label className="block" htmlFor="activity-attachment">
+                <span className="brand-eyebrow">Arquivo opcional</span>
+                <input
+                  accept="application/pdf,image/jpeg,image/png,image/webp,text/plain"
+                  className="mt-3 block w-full rounded-sm border bg-background px-3 py-3 text-sm"
+                  id="activity-attachment"
+                  name="attachment"
+                  type="file"
+                />
+                <span className="mt-2 block text-muted-foreground text-xs">
+                  PDF, imagem ou texto · até 10 MB.
+                </span>
+              </label>
+              {submission?.attachmentPath ? (
+                <a
+                  className="text-brand-structural text-sm underline underline-offset-4"
+                  href={memberAssetUrl(submission.attachmentPath)}
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  {submission.attachmentName ?? "Abrir arquivo enviado"}
+                </a>
+              ) : null}
               <Button className="w-full" type="submit">
                 Enviar resposta
               </Button>

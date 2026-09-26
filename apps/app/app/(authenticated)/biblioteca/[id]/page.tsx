@@ -9,7 +9,9 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { requireMemberId } from "@/lib/learning";
 import { getPublishedLibraryItem } from "@/lib/library";
+import { toggleLibraryBookmark } from "../actions";
 
 interface LibraryItemPageProperties {
   readonly params: Promise<{ id: string }>;
@@ -43,7 +45,8 @@ const iconFor = (kind: string) => {
 
 const LibraryItemPage = async ({ params }: LibraryItemPageProperties) => {
   const { id } = await params;
-  const item = await getPublishedLibraryItem(id);
+  const memberId = await requireMemberId();
+  const item = await getPublishedLibraryItem(id, memberId);
 
   if (!item) {
     notFound();
@@ -76,6 +79,17 @@ const LibraryItemPage = async ({ params }: LibraryItemPageProperties) => {
               {item.description}
             </p>
           )}
+          <div className="mt-4 flex flex-wrap items-center gap-4 text-muted-foreground text-sm">
+            {item.year ? <span>{item.year}</span> : null}
+            {item.authors ? <span>{item.authors}</span> : null}
+            {item.doi ? <span>DOI: {item.doi}</span> : null}
+            <form action={toggleLibraryBookmark}>
+              <input name="itemId" type="hidden" value={item.id} />
+              <Button size="sm" type="submit" variant="outline">
+                {item.bookmarks.length > 0 ? "Remover dos salvos" : "Salvar"}
+              </Button>
+            </form>
+          </div>
           {item.tags.length > 0 && (
             <div className="mt-7 flex flex-wrap gap-2">
               {item.tags.map((tag) => (

@@ -3,6 +3,7 @@
 import { ContentStatus, database, LibraryItemKind } from "@repo/database";
 import { revalidatePath } from "next/cache";
 import { requireStaff } from "@/lib/authorization";
+import { requireMemberId } from "@/lib/learning";
 
 const value = (entry: FormDataEntryValue | null) =>
   typeof entry === "string" ? entry.trim() : "";
@@ -48,6 +49,9 @@ export const createLibraryItem = async (formData: FormData) => {
         .map((tag) => tag.trim().toLowerCase())
         .filter(Boolean),
       url,
+      authors: value(formData.get("authors")) || null,
+      year: Number(value(formData.get("year"))) || null,
+      doi: value(formData.get("doi")) || null,
       status: ContentStatus.DRAFT,
       createdBy: userId,
       updatedBy: userId,
@@ -80,7 +84,6 @@ export const updateLibraryItem = async (formData: FormData) => {
   const category = value(formData.get("category"));
   const tags = value(formData.get("tags"));
   const url = safeUrl(value(formData.get("url")));
-
   if (
     !(
       id &&
@@ -91,7 +94,6 @@ export const updateLibraryItem = async (formData: FormData) => {
   ) {
     return;
   }
-
   await database.libraryItem.update({
     where: { id },
     data: {
@@ -105,11 +107,45 @@ export const updateLibraryItem = async (formData: FormData) => {
         .filter(Boolean)
         .slice(0, 12),
       url,
+      authors: value(formData.get("authors")) || null,
+      year: Number(value(formData.get("year"))) || null,
+      doi: value(formData.get("doi")) || null,
       updatedBy: userId,
     },
   });
-
   revalidatePath("/admin/library");
   revalidatePath("/biblioteca");
   revalidatePath(`/biblioteca/${id}`);
+};
+
+export const toggleLibraryBookmark = async (formData: FormData) => {
+  const memberId = await requireMemberId();
+  const itemId = formData.get("itemId");
+
+  if (typeof itemId !== "string" || !itemId) {
+    return;
+  }
+
+  const item = await database.libraryItem.findFirst({
+    where: { id: itemId, status: ContentStatus.PUBLISHED },
+    select: { id: true },
+  });
+
+  if (!item) {
+    return;
+  }
+
+  const existing = await database.libraryBookmark.findUnique({
+    where: { itemId_memberId: { itemId, memberId } },
+    select: { id: true },
+  });
+
+  if (existing) {
+    await database.libraryBookmark.delete({ where: { id: existing.id } });
+  } else {
+    await database.libraryBookmark.create({ data: { itemId, memberId } });
+  }
+
+  revalidatePath("/biblioteca");
+  revalidatePath(`/biblioteca/${itemId}`);
 };

@@ -1,12 +1,19 @@
 import "server-only";
 
-import { ContentStatus, database, LibraryItemKind } from "@repo/database";
+import {
+  ContentStatus,
+  database,
+  LibraryItemKind,
+  type Prisma,
+} from "@repo/database";
 
 interface LibraryFilters {
   readonly category?: string;
   readonly kind?: string;
+  readonly memberId: string;
   readonly page?: number;
   readonly query?: string;
+  readonly sort?: "recent" | "title" | "year";
 }
 
 const PAGE_SIZE = 24;
@@ -16,7 +23,9 @@ export const getLibraryItems = ({
   kind,
   category,
   page = 1,
-}: LibraryFilters = {}) => {
+  sort = "recent",
+  memberId,
+}: LibraryFilters) => {
   const currentPage = Number.isInteger(page) && page > 0 ? page : 1;
   const normalizedQuery = query?.trim();
   const validKind = Object.values(LibraryItemKind).includes(
@@ -24,6 +33,15 @@ export const getLibraryItems = ({
   )
     ? (kind as LibraryItemKind)
     : undefined;
+  const orderBy: Prisma.LibraryItemOrderByWithRelationInput[] = (() => {
+    if (sort === "title") {
+      return [{ title: "asc" }, { position: "asc" }];
+    }
+    if (sort === "year") {
+      return [{ year: "desc" }, { position: "asc" }];
+    }
+    return [{ position: "asc" }, { createdAt: "desc" }];
+  })();
 
   return database.libraryItem
     .findMany({
@@ -35,6 +53,7 @@ export const getLibraryItems = ({
           ? {
               OR: [
                 { title: { contains: normalizedQuery, mode: "insensitive" } },
+                { authors: { contains: normalizedQuery, mode: "insensitive" } },
                 {
                   description: {
                     contains: normalizedQuery,
@@ -46,7 +65,7 @@ export const getLibraryItems = ({
             }
           : {}),
       },
-      orderBy: [{ position: "asc" }, { createdAt: "desc" }],
+      orderBy,
       skip: (currentPage - 1) * PAGE_SIZE,
       take: PAGE_SIZE + 1,
       select: {
@@ -57,12 +76,23 @@ export const getLibraryItems = ({
         category: true,
         tags: true,
         url: true,
+        authors: true,
+        year: true,
+        doi: true,
+        storagePath: true,
+        mimeType: true,
+        bookmarks: { where: { memberId }, select: { id: true } },
       },
     })
     .then((rows) => ({
-      items: rows.slice(0, PAGE_SIZE),
+      items: rows.slice(0, PAGE_SIZE).map((row) => ({
+        ...row,
+        isBookmarked: Array.isArray(row.bookmarks) && row.bookmarks.length > 0,
+        bookmarks: undefined,
+      })),
       page: currentPage,
       hasMore: rows.length > PAGE_SIZE,
+      sort,
     }));
 };
 
@@ -76,7 +106,7 @@ export const getLibraryCategories = async () => {
   return rows.flatMap((row) => (row.category ? [row.category] : []));
 };
 
-export const getPublishedLibraryItem = async (id: string) =>
+export const getPublishedLibraryItem = async (id: string, memberId: string) =>
   database.libraryItem.findFirst({
     where: { id, status: ContentStatus.PUBLISHED },
     select: {
@@ -87,7 +117,13 @@ export const getPublishedLibraryItem = async (id: string) =>
       category: true,
       tags: true,
       url: true,
+      authors: true,
+      year: true,
+      doi: true,
+      storagePath: true,
+      mimeType: true,
       createdAt: true,
+      bookmarks: { where: { memberId }, select: { id: true } },
     },
   });
 
@@ -103,5 +139,8 @@ export const getStaffLibraryItems = async () =>
       tags: true,
       url: true,
       status: true,
+      authors: true,
+      year: true,
+      doi: true,
     },
   });

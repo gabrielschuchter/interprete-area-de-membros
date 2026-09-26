@@ -6,6 +6,7 @@ import {
   ExternalLinkIcon,
 } from "lucide-react";
 import Link from "next/link";
+import { MeetingsCalendar } from "@/components/meetings/meetings-calendar";
 import { requireMemberId } from "@/lib/learning";
 import { getMeetings } from "@/lib/meetings";
 
@@ -16,9 +17,22 @@ const formatDate = (date: Date, timezone: string) =>
     timeZone: timezone,
   }).format(date);
 
+const meetingKindLabel = (kind: string) => {
+  if (kind === "INDIVIDUAL") {
+    return "Mentoria individual";
+  }
+  if (kind === "GROUP") {
+    return "Encontro em grupo";
+  }
+  if (kind === "LESSON") {
+    return "Aula";
+  }
+  return "Encontro";
+};
+
 const MeetingsPage = async () => {
   const memberId = await requireMemberId();
-  const { upcoming, past } = await getMeetings(memberId);
+  const { upcoming, past, calendar } = await getMeetings(memberId);
   const nextMeeting = upcoming[0];
 
   return (
@@ -49,6 +63,12 @@ const MeetingsPage = async () => {
                     className="mt-0.5 size-4 shrink-0"
                   />
                   {formatDate(nextMeeting.startsAt, nextMeeting.timezone)}
+                </p>
+                <p className="mt-2 text-muted-foreground text-sm">
+                  {meetingKindLabel(nextMeeting.kind)}
+                  {nextMeeting.endsAt
+                    ? ` · ${Math.max(1, Math.round((nextMeeting.endsAt.getTime() - nextMeeting.startsAt.getTime()) / 60_000))} min`
+                    : ""}
                 </p>
                 {nextMeeting.description && (
                   <p className="mt-5 text-muted-foreground leading-7">
@@ -86,6 +106,31 @@ const MeetingsPage = async () => {
             </p>
           </div>
         )}
+        <MeetingsCalendar
+          meetings={calendar.map((meeting) => ({
+            id: meeting.id,
+            title: meeting.title,
+            description: meeting.description,
+            startsAt: meeting.startsAt.toISOString(),
+            endsAt: meeting.endsAt?.toISOString() ?? null,
+            timezone: meeting.timezone,
+            joinUrl: meeting.joinUrl,
+            recordingUrl: meeting.recordingUrl,
+            kind: meeting.kind,
+            course: meeting.course
+              ? { title: meeting.course.title, slug: meeting.course.slug }
+              : null,
+            relatedActivity: meeting.relatedActivity
+              ? {
+                  title: meeting.relatedActivity.title,
+                  slug: meeting.relatedActivity.slug,
+                }
+              : null,
+            relatedLibraryItem: meeting.relatedLibraryItem
+              ? { title: meeting.relatedLibraryItem.title }
+              : null,
+          }))}
+        />
         <section aria-labelledby="upcoming-heading" className="mt-14">
           <div className="flex items-end justify-between border-border border-b pb-3">
             <h2 className="font-display text-3xl" id="upcoming-heading">

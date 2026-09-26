@@ -144,6 +144,31 @@ const AdminMeetingsPage = async () => {
                 type="datetime-local"
               />
             </label>
+            <label className="block" htmlFor="meeting-end">
+              <span className="brand-eyebrow">Fim (opcional)</span>
+              <Input
+                className="mt-2"
+                id="meeting-end"
+                name="endsAt"
+                type="datetime-local"
+              />
+            </label>
+            <label className="block" htmlFor="meeting-kind">
+              <span className="brand-eyebrow">Tipo</span>
+              <select
+                className="mt-2 h-11 w-full rounded-sm border bg-transparent px-3 text-sm"
+                defaultValue="OTHER"
+                id="meeting-kind"
+                name="kind"
+              >
+                <option value="INDIVIDUAL">Mentoria individual</option>
+                <option value="LESSON">Aula</option>
+                <option value="GROUP">Encontro em grupo</option>
+                <option value="WORKSHOP">Workshop</option>
+                <option value="FEEDBACK">Sessão de feedback</option>
+                <option value="OTHER">Outro</option>
+              </select>
+            </label>
             <label className="block" htmlFor="meeting-timezone">
               <span className="brand-eyebrow">Fuso</span>
               <Input
