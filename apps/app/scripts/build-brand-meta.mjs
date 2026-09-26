@@ -16,12 +16,33 @@ const wordmarkSvg = await readFile(wordmarkPath, "utf8");
 
 const iconBackground = { r: 241, g: 235, b: 232, alpha: 1 };
 const createIcon = async (size) => {
-  const iconMark = await sharp(markSvg)
+  const renderedMark = await sharp(markSvg)
     .resize({
       width: Math.max(12, Math.round(size * 0.43)),
       height: Math.max(12, Math.round(size * 0.68)),
       fit: "contain",
     })
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  for (
+    let index = 0;
+    index < renderedMark.data.length;
+    index += renderedMark.info.channels
+  ) {
+    if (
+      renderedMark.data[index] < 20 &&
+      renderedMark.data[index + 1] < 20 &&
+      renderedMark.data[index + 2] < 20
+    ) {
+      renderedMark.data[index] = 0;
+      renderedMark.data[index + 1] = 0;
+      renderedMark.data[index + 2] = 0;
+      renderedMark.data[index + 3] = 0;
+    }
+  }
+  const iconMark = await sharp(renderedMark.data, {
+    raw: renderedMark.info,
+  })
     .png()
     .toBuffer();
 
