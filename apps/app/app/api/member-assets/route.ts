@@ -17,6 +17,10 @@ const MAX_LIBRARY_BYTES = 20 * 1024 * 1024;
 const imageTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
 const libraryTypes = new Set([...imageTypes, "application/pdf", "text/plain"]);
 
+// Sharp's native Linux bindings require the Node.js runtime in Vercel. Keep
+// image processing isolated from the Bun runtime used by the rest of the app.
+export const runtime = "nodejs";
+
 const hasImageSignature = async (file: File) => {
   const bytes = new Uint8Array(await file.slice(0, 12).arrayBuffer());
 
