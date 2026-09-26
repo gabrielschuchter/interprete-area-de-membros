@@ -424,7 +424,9 @@ const seed = async () => {
           "Escolha uma decisão da sua prática e escreva o que você ainda não consegue responder com segurança.",
         instructions:
           "Nomeie o contexto, a população envolvida e a evidência que você gostaria de encontrar.",
-        dueDays: 21,
+        // Deliberately overdue and without a submission so the member area
+        // exercises the overdue state in the development/demo fixture.
+        dueDays: -4,
       },
       {
         slug: "tres-pontos-de-risco-de-vies",
