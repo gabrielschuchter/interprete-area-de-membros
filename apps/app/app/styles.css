@@ -248,6 +248,15 @@
 
   .interprete-login .cl-formField__password {
     z-index: 10;
+    width: 100% !important;
+    height: auto !important;
+  }
+
+  .interprete-login .cl-formFieldRow__password {
+    position: static !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
   }
 
   .interprete-login .cl-formField__identifier::after,
