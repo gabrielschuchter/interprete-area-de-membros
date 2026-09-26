@@ -3,8 +3,11 @@ import { noseconeOptions, securityMiddleware } from "@repo/security/proxy";
 import { type NextProxy, type NextRequest, NextResponse } from "next/server";
 
 const securityHeaders = securityMiddleware(noseconeOptions);
-const canonicalAppHost = "interprete-area-de-membros-app.vercel.app";
-const legacyAppHost = "interprete-area-de-membros.vercel.app";
+// The Clerk production instance is provisioned on this proxy domain. Keep the
+// official Vercel project behind it, so Clerk cookies and frontend API calls
+// remain same-origin instead of splitting auth between two aliases.
+const canonicalAppHost = "interprete-area-de-membros.vercel.app";
+const legacyAppHost = "interprete-area-de-membros-app.vercel.app";
 const clerkProxyPrefix = "/__clerk";
 
 const redirectLegacyAppHost = (req: NextRequest) => {
