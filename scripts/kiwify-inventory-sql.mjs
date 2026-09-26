@@ -4,6 +4,8 @@ const sqlString = (value) => `'${String(value).replaceAll("'", "''")}'`;
 const jsonValue = (value) => `${sqlString(JSON.stringify(value))}::jsonb`;
 const idFor = (prefix, value) =>
   `${prefix}-${value.replaceAll(/[^a-zA-Z0-9_-]/g, "-")}`;
+const lessonSlugFor = (module, lesson) =>
+  `${module.slug}-aula-${lesson.position + 1}`;
 
 const lines = [
   `INSERT INTO "LearningPath" ("id", "title", "slug", "status", "position", "publishedAt", "createdAt", "updatedAt") VALUES (${sqlString(idFor("kiwify-path", manifest.course.slug))}, ${sqlString("Mentoria Interprete.")}, ${sqlString("mentoria-interprete")}, 'PUBLISHED', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON CONFLICT ("slug") DO UPDATE SET "title" = EXCLUDED."title", "status" = 'PUBLISHED', "publishedAt" = CURRENT_TIMESTAMP, "updatedAt" = CURRENT_TIMESTAMP;`,
@@ -35,7 +37,7 @@ for (const [modulePosition, module] of manifest.modules.entries()) {
       "kiwify-lesson",
       `${module.studentSourceId}-${lesson.position + 1}`
     );
-    const lessonSlug = `aula-${lesson.position + 1}`;
+    const lessonSlug = lessonSlugFor(module, lesson);
     lines.push(
       `INSERT INTO "Lesson" ("id", "title", "slug", "content", "kind", "status", "position", "publishedAt", "moduleId", "createdAt", "updatedAt") VALUES (${sqlString(lessonId)}, ${sqlString(lesson.title)}, ${sqlString(lessonSlug)}, '{"type":"doc","content":[]}'::jsonb, 'VIDEO', 'PUBLISHED', ${lesson.position}, CURRENT_TIMESTAMP, ${sqlString(moduleId)}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON CONFLICT ("moduleId", "slug") DO UPDATE SET "title" = EXCLUDED."title", "position" = EXCLUDED."position", "kind" = 'VIDEO', "status" = 'PUBLISHED', "publishedAt" = CURRENT_TIMESTAMP, "updatedAt" = CURRENT_TIMESTAMP;`,
       `INSERT INTO "MigrationRecord" ("id", "sourcePlatform", "entityType", "sourceId", "targetId", "status", "metadata", "createdAt", "updatedAt") VALUES (${sqlString(idFor("kiwify-record-lesson", `${module.studentSourceId}-${lesson.position + 1}`))}, 'KIWIFY', 'LESSON', ${sqlString(lesson.sourceId)}, ${sqlString(lessonId)}, 'IMPORTED', ${jsonValue({ title: lesson.title, moduleSourceId: module.sourceId, assetInventory: lesson.assetInventory })}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON CONFLICT ("sourcePlatform", "entityType", "sourceId") DO UPDATE SET "targetId" = EXCLUDED."targetId", "status" = 'IMPORTED', "metadata" = EXCLUDED."metadata", "updatedAt" = CURRENT_TIMESTAMP;`

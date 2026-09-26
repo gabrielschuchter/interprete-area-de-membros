@@ -92,6 +92,9 @@ const database = new PrismaClient({
 
 const sourcePlatform = manifest.source.platform;
 
+const lessonSlugFor = (module, lesson) =>
+  `${module.slug}-aula-${lesson.position + 1}`;
+
 const normalizeEmail = (value) => value?.trim().toLowerCase() || null;
 
 const sourceRecord = async (entityType, sourceId, data) =>
@@ -305,31 +308,55 @@ const run = async () => {
     }
 
     for (const lesson of module.lessons) {
-      const savedLesson = await database.lesson.upsert({
+      const lessonSlug = lessonSlugFor(module, lesson);
+      const existingLessonRecord = await database.migrationRecord.findUnique({
         where: {
-          moduleId_slug: {
-            moduleId: savedModule.id,
-            slug: `aula-${lesson.position + 1}`,
+          sourcePlatform_entityType_sourceId: {
+            sourcePlatform,
+            entityType: MigrationEntityType.LESSON,
+            sourceId: lesson.sourceId,
           },
         },
-        update: {
-          title: lesson.title,
-          position: lesson.position,
-          kind: LessonKind.VIDEO,
-          status: ContentStatus.PUBLISHED,
-          publishedAt: new Date(),
-        },
-        create: {
-          title: lesson.title,
-          slug: `aula-${lesson.position + 1}`,
-          position: lesson.position,
-          content: { type: "doc", content: [] },
-          kind: LessonKind.VIDEO,
-          status: ContentStatus.PUBLISHED,
-          publishedAt: new Date(),
-          moduleId: savedModule.id,
-        },
+        select: { targetId: true },
       });
+      const savedLesson = existingLessonRecord?.targetId
+        ? await database.lesson.update({
+            where: { id: existingLessonRecord.targetId },
+            data: {
+              title: lesson.title,
+              slug: lessonSlug,
+              position: lesson.position,
+              kind: LessonKind.VIDEO,
+              status: ContentStatus.PUBLISHED,
+              publishedAt: new Date(),
+              moduleId: savedModule.id,
+            },
+          })
+        : await database.lesson.upsert({
+            where: {
+              moduleId_slug: {
+                moduleId: savedModule.id,
+                slug: lessonSlug,
+              },
+            },
+            update: {
+              title: lesson.title,
+              position: lesson.position,
+              kind: LessonKind.VIDEO,
+              status: ContentStatus.PUBLISHED,
+              publishedAt: new Date(),
+            },
+            create: {
+              title: lesson.title,
+              slug: lessonSlug,
+              position: lesson.position,
+              content: { type: "doc", content: [] },
+              kind: LessonKind.VIDEO,
+              status: ContentStatus.PUBLISHED,
+              publishedAt: new Date(),
+              moduleId: savedModule.id,
+            },
+          });
 
       await sourceRecord(MigrationEntityType.LESSON, lesson.sourceId, {
         targetId: savedLesson.id,
