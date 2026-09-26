@@ -108,10 +108,38 @@ export async function GET(request: Request) {
     );
   }
 
-  return NextResponse.redirect(signedUrl, {
-    status: 307,
-    headers: { "Cache-Control": "private, max-age=60" },
+  // Do not redirect the browser to Supabase here. The app deliberately uses
+  // Cross-Origin-Embedder-Policy: require-corp, while a signed Storage URL is
+  // served by another origin and does not carry the CORP header required by
+  // the browser. Proxy the already-authorized bytes through this same-origin
+  // route instead; the bucket remains private and no signed URL is persisted.
+  const assetResponse = await fetch(signedUrl, {
+    cache: "no-store",
   });
+
+  if (!(assetResponse.ok && assetResponse.body)) {
+    return NextResponse.json(
+      { error: "Asset não encontrado." },
+      { status: 404 }
+    );
+  }
+
+  const headers = new Headers({
+    "Cache-Control": "private, max-age=300, stale-while-revalidate=60",
+    "Content-Disposition": "inline",
+    "X-Content-Type-Options": "nosniff",
+  });
+  const contentType = assetResponse.headers.get("content-type");
+  const contentLength = assetResponse.headers.get("content-length");
+
+  if (contentType) {
+    headers.set("Content-Type", contentType);
+  }
+  if (contentLength) {
+    headers.set("Content-Length", contentLength);
+  }
+
+  return new Response(assetResponse.body, { headers });
 }
 
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: this endpoint deliberately keeps authentication, validation, normalization, authorization, and storage atomic.
