@@ -89,6 +89,10 @@
         "typescript": "^5.9.3",
         "vitest": "^4.1.11",
       },
+      "optionalDependencies": {
+        "@img/sharp-linux-x64": "0.35.4",
+        "@img/sharp-win32-x64": "0.35.4",
+      },
     },
     "apps/email": {
       "name": "email",
