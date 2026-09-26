@@ -10,7 +10,7 @@ interface RootLayoutProperties {
 }
 
 export const metadata: Metadata = createMetadata({
-  title: "Interprete. | Área de membros",
+  title: "Área de membros",
   description: "Seu espaço de aprendizagem no Interprete.",
 });
 

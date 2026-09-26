@@ -8,16 +8,22 @@ type MetadataGenerator = Omit<Metadata, "description" | "title"> & {
 };
 
 const applicationName = "Interprete";
+const canonicalProductionHost = "interprete-area-de-membros-app.vercel.app";
 const protocol = process.env.NODE_ENV === "production" ? "https" : "http";
 const configuredUrl =
-  process.env.VERCEL_PROJECT_PRODUCTION_URL ??
-  process.env.NEXT_PUBLIC_APP_URL ??
-  "localhost:3000";
-const metadataBase = new URL(
-  configuredUrl.startsWith("http")
-    ? configuredUrl
-    : `${protocol}://${configuredUrl}`
+  process.env.NODE_ENV === "production"
+    ? (process.env.VERCEL_PROJECT_PRODUCTION_URL ?? canonicalProductionHost)
+    : (process.env.NEXT_PUBLIC_APP_URL ?? "localhost:3000");
+const normalizedUrl = configuredUrl.replace(
+  "interprete-area-de-membros.vercel.app",
+  canonicalProductionHost
 );
+const metadataBase = new URL(
+  normalizedUrl.startsWith("http")
+    ? normalizedUrl
+    : `${protocol}://${normalizedUrl}`
+);
+const defaultSocialImage = "/brand/meta/interprete-social-v2.png";
 
 export const createMetadata = ({
   title,
@@ -39,12 +45,37 @@ export const createMetadata = ({
       statusBarStyle: "default",
       title: parsedTitle,
     },
+    alternates: {
+      canonical: "/",
+    },
+    icons: {
+      icon: [
+        { url: "/favicon.ico", sizes: "any", type: "image/x-icon" },
+        { url: "/icon.png", sizes: "512x512", type: "image/png" },
+      ],
+      apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],
+    },
     openGraph: {
       title: parsedTitle,
       description,
+      url: "/",
       type: "website",
       siteName: applicationName,
       locale: "pt_BR",
+      images: [
+        {
+          url: defaultSocialImage,
+          width: 1200,
+          height: 630,
+          alt: "Interprete. — perguntas melhores, decisões mais humanas.",
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: parsedTitle,
+      description,
+      images: [defaultSocialImage],
     },
   };
 
@@ -59,6 +90,10 @@ export const createMetadata = ({
         alt: title,
       },
     ];
+  }
+
+  if (image && metadata.twitter) {
+    metadata.twitter.images = [image];
   }
 
   return metadata;
