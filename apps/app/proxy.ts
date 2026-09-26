@@ -3,11 +3,10 @@ import { noseconeOptions, securityMiddleware } from "@repo/security/proxy";
 import { type NextProxy, type NextRequest, NextResponse } from "next/server";
 
 const securityHeaders = securityMiddleware(noseconeOptions);
-// The Clerk production instance is provisioned on this proxy domain. Keep the
-// official Vercel project behind it, so Clerk cookies and frontend API calls
-// remain same-origin instead of splitting auth between two aliases.
-const canonicalAppHost = "interprete-area-de-membros.vercel.app";
-const legacyAppHost = "interprete-area-de-membros-app.vercel.app";
+// Keep the official Vercel project as the one visible application host. The
+// older alias is redirected here so users never land on a stale deployment.
+const canonicalAppHost = "interprete-area-de-membros-app.vercel.app";
+const legacyAppHost = "interprete-area-de-membros.vercel.app";
 const clerkProxyPrefix = "/__clerk";
 
 const redirectLegacyAppHost = (req: NextRequest) => {
@@ -38,7 +37,7 @@ const redirectLegacyAppHost = (req: NextRequest) => {
 export default authMiddleware(
   (_auth, req) => {
     // Keep one visible application host. The legacy alias remains available
-    // only as a temporary Clerk proxy endpoint for already-issued sessions.
+    // only long enough to redirect users to the current production project.
     if (
       req.nextUrl.hostname === legacyAppHost &&
       !req.nextUrl.pathname.startsWith(clerkProxyPrefix)
