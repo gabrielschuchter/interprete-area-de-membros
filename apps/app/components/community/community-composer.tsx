@@ -94,6 +94,8 @@ export function CommunityComposer({
   const [isUploadingInlineImage, setIsUploadingInlineImage] = useState(false);
   const coverInputRef = useRef<HTMLInputElement>(null);
   const uploadedCoverUrlRef = useRef<string | null>(null);
+  const coverUploadInFlight = useRef(false);
+  const publishingRef = useRef(false);
   const groupMentionConfirmedRef = useRef(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const requestQueue = useRef(Promise.resolve());
@@ -178,6 +180,9 @@ export function CommunityComposer({
   };
 
   const uploadCover = async (file: File) => {
+    if (coverUploadInFlight.current) {
+      return;
+    }
     if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
       setErrorMessage("Envie uma imagem JPG, PNG ou WebP.");
       return;
@@ -187,6 +192,7 @@ export function CommunityComposer({
       return;
     }
 
+    coverUploadInFlight.current = true;
     setCoverPreviewUrl(URL.createObjectURL(file));
     setIsUploadingCover(true);
     setErrorMessage("");
@@ -216,6 +222,7 @@ export function CommunityComposer({
           : "Não foi possível enviar a capa."
       );
     } finally {
+      coverUploadInFlight.current = false;
       setIsUploadingCover(false);
     }
   };
@@ -251,6 +258,10 @@ export function CommunityComposer({
   };
 
   const handlePublish = async () => {
+    if (publishingRef.current) {
+      return;
+    }
+    publishingRef.current = true;
     setPublishing(true);
     setErrorMessage("");
     try {
@@ -264,6 +275,7 @@ export function CommunityComposer({
         "Não foi possível publicar agora. Seu rascunho foi mantido."
       );
     } finally {
+      publishingRef.current = false;
       setPublishing(false);
     }
   };

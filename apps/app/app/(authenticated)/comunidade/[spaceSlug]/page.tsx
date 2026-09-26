@@ -9,6 +9,10 @@ import {
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MemberIdentity } from "@/components/community/member-identity";
+import {
+  SingleFlightForm,
+  SingleFlightSubmit,
+} from "@/components/mutations/single-flight-form";
 import { communityPostHref, getCommunitySpace } from "@/lib/community";
 import { requireMemberId } from "@/lib/learning";
 import { togglePostVote } from "../actions";
@@ -84,26 +88,31 @@ const CommunitySpacePage = async ({
               {space.posts.map((post) => (
                 <article className="py-6" key={post.id}>
                   <div className="flex items-start gap-4">
-                    <form action={togglePostVote} className="pt-1">
+                    <SingleFlightForm action={togglePostVote} className="pt-1">
                       <input name="postId" type="hidden" value={post.id} />
                       <input
                         name="spaceSlug"
                         type="hidden"
                         value={space.slug}
                       />
-                      <Button
+                      <input
+                        name="desired"
+                        type="hidden"
+                        value={post.votes.length > 0 ? "off" : "on"}
+                      />
+                      <SingleFlightSubmit
                         aria-label={
                           post.votes.length > 0
                             ? "Remover apoio"
                             : "Apoiar conteúdo"
                         }
+                        pendingLabel="…"
                         size="sm"
-                        type="submit"
                         variant={post.votes.length > 0 ? "default" : "ghost"}
                       >
                         <ThumbsUpIcon aria-hidden="true" /> {post._count.votes}
-                      </Button>
-                    </form>
+                      </SingleFlightSubmit>
+                    </SingleFlightForm>
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-3 text-muted-foreground text-xs">
                         <MemberIdentity

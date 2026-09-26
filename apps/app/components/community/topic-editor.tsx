@@ -117,6 +117,7 @@ export const TopicEditor = ({
   const groupMentionConfirmedRef = useRef(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const pendingPreviewUrls = useRef(new Set<string>());
+  const pendingFileKeys = useRef(new Set<string>());
   const pendingUploads = useRef(0);
   const editor = useEditor({
     immediatelyRender: false,
@@ -326,6 +327,12 @@ export const TopicEditor = ({
       return;
     }
 
+    const fileKey = `${file.name}:${file.size}:${file.lastModified}`;
+    if (pendingFileKeys.current.has(fileKey)) {
+      return;
+    }
+    pendingFileKeys.current.add(fileKey);
+
     setUploadError("");
     const previewUrl = URL.createObjectURL(file);
     pendingPreviewUrls.current.add(previewUrl);
@@ -367,6 +374,7 @@ export const TopicEditor = ({
       );
       setTimeout(() => URL.revokeObjectURL(previewUrl), 0);
     } finally {
+      pendingFileKeys.current.delete(fileKey);
       pendingUploads.current = Math.max(0, pendingUploads.current - 1);
       if (pendingUploads.current === 0) {
         const document = editor.getJSON();

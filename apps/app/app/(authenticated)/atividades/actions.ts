@@ -15,6 +15,11 @@ import {
   deleteMemberAsset,
   uploadMemberAsset,
 } from "@/lib/member-storage";
+import { readIdempotencyKey } from "@/lib/mutation-contract";
+import {
+  consumeMutationRateLimit,
+  isUniqueConstraintError,
+} from "@/lib/mutation-reliability";
 import {
   notifyActivityAssigned,
   notifyFeedbackReceived,
@@ -39,6 +44,28 @@ const assignmentIds = (formData: FormData) =>
         .filter(Boolean)
     ),
   ].slice(0, 200);
+
+const ensureActivityAssignments = async ({
+  activityId,
+  dueAt,
+  memberIds,
+}: {
+  readonly activityId: string;
+  readonly dueAt: Date | null;
+  readonly memberIds: readonly string[];
+}) => {
+  if (memberIds.length === 0) {
+    return;
+  }
+  const members = await database.member.findMany({
+    where: { id: { in: [...memberIds] } },
+    select: { id: true },
+  });
+  await database.activityAssignment.createMany({
+    data: members.map((member) => ({ activityId, memberId: member.id, dueAt })),
+    skipDuplicates: true,
+  });
+};
 
 const allowedAttachmentTypes = new Set([
   "application/pdf",
@@ -145,6 +172,11 @@ export const submitActivity = async (formData: FormData) => {
   ) {
     return;
   }
+
+  await consumeMutationRateLimit({
+    action: "activity.submit",
+    memberId: userId,
+  });
 
   const normalizedContent = content.trim();
   const validAttachment = getSubmissionAttachment(formData.get("attachment"));
@@ -261,6 +293,10 @@ export const submitActivity = async (formData: FormData) => {
 
 export const saveFeedback = async (formData: FormData) => {
   const { userId } = await requireStaff();
+  await consumeMutationRateLimit({
+    action: "activity.mutation",
+    memberId: userId,
+  });
   const submissionId = formData.get("submissionId");
   const content = formData.get("content");
 
@@ -314,6 +350,10 @@ export const saveFeedback = async (formData: FormData) => {
 
 export const createActivity = async (formData: FormData) => {
   const { userId } = await requireStaff();
+  await consumeMutationRateLimit({
+    action: "activity.mutation",
+    memberId: userId,
+  });
   const title = formData.get("title");
   const slug = formData.get("slug");
   const prompt = formData.get("prompt");
@@ -323,6 +363,11 @@ export const createActivity = async (formData: FormData) => {
   const courseId = value(formData, "courseId");
   const lessonId = value(formData, "lessonId");
   const relatedLibraryItemId = value(formData, "relatedLibraryItemId");
+  const idempotencyKey = readIdempotencyKey(formData.get("idempotencyKey"));
+
+  if (!idempotencyKey) {
+    return;
+  }
 
   if (
     typeof title !== "string" ||
@@ -348,53 +393,80 @@ export const createActivity = async (formData: FormData) => {
     return;
   }
 
+  const existingActivity = await database.activity.findUnique({
+    where: { createdBy_idempotencyKey: { createdBy: userId, idempotencyKey } },
+    select: { id: true },
+  });
+  if (existingActivity) {
+    await ensureActivityAssignments({
+      activityId: existingActivity.id,
+      dueAt: dueDate,
+      memberIds: assignmentIds(formData),
+    });
+    revalidatePath("/admin/activities");
+    return;
+  }
+
   const deliveryKind = Object.values(ActivityDeliveryKind).includes(
     deliveryKindValue as ActivityDeliveryKind
   )
     ? (deliveryKindValue as ActivityDeliveryKind)
     : ActivityDeliveryKind.TEXT;
 
-  const activity = await database.activity.create({
-    data: {
-      title: title.trim(),
-      slug: slug.trim().toLowerCase(),
-      prompt: prompt.trim(),
-      instructions:
-        typeof instructions === "string" && instructions.trim()
-          ? instructions.trim()
-          : null,
-      deliveryKind,
-      dueAt: dueDate,
-      courseId: courseId || null,
-      lessonId: lessonId || null,
-      relatedLibraryItemId: relatedLibraryItemId || null,
-      status: ContentStatus.DRAFT,
-      createdBy: userId,
-      updatedBy: userId,
-    },
-  });
-
-  const memberIds = assignmentIds(formData);
-  if (memberIds.length > 0) {
-    const members = await database.member.findMany({
-      where: { id: { in: memberIds } },
+  let activity: { id: string };
+  try {
+    activity = await database.activity.create({
+      data: {
+        title: title.trim(),
+        slug: slug.trim().toLowerCase(),
+        prompt: prompt.trim(),
+        instructions:
+          typeof instructions === "string" && instructions.trim()
+            ? instructions.trim()
+            : null,
+        deliveryKind,
+        dueAt: dueDate,
+        courseId: courseId || null,
+        lessonId: lessonId || null,
+        relatedLibraryItemId: relatedLibraryItemId || null,
+        status: ContentStatus.DRAFT,
+        createdBy: userId,
+        updatedBy: userId,
+        idempotencyKey,
+      },
       select: { id: true },
     });
-    await database.activityAssignment.createMany({
-      data: members.map((member) => ({
-        activityId: activity.id,
-        memberId: member.id,
-        dueAt: dueDate,
-      })),
-      skipDuplicates: true,
+  } catch (error) {
+    if (!isUniqueConstraintError(error)) {
+      throw error;
+    }
+    const concurrentActivity = await database.activity.findUnique({
+      where: {
+        createdBy_idempotencyKey: { createdBy: userId, idempotencyKey },
+      },
+      select: { id: true },
     });
+    if (!concurrentActivity) {
+      throw error;
+    }
+    activity = concurrentActivity;
   }
+
+  await ensureActivityAssignments({
+    activityId: activity.id,
+    dueAt: dueDate,
+    memberIds: assignmentIds(formData),
+  });
 
   revalidatePath("/admin/activities");
 };
 
 export const updateActivity = async (formData: FormData) => {
   const { userId } = await requireStaff();
+  await consumeMutationRateLimit({
+    action: "activity.mutation",
+    memberId: userId,
+  });
   const activityId = value(formData, "activityId");
   const title = value(formData, "title");
   const slug = value(formData, "slug");
@@ -505,6 +577,10 @@ export const updateActivity = async (formData: FormData) => {
 
 export const setActivityStatus = async (formData: FormData) => {
   const { userId } = await requireStaff();
+  await consumeMutationRateLimit({
+    action: "activity.mutation",
+    memberId: userId,
+  });
   const activityId = formData.get("activityId");
   const status = formData.get("status");
 

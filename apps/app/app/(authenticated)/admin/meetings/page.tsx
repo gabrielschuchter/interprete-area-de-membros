@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { database } from "@repo/database";
 import { Badge } from "@repo/design-system/components/ui/badge";
 import { Button } from "@repo/design-system/components/ui/button";
@@ -278,6 +279,7 @@ const AdminMeetingsPage = async () => {
         <aside className="paper-surface border p-6 lg:sticky lg:top-24">
           <p className="brand-eyebrow">Novo encontro</p>
           <form action={createMeeting} className="mt-5 space-y-4">
+            <input name="idempotencyKey" type="hidden" value={randomUUID()} />
             <label className="block" htmlFor="meeting-title">
               <span className="brand-eyebrow">Título</span>
               <Input

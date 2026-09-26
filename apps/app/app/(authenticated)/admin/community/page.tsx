@@ -4,6 +4,10 @@ import { Input } from "@repo/design-system/components/ui/input";
 import { Textarea } from "@repo/design-system/components/ui/textarea";
 import Link from "next/link";
 import {
+  SingleFlightForm,
+  SingleFlightSubmit,
+} from "@/components/mutations/single-flight-form";
+import {
   communityPostHref,
   getStaffCommunityPosts,
   getStaffCommunitySpaces,
@@ -17,6 +21,88 @@ import {
   toggleSpaceComments,
   updateSpace,
 } from "../../comunidade/actions";
+
+type AdminCommunityPost = Awaited<
+  ReturnType<typeof getStaffCommunityPosts>
+>[number];
+
+const AdminPostActions = ({ post }: { readonly post: AdminCommunityPost }) => (
+  <div className="flex flex-wrap gap-2">
+    {post.status === "PUBLISHED" && (
+      <>
+        <SingleFlightForm action={togglePostPin}>
+          <input name="postId" type="hidden" value={post.id} />
+          <input
+            name="spaceSlug"
+            type="hidden"
+            value={post.space?.slug ?? ""}
+          />
+          <input
+            name="desired"
+            type="hidden"
+            value={post.isPinned ? "off" : "on"}
+          />
+          <SingleFlightSubmit size="sm" variant="outline">
+            {post.isPinned ? "Desafixar" : "Fixar"}
+          </SingleFlightSubmit>
+        </SingleFlightForm>
+        <SingleFlightForm action={togglePostFeatured}>
+          <input name="postId" type="hidden" value={post.id} />
+          <input
+            name="spaceSlug"
+            type="hidden"
+            value={post.space?.slug ?? ""}
+          />
+          <input
+            name="desired"
+            type="hidden"
+            value={post.isFeatured ? "off" : "on"}
+          />
+          <SingleFlightSubmit size="sm" variant="outline">
+            {post.isFeatured ? "Retirar destaque" : "Destacar"}
+          </SingleFlightSubmit>
+        </SingleFlightForm>
+      </>
+    )}
+    <SingleFlightForm action={softDeletePost}>
+      <input name="postId" type="hidden" value={post.id} />
+      <input name="spaceSlug" type="hidden" value={post.space?.slug ?? ""} />
+      <SingleFlightSubmit size="sm" variant="outline">
+        Remover
+      </SingleFlightSubmit>
+    </SingleFlightForm>
+  </div>
+);
+
+const AdminCommunityPostRow = ({
+  post,
+}: {
+  readonly post: AdminCommunityPost;
+}) => (
+  <div className="flex flex-wrap items-center justify-between gap-4 py-4">
+    <div className="min-w-0">
+      <div className="flex flex-wrap gap-2 text-muted-foreground text-xs">
+        <Badge variant="outline">
+          {post.kind === "PUBLICATION" ? "Publicação" : "Discussão"}
+        </Badge>
+        <Badge variant={post.status === "PUBLISHED" ? "default" : "outline"}>
+          {post.status}
+        </Badge>
+        <span>{post.space?.title ?? "Feed geral"}</span>
+      </div>
+      <p className="mt-2 font-medium">{post.title}</p>
+      {post.status === "PUBLISHED" && (
+        <Link
+          className="mt-1 inline-block text-brand-structural text-xs underline underline-offset-4"
+          href={communityPostHref(post)}
+        >
+          Abrir publicação
+        </Link>
+      )}
+    </div>
+    <AdminPostActions post={post} />
+  </div>
+);
 
 const AdminCommunityPage = async () => {
   const [spaces, posts] = await Promise.all([
@@ -59,74 +145,7 @@ const AdminCommunityPage = async () => {
         ) : (
           <div className="divide-y border-border border-b">
             {posts.map((post) => (
-              <div
-                className="flex flex-wrap items-center justify-between gap-4 py-4"
-                key={post.id}
-              >
-                <div className="min-w-0">
-                  <div className="flex flex-wrap gap-2 text-muted-foreground text-xs">
-                    <Badge variant="outline">
-                      {post.kind === "PUBLICATION" ? "Publicação" : "Discussão"}
-                    </Badge>
-                    <Badge
-                      variant={
-                        post.status === "PUBLISHED" ? "default" : "outline"
-                      }
-                    >
-                      {post.status}
-                    </Badge>
-                    <span>{post.space?.title ?? "Feed geral"}</span>
-                  </div>
-                  <p className="mt-2 font-medium">{post.title}</p>
-                  {post.status === "PUBLISHED" && (
-                    <Link
-                      className="mt-1 inline-block text-brand-structural text-xs underline underline-offset-4"
-                      href={communityPostHref(post)}
-                    >
-                      Abrir publicação
-                    </Link>
-                  )}
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {post.status === "PUBLISHED" && (
-                    <>
-                      <form action={togglePostPin}>
-                        <input name="postId" type="hidden" value={post.id} />
-                        <input
-                          name="spaceSlug"
-                          type="hidden"
-                          value={post.space?.slug ?? ""}
-                        />
-                        <Button size="sm" type="submit" variant="outline">
-                          {post.isPinned ? "Desafixar" : "Fixar"}
-                        </Button>
-                      </form>
-                      <form action={togglePostFeatured}>
-                        <input name="postId" type="hidden" value={post.id} />
-                        <input
-                          name="spaceSlug"
-                          type="hidden"
-                          value={post.space?.slug ?? ""}
-                        />
-                        <Button size="sm" type="submit" variant="outline">
-                          {post.isFeatured ? "Retirar destaque" : "Destacar"}
-                        </Button>
-                      </form>
-                    </>
-                  )}
-                  <form action={softDeletePost}>
-                    <input name="postId" type="hidden" value={post.id} />
-                    <input
-                      name="spaceSlug"
-                      type="hidden"
-                      value={post.space?.slug ?? ""}
-                    />
-                    <Button size="sm" type="submit" variant="outline">
-                      Remover
-                    </Button>
-                  </form>
-                </div>
-              </div>
+              <AdminCommunityPostRow key={post.id} post={post} />
             ))}
           </div>
         )}
@@ -176,14 +195,19 @@ const AdminCommunityPage = async () => {
                         </Button>
                       </form>
                     )}
-                    <form action={toggleSpaceComments}>
+                    <SingleFlightForm action={toggleSpaceComments}>
                       <input name="spaceId" type="hidden" value={space.id} />
-                      <Button size="sm" type="submit" variant="outline">
+                      <input
+                        name="desired"
+                        type="hidden"
+                        value={space.commentsClosed ? "off" : "on"}
+                      />
+                      <SingleFlightSubmit size="sm" variant="outline">
                         {space.commentsClosed
                           ? "Reabrir comentários"
                           : "Fechar comentários"}
-                      </Button>
-                    </form>
+                      </SingleFlightSubmit>
+                    </SingleFlightForm>
                   </div>
                   <details className="mt-5 border-border border-t pt-4">
                     <summary className="cursor-pointer text-muted-foreground text-sm underline underline-offset-4">

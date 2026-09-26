@@ -9,7 +9,6 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import {
-  createComment,
   setPostStatus,
   softDeleteComment,
   softDeletePost,
@@ -27,6 +26,11 @@ import {
   type getCommunityPostBySlug,
 } from "@/lib/community";
 import { RichDocument } from "../learning/rich-document";
+import {
+  SingleFlightForm,
+  SingleFlightSubmit,
+} from "../mutations/single-flight-form";
+import { CommentComposer } from "./comment-composer";
 import { MemberIdentity } from "./member-identity";
 import { MentionTextarea } from "./mention-textarea";
 
@@ -83,7 +87,7 @@ const CommentThread = ({
         <p className="mt-2 whitespace-pre-wrap leading-7">{comment.content}</p>
       )}
       <div className="mt-3 flex flex-wrap items-center gap-3">
-        <form action={toggleCommentVote}>
+        <SingleFlightForm action={toggleCommentVote}>
           <input name="commentId" type="hidden" value={comment.id} />
           <input name="postId" type="hidden" value={post.id} />
           <input
@@ -91,15 +95,20 @@ const CommentThread = ({
             type="hidden"
             value={post.space?.slug ?? ""}
           />
-          <Button
+          <input
+            name="desired"
+            type="hidden"
+            value={comment.votes.length > 0 ? "off" : "on"}
+          />
+          <SingleFlightSubmit
+            pendingLabel="Salvando…"
             size="sm"
-            type="submit"
             variant={comment.votes.length > 0 ? "default" : "ghost"}
           >
             <ThumbsUpIcon aria-hidden="true" />{" "}
             {comment.votes.length > 0 ? "Apoiado" : "Apoiar"}
-          </Button>
-        </form>
+          </SingleFlightSubmit>
+        </SingleFlightForm>
         <span className="text-muted-foreground text-xs">
           {replies.length} respostas
         </span>
@@ -108,25 +117,14 @@ const CommentThread = ({
             <summary className="cursor-pointer text-muted-foreground text-xs underline underline-offset-4">
               Responder
             </summary>
-            <form action={createComment} className="mt-3 grid gap-3">
-              <input name="postId" type="hidden" value={post.id} />
-              <input
-                name="spaceSlug"
-                type="hidden"
-                value={post.space?.slug ?? ""}
-              />
-              <input name="parentId" type="hidden" value={comment.id} />
-              <MentionTextarea
-                aria-label={`Responder a ${comment.content.slice(0, 40)}`}
-                className="min-h-24 w-full rounded-sm border bg-background px-3 py-2 text-sm leading-6 outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/35"
-                name="content"
-                placeholder="Escreva uma resposta... Use @nome para mencionar alguém."
-                required
-              />
-              <Button className="w-fit" size="sm" type="submit">
-                Enviar resposta
-              </Button>
-            </form>
+            <CommentComposer
+              ariaLabel={`Responder a ${comment.content.slice(0, 40)}`}
+              className="mt-3 grid gap-3"
+              parentId={comment.id}
+              placeholder="Escreva uma resposta... Use @nome para mencionar alguém."
+              postId={post.id}
+              spaceSlug={post.space?.slug ?? ""}
+            />
           </details>
         )}
         {comment.authorId === memberId && (
@@ -134,7 +132,10 @@ const CommentThread = ({
             <summary className="cursor-pointer text-muted-foreground text-xs underline underline-offset-4">
               Editar
             </summary>
-            <form action={updateComment} className="mt-3 grid gap-3">
+            <SingleFlightForm
+              action={updateComment}
+              className="mt-3 grid gap-3"
+            >
               <input name="commentId" type="hidden" value={comment.id} />
               <input name="postId" type="hidden" value={post.id} />
               <input
@@ -149,14 +150,18 @@ const CommentThread = ({
                 name="content"
                 required
               />
-              <Button className="w-fit" size="sm" type="submit">
+              <SingleFlightSubmit
+                className="w-fit"
+                pendingLabel="Salvando…"
+                size="sm"
+              >
                 Salvar resposta
-              </Button>
-            </form>
+              </SingleFlightSubmit>
+            </SingleFlightForm>
           </details>
         )}
         {canDelete && (
-          <form action={softDeleteComment}>
+          <SingleFlightForm action={softDeleteComment}>
             <input name="commentId" type="hidden" value={comment.id} />
             <input name="postId" type="hidden" value={post.id} />
             <input
@@ -164,15 +169,15 @@ const CommentThread = ({
               type="hidden"
               value={post.space?.slug ?? ""}
             />
-            <Button
+            <SingleFlightSubmit
               className="text-muted-foreground"
+              pendingLabel="Apagando…"
               size="sm"
-              type="submit"
               variant="ghost"
             >
               Apagar
-            </Button>
-          </form>
+            </SingleFlightSubmit>
+          </SingleFlightForm>
         )}
       </div>
       {replies.length > 0 && (
@@ -292,64 +297,96 @@ export function CommunityPostView({
             )}
           </div>
           <div className="mt-7 flex flex-wrap items-center gap-3">
-            <form action={togglePostVote}>
+            <SingleFlightForm action={togglePostVote}>
               <input name="postId" type="hidden" value={post.id} />
               <input
                 name="spaceSlug"
                 type="hidden"
                 value={post.space?.slug ?? ""}
               />
-              <Button
+              <input
+                name="desired"
+                type="hidden"
+                value={post.votes.length > 0 ? "off" : "on"}
+              />
+              <SingleFlightSubmit
+                pendingLabel="Salvando…"
                 size="sm"
-                type="submit"
                 variant={post.votes.length > 0 ? "default" : "outline"}
               >
                 <ThumbsUpIcon aria-hidden="true" />{" "}
                 {post.votes.length > 0 ? "Apoiado" : "Apoiar"}
-              </Button>
-            </form>
-            <form action={toggleBookmark}>
+              </SingleFlightSubmit>
+            </SingleFlightForm>
+            <SingleFlightForm action={toggleBookmark}>
               <input name="postId" type="hidden" value={post.id} />
               <input
                 name="spaceSlug"
                 type="hidden"
                 value={post.space?.slug ?? ""}
               />
-              <Button size="sm" type="submit" variant="ghost">
+              <input
+                name="desired"
+                type="hidden"
+                value={post.bookmarks.length > 0 ? "off" : "on"}
+              />
+              <SingleFlightSubmit
+                pendingLabel="Salvando…"
+                size="sm"
+                variant="ghost"
+              >
                 <BookmarkIcon
                   aria-hidden="true"
                   fill={post.bookmarks.length > 0 ? "currentColor" : "none"}
                 />{" "}
                 {post.bookmarks.length > 0 ? "Salvo" : "Salvar"}
-              </Button>
-            </form>
-            <form action={toggleTopicFollow}>
+              </SingleFlightSubmit>
+            </SingleFlightForm>
+            <SingleFlightForm action={toggleTopicFollow}>
               <input name="postId" type="hidden" value={post.id} />
               <input
                 name="spaceSlug"
                 type="hidden"
                 value={post.space?.slug ?? ""}
               />
-              <Button size="sm" type="submit" variant="ghost">
+              <input
+                name="desired"
+                type="hidden"
+                value={post.followers.length > 0 ? "off" : "on"}
+              />
+              <SingleFlightSubmit
+                pendingLabel="Salvando…"
+                size="sm"
+                variant="ghost"
+              >
                 {post.followers.length > 0
                   ? "Seguindo discussão"
                   : "Seguir discussão"}
-              </Button>
-            </form>
+              </SingleFlightSubmit>
+            </SingleFlightForm>
             {post.followers.length > 0 && (
-              <form action={toggleTopicMute}>
+              <SingleFlightForm action={toggleTopicMute}>
                 <input name="postId" type="hidden" value={post.id} />
                 <input
                   name="spaceSlug"
                   type="hidden"
                   value={post.space?.slug ?? ""}
                 />
-                <Button size="sm" type="submit" variant="ghost">
+                <input
+                  name="desired"
+                  type="hidden"
+                  value={post.followers[0]?.mutedAt ? "off" : "on"}
+                />
+                <SingleFlightSubmit
+                  pendingLabel="Salvando…"
+                  size="sm"
+                  variant="ghost"
+                >
                   {post.followers[0]?.mutedAt
                     ? "Ativar atualizações"
                     : "Silenciar discussão"}
-                </Button>
-              </form>
+                </SingleFlightSubmit>
+              </SingleFlightForm>
             )}
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
@@ -367,46 +404,58 @@ export function CommunityPostView({
                 </Button>
               )}
               {canStaffManage && (
-                <form action={togglePostPin}>
+                <SingleFlightForm action={togglePostPin}>
                   <input name="postId" type="hidden" value={post.id} />
                   <input
                     name="spaceSlug"
                     type="hidden"
                     value={post.space?.slug ?? ""}
                   />
-                  <Button size="sm" type="submit" variant="ghost">
+                  <SingleFlightSubmit
+                    pendingLabel="Salvando…"
+                    size="sm"
+                    variant="ghost"
+                  >
                     {post.isPinned ? "Desfixar" : "Fixar"}
-                  </Button>
-                </form>
+                  </SingleFlightSubmit>
+                </SingleFlightForm>
               )}
               {canStaffManage && (
-                <form action={togglePostFeatured}>
+                <SingleFlightForm action={togglePostFeatured}>
                   <input name="postId" type="hidden" value={post.id} />
                   <input
                     name="spaceSlug"
                     type="hidden"
                     value={post.space?.slug ?? ""}
                   />
-                  <Button size="sm" type="submit" variant="ghost">
+                  <SingleFlightSubmit
+                    pendingLabel="Salvando…"
+                    size="sm"
+                    variant="ghost"
+                  >
                     {post.isFeatured ? "Retirar destaque" : "Destacar"}
-                  </Button>
-                </form>
+                  </SingleFlightSubmit>
+                </SingleFlightForm>
               )}
-              <form action={softDeletePost}>
+              <SingleFlightForm action={softDeletePost}>
                 <input name="postId" type="hidden" value={post.id} />
                 <input
                   name="spaceSlug"
                   type="hidden"
                   value={post.space?.slug ?? ""}
                 />
-                <Button size="sm" type="submit" variant="ghost">
+                <SingleFlightSubmit
+                  pendingLabel="Apagando…"
+                  size="sm"
+                  variant="ghost"
+                >
                   {canStaffManage && post.authorId !== memberId
                     ? "Remover conteúdo"
                     : "Excluir"}
-                </Button>
-              </form>
+                </SingleFlightSubmit>
+              </SingleFlightForm>
               {post.authorId === memberId && (
-                <form action={setPostStatus}>
+                <SingleFlightForm action={setPostStatus}>
                   <input name="postId" type="hidden" value={post.id} />
                   <input
                     name="spaceSlug"
@@ -414,10 +463,14 @@ export function CommunityPostView({
                     value={post.space?.slug ?? ""}
                   />
                   <input name="status" type="hidden" value="ARCHIVED" />
-                  <Button size="sm" type="submit" variant="ghost">
+                  <SingleFlightSubmit
+                    pendingLabel="Salvando…"
+                    size="sm"
+                    variant="ghost"
+                  >
                     Arquivar
-                  </Button>
-                </form>
+                  </SingleFlightSubmit>
+                </SingleFlightForm>
               )}
             </div>
           )}
@@ -437,30 +490,12 @@ export function CommunityPostView({
               Os comentários deste espaço estão fechados pela equipe.
             </p>
           ) : (
-            <form
-              action={createComment}
-              className="paper-surface mt-5 border p-5 sm:p-6"
-            >
-              <input name="postId" type="hidden" value={post.id} />
-              <input
-                name="spaceSlug"
-                type="hidden"
-                value={post.space?.slug ?? ""}
+            <div className="paper-surface mt-5 border p-5 sm:p-6">
+              <CommentComposer
+                postId={post.id}
+                spaceSlug={post.space?.slug ?? ""}
               />
-              <label className="block" htmlFor="comment-content">
-                <span className="brand-eyebrow">Sua contribuição</span>
-                <MentionTextarea
-                  className="mt-3 min-h-32 w-full rounded-sm border bg-background px-3 py-3 text-base leading-7 outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/35"
-                  id="comment-content"
-                  name="content"
-                  placeholder="Acrescente uma leitura, uma pergunta ou uma referência... Use @nome para mencionar alguém."
-                  required
-                />
-              </label>
-              <div className="mt-4 flex justify-end">
-                <Button type="submit">Comentar</Button>
-              </div>
-            </form>
+            </div>
           )}
           <div className="mt-8 space-y-5">
             {topLevel.length === 0 ? (

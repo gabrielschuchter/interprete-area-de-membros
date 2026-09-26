@@ -1,6 +1,10 @@
-import { Button } from "@repo/design-system/components/ui/button";
+import { randomUUID } from "node:crypto";
 import { FileTextIcon, MessageCircleIcon } from "lucide-react";
 import { startDraft } from "@/app/(authenticated)/comunidade/actions";
+import {
+  SingleFlightForm,
+  SingleFlightSubmit,
+} from "@/components/mutations/single-flight-form";
 
 interface CommunityStartSpace {
   readonly id: string;
@@ -38,8 +42,12 @@ export const CommunityStartPanel = ({
   spaces,
 }: CommunityStartPanelProperties) => (
   <section className="mt-10 grid gap-4 md:grid-cols-2">
-    <form action={startDraft} className="paper-surface border p-6 sm:p-8">
+    <SingleFlightForm
+      action={startDraft}
+      className="paper-surface border p-6 sm:p-8"
+    >
       <input name="kind" type="hidden" value="PUBLICATION" />
+      <input name="idempotencyKey" type="hidden" value={randomUUID()} />
       <FileTextIcon aria-hidden="true" className="size-7 text-brand-action" />
       <h2 className="mt-5 font-display text-3xl">Nova publicação</h2>
       <p className="mt-3 min-h-20 text-muted-foreground leading-7">
@@ -49,12 +57,16 @@ export const CommunityStartPanel = ({
       <div className="mt-6">
         <SpaceField initialSpaceId={initialSpaceId} spaces={spaces} />
       </div>
-      <Button className="mt-6 w-full" type="submit">
+      <SingleFlightSubmit className="mt-6 w-full" pendingLabel="Abrindo…">
         Começar a escrever
-      </Button>
-    </form>
-    <form action={startDraft} className="paper-surface border p-6 sm:p-8">
+      </SingleFlightSubmit>
+    </SingleFlightForm>
+    <SingleFlightForm
+      action={startDraft}
+      className="paper-surface border p-6 sm:p-8"
+    >
       <input name="kind" type="hidden" value="DISCUSSION" />
+      <input name="idempotencyKey" type="hidden" value={randomUUID()} />
       <MessageCircleIcon
         aria-hidden="true"
         className="size-7 text-brand-action"
@@ -67,9 +79,13 @@ export const CommunityStartPanel = ({
       <div className="mt-6">
         <SpaceField initialSpaceId={initialSpaceId} spaces={spaces} />
       </div>
-      <Button className="mt-6 w-full" type="submit" variant="outline">
+      <SingleFlightSubmit
+        className="mt-6 w-full"
+        pendingLabel="Abrindo…"
+        variant="outline"
+      >
         Abrir discussão
-      </Button>
-    </form>
+      </SingleFlightSubmit>
+    </SingleFlightForm>
   </section>
 );

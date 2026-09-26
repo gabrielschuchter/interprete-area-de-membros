@@ -10,6 +10,10 @@ import {
   memberAssetUrl,
   uploadMemberAsset,
 } from "@/lib/member-storage";
+import {
+  consumeMutationRateLimit,
+  isMutationRateLimitError,
+} from "@/lib/mutation-reliability";
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const MAX_LIBRARY_BYTES = 20 * 1024 * 1024;
@@ -148,6 +152,28 @@ export async function POST(request: Request) {
 
   if (!userId) {
     return unauthorized();
+  }
+
+  try {
+    await consumeMutationRateLimit({
+      action: "asset.upload",
+      memberId: userId,
+    });
+  } catch (error) {
+    if (isMutationRateLimitError(error)) {
+      return NextResponse.json(
+        {
+          error:
+            "Você está enviando muitos arquivos em sequência. Tente novamente em alguns segundos.",
+          retryAfterSeconds: error.retryAfterSeconds,
+        },
+        {
+          status: 429,
+          headers: { "Retry-After": String(error.retryAfterSeconds) },
+        }
+      );
+    }
+    throw error;
   }
 
   const formData = await request.formData();
@@ -296,6 +322,27 @@ export async function DELETE(request: Request) {
 
   if (!userId) {
     return unauthorized();
+  }
+
+  try {
+    await consumeMutationRateLimit({
+      action: "asset.delete",
+      memberId: userId,
+    });
+  } catch (error) {
+    if (isMutationRateLimitError(error)) {
+      return NextResponse.json(
+        {
+          error:
+            "Você está removendo muitos arquivos em sequência. Tente novamente em alguns segundos.",
+        },
+        {
+          status: 429,
+          headers: { "Retry-After": String(error.retryAfterSeconds) },
+        }
+      );
+    }
+    throw error;
   }
 
   const path = getPath(request);

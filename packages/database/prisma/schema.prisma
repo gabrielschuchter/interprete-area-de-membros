@@ -150,6 +150,7 @@ model Member {
   mentionsReceived       Mention[]               @relation("MentionTarget")
   notificationPreference NotificationPreference?
   topicFollows           TopicFollow[]
+  mutationRateLimits     MutationRateLimit[]
   activityAssignments    ActivityAssignment[]
   activitySubmissions    ActivitySubmission[]
   libraryBookmarks       LibraryBookmark[]
@@ -405,6 +406,7 @@ model LessonProgress {
 
 model Activity {
   id                   String               @id @default(cuid())
+  idempotencyKey       String?
   title                String
   slug                 String               @unique
   prompt               String               @db.Text
@@ -427,6 +429,7 @@ model Activity {
   meetings             Meeting[]            @relation("MeetingActivity")
   relatedLibraryItem   LibraryItem?         @relation("ActivityLibraryItem", fields: [relatedLibraryItemId], references: [id], onDelete: SetNull)
 
+  @@unique([createdBy, idempotencyKey])
   @@index([status, position])
   @@index([courseId, status, position])
   @@index([lessonId, status])
@@ -572,32 +575,34 @@ model CommunitySpace {
 }
 
 model CommunityPost {
-  id          String              @id @default(cuid())
-  spaceId     String?
-  authorId    String
-  kind        CommunityPostKind   @default(DISCUSSION)
-  title       String
-  subtitle    String?             @db.Text
-  slug        String?             @unique
-  content     String              @db.Text
-  excerpt     String?             @db.Text
-  contentJson Json?
-  tags        String[]            @default([])
-  coverUrl    String?
-  status      ContentStatus       @default(PUBLISHED)
-  isPinned    Boolean             @default(false)
-  isFeatured  Boolean             @default(false)
-  featuredAt  DateTime?
-  publishedAt DateTime?
-  createdAt   DateTime            @default(now())
-  updatedAt   DateTime            @updatedAt
-  deletedAt   DateTime?
-  space       CommunitySpace?     @relation(fields: [spaceId], references: [id], onDelete: SetNull)
-  comments    CommunityComment[]
-  votes       PostVote[]
-  bookmarks   CommunityBookmark[]
-  followers   TopicFollow[]
+  id             String              @id @default(cuid())
+  spaceId        String?
+  authorId       String
+  idempotencyKey String?
+  kind           CommunityPostKind   @default(DISCUSSION)
+  title          String
+  subtitle       String?             @db.Text
+  slug           String?             @unique
+  content        String              @db.Text
+  excerpt        String?             @db.Text
+  contentJson    Json?
+  tags           String[]            @default([])
+  coverUrl       String?
+  status         ContentStatus       @default(PUBLISHED)
+  isPinned       Boolean             @default(false)
+  isFeatured     Boolean             @default(false)
+  featuredAt     DateTime?
+  publishedAt    DateTime?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  deletedAt      DateTime?
+  space          CommunitySpace?     @relation(fields: [spaceId], references: [id], onDelete: SetNull)
+  comments       CommunityComment[]
+  votes          PostVote[]
+  bookmarks      CommunityBookmark[]
+  followers      TopicFollow[]
 
+  @@unique([authorId, idempotencyKey])
   @@index([spaceId, status, createdAt])
   @@index([kind, status, createdAt])
   @@index([status, publishedAt, createdAt])
@@ -617,20 +622,22 @@ model CommunityBookmark {
 }
 
 model CommunityComment {
-  id          String             @id @default(cuid())
-  postId      String
-  authorId    String
-  parentId    String?
-  content     String             @db.Text
-  contentJson Json?
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
-  deletedAt   DateTime?
-  post        CommunityPost      @relation(fields: [postId], references: [id], onDelete: Cascade)
-  parent      CommunityComment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: SetNull)
-  replies     CommunityComment[] @relation("CommentReplies")
-  votes       CommentVote[]
+  id             String             @id @default(cuid())
+  postId         String
+  authorId       String
+  idempotencyKey String?
+  parentId       String?
+  content        String             @db.Text
+  contentJson    Json?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  deletedAt      DateTime?
+  post           CommunityPost      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  parent         CommunityComment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: SetNull)
+  replies        CommunityComment[] @relation("CommentReplies")
+  votes          CommentVote[]
 
+  @@unique([authorId, idempotencyKey])
   @@index([postId, createdAt])
   @@index([parentId, createdAt])
   @@index([authorId, createdAt])
@@ -660,8 +667,23 @@ model CommentVote {
   @@index([memberId, createdAt])
 }
 
+model MutationRateLimit {
+  id          String   @id @default(cuid())
+  memberId    String
+  action      String
+  windowStart DateTime
+  count       Int      @default(0)
+  updatedAt   DateTime @updatedAt
+  member      Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([memberId, action, windowStart])
+  @@index([memberId, action, updatedAt])
+  @@index([windowStart])
+}
+
 model Meeting {
   id                   String               @id @default(cuid())
+  idempotencyKey       String?
   title                String
   description          String?              @db.Text
   startsAt             DateTime
@@ -685,6 +707,7 @@ model Meeting {
   relatedLibraryItem   LibraryItem?         @relation("MeetingLibraryItem", fields: [relatedLibraryItemId], references: [id], onDelete: SetNull)
   participants         MeetingParticipant[]
 
+  @@unique([teacherId, idempotencyKey])
   @@index([status, startsAt])
   @@index([teacherId, startsAt])
   @@index([courseId, startsAt])
@@ -705,32 +728,34 @@ model MeetingParticipant {
 }
 
 model LibraryItem {
-  id          String            @id @default(cuid())
-  title       String
-  description String?           @db.Text
-  kind        LibraryItemKind
-  category    String?
-  tags        String[]
-  url         String            @db.Text
-  authors     String?           @db.Text
-  year        Int?
-  doi         String?
-  pmid        String?
-  storagePath String?           @db.Text
-  mimeType    String?
-  sizeBytes   BigInt?
-  status      ContentStatus     @default(DRAFT)
-  position    Int               @default(0)
-  createdBy   String?
-  updatedBy   String?
-  lessonId    String?
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
-  bookmarks   LibraryBookmark[]
-  meetings    Meeting[]         @relation("MeetingLibraryItem")
-  lesson      Lesson?           @relation(fields: [lessonId], references: [id], onDelete: SetNull)
-  activities  Activity[]        @relation("ActivityLibraryItem")
+  id             String            @id @default(cuid())
+  idempotencyKey String?
+  title          String
+  description    String?           @db.Text
+  kind           LibraryItemKind
+  category       String?
+  tags           String[]
+  url            String            @db.Text
+  authors        String?           @db.Text
+  year           Int?
+  doi            String?
+  pmid           String?
+  storagePath    String?           @db.Text
+  mimeType       String?
+  sizeBytes      BigInt?
+  status         ContentStatus     @default(DRAFT)
+  position       Int               @default(0)
+  createdBy      String?
+  updatedBy      String?
+  lessonId       String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  bookmarks      LibraryBookmark[]
+  meetings       Meeting[]         @relation("MeetingLibraryItem")
+  lesson         Lesson?           @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+  activities     Activity[]        @relation("ActivityLibraryItem")
 
+  @@unique([createdBy, idempotencyKey])
   @@index([status, category, position])
   @@index([status, createdAt])
   @@index([lessonId])

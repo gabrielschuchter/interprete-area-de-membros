@@ -9,6 +9,7 @@ import {
   isOwnedMemberAssetPath,
   memberAssetPathFromUrl,
 } from "@/lib/member-storage";
+import { consumeMutationRateLimit } from "@/lib/mutation-reliability";
 import {
   getOrCreateProfile,
   isValidUsername,
@@ -88,6 +89,11 @@ export const updateProfile = async (formData: FormData) => {
   if (!userId) {
     redirect("/sign-in");
   }
+
+  await consumeMutationRateLimit({
+    action: "profile.update",
+    memberId: userId,
+  });
 
   const parsed = profileSchema.safeParse({
     username: normalizeUsername(value(formData, "username")),

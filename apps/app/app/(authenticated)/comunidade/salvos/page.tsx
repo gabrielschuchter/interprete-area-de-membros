@@ -3,6 +3,10 @@ import { Button } from "@repo/design-system/components/ui/button";
 import { ArrowLeftIcon, BookmarkIcon } from "lucide-react";
 import Link from "next/link";
 import { MemberIdentity } from "@/components/community/member-identity";
+import {
+  SingleFlightForm,
+  SingleFlightSubmit,
+} from "@/components/mutations/single-flight-form";
 import { communityPostHref, getSavedCommunityPosts } from "@/lib/community";
 import { requireMemberId } from "@/lib/learning";
 import { toggleBookmark } from "../actions";
@@ -91,18 +95,26 @@ const SavedCommunityPage = async () => {
                       ))}
                     </div>
                   </div>
-                  <form action={toggleBookmark} className="shrink-0">
+                  <SingleFlightForm
+                    action={toggleBookmark}
+                    className="shrink-0"
+                  >
                     <input name="postId" type="hidden" value={post.id} />
                     <input
                       name="spaceSlug"
                       type="hidden"
                       value={post.space?.slug ?? ""}
                     />
-                    <Button size="sm" type="submit" variant="ghost">
+                    <input name="desired" type="hidden" value="off" />
+                    <SingleFlightSubmit
+                      pendingLabel="Salvando…"
+                      size="sm"
+                      variant="ghost"
+                    >
                       <BookmarkIcon aria-hidden="true" fill="currentColor" />{" "}
                       Remover
-                    </Button>
-                  </form>
+                    </SingleFlightSubmit>
+                  </SingleFlightForm>
                 </div>
               </article>
             ))}

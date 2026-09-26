@@ -10,6 +10,10 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { Stagger } from "@/components/motion/motion";
+import {
+  SingleFlightForm,
+  SingleFlightSubmit,
+} from "@/components/mutations/single-flight-form";
 import { requireMemberId } from "@/lib/learning";
 import { getLibraryCategories, getLibraryItems } from "@/lib/library";
 import { memberAssetUrl } from "@/lib/member-storage";
@@ -208,21 +212,25 @@ const LibraryPage = async ({ searchParams }: LibraryPageProperties) => {
                         {item.year ?? ""}
                         {item.authors ? ` · ${item.authors}` : ""}
                       </span>
-                      <form action={toggleLibraryBookmark}>
+                      <SingleFlightForm action={toggleLibraryBookmark}>
                         <input name="itemId" type="hidden" value={item.id} />
-                        <Button
+                        <input
+                          name="desired"
+                          type="hidden"
+                          value={item.isBookmarked ? "off" : "on"}
+                        />
+                        <SingleFlightSubmit
                           aria-label={
                             item.isBookmarked
                               ? "Remover dos salvos"
                               : "Salvar na biblioteca"
                           }
                           size="sm"
-                          type="submit"
                           variant="ghost"
                         >
                           {item.isBookmarked ? "Salvo" : "Salvar"}
-                        </Button>
-                      </form>
+                        </SingleFlightSubmit>
+                      </SingleFlightForm>
                     </div>
                     <h3 className="mt-5 font-display text-2xl leading-tight">
                       <Link

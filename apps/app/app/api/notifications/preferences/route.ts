@@ -2,6 +2,10 @@ import { auth } from "@repo/auth/server";
 import { database } from "@repo/database";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import {
+  consumeMutationRateLimit,
+  isMutationRateLimitError,
+} from "@/lib/mutation-reliability";
 import { getOrCreateNotificationPreferences } from "@/lib/notifications";
 
 const preferenceKeys = [
@@ -48,6 +52,10 @@ export const PUT = async (request: Request) => {
   }
 
   try {
+    await consumeMutationRateLimit({
+      action: "notification.mutation",
+      memberId: userId,
+    });
     const parsed = preferenceInput.safeParse(await request.json());
     if (!parsed.success) {
       return NextResponse.json(
@@ -62,6 +70,15 @@ export const PUT = async (request: Request) => {
     });
     return NextResponse.json({ preferences });
   } catch (error) {
+    if (isMutationRateLimitError(error)) {
+      return NextResponse.json(
+        { error: "Você está fazendo muitas alterações em sequência." },
+        {
+          status: 429,
+          headers: { "Retry-After": String(error.retryAfterSeconds) },
+        }
+      );
+    }
     console.error("Notification preferences update failed", error);
     return NextResponse.json(
       { error: "Não foi possível salvar sua preferência." },

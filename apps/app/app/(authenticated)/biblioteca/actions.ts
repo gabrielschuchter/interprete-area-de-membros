@@ -10,6 +10,11 @@ import {
   memberAssetUrl,
   uploadMemberAsset,
 } from "@/lib/member-storage";
+import { readIdempotencyKey } from "@/lib/mutation-contract";
+import {
+  consumeMutationRateLimit,
+  isUniqueConstraintError,
+} from "@/lib/mutation-reliability";
 
 const value = (entry: FormDataEntryValue | null) =>
   typeof entry === "string" ? entry.trim() : "";
@@ -93,6 +98,10 @@ const uploadLibraryFile = async (file: File, memberId: string) => {
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: multipart validation, storage upload, and metadata persistence must remain one atomic staff action.
 export const createLibraryItem = async (formData: FormData) => {
   const { userId } = await requireStaff();
+  await consumeMutationRateLimit({
+    action: "library.mutation",
+    memberId: userId,
+  });
   const title = value(formData.get("title"));
   const description = value(formData.get("description"));
   const kind = value(formData.get("kind"));
@@ -102,10 +111,12 @@ export const createLibraryItem = async (formData: FormData) => {
   const pmid = value(formData.get("pmid"));
   const lessonId = value(formData.get("lessonId"));
   const file = validLibraryFile(formData.get("file"));
+  const idempotencyKey = readIdempotencyKey(formData.get("idempotencyKey"));
 
   if (
     !(
       title &&
+      idempotencyKey &&
       (url || file) &&
       Object.values(LibraryItemKind).includes(kind as LibraryItemKind)
     )
@@ -122,6 +133,15 @@ export const createLibraryItem = async (formData: FormData) => {
     return;
   }
 
+  const existingItem = await database.libraryItem.findUnique({
+    where: { createdBy_idempotencyKey: { createdBy: userId, idempotencyKey } },
+    select: { id: true },
+  });
+  if (existingItem) {
+    revalidatePath("/admin/library");
+    return;
+  }
+
   let uploaded: Awaited<ReturnType<typeof uploadLibraryFile>> = null;
   if (file) {
     try {
@@ -134,35 +154,49 @@ export const createLibraryItem = async (formData: FormData) => {
     }
   }
 
-  await database.libraryItem.create({
-    data: {
-      title,
-      description: description || null,
-      kind: kind as LibraryItemKind,
-      category: category || null,
-      tags: tags
-        .split(",")
-        .map((tag) => tag.trim().toLowerCase())
-        .filter(Boolean),
-      url: uploaded?.url ?? url ?? "",
-      authors: value(formData.get("authors")) || null,
-      year: Number(value(formData.get("year"))) || null,
-      doi: value(formData.get("doi")) || null,
-      pmid: pmid || null,
-      storagePath: uploaded?.path ?? null,
-      mimeType: uploaded?.mimeType ?? null,
-      sizeBytes: uploaded?.sizeBytes ?? null,
-      lessonId: lessonId || null,
-      status: ContentStatus.DRAFT,
-      createdBy: userId,
-      updatedBy: userId,
-    },
-  });
+  try {
+    await database.libraryItem.create({
+      data: {
+        title,
+        description: description || null,
+        kind: kind as LibraryItemKind,
+        category: category || null,
+        tags: tags
+          .split(",")
+          .map((tag) => tag.trim().toLowerCase())
+          .filter(Boolean),
+        url: uploaded?.url ?? url ?? "",
+        authors: value(formData.get("authors")) || null,
+        year: Number(value(formData.get("year"))) || null,
+        doi: value(formData.get("doi")) || null,
+        pmid: pmid || null,
+        storagePath: uploaded?.path ?? null,
+        mimeType: uploaded?.mimeType ?? null,
+        sizeBytes: uploaded?.sizeBytes ?? null,
+        lessonId: lessonId || null,
+        status: ContentStatus.DRAFT,
+        createdBy: userId,
+        updatedBy: userId,
+        idempotencyKey,
+      },
+    });
+  } catch (error) {
+    if (!isUniqueConstraintError(error)) {
+      throw error;
+    }
+    if (uploaded?.path) {
+      await deleteMemberAsset(uploaded.path);
+    }
+  }
   revalidatePath("/admin/library");
 };
 
 export const setLibraryStatus = async (formData: FormData) => {
   const { userId } = await requireStaff();
+  await consumeMutationRateLimit({
+    action: "library.mutation",
+    memberId: userId,
+  });
   const id = value(formData.get("id"));
   const status = value(formData.get("status"));
   if (!(id && Object.values(ContentStatus).includes(status as ContentStatus))) {
@@ -179,6 +213,10 @@ export const setLibraryStatus = async (formData: FormData) => {
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: replacement uploads and safe cleanup are deliberately coordinated in one staff action.
 export const updateLibraryItem = async (formData: FormData) => {
   const { userId } = await requireStaff();
+  await consumeMutationRateLimit({
+    action: "library.mutation",
+    memberId: userId,
+  });
   const id = value(formData.get("id"));
   const title = value(formData.get("title"));
   const description = value(formData.get("description"));
@@ -273,10 +311,20 @@ export const updateLibraryItem = async (formData: FormData) => {
 export const toggleLibraryBookmark = async (formData: FormData) => {
   const memberId = await requireMemberId();
   const itemId = formData.get("itemId");
+  const desired = formData.get("desired");
 
-  if (typeof itemId !== "string" || !itemId) {
+  if (
+    typeof itemId !== "string" ||
+    !itemId ||
+    (desired !== "on" && desired !== "off")
+  ) {
     return;
   }
+
+  await consumeMutationRateLimit({
+    action: "library.bookmark",
+    memberId,
+  });
 
   const item = await database.libraryItem.findFirst({
     where: { id: itemId, status: ContentStatus.PUBLISHED },
@@ -287,15 +335,14 @@ export const toggleLibraryBookmark = async (formData: FormData) => {
     return;
   }
 
-  const existing = await database.libraryBookmark.findUnique({
-    where: { itemId_memberId: { itemId, memberId } },
-    select: { id: true },
-  });
-
-  if (existing) {
-    await database.libraryBookmark.delete({ where: { id: existing.id } });
+  if (desired === "on") {
+    await database.libraryBookmark.upsert({
+      where: { itemId_memberId: { itemId, memberId } },
+      create: { itemId, memberId },
+      update: {},
+    });
   } else {
-    await database.libraryBookmark.create({ data: { itemId, memberId } });
+    await database.libraryBookmark.deleteMany({ where: { itemId, memberId } });
   }
 
   revalidatePath("/biblioteca");

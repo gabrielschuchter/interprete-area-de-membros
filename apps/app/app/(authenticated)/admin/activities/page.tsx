@@ -1,9 +1,14 @@
+import { randomUUID } from "node:crypto";
 import { database } from "@repo/database";
 import { Badge } from "@repo/design-system/components/ui/badge";
 import { Button } from "@repo/design-system/components/ui/button";
 import { Input } from "@repo/design-system/components/ui/input";
 import { Textarea } from "@repo/design-system/components/ui/textarea";
 import Link from "next/link";
+import {
+  SingleFlightForm,
+  SingleFlightSubmit,
+} from "@/components/mutations/single-flight-form";
 import { getStaffActivities } from "@/lib/activities";
 import { getCourseOptions } from "@/lib/admin-learning";
 
@@ -282,7 +287,7 @@ const AdminActivitiesPage = async () => {
                           <p className="mt-3 whitespace-pre-wrap text-sm leading-6">
                             {submission.content}
                           </p>
-                          <form
+                          <SingleFlightForm
                             action={saveFeedback}
                             className="mt-4 grid gap-3"
                           >
@@ -299,11 +304,11 @@ const AdminActivitiesPage = async () => {
                               required
                             />
                             <div className="flex justify-end">
-                              <Button size="sm" type="submit">
+                              <SingleFlightSubmit size="sm">
                                 Salvar feedback
-                              </Button>
+                              </SingleFlightSubmit>
                             </div>
-                          </form>
+                          </SingleFlightForm>
                         </div>
                       ))}
                     </div>
@@ -316,6 +321,7 @@ const AdminActivitiesPage = async () => {
         <aside className="paper-surface border p-6 lg:sticky lg:top-24">
           <p className="brand-eyebrow">Nova prática</p>
           <form action={createActivity} className="mt-5 space-y-4">
+            <input name="idempotencyKey" type="hidden" value={randomUUID()} />
             <label className="block" htmlFor="activity-title">
               <span className="brand-eyebrow">Título</span>
               <Input

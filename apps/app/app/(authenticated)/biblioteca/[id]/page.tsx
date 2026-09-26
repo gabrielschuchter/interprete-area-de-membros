@@ -9,6 +9,10 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import {
+  SingleFlightForm,
+  SingleFlightSubmit,
+} from "@/components/mutations/single-flight-form";
 import { requireMemberId } from "@/lib/learning";
 import { getPublishedLibraryItem } from "@/lib/library";
 import { memberAssetUrl } from "@/lib/member-storage";
@@ -85,12 +89,17 @@ const LibraryItemPage = async ({ params }: LibraryItemPageProperties) => {
             {item.authors ? <span>{item.authors}</span> : null}
             {item.doi ? <span>DOI: {item.doi}</span> : null}
             {item.pmid ? <span>PMID: {item.pmid}</span> : null}
-            <form action={toggleLibraryBookmark}>
+            <SingleFlightForm action={toggleLibraryBookmark}>
               <input name="itemId" type="hidden" value={item.id} />
-              <Button size="sm" type="submit" variant="outline">
+              <input
+                name="desired"
+                type="hidden"
+                value={item.bookmarks.length > 0 ? "off" : "on"}
+              />
+              <SingleFlightSubmit size="sm" variant="outline">
                 {item.bookmarks.length > 0 ? "Remover dos salvos" : "Salvar"}
-              </Button>
-            </form>
+              </SingleFlightSubmit>
+            </SingleFlightForm>
           </div>
           {item.tags.length > 0 && (
             <div className="mt-7 flex flex-wrap gap-2">

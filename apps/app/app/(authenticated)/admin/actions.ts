@@ -16,6 +16,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin, requireStaff } from "@/lib/authorization";
 import { sanitizeRichDocument } from "@/lib/community-content";
+import { consumeMutationRateLimit } from "@/lib/mutation-reliability";
 import {
   notifyAnnouncement,
   notifyLessonAvailable,
@@ -64,6 +65,24 @@ const revalidateMemberSurfaces = (username?: string) => {
   if (username) {
     revalidatePath(`/membros/${username}`);
   }
+};
+
+const requireStaffMutation = async () => {
+  const session = await requireStaff();
+  await consumeMutationRateLimit({
+    action: "admin.mutation",
+    memberId: session.userId,
+  });
+  return session;
+};
+
+const requireAdminMutation = async () => {
+  const session = await requireAdmin();
+  await consumeMutationRateLimit({
+    action: "admin.mutation",
+    memberId: session.userId,
+  });
+  return session;
 };
 
 interface NotificationResource {
@@ -235,7 +254,7 @@ const notifyAvailableMembers = async (
 };
 
 export const setMemberRole = async (formData: FormData) => {
-  const { userId } = await requireAdmin();
+  const { userId } = await requireAdminMutation();
   const memberId = asText(formData.get("memberId"));
   const nextRole = asText(formData.get("role"));
 
@@ -306,7 +325,7 @@ const resourceExists = async (
 };
 
 export const setAccessGrant = async (formData: FormData) => {
-  await requireAdmin();
+  await requireAdminMutation();
 
   const memberId = asText(formData.get("memberId"));
   const resourceTypeValue = asText(formData.get("resourceType"));
@@ -366,7 +385,7 @@ export const setAccessGrant = async (formData: FormData) => {
 };
 
 export const removeAccessGrant = async (formData: FormData) => {
-  await requireAdmin();
+  await requireAdminMutation();
   const grantId = asText(formData.get("grantId"));
 
   if (!grantId) {
@@ -406,7 +425,7 @@ const asContent = (value: string): Prisma.InputJsonValue => {
 };
 
 export const createLearningPath = async (formData: FormData) => {
-  await requireStaff();
+  await requireStaffMutation();
   const title = asText(formData.get("title"));
   const slug = asText(formData.get("slug")).toLowerCase();
   const description = asText(formData.get("description"));
@@ -436,7 +455,7 @@ export const createLearningPath = async (formData: FormData) => {
 };
 
 export const createCourse = async (formData: FormData) => {
-  const { userId } = await requireStaff();
+  const { userId } = await requireStaffMutation();
   const title = asText(formData.get("title"));
   const subtitle = asText(formData.get("subtitle"));
   const slug = asText(formData.get("slug")).toLowerCase();
@@ -487,7 +506,7 @@ const copySlug = (slug: string) =>
   `${slug}-copia-${Date.now().toString(36)}`.slice(0, 80);
 
 export const duplicateCourse = async (formData: FormData) => {
-  const { userId } = await requireStaff();
+  const { userId } = await requireStaffMutation();
   const courseId = asText(formData.get("courseId"));
   if (!courseId) {
     return;
@@ -613,7 +632,7 @@ export const duplicateCourse = async (formData: FormData) => {
 };
 
 export const createModule = async (formData: FormData) => {
-  await requireStaff();
+  await requireStaffMutation();
   const courseId = asText(formData.get("courseId"));
   const title = asText(formData.get("title"));
   const slug = asText(formData.get("slug")).toLowerCase();
@@ -648,7 +667,7 @@ export const createModule = async (formData: FormData) => {
 };
 
 export const duplicateModule = async (formData: FormData) => {
-  const { userId } = await requireStaff();
+  const { userId } = await requireStaffMutation();
   const moduleId = asText(formData.get("moduleId"));
   if (!moduleId) {
     return;
@@ -733,7 +752,7 @@ export const duplicateModule = async (formData: FormData) => {
 };
 
 export const createLesson = async (formData: FormData) => {
-  const { userId } = await requireStaff();
+  const { userId } = await requireStaffMutation();
   const moduleId = asText(formData.get("moduleId"));
   const title = asText(formData.get("title"));
   const slug = asText(formData.get("slug")).toLowerCase();
@@ -779,7 +798,7 @@ export const createLesson = async (formData: FormData) => {
 };
 
 export const duplicateLesson = async (formData: FormData) => {
-  const { userId } = await requireStaff();
+  const { userId } = await requireStaffMutation();
   const lessonId = asText(formData.get("lessonId"));
   if (!lessonId) {
     return;
@@ -844,7 +863,7 @@ export const duplicateLesson = async (formData: FormData) => {
 };
 
 export const updateLesson = async (formData: FormData) => {
-  const { userId } = await requireStaff();
+  const { userId } = await requireStaffMutation();
   const lessonId = asText(formData.get("lessonId"));
   const title = asText(formData.get("title"));
   const slug = asText(formData.get("slug")).toLowerCase();
@@ -879,7 +898,7 @@ export const updateLesson = async (formData: FormData) => {
 };
 
 export const updateLearningPath = async (formData: FormData) => {
-  await requireStaff();
+  await requireStaffMutation();
   const pathId = asText(formData.get("pathId"));
   const title = asText(formData.get("title"));
   const slug = asText(formData.get("slug")).toLowerCase();
@@ -899,7 +918,7 @@ export const updateLearningPath = async (formData: FormData) => {
 };
 
 export const updateCourse = async (formData: FormData) => {
-  const { userId } = await requireStaff();
+  const { userId } = await requireStaffMutation();
   const courseId = asText(formData.get("courseId"));
   const title = asText(formData.get("title"));
   const subtitle = asText(formData.get("subtitle"));
@@ -938,7 +957,7 @@ export const updateCourse = async (formData: FormData) => {
 };
 
 export const updateModule = async (formData: FormData) => {
-  await requireStaff();
+  await requireStaffMutation();
   const moduleId = asText(formData.get("moduleId"));
   const title = asText(formData.get("title"));
   const slug = asText(formData.get("slug")).toLowerCase();
@@ -960,7 +979,7 @@ export const updateModule = async (formData: FormData) => {
 };
 
 export const createLessonResource = async (formData: FormData) => {
-  await requireStaff();
+  await requireStaffMutation();
   const lessonId = asText(formData.get("lessonId"));
   const title = asText(formData.get("title"));
   const kindValue = asText(formData.get("kind"));
@@ -1006,7 +1025,7 @@ export const createLessonResource = async (formData: FormData) => {
 };
 
 export const updateLessonResource = async (formData: FormData) => {
-  await requireStaff();
+  await requireStaffMutation();
   const resourceId = asText(formData.get("resourceId"));
   const title = asText(formData.get("title"));
   const kindValue = asText(formData.get("kind"));
@@ -1042,7 +1061,7 @@ export const updateLessonResource = async (formData: FormData) => {
 };
 
 export const removeLessonResource = async (formData: FormData) => {
-  await requireStaff();
+  await requireStaffMutation();
   const resourceId = asText(formData.get("resourceId"));
   if (!resourceId) {
     return;
@@ -1062,7 +1081,7 @@ export const removeLessonResource = async (formData: FormData) => {
 };
 
 export const moveModule = async (formData: FormData) => {
-  await requireStaff();
+  await requireStaffMutation();
   const moduleId = asText(formData.get("moduleId"));
   const direction = asText(formData.get("direction")) === "up" ? -1 : 1;
 
@@ -1108,7 +1127,7 @@ export const moveModule = async (formData: FormData) => {
 };
 
 export const moveLesson = async (formData: FormData) => {
-  await requireStaff();
+  await requireStaffMutation();
   const lessonId = asText(formData.get("lessonId"));
   const direction = asText(formData.get("direction")) === "up" ? -1 : 1;
 
@@ -1158,7 +1177,7 @@ export const moveLesson = async (formData: FormData) => {
 };
 
 export const setContentStatus = async (formData: FormData) => {
-  const { userId } = await requireStaff();
+  const { userId } = await requireStaffMutation();
   const entity = asText(formData.get("entity"));
   const id = asText(formData.get("id"));
   const nextStatus = asText(formData.get("status"));
@@ -1227,7 +1246,7 @@ const isAnnouncementAudience = (value: string): value is AnnouncementAudience =>
   announcementAudiences.includes(value as AnnouncementAudience);
 
 export const createAnnouncement = async (formData: FormData) => {
-  const { userId } = await requireStaff();
+  const { userId } = await requireStaffMutation();
   const title = asText(formData.get("title")).slice(0, 180);
   const body = asText(formData.get("body")).slice(0, 10_000);
   const audienceValue = asText(formData.get("audience"));

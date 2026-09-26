@@ -3,6 +3,10 @@ import { Button } from "@repo/design-system/components/ui/button";
 import { ArrowLeftIcon, ExternalLinkIcon } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import {
+  SingleFlightForm,
+  SingleFlightSubmit,
+} from "@/components/mutations/single-flight-form";
 import { getPublishedActivity } from "@/lib/activities";
 import { requireMemberId } from "@/lib/learning";
 import { memberAssetUrl } from "@/lib/member-storage";
@@ -103,7 +107,10 @@ const ActivityPage = async ({ params }: ActivityPageProperties) => {
                 </p>
               </div>
             ) : null}
-            <form action={submitActivity} className="mt-6 space-y-4">
+            <SingleFlightForm
+              action={submitActivity}
+              className="mt-6 space-y-4"
+            >
               <input name="activityId" type="hidden" value={activity.id} />
               {requiresText && (
                 <label className="block" htmlFor="activity-response">
@@ -144,14 +151,14 @@ const ActivityPage = async ({ params }: ActivityPageProperties) => {
                   {submission.attachmentName ?? "Abrir arquivo enviado"}
                 </a>
               ) : null}
-              <Button className="w-full" type="submit">
+              <SingleFlightSubmit className="w-full" pendingLabel="Enviando…">
                 Enviar resposta
-              </Button>
+              </SingleFlightSubmit>
               <p className="text-muted-foreground text-xs leading-5">
                 O envio substitui a versão anterior e fica visível apenas para
                 você e para a equipe docente.
               </p>
-            </form>
+            </SingleFlightForm>
             {activity.course && (
               <Button asChild className="mt-6 w-full" variant="ghost">
                 <Link href={`/aprender/cursos/${activity.course.slug}`}>

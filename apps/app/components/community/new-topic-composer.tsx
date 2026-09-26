@@ -33,6 +33,7 @@ export const NewTopicComposer = ({
   } | null>(null);
   const [hasError, setHasError] = useState(false);
   const started = useRef(false);
+  const idempotencyKey = useRef(crypto.randomUUID());
 
   useEffect(() => {
     if (started.current) {
@@ -41,6 +42,7 @@ export const NewTopicComposer = ({
     started.current = true;
     const formData = new FormData();
     formData.set("spaceId", initialSpaceId);
+    formData.set("idempotencyKey", idempotencyKey.current);
     createDraft(formData)
       .then((result) => {
         if (result.ok) {

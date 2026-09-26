@@ -13,6 +13,10 @@ import Link from "next/link";
 import { MemberIdentity } from "@/components/community/member-identity";
 import { Stagger } from "@/components/motion/motion";
 import {
+  SingleFlightForm,
+  SingleFlightSubmit,
+} from "@/components/mutations/single-flight-form";
+import {
   communityPostHref,
   getCommunityFeed,
   getCommunitySpaces,
@@ -181,7 +185,7 @@ const CommunityPage = async ({ searchParams }: CommunityPageProperties) => {
                   (post) => (
                     <article className="py-6" key={post.id}>
                       <div className="flex gap-4">
-                        <form
+                        <SingleFlightForm
                           action={togglePostVote}
                           className="hidden shrink-0 pt-1 sm:block"
                         >
@@ -191,22 +195,27 @@ const CommunityPage = async ({ searchParams }: CommunityPageProperties) => {
                             type="hidden"
                             value={post.space?.slug ?? ""}
                           />
-                          <Button
+                          <input
+                            name="desired"
+                            type="hidden"
+                            value={post.votes.length > 0 ? "off" : "on"}
+                          />
+                          <SingleFlightSubmit
                             aria-label={
                               post.votes.length > 0
                                 ? "Remover apoio"
                                 : "Apoiar conteúdo"
                             }
+                            pendingLabel="…"
                             size="sm"
-                            type="submit"
                             variant={
                               post.votes.length > 0 ? "default" : "ghost"
                             }
                           >
                             <ThumbsUpIcon aria-hidden="true" />{" "}
                             {post._count.votes}
-                          </Button>
-                        </form>
+                          </SingleFlightSubmit>
+                        </SingleFlightForm>
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-muted-foreground text-xs">
                             <MemberIdentity
@@ -287,7 +296,7 @@ const CommunityPage = async ({ searchParams }: CommunityPageProperties) => {
                               {post._count.votes} apoios
                             </span>
                             <span>{post.readingMinutes} min de leitura</span>
-                            <form action={toggleBookmark}>
+                            <SingleFlightForm action={toggleBookmark}>
                               <input
                                 name="postId"
                                 type="hidden"
@@ -298,9 +307,16 @@ const CommunityPage = async ({ searchParams }: CommunityPageProperties) => {
                                 type="hidden"
                                 value={post.space?.slug ?? ""}
                               />
-                              <button
+                              <input
+                                name="desired"
+                                type="hidden"
+                                value={post.bookmarks.length > 0 ? "off" : "on"}
+                              />
+                              <SingleFlightSubmit
                                 className="inline-flex items-center gap-1.5 underline-offset-4 hover:underline"
-                                type="submit"
+                                pendingLabel="Salvando…"
+                                size="sm"
+                                variant="ghost"
                               >
                                 <BookmarkIcon
                                   aria-hidden="true"
@@ -312,8 +328,8 @@ const CommunityPage = async ({ searchParams }: CommunityPageProperties) => {
                                   }
                                 />
                                 {post.bookmarks.length > 0 ? "Salvo" : "Salvar"}
-                              </button>
-                            </form>
+                              </SingleFlightSubmit>
+                            </SingleFlightForm>
                           </div>
                         </div>
                       </div>

@@ -1,6 +1,10 @@
 import { auth } from "@repo/auth/server";
 import { ContentStatus, database } from "@repo/database";
 import { NextResponse } from "next/server";
+import {
+  consumeMutationRateLimit,
+  isMutationRateLimitError,
+} from "@/lib/mutation-reliability";
 
 export const POST = async (request: Request) => {
   const { userId } = await auth();
@@ -8,6 +12,10 @@ export const POST = async (request: Request) => {
     return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
   }
   try {
+    await consumeMutationRateLimit({
+      action: "notification.mutation",
+      memberId: userId,
+    });
     const payload = (await request.json()) as {
       muted?: unknown;
       topicId?: unknown;
@@ -40,6 +48,15 @@ export const POST = async (request: Request) => {
     });
     return NextResponse.json({ ok: true, muted });
   } catch (error) {
+    if (isMutationRateLimitError(error)) {
+      return NextResponse.json(
+        { error: "Você está fazendo muitas ações em sequência." },
+        {
+          status: 429,
+          headers: { "Retry-After": String(error.retryAfterSeconds) },
+        }
+      );
+    }
     console.error("Notification mute failed", error);
     return NextResponse.json(
       { error: "Não foi possível atualizar o acompanhamento." },

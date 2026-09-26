@@ -10,6 +10,10 @@ import {
   setPostStatus,
   updateDraft,
 } from "@/app/(authenticated)/comunidade/actions";
+import {
+  SingleFlightForm,
+  SingleFlightSubmit,
+} from "@/components/mutations/single-flight-form";
 import { TopicEditor } from "./topic-editor";
 
 interface TopicSpaceOption {
@@ -135,7 +139,7 @@ export const TopicDraftComposer = ({
               <EyeIcon aria-hidden="true" /> Pré-visualizar
             </Link>
           </Button>
-          <form action={setPostStatus}>
+          <SingleFlightForm action={setPostStatus}>
             <input name="postId" type="hidden" value={postId} />
             <input name="spaceSlug" type="hidden" value={spaceSlug} />
             <input name="status" type="hidden" value="PUBLISHED" />
@@ -144,10 +148,10 @@ export const TopicDraftComposer = ({
               type="hidden"
               value={groupMentionConfirmedRef.current ? "1" : "0"}
             />
-            <Button size="sm" type="submit">
+            <SingleFlightSubmit pendingLabel="Publicando…" size="sm">
               Publicar tópico
-            </Button>
-          </form>
+            </SingleFlightSubmit>
+          </SingleFlightForm>
         </div>
       </div>
 

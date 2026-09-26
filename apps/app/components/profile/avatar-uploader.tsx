@@ -17,6 +17,7 @@ export const AvatarUploader = ({
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState("");
   const uploadedUrlRef = useRef<string | null>(null);
+  const uploadInFlight = useRef(false);
 
   useEffect(() => {
     return () => {
@@ -47,6 +48,9 @@ export const AvatarUploader = ({
   };
 
   const upload = async (file: File) => {
+    if (uploadInFlight.current) {
+      return;
+    }
     if (!new Set(["image/jpeg", "image/png", "image/webp"]).has(file.type)) {
       setError("Envie uma imagem JPG, PNG ou WebP.");
       return;
@@ -56,6 +60,7 @@ export const AvatarUploader = ({
       return;
     }
 
+    uploadInFlight.current = true;
     setError("");
     const localPreviewUrl = URL.createObjectURL(file);
     setPreviewUrl(localPreviewUrl);
@@ -88,6 +93,7 @@ export const AvatarUploader = ({
           : "Não foi possível enviar a imagem."
       );
     } finally {
+      uploadInFlight.current = false;
       setIsUploading(false);
     }
   };

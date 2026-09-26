@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { Badge } from "@repo/design-system/components/ui/badge";
 import { Button } from "@repo/design-system/components/ui/button";
 import { Input } from "@repo/design-system/components/ui/input";
@@ -213,6 +214,7 @@ const AdminLibraryPage = async () => {
             className="mt-5 space-y-4"
             encType="multipart/form-data"
           >
+            <input name="idempotencyKey" type="hidden" value={randomUUID()} />
             <label className="block" htmlFor="library-title">
               <span className="brand-eyebrow">Título</span>
               <Input

@@ -9,6 +9,10 @@ import { Input } from "@repo/design-system/components/ui/input";
 import { Textarea } from "@repo/design-system/components/ui/textarea";
 import { CheckCircle2Icon, ExternalLinkIcon, MailIcon } from "lucide-react";
 import Link from "next/link";
+import {
+  SingleFlightForm,
+  SingleFlightSubmit,
+} from "@/components/mutations/single-flight-form";
 import { AvatarUploader } from "@/components/profile/avatar-uploader";
 import { getCurrentUser } from "@/lib/auth";
 import { getMemberRole } from "@/lib/authorization";
@@ -163,7 +167,7 @@ const ProfilePage = async ({ searchParams }: ProfilePageProperties) => {
               </span>
             </div>
 
-            <form
+            <SingleFlightForm
               action={updateProfile}
               className="mt-10 space-y-7 border-border border-t pt-8"
             >
@@ -286,9 +290,11 @@ const ProfilePage = async ({ searchParams }: ProfilePageProperties) => {
               </div>
 
               <div className="flex justify-end border-border border-t pt-6">
-                <Button type="submit">Salvar perfil</Button>
+                <SingleFlightSubmit pendingLabel="Salvando…">
+                  Salvar perfil
+                </SingleFlightSubmit>
               </div>
-            </form>
+            </SingleFlightForm>
           </section>
 
           <aside className="grid h-fit gap-4 sm:grid-cols-3 lg:grid-cols-1">
