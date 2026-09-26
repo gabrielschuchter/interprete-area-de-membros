@@ -33,7 +33,7 @@ const isHlsAsset = (mimeType: string | null) =>
   mimeType === "audio/mpegurl";
 const hlsLineBreaks = /\r?\n/;
 const hlsUriAttribute = /URI="([^"]+)"/;
-const HLS_TOKEN_TTL_SECONDS = 60 * 60 * 6;
+const HLS_TOKEN_TTL_SECONDS = 60 * 30;
 
 interface HlsPlaybackTokenPayload {
   readonly assetId: string;
@@ -45,6 +45,7 @@ const encodeTokenPart = (value: string) =>
   Buffer.from(value, "utf8").toString("base64url");
 
 const hlsTokenSecret = () =>
+  process.env.LEARNING_ASSET_TOKEN_SECRET ??
   process.env.SUPABASE_SECRET_KEY ??
   process.env.SUPABASE_SERVICE_ROLE_KEY ??
   null;
@@ -372,16 +373,15 @@ export const GET = async (
   const requestUrl = new URL(request.url);
   const hlsPart = requestUrl.searchParams.get("hlsPart");
   const hlsToken = requestUrl.searchParams.get("hlsToken");
+  const memberId = await requireMemberId();
 
-  // The playlist request performs the full member/asset authorization once.
-  // Subsequent segment requests use a short-lived, asset-bound capability
-  // instead of repeating a Prisma query and a Supabase signing request for
-  // every 1–8 MB HLS segment.
+  // Every request must still carry a valid Clerk session. The short-lived,
+  // asset-bound capability only avoids repeating Prisma authorization and a
+  // Supabase signing operation for every 1–8 MB HLS segment.
   if (hlsPart && hlsToken) {
     return serveTokenizedHlsSegment(request, assetId, hlsPart, hlsToken);
   }
 
-  const memberId = await requireMemberId();
   const asset = await getAccessibleAsset(assetId, memberId);
 
   if (!asset) {
