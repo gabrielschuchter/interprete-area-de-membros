@@ -1,7 +1,5 @@
 "use client";
 
-import { interpreteAuthAppearance } from "@repo/auth/appearance";
-import { UserButton } from "@repo/auth/client";
 import {
   Avatar,
   AvatarFallback,
@@ -27,7 +25,7 @@ import {
   HouseIcon,
   LibraryIcon,
   MessageCircleIcon,
-  UserRoundIcon,
+  SettingsIcon,
   VideoIcon,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
@@ -55,7 +53,6 @@ const navigation = [
   },
   { href: "/biblioteca", label: "Biblioteca", icon: LibraryIcon },
   { href: "/encontros", label: "Encontros", icon: CalendarDaysIcon },
-  { href: "/perfil", label: "Perfil", icon: UserRoundIcon },
 ] as const;
 
 export const GlobalSidebar = ({
@@ -187,12 +184,33 @@ export const GlobalSidebar = ({
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <div className="flex min-w-0 flex-1 items-center gap-2 px-2 py-1">
-                <IntentLink
-                  aria-label="Abrir meu perfil"
-                  className="flex min-w-0 flex-1 items-center gap-2 rounded-sm py-1 text-sidebar-foreground hover:bg-sidebar-accent"
-                  href="/perfil"
-                >
+              <SidebarMenuButton
+                asChild
+                className="rounded-sm data-[active=true]:border-sidebar-primary data-[active=true]:border-l-2 data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground"
+                isActive={
+                  pathname === "/configuracoes" ||
+                  pathname.startsWith("/configuracoes/")
+                }
+                tooltip="Configurações"
+              >
+                <IntentLink href="/configuracoes">
+                  <SettingsIcon />
+                  <span className="group-data-[collapsible=icon]:hidden">
+                    Configurações
+                  </span>
+                </IntentLink>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                className="rounded-sm data-[active=true]:border-sidebar-primary data-[active=true]:border-l-2 data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground"
+                isActive={
+                  pathname === "/perfil" || pathname.startsWith("/perfil/")
+                }
+                tooltip="Perfil"
+              >
+                <IntentLink aria-label="Abrir meu perfil" href="/perfil">
                   <Avatar className="size-7 shrink-0">
                     {avatarUrl ? <AvatarImage alt="" src={avatarUrl} /> : null}
                     <AvatarFallback className="bg-brand-action text-primary-foreground text-xs">
@@ -209,18 +227,7 @@ export const GlobalSidebar = ({
                     {displayName}
                   </span>
                 </IntentLink>
-                <UserButton
-                  appearance={{
-                    elements: {
-                      rootBox: "shrink-0",
-                      userButtonBox: "rounded-sm p-1 hover:bg-sidebar-accent",
-                      userButtonAvatarBox: "size-6",
-                    },
-                  }}
-                  showName={false}
-                  userProfileProps={{ appearance: interpreteAuthAppearance }}
-                />
-              </div>
+              </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarFooter>
