@@ -4,6 +4,7 @@ import { useSignIn } from "@clerk/nextjs/legacy";
 import { type FormEvent, useState } from "react";
 
 type ResetStep = "code" | "password" | null;
+type SecondFactorStrategy = "email_code" | "totp" | null;
 
 interface ClerkError {
   errors?: Array<{ longMessage?: string; message?: string }>;
@@ -14,6 +15,38 @@ interface ClerkError {
 const fallbackError =
   "Não foi possível entrar. Confira seus dados e tente novamente.";
 const signedOutErrorPattern = /you are signed out/i;
+const incorrectPasswordPattern =
+  /password is incorrect\. try again, or use another method\.?/i;
+const missingAccountPattern =
+  /couldn.t find your account|account could not be found/i;
+const invalidIdentifierPattern =
+  /identifier is invalid|email address is invalid/i;
+const incorrectCodePattern =
+  /verification code is incorrect|code is incorrect/i;
+const genericClerkErrorPattern = /something went wrong|internal error/i;
+
+const translateClerkError = (message: string) => {
+  const translations: [RegExp, string][] = [
+    [
+      incorrectPasswordPattern,
+      "A senha está incorreta. Tente novamente ou use outro método.",
+    ],
+    [missingAccountPattern, "Não encontramos uma conta com esses dados."],
+    [invalidIdentifierPattern, "Informe um e-mail válido."],
+    [
+      incorrectCodePattern,
+      "O código informado está incorreto. Confira e tente novamente.",
+    ],
+    [
+      genericClerkErrorPattern,
+      "Algo deu errado. Tente novamente em alguns instantes.",
+    ],
+  ];
+
+  return (
+    translations.find(([pattern]) => pattern.test(message))?.[1] ?? message
+  );
+};
 
 const getErrorMessage = (error: unknown) => {
   const clerkError = (
@@ -29,7 +62,7 @@ const getErrorMessage = (error: unknown) => {
     return fallbackError;
   }
 
-  return message;
+  return translateClerkError(message);
 };
 
 const getRedirectPath = () => {
@@ -58,12 +91,17 @@ const getRedirectPath = () => {
   }
 };
 
+// The component owns the finite-state rendering for password, reset, and MFA flows.
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: authentication states are intentionally kept together for one accessible form
 export const SignIn = () => {
   const { isLoaded, setActive, signIn } = useSignIn();
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [resetCode, setResetCode] = useState("");
   const [resetStep, setResetStep] = useState<ResetStep>(null);
+  const [secondFactorCode, setSecondFactorCode] = useState("");
+  const [secondFactorStrategy, setSecondFactorStrategy] =
+    useState<SecondFactorStrategy>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -116,11 +154,30 @@ export const SignIn = () => {
     throw new Error("A nova senha ainda não pôde ser definida.");
   };
 
+  const submitSecondFactor = async () => {
+    if (!secondFactorStrategy) {
+      throw new Error("Selecione uma forma de confirmação para continuar.");
+    }
+
+    const result = await signIn.attemptSecondFactor({
+      strategy: secondFactorStrategy,
+      code: secondFactorCode.trim(),
+    });
+
+    if (result.status === "complete") {
+      await activateSession(result.createdSessionId);
+      return;
+    }
+
+    throw new Error(
+      "Não foi possível confirmar a segunda etapa. Confira o código e tente novamente."
+    );
+  };
+
   const submitPassword = async () => {
     const result = await signIn.create({
       identifier: identifier.trim(),
       password,
-      strategy: "password",
     });
 
     if (result.status === "complete") {
@@ -129,8 +186,30 @@ export const SignIn = () => {
     }
 
     if (result.status === "needs_second_factor") {
+      const emailCodeFactor = result.supportedSecondFactors?.find(
+        (factor) => factor.strategy === "email_code"
+      );
+
+      if (emailCodeFactor) {
+        await signIn.prepareSecondFactor({
+          strategy: "email_code",
+          emailAddressId: emailCodeFactor.emailAddressId,
+        });
+        setSecondFactorStrategy("email_code");
+        return;
+      }
+
+      const totpFactor = result.supportedSecondFactors?.find(
+        (factor) => factor.strategy === "totp"
+      );
+
+      if (totpFactor) {
+        setSecondFactorStrategy("totp");
+        return;
+      }
+
       throw new Error(
-        "Esta conta exige uma segunda etapa de segurança. Use o fluxo de autenticação disponível para concluir o acesso."
+        "Sua conta exige uma segunda etapa de segurança que não está disponível nesta tela."
       );
     }
 
@@ -155,6 +234,11 @@ export const SignIn = () => {
 
       if (resetStep === "password") {
         await submitNewPassword();
+        return;
+      }
+
+      if (secondFactorStrategy) {
+        await submitSecondFactor();
         return;
       }
 
@@ -201,6 +285,8 @@ export const SignIn = () => {
 
     setResetStep(null);
     setResetCode("");
+    setSecondFactorStrategy(null);
+    setSecondFactorCode("");
     setPassword("");
     setErrorMessage("");
   };
@@ -213,7 +299,12 @@ export const SignIn = () => {
     primaryLabel = "Confirmar código";
   } else if (resetStep === "password") {
     primaryLabel = "Definir senha";
+  } else if (secondFactorStrategy) {
+    primaryLabel = "Confirmar acesso";
   }
+
+  const isSecondFactorFlow = secondFactorStrategy !== null;
+  const isVerificationFlow = isResetFlow || isSecondFactorFlow;
 
   return (
     <form
@@ -221,7 +312,7 @@ export const SignIn = () => {
       className="interprete-login__form"
       onSubmit={handleSubmit}
     >
-      {isResetFlow ? (
+      {isVerificationFlow ? (
         <button
           className="interprete-login__back"
           disabled={isSubmitting}
@@ -238,7 +329,7 @@ export const SignIn = () => {
           <input
             autoComplete="email"
             className="interprete-login__input"
-            disabled={isSubmitting || isResetFlow}
+            disabled={isSubmitting || isVerificationFlow}
             id="interprete-login-email"
             onChange={(event) => setIdentifier(event.target.value)}
             placeholder="seu@email.com"
@@ -266,6 +357,27 @@ export const SignIn = () => {
         </div>
       ) : null}
 
+      {isSecondFactorFlow ? (
+        <div className="interprete-login__field">
+          <label htmlFor="interprete-login-second-factor">
+            {secondFactorStrategy === "email_code"
+              ? "Código enviado por e-mail"
+              : "Código do aplicativo autenticador"}
+          </label>
+          <input
+            autoComplete="one-time-code"
+            className="interprete-login__input"
+            disabled={isSubmitting}
+            id="interprete-login-second-factor"
+            inputMode="numeric"
+            onChange={(event) => setSecondFactorCode(event.target.value)}
+            placeholder="Digite o código de segurança"
+            required
+            value={secondFactorCode}
+          />
+        </div>
+      ) : null}
+
       {resetStep === "password" ? (
         <div className="interprete-login__field">
           <label htmlFor="interprete-login-new-password">Nova senha</label>
@@ -283,7 +395,7 @@ export const SignIn = () => {
         </div>
       ) : null}
 
-      {isResetFlow ? null : (
+      {isVerificationFlow ? null : (
         <div className="interprete-login__field">
           <label htmlFor="interprete-login-password">Senha</label>
           <div className="interprete-login__input-wrap interprete-login__input-wrap--password">
@@ -330,7 +442,7 @@ export const SignIn = () => {
         <span aria-hidden="true">→</span>
       </button>
 
-      {isResetFlow ? null : (
+      {isVerificationFlow ? null : (
         <>
           <div aria-hidden="true" className="interprete-login__divider">
             <span />
