@@ -163,6 +163,15 @@ const publishRequestIsValid = (
   (!documentHasGroupMention(post.contentJson) ||
     textValue(formData.get("confirmGroupMention")) === "1");
 
+const publishStatusError = (
+  post: { readonly contentJson: unknown },
+  formData: FormData
+) =>
+  documentHasGroupMention(post.contentJson) &&
+  textValue(formData.get("confirmGroupMention")) !== "1"
+    ? "Abra o editor para revisar e confirmar as notificações do grupo."
+    : "Abra o editor, adicione um título e algum conteúdo antes de publicar.";
+
 const documentAssetPaths = (value: unknown, result = new Set<string>()) => {
   if (!value || typeof value !== "object") {
     return result;
@@ -820,7 +829,10 @@ export const setPostStatus = async (formData: FormData) => {
       Object.values(ContentStatus).includes(requestedStatus as ContentStatus)
     )
   ) {
-    return;
+    return {
+      ok: false as const,
+      error: "Não foi possível atualizar esta publicação.",
+    };
   }
   await consumeMutationRateLimit({
     action: "community.mutation",
@@ -850,13 +862,19 @@ export const setPostStatus = async (formData: FormData) => {
         (requestedStatus === ContentStatus.ARCHIVED && canModerate(role)))
     )
   ) {
-    return;
+    return {
+      ok: false as const,
+      error: "Você não pode alterar esta publicação.",
+    };
   }
   if (
     requestedStatus === ContentStatus.PUBLISHED &&
     !publishRequestIsValid(post, formData)
   ) {
-    return;
+    return {
+      ok: false as const,
+      error: publishStatusError(post, formData),
+    };
   }
   const slug =
     requestedStatus === ContentStatus.PUBLISHED
@@ -900,7 +918,7 @@ export const toggleBookmark = async (formData: FormData) => {
   const spaceSlug = textValue(formData.get("spaceSlug"));
   const desired = textValue(formData.get("desired"));
   if (!(userId && postId && (desired === "on" || desired === "off"))) {
-    return;
+    return { ok: false as const, error: "Não foi possível salvar agora." };
   }
   await consumeMutationRateLimit({
     action: "community.bookmark",
@@ -911,7 +929,10 @@ export const toggleBookmark = async (formData: FormData) => {
     select: { id: true, slug: true, space: { select: { slug: true } } },
   });
   if (!post) {
-    return;
+    return {
+      ok: false as const,
+      error: "Esta publicação não está disponível.",
+    };
   }
   if (desired === "on") {
     await database.communityBookmark.upsert({
@@ -925,6 +946,7 @@ export const toggleBookmark = async (formData: FormData) => {
     });
   }
   revalidateCommunity(post.space?.slug, postId, post.slug ?? undefined);
+  return { ok: true as const };
 };
 
 export const toggleTopicFollow = async (formData: FormData) => {
@@ -1141,7 +1163,7 @@ export const togglePostVote = async (formData: FormData) => {
   const spaceSlug = textValue(formData.get("spaceSlug"));
   const desired = textValue(formData.get("desired"));
   if (!(userId && postId && (desired === "on" || desired === "off"))) {
-    return;
+    return { ok: false as const, error: "Não foi possível interagir agora." };
   }
   await consumeMutationRateLimit({
     action: "community.vote",
@@ -1152,7 +1174,10 @@ export const togglePostVote = async (formData: FormData) => {
     select: { id: true, slug: true, space: { select: { slug: true } } },
   });
   if (!post) {
-    return;
+    return {
+      ok: false as const,
+      error: "Esta publicação não está disponível.",
+    };
   }
   if (desired === "on") {
     await database.postVote.upsert({
@@ -1166,6 +1191,7 @@ export const togglePostVote = async (formData: FormData) => {
     });
   }
   revalidateCommunity(post.space?.slug, postId, post.slug ?? undefined);
+  return { ok: true as const };
 };
 
 export const toggleCommentVote = async (formData: FormData) => {

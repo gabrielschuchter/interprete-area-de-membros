@@ -29,6 +29,18 @@ interface PostActionState {
 const actionError =
   "Não foi possível salvar esta alteração. Tente novamente em instantes.";
 
+const ensureActionSucceeded = (result: unknown) => {
+  if (
+    result &&
+    typeof result === "object" &&
+    "ok" in result &&
+    result.ok === false
+  ) {
+    const error = "error" in result ? result.error : undefined;
+    throw new Error(typeof error === "string" ? error : actionError);
+  }
+};
+
 export const CommunityPostActions = ({
   className = "inline-flex flex-wrap items-center gap-2",
   initialBookmarked,
@@ -84,9 +96,9 @@ export const CommunityPostActions = ({
     startTransition(async () => {
       try {
         if (action === "vote") {
-          await togglePostVote(formData);
+          ensureActionSucceeded(await togglePostVote(formData));
         } else {
-          await toggleBookmark(formData);
+          ensureActionSucceeded(await toggleBookmark(formData));
         }
         router.refresh();
       } catch {

@@ -4,7 +4,9 @@ import { Button } from "@repo/design-system/components/ui/button";
 import { useEffect, useRef } from "react";
 import { useFormStatus } from "react-dom";
 
-type ServerFormAction = (formData: FormData) => void | Promise<void>;
+type ServerFormAction =
+  | ((formData: FormData) => void)
+  | ((formData: FormData) => Promise<unknown>);
 
 interface SingleFlightFormProperties
   extends Omit<React.ComponentProps<"form">, "action" | "onSubmit"> {
@@ -37,7 +39,7 @@ export const SingleFlightForm = ({
   return (
     <form
       {...props}
-      action={action}
+      action={action as (formData: FormData) => void | Promise<void>}
       onSubmit={(event) => {
         if (lockedRef.current) {
           event.preventDefault();

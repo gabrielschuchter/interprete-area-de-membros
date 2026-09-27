@@ -1,5 +1,4 @@
 import { Badge } from "@repo/design-system/components/ui/badge";
-import { Button } from "@repo/design-system/components/ui/button";
 import { Input } from "@repo/design-system/components/ui/input";
 import { Textarea } from "@repo/design-system/components/ui/textarea";
 import Link from "next/link";
@@ -177,22 +176,22 @@ const AdminCommunityPage = async () => {
                   </div>
                   <div className="mt-4 flex flex-wrap gap-2">
                     {space.status !== "PUBLISHED" && (
-                      <form action={setSpaceStatus}>
+                      <SingleFlightForm action={setSpaceStatus}>
                         <input name="spaceId" type="hidden" value={space.id} />
                         <input name="status" type="hidden" value="PUBLISHED" />
-                        <Button size="sm" type="submit">
+                        <SingleFlightSubmit size="sm">
                           Publicar sala
-                        </Button>
-                      </form>
+                        </SingleFlightSubmit>
+                      </SingleFlightForm>
                     )}
                     {space.status === "PUBLISHED" && (
-                      <form action={setSpaceStatus}>
+                      <SingleFlightForm action={setSpaceStatus}>
                         <input name="spaceId" type="hidden" value={space.id} />
                         <input name="status" type="hidden" value="ARCHIVED" />
-                        <Button size="sm" type="submit" variant="outline">
+                        <SingleFlightSubmit size="sm" variant="outline">
                           Arquivar sala
-                        </Button>
-                      </form>
+                        </SingleFlightSubmit>
+                      </SingleFlightForm>
                     )}
                     <SingleFlightForm action={toggleSpaceComments}>
                       <input name="spaceId" type="hidden" value={space.id} />
@@ -212,7 +211,10 @@ const AdminCommunityPage = async () => {
                     <summary className="cursor-pointer text-muted-foreground text-sm underline underline-offset-4">
                       Editar espaço
                     </summary>
-                    <form action={updateSpace} className="mt-4 grid gap-3">
+                    <SingleFlightForm
+                      action={updateSpace}
+                      className="mt-4 grid gap-3"
+                    >
                       <input name="spaceId" type="hidden" value={space.id} />
                       <Input defaultValue={space.title} name="title" required />
                       <Input defaultValue={space.slug} name="slug" required />
@@ -221,10 +223,10 @@ const AdminCommunityPage = async () => {
                         name="description"
                         placeholder="Descrição"
                       />
-                      <Button size="sm" type="submit">
+                      <SingleFlightSubmit size="sm">
                         Salvar espaço
-                      </Button>
-                    </form>
+                      </SingleFlightSubmit>
+                    </SingleFlightForm>
                   </details>
                   <div className="mt-5 divide-y border-border border-y">
                     {space.posts.length === 0 ? (
@@ -245,7 +247,7 @@ const AdminCommunityPage = async () => {
                                 : "Membro"}
                             </p>
                           </div>
-                          <form action={softDeletePost}>
+                          <SingleFlightForm action={softDeletePost}>
                             <input
                               name="postId"
                               type="hidden"
@@ -256,10 +258,10 @@ const AdminCommunityPage = async () => {
                               type="hidden"
                               value={space.slug}
                             />
-                            <Button size="sm" type="submit" variant="outline">
+                            <SingleFlightSubmit size="sm" variant="outline">
                               Remover
-                            </Button>
-                          </form>
+                            </SingleFlightSubmit>
+                          </SingleFlightForm>
                         </div>
                       ))
                     )}
@@ -271,7 +273,7 @@ const AdminCommunityPage = async () => {
         </section>
         <aside className="paper-surface border p-6 lg:sticky lg:top-24">
           <p className="brand-eyebrow">Novo espaço</p>
-          <form action={createSpace} className="mt-5 space-y-4">
+          <SingleFlightForm action={createSpace} className="mt-5 space-y-4">
             <label className="block" htmlFor="space-title">
               <span className="brand-eyebrow">Título</span>
               <Input className="mt-2" id="space-title" name="title" required />
@@ -288,10 +290,10 @@ const AdminCommunityPage = async () => {
                 name="description"
               />
             </label>
-            <Button className="w-full" type="submit">
+            <SingleFlightSubmit className="w-full">
               Salvar como rascunho
-            </Button>
-          </form>
+            </SingleFlightSubmit>
+          </SingleFlightForm>
         </aside>
       </div>
     </main>

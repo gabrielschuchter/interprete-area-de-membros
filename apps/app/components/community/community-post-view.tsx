@@ -278,7 +278,7 @@ export function CommunityPostView({
           {post.coverUrl && (
             // biome-ignore lint/performance/noImgElement: cover URLs are sanitized user content and may come from hosts not configured for next/image.
             <img
-              alt=""
+              alt={`Capa: ${post.title}`}
               className="mt-8 max-h-[34rem] w-full rounded-sm border object-cover"
               height={630}
               loading="lazy"
@@ -382,6 +382,11 @@ export function CommunityPostView({
                     type="hidden"
                     value={post.space?.slug ?? ""}
                   />
+                  <input
+                    name="desired"
+                    type="hidden"
+                    value={post.isPinned ? "off" : "on"}
+                  />
                   <SingleFlightSubmit
                     pendingLabel="Salvando…"
                     size="sm"
@@ -398,6 +403,11 @@ export function CommunityPostView({
                     name="spaceSlug"
                     type="hidden"
                     value={post.space?.slug ?? ""}
+                  />
+                  <input
+                    name="desired"
+                    type="hidden"
+                    value={post.isFeatured ? "off" : "on"}
                   />
                   <SingleFlightSubmit
                     pendingLabel="Salvando…"

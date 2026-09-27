@@ -36,6 +36,7 @@ const hasPublishedCommunityReference = async (
   memberId: string
 ) => {
   const url = memberAssetUrl(path);
+  const serializedUrl = JSON.stringify(url);
 
   // The JSON document stores the same canonical, same-origin asset URL as the
   // cover field. `position` keeps this parameterized and avoids treating `%`
@@ -47,7 +48,7 @@ const hasPublishedCommunityReference = async (
     WHERE p."deletedAt" IS NULL
       AND (
         p."coverUrl" = ${url}
-        OR position(${url} in COALESCE(p."contentJson"::text, '')) > 0
+        OR position(${serializedUrl} in COALESCE(p."contentJson"::text, '')) > 0
       )
       AND (
         p."authorId" = ${memberId}
@@ -69,7 +70,7 @@ const hasPublishedCommunityReference = async (
     INNER JOIN "CommunityPost" p ON p."id" = c."postId"
     LEFT JOIN "CommunitySpace" s ON s."id" = p."spaceId"
     WHERE c."deletedAt" IS NULL
-      AND position(${url} in COALESCE(c."contentJson"::text, '')) > 0
+      AND position(${serializedUrl} in COALESCE(c."contentJson"::text, '')) > 0
       AND (
         c."authorId" = ${memberId}
         OR p."authorId" = ${memberId}

@@ -42,8 +42,9 @@ Os principais achados que precisam acompanhar a próxima fase são:
    follow e também exige preservar o que já funciona.
 4. Feed, salas e comentários usam paginação por offset; “Meus tópicos” e
    “Salvos” têm limite de 100 itens. Notificações usam cursor e “Carregar mais”.
-5. Há componentes antigos de composer (`NewTopicComposer`/
-   `TopicDraftComposer`) sem consumidor ativo encontrado no checkout atual.
+5. Existem componentes legados de composer (`NewTopicComposer`/
+   `TopicDraftComposer`) sem consumidor ativo no checkout atual. As duas rotas
+   de criação usam `CommunityStartPanel` e levam ao editor atual.
 
 Esses pontos são achados de baseline, não autorização para redesign ou criação
 de features.
@@ -147,9 +148,10 @@ O fluxo atual usa, entre outros:
 - `SingleFlightForm`/`SingleFlightSubmit` e chaves de idempotência para evitar
   duplicação acidental em mutações.
 
-Os composers `NewTopicComposer` e `TopicDraftComposer` ainda existem no código,
-mas a busca de referências encontrou apenas a relação entre suas próprias
-definições; as rotas atuais usam `CommunityStartPanel` e `CommunityComposer`.
+Os composers `NewTopicComposer` e `TopicDraftComposer` foram confirmados como
+sem consumidores fora das próprias definições e removidos na auditoria final.
+As rotas `/comunidade/novo` e `/comunidade/[spaceSlug]/novo` usam
+`CommunityStartPanel`; o editor atual é `CommunityComposer`/`TopicEditor`.
 
 ### Queries e leitura
 
@@ -275,7 +277,7 @@ substitui E2E autenticado completo nem prova de dispositivo físico.
 | Função | Existe | Funciona | Problema | Será alterada? |
 | --- | --- | --- | --- | --- |
 | Rota da comunidade | Sim | Sim, build e loaders | E2E autenticado não executado nesta fase | Não nesta Fase 0 |
-| Componentes | Sim | Sim, compilam | Há composer legado sem consumidor ativo | Não nesta Fase 0 |
+| Componentes | Sim | Sim, compilam | Havia composers legados sem consumidor ativo; removidos na auditoria final | Não nesta Fase 0 |
 | Layouts | Sim | Sim, layout autenticado | Depende de Clerk e bootstrap Member/Profile | Não nesta Fase 0 |
 | Queries | Sim | Sim, Prisma conecta e schema está atualizado | Paginação e leitura de replies têm limites | Não nesta Fase 0 |
 | APIs/server actions | Sim | Sim, build/testes e guards presentes | Mutação real autenticada não foi exercitada | Não nesta Fase 0 |
@@ -339,7 +341,7 @@ membros comuns.
 | C0-02 | Escrita aceita nesting arbitrário, leitura traz apenas raiz + reply direto | `createCommunityComment()` valida qualquer parent; `getPostWithComments()` filtra só `parentId in visibleRootIds` | Bug estrutural potencial; não criar novos níveis, decidir semântica antes de corrigir |
 | C0-03 | `TopicFollow` já é feature existente apesar da regra de não adicionar follow | Schema, actions, UI e 3 registros no banco | Congelar; não ampliar nem remover nesta fase |
 | C0-04 | Paginação da comunidade é offset e há coleções limitadas a 100 | `skip/take` no feed/sala/comentários; `take: 100` em próprios/salvos | Risco de escala/UX, não falha do baseline pequeno |
-| C0-05 | Composers legados sem rota consumidora ativa | `NewTopicComposer`/`TopicDraftComposer` encontrados somente em suas definições | Limpeza futura somente após confirmar compatibilidade e testes |
+| C0-05 | Composers legados sem consumidor ativo | `NewTopicComposer`/`TopicDraftComposer` encontrados somente em suas definições | Removidos na auditoria final após confirmar que as rotas usam `CommunityStartPanel` |
 | C0-06 | Geração de slug faz `findUnique` antes do create/update | `uniquePostSlug()` em loop fora de transação | Possível corrida concorrente; unique do banco é a última barreira |
 | C0-07 | Vídeo e arquivo não são capacidades da comunidade | Nodes permitidos são texto/listas/imagem/menção; upload aceita imagem para community | Ausência deliberada; não inventar feature |
 | C0-08 | Realtime não cobre posts/comentários | Subscription Supabase é somente `Notification` | Ausência deliberada; não adicionar chat/realtime nesta fase |

@@ -285,3 +285,5 @@ tmp/kiwify-browser/
 .contentlayer
 .content-collections
 .source
+.agents/
+skills-lock.json

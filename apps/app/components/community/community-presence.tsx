@@ -182,7 +182,6 @@ export const CommunityPresence = ({ profile }: CommunityPresenceProperties) => {
       }
       connecting = true;
       setStatus("connecting");
-      let retryable = false;
 
       try {
         const configResponse = await fetch(
@@ -192,16 +191,17 @@ export const CommunityPresence = ({ profile }: CommunityPresenceProperties) => {
         if (!configResponse.ok || disposed) {
           if (!disposed) {
             setStatus("unavailable");
+            scheduleReconnect();
           }
           return;
         }
-        retryable = true;
         const config = (await configResponse.json()) as {
           anonKey?: string;
           url?: string;
         };
         if (!(config.url && config.anonKey)) {
           setStatus("unavailable");
+          scheduleReconnect();
           return;
         }
 
@@ -211,12 +211,14 @@ export const CommunityPresence = ({ profile }: CommunityPresenceProperties) => {
         if (!tokenResponse.ok || disposed) {
           if (!disposed) {
             setStatus("unavailable");
+            scheduleReconnect();
           }
           return;
         }
         const tokenPayload = (await tokenResponse.json()) as { token?: string };
         if (!tokenPayload.token) {
           setStatus("unavailable");
+          scheduleReconnect();
           return;
         }
 
@@ -226,6 +228,10 @@ export const CommunityPresence = ({ profile }: CommunityPresenceProperties) => {
         });
         client = nextClient;
         await nextClient.realtime.setAuth(tokenPayload.token);
+        if (disposed) {
+          ignorePromise(nextClient.removeAllChannels());
+          return;
+        }
 
         const nextChannel = nextClient.channel(PRESENCE_CHANNEL, {
           config: {
@@ -264,9 +270,7 @@ export const CommunityPresence = ({ profile }: CommunityPresenceProperties) => {
         if (!disposed) {
           setMembers([]);
           setStatus("unavailable");
-          if (retryable) {
-            scheduleReconnect();
-          }
+          scheduleReconnect();
         }
       } finally {
         connecting = false;

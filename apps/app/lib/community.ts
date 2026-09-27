@@ -458,25 +458,33 @@ const getPublishedPost = (
     readonly spaceSlug?: string;
   },
   memberId: string
-) =>
-  database.communityPost.findFirst({
+) => {
+  let identityWhere: Prisma.CommunityPostWhereInput = {};
+  if (where.id) {
+    identityWhere = { id: where.id };
+  } else if (where.slug) {
+    identityWhere = { OR: [{ slug: where.slug }, { id: where.slug }] };
+  }
+  const audienceWhere: Prisma.CommunityPostWhereInput = where.spaceSlug
+    ? {
+        space: {
+          is: { slug: where.spaceSlug, status: ContentStatus.PUBLISHED },
+        },
+      }
+    : {
+        OR: [
+          { space: null },
+          { space: { is: { status: ContentStatus.PUBLISHED } } },
+        ],
+      };
+
+  return database.communityPost.findFirst({
     where: {
-      ...(where.id ? { id: where.id } : {}),
-      ...(where.slug ? { slug: where.slug } : {}),
-      ...(where.spaceSlug
-        ? {
-            space: {
-              is: { slug: where.spaceSlug, status: ContentStatus.PUBLISHED },
-            },
-          }
-        : {
-            OR: [
-              { space: null },
-              { space: { is: { status: ContentStatus.PUBLISHED } } },
-            ],
-          }),
-      status: ContentStatus.PUBLISHED,
-      deletedAt: null,
+      AND: [
+        identityWhere,
+        audienceWhere,
+        { status: ContentStatus.PUBLISHED, deletedAt: null },
+      ],
     },
     select: {
       ...communityPostSelect,
@@ -488,6 +496,7 @@ const getPublishedPost = (
       },
     },
   });
+};
 
 const getPostWithComments = async (
   post: NonNullable<Awaited<ReturnType<typeof getPublishedPost>>>,

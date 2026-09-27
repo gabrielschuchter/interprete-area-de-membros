@@ -106,6 +106,7 @@ export function CommunityComposer({
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const requestQueue = useRef(Promise.resolve());
   const requestVersion = useRef(0);
+  const disposedRef = useRef(false);
   const snapshot = useRef({
     title: initialTitle,
     subtitle: initialSubtitle ?? "",
@@ -137,7 +138,7 @@ export function CommunityComposer({
   };
 
   const flushSave = async () => {
-    if (status !== "DRAFT") {
+    if (status !== "DRAFT" || disposedRef.current) {
       return;
     }
     if (timer.current) {
@@ -150,8 +151,11 @@ export function CommunityComposer({
     const saveRequest = requestQueue.current
       .catch(() => undefined)
       .then(async () => {
+        if (disposedRef.current) {
+          return;
+        }
         const result = await updateDraft(formDataFromSnapshot());
-        if (version !== requestVersion.current) {
+        if (disposedRef.current || version !== requestVersion.current) {
           return;
         }
         if (result.ok) {
@@ -168,7 +172,7 @@ export function CommunityComposer({
   };
 
   const scheduleSave = () => {
-    if (status !== "DRAFT") {
+    if (status !== "DRAFT" || disposedRef.current) {
       return;
     }
     if (timer.current) {
@@ -176,9 +180,14 @@ export function CommunityComposer({
     }
     setSaveState("saving");
     timer.current = setTimeout(() => {
+      if (disposedRef.current) {
+        return;
+      }
       flushSave().catch(() => {
-        setSaveState("error");
-        setErrorMessage("Não foi possível salvar o rascunho.");
+        if (!disposedRef.current) {
+          setSaveState("error");
+          setErrorMessage("Não foi possível salvar o rascunho.");
+        }
       });
     }, 700);
   };
@@ -238,9 +247,16 @@ export function CommunityComposer({
 
   useEffect(() => {
     return () => {
+      disposedRef.current = true;
       if (timer.current) {
         clearTimeout(timer.current);
+        timer.current = null;
       }
+    };
+  }, []);
+
+  useEffect(() => {
+    return () => {
       if (coverPreviewUrl) {
         URL.revokeObjectURL(coverPreviewUrl);
       }
@@ -267,7 +283,7 @@ export function CommunityComposer({
   };
 
   const handlePublish = async () => {
-    if (publishingRef.current) {
+    if (publishingRef.current || disposedRef.current) {
       return;
     }
     publishingRef.current = true;
@@ -280,12 +296,16 @@ export function CommunityComposer({
         setErrorMessage(result.error);
       }
     } catch {
-      setErrorMessage(
-        "Não foi possível publicar agora. Seu rascunho foi mantido."
-      );
+      if (!disposedRef.current) {
+        setErrorMessage(
+          "Não foi possível publicar agora. Seu rascunho foi mantido."
+        );
+      }
     } finally {
-      publishingRef.current = false;
-      setPublishing(false);
+      if (!disposedRef.current) {
+        publishingRef.current = false;
+        setPublishing(false);
+      }
     }
   };
 

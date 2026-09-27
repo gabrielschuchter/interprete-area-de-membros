@@ -3,6 +3,11 @@ import { Button } from "@repo/design-system/components/ui/button";
 import { FileTextIcon, PlusIcon } from "lucide-react";
 import Link from "next/link";
 import { CommunityNavigation } from "@/components/community/community-navigation";
+import { CommunityPublishDraftButton } from "@/components/community/community-publish-draft-button";
+import {
+  SingleFlightForm,
+  SingleFlightSubmit,
+} from "@/components/mutations/single-flight-form";
 import { communityPostHref, getMyCommunityPosts } from "@/lib/community";
 import { communityPostKindLabel } from "@/lib/community-post-types";
 import { requireMemberId } from "@/lib/learning";
@@ -110,25 +115,14 @@ const MyCommunityPage = async () => {
                         <Link href={editHref}>Editar</Link>
                       </Button>
                       {post.status === "DRAFT" && (
-                        <form action={setPostStatus}>
-                          <input name="postId" type="hidden" value={post.id} />
-                          <input
-                            name="spaceSlug"
-                            type="hidden"
-                            value={post.space?.slug ?? ""}
-                          />
-                          <input
-                            name="status"
-                            type="hidden"
-                            value="PUBLISHED"
-                          />
-                          <Button size="sm" type="submit">
-                            Publicar
-                          </Button>
-                        </form>
+                        <CommunityPublishDraftButton
+                          editHref={editHref}
+                          postId={post.id}
+                          spaceSlug={post.space?.slug ?? ""}
+                        />
                       )}
                       {post.status === "PUBLISHED" && (
-                        <form action={setPostStatus}>
+                        <SingleFlightForm action={setPostStatus}>
                           <input name="postId" type="hidden" value={post.id} />
                           <input
                             name="spaceSlug"
@@ -136,23 +130,23 @@ const MyCommunityPage = async () => {
                             value={post.space?.slug ?? ""}
                           />
                           <input name="status" type="hidden" value="ARCHIVED" />
-                          <Button size="sm" type="submit" variant="ghost">
+                          <SingleFlightSubmit size="sm" variant="ghost">
                             Arquivar
-                          </Button>
-                        </form>
+                          </SingleFlightSubmit>
+                        </SingleFlightForm>
                       )}
                       {post.status !== "ARCHIVED" && (
-                        <form action={softDeletePost}>
+                        <SingleFlightForm action={softDeletePost}>
                           <input name="postId" type="hidden" value={post.id} />
                           <input
                             name="spaceSlug"
                             type="hidden"
                             value={post.space?.slug ?? ""}
                           />
-                          <Button size="sm" type="submit" variant="ghost">
+                          <SingleFlightSubmit size="sm" variant="ghost">
                             Excluir
-                          </Button>
-                        </form>
+                          </SingleFlightSubmit>
+                        </SingleFlightForm>
                       )}
                     </div>
                   </div>
