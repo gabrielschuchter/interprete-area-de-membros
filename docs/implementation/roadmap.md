@@ -18,7 +18,10 @@ re-check the current recording-group assignment so revocation is immediate.
 
 The Vercel member project is `interprete-area-de-membros-app` (project ID
 `prj_bwG8vDd4x2flyPaRMq8HEvi7t5Lj`, root `apps/app`) with production on `main`
-and the stable aliases documented in `docs/deployment/vercel.md`.
+and the stable aliases documented in `docs/deployment/vercel.md`. The final
+audit changes are descendants of `f09e28768eba9505ec87132f068301d22f3471be`;
+the exact promoted SHA is checked from the Vercel deployment API after each
+push rather than copied into a document that can go stale.
 
 This checkpoint records verified evidence; it does not claim a member-to-member
 recording scenario when the official database has no currently assigned

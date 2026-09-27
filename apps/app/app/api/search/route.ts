@@ -9,7 +9,13 @@ import {
 export const GET = async (request: Request) => {
   const { userId } = await auth();
   if (!userId) {
-    return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
+    return NextResponse.json(
+      { error: "Não autenticado" },
+      {
+        status: 401,
+        headers: { "Cache-Control": "private, no-store" },
+      }
+    );
   }
 
   try {
@@ -26,7 +32,10 @@ export const GET = async (request: Request) => {
         },
         {
           status: 429,
-          headers: { "Retry-After": String(error.retryAfterSeconds) },
+          headers: {
+            "Cache-Control": "private, no-store",
+            "Retry-After": String(error.retryAfterSeconds),
+          },
         }
       );
     }
@@ -37,7 +46,10 @@ export const GET = async (request: Request) => {
   if (query.trim().length > 80) {
     return NextResponse.json(
       { error: "A busca é limitada a 80 caracteres." },
-      { status: 400 }
+      {
+        status: 400,
+        headers: { "Cache-Control": "private, no-store" },
+      }
     );
   }
 
@@ -55,7 +67,10 @@ export const GET = async (request: Request) => {
     console.error("Global search failed", error);
     return NextResponse.json(
       { error: "Não foi possível realizar a busca agora." },
-      { status: 500 }
+      {
+        status: 500,
+        headers: { "Cache-Control": "private, no-store" },
+      }
     );
   }
 };

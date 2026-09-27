@@ -38,8 +38,12 @@ Resend, Stripe, SVIX, Better Stack, PostHog e Google Analytics permanecem ausent
 O branch de produção é `main`. O projeto correto e o alias oficial foram
 conferidos com a CLI da Vercel; o deployment de produção deve ser sempre
 confirmado pelo `target=production`, pelo alias estável e pelo commit da
-integração Git antes de ser considerado publicado. O deployment de auditoria
-`dpl_6fQj6DrGosMpkk4dcwHG3aoCwKD3` estava `READY` e servindo os aliases oficiais.
+integração Git antes de ser considerado publicado. O lote de hardening foi
+iniciado em `f09e28768eba9505ec87132f068301d22f3471be` (`main`); as correções
+posteriores também devem ser promovidas pelo mesmo fluxo Git, sem deploy manual
+fora do projeto. O alias estável `interprete-area-de-membros.vercel.app` e o
+alias de projeto `interprete-area-de-membros-app.vercel.app` devem apontar para
+o deployment Production correspondente ao HEAD publicado.
 
 O endpoint público de saúde, páginas protegidas e redirects anônimos devem ser
 testados separadamente: build verde não substitui autorização, persistência ou
