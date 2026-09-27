@@ -29,17 +29,11 @@ export const AuthProvider = ({
     helpPageUrl: helpUrl,
   };
 
-  // Clerk production instances with a custom frontend API proxy require the
-  // browser to use the exact proxy URL configured for that instance. The
-  // value is deliberately environment-controlled so local, preview, and
-  // production can each use their own valid proxy host.
-  const configuredClerkProxyUrl =
-    process.env.NEXT_PUBLIC_CLERK_PROXY_URL?.trim();
   const isLocalDevelopment = process.env.NODE_ENV === "development";
-  let clerkProxyUrl: string | undefined;
-  if (!isLocalDevelopment) {
-    clerkProxyUrl = configuredClerkProxyUrl || "/__clerk";
-  }
+  // Keep the Clerk frontend API proxy same-origin. A cross-host proxy can
+  // create a session on a different Vercel alias, leaving the visible app
+  // without the session cookie needed to activate it.
+  const clerkProxyUrl = isLocalDevelopment ? undefined : "/__clerk";
 
   return (
     <ClerkProvider
