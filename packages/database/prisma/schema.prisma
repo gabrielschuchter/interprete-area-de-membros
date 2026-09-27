@@ -472,22 +472,27 @@ model ImportedRecordingGroup {
 }
 
 model ImportedRecording {
-  id              String                  @id @default(cuid())
-  groupId         String
-  assetId         String                  @unique
-  legacyLessonId  String
-  meetingId       String?
-  sourcePlatform  String
-  sourceId        String
-  originalTitle   String?
-  meetingDate     DateTime?
-  createdAt       DateTime                @default(now())
-  updatedAt       DateTime                @updatedAt
-  group           ImportedRecordingGroup  @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  asset           LessonAsset             @relation(fields: [assetId], references: [id], onDelete: Restrict)
-  legacyLesson    Lesson                  @relation(fields: [legacyLessonId], references: [id], onDelete: Restrict)
-  meeting         Meeting?                @relation(fields: [meetingId], references: [id], onDelete: SetNull)
-  collectionItems ContentCollectionItem[]
+  id                 String                  @id @default(cuid())
+  groupId            String
+  assetId            String                  @unique
+  legacyLessonId     String
+  meetingId          String?
+  sourcePlatform     String
+  sourceId           String
+  originalTitle      String?
+  meetingDate        DateTime?
+  thumbnailPath      String?
+  thumbnailMimeType  String?
+  thumbnailSizeBytes Int?
+  thumbnailWidth     Int?
+  thumbnailHeight    Int?
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
+  group              ImportedRecordingGroup  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  asset              LessonAsset             @relation(fields: [assetId], references: [id], onDelete: Restrict)
+  legacyLesson       Lesson                  @relation(fields: [legacyLessonId], references: [id], onDelete: Restrict)
+  meeting            Meeting?                @relation(fields: [meetingId], references: [id], onDelete: SetNull)
+  collectionItems    ContentCollectionItem[]
 
   @@unique([sourcePlatform, sourceId])
   @@index([groupId, meetingDate])

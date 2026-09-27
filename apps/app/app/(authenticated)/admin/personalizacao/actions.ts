@@ -73,6 +73,7 @@ export const saveProductSettings = async (formData: FormData) => {
 };
 
 const homeBlockInput = z.object({
+  collectionId: z.string().max(120),
   enabled: z.boolean(),
   itemCount: z.number().int().min(1).max(12),
   position: z.number().int().min(0).max(999),
@@ -90,6 +91,7 @@ export const saveHomeBlock = async (formData: FormData) => {
     memberId: userId,
   });
   const parsed = homeBlockInput.safeParse({
+    collectionId: text(formData.get("collectionId")),
     enabled: formData.get("enabled") === "on",
     itemCount: Number(text(formData.get("itemCount"))),
     position: Number(text(formData.get("position"))),
@@ -103,7 +105,12 @@ export const saveHomeBlock = async (formData: FormData) => {
   }
 
   const input = parsed.data;
+  const collectionId =
+    input.type === HomeBlockType.COLLECTION && input.collectionId
+      ? input.collectionId
+      : null;
   const data: Prisma.HomeBlockConfigurationUncheckedCreateInput = {
+    collectionId,
     enabled: input.enabled,
     itemCount: input.itemCount,
     position: input.position,
@@ -114,6 +121,15 @@ export const saveHomeBlock = async (formData: FormData) => {
   };
 
   try {
+    if (collectionId) {
+      const collection = await database.contentCollection.findUnique({
+        where: { id: collectionId },
+        select: { id: true },
+      });
+      if (!collection) {
+        return finish("error", "A coleção escolhida não existe mais.");
+      }
+    }
     await database.homeBlockConfiguration.upsert({
       where: { type: input.type },
       create: { ...data, createdByMemberId: userId },

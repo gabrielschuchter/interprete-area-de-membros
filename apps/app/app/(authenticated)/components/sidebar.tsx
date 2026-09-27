@@ -26,6 +26,7 @@ import {
   LibraryIcon,
   MessageCircleIcon,
   SettingsIcon,
+  VideoIcon,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 import {
@@ -46,12 +47,15 @@ interface GlobalSidebarProperties {
   readonly children: ReactNode;
   readonly displayName: string;
   readonly productConfig: {
+    readonly recordingsExperienceV2: boolean;
     readonly showLearnNavigation: boolean;
   };
 }
 
 const baseNavigation = [
   { href: "/", label: "Início", icon: HouseIcon },
+  { href: "/encontros", label: "Encontros", icon: CalendarDaysIcon },
+  { href: "/encontros/gravacoes", label: "Gravações", icon: VideoIcon },
   { href: "/atividades", label: "Atividades", icon: CheckSquareIcon },
   {
     href: "/comunidade",
@@ -59,7 +63,6 @@ const baseNavigation = [
     icon: MessageCircleIcon,
   },
   { href: "/biblioteca", label: "Biblioteca", icon: LibraryIcon },
-  { href: "/encontros", label: "Encontros", icon: CalendarDaysIcon },
 ] as const;
 
 const learnNavigation = {
@@ -78,9 +81,17 @@ export const GlobalSidebar = ({
   const pathname = usePathname();
   const [pendingHref, setPendingHref] = useState<string | null>(null);
   const previousPathname = useRef(pathname);
-  const navigation = productConfig.showLearnNavigation
-    ? [baseNavigation[0], learnNavigation, ...baseNavigation.slice(1)]
-    : baseNavigation;
+  const navigation = [
+    baseNavigation[0],
+    ...(productConfig.showLearnNavigation ? [learnNavigation] : []),
+    ...baseNavigation
+      .slice(1)
+      .filter(
+        (item) =>
+          item.href !== "/encontros/gravacoes" ||
+          productConfig.recordingsExperienceV2
+      ),
+  ];
   const activePath = pendingHref ?? pathname;
   const isActivePath = useCallback(
     (href: string) =>

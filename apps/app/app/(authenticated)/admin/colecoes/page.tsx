@@ -13,6 +13,8 @@ import {
 import {
   addCollectionItem,
   createCollection,
+  deleteCollection,
+  moveCollectionItem,
   removeCollectionItem,
   setCollectionStatus,
   updateCollection,
@@ -143,6 +145,19 @@ const CollectionsPage = async ({ searchParams }: CollectionsPageProperties) => {
                           </Button>
                         </form>
                       )}
+                      {collection.status !== "PUBLISHED" &&
+                        collection.items.length === 0 && (
+                          <form action={deleteCollection}>
+                            <input
+                              name="id"
+                              type="hidden"
+                              value={collection.id}
+                            />
+                            <Button size="sm" type="submit" variant="ghost">
+                              Excluir
+                            </Button>
+                          </form>
+                        )}
                     </div>
                   </div>
                   <p className="mt-4 text-muted-foreground leading-6">
@@ -156,18 +171,52 @@ const CollectionsPage = async ({ searchParams }: CollectionsPageProperties) => {
                     ) : (
                       collection.items.map((item) => (
                         <div
-                          className="flex items-center justify-between gap-4 py-4"
+                          className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between"
                           key={item.id}
                         >
                           <p className="min-w-0 truncate text-sm">
                             {collectionItemLabel(item)}
                           </p>
-                          <form action={removeCollectionItem}>
-                            <input name="id" type="hidden" value={item.id} />
-                            <Button size="sm" type="submit" variant="ghost">
-                              Remover
-                            </Button>
-                          </form>
+                          <div className="flex shrink-0 gap-1">
+                            <form action={moveCollectionItem}>
+                              <input name="id" type="hidden" value={item.id} />
+                              <input
+                                name="direction"
+                                type="hidden"
+                                value="up"
+                              />
+                              <Button
+                                aria-label="Mover item para cima"
+                                size="sm"
+                                type="submit"
+                                variant="ghost"
+                              >
+                                ↑
+                              </Button>
+                            </form>
+                            <form action={moveCollectionItem}>
+                              <input name="id" type="hidden" value={item.id} />
+                              <input
+                                name="direction"
+                                type="hidden"
+                                value="down"
+                              />
+                              <Button
+                                aria-label="Mover item para baixo"
+                                size="sm"
+                                type="submit"
+                                variant="ghost"
+                              >
+                                ↓
+                              </Button>
+                            </form>
+                            <form action={removeCollectionItem}>
+                              <input name="id" type="hidden" value={item.id} />
+                              <Button size="sm" type="submit" variant="ghost">
+                                Remover
+                              </Button>
+                            </form>
+                          </div>
                         </div>
                       ))
                     )}

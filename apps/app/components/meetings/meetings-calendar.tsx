@@ -11,6 +11,11 @@ export interface CalendarMeeting {
   readonly id: string;
   readonly joinUrl: string;
   readonly kind: string;
+  readonly recordings: readonly {
+    readonly assetId: string;
+    readonly id: string;
+    readonly title: string;
+  }[];
   readonly recordingUrl: string | null;
   readonly recurrenceRule: string | null;
   readonly relatedActivity: {
@@ -166,53 +171,86 @@ export const MeetingsCalendar = ({ meetings }: MeetingsCalendarProperties) => {
       </div>
 
       <div className="mt-5 overflow-hidden rounded-sm border bg-background">
-        <div className="grid grid-cols-7 border-border border-b bg-muted/30">
-          {(["seg", "ter", "qua", "qui", "sex", "sáb", "dom"] as const).map(
-            (label) => (
-              <div
-                className="px-2 py-2 text-center font-data text-[10px] text-muted-foreground uppercase tracking-[0.16em] sm:px-3"
-                key={label}
+        <div className="divide-y sm:hidden">
+          {meetings.length === 0 ? (
+            <p className="p-5 text-muted-foreground text-sm">
+              Nenhum encontro neste período.
+            </p>
+          ) : (
+            meetings.map((meeting) => (
+              <button
+                className="flex w-full items-start justify-between gap-4 p-4 text-left transition-colors hover:bg-muted/30"
+                key={meeting.id}
+                onClick={() => setSelected(meeting)}
+                type="button"
               >
-                {label}
-              </div>
-            )
+                <span className="min-w-0">
+                  <span className="brand-eyebrow block">
+                    {new Intl.DateTimeFormat("pt-BR", {
+                      dateStyle: "medium",
+                      timeZone: meeting.timezone,
+                    }).format(new Date(meeting.startsAt))}
+                  </span>
+                  <span className="mt-2 block truncate font-display text-xl">
+                    {meeting.title}
+                  </span>
+                </span>
+                <span className="shrink-0 font-data text-brand-structural text-xs">
+                  {formatTime(meeting.startsAt, meeting.timezone)}
+                </span>
+              </button>
+            ))
           )}
         </div>
-        <div className="grid grid-cols-7">
-          {days.map((day) => {
-            const dayMeetings = meetingsByDay.get(dateKey(day)) ?? [];
-            const isToday = dateKey(day) === dateKey(today);
-            const isCurrentMonth = day.getMonth() === anchor.getMonth();
-            return (
-              <div
-                className={`min-h-24 border-border border-r border-b p-1.5 sm:min-h-32 sm:p-2 ${isCurrentMonth ? "" : "bg-muted/10 text-muted-foreground/50"}`}
-                key={dateKey(day)}
-              >
+        <div className="hidden sm:block">
+          <div className="grid grid-cols-7 border-border border-b bg-muted/30">
+            {(["seg", "ter", "qua", "qui", "sex", "sáb", "dom"] as const).map(
+              (label) => (
                 <div
-                  className={`mb-1 flex size-6 items-center justify-center rounded-full font-data text-xs ${isToday ? "bg-brand-structural text-primary-foreground" : ""}`}
+                  className="px-2 py-2 text-center font-data text-[10px] text-muted-foreground uppercase tracking-[0.16em] sm:px-3"
+                  key={label}
                 >
-                  {day.getDate()}
+                  {label}
                 </div>
-                <div className="space-y-1">
-                  {dayMeetings.map((meeting) => (
-                    <button
-                      className="block w-full rounded-sm border border-brand-action/25 bg-brand-action/10 px-1.5 py-1 text-left text-[10px] leading-tight transition-colors hover:bg-brand-action/20 sm:text-xs"
-                      key={meeting.id}
-                      onClick={() => setSelected(meeting)}
-                      type="button"
-                    >
-                      <span className="font-data text-[9px] text-brand-structural sm:text-[10px]">
-                        {formatTime(meeting.startsAt, meeting.timezone)}
-                      </span>
-                      <span className="mt-0.5 block truncate font-medium">
-                        {meeting.title}
-                      </span>
-                    </button>
-                  ))}
+              )
+            )}
+          </div>
+          <div className="grid grid-cols-7">
+            {days.map((day) => {
+              const dayMeetings = meetingsByDay.get(dateKey(day)) ?? [];
+              const isToday = dateKey(day) === dateKey(today);
+              const isCurrentMonth = day.getMonth() === anchor.getMonth();
+              return (
+                <div
+                  className={`min-h-24 border-border border-r border-b p-1.5 sm:min-h-32 sm:p-2 ${isCurrentMonth ? "" : "bg-muted/10 text-muted-foreground/50"}`}
+                  key={dateKey(day)}
+                >
+                  <div
+                    className={`mb-1 flex size-6 items-center justify-center rounded-full font-data text-xs ${isToday ? "bg-brand-structural text-primary-foreground" : ""}`}
+                  >
+                    {day.getDate()}
+                  </div>
+                  <div className="space-y-1">
+                    {dayMeetings.map((meeting) => (
+                      <button
+                        className="block w-full rounded-sm border border-brand-action/25 bg-brand-action/10 px-1.5 py-1 text-left text-[10px] leading-tight transition-colors hover:bg-brand-action/20 sm:text-xs"
+                        key={meeting.id}
+                        onClick={() => setSelected(meeting)}
+                        type="button"
+                      >
+                        <span className="font-data text-[9px] text-brand-structural sm:text-[10px]">
+                          {formatTime(meeting.startsAt, meeting.timezone)}
+                        </span>
+                        <span className="mt-0.5 block truncate font-medium">
+                          {meeting.title}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       </div>
 
@@ -272,6 +310,13 @@ export const MeetingsCalendar = ({ meetings }: MeetingsCalendarProperties) => {
                 </a>
               </Button>
             ) : null}
+            {selected.recordings.map((recording) => (
+              <Button asChild key={recording.id} size="sm" variant="outline">
+                <a href={`/encontros/gravacoes?asset=${recording.assetId}`}>
+                  {recording.title}
+                </a>
+              </Button>
+            ))}
             {selected.relatedActivity ? (
               <Button asChild size="sm" variant="ghost">
                 <a href={`/atividades/${selected.relatedActivity.slug}`}>

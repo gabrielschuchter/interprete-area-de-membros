@@ -28,6 +28,8 @@ export const assignImportedRecordingGroup = async (formData: FormData) => {
   const { userId } = await requireAdmin();
   const groupId = value(formData.get("groupId"));
   const memberId = value(formData.get("memberId"));
+  const confirmReassignment =
+    value(formData.get("confirmReassignment")) === "true";
   if (!(groupId && memberId)) {
     finish("error", "Escolha um membro existente antes de confirmar.");
   }
@@ -43,6 +45,7 @@ export const assignImportedRecordingGroup = async (formData: FormData) => {
       changedByMemberId: userId,
       groupId,
       memberId,
+      confirmReassignment,
     });
 
     mutationLog({

@@ -306,3 +306,104 @@ export const removeCollectionItem = async (formData: FormData) => {
     redirectToCollections("error", "Não foi possível remover o recurso.");
   }
 };
+
+export const moveCollectionItem = async (formData: FormData) => {
+  const { userId } = await requireStaff();
+  await consumeMutationRateLimit({
+    action: "admin.mutation",
+    memberId: userId,
+  });
+  const id = text(formData.get("id"));
+  const direction = text(formData.get("direction"));
+  if (!(id && (direction === "up" || direction === "down"))) {
+    return redirectToCollections("error", "Movimento inválido.");
+  }
+
+  try {
+    await database.$transaction(async (transaction) => {
+      const item = await transaction.contentCollectionItem.findUnique({
+        where: { id },
+        select: { id: true, collectionId: true, position: true },
+      });
+      if (!item) {
+        throw new Error("collection_item_not_found");
+      }
+
+      const neighbor = await transaction.contentCollectionItem.findFirst({
+        where: {
+          collectionId: item.collectionId,
+          position:
+            direction === "up" ? { lt: item.position } : { gt: item.position },
+        },
+        orderBy: { position: direction === "up" ? "desc" : "asc" },
+        select: { id: true, position: true },
+      });
+      if (!neighbor) {
+        return;
+      }
+
+      const temporaryPosition =
+        Math.max(item.position, neighbor.position) + 1000;
+      await transaction.contentCollectionItem.update({
+        where: { id: item.id },
+        data: { position: temporaryPosition },
+      });
+      await transaction.contentCollectionItem.update({
+        where: { id: neighbor.id },
+        data: { position: item.position },
+      });
+      await transaction.contentCollectionItem.update({
+        where: { id: item.id },
+        data: { position: neighbor.position },
+      });
+    });
+    revalidateCollections();
+    redirectToCollections("success", "Ordem da coleção atualizada.");
+  } catch (error) {
+    if (isRedirectError(error)) {
+      throw error;
+    }
+    console.error("Collection item reorder failed", error);
+    redirectToCollections("error", "Não foi possível reorganizar o recurso.");
+  }
+};
+
+export const deleteCollection = async (formData: FormData) => {
+  const { userId } = await requireStaff();
+  await consumeMutationRateLimit({
+    action: "admin.mutation",
+    memberId: userId,
+  });
+  const id = text(formData.get("id"));
+  if (!id) {
+    return redirectToCollections("error", "Coleção inválida.");
+  }
+
+  try {
+    const collection = await database.contentCollection.findUnique({
+      where: { id },
+      select: { status: true, _count: { select: { items: true } } },
+    });
+    if (!collection) {
+      return redirectToCollections("error", "Coleção não encontrada.");
+    }
+    if (
+      collection.status === ContentStatus.PUBLISHED ||
+      collection._count.items > 0
+    ) {
+      return redirectToCollections(
+        "error",
+        "Arquive a coleção e remova seus itens antes de excluí-la."
+      );
+    }
+    await database.contentCollection.delete({ where: { id } });
+    revalidateCollections();
+    redirectToCollections("success", "Coleção excluída.");
+  } catch (error) {
+    if (isRedirectError(error)) {
+      throw error;
+    }
+    console.error("Collection deletion failed", error);
+    redirectToCollections("error", "Não foi possível excluir a coleção.");
+  }
+};

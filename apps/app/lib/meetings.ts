@@ -1,6 +1,7 @@
 import "server-only";
 
-import { ContentStatus, database } from "@repo/database";
+import { ContentStatus, database, MemberRole } from "@repo/database";
+import { getMemberRole } from "./authorization";
 import {
   getLearningAccessScope,
   hasCourseAccess,
@@ -54,6 +55,38 @@ const canReadMeeting = (
   return !meeting.course || hasCourseAccess(scope, meeting.course.id);
 };
 
+const attachAuthorizedRecordings = async <T extends { readonly id: string }>(
+  meetings: readonly T[],
+  memberId: string,
+  fullAccess: boolean
+) => {
+  const ids = meetings.map((meeting) => meeting.id);
+  if (ids.length === 0) {
+    return meetings.map((meeting) => ({ ...meeting, recordings: [] }));
+  }
+
+  const recordings = await database.importedRecording.findMany({
+    where: {
+      meetingId: { in: ids },
+      group: fullAccess ? undefined : { memberId },
+    },
+    orderBy: { meetingDate: "desc" },
+    select: {
+      id: true,
+      meetingId: true,
+      originalTitle: true,
+      asset: { select: { id: true, title: true, kind: true } },
+    },
+  });
+
+  return meetings.map((meeting) => ({
+    ...meeting,
+    recordings: recordings.filter(
+      (recording) => recording.meetingId === meeting.id
+    ),
+  }));
+};
+
 export const getMeetings = async (
   memberId: string,
   accessScope?: LearningAccessScope | Promise<LearningAccessScope>
@@ -87,21 +120,33 @@ export const getMeetings = async (
       select: memberMeetingSelection(memberId),
     }),
   ]);
-  const [scope, [upcoming, past, calendar]] = await Promise.all([
+  const [scope, role, [upcoming, past, calendar]] = await Promise.all([
     scopePromise,
+    getMemberRole(memberId),
     meetingsPromise,
   ]);
 
+  const fullAccess = role === MemberRole.ADMIN || role === MemberRole.TEACHER;
+  const filteredUpcoming = upcoming
+    .filter((meeting) => canReadMeeting(meeting, memberId, scope))
+    .slice(0, 12);
+  const filteredPast = past
+    .filter((meeting) => canReadMeeting(meeting, memberId, scope))
+    .slice(0, 12);
+  const filteredCalendar = calendar.filter((meeting) =>
+    canReadMeeting(meeting, memberId, scope)
+  );
+  const [upcomingWithRecordings, pastWithRecordings, calendarWithRecordings] =
+    await Promise.all([
+      attachAuthorizedRecordings(filteredUpcoming, memberId, fullAccess),
+      attachAuthorizedRecordings(filteredPast, memberId, fullAccess),
+      attachAuthorizedRecordings(filteredCalendar, memberId, fullAccess),
+    ]);
+
   return {
-    upcoming: upcoming
-      .filter((meeting) => canReadMeeting(meeting, memberId, scope))
-      .slice(0, 12),
-    past: past
-      .filter((meeting) => canReadMeeting(meeting, memberId, scope))
-      .slice(0, 12),
-    calendar: calendar.filter((meeting) =>
-      canReadMeeting(meeting, memberId, scope)
-    ),
+    upcoming: upcomingWithRecordings,
+    past: pastWithRecordings,
+    calendar: calendarWithRecordings,
   };
 };
 
@@ -130,6 +175,8 @@ export const getUpcomingMeetings = async (
       teacherId: true,
       kind: true,
       recurrenceRule: true,
+      relatedActivity: { select: { id: true, title: true, slug: true } },
+      relatedLibraryItem: { select: { id: true, title: true } },
       course: { select: { id: true } },
       participants: { where: { memberId }, select: { memberId: true } },
       _count: { select: { participants: true } },
@@ -154,8 +201,9 @@ export const getStaffMeetings = async () =>
   });
 
 export const getPublishedMeeting = async (id: string, memberId: string) => {
-  const [scope, meeting] = await Promise.all([
+  const [scope, role, meeting] = await Promise.all([
     getLearningAccessScope(memberId),
+    getMemberRole(memberId),
     database.meeting.findFirst({
       where: { id, status: ContentStatus.PUBLISHED },
       select: memberMeetingSelection(memberId),
@@ -170,5 +218,14 @@ export const getPublishedMeeting = async (id: string, memberId: string) => {
     ? (await getProfilesByClerkIds([meeting.teacherId])).get(meeting.teacherId)
     : null;
 
-  return { ...meeting, teacherProfile: teacherProfile ?? null };
+  const [meetingWithRecordings] = await attachAuthorizedRecordings(
+    [meeting],
+    memberId,
+    role === MemberRole.ADMIN || role === MemberRole.TEACHER
+  );
+
+  return {
+    ...meetingWithRecordings,
+    teacherProfile: teacherProfile ?? null,
+  };
 };

@@ -131,6 +131,11 @@ const MeetingsPage = async () => {
             relatedLibraryItem: meeting.relatedLibraryItem
               ? { title: meeting.relatedLibraryItem.title }
               : null,
+            recordings: meeting.recordings.map((recording) => ({
+              id: recording.id,
+              assetId: recording.asset.id,
+              title: recording.originalTitle ?? recording.asset.title,
+            })),
           }))}
         />
         <section aria-labelledby="upcoming-heading" className="mt-14">
@@ -191,42 +196,55 @@ const MeetingsPage = async () => {
             </p>
           ) : (
             <Stagger className="mt-5 divide-y border-border border-y">
-              {past.map((meeting) => (
-                <div
-                  className="flex flex-col justify-between gap-4 py-5 sm:flex-row sm:items-center"
-                  key={meeting.id}
-                >
-                  <div>
-                    <p className="brand-eyebrow">
-                      {formatDate(meeting.startsAt, meeting.timezone)}
-                    </p>
-                    <h3 className="mt-2 font-display text-2xl">
-                      {meeting.title}
-                    </h3>
-                    <Link
-                      className="mt-2 inline-flex text-brand-structural text-sm underline underline-offset-4"
-                      href={`/encontros/${meeting.id}`}
-                    >
-                      Ver detalhes
-                    </Link>
-                  </div>
-                  {meeting.recordingUrl ? (
-                    <Button asChild size="sm" variant="outline">
-                      <a
-                        href={meeting.recordingUrl}
-                        rel="noreferrer"
-                        target="_blank"
+              {past.map((meeting) => {
+                const internalRecording = meeting.recordings[0];
+                return (
+                  <div
+                    className="flex flex-col justify-between gap-4 py-5 sm:flex-row sm:items-center"
+                    key={meeting.id}
+                  >
+                    <div>
+                      <p className="brand-eyebrow">
+                        {formatDate(meeting.startsAt, meeting.timezone)}
+                      </p>
+                      <h3 className="mt-2 font-display text-2xl">
+                        {meeting.title}
+                      </h3>
+                      <Link
+                        className="mt-2 inline-flex text-brand-structural text-sm underline underline-offset-4"
+                        href={`/encontros/${meeting.id}`}
                       >
-                        Ver gravação <ExternalLinkIcon aria-hidden="true" />
-                      </a>
-                    </Button>
-                  ) : (
-                    <span className="text-muted-foreground text-sm">
-                      Sem gravação
-                    </span>
-                  )}
-                </div>
-              ))}
+                        Ver detalhes
+                      </Link>
+                    </div>
+                    {internalRecording ? (
+                      <Button asChild size="sm" variant="outline">
+                        <Link
+                          href={`/encontros/gravacoes?asset=${internalRecording.asset.id}`}
+                        >
+                          Ver gravação <ArrowRightIcon aria-hidden="true" />
+                        </Link>
+                      </Button>
+                    ) : null}
+                    {!internalRecording && meeting.recordingUrl ? (
+                      <Button asChild size="sm" variant="outline">
+                        <a
+                          href={meeting.recordingUrl}
+                          rel="noreferrer"
+                          target="_blank"
+                        >
+                          Ver gravação <ExternalLinkIcon aria-hidden="true" />
+                        </a>
+                      </Button>
+                    ) : null}
+                    {internalRecording || meeting.recordingUrl ? null : (
+                      <span className="text-muted-foreground text-sm">
+                        Sem gravação
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
             </Stagger>
           )}
         </section>

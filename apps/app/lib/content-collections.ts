@@ -239,6 +239,28 @@ type CollectionWithItems = Prisma.ContentCollectionGetPayload<{
 const resolveLegacyRecording = (item: CollectionWithItems["items"][number]) =>
   item.recording ?? item.asset?.importedRecording ?? null;
 
+export const collectionItemHref = (
+  item: CollectionWithItems["items"][number]
+) => {
+  if (item.lesson) {
+    return `/aprender/cursos/${item.lesson.module.course.slug}/${item.lesson.slug}`;
+  }
+
+  if (item.recording) {
+    return `/encontros/gravacoes?asset=${encodeURIComponent(item.recording.asset.id)}`;
+  }
+
+  if (item.asset?.importedRecording) {
+    return `/encontros/gravacoes?asset=${encodeURIComponent(item.asset.id)}`;
+  }
+
+  if (item.libraryItem) {
+    return `/biblioteca/${item.libraryItem.id}`;
+  }
+
+  return null;
+};
+
 export const canReadCollectionItem = (
   item: CollectionWithItems["items"][number],
   memberId: string,

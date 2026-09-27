@@ -4,6 +4,7 @@ import { Input } from "@repo/design-system/components/ui/input";
 import { Textarea } from "@repo/design-system/components/ui/textarea";
 import Link from "next/link";
 import { requireAdmin } from "@/lib/authorization";
+import { getAdminCollections } from "@/lib/content-collections";
 import { getHomeBlockConfigurations } from "@/lib/home-config";
 import { getProductConfig } from "@/lib/product-config";
 import { saveHomeBlock, saveProductSettings } from "./actions";
@@ -27,11 +28,13 @@ const PersonalizationPage = async ({
   searchParams,
 }: PersonalizationPageProperties) => {
   await requireAdmin();
-  const [{ message, status }, productConfig, homeBlocks] = await Promise.all([
-    searchParams,
-    getProductConfig(),
-    getHomeBlockConfigurations(),
-  ]);
+  const [{ message, status }, productConfig, homeBlocks, collections] =
+    await Promise.all([
+      searchParams,
+      getProductConfig(),
+      getHomeBlockConfigurations(),
+      getAdminCollections(),
+    ]);
 
   return (
     <main className="mx-auto w-full max-w-[1280px] px-5 py-10 sm:px-8 lg:px-12 lg:py-14">
@@ -189,6 +192,24 @@ const PersonalizationPage = async ({
                     type="number"
                   />
                 </label>
+                {block.type === HomeBlockType.COLLECTION && (
+                  <label className="block" htmlFor={`${block.type}-collection`}>
+                    <span className="brand-eyebrow">Coleção</span>
+                    <select
+                      className="mt-2 h-10 w-full border bg-background px-3 text-sm"
+                      defaultValue={block.collectionId ?? ""}
+                      id={`${block.type}-collection`}
+                      name="collectionId"
+                    >
+                      <option value="">Escolha uma coleção</option>
+                      {collections.map((collection) => (
+                        <option key={collection.id} value={collection.id}>
+                          {collection.title} · {collection.status.toLowerCase()}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
                 <Button size="sm" type="submit">
                   Salvar bloco
                 </Button>

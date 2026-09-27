@@ -1,9 +1,10 @@
 import "server-only";
 
-import { database } from "@repo/database";
+import { database, HomeBlockType } from "@repo/database";
 import { getPublishedActivities } from "./activities";
 import { getLatestCommunityPost } from "./community";
 import { getLearningAccessScope } from "./content-access";
+import { getPublishedCollectionsForMember } from "./content-collections";
 import { getHomeBlockConfigurations } from "./home-config";
 import { getHomeLearningSummary } from "./learning";
 import { getUpcomingMeetings } from "./meetings";
@@ -43,12 +44,22 @@ export const getHomeData = async (memberId: string) => {
     getHomeBlockConfigurations(),
   ]);
 
+  const collections = homeBlocks.some(
+    (block) =>
+      block.enabled &&
+      block.type === HomeBlockType.COLLECTION &&
+      Boolean(block.collectionId)
+  )
+    ? await getPublishedCollectionsForMember(memberId, 20)
+    : [];
+
   return {
     courses,
     activities,
     meetings: { upcoming: upcomingMeetings },
     recordings,
     homeBlocks,
+    collections,
     productConfig: {
       ...productConfig,
       showLearnNavigation:

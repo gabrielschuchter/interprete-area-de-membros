@@ -11,7 +11,8 @@ import {
   assignImportedRecordingGroup,
   revokeImportedRecordingGroup,
 } from "./actions";
-import { RecordingMemberPicker } from "./recording-member-picker";
+import { RecordingGroupAssignmentForm } from "./recording-group-assignment-form";
+import { RecordingThumbnailUploader } from "./recording-thumbnail-uploader";
 
 interface RecordingsAdminPageProperties {
   readonly searchParams: Promise<{ status?: string; message?: string }>;
@@ -131,21 +132,14 @@ const RecordingsAdminPage = async ({
                 </div>
 
                 <div className="mt-8 grid gap-6 border-t pt-6 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.7fr)]">
-                  <form
+                  <RecordingGroupAssignmentForm
                     action={assignImportedRecordingGroup}
-                    className="space-y-4"
-                  >
-                    <input name="groupId" type="hidden" value={group.id} />
-                    <RecordingMemberPicker
-                      defaultValue={group.memberId}
-                      members={members}
-                    />
-                    <Button type="submit">
-                      {group.memberId
-                        ? "Reatribuir grupo"
-                        : "Confirmar vínculo"}
-                    </Button>
-                  </form>
+                    attachmentCount={attachmentCount}
+                    defaultMemberId={group.memberId}
+                    groupId={group.id}
+                    members={members}
+                    recordingCount={videoCount}
+                  />
                   <div className="space-y-4">
                     {group.memberId ? (
                       <form action={revokeImportedRecordingGroup}>
@@ -176,6 +170,24 @@ const RecordingsAdminPage = async ({
                     )}
                   </div>
                 </div>
+                <details className="mt-8 border-t pt-6">
+                  <summary className="cursor-pointer font-data text-muted-foreground text-xs uppercase tracking-[0.12em]">
+                    Capas das gravações · {group.recordings.length} itens
+                  </summary>
+                  <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                    {group.recordings.map((recording) => (
+                      <div className="space-y-3 border p-4" key={recording.id}>
+                        <p className="font-display text-lg">
+                          {recording.originalTitle ?? recording.asset.title}
+                        </p>
+                        <RecordingThumbnailUploader
+                          recordingId={recording.id}
+                          thumbnailPath={recording.thumbnailPath}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </details>
               </article>
             );
           })

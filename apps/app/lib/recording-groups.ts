@@ -8,6 +8,7 @@ import {
 
 export interface RecordingGroupAssignmentInput {
   readonly changedByMemberId: string;
+  readonly confirmReassignment?: boolean;
   readonly groupId: string;
   readonly memberId: string;
 }
@@ -32,6 +33,7 @@ export interface RecordingGroupMutationResult {
  */
 export const assignRecordingGroup = async ({
   changedByMemberId,
+  confirmReassignment,
   groupId,
   memberId,
 }: RecordingGroupAssignmentInput): Promise<RecordingGroupMutationResult> =>
@@ -57,6 +59,10 @@ export const assignRecordingGroup = async ({
         previousMemberId: group.memberId,
         memberId: group.memberId,
       };
+    }
+
+    if (group.memberId && !confirmReassignment) {
+      throw new Error("recording_group_reassignment_requires_confirmation");
     }
 
     const action = group.memberId

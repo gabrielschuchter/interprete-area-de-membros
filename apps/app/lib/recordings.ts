@@ -1,7 +1,9 @@
 import "server-only";
 
-import { database, MemberRole } from "@repo/database";
+import { database, MemberRole, type Prisma } from "@repo/database";
 import { getMemberRole } from "./authorization";
+
+const yearPattern = /^\d{4}$/;
 
 export interface RecordingAccessContext {
   readonly fullAccess: boolean;
@@ -44,6 +46,7 @@ const recordingGroupSelection = (memberId: string) => ({
       sourceId: true,
       originalTitle: true,
       meetingDate: true,
+      thumbnailPath: true,
       legacyLesson: { select: { title: true, position: true } },
       asset: {
         select: {
@@ -102,6 +105,7 @@ export const getMemberContinueWatching = async (memberId: string) => {
           durationSeconds: true,
           importedRecording: {
             select: {
+              id: true,
               group: {
                 select: {
                   id: true,
@@ -115,6 +119,7 @@ export const getMemberContinueWatching = async (memberId: string) => {
                 },
               },
               legacyLesson: { select: { title: true } },
+              thumbnailPath: true,
             },
           },
         },
@@ -146,6 +151,9 @@ export const getMemberContinueWatching = async (memberId: string) => {
             moduleTitle: importedRecording.group.legacyModule.title,
           },
           legacyLesson: importedRecording.legacyLesson,
+          thumbnailUrl: importedRecording.thumbnailPath
+            ? `/api/learning/recordings/${importedRecording.id}/thumbnail`
+            : null,
           progress: {
             positionSeconds: row.positionSeconds,
             durationSeconds: row.durationSeconds,
@@ -177,6 +185,9 @@ export const getMemberRecordingLibrary = async (memberId: string) => {
         moduleTitle: group.legacyModule.title,
       },
       progress: recording.asset.playbackProgress[0] ?? null,
+      thumbnailUrl: recording.thumbnailPath
+        ? `/api/learning/recordings/${recording.id}/thumbnail`
+        : null,
     }))
   );
 
@@ -197,6 +208,129 @@ export const getMemberRecordingLibrary = async (memberId: string) => {
           (left.progress?.lastViewedAt.getTime() ?? 0)
       )
       .slice(0, 6),
+  };
+};
+
+export interface RecordingPageOptions {
+  readonly cursor?: string;
+  readonly query?: string;
+  readonly requestedAssetId?: string;
+  readonly take?: number;
+  readonly year?: string;
+}
+
+const recordingPageSelection = (memberId: string) => ({
+  id: true,
+  originalTitle: true,
+  meetingDate: true,
+  thumbnailPath: true,
+  legacyLesson: { select: { title: true, position: true } },
+  group: {
+    select: {
+      id: true,
+      legacyStudentName: true,
+      legacyModule: {
+        select: {
+          title: true,
+          course: { select: { title: true, slug: true } },
+        },
+      },
+    },
+  },
+  asset: {
+    select: {
+      id: true,
+      title: true,
+      kind: true,
+      mimeType: true,
+      durationSeconds: true,
+      playbackProgress: {
+        where: { memberId },
+        select: {
+          positionSeconds: true,
+          durationSeconds: true,
+          lastViewedAt: true,
+          completedPlaybackAt: true,
+        },
+        take: 1,
+      },
+    },
+  },
+});
+
+/**
+ * Archive listing query. It pages recordings rather than loading every
+ * imported lesson just to paint the first viewport. Authorization remains on
+ * ImportedRecordingGroup.memberId (or staff role) and is applied in SQL.
+ */
+export const getMemberRecordingPage = async (
+  memberId: string,
+  options: RecordingPageOptions = {}
+) => {
+  const access = await getRecordingAccessContext(memberId);
+  const take = Math.min(Math.max(options.take ?? 18, 6), 36);
+  const query = options.query?.trim();
+  const year = options.year?.match(yearPattern)?.[0];
+  const where: Prisma.ImportedRecordingWhereInput = {
+    group: access.fullAccess ? undefined : { memberId },
+    ...(query
+      ? {
+          OR: [
+            { originalTitle: { contains: query, mode: "insensitive" } },
+            { asset: { title: { contains: query, mode: "insensitive" } } },
+            {
+              group: {
+                legacyStudentName: { contains: query, mode: "insensitive" },
+              },
+            },
+          ],
+        }
+      : {}),
+    ...(year
+      ? {
+          meetingDate: {
+            gte: new Date(`${year}-01-01T00:00:00.000Z`),
+            lt: new Date(`${Number(year) + 1}-01-01T00:00:00.000Z`),
+          },
+        }
+      : {}),
+  };
+
+  const [rows, requested] = await Promise.all([
+    database.importedRecording.findMany({
+      where,
+      orderBy: [{ meetingDate: "desc" }, { id: "desc" }],
+      ...(options.cursor ? { cursor: { id: options.cursor }, skip: 1 } : {}),
+      take: take + 1,
+      select: recordingPageSelection(memberId),
+    }),
+    options.requestedAssetId
+      ? database.importedRecording.findFirst({
+          where: {
+            ...where,
+            assetId: options.requestedAssetId,
+          },
+          select: recordingPageSelection(memberId),
+        })
+      : Promise.resolve(null),
+  ]);
+
+  const hasMore = rows.length > take;
+  const visibleRows = hasMore ? rows.slice(0, take) : rows;
+  const mapRow = (recording: (typeof visibleRows)[number]) => ({
+    ...recording,
+    thumbnailUrl: recording.thumbnailPath
+      ? `/api/learning/recordings/${recording.id}/thumbnail`
+      : null,
+    progress: recording.asset.playbackProgress[0] ?? null,
+  });
+
+  return {
+    access,
+    hasMore,
+    nextCursor: hasMore ? (visibleRows.at(-1)?.id ?? null) : null,
+    recordings: visibleRows.map(mapRow),
+    requestedRecording: requested ? mapRow(requested) : null,
   };
 };
 
@@ -228,7 +362,13 @@ export const getAdminRecordingGroups = async () =>
         },
       },
       recordings: {
-        select: { id: true, assetId: true, asset: { select: { kind: true } } },
+        select: {
+          id: true,
+          assetId: true,
+          originalTitle: true,
+          thumbnailPath: true,
+          asset: { select: { id: true, title: true, kind: true } },
+        },
       },
       assignments: {
         orderBy: { createdAt: "desc" },
