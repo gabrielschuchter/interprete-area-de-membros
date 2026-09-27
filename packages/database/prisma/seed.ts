@@ -45,6 +45,13 @@ const richText = (heading: string, paragraphs: string[]) => ({
 
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: this idempotent fixture seeder deliberately coordinates the related learning, community, activity, library, and meeting records in one transaction flow.
 const seed = async () => {
+  if (process.env.SEED_DEVELOPMENT_DATA !== "true") {
+    console.log(
+      "Development seed skipped. Set SEED_DEVELOPMENT_DATA=true explicitly to provision fixtures."
+    );
+    return;
+  }
+
   const staffId = process.env.SEED_STAFF_CLERK_USER_ID?.trim();
   const requestedRole = process.env.SEED_STAFF_ROLE?.trim();
 

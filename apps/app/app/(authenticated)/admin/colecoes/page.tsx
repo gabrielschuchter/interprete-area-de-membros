@@ -210,9 +210,8 @@ const CollectionsPage = async ({ searchParams }: CollectionsPageProperties) => {
                       <optgroup label="Gravações históricas">
                         {resources.recordings.map((recording) => (
                           <option key={recording.id} value={recording.id}>
-                            {recording.importedRecording?.group
-                              .legacyStudentName ?? "Arquivo"}{" "}
-                            · {recording.title}
+                            {recording.group.legacyStudentName} ·{" "}
+                            {recording.originalTitle ?? recording.asset.title}
                           </option>
                         ))}
                       </optgroup>

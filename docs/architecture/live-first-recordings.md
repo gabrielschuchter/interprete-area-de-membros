@@ -18,10 +18,18 @@ apagar ou mover os dados importados.
 - `ImportedRecordingGroup.memberId` é o vínculo administrativo canônico para
   autorização do arquivo histórico. Um grupo sem vínculo não é legível por
   membros.
+- `ImportedRecordingGroupAssignment` é o histórico auditável de cada vínculo;
+  a atualização do ponteiro canônico e o evento de auditoria acontecem na
+  mesma transação.
 - `AccessGrant` continua sendo a autorização canônica para o conteúdo
   assíncrono. Não se usa nome legado como permissão.
 - `PlaybackProgress` guarda somente posição de reprodução por
   `(memberId, assetId)`. Ele não altera nem substitui `LessonProgress`.
+- `ContentCollectionItem.recordingId` é a relação canônica para uma gravação
+  em curadoria. `assetId` continua somente como compatibilidade de linhas
+  antigas, sem ser usado em novas gravações.
+- `ImportedRecording.meetingId` é opcional e permite relacionar vários
+  registros históricos a um encontro sem forçar uma relação 1:1.
 
 ## Migração
 
@@ -58,17 +66,28 @@ grupos explicitamente vinculados a seu `Member.id`. A API de progresso usa
 upsert e a constraint única `(memberId, assetId)`, com persistência controlada
 no player em pausa, término, troca/desmontagem e intervalos espaçados.
 
-## Baseline real da produção
+## Baseline real da produção — 27/09/2026
 
-Antes do backfill: 2 Members, 2 Profiles, 2 Courses, 15 Modules, 101 Lessons,
-102 LessonAssets, 16 MigrationStudents, 233 MigrationRecords, 0 PlaybackProgress
-e 0 grupos/recordings semânticos.
+O inventário foi conferido diretamente no PostgreSQL/Supabase oficial, e não
+por números de documentação antiga:
 
-Depois das migrations: 1 Course `RECORDING_ARCHIVE`, 1 Course `ASYNC`, 14
-ImportedRecordingGroups, 102 ImportedRecordings, 102 LessonAssets preservados,
-0 assets com ownership inferido e 0 PlaybackProgress criado artificialmente.
-O bucket original continuou com seus objetos e prefixos; nenhuma operação de
-Storage faz parte do backfill.
+- 3 Members e 3 Profiles;
+- 2 Courses (`1 ASYNC` e `1 RECORDING_ARCHIVE`), 15 Modules e 101 Lessons;
+- 102 LessonAssets (`99 VIDEO` e `3 PDF`), todos os 102 com `sourcePlatform`
+  `KIWIFY` e `sourceId` preservados;
+- 16 MigrationStudents e 233 MigrationRecords (`1` asset legado marcado como
+  `FAILED`, sem remoção de dados);
+- 14 ImportedRecordingGroups e 102 ImportedRecordings;
+- 0 AccessGrants, 0 PlaybackProgress, 0 ContentCollections e 0 configurações
+  persistidas da Home;
+- 5 Meetings, 5 Activities e 13 CommunityPosts;
+- bucket privado `learning-assets`, sem movimentação ou reencodificação nesta
+  etapa. Os objetos históricos `kiwify-hls/*`, `kiwify/*` e os assets atuais
+  de comunidade/perfil permanecem intactos.
 
-Qualquer grupo sem vínculo permanece preservado para decisão explícita do
-admin. A limpeza de legado não faz parte desta etapa.
+Os 14 grupos continuam sem vínculo de membro. Há somente eventos de teste
+administrativo já preservados no histórico (`ASSIGNED` e `REVOKED`); eles não
+concedem acesso atual. Nenhum ownership foi inferido por nome, e-mail ou
+similaridade. A nova migração é aditiva: adiciona relações explícitas de
+recording/meeting, constraints de estado e a fonte tipada de Collections, sem
+apagar registros, paths, checksums ou objetos do Storage.

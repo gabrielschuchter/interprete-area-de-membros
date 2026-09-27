@@ -195,6 +195,7 @@ export const getAccessibleAsset = async (assetId: string, memberId: string) => {
       ownerMemberId: true,
       importedRecording: {
         select: {
+          id: true,
           group: { select: { memberId: true } },
         },
       },
@@ -227,4 +228,17 @@ export const getAccessibleAsset = async (assetId: string, memberId: string) => {
       scope.assetIds.has(asset.id);
 
   return canReadAsset ? asset : null;
+};
+
+/**
+ * Playback progress belongs to the historical-recording domain only. Keeping
+ * this guard separate prevents an async LessonAsset from accidentally being
+ * treated as a recording merely because it is video-shaped.
+ */
+export const getAccessibleRecording = async (
+  assetId: string,
+  memberId: string
+) => {
+  const asset = await getAccessibleAsset(assetId, memberId);
+  return asset?.importedRecording ? asset : null;
 };

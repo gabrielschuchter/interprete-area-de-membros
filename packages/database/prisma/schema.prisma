@@ -472,22 +472,26 @@ model ImportedRecordingGroup {
 }
 
 model ImportedRecording {
-  id             String                 @id @default(cuid())
-  groupId        String
-  assetId        String                 @unique
-  legacyLessonId String
-  sourcePlatform String
-  sourceId       String
-  originalTitle  String?
-  meetingDate    DateTime?
-  createdAt      DateTime               @default(now())
-  updatedAt      DateTime               @updatedAt
-  group          ImportedRecordingGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  asset          LessonAsset            @relation(fields: [assetId], references: [id], onDelete: Restrict)
-  legacyLesson   Lesson                 @relation(fields: [legacyLessonId], references: [id], onDelete: Restrict)
+  id              String                  @id @default(cuid())
+  groupId         String
+  assetId         String                  @unique
+  legacyLessonId  String
+  meetingId       String?
+  sourcePlatform  String
+  sourceId        String
+  originalTitle   String?
+  meetingDate     DateTime?
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+  group           ImportedRecordingGroup  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  asset           LessonAsset             @relation(fields: [assetId], references: [id], onDelete: Restrict)
+  legacyLesson    Lesson                  @relation(fields: [legacyLessonId], references: [id], onDelete: Restrict)
+  meeting         Meeting?                @relation(fields: [meetingId], references: [id], onDelete: SetNull)
+  collectionItems ContentCollectionItem[]
 
   @@unique([sourcePlatform, sourceId])
   @@index([groupId, meetingDate])
+  @@index([meetingId, meetingDate])
   @@index([legacyLessonId])
 }
 
@@ -844,6 +848,7 @@ model Meeting {
   relatedActivity      Activity?            @relation("MeetingActivity", fields: [relatedActivityId], references: [id], onDelete: SetNull)
   relatedLibraryItem   LibraryItem?         @relation("MeetingLibraryItem", fields: [relatedLibraryItemId], references: [id], onDelete: SetNull)
   participants         MeetingParticipant[]
+  recordings           ImportedRecording[]
 
   @@unique([teacherId, idempotencyKey])
   @@index([status, startsAt])
@@ -949,6 +954,7 @@ model ContentCollectionItem {
   itemType      CollectionItemType
   lessonId      String?
   assetId       String?
+  recordingId   String?
   libraryItemId String?
   position      Int                @default(0)
   createdAt     DateTime           @default(now())
@@ -956,14 +962,18 @@ model ContentCollectionItem {
   collection    ContentCollection  @relation(fields: [collectionId], references: [id], onDelete: Cascade)
   lesson        Lesson?            @relation(fields: [lessonId], references: [id], onDelete: SetNull)
   asset         LessonAsset?       @relation(fields: [assetId], references: [id], onDelete: SetNull)
+  recording     ImportedRecording? @relation(fields: [recordingId], references: [id], onDelete: SetNull)
   libraryItem   LibraryItem?       @relation(fields: [libraryItemId], references: [id], onDelete: SetNull)
 
   @@unique([collectionId, position])
   @@unique([collectionId, itemType, lessonId])
   @@unique([collectionId, itemType, assetId])
+  @@unique([collectionId, itemType, recordingId])
   @@unique([collectionId, itemType, libraryItemId])
   @@index([itemType, lessonId])
   @@index([itemType, assetId])
+  @@index([itemType, recordingId])
+  @@index([recordingId])
   @@index([itemType, libraryItemId])
 }
 
@@ -986,4 +996,5 @@ model HomeBlockConfiguration {
 
   @@unique([type])
   @@index([enabled, position])
+  @@index([collectionId])
 }

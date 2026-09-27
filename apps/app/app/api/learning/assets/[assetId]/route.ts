@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { auth } from "@repo/auth/server";
 import { NextResponse } from "next/server";
 import { getAccessibleAsset } from "@/lib/content-access";
 import { requireMemberId } from "@/lib/learning";
@@ -39,6 +40,7 @@ interface HlsPlaybackTokenPayload {
   readonly assetId: string;
   readonly directory: string;
   readonly expiresAt: number;
+  readonly memberId: string;
 }
 
 const encodeTokenPart = (value: string) =>
@@ -52,6 +54,7 @@ const hlsTokenSecret = () =>
 const signHlsPlaybackToken = (
   assetId: string,
   directory: string,
+  memberId: string,
   expiresInSeconds = HLS_TOKEN_TTL_SECONDS
 ) => {
   const secret = hlsTokenSecret();
@@ -63,6 +66,7 @@ const signHlsPlaybackToken = (
     assetId,
     directory,
     expiresAt: Math.floor(Date.now() / 1000) + expiresInSeconds,
+    memberId,
   };
   const encodedPayload = encodeTokenPart(JSON.stringify(payload));
   const signature = createHmac("sha256", secret)
@@ -109,10 +113,12 @@ const verifyHlsPlaybackToken = (
     const tokenAssetId = payload.assetId;
     const directory = payload.directory;
     const expiresAt = payload.expiresAt;
+    const memberId = payload.memberId;
     if (
       typeof tokenAssetId !== "string" ||
       typeof directory !== "string" ||
       typeof expiresAt !== "number" ||
+      typeof memberId !== "string" ||
       tokenAssetId !== assetId ||
       directory !== playlistDirectory ||
       !Number.isInteger(expiresAt) ||
@@ -120,7 +126,7 @@ const verifyHlsPlaybackToken = (
     ) {
       return null;
     }
-    return { assetId: tokenAssetId, directory, expiresAt };
+    return { assetId: tokenAssetId, directory, expiresAt, memberId };
   } catch {
     return null;
   }
@@ -219,7 +225,7 @@ const invalidHlsSegmentResponse = (status = 404) =>
 const isSafeHlsSegmentPath = (storagePath: string, directory: string) =>
   storagePath.startsWith(directory) && !storagePath.includes("..");
 
-const serveTokenizedHlsSegment = (
+const serveTokenizedHlsSegment = async (
   request: Request,
   assetId: string,
   hlsPart: string,
@@ -227,6 +233,10 @@ const serveTokenizedHlsSegment = (
 ) => {
   const tokenPayload = verifyHlsPlaybackToken(hlsToken, assetId, hlsPart);
   if (!tokenPayload) {
+    return invalidHlsSegmentResponse();
+  }
+  const { userId } = await auth();
+  if (!userId || userId !== tokenPayload.memberId) {
     return invalidHlsSegmentResponse();
   }
   if (!isSafeHlsSegmentPath(hlsPart, tokenPayload.directory)) {
@@ -253,13 +263,18 @@ const rewriteHlsPlaylist = (
   request: Request,
   assetId: string,
   storagePath: string,
+  memberId: string,
   playlist: string
 ) => {
   const playlistDirectory = storagePath.slice(
     0,
     storagePath.lastIndexOf("/") + 1
   );
-  const playbackToken = signHlsPlaybackToken(assetId, playlistDirectory);
+  const playbackToken = signHlsPlaybackToken(
+    assetId,
+    playlistDirectory,
+    memberId
+  );
   if (!playbackToken) {
     return null;
   }
@@ -289,6 +304,7 @@ const serveHlsPlaylist = async (
   request: Request,
   assetId: string,
   storagePath: string,
+  memberId: string,
   signedUrl: string
 ) => {
   const upstream = await fetch(signedUrl, { cache: "no-store" });
@@ -303,6 +319,7 @@ const serveHlsPlaylist = async (
     request,
     assetId,
     storagePath,
+    memberId,
     await upstream.text()
   );
   if (!rewritten) {
@@ -325,7 +342,8 @@ const serveStoredAsset = async (
   request: Request,
   assetId: string,
   asset: AccessibleAsset,
-  hlsPart: string | null
+  hlsPart: string | null,
+  memberId: string
 ) => {
   const storagePath = asset.storagePath;
   if (!storagePath) {
@@ -360,7 +378,7 @@ const serveStoredAsset = async (
     );
   }
   return isHlsAsset(asset.mimeType)
-    ? serveHlsPlaylist(request, assetId, storagePath, signedUrl)
+    ? serveHlsPlaylist(request, assetId, storagePath, memberId, signedUrl)
     : proxyStorageResponse(request, signedUrl);
 };
 
@@ -389,7 +407,7 @@ export const GET = async (
   }
 
   if (asset.storagePath) {
-    return serveStoredAsset(request, assetId, asset, hlsPart);
+    return serveStoredAsset(request, assetId, asset, hlsPart, memberId);
   }
 
   const externalUrl = safeExternalUrl(asset.externalUrl);

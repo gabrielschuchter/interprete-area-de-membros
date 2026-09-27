@@ -2,7 +2,7 @@ import { auth } from "@repo/auth/server";
 import { database } from "@repo/database";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getAccessibleAsset } from "@/lib/content-access";
+import { getAccessibleRecording } from "@/lib/content-access";
 import {
   consumeMutationRateLimit,
   isMutationRateLimitError,
@@ -31,7 +31,7 @@ export const GET = async (
   }
 
   const { assetId } = await params;
-  const asset = await getAccessibleAsset(assetId, userId);
+  const asset = await getAccessibleRecording(assetId, userId);
   if (!asset) {
     return NextResponse.json(
       { error: "Material não encontrado." },
@@ -68,7 +68,7 @@ export const PUT = async (
       action: "learning.playback",
       memberId: userId,
     });
-    const asset = await getAccessibleAsset(assetId, userId);
+    const asset = await getAccessibleRecording(assetId, userId);
     if (!asset) {
       return NextResponse.json(
         { error: "Material não encontrado." },

@@ -1,10 +1,5 @@
 "use server";
 
-import { randomUUID } from "node:crypto";
-import {
-  database,
-  ImportedRecordingGroupAssignmentAction,
-} from "@repo/database";
 import { revalidatePath } from "next/cache";
 import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { redirect } from "next/navigation";
@@ -13,6 +8,10 @@ import {
   consumeMutationRateLimit,
   mutationLog,
 } from "@/lib/mutation-reliability";
+import {
+  assignRecordingGroup,
+  revokeRecordingGroup,
+} from "@/lib/recording-groups";
 
 const value = (input: FormDataEntryValue | null) =>
   typeof input === "string" ? input.trim() : "";
@@ -40,46 +39,10 @@ export const assignImportedRecordingGroup = async (formData: FormData) => {
   const startedAt = Date.now();
 
   try {
-    await database.$transaction(async (transaction) => {
-      const [group, member] = await Promise.all([
-        transaction.importedRecordingGroup.findUnique({
-          where: { id: groupId },
-          select: { id: true, memberId: true },
-        }),
-        transaction.member.findUnique({
-          where: { id: memberId },
-          select: { id: true },
-        }),
-      ]);
-
-      if (!(group && member)) {
-        throw new Error("Grupo ou membro não encontrado.");
-      }
-      if (group.memberId === memberId) {
-        return;
-      }
-
-      const action = group.memberId
-        ? ImportedRecordingGroupAssignmentAction.REASSIGNED
-        : ImportedRecordingGroupAssignmentAction.ASSIGNED;
-      await transaction.importedRecordingGroup.update({
-        where: { id: group.id },
-        data: {
-          memberId,
-          assignedAt: new Date(),
-          assignedByMemberId: userId,
-        },
-      });
-      await transaction.importedRecordingGroupAssignment.create({
-        data: {
-          id: randomUUID(),
-          groupId: group.id,
-          previousMemberId: group.memberId,
-          memberId,
-          changedByMemberId: userId,
-          action,
-        },
-      });
+    await assignRecordingGroup({
+      changedByMemberId: userId,
+      groupId,
+      memberId,
     });
 
     mutationLog({
@@ -123,32 +86,9 @@ export const revokeImportedRecordingGroup = async (formData: FormData) => {
   const startedAt = Date.now();
 
   try {
-    await database.$transaction(async (transaction) => {
-      const group = await transaction.importedRecordingGroup.findUnique({
-        where: { id: groupId },
-        select: { id: true, memberId: true },
-      });
-      if (!group) {
-        throw new Error("Grupo não encontrado.");
-      }
-      if (!group.memberId) {
-        return;
-      }
-
-      await transaction.importedRecordingGroup.update({
-        where: { id: group.id },
-        data: { memberId: null, assignedAt: null, assignedByMemberId: userId },
-      });
-      await transaction.importedRecordingGroupAssignment.create({
-        data: {
-          id: randomUUID(),
-          groupId: group.id,
-          previousMemberId: group.memberId,
-          memberId: null,
-          changedByMemberId: userId,
-          action: ImportedRecordingGroupAssignmentAction.REVOKED,
-        },
-      });
+    await revokeRecordingGroup({
+      changedByMemberId: userId,
+      groupId,
     });
 
     mutationLog({

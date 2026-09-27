@@ -220,21 +220,20 @@ export const addCollectionItem = async (formData: FormData) => {
       }
 
       if (parsed.data.itemType === CollectionItemType.RECORDING) {
-        const asset = await transaction.lessonAsset.findFirst({
+        const recording = await transaction.importedRecording.findFirst({
           where: {
             id: parsed.data.resourceId,
-            importedRecording: { isNot: null },
           },
           select: { id: true },
         });
-        if (!asset) {
+        if (!recording) {
           throw new Error("recording_not_found");
         }
         await transaction.contentCollectionItem.create({
           data: {
             ...common,
             itemType: parsed.data.itemType,
-            assetId: asset.id,
+            recordingId: recording.id,
           },
         });
       }

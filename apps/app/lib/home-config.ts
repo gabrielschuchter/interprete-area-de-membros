@@ -1,6 +1,6 @@
 import "server-only";
 
-import { database, HomeBlockType } from "@repo/database";
+import { ContentStatus, database, HomeBlockType } from "@repo/database";
 import { cache } from "react";
 
 export interface HomeBlockConfig {
@@ -77,6 +77,15 @@ const defaultHomeBlocks: readonly HomeBlockConfig[] = [
     title: null,
     type: HomeBlockType.COMMUNITY,
   },
+  {
+    collectionId: null,
+    enabled: false,
+    itemCount: 4,
+    position: 80,
+    subtitle: null,
+    title: null,
+    type: HomeBlockType.COLLECTION,
+  },
 ];
 
 export const getHomeBlockConfigurations = cache(async () => {
@@ -90,10 +99,22 @@ export const getHomeBlockConfigurations = cache(async () => {
       subtitle: true,
       title: true,
       type: true,
+      collection: { select: { status: true } },
     },
   });
   const persistedByType = new Map(
-    persisted.map((configuration) => [configuration.type, configuration])
+    persisted.map(({ collection, ...configuration }) => [
+      configuration.type,
+      {
+        ...configuration,
+        collectionId:
+          collection?.status === ContentStatus.PUBLISHED
+            ? configuration.collectionId
+            : null,
+        itemCount: Math.min(Math.max(configuration.itemCount, 1), 12),
+        position: Math.max(configuration.position, 0),
+      },
+    ])
   );
 
   return defaultHomeBlocks
