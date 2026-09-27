@@ -18,6 +18,7 @@ import {
   CornerDownLeftIcon,
   Layers3Icon,
   LibraryIcon,
+  MapPinIcon,
   MessageCircleIcon,
   PlayCircleIcon,
   RefreshCwIcon,
@@ -57,6 +58,8 @@ const resultIcons = {
   activity: ClipboardCheckIcon,
   recording: VideoIcon,
   community: MessageCircleIcon,
+  "community-comment": MessageCircleIcon,
+  "community-space": MapPinIcon,
   library: LibraryIcon,
   profile: UserRoundIcon,
 } as const;
@@ -199,7 +202,8 @@ export const GlobalSearch = ({
       >
         <DialogTitle className="sr-only">Buscar no Interprete</DialogTitle>
         <DialogDescription className="sr-only">
-          Pesquise cursos, aulas, atividades, discussões, materiais e pessoas.
+          Pesquise cursos, aulas, atividades, discussões, comentários, espaços,
+          materiais e pessoas.
         </DialogDescription>
 
         <div className="flex items-center gap-3 border-border/70 border-b px-4 py-4 sm:px-6 sm:py-5">

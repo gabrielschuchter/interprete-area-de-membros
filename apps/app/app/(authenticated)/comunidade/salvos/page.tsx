@@ -1,7 +1,8 @@
 import { Badge } from "@repo/design-system/components/ui/badge";
 import { Button } from "@repo/design-system/components/ui/button";
-import { ArrowLeftIcon, BookmarkIcon } from "lucide-react";
+import { BookmarkIcon } from "lucide-react";
 import Link from "next/link";
+import { CommunityNavigation } from "@/components/community/community-navigation";
 import { MemberIdentity } from "@/components/community/member-identity";
 import {
   SingleFlightForm,
@@ -19,11 +20,7 @@ const SavedCommunityPage = async () => {
   return (
     <div className="min-h-svh bg-background">
       <main className="mx-auto w-full max-w-[1120px] px-5 py-8 sm:px-8 lg:px-12 lg:py-14">
-        <Button asChild className="-ml-3" variant="ghost">
-          <Link href="/comunidade">
-            <ArrowLeftIcon aria-hidden="true" /> Comunidade
-          </Link>
-        </Button>
+        <CommunityNavigation active="saved" />
         <header className="mt-8 max-w-3xl">
           <p className="brand-eyebrow">Caderno de leitura</p>
           <span aria-hidden="true" className="brand-rule mt-4" />

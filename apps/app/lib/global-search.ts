@@ -17,6 +17,8 @@ export type GlobalSearchResultType =
   | "activity"
   | "recording"
   | "community"
+  | "community-comment"
+  | "community-space"
   | "library"
   | "profile";
 
@@ -259,6 +261,50 @@ export const searchGlobal = async (memberId: string, rawQuery: string) => {
         space: { select: { title: true, slug: true } },
       },
     }),
+    database.communityComment.findMany({
+      where: {
+        content: contains(query),
+        deletedAt: null,
+        post: {
+          is: {
+            status: ContentStatus.PUBLISHED,
+            deletedAt: null,
+            OR: [
+              { space: null },
+              { space: { is: { status: ContentStatus.PUBLISHED } } },
+            ],
+          },
+        },
+      },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: MAX_RESULTS_PER_TYPE,
+      select: {
+        id: true,
+        content: true,
+        post: {
+          select: {
+            title: true,
+            slug: true,
+            id: true,
+            space: { select: { title: true, slug: true } },
+          },
+        },
+      },
+    }),
+    database.communitySpace.findMany({
+      where: {
+        status: ContentStatus.PUBLISHED,
+        OR: [{ title: contains(query) }, { description: contains(query) }],
+      },
+      orderBy: [{ position: "asc" }, { title: "asc" }],
+      take: MAX_RESULTS_PER_TYPE,
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        description: true,
+      },
+    }),
     database.libraryItem.findMany({
       where: {
         ...published,
@@ -303,6 +349,8 @@ export const searchGlobal = async (memberId: string, rawQuery: string) => {
     activities,
     recordings,
     posts,
+    comments,
+    spaces,
     library,
     profiles,
   ] = await resultsPromise;
@@ -406,6 +454,26 @@ export const searchGlobal = async (memberId: string, rawQuery: string) => {
       communityPostHref(post)
     )
   );
+  const communityCommentResults = comments.map((comment) =>
+    result(
+      comment.id,
+      preview(comment.content) ?? "Comentário",
+      "community-comment",
+      "Comentário",
+      `${comment.post.title} · ${comment.post.space?.title ?? "Feed geral"}`,
+      `${communityPostHref(comment.post)}?commentId=${encodeURIComponent(comment.id)}`
+    )
+  );
+  const communitySpaceResults = spaces.map((space) =>
+    result(
+      space.id,
+      space.title,
+      "community-space",
+      "Espaço",
+      preview(space.description),
+      `/comunidade/${space.slug}`
+    )
+  );
   const libraryResults = library.map((item) =>
     result(
       item.id,
@@ -437,6 +505,8 @@ export const searchGlobal = async (memberId: string, rawQuery: string) => {
     ...activityResults,
     ...recordingResults,
     ...communityResults,
+    ...communityCommentResults,
+    ...communitySpaceResults,
     ...libraryResults,
     ...profileResults,
   ].slice(0, MAX_RESULTS);

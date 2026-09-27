@@ -4,18 +4,23 @@ import {
   AvatarImage,
 } from "@repo/design-system/components/ui/avatar";
 import { Button } from "@repo/design-system/components/ui/button";
-import {
-  ArrowRightIcon,
-  BookmarkIcon,
-  PlusIcon,
-  SearchIcon,
-} from "lucide-react";
+import { ArrowRightIcon, PlusIcon, SearchIcon } from "lucide-react";
 import Link from "next/link";
+import { CommunityEmptyState } from "@/components/community/community-empty-state";
 import { CommunityFeedCard } from "@/components/community/community-feed-card";
 import { CommunityHero } from "@/components/community/community-hero";
+import {
+  CommunityFeedNavigation,
+  CommunityNavigation,
+} from "@/components/community/community-navigation";
 import { CommunityRightRail } from "@/components/community/community-right-rail";
 import { Stagger } from "@/components/motion/motion";
 import { getCommunityFeed, getCommunitySpaces } from "@/lib/community";
+import {
+  communityHref,
+  parseCommunityKind,
+  parseCommunitySort,
+} from "@/lib/community-query";
 import { requireMemberId } from "@/lib/learning";
 import { getRecentCommunityAnnouncements } from "@/lib/notifications";
 import { getOrCreateProfile } from "@/lib/profile";
@@ -26,6 +31,7 @@ interface CommunityPageProperties {
   readonly searchParams: Promise<{
     q?: string;
     sort?: string;
+    kind?: string;
     page?: string;
     space?: string;
   }>;
@@ -34,13 +40,15 @@ interface CommunityPageProperties {
 const CommunityPage = async ({ searchParams }: CommunityPageProperties) => {
   const filters = await searchParams;
   const memberId = await requireMemberId();
-  const sort = filters.sort === "popular" ? "popular" : "recent";
+  const sort = parseCommunitySort(filters.sort);
+  const kind = parseCommunityKind(filters.kind);
   const page = Number.parseInt(filters.page ?? "1", 10);
   const [spaces, feed, profile, announcements] = await Promise.all([
     getCommunitySpaces(),
     getCommunityFeed(memberId, {
       query: filters.q,
       sort,
+      kind,
       page,
       spaceSlug: filters.space,
     }),
@@ -56,20 +64,17 @@ const CommunityPage = async ({ searchParams }: CommunityPageProperties) => {
     .join("")
     .toUpperCase();
 
-  const queryString = (nextPage: number) => {
-    const params = new URLSearchParams();
-    if (filters.q) {
-      params.set("q", filters.q);
-    }
-    if (sort === "popular") {
-      params.set("sort", sort);
-    }
-    if (filters.space) {
-      params.set("space", filters.space);
-    }
-    params.set("page", String(nextPage));
-    return `/comunidade?${params.toString()}`;
-  };
+  const hasDiscoveryFilters = Boolean(
+    filters.q || kind || filters.space || sort !== "recent"
+  );
+  const queryString = (nextPage: number) =>
+    communityHref({
+      kind,
+      page: nextPage,
+      query: filters.q,
+      sort,
+      spaceSlug: filters.space,
+    });
 
   return (
     <div className="community-page min-h-svh bg-background">
@@ -116,20 +121,12 @@ const CommunityPage = async ({ searchParams }: CommunityPageProperties) => {
                     <PlusIcon aria-hidden="true" /> Criar conteúdo
                   </Link>
                 </Button>
-                <Button asChild variant="outline">
-                  <Link href="/comunidade/meus-topicos">
-                    Minhas publicações
-                  </Link>
-                </Button>
-                <Button asChild variant="outline">
-                  <Link href="/comunidade/salvos">
-                    <BookmarkIcon aria-hidden="true" /> Salvos
-                  </Link>
-                </Button>
               </div>
             </div>
           </div>
         </section>
+
+        <CommunityNavigation active="explore" />
 
         <div className="community-content-grid mt-8 grid gap-8 xl:grid-cols-[minmax(0,780px)_minmax(280px,320px)] xl:justify-between xl:gap-8">
           <section aria-labelledby="feed-heading" className="min-w-0">
@@ -140,30 +137,14 @@ const CommunityPage = async ({ searchParams }: CommunityPageProperties) => {
                   O que está sendo pensado
                 </h2>
               </div>
-              <div className="flex gap-2 text-sm">
-                <Link
-                  className={
-                    sort === "recent"
-                      ? "font-medium text-brand-structural"
-                      : "text-muted-foreground"
-                  }
-                  href={`/comunidade${filters.q ? `?q=${encodeURIComponent(filters.q)}` : ""}`}
-                >
-                  Recentes
-                </Link>
-                <span className="text-muted-foreground">·</span>
-                <Link
-                  className={
-                    sort === "popular"
-                      ? "font-medium text-brand-structural"
-                      : "text-muted-foreground"
-                  }
-                  href={`/comunidade?sort=popular${filters.q ? `&q=${encodeURIComponent(filters.q)}` : ""}`}
-                >
-                  Populares
-                </Link>
-              </div>
             </div>
+
+            <CommunityFeedNavigation
+              kind={kind}
+              query={filters.q}
+              sort={sort}
+              spaceSlug={filters.space}
+            />
 
             <form className="mt-5 flex flex-col gap-3 sm:flex-row" method="get">
               <label className="relative min-w-0 flex-1">
@@ -176,7 +157,7 @@ const CommunityPage = async ({ searchParams }: CommunityPageProperties) => {
                   className="h-10 w-full rounded-sm border bg-background pr-3 pl-10 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/35"
                   defaultValue={filters.q ?? ""}
                   name="q"
-                  placeholder="Buscar publicações, discussões ou autores"
+                  placeholder="Buscar na comunidade"
                 />
               </label>
               <select
@@ -193,27 +174,18 @@ const CommunityPage = async ({ searchParams }: CommunityPageProperties) => {
                 ))}
               </select>
               <input name="sort" type="hidden" value={sort} />
+              {kind ? <input name="kind" type="hidden" value={kind} /> : null}
               <Button type="submit" variant="outline">
                 Buscar
               </Button>
             </form>
 
             {feed.posts.length === 0 ? (
-              <div className="paper-surface mt-6 border p-8 sm:p-12">
-                <p className="brand-eyebrow">Nenhum conteúdo encontrado</p>
-                <h3 className="mt-4 font-display text-3xl">
-                  A primeira ideia pode começar aqui.
-                </h3>
-                <p className="mt-3 max-w-2xl text-muted-foreground leading-7">
-                  Tente outra busca ou escreva uma publicação para colocar uma
-                  ideia em movimento.
-                </p>
-                <Button asChild className="mt-6">
-                  <Link href="/comunidade/novo">
-                    <PlusIcon aria-hidden="true" /> Criar conteúdo
-                  </Link>
-                </Button>
-              </div>
+              <CommunityEmptyState
+                hasFilters={hasDiscoveryFilters}
+                kind={kind}
+                sort={sort}
+              />
             ) : (
               <Stagger className="mt-6 divide-y border-border border-y">
                 {feed.posts.map((post) => (

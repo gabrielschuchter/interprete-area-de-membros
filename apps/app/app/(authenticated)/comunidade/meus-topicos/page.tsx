@@ -1,7 +1,8 @@
 import { Badge } from "@repo/design-system/components/ui/badge";
 import { Button } from "@repo/design-system/components/ui/button";
-import { ArrowLeftIcon, FileTextIcon, PlusIcon } from "lucide-react";
+import { FileTextIcon, PlusIcon } from "lucide-react";
 import Link from "next/link";
+import { CommunityNavigation } from "@/components/community/community-navigation";
 import { communityPostHref, getMyCommunityPosts } from "@/lib/community";
 import { communityPostKindLabel } from "@/lib/community-post-types";
 import { requireMemberId } from "@/lib/learning";
@@ -24,12 +25,8 @@ const MyCommunityPage = async () => {
   return (
     <div className="min-h-svh bg-background">
       <main className="mx-auto w-full max-w-[1120px] px-5 py-8 sm:px-8 lg:px-12 lg:py-14">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <Button asChild className="-ml-3" variant="ghost">
-            <Link href="/comunidade">
-              <ArrowLeftIcon aria-hidden="true" /> Comunidade
-            </Link>
-          </Button>
+        <CommunityNavigation active="mine" />
+        <div className="mt-4 flex justify-end">
           <Button asChild>
             <Link href="/comunidade/novo">
               <PlusIcon aria-hidden="true" /> Criar conteúdo
