@@ -1,6 +1,9 @@
 export default function AdminLoading() {
   return (
-    <main className="mx-auto w-full max-w-[1280px] px-5 py-10 sm:px-8 lg:px-12 lg:py-14">
+    <main
+      className="mx-auto w-full max-w-[1280px] px-5 py-10 sm:px-8 lg:px-12 lg:py-14"
+      data-route-loading
+    >
       <output aria-label="Carregando painel" className="block space-y-4">
         <div className="h-4 w-40 animate-pulse rounded-sm bg-muted" />
         <div className="h-16 max-w-2xl animate-pulse rounded-sm bg-muted" />

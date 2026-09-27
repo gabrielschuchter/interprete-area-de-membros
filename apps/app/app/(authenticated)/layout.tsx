@@ -9,6 +9,7 @@ import { getMemberRole } from "@/lib/authorization";
 import { getMemberProductConfig } from "@/lib/product-config";
 import { getOrCreateProfile } from "@/lib/profile";
 import { MemberHeader } from "./components/member-header";
+import { NavigationFeedback } from "./components/navigation-feedback";
 import { RouteMotion } from "./components/route-motion";
 import { GlobalSidebar } from "./components/sidebar";
 
@@ -52,6 +53,7 @@ const AppLayout = async ({ children }: AppLayoutProperties) => {
         productConfig={productConfig}
       >
         <MemberHeader memberId={userId} />
+        <NavigationFeedback />
         <RouteMotion>{children}</RouteMotion>
       </GlobalSidebar>
     </SidebarProvider>

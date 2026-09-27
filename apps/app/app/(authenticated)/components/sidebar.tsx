@@ -28,7 +28,13 @@ import {
   SettingsIcon,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { BrandWordmark } from "@/components/brand/brand-mark";
 import { IntentLink } from "./intent-link";
 
@@ -70,9 +76,36 @@ export const GlobalSidebar = ({
   productConfig,
 }: GlobalSidebarProperties) => {
   const pathname = usePathname();
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
+  const previousPathname = useRef(pathname);
   const navigation = productConfig.showLearnNavigation
     ? [baseNavigation[0], learnNavigation, ...baseNavigation.slice(1)]
     : baseNavigation;
+  const activePath = pendingHref ?? pathname;
+  const isActivePath = useCallback(
+    (href: string) =>
+      href === "/"
+        ? activePath === "/"
+        : activePath === href || activePath.startsWith(`${href}/`),
+    [activePath]
+  );
+  const handleNavigationStart = useCallback(
+    (href: string) => {
+      if (href !== pathname) {
+        setPendingHref(href);
+      }
+    },
+    [pathname]
+  );
+
+  useEffect(() => {
+    if (previousPathname.current === pathname) {
+      return;
+    }
+
+    previousPathname.current = pathname;
+    setPendingHref(null);
+  }, [pathname]);
 
   return (
     <>
@@ -82,11 +115,11 @@ export const GlobalSidebar = ({
             <SidebarMenuItem>
               <SidebarMenuButton
                 asChild
-                className="h-11 rounded-sm px-2 hover:bg-sidebar-accent"
+                className="h-11 rounded-sm px-2 hover:bg-sidebar-accent group-data-[collapsible=icon]:p-2!"
                 size="lg"
                 tooltip="Interprete."
               >
-                <IntentLink href="/">
+                <IntentLink href="/" onNavigationStart={handleNavigationStart}>
                   <BrandWordmark
                     className="w-[7.25rem] group-data-[collapsible=icon]:hidden"
                     tone="branco"
@@ -101,10 +134,13 @@ export const GlobalSidebar = ({
               <SidebarMenuButton
                 asChild
                 className="rounded-sm"
-                isActive={pathname === "/comunidade/salvos"}
+                isActive={isActivePath("/comunidade/salvos")}
                 tooltip="Salvos"
               >
-                <IntentLink href="/comunidade/salvos">
+                <IntentLink
+                  href="/comunidade/salvos"
+                  onNavigationStart={handleNavigationStart}
+                >
                   <BookmarkIcon />
                   <span className="group-data-[collapsible=icon]:hidden">
                     Salvos
@@ -125,15 +161,13 @@ export const GlobalSidebar = ({
                   <SidebarMenuButton
                     asChild
                     className="rounded-sm py-2.5 data-[active=true]:border-sidebar-primary data-[active=true]:border-l-2 data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground"
-                    isActive={
-                      item.href === "/"
-                        ? pathname === "/"
-                        : pathname === item.href ||
-                          pathname.startsWith(`${item.href}/`)
-                    }
+                    isActive={isActivePath(item.href)}
                     tooltip={item.label}
                   >
-                    <IntentLink href={item.href}>
+                    <IntentLink
+                      href={item.href}
+                      onNavigationStart={handleNavigationStart}
+                    >
                       <item.icon />
                       <span className="group-data-[collapsible=icon]:hidden">
                         {item.label}
@@ -147,10 +181,13 @@ export const GlobalSidebar = ({
                   <SidebarMenuButton
                     asChild
                     className="mt-5 rounded-sm border-sidebar-border border-t pt-4 data-[active=true]:border-sidebar-primary data-[active=true]:border-l-2 data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground"
-                    isActive={pathname.startsWith("/admin")}
+                    isActive={isActivePath("/admin")}
                     tooltip="Professor"
                   >
-                    <IntentLink href="/admin">
+                    <IntentLink
+                      href="/admin"
+                      onNavigationStart={handleNavigationStart}
+                    >
                       <BookOpenIcon />
                       <span className="group-data-[collapsible=icon]:hidden">
                         Professor
@@ -168,10 +205,13 @@ export const GlobalSidebar = ({
               <SidebarMenuButton
                 asChild
                 className="rounded-sm"
-                isActive={pathname === "/comunidade/meus-topicos"}
+                isActive={isActivePath("/comunidade/meus-topicos")}
                 tooltip="Meus tópicos"
               >
-                <IntentLink href="/comunidade/meus-topicos">
+                <IntentLink
+                  href="/comunidade/meus-topicos"
+                  onNavigationStart={handleNavigationStart}
+                >
                   <MessageCircleIcon />
                   <span className="group-data-[collapsible=icon]:hidden">
                     Meus tópicos
@@ -183,13 +223,13 @@ export const GlobalSidebar = ({
               <SidebarMenuButton
                 asChild
                 className="rounded-sm data-[active=true]:border-sidebar-primary data-[active=true]:border-l-2 data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground"
-                isActive={
-                  pathname === "/configuracoes" ||
-                  pathname.startsWith("/configuracoes/")
-                }
+                isActive={isActivePath("/configuracoes")}
                 tooltip="Configurações"
               >
-                <IntentLink href="/configuracoes">
+                <IntentLink
+                  href="/configuracoes"
+                  onNavigationStart={handleNavigationStart}
+                >
                   <SettingsIcon />
                   <span className="group-data-[collapsible=icon]:hidden">
                     Configurações
@@ -201,12 +241,14 @@ export const GlobalSidebar = ({
               <SidebarMenuButton
                 asChild
                 className="rounded-sm data-[active=true]:border-sidebar-primary data-[active=true]:border-l-2 data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground"
-                isActive={
-                  pathname === "/perfil" || pathname.startsWith("/perfil/")
-                }
+                isActive={isActivePath("/perfil")}
                 tooltip="Perfil"
               >
-                <IntentLink aria-label="Abrir meu perfil" href="/perfil">
+                <IntentLink
+                  aria-label="Abrir meu perfil"
+                  href="/perfil"
+                  onNavigationStart={handleNavigationStart}
+                >
                   <Avatar className="size-7 shrink-0">
                     {avatarUrl ? <AvatarImage alt="" src={avatarUrl} /> : null}
                     <AvatarFallback className="bg-brand-action text-primary-foreground text-xs">

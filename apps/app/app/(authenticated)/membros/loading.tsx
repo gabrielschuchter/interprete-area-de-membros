@@ -1,5 +1,8 @@
 const MembersLoading = () => (
-  <div className="mx-auto w-full max-w-[1280px] animate-pulse px-5 py-16 sm:px-8 lg:px-12">
+  <div
+    className="mx-auto w-full max-w-[1280px] animate-pulse px-5 py-16 sm:px-8 lg:px-12"
+    data-route-loading
+  >
     <div className="h-3 w-40 bg-muted" />
     <div className="mt-6 h-16 max-w-2xl bg-muted" />
     <div className="mt-10 h-12 w-full max-w-xl bg-muted" />

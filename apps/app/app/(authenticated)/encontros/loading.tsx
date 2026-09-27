@@ -1,7 +1,10 @@
 import { Skeleton } from "@repo/design-system/components/ui/skeleton";
 
 const MeetingsLoading = () => (
-  <main className="mx-auto w-full max-w-[1280px] px-5 py-10 sm:px-8 lg:px-12 lg:py-16">
+  <main
+    className="mx-auto w-full max-w-[1280px] px-5 py-10 sm:px-8 lg:px-12 lg:py-16"
+    data-route-loading
+  >
     <div className="max-w-3xl">
       <Skeleton className="h-3 w-56" />
       <Skeleton className="mt-6 h-20 w-full max-w-2xl" />

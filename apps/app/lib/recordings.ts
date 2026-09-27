@@ -68,6 +68,96 @@ const recordingGroupSelection = (memberId: string) => ({
   },
 });
 
+/**
+ * The home page only needs the few recordings the member can resume. Keeping
+ * this query separate from the archive listing avoids loading every imported
+ * group, lesson and playback row into the first render.
+ */
+export const getMemberContinueWatching = async (memberId: string) => {
+  const access = await getRecordingAccessContext(memberId);
+  const progressRows = await database.playbackProgress.findMany({
+    where: {
+      memberId,
+      positionSeconds: { gt: 0 },
+      completedPlaybackAt: null,
+      asset: {
+        importedRecording: access.fullAccess
+          ? { isNot: null }
+          : { is: { group: { memberId } } },
+      },
+    },
+    orderBy: { lastViewedAt: "desc" },
+    take: 6,
+    select: {
+      positionSeconds: true,
+      durationSeconds: true,
+      lastViewedAt: true,
+      completedPlaybackAt: true,
+      asset: {
+        select: {
+          id: true,
+          title: true,
+          kind: true,
+          mimeType: true,
+          durationSeconds: true,
+          importedRecording: {
+            select: {
+              group: {
+                select: {
+                  id: true,
+                  legacyStudentName: true,
+                  legacyModule: {
+                    select: {
+                      title: true,
+                      course: { select: { title: true, slug: true } },
+                    },
+                  },
+                },
+              },
+              legacyLesson: { select: { title: true } },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  return {
+    access,
+    continueWatching: progressRows.flatMap((row) => {
+      const importedRecording = row.asset.importedRecording;
+      if (!importedRecording) {
+        return [];
+      }
+
+      return [
+        {
+          asset: {
+            id: row.asset.id,
+            title: row.asset.title,
+            kind: row.asset.kind,
+            mimeType: row.asset.mimeType,
+            durationSeconds: row.asset.durationSeconds,
+          },
+          group: {
+            id: importedRecording.group.id,
+            legacyStudentName: importedRecording.group.legacyStudentName,
+            courseTitle: importedRecording.group.legacyModule.course.title,
+            moduleTitle: importedRecording.group.legacyModule.title,
+          },
+          legacyLesson: importedRecording.legacyLesson,
+          progress: {
+            positionSeconds: row.positionSeconds,
+            durationSeconds: row.durationSeconds,
+            lastViewedAt: row.lastViewedAt,
+            completedPlaybackAt: row.completedPlaybackAt,
+          },
+        },
+      ];
+    }),
+  };
+};
+
 export const getMemberRecordingLibrary = async (memberId: string) => {
   const access = await getRecordingAccessContext(memberId);
   const groups = await database.importedRecordingGroup.findMany({

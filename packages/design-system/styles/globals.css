@@ -381,28 +381,24 @@
 @keyframes interprete-layer-in {
   from {
     opacity: 0;
-    translate: 0 var(--motion-distance-small);
-    scale: 0.995;
+    transform: translate3d(0, var(--motion-distance-small), 0) scale(0.995);
   }
 
   to {
     opacity: 1;
-    translate: 0 0;
-    scale: 1;
+    transform: translate3d(0, 0, 0) scale(1);
   }
 }
 
 @keyframes interprete-layer-out {
   from {
     opacity: 1;
-    translate: 0 0;
-    scale: 1;
+    transform: translate3d(0, 0, 0) scale(1);
   }
 
   to {
     opacity: 0;
-    translate: 0 var(--motion-distance-micro);
-    scale: 0.998;
+    transform: translate3d(0, var(--motion-distance-micro), 0) scale(0.998);
   }
 }
 
@@ -410,6 +406,12 @@
   .motion-route {
     animation: interprete-reveal var(--motion-duration-normal)
       var(--motion-ease-out) both;
+  }
+
+  /* Loading UI must be visible on the first frame. Route reveal belongs to
+     resolved content; hiding the fallback defeats streaming's purpose. */
+  .motion-route:has([data-route-loading]) {
+    animation: none;
   }
 
   .motion-reveal,

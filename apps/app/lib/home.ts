@@ -8,7 +8,7 @@ import { getHomeBlockConfigurations } from "./home-config";
 import { getHomeLearningSummary } from "./learning";
 import { getUpcomingMeetings } from "./meetings";
 import { getProductConfig } from "./product-config";
-import { getMemberRecordingLibrary } from "./recordings";
+import { getMemberContinueWatching } from "./recordings";
 
 export const getHomeData = async (memberId: string) => {
   const accessScope = getLearningAccessScope(memberId);
@@ -38,7 +38,7 @@ export const getHomeData = async (memberId: string) => {
         feedback: { select: { updatedAt: true } },
       },
     }),
-    getMemberRecordingLibrary(memberId),
+    getMemberContinueWatching(memberId),
     getProductConfig(),
     getHomeBlockConfigurations(),
   ]);

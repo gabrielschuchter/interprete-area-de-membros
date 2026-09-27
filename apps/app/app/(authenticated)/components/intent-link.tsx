@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { AnchorHTMLAttributes, ReactNode } from "react";
+import type { AnchorHTMLAttributes, PointerEvent, ReactNode } from "react";
 import { useCallback, useRef } from "react";
 
 type IntentLinkProperties = Omit<
@@ -11,6 +11,7 @@ type IntentLinkProperties = Omit<
 > & {
   readonly children: ReactNode;
   readonly href: string;
+  readonly onNavigationStart?: (href: string) => void;
 };
 
 /**
@@ -23,6 +24,9 @@ export const IntentLink = ({
   children,
   href,
   onFocus,
+  onClick,
+  onNavigationStart,
+  onPointerDown,
   onPointerEnter,
   ...props
 }: IntentLinkProperties) => {
@@ -38,14 +42,44 @@ export const IntentLink = ({
     router.prefetch(href);
   }, [href, router]);
 
+  const startNavigation = useCallback(
+    (event: PointerEvent<HTMLAnchorElement>) => {
+      onPointerDown?.(event);
+      if (
+        event.defaultPrevented ||
+        event.button !== 0 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey
+      ) {
+        return;
+      }
+
+      onNavigationStart?.(href);
+      prefetch();
+    },
+    [href, onNavigationStart, onPointerDown, prefetch]
+  );
+
   return (
     <Link
       {...props}
       href={href}
+      onClick={(event) => {
+        onClick?.(event);
+        if (event.defaultPrevented || event.metaKey || event.ctrlKey) {
+          return;
+        }
+
+        onNavigationStart?.(href);
+        prefetch();
+      }}
       onFocus={(event) => {
         onFocus?.(event);
         prefetch();
       }}
+      onPointerDown={startNavigation}
       onPointerEnter={(event) => {
         onPointerEnter?.(event);
         prefetch();
