@@ -9,6 +9,7 @@ import StarterKit from "@tiptap/starter-kit";
 import {
   BoldIcon,
   Code2Icon,
+  FileIcon,
   Heading2Icon,
   ImageIcon,
   ItalicIcon,
@@ -19,6 +20,18 @@ import {
   QuoteIcon,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import {
+  articleUrlFrom,
+  directVideoUrl,
+  extractDoi,
+  isScientificArticleReference,
+  videoEmbedFromUrl,
+} from "@/lib/community-media";
+import {
+  CommunityArticleNode,
+  CommunityFileNode,
+  CommunityVideoNode,
+} from "./community-media-nodes";
 import { MentionNode } from "./mention-extension";
 
 const mentionQueryPattern = /(?:^|\s)@([a-z0-9-]{0,30})$/i;
@@ -62,6 +75,7 @@ const groupMentionSummary = (value: JSONContent) => {
 interface TopicEditorProperties {
   readonly ariaLabel?: string;
   readonly defaultValue?: JSONContent;
+  readonly enableCommunityMedia?: boolean;
   readonly name?: string;
   readonly onDocumentChange?: (value: JSONContent) => void;
   readonly onEditorBlur?: () => void;
@@ -88,15 +102,17 @@ interface MentionState {
   readonly to: number;
 }
 
-export const TopicEditor = ({
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: the shared editor coordinates formatting, mentions, image uploads, and community-only media controls.
+export function TopicEditor({
   defaultValue,
+  enableCommunityMedia = false,
   name = "contentJson",
   onDocumentChange,
   onEditorBlur,
   onGroupMentionChange,
   onUploadStateChange,
   ariaLabel = "Conteúdo do tópico",
-}: TopicEditorProperties) => {
+}: TopicEditorProperties) {
   const [value, setValue] = useState<JSONContent>(
     defaultValue ?? emptyDocument
   );
@@ -104,7 +120,7 @@ export const TopicEditor = ({
   const [linkUrl, setLinkUrl] = useState("");
   const [showImageField, setShowImageField] = useState(false);
   const [showLinkField, setShowLinkField] = useState(false);
-  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [isUploadingMedia, setIsUploadingMedia] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const [mentionState, setMentionState] = useState<MentionState | null>(null);
   const [mentionCandidates, setMentionCandidates] = useState<
@@ -116,6 +132,7 @@ export const TopicEditor = ({
   const mentionCandidatesRef = useRef<MentionCandidate[]>([]);
   const groupMentionConfirmedRef = useRef(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const attachmentInputRef = useRef<HTMLInputElement>(null);
   const pendingPreviewUrls = useRef(new Set<string>());
   const pendingFileKeys = useRef(new Set<string>());
   const pendingUploads = useRef(0);
@@ -128,6 +145,9 @@ export const TopicEditor = ({
       }),
       MentionNode,
       Image.configure({ allowBase64: false }),
+      ...(enableCommunityMedia
+        ? [CommunityArticleNode, CommunityFileNode, CommunityVideoNode]
+        : []),
     ],
     content: defaultValue ?? emptyDocument,
     editorProps: {
@@ -345,7 +365,7 @@ export const TopicEditor = ({
       })
       .run();
     pendingUploads.current += 1;
-    setIsUploadingImage(true);
+    setIsUploadingMedia(true);
     onUploadStateChange?.(true);
     try {
       const formData = new FormData();
@@ -382,12 +402,105 @@ export const TopicEditor = ({
         onDocumentChange?.(document);
       }
       onUploadStateChange?.(pendingUploads.current > 0);
-      setIsUploadingImage(pendingUploads.current > 0);
+      setIsUploadingMedia(pendingUploads.current > 0);
+    }
+  };
+
+  const removeUploadedAsset = async (value: string) => {
+    try {
+      const path = new URL(value, window.location.origin).searchParams.get(
+        "path"
+      );
+      if (path) {
+        await fetch(`/api/member-assets?path=${encodeURIComponent(path)}`, {
+          method: "DELETE",
+        });
+      }
+    } catch {
+      // The draft cleanup path will remove the object once it is persisted.
+    }
+  };
+
+  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: attachment upload validates, uploads, inserts, and cleans up one private asset atomically from the editor.
+  const uploadAttachment = async (file: File) => {
+    if (!(file.type === "application/pdf" || file.type === "text/plain")) {
+      setUploadError("Envie um PDF ou arquivo de texto.");
+      return;
+    }
+    if (file.size <= 0 || file.size > 20 * 1024 * 1024) {
+      setUploadError("O arquivo deve ter entre 1 byte e 20 MB.");
+      return;
+    }
+
+    const fileKey = `${file.name}:${file.size}:${file.lastModified}`;
+    if (pendingFileKeys.current.has(fileKey)) {
+      return;
+    }
+    pendingFileKeys.current.add(fileKey);
+    pendingUploads.current += 1;
+    setUploadError("");
+    setIsUploadingMedia(true);
+    onUploadStateChange?.(true);
+
+    let uploadedUrl = "";
+    try {
+      const formData = new FormData();
+      formData.set("file", file);
+      formData.set("assetType", "community-attachment");
+      const response = await fetch("/api/member-assets", {
+        method: "POST",
+        body: formData,
+      });
+      const payload = (await response.json()) as {
+        error?: string;
+        mimeType?: string;
+        name?: string;
+        size?: number;
+        url?: string;
+      };
+      if (!(response.ok && payload.url)) {
+        throw new Error(payload.error ?? "Não foi possível enviar o arquivo.");
+      }
+      uploadedUrl = payload.url;
+      const inserted = editor
+        .chain()
+        .focus()
+        .insertContent({
+          attrs: {
+            mimeType: payload.mimeType ?? file.type,
+            name: payload.name ?? file.name,
+            sizeBytes: payload.size ?? file.size,
+            src: payload.url,
+          },
+          type: "communityFile",
+        })
+        .run();
+      if (!inserted) {
+        throw new Error("Não foi possível inserir o arquivo no texto.");
+      }
+    } catch (error) {
+      if (uploadedUrl) {
+        await removeUploadedAsset(uploadedUrl);
+      }
+      setUploadError(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível enviar o arquivo."
+      );
+    } finally {
+      pendingFileKeys.current.delete(fileKey);
+      pendingUploads.current = Math.max(0, pendingUploads.current - 1);
+      onUploadStateChange?.(pendingUploads.current > 0);
+      setIsUploadingMedia(pendingUploads.current > 0);
     }
   };
 
   const startUpload = (file: File) => {
     uploadImage(file).catch(() => undefined);
+  };
+
+  const startAttachmentUpload = (file: File) => {
+    uploadAttachment(file).catch(() => undefined);
   };
 
   return (
@@ -399,7 +512,13 @@ export const TopicEditor = ({
         event.preventDefault();
         const file = event.dataTransfer.files[0];
         if (file) {
-          startUpload(file);
+          if (file.type.startsWith("image/")) {
+            startUpload(file);
+          } else if (enableCommunityMedia) {
+            startAttachmentUpload(file);
+          } else {
+            setUploadError("Este editor aceita apenas imagens.");
+          }
         }
       }}
       onPaste={(event) => {
@@ -497,22 +616,63 @@ export const TopicEditor = ({
         {showLinkField && (
           <div className="motion-reveal-fast flex min-w-60 flex-1 gap-2">
             <Input
-              aria-label="Endereço do link"
+              aria-label="Endereço do link ou embed"
               autoFocus
               className="h-9"
               onChange={(event) => setLinkUrl(event.target.value)}
-              placeholder="https://exemplo.com"
+              placeholder="https://… ou DOI"
               value={linkUrl}
             />
             <Button
               onClick={() => {
-                if (linkUrl.trim()) {
-                  action(() =>
-                    editor.chain().setLink({ href: linkUrl.trim() }).run()
-                  );
-                  setLinkUrl("");
-                  setShowLinkField(false);
+                const value = linkUrl.trim();
+                if (!value) {
+                  return;
                 }
+                const video = enableCommunityMedia
+                  ? videoEmbedFromUrl(value)
+                  : null;
+                const directVideo = enableCommunityMedia
+                  ? directVideoUrl(value)
+                  : null;
+                if (video || directVideo) {
+                  action(() =>
+                    editor
+                      .chain()
+                      .insertContent({
+                        attrs: {
+                          provider: video?.provider ?? "youtube",
+                          src: video?.src ?? directVideo,
+                          title: "Vídeo incorporado",
+                        },
+                        type: "communityVideo",
+                      })
+                      .run()
+                  );
+                } else if (
+                  enableCommunityMedia &&
+                  isScientificArticleReference(value)
+                ) {
+                  const articleUrl = articleUrlFrom(value);
+                  if (articleUrl) {
+                    action(() =>
+                      editor
+                        .chain()
+                        .insertContent({
+                          attrs: {
+                            doi: extractDoi(value),
+                            url: articleUrl,
+                          },
+                          type: "communityArticle",
+                        })
+                        .run()
+                    );
+                  }
+                } else {
+                  action(() => editor.chain().setLink({ href: value }).run());
+                }
+                setLinkUrl("");
+                setShowLinkField(false);
               }}
               size="sm"
               type="button"
@@ -551,9 +711,35 @@ export const TopicEditor = ({
           ref={imageInputRef}
           type="file"
         />
-        {isUploadingImage ? (
+        {enableCommunityMedia && (
+          <>
+            <Button
+              aria-label="Adicionar PDF ou arquivo"
+              onClick={() => attachmentInputRef.current?.click()}
+              size="icon"
+              type="button"
+              variant="ghost"
+            >
+              <FileIcon aria-hidden="true" />
+            </Button>
+            <input
+              accept="application/pdf,text/plain,.pdf,.txt"
+              className="sr-only"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) {
+                  startAttachmentUpload(file);
+                }
+                event.currentTarget.value = "";
+              }}
+              ref={attachmentInputRef}
+              type="file"
+            />
+          </>
+        )}
+        {isUploadingMedia ? (
           <span className="self-center px-2 text-muted-foreground text-xs">
-            Enviando imagem…
+            Enviando mídia…
           </span>
         ) : null}
         {uploadError ? (
@@ -723,4 +909,4 @@ export const TopicEditor = ({
       <input name={name} type="hidden" value={JSON.stringify(value)} />
     </div>
   );
-};
+}

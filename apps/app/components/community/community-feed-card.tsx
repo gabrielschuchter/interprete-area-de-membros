@@ -17,9 +17,14 @@ import {
 } from "@/components/mutations/single-flight-form";
 import { communityPostHref } from "@/lib/community";
 import {
+  type CommunityMediaItem,
+  communityMediaImageUrl,
+} from "@/lib/community-media";
+import {
   type CommunityPostKindValue,
   communityPostKindLabel,
 } from "@/lib/community-post-types";
+import { CommunityMediaGallery } from "./community-media-card";
 import { MemberIdentity } from "./member-identity";
 
 interface CommunityFeedProfile {
@@ -41,6 +46,7 @@ export interface CommunityFeedCardPost {
   readonly isFeatured?: boolean;
   readonly isPinned: boolean;
   readonly kind: CommunityPostKindValue | string;
+  readonly media?: readonly CommunityMediaItem[];
   readonly profile?: CommunityFeedProfile | null;
   readonly publishedAt: Date | null;
   readonly readingMinutes: number;
@@ -64,15 +70,22 @@ const formatDate = (date: Date) =>
     year: "numeric",
   });
 
-export const CommunityFeedCard = ({
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: the shared card deliberately composes existing author, media, and interaction states without branching into duplicate cards.
+export function CommunityFeedCard({
   post,
   spaceSlug,
-}: CommunityFeedCardProperties) => {
+}: CommunityFeedCardProperties) {
   const href = communityPostHref(post);
   const actionSpaceSlug = spaceSlug ?? post.space?.slug ?? "";
   const isVoted = post.votes.length > 0;
   const isSaved = post.bookmarks.length > 0;
   const summary = post.subtitle || post.excerpt;
+  const media = post.media ?? [];
+  const feedMedia = post.coverUrl
+    ? media.filter(
+        (item) => item.kind !== "image" || item.src !== post.coverUrl
+      )
+    : media;
 
   return (
     <article
@@ -148,13 +161,19 @@ export const CommunityFeedCard = ({
         // Cover URLs are authorized community assets or sanitized HTTPS URLs.
         // biome-ignore lint/performance/noImgElement: user-provided media may come from hosts not configured for next/image.
         <img
-          alt=""
+          alt={`Capa: ${post.title}`}
           className="community-post-card__media mt-5 aspect-[16/7] w-full rounded-sm object-cover"
+          decoding="async"
           height={420}
           loading="lazy"
-          src={post.coverUrl}
+          referrerPolicy="no-referrer"
+          src={communityMediaImageUrl(post.coverUrl, "thumb")}
           width={960}
         />
+      )}
+
+      {feedMedia.length > 0 && (
+        <CommunityMediaGallery items={feedMedia} thumbnail />
       )}
 
       {post.tags.length > 0 && (
@@ -224,4 +243,4 @@ export const CommunityFeedCard = ({
       </div>
     </article>
   );
-};
+}

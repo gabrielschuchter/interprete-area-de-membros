@@ -1,4 +1,11 @@
 import type { ReactNode } from "react";
+import { CommunityMediaCard } from "@/components/community/community-media-card";
+import {
+  articleUrlFrom,
+  type CommunityMediaItem,
+  directVideoUrl,
+  videoEmbedFromUrl,
+} from "@/lib/community-media";
 
 interface RichMark {
   readonly attrs?: Record<string, unknown>;
@@ -38,6 +45,7 @@ const isMemberAssetUrl = (value: string) => {
         [
           "community-assets/inline/",
           "community-assets/covers/",
+          "community-assets/attachments/",
           "profile-assets/avatars/",
         ].some((prefix) => path.startsWith(prefix))
     );
@@ -156,11 +164,12 @@ const renderInline = (
   );
 };
 
-const renderBlock = (
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: the renderer keeps the supported document block types and their safe media fallbacks in one exhaustive switch.
+function renderBlock(
   node: RichNode,
   key: string,
   currentMemberId?: string
-): ReactNode => {
+): ReactNode {
   const children = getChildren(node);
   const renderedChildren = children.map((child, index) =>
     node.type === "paragraph" || node.type === "heading"
@@ -251,11 +260,22 @@ const renderBlock = (
           <img
             alt={typeof node.attrs?.alt === "string" ? node.attrs.alt : ""}
             className="h-auto max-h-[42rem] w-full rounded-sm border object-contain"
-            height={675}
+            decoding="async"
+            height={
+              typeof node.attrs?.height === "number" ? node.attrs.height : 675
+            }
             loading="lazy"
             referrerPolicy="no-referrer"
             src={src}
-            width={1200}
+            style={
+              typeof node.attrs?.width === "number" &&
+              typeof node.attrs?.height === "number"
+                ? { aspectRatio: `${node.attrs.width} / ${node.attrs.height}` }
+                : undefined
+            }
+            width={
+              typeof node.attrs?.width === "number" ? node.attrs.width : 1200
+            }
           />
           {typeof node.attrs?.title === "string" && node.attrs.title && (
             <figcaption className="text-muted-foreground text-sm">
@@ -264,6 +284,77 @@ const renderBlock = (
           )}
         </figure>
       );
+    }
+    case "communityFile": {
+      const src = safeHref(node.attrs?.src);
+      if (!src) {
+        return null;
+      }
+      const item: CommunityMediaItem = {
+        kind: "file",
+        mimeType:
+          typeof node.attrs?.mimeType === "string"
+            ? node.attrs.mimeType
+            : undefined,
+        name:
+          typeof node.attrs?.name === "string" ? node.attrs.name : "Arquivo",
+        sizeBytes:
+          typeof node.attrs?.sizeBytes === "number"
+            ? node.attrs.sizeBytes
+            : undefined,
+        src,
+      };
+      return <CommunityMediaCard item={item} key={key} />;
+    }
+    case "communityVideo": {
+      const src = safeHref(node.attrs?.src);
+      if (!src) {
+        return null;
+      }
+      const item: CommunityMediaItem = {
+        kind: "video",
+        provider: node.attrs?.provider === "vimeo" ? "vimeo" : "youtube",
+        src,
+        title:
+          typeof node.attrs?.title === "string"
+            ? node.attrs.title
+            : "Vídeo incorporado",
+      };
+      const embed = videoEmbedFromUrl(src);
+      if (embed || directVideoUrl(src)) {
+        return <CommunityMediaCard item={item} key={key} />;
+      }
+      return null;
+    }
+    case "communityArticle": {
+      const url = articleUrlFrom(node.attrs?.url ?? node.attrs?.doi);
+      if (!url) {
+        return null;
+      }
+      const item: CommunityMediaItem = {
+        authors:
+          typeof node.attrs?.authors === "string"
+            ? node.attrs.authors
+            : undefined,
+        doi: typeof node.attrs?.doi === "string" ? node.attrs.doi : undefined,
+        journal:
+          typeof node.attrs?.journal === "string"
+            ? node.attrs.journal
+            : undefined,
+        kind: "article",
+        metadataStatus:
+          node.attrs?.metadataStatus === "available" ||
+          node.attrs?.metadataStatus === "unavailable"
+            ? node.attrs.metadataStatus
+            : undefined,
+        src: url,
+        title:
+          typeof node.attrs?.title === "string" ? node.attrs.title : undefined,
+        url,
+        year:
+          typeof node.attrs?.year === "number" ? node.attrs.year : undefined,
+      };
+      return <CommunityMediaCard item={item} key={key} />;
     }
     case "codeBlock":
       return (
@@ -285,7 +376,7 @@ const renderBlock = (
         </div>
       ) : null;
   }
-};
+}
 
 interface RichDocumentProperties {
   readonly currentMemberId?: string;

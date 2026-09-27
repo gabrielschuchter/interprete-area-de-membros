@@ -1,6 +1,7 @@
 import "server-only";
 
 import { ContentStatus, database } from "@repo/database";
+import { extractCommunityMedia } from "@/lib/community-media";
 import { getProfilesByClerkIds } from "@/lib/profile";
 
 const POST_PAGE_SIZE = 20;
@@ -209,6 +210,7 @@ export const getCommunityFeed = async (
       slug: true,
       kind: true,
       excerpt: true,
+      contentJson: true,
       tags: true,
       coverUrl: true,
       authorId: true,
@@ -234,6 +236,7 @@ export const getCommunityFeed = async (
     posts: enrichedPosts.map((post) => ({
       ...post,
       excerpt: post.excerpt ?? "",
+      media: extractCommunityMedia(post.contentJson),
       readingMinutes: readingMinutes(post.excerpt ?? ""),
     })),
     page,
@@ -275,6 +278,7 @@ export const getCommunitySpace = async (
           slug: true,
           kind: true,
           excerpt: true,
+          contentJson: true,
           tags: true,
           coverUrl: true,
           authorId: true,
@@ -301,6 +305,7 @@ export const getCommunitySpace = async (
     posts: (await enrichAuthors(visiblePosts)).map((post) => ({
       ...post,
       excerpt: post.excerpt ?? "",
+      media: extractCommunityMedia(post.contentJson),
       readingMinutes: readingMinutes(post.excerpt ?? ""),
     })),
     page: currentPage,

@@ -491,6 +491,7 @@ export function CommunityComposer({
           <TopicEditor
             ariaLabel={`Texto da ${kindLabel.toLocaleLowerCase("pt-BR")}`}
             defaultValue={content}
+            enableCommunityMedia
             onDocumentChange={(nextContent) => {
               setContent(nextContent);
               updateSnapshot({ content: nextContent });

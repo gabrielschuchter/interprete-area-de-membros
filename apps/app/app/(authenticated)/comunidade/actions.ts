@@ -12,6 +12,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { getMemberRole, requireStaff } from "@/lib/authorization";
+import { enrichCommunityArticleMetadata } from "@/lib/community-article-metadata";
 import {
   plainTextFromDocument,
   sanitizeRichDocument,
@@ -176,7 +177,10 @@ const documentAssetPaths = (value: unknown, result = new Set<string>()) => {
   if (record.attrs && typeof record.attrs === "object") {
     const src = (record.attrs as Record<string, unknown>).src;
     const path = memberAssetPathFromUrl(typeof src === "string" ? src : null);
-    if (path?.startsWith("community-assets/inline/")) {
+    if (
+      path?.startsWith("community-assets/inline/") ||
+      path?.startsWith("community-assets/attachments/")
+    ) {
       result.add(path);
     }
   }
@@ -479,6 +483,7 @@ export const createPost = async (formData: FormData) => {
     memberId: userId,
   });
   await getOrCreateProfile(userId);
+  const persistedDocument = await enrichCommunityArticleMetadata(document);
   const slug = await uniquePostSlug(parsed.data.title);
   let post: {
     id: string;
@@ -497,7 +502,7 @@ export const createPost = async (formData: FormData) => {
         coverUrl: safeImageUrl(textValue(formData.get("coverUrl")), userId),
         content: parsed.data.content,
         excerpt: excerptFrom(parsed.data.content),
-        contentJson: document as Prisma.InputJsonValue | undefined,
+        contentJson: persistedDocument as Prisma.InputJsonValue | undefined,
         tags: parseTags(formData.get("tags")),
         slug,
         status: ContentStatus.PUBLISHED,
@@ -526,7 +531,7 @@ export const createPost = async (formData: FormData) => {
     postId: post.id,
     postTitle: parsed.data.title,
     commentContent: parsed.data.content,
-    document,
+    document: persistedDocument,
     href: communityHref(post),
   });
   revalidateCommunity(space?.slug, post.id, post.slug ?? undefined);
@@ -669,6 +674,7 @@ export const publishPost = async (formData: FormData) => {
       error: "Você não pode publicar este conteúdo agora.",
     };
   }
+  const persistedDocument = await enrichCommunityArticleMetadata(document);
   const slug = await uniquePostSlug(parsed.data.title, post.id);
   const updatedPost = await database.communityPost.update({
     where: { id: post.id },
@@ -680,7 +686,7 @@ export const publishPost = async (formData: FormData) => {
       coverUrl: safeImageUrl(textValue(formData.get("coverUrl")), userId),
       content: parsed.data.content,
       excerpt: excerptFrom(parsed.data.content),
-      contentJson: document as Prisma.InputJsonValue | undefined,
+      contentJson: persistedDocument as Prisma.InputJsonValue | undefined,
       tags: parseTags(formData.get("tags")),
       slug,
       status: ContentStatus.PUBLISHED,
@@ -694,7 +700,7 @@ export const publishPost = async (formData: FormData) => {
     postId: updatedPost.id,
     postTitle: parsed.data.title,
     commentContent: parsed.data.content,
-    document,
+    document: persistedDocument,
     href: `/comunidade/publicacoes/${slug}`,
   });
   const nextCoverUrl = safeImageUrl(
@@ -752,6 +758,7 @@ export const updatePost = async (formData: FormData) => {
   if (!post) {
     return;
   }
+  const persistedDocument = await enrichCommunityArticleMetadata(document);
   const slug =
     post.status === ContentStatus.PUBLISHED
       ? (post.slug ?? (await uniquePostSlug(parsed.data.title, post.id)))
@@ -766,7 +773,7 @@ export const updatePost = async (formData: FormData) => {
       coverUrl: safeImageUrl(textValue(formData.get("coverUrl")), userId),
       content: parsed.data.content,
       excerpt: excerptFrom(parsed.data.content),
-      contentJson: document as Prisma.InputJsonValue | undefined,
+      contentJson: persistedDocument as Prisma.InputJsonValue | undefined,
       tags: parseTags(formData.get("tags")),
       slug,
     },
@@ -777,7 +784,7 @@ export const updatePost = async (formData: FormData) => {
       postId: post.id,
       postTitle: parsed.data.title,
       commentContent: parsed.data.content,
-      document,
+      document: persistedDocument,
       href: slug
         ? `/comunidade/publicacoes/${slug}`
         : `/comunidade/publicacoes/${post.id}`,

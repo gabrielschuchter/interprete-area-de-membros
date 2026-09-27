@@ -60,4 +60,59 @@ describe("community rich content", () => {
     expect(JSON.stringify(document)).toContain("cdn.example.com/figure.png");
     expect(JSON.stringify(document)).not.toContain("javascript:");
   });
+
+  test("keeps community media nodes and private attachment URLs", () => {
+    const document = sanitizeRichDocument({
+      type: "doc",
+      content: [
+        {
+          type: "communityFile",
+          attrs: {
+            mimeType: "application/pdf",
+            name: "estudo.pdf",
+            sizeBytes: 2048,
+            src: "/api/member-assets?path=community-assets/attachments/member-1/estudo.pdf",
+          },
+        },
+        {
+          type: "communityArticle",
+          attrs: {
+            doi: "10.5555/example",
+            metadataStatus: "unavailable",
+            url: "https://doi.org/10.5555/example",
+          },
+        },
+        {
+          type: "communityVideo",
+          attrs: {
+            provider: "youtube",
+            src: "https://www.youtube-nocookie.com/embed/abc1234?rel=0",
+          },
+        },
+      ],
+    });
+
+    expect(document).toMatchObject({
+      content: [
+        {
+          attrs: expect.objectContaining({
+            mimeType: "application/pdf",
+            name: "estudo.pdf",
+          }),
+          type: "communityFile",
+        },
+        {
+          attrs: expect.objectContaining({
+            doi: "10.5555/example",
+            metadataStatus: "unavailable",
+          }),
+          type: "communityArticle",
+        },
+        {
+          attrs: expect.objectContaining({ provider: "youtube" }),
+          type: "communityVideo",
+        },
+      ],
+    });
+  });
 });

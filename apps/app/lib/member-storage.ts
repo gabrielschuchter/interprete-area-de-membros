@@ -7,6 +7,7 @@ const ALLOWED_PREFIXES = [
   "profile-assets/avatars/",
   "community-assets/covers/",
   "community-assets/inline/",
+  "community-assets/attachments/",
   "activity-assets/submissions/",
   "library-assets/",
 ] as const;
@@ -82,7 +83,7 @@ export const createMemberAssetPath = ({
   entityId,
   mimeType,
 }: {
-  kind: "avatar" | "cover" | "inline" | "submission" | "library";
+  kind: "avatar" | "cover" | "inline" | "attachment" | "submission" | "library";
   memberId: string;
   entityId?: string;
   mimeType: string;
@@ -97,6 +98,7 @@ export const createMemberAssetPath = ({
     avatar: `profile-assets/avatars/${memberId}`,
     cover: `community-assets/covers/${memberId}`,
     inline: `community-assets/inline/${memberId}`,
+    attachment: `community-assets/attachments/${memberId}`,
     submission: `activity-assets/submissions/${memberId}/${safePathSegment(entityId ?? "unassigned")}`,
     library: "library-assets",
   }[kind];

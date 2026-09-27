@@ -18,7 +18,10 @@ import {
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const MAX_LIBRARY_BYTES = 20 * 1024 * 1024;
 const imageTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
+const attachmentTypes = new Set(["application/pdf", "text/plain"]);
 const libraryTypes = new Set([...imageTypes, "application/pdf", "text/plain"]);
+const fileNameSeparatorPattern = /[\\/]/;
+const fileNameCharacterPattern = /[^a-zA-Z0-9À-ÿ._() -]/g;
 
 // Sharp's native Linux bindings require the Node.js runtime in Vercel. Keep
 // image processing isolated from the Bun runtime used by the rest of the app.
@@ -62,6 +65,12 @@ const unauthorized = () =>
 
 const getPath = (request: Request) =>
   new URL(request.url).searchParams.get("path")?.trim() ?? "";
+
+const displayFileName = (value: string) => {
+  const name =
+    value.split(fileNameSeparatorPattern).at(-1)?.trim() ?? "arquivo";
+  return name.replace(fileNameCharacterPattern, "-").slice(0, 180) || "arquivo";
+};
 
 export async function GET(request: Request) {
   const { userId } = await auth();
@@ -115,6 +124,7 @@ export async function GET(request: Request) {
   });
   const contentType = assetResponse.headers.get("content-type");
   const contentLength = assetResponse.headers.get("content-length");
+  let responseBody: BodyInit = assetResponse.body;
 
   if (contentType) {
     headers.set("Content-Type", contentType);
@@ -123,7 +133,33 @@ export async function GET(request: Request) {
     headers.set("Content-Length", contentLength);
   }
 
-  return new Response(assetResponse.body, { headers });
+  if (
+    new URL(request.url).searchParams.get("variant") === "thumb" &&
+    contentType?.startsWith("image/")
+  ) {
+    const source = await assetResponse.arrayBuffer();
+    try {
+      const { default: sharp } = await import("sharp");
+      const thumbnail = await sharp(Buffer.from(source))
+        .resize({
+          height: 640,
+          width: 640,
+          fit: "inside",
+          withoutEnlargement: true,
+        })
+        .webp({ quality: 78, effort: 3 })
+        .toBuffer();
+      responseBody = thumbnail;
+      headers.set("Content-Type", "image/webp");
+      headers.set("Content-Length", String(thumbnail.byteLength));
+    } catch {
+      // A thumbnail is an optimization only. The authorized original remains
+      // the safe fallback if the optional transform cannot run.
+      responseBody = source;
+    }
+  }
+
+  return new Response(responseBody, { headers });
 }
 
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: this endpoint deliberately keeps authentication, validation, normalization, authorization, and storage atomic.
@@ -165,6 +201,7 @@ export async function POST(request: Request) {
     avatar: "avatar",
     "community-cover": "cover",
     "community-inline": "inline",
+    "community-attachment": "attachment",
     "activity-submission": "submission",
     library: "library",
   } as const;
@@ -177,25 +214,31 @@ export async function POST(request: Request) {
     );
   }
 
-  const allowedTypes = kind === "library" ? libraryTypes : imageTypes;
+  let allowedTypes = imageTypes;
+  if (kind === "library") {
+    allowedTypes = libraryTypes;
+  } else if (kind === "attachment") {
+    allowedTypes = attachmentTypes;
+  }
+  let invalidTypeMessage = "Envie uma imagem JPG, PNG ou WebP.";
+  if (kind === "library") {
+    invalidTypeMessage = "Envie JPG, PNG, WebP, PDF ou texto.";
+  } else if (kind === "attachment") {
+    invalidTypeMessage = "Envie um PDF ou arquivo de texto.";
+  }
   if (!(file instanceof File && allowedTypes.has(file.type))) {
-    return NextResponse.json(
-      {
-        error:
-          kind === "library"
-            ? "Envie JPG, PNG, WebP, PDF ou texto."
-            : "Envie uma imagem JPG, PNG ou WebP.",
-      },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: invalidTypeMessage }, { status: 400 });
   }
 
-  const maxBytes = kind === "library" ? MAX_LIBRARY_BYTES : MAX_IMAGE_BYTES;
+  const maxBytes =
+    kind === "library" || kind === "attachment"
+      ? MAX_LIBRARY_BYTES
+      : MAX_IMAGE_BYTES;
   if (file.size <= 0 || file.size > maxBytes) {
     return NextResponse.json(
       {
         error:
-          kind === "library"
+          kind === "library" || kind === "attachment"
             ? "O arquivo deve ter entre 1 byte e 20 MB."
             : "A imagem deve ter entre 1 byte e 5 MB.",
       },
@@ -239,7 +282,10 @@ export async function POST(request: Request) {
   if (imageTypes.has(file.type)) {
     try {
       const { normalizeMemberImage } = await import("@/lib/member-image");
-      const normalized = await normalizeMemberImage(file, kind);
+      const normalized = await normalizeMemberImage(
+        file,
+        kind === "attachment" ? "inline" : kind
+      );
       body = normalized.body.buffer.slice(
         normalized.body.byteOffset,
         normalized.body.byteOffset + normalized.body.byteLength
@@ -280,6 +326,7 @@ export async function POST(request: Request) {
   });
 
   return NextResponse.json({
+    name: displayFileName(file.name),
     path,
     url: memberAssetUrl(path),
     mimeType: storageMimeType,

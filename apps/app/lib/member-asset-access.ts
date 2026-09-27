@@ -10,6 +10,7 @@ import {
 const profileAvatarPrefix = "profile-assets/avatars/";
 const communityCoverPrefix = "community-assets/covers/";
 const communityInlinePrefix = "community-assets/inline/";
+const communityAttachmentPrefix = "community-assets/attachments/";
 const activitySubmissionPrefix = "activity-assets/submissions/";
 const libraryPrefix = "library-assets/";
 
@@ -167,14 +168,16 @@ export const canReadMemberAssetPath = async (
 
   if (
     path.startsWith(communityCoverPrefix) ||
-    path.startsWith(communityInlinePrefix)
+    path.startsWith(communityInlinePrefix) ||
+    path.startsWith(communityAttachmentPrefix)
   ) {
-    const ownerId = ownerIdFromPath(
-      path,
-      path.startsWith(communityCoverPrefix)
-        ? communityCoverPrefix
-        : communityInlinePrefix
-    );
+    let communityPrefix = communityAttachmentPrefix;
+    if (path.startsWith(communityCoverPrefix)) {
+      communityPrefix = communityCoverPrefix;
+    } else if (path.startsWith(communityInlinePrefix)) {
+      communityPrefix = communityInlinePrefix;
+    }
+    const ownerId = ownerIdFromPath(path, communityPrefix);
 
     // Keep the upload-to-save experience working for the author while a draft
     // is still being persisted. Other members need a real visible reference.

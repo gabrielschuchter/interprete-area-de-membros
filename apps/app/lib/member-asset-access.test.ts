@@ -21,6 +21,8 @@ import { canReadMemberAssetPath } from "./member-asset-access";
 
 const profilePath = "profile-assets/avatars/member-owner/avatar.webp";
 const communityPath = "community-assets/inline/member-owner/inline.webp";
+const communityAttachmentPath =
+  "community-assets/attachments/member-owner/reference.pdf";
 
 describe("member asset read authorization", () => {
   beforeEach(() => {
@@ -56,6 +58,20 @@ describe("member asset read authorization", () => {
     await expect(
       canReadMemberAssetPath(communityPath, "member-reader")
     ).resolves.toBe(true);
+  });
+
+  test("allows a member to read an attachment referenced by published community content", async () => {
+    databaseMock.$queryRaw.mockResolvedValueOnce([{ id: "post-attachment" }]);
+
+    await expect(
+      canReadMemberAssetPath(communityAttachmentPath, "member-reader")
+    ).resolves.toBe(true);
+  });
+
+  test("does not expose an unreferenced community attachment", async () => {
+    await expect(
+      canReadMemberAssetPath(communityAttachmentPath, "member-reader")
+    ).resolves.toBe(false);
   });
 
   test("staff can read assets for moderation without making the bucket public", async () => {

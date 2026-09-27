@@ -11,6 +11,9 @@ const allowedNodes = new Set([
   "horizontalRule",
   "codeBlock",
   "image",
+  "communityArticle",
+  "communityFile",
+  "communityVideo",
   "mention",
 ]);
 
@@ -34,6 +37,7 @@ const isMemberAssetUrl = (value: string) => {
         [
           "community-assets/inline/",
           "community-assets/covers/",
+          "community-assets/attachments/",
           "profile-assets/avatars/",
         ].some((prefix) => path.startsWith(prefix))
     );
@@ -59,16 +63,48 @@ const safeHref = (value: unknown) => {
   }
 };
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: rich-document attribute validation keeps every persisted media and mention attribute in one allowlist.
 const sanitizeAttr = (key: string, value: unknown) => {
-  if ((key === "href" || key === "src") && typeof value === "string") {
+  if (
+    (key === "href" || key === "src" || key === "url") &&
+    typeof value === "string"
+  ) {
     const href = safeHref(value);
     return href ? ([key, href] as const) : null;
   }
   if (key === "level" && typeof value === "number") {
     return [key, Math.min(3, Math.max(2, value))] as const;
   }
-  if ((key === "alt" || key === "title") && typeof value === "string") {
+  if (
+    (key === "alt" ||
+      key === "title" ||
+      key === "name" ||
+      key === "mimeType" ||
+      key === "authors" ||
+      key === "journal" ||
+      key === "doi") &&
+    typeof value === "string"
+  ) {
     return [key, value.slice(0, 240)] as const;
+  }
+  if (
+    (key === "width" || key === "height" || key === "sizeBytes") &&
+    typeof value === "number" &&
+    Number.isFinite(value)
+  ) {
+    return [key, Math.min(50_000_000, Math.max(0, Math.floor(value)))] as const;
+  }
+  if (key === "year" && typeof value === "number" && Number.isFinite(value)) {
+    return [key, Math.min(2200, Math.max(1500, Math.floor(value)))] as const;
+  }
+  if (key === "provider" && (value === "youtube" || value === "vimeo")) {
+    return [key, value] as const;
+  }
+  if (
+    key === "metadataStatus" &&
+    (value === "available" || value === "unavailable")
+  ) {
+    return [key, value] as const;
   }
   if (
     (key === "id" || key === "username" || key === "label") &&
@@ -108,18 +144,21 @@ const sanitizeMarks = (value: unknown) => {
       return [];
     }
     if (mark.type === "link") {
-      const href = isRecord(mark.attrs) ? safeHref(mark.attrs.href) : null;
-      return href ? [{ type: "link", attrs: { href } }] : [];
+      const attrs = sanitizeAttrs(mark.attrs);
+      return attrs && typeof attrs.href === "string"
+        ? [{ type: "link", attrs }]
+        : [];
     }
     return [{ type: mark.type }];
   });
   return marks.length > 0 ? marks : undefined;
 };
 
-const sanitizeNode = (
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: recursive document sanitization deliberately validates node type, attributes, marks, and bounded children together.
+function sanitizeNode(
   value: unknown,
   depth: number
-): Record<string, unknown> | null => {
+): Record<string, unknown> | null {
   if (
     depth > 8 ||
     !isRecord(value) ||
@@ -143,6 +182,24 @@ const sanitizeNode = (
     return null;
   }
   if (
+    value.type === "communityFile" &&
+    (!attrs || typeof attrs.src !== "string" || typeof attrs.name !== "string")
+  ) {
+    return null;
+  }
+  if (
+    value.type === "communityVideo" &&
+    (!attrs || typeof attrs.src !== "string")
+  ) {
+    return null;
+  }
+  if (
+    value.type === "communityArticle" &&
+    (!attrs || (typeof attrs.url !== "string" && typeof attrs.doi !== "string"))
+  ) {
+    return null;
+  }
+  if (
     value.type === "mention" &&
     (!attrs ||
       typeof attrs.id !== "string" ||
@@ -163,7 +220,7 @@ const sanitizeNode = (
       .slice(0, 200);
   }
   return node;
-};
+}
 
 export const sanitizeRichDocument = (value: unknown) => {
   const document = sanitizeNode(value, 0);
