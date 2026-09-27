@@ -99,13 +99,21 @@ export const getMeetings = async (
     : getLearningAccessScope(memberId);
   const meetingsPromise = Promise.all([
     database.meeting.findMany({
-      where: { status: ContentStatus.PUBLISHED, startsAt: { gte: now } },
+      where: {
+        status: ContentStatus.PUBLISHED,
+        demoKey: null,
+        startsAt: { gte: now },
+      },
       orderBy: [{ startsAt: "asc" }, { position: "asc" }],
       take: 48,
       select: memberMeetingSelection(memberId),
     }),
     database.meeting.findMany({
-      where: { status: ContentStatus.PUBLISHED, startsAt: { lt: now } },
+      where: {
+        status: ContentStatus.PUBLISHED,
+        demoKey: null,
+        startsAt: { lt: now },
+      },
       orderBy: { startsAt: "desc" },
       take: 48,
       select: memberMeetingSelection(memberId),
@@ -113,6 +121,7 @@ export const getMeetings = async (
     database.meeting.findMany({
       where: {
         status: ContentStatus.PUBLISHED,
+        demoKey: null,
         startsAt: { gte: calendarStart, lt: calendarEnd },
       },
       orderBy: [{ startsAt: "asc" }, { position: "asc" }],
@@ -158,7 +167,11 @@ export const getUpcomingMeetings = async (
     ? Promise.resolve(accessScope)
     : getLearningAccessScope(memberId);
   const meetingsPromise = database.meeting.findMany({
-    where: { status: ContentStatus.PUBLISHED, startsAt: { gte: new Date() } },
+    where: {
+      status: ContentStatus.PUBLISHED,
+      demoKey: null,
+      startsAt: { gte: new Date() },
+    },
     orderBy: [{ startsAt: "asc" }, { position: "asc" }],
     // Keep the same filtering headroom as the full calendar query. A member
     // may not be allowed to see every course-linked meeting in the first page.
@@ -205,7 +218,7 @@ export const getPublishedMeeting = async (id: string, memberId: string) => {
     getLearningAccessScope(memberId),
     getMemberRole(memberId),
     database.meeting.findFirst({
-      where: { id, status: ContentStatus.PUBLISHED },
+      where: { id, status: ContentStatus.PUBLISHED, demoKey: null },
       select: memberMeetingSelection(memberId),
     }),
   ]);
