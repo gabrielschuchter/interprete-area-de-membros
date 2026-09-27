@@ -178,6 +178,7 @@ export const SignIn = () => {
     const result = await signIn.create({
       identifier: identifier.trim(),
       password,
+      strategy: "password",
     });
 
     if (result.status === "complete") {
