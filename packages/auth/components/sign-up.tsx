@@ -358,6 +358,13 @@ export const SignUp = () => {
         </div>
       )}
 
+      <div
+        aria-hidden="true"
+        data-cl-size="flexible"
+        data-cl-theme="light"
+        id="clerk-captcha"
+      />
+
       {errorMessage ? (
         <div
           aria-live="assertive"

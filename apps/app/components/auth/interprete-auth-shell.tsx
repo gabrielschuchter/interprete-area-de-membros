@@ -59,7 +59,10 @@ export const InterpreteAuthShell = ({
       />
     </section>
 
-    <section aria-label="Autenticação da conta" className="interprete-login__auth">
+    <section
+      aria-label="Autenticação da conta"
+      className="interprete-login__auth"
+    >
       <div className="interprete-login__auth-column">
         <div className="interprete-login__card">
           <header className="interprete-login__card-header">
