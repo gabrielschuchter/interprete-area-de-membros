@@ -156,6 +156,25 @@
     color: #846b78;
   }
 
+  .interprete-login__account-switch {
+    display: flex;
+    gap: 0.35rem;
+    align-items: baseline;
+    justify-content: center;
+    margin: 1.45rem 0 0;
+    font-size: 0.82rem;
+    line-height: 1.45;
+    color: #846b78;
+    text-align: center;
+  }
+
+  .interprete-login__account-switch a {
+    font-weight: 600;
+    color: var(--login-ink);
+    text-decoration: underline;
+    text-underline-offset: 0.15rem;
+  }
+
   .interprete-login__help p,
   .interprete-login__help a {
     display: inline-flex;
@@ -252,6 +271,13 @@
     font-weight: 600;
     line-height: 1.2;
     color: var(--login-ink);
+  }
+
+  .interprete-login__field-hint {
+    margin: 0.05rem 0 0;
+    font-size: 0.76rem;
+    line-height: 1.4;
+    color: #8d7480;
   }
 
   .interprete-login__input-wrap {
@@ -436,6 +462,19 @@
     border-radius: 0.45rem;
   }
 
+  .interprete-login__error p {
+    margin: 0;
+  }
+
+  .interprete-login__error a {
+    display: inline-block;
+    margin-top: 0.45rem;
+    font-weight: 600;
+    color: inherit;
+    text-decoration: underline;
+    text-underline-offset: 0.15rem;
+  }
+
   .legal-page {
     display: grid;
     gap: 1.25rem;
@@ -571,6 +610,10 @@
       gap: 1rem;
       align-items: flex-start;
       margin-top: 2.5rem;
+    }
+
+    .interprete-login__account-switch {
+      flex-wrap: wrap;
     }
 
     .interprete-login__footer {
