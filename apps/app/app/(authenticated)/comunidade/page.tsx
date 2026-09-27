@@ -10,6 +10,7 @@ import {
   ThumbsUpIcon,
 } from "lucide-react";
 import Link from "next/link";
+import { CommunityHero } from "@/components/community/community-hero";
 import { MemberIdentity } from "@/components/community/member-identity";
 import { Stagger } from "@/components/motion/motion";
 import {
@@ -64,39 +65,52 @@ const CommunityPage = async ({ searchParams }: CommunityPageProperties) => {
   };
 
   return (
-    <div className="min-h-svh bg-background">
-      <main className="mx-auto w-full max-w-[1280px] px-5 py-10 sm:px-8 lg:px-12 lg:py-16">
-        <header className="flex flex-col justify-between gap-7 border-border border-b pb-8 lg:flex-row lg:items-end">
-          <div className="max-w-3xl">
-            <p className="brand-eyebrow">Escrita · leitura · discussão</p>
-            <span aria-hidden="true" className="brand-rule mt-4" />
-            <h1 className="mt-6 font-display text-5xl leading-[0.98] tracking-tight sm:text-7xl">
-              Ideias melhores crescem em companhia.
-            </h1>
-            <p className="mt-6 max-w-2xl text-base text-muted-foreground leading-7 sm:text-lg">
-              Um espaço para ler, escrever e discutir evidências sem transformar
-              conversa em ruído. Qualquer membro pode publicar.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button asChild variant="outline">
-              <Link href="/comunidade/meus-topicos">Minhas publicações</Link>
-            </Button>
-            <Button asChild variant="outline">
-              <Link href="/comunidade/salvos">
-                <BookmarkIcon aria-hidden="true" /> Salvos
-              </Link>
-            </Button>
-            <Button asChild className="shrink-0">
-              <Link href="/comunidade/novo">
-                <PlusIcon aria-hidden="true" /> Criar
-              </Link>
-            </Button>
-          </div>
-        </header>
+    <div className="community-page min-h-svh bg-background">
+      <main className="community-shell mx-auto w-full max-w-[1240px] px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10 xl:px-10">
+        <CommunityHero />
 
-        <div className="mt-10 grid gap-10 lg:grid-cols-[minmax(0,1fr)_18rem]">
-          <section aria-labelledby="feed-heading">
+        <section
+          aria-labelledby="community-composer-heading"
+          className="community-composer mt-5"
+        >
+          <div className="flex flex-col gap-4 p-4 xl:flex-row xl:items-center xl:justify-between xl:p-5">
+            <div className="flex min-w-0 items-center gap-3">
+              <span
+                aria-hidden="true"
+                className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand-structural text-primary-foreground"
+              >
+                <PlusIcon className="size-4" />
+              </span>
+              <div className="min-w-0">
+                <p className="brand-eyebrow">Espaço de escrita</p>
+                <h2
+                  className="mt-1 max-w-[38rem] text-balance font-display text-xl leading-tight sm:text-2xl"
+                  id="community-composer-heading"
+                >
+                  Compartilhe uma ideia com a comunidade.
+                </h2>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2 sm:justify-end">
+              <Button asChild className="shrink-0">
+                <Link href="/comunidade/novo">
+                  <PlusIcon aria-hidden="true" /> Criar conteúdo
+                </Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link href="/comunidade/meus-topicos">Minhas publicações</Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link href="/comunidade/salvos">
+                  <BookmarkIcon aria-hidden="true" /> Salvos
+                </Link>
+              </Button>
+            </div>
+          </div>
+        </section>
+
+        <div className="community-content-grid mt-8 grid gap-8 xl:grid-cols-[minmax(0,780px)_minmax(280px,320px)] xl:justify-between xl:gap-8">
+          <section aria-labelledby="feed-heading" className="min-w-0">
             <div className="flex flex-col gap-4 border-border border-b pb-5 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="brand-eyebrow">Feed da comunidade</p>
@@ -361,7 +375,7 @@ const CommunityPage = async ({ searchParams }: CommunityPageProperties) => {
             )}
           </section>
 
-          <aside className="h-fit">
+          <aside className="community-right-rail h-fit">
             <div className="flex items-end justify-between border-border border-b pb-4">
               <div>
                 <p className="brand-eyebrow">Salas abertas</p>
