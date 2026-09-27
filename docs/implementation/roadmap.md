@@ -1,10 +1,21 @@
 # Interprete Product Roadmap
 
+## Live-first migration checkpoint — 26/09/2026
+
+The official PostgreSQL connection was validated and the historical Kiwify
+inventory was separated semantically from async learning without destructive
+cleanup. See `docs/architecture/live-first-recordings.md` for the canonical
+model, authorization boundary and verified before/after counts. This checkpoint
+does not mark earlier product phases as complete: each phase still requires its
+own persistence, authorization, responsive, check and E2E gates.
+
 Este documento é a fonte de verdade da execução do produto. As fases são sequenciais; uma fase só muda para `DONE` depois de cumprir seus critérios de aceite e os gates técnicos do repositório.
 
 ## Matriz de execução atual
 
-Atualizada em 25/09/2026. A implementação de código avançou por todas as superfícies principais, mas nenhuma fase abaixo é marcada como `DONE` enquanto o processo local e os deploys não tiverem uma credencial PostgreSQL válida para provar migrations, seed, persistência, reload e E2E autenticado.
+Atualizada em 26/09/2026. A conexão oficial do PostgreSQL foi validada para a
+camada live-first. Fases continuam `IN PROGRESS` até cada uma cumprir seus
+próprios critérios de persistência, autorização, responsividade, checks e E2E.
 
 | Fase | Escopo | Status | Evidência atual |
 | --- | --- | --- | --- |

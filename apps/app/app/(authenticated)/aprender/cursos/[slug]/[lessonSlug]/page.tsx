@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { CompleteLessonButton } from "@/components/learning/complete-lesson-button";
 import { LearningPageFrame } from "@/components/learning/learning-page-frame";
 import { LessonPlayer } from "@/components/learning/lesson-player";
@@ -26,7 +26,11 @@ const assetKindLabel = (kind: string) => {
 };
 
 import { RichDocument } from "@/components/learning/rich-document";
-import { getPublishedLesson, requireMemberId } from "@/lib/learning";
+import {
+  getCourseExperience,
+  getPublishedLesson,
+  requireMemberId,
+} from "@/lib/learning";
 
 export const dynamic = "force-dynamic";
 
@@ -57,6 +61,10 @@ interface LessonPageProperties {
 const LessonPage = async ({ params }: LessonPageProperties) => {
   const { lessonSlug, slug } = await params;
   const memberId = await requireMemberId();
+  const courseExperience = await getCourseExperience(slug);
+  if (courseExperience?.experience === "RECORDING_ARCHIVE") {
+    redirect("/encontros/gravacoes");
+  }
   const lesson = await getPublishedLesson(slug, lessonSlug, memberId);
 
   if (!lesson) {

@@ -16,6 +16,11 @@ enum ContentStatus {
   ARCHIVED
 }
 
+enum CourseExperience {
+  ASYNC
+  RECORDING_ARCHIVE
+}
+
 enum LessonKind {
   TEXT
   VIDEO
@@ -138,34 +143,68 @@ enum MigrationStudentMatchStatus {
   AMBIGUOUS
 }
 
+enum ImportedRecordingGroupAssignmentAction {
+  ASSIGNED
+  REASSIGNED
+  REVOKED
+}
+
+enum CollectionItemType {
+  LESSON
+  RECORDING
+  LIBRARY_ITEM
+}
+
+enum HomeBlockType {
+  NEXT_MEETING
+  PREPARATION
+  CONTINUE_WATCHING
+  PENDING_ACTIVITY
+  FEEDBACK
+  ASYNC_LEARNING
+  COMMUNITY
+  COLLECTION
+}
+
 model Member {
-  id                     String                  @id
-  displayName            String?
-  email                  String?
-  avatarUrl              String?
-  role                   MemberRole              @default(MEMBER)
-  onboardingStatus       OnboardingStatus        @default(NOT_STARTED)
-  onboardingStep         Int                     @default(0)
-  onboardingVersion      Int                     @default(1)
-  onboardingStartedAt    DateTime?
-  onboardingCompletedAt  DateTime?
-  createdAt              DateTime                @default(now())
-  updatedAt              DateTime                @updatedAt
-  profile                Profile?
-  ownedAssets            LessonAsset[]           @relation("OwnedLessonAssets")
-  accessGrants           AccessGrant[]
-  migrationStudents      MigrationStudent[]      @relation("MigrationStudentMember")
-  notifications          Notification[]          @relation("NotificationRecipient")
-  notificationsAsActor   Notification[]          @relation("NotificationActor")
-  mentionsSent           Mention[]               @relation("MentionActor")
-  mentionsReceived       Mention[]               @relation("MentionTarget")
-  notificationPreference NotificationPreference?
-  topicFollows           TopicFollow[]
-  mutationRateLimits     MutationRateLimit[]
-  activityAssignments    ActivityAssignment[]
-  activitySubmissions    ActivitySubmission[]
-  libraryBookmarks       LibraryBookmark[]
-  meetingParticipations  MeetingParticipant[]
+  id                                  String                             @id
+  displayName                         String?
+  email                               String?
+  avatarUrl                           String?
+  role                                MemberRole                         @default(MEMBER)
+  onboardingStatus                    OnboardingStatus                   @default(NOT_STARTED)
+  onboardingStep                      Int                                @default(0)
+  onboardingVersion                   Int                                @default(1)
+  onboardingStartedAt                 DateTime?
+  onboardingCompletedAt               DateTime?
+  createdAt                           DateTime                           @default(now())
+  updatedAt                           DateTime                           @updatedAt
+  profile                             Profile?
+  ownedAssets                         LessonAsset[]                      @relation("OwnedLessonAssets")
+  accessGrants                        AccessGrant[]
+  migrationStudents                   MigrationStudent[]                 @relation("MigrationStudentMember")
+  notifications                       Notification[]                     @relation("NotificationRecipient")
+  notificationsAsActor                Notification[]                     @relation("NotificationActor")
+  mentionsSent                        Mention[]                          @relation("MentionActor")
+  mentionsReceived                    Mention[]                          @relation("MentionTarget")
+  notificationPreference              NotificationPreference?
+  topicFollows                        TopicFollow[]
+  mutationRateLimits                  MutationRateLimit[]
+  activityAssignments                 ActivityAssignment[]
+  activitySubmissions                 ActivitySubmission[]
+  libraryBookmarks                    LibraryBookmark[]
+  meetingParticipations               MeetingParticipant[]
+  playbackProgress                    PlaybackProgress[]
+  importedRecordingGroups             ImportedRecordingGroup[]           @relation("ImportedRecordingGroupMember")
+  recordingGroupAssignmentsAsMember   ImportedRecordingGroupAssignment[] @relation("ImportedRecordingGroupMemberTarget")
+  recordingGroupAssignmentsAsPrevious ImportedRecordingGroupAssignment[] @relation("ImportedRecordingGroupPreviousMember")
+  recordingGroupAssignmentsBy         ImportedRecordingGroupAssignment[] @relation("ImportedRecordingGroupChangedBy")
+  recordingGroupAssignmentsAsAssigner ImportedRecordingGroup[]           @relation("ImportedRecordingGroupAssignedBy")
+  productSettingsUpdated              ProductSetting[]                   @relation("ProductSettingUpdatedBy")
+  homeBlocksCreated                   HomeBlockConfiguration[]           @relation("HomeBlockCreatedBy")
+  homeBlocksUpdated                   HomeBlockConfiguration[]           @relation("HomeBlockUpdatedBy")
+  contentCollectionsCreated           ContentCollection[]                @relation("ContentCollectionCreatedBy")
+  contentCollectionsUpdated           ContentCollection[]                @relation("ContentCollectionUpdatedBy")
 
   @@index([role])
 }
@@ -211,27 +250,28 @@ model LearningPath {
 }
 
 model Course {
-  id              String        @id @default(cuid())
+  id              String           @id @default(cuid())
   title           String
-  subtitle        String?       @db.Text
-  slug            String        @unique
-  description     String?       @db.Text
+  subtitle        String?          @db.Text
+  slug            String           @unique
+  description     String?          @db.Text
   coverUrl        String?
   format          String?
   category        String?
   level           String?
   durationMinutes Int?
-  tags            String[]      @default([])
+  tags            String[]         @default([])
+  experience      CourseExperience @default(ASYNC)
   teacherId       String?
-  status          ContentStatus @default(DRAFT)
-  position        Int           @default(0)
+  status          ContentStatus    @default(DRAFT)
+  position        Int              @default(0)
   publishedAt     DateTime?
   createdBy       String?
   updatedBy       String?
   learningPathId  String?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  learningPath    LearningPath? @relation(fields: [learningPathId], references: [id], onDelete: SetNull)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  learningPath    LearningPath?    @relation(fields: [learningPathId], references: [id], onDelete: SetNull)
   modules         Module[]
   enrollments     Enrollment[]
   activities      Activity[]
@@ -243,18 +283,19 @@ model Course {
 }
 
 model Module {
-  id          String        @id @default(cuid())
-  title       String
-  slug        String
-  description String?       @db.Text
-  objectives  String[]      @default([])
-  position    Int           @default(0)
-  status      ContentStatus @default(DRAFT)
-  courseId    String
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  course      Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  lessons     Lesson[]
+  id                      String                   @id @default(cuid())
+  title                   String
+  slug                    String
+  description             String?                  @db.Text
+  objectives              String[]                 @default([])
+  position                Int                      @default(0)
+  status                  ContentStatus            @default(DRAFT)
+  courseId                String
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  course                  Course                   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessons                 Lesson[]
+  importedRecordingGroups ImportedRecordingGroup[]
 
   @@unique([courseId, slug])
   @@unique([courseId, position])
@@ -262,27 +303,29 @@ model Module {
 }
 
 model Lesson {
-  id           String           @id @default(cuid())
-  title        String
-  slug         String
-  description  String?          @db.Text
-  objectives   String[]         @default([])
-  content      Json
-  kind         LessonKind       @default(TEXT)
-  status       ContentStatus    @default(DRAFT)
-  position     Int              @default(0)
-  publishedAt  DateTime?
-  createdBy    String?
-  updatedBy    String?
-  moduleId     String
-  createdAt    DateTime         @default(now())
-  updatedAt    DateTime         @updatedAt
-  module       Module           @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-  resources    LessonResource[]
-  libraryItems LibraryItem[]
-  assets       LessonAsset[]
-  progress     LessonProgress[]
-  activities   Activity[]
+  id                 String                  @id @default(cuid())
+  title              String
+  slug               String
+  description        String?                 @db.Text
+  objectives         String[]                @default([])
+  content            Json
+  kind               LessonKind              @default(TEXT)
+  status             ContentStatus           @default(DRAFT)
+  position           Int                     @default(0)
+  publishedAt        DateTime?
+  createdBy          String?
+  updatedBy          String?
+  moduleId           String
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
+  module             Module                  @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  resources          LessonResource[]
+  libraryItems       LibraryItem[]
+  assets             LessonAsset[]
+  progress           LessonProgress[]
+  activities         Activity[]
+  importedRecordings ImportedRecording[]
+  collectionItems    ContentCollectionItem[]
 
   @@unique([moduleId, slug])
   @@unique([moduleId, position])
@@ -304,26 +347,29 @@ model LessonResource {
 }
 
 model LessonAsset {
-  id              String           @id @default(cuid())
-  title           String
-  kind            LessonAssetKind
-  scope           LessonAssetScope @default(GENERAL)
-  storagePath     String?          @db.Text
-  externalUrl     String?          @db.Text
-  mimeType        String?
-  sizeBytes       BigInt?
-  durationSeconds Int?
-  checksum        String?
-  sourcePlatform  String?
-  sourceId        String?
-  originalTitle   String?
-  position        Int              @default(0)
-  ownerMemberId   String?
-  lessonId        String
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  lesson          Lesson           @relation(fields: [lessonId], references: [id], onDelete: Cascade)
-  ownerMember     Member?          @relation("OwnedLessonAssets", fields: [ownerMemberId], references: [id], onDelete: SetNull)
+  id                String                  @id @default(cuid())
+  title             String
+  kind              LessonAssetKind
+  scope             LessonAssetScope        @default(GENERAL)
+  storagePath       String?                 @db.Text
+  externalUrl       String?                 @db.Text
+  mimeType          String?
+  sizeBytes         BigInt?
+  durationSeconds   Int?
+  checksum          String?
+  sourcePlatform    String?
+  sourceId          String?
+  originalTitle     String?
+  position          Int                     @default(0)
+  ownerMemberId     String?
+  lessonId          String
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+  lesson            Lesson                  @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  ownerMember       Member?                 @relation("OwnedLessonAssets", fields: [ownerMemberId], references: [id], onDelete: SetNull)
+  importedRecording ImportedRecording?
+  playbackProgress  PlaybackProgress[]
+  collectionItems   ContentCollectionItem[]
 
   @@unique([lessonId, position])
   @@unique([sourcePlatform, sourceId])
@@ -382,22 +428,103 @@ model MigrationRecord {
 }
 
 model MigrationStudent {
-  id             String                      @id @default(cuid())
-  sourcePlatform String
-  sourceId       String
-  displayName    String
-  email          String?
-  memberId       String?
-  matchStatus    MigrationStudentMatchStatus @default(UNMATCHED)
-  notes          String?                     @db.Text
-  createdAt      DateTime                    @default(now())
-  updatedAt      DateTime                    @updatedAt
-  member         Member?                     @relation("MigrationStudentMember", fields: [memberId], references: [id], onDelete: SetNull)
+  id                      String                      @id @default(cuid())
+  sourcePlatform          String
+  sourceId                String
+  displayName             String
+  email                   String?
+  memberId                String?
+  matchStatus             MigrationStudentMatchStatus @default(UNMATCHED)
+  notes                   String?                     @db.Text
+  createdAt               DateTime                    @default(now())
+  updatedAt               DateTime                    @updatedAt
+  member                  Member?                     @relation("MigrationStudentMember", fields: [memberId], references: [id], onDelete: SetNull)
+  importedRecordingGroups ImportedRecordingGroup[]
 
   @@unique([sourcePlatform, sourceId])
   @@index([email])
   @@index([memberId])
   @@index([matchStatus])
+}
+
+model ImportedRecordingGroup {
+  id                 String                             @id @default(cuid())
+  sourcePlatform     String
+  sourceId           String
+  legacyStudentName  String
+  legacyStudentId    String?
+  legacyModuleId     String                             @unique
+  memberId           String?
+  assignedAt         DateTime?
+  assignedByMemberId String?
+  createdAt          DateTime                           @default(now())
+  updatedAt          DateTime                           @updatedAt
+  legacyStudent      MigrationStudent?                  @relation(fields: [legacyStudentId], references: [id], onDelete: SetNull)
+  legacyModule       Module                             @relation(fields: [legacyModuleId], references: [id], onDelete: Restrict)
+  member             Member?                            @relation("ImportedRecordingGroupMember", fields: [memberId], references: [id], onDelete: SetNull)
+  assignedByMember   Member?                            @relation("ImportedRecordingGroupAssignedBy", fields: [assignedByMemberId], references: [id], onDelete: SetNull)
+  recordings         ImportedRecording[]
+  assignments        ImportedRecordingGroupAssignment[]
+
+  @@unique([sourcePlatform, sourceId])
+  @@index([memberId, updatedAt])
+  @@index([legacyStudentId])
+}
+
+model ImportedRecording {
+  id             String                 @id @default(cuid())
+  groupId        String
+  assetId        String                 @unique
+  legacyLessonId String
+  sourcePlatform String
+  sourceId       String
+  originalTitle  String?
+  meetingDate    DateTime?
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+  group          ImportedRecordingGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  asset          LessonAsset            @relation(fields: [assetId], references: [id], onDelete: Restrict)
+  legacyLesson   Lesson                 @relation(fields: [legacyLessonId], references: [id], onDelete: Restrict)
+
+  @@unique([sourcePlatform, sourceId])
+  @@index([groupId, meetingDate])
+  @@index([legacyLessonId])
+}
+
+model ImportedRecordingGroupAssignment {
+  id                String                                 @id @default(cuid())
+  groupId           String
+  previousMemberId  String?
+  memberId          String?
+  changedByMemberId String
+  action            ImportedRecordingGroupAssignmentAction
+  note              String?                                @db.Text
+  createdAt         DateTime                               @default(now())
+  group             ImportedRecordingGroup                 @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  previousMember    Member?                                @relation("ImportedRecordingGroupPreviousMember", fields: [previousMemberId], references: [id], onDelete: SetNull)
+  member            Member?                                @relation("ImportedRecordingGroupMemberTarget", fields: [memberId], references: [id], onDelete: SetNull)
+  changedBy         Member                                 @relation("ImportedRecordingGroupChangedBy", fields: [changedByMemberId], references: [id], onDelete: Restrict)
+
+  @@index([groupId, createdAt])
+  @@index([memberId, createdAt])
+}
+
+model PlaybackProgress {
+  id                  String      @id @default(cuid())
+  memberId            String
+  assetId             String
+  positionSeconds     Int         @default(0)
+  durationSeconds     Int?
+  lastViewedAt        DateTime    @default(now())
+  completedPlaybackAt DateTime?
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+  member              Member      @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  asset               LessonAsset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@unique([memberId, assetId])
+  @@index([memberId, lastViewedAt])
+  @@index([assetId, lastViewedAt])
 }
 
 model LessonProgress {
@@ -739,32 +866,33 @@ model MeetingParticipant {
 }
 
 model LibraryItem {
-  id             String            @id @default(cuid())
-  idempotencyKey String?
-  title          String
-  description    String?           @db.Text
-  kind           LibraryItemKind
-  category       String?
-  tags           String[]
-  url            String            @db.Text
-  authors        String?           @db.Text
-  year           Int?
-  doi            String?
-  pmid           String?
-  storagePath    String?           @db.Text
-  mimeType       String?
-  sizeBytes      BigInt?
-  status         ContentStatus     @default(DRAFT)
-  position       Int               @default(0)
-  createdBy      String?
-  updatedBy      String?
-  lessonId       String?
-  createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
-  bookmarks      LibraryBookmark[]
-  meetings       Meeting[]         @relation("MeetingLibraryItem")
-  lesson         Lesson?           @relation(fields: [lessonId], references: [id], onDelete: SetNull)
-  activities     Activity[]        @relation("ActivityLibraryItem")
+  id              String                  @id @default(cuid())
+  idempotencyKey  String?
+  title           String
+  description     String?                 @db.Text
+  kind            LibraryItemKind
+  category        String?
+  tags            String[]
+  url             String                  @db.Text
+  authors         String?                 @db.Text
+  year            Int?
+  doi             String?
+  pmid            String?
+  storagePath     String?                 @db.Text
+  mimeType        String?
+  sizeBytes       BigInt?
+  status          ContentStatus           @default(DRAFT)
+  position        Int                     @default(0)
+  createdBy       String?
+  updatedBy       String?
+  lessonId        String?
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+  bookmarks       LibraryBookmark[]
+  meetings        Meeting[]               @relation("MeetingLibraryItem")
+  lesson          Lesson?                 @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+  activities      Activity[]              @relation("ActivityLibraryItem")
+  collectionItems ContentCollectionItem[]
 
   @@unique([createdBy, idempotencyKey])
   @@index([status, category, position])
@@ -782,4 +910,80 @@ model LibraryBookmark {
 
   @@unique([itemId, memberId])
   @@index([memberId, createdAt])
+}
+
+model ProductSetting {
+  id                String   @id @default(cuid())
+  key               String   @unique
+  value             Json
+  updatedByMemberId String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  updatedBy         Member?  @relation("ProductSettingUpdatedBy", fields: [updatedByMemberId], references: [id], onDelete: SetNull)
+
+  @@index([updatedByMemberId])
+}
+
+model ContentCollection {
+  id                String                   @id @default(cuid())
+  title             String
+  slug              String                   @unique
+  description       String?                  @db.Text
+  status            ContentStatus            @default(DRAFT)
+  position          Int                      @default(0)
+  createdByMemberId String?
+  updatedByMemberId String?
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
+  items             ContentCollectionItem[]
+  createdBy         Member?                  @relation("ContentCollectionCreatedBy", fields: [createdByMemberId], references: [id], onDelete: SetNull)
+  updatedBy         Member?                  @relation("ContentCollectionUpdatedBy", fields: [updatedByMemberId], references: [id], onDelete: SetNull)
+  homeBlocks        HomeBlockConfiguration[]
+
+  @@index([status, position])
+}
+
+model ContentCollectionItem {
+  id            String             @id @default(cuid())
+  collectionId  String
+  itemType      CollectionItemType
+  lessonId      String?
+  assetId       String?
+  libraryItemId String?
+  position      Int                @default(0)
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  collection    ContentCollection  @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  lesson        Lesson?            @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+  asset         LessonAsset?       @relation(fields: [assetId], references: [id], onDelete: SetNull)
+  libraryItem   LibraryItem?       @relation(fields: [libraryItemId], references: [id], onDelete: SetNull)
+
+  @@unique([collectionId, position])
+  @@unique([collectionId, itemType, lessonId])
+  @@unique([collectionId, itemType, assetId])
+  @@unique([collectionId, itemType, libraryItemId])
+  @@index([itemType, lessonId])
+  @@index([itemType, assetId])
+  @@index([itemType, libraryItemId])
+}
+
+model HomeBlockConfiguration {
+  id                String             @id @default(cuid())
+  type              HomeBlockType
+  title             String?
+  subtitle          String?            @db.Text
+  enabled           Boolean            @default(true)
+  position          Int                @default(0)
+  itemCount         Int                @default(4)
+  collectionId      String?
+  createdByMemberId String?
+  updatedByMemberId String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  collection        ContentCollection? @relation(fields: [collectionId], references: [id], onDelete: SetNull)
+  createdBy         Member?            @relation("HomeBlockCreatedBy", fields: [createdByMemberId], references: [id], onDelete: SetNull)
+  updatedBy         Member?            @relation("HomeBlockUpdatedBy", fields: [updatedByMemberId], references: [id], onDelete: SetNull)
+
+  @@unique([type])
+  @@index([enabled, position])
 }

@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import { env } from "@/env";
 import { getAuth, getCurrentUser } from "@/lib/auth";
 import { getMemberRole } from "@/lib/authorization";
+import { getMemberProductConfig } from "@/lib/product-config";
 import { getOrCreateProfile } from "@/lib/profile";
 import { MemberHeader } from "./components/member-header";
 import { RouteMotion } from "./components/route-motion";
@@ -36,9 +37,10 @@ const AppLayout = async ({ children }: AppLayoutProperties) => {
     redirect("/onboarding");
   }
 
-  const [role, user] = await Promise.all([
+  const [role, user, productConfig] = await Promise.all([
     getMemberRole(userId),
     getCurrentUser(),
+    getMemberProductConfig(userId),
   ]);
 
   return (
@@ -47,6 +49,7 @@ const AppLayout = async ({ children }: AppLayoutProperties) => {
         avatarUrl={profile?.avatarUrl ?? user?.imageUrl ?? null}
         canManageContent={role === "TEACHER" || role === "ADMIN"}
         displayName={profile?.displayName ?? user?.firstName ?? "Membro"}
+        productConfig={productConfig}
       >
         <MemberHeader memberId={userId} />
         <RouteMotion>{children}</RouteMotion>

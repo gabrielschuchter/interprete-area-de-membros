@@ -11,6 +11,7 @@ const groups = [
       ["Visão geral", "/admin"],
       ["Atividades", "/admin/activities"],
       ["Encontros", "/admin/meetings"],
+      ["Gravações", "/admin/gravacoes"],
       ["Avisos", "/admin/avisos"],
     ],
   },
@@ -19,6 +20,7 @@ const groups = [
     items: [
       ["Conteúdo", "/admin/learning"],
       ["Biblioteca", "/admin/library"],
+      ["Coleções", "/admin/colecoes"],
       ["Comunidade", "/admin/community"],
     ],
   },
@@ -75,22 +77,30 @@ export const AdminNav = ({ isAdmin }: { readonly isAdmin: boolean }) => {
       {isAdmin && (
         <div className="shrink-0">
           <p className="brand-eyebrow mb-1 px-2">Admin</p>
-          <Button
-            asChild
-            size="sm"
-            variant={
-              isActive(pathname, "/admin/acessos") ? "secondary" : "ghost"
-            }
-          >
-            <IntentLink
-              aria-current={
-                isActive(pathname, "/admin/acessos") ? "page" : undefined
-              }
-              href="/admin/acessos"
-            >
-              Acessos
-            </IntentLink>
-          </Button>
+          <div className="flex gap-1">
+            {[
+              ["Acessos", "/admin/acessos"],
+              ["Personalização", "/admin/personalizacao"],
+            ].map(([label, href]) => {
+              const active = isActive(pathname, href);
+
+              return (
+                <Button
+                  asChild
+                  key={href}
+                  size="sm"
+                  variant={active ? "secondary" : "ghost"}
+                >
+                  <IntentLink
+                    aria-current={active ? "page" : undefined}
+                    href={href}
+                  >
+                    {label}
+                  </IntentLink>
+                </Button>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>

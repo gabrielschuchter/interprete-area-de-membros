@@ -1,6 +1,11 @@
 import "server-only";
 
-import { ContentStatus, database, ProgressStatus } from "@repo/database";
+import {
+  ContentStatus,
+  CourseExperience,
+  database,
+  ProgressStatus,
+} from "@repo/database";
 import { requireSession } from "./authorization";
 import {
   filterAccessibleAssets,
@@ -18,6 +23,7 @@ export const requireMemberId = requireSession;
 const published = { status: ContentStatus.PUBLISHED } as const;
 const publishedCourse = {
   ...published,
+  experience: CourseExperience.ASYNC,
   OR: [{ learningPathId: null }, { learningPath: { is: published } }],
 };
 
@@ -79,12 +85,13 @@ export const getPublishedLearningPaths = async (
       description: true,
       coverUrl: true,
       courses: {
-        where: published,
+        where: { ...published, experience: CourseExperience.ASYNC },
         orderBy: [{ position: "asc" }, { title: "asc" }],
         select: {
           id: true,
           title: true,
           slug: true,
+          experience: true,
           description: true,
           modules: {
             where: published,
@@ -147,6 +154,7 @@ export const getHomeLearningSummary = async (
   const coursesPromise = database.course.findMany({
     where: {
       ...published,
+      experience: CourseExperience.ASYNC,
       learningPath: { is: published },
     },
     orderBy: [{ position: "asc" }, { title: "asc" }],
@@ -154,6 +162,7 @@ export const getHomeLearningSummary = async (
       id: true,
       title: true,
       slug: true,
+      experience: true,
       description: true,
       modules: {
         where: published,
@@ -211,6 +220,7 @@ export const getPublishedCourse = async (slug: string, memberId: string) => {
         id: true,
         title: true,
         slug: true,
+        experience: true,
         description: true,
         learningPath: {
           select: { title: true, slug: true },
@@ -255,6 +265,12 @@ export const getPublishedCourse = async (slug: string, memberId: string) => {
     progress: calculateLearningProgress(lessons),
   };
 };
+
+export const getCourseExperience = async (slug: string) =>
+  database.course.findUnique({
+    where: { slug },
+    select: { experience: true },
+  });
 
 export const getPublishedLesson = async (
   courseSlug: string,

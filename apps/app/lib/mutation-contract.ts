@@ -17,6 +17,7 @@ export const mutationLimits = {
   "library.bookmark": { max: 30, windowMs: 60_000 },
   "library.mutation": { max: 30, windowMs: 60_000 },
   "meeting.mutation": { max: 30, windowMs: 60_000 },
+  "learning.playback": { max: 30, windowMs: 60_000 },
   "admin.mutation": { max: 60, windowMs: 60_000 },
 } as const;
 

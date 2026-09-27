@@ -191,7 +191,13 @@ export const getAccessibleAsset = async (assetId: string, memberId: string) => {
       storagePath: true,
       externalUrl: true,
       mimeType: true,
+      durationSeconds: true,
       ownerMemberId: true,
+      importedRecording: {
+        select: {
+          group: { select: { memberId: true } },
+        },
+      },
       lesson: {
         select: {
           id: true,
@@ -213,11 +219,12 @@ export const getAccessibleAsset = async (assetId: string, memberId: string) => {
     asset.lesson.moduleId,
     asset.lesson.id
   );
-  const canReadAsset =
-    scope.fullAccess ||
-    (asset.scope === "GENERAL" && canReadLesson) ||
-    asset.ownerMemberId === memberId ||
-    scope.assetIds.has(asset.id);
+  const canReadAsset = asset.importedRecording
+    ? scope.fullAccess || asset.importedRecording.group.memberId === memberId
+    : scope.fullAccess ||
+      (asset.scope === "GENERAL" && canReadLesson) ||
+      asset.ownerMemberId === memberId ||
+      scope.assetIds.has(asset.id);
 
   return canReadAsset ? asset : null;
 };

@@ -1,9 +1,10 @@
 import "server-only";
 
-import { database } from "@repo/database";
+import { CourseExperience, database } from "@repo/database";
 
 export const getAdminLearningOverview = async () =>
   database.learningPath.findMany({
+    where: { courses: { some: { experience: CourseExperience.ASYNC } } },
     orderBy: [{ position: "asc" }, { title: "asc" }],
     select: {
       id: true,
@@ -12,6 +13,7 @@ export const getAdminLearningOverview = async () =>
       description: true,
       status: true,
       courses: {
+        where: { experience: CourseExperience.ASYNC },
         orderBy: [{ position: "asc" }, { title: "asc" }],
         select: {
           id: true,
@@ -50,6 +52,7 @@ export const getAdminCourse = async (id: string) =>
       tags: true,
       teacherId: true,
       status: true,
+      experience: true,
       learningPath: { select: { id: true, title: true, slug: true } },
       modules: {
         orderBy: [{ position: "asc" }, { title: "asc" }],
@@ -86,6 +89,7 @@ export const getAdminCourse = async (id: string) =>
 
 export const getCourseOptions = async () =>
   database.course.findMany({
+    where: { experience: CourseExperience.ASYNC },
     orderBy: [{ status: "asc" }, { position: "asc" }, { title: "asc" }],
     select: {
       id: true,

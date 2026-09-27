@@ -1,6 +1,11 @@
 import "server-only";
 
-import { ContentStatus, database, LessonAssetScope } from "@repo/database";
+import {
+  ContentStatus,
+  CourseExperience,
+  database,
+  LessonAssetScope,
+} from "@repo/database";
 import { getLearningAccessScope } from "./content-access";
 
 export const getMemberLearningAssets = async (memberId: string) => {
@@ -23,7 +28,10 @@ export const getMemberLearningAssets = async (memberId: string) => {
         status: ContentStatus.PUBLISHED,
         module: {
           status: ContentStatus.PUBLISHED,
-          course: { status: ContentStatus.PUBLISHED },
+          course: {
+            status: ContentStatus.PUBLISHED,
+            experience: CourseExperience.ASYNC,
+          },
         },
       },
     },

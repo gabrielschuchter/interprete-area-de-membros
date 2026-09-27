@@ -26,7 +26,6 @@ import {
   LibraryIcon,
   MessageCircleIcon,
   SettingsIcon,
-  VideoIcon,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
@@ -40,11 +39,13 @@ interface GlobalSidebarProperties {
   readonly canManageContent: boolean;
   readonly children: ReactNode;
   readonly displayName: string;
+  readonly productConfig: {
+    readonly showLearnNavigation: boolean;
+  };
 }
 
-const navigation = [
+const baseNavigation = [
   { href: "/", label: "Início", icon: HouseIcon },
-  { href: "/aprender", label: "Aprender", icon: BookOpenIcon },
   { href: "/atividades", label: "Atividades", icon: CheckSquareIcon },
   {
     href: "/comunidade",
@@ -55,13 +56,23 @@ const navigation = [
   { href: "/encontros", label: "Encontros", icon: CalendarDaysIcon },
 ] as const;
 
+const learnNavigation = {
+  href: "/aprender",
+  label: "Aprender",
+  icon: BookOpenIcon,
+} as const;
+
 export const GlobalSidebar = ({
   avatarUrl,
   canManageContent,
   children,
   displayName,
+  productConfig,
 }: GlobalSidebarProperties) => {
   const pathname = usePathname();
+  const navigation = productConfig.showLearnNavigation
+    ? [baseNavigation[0], learnNavigation, ...baseNavigation.slice(1)]
+    : baseNavigation;
 
   return (
     <>
@@ -82,21 +93,6 @@ export const GlobalSidebar = ({
                   />
                   <span className="hidden font-display text-2xl text-sidebar-foreground group-data-[collapsible=icon]:inline">
                     I.
-                  </span>
-                </IntentLink>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                className="rounded-sm"
-                isActive={pathname.startsWith("/aprender/minhas-gravacoes")}
-                tooltip="Minhas gravações"
-              >
-                <IntentLink href="/aprender/minhas-gravacoes">
-                  <VideoIcon />
-                  <span className="group-data-[collapsible=icon]:hidden">
-                    Minhas gravações
                   </span>
                 </IntentLink>
               </SidebarMenuButton>

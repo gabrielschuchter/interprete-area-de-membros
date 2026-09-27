@@ -7,9 +7,13 @@ import {
   PlayCircleIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { LearningPageFrame } from "@/components/learning/learning-page-frame";
-import { getPublishedCourse, requireMemberId } from "@/lib/learning";
+import {
+  getCourseExperience,
+  getPublishedCourse,
+  requireMemberId,
+} from "@/lib/learning";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +24,10 @@ interface CoursePageProperties {
 const CoursePage = async ({ params }: CoursePageProperties) => {
   const { slug } = await params;
   const memberId = await requireMemberId();
+  const courseExperience = await getCourseExperience(slug);
+  if (courseExperience?.experience === "RECORDING_ARCHIVE") {
+    redirect("/encontros/gravacoes");
+  }
   const course = await getPublishedCourse(slug, memberId);
 
   if (!course) {

@@ -3,6 +3,7 @@ import "server-only";
 import {
   ActivitySubmissionStatus,
   ContentStatus,
+  CourseExperience,
   database,
   MemberRole,
 } from "@repo/database";
@@ -27,7 +28,12 @@ export const getAdminOverview = async () => {
     overdueAssignments,
   ] = await Promise.all([
     database.member.count({ where: { role: MemberRole.MEMBER } }),
-    database.course.count({ where: { status: ContentStatus.PUBLISHED } }),
+    database.course.count({
+      where: {
+        experience: CourseExperience.ASYNC,
+        status: ContentStatus.PUBLISHED,
+      },
+    }),
     database.learningPath.count({ where: { status: ContentStatus.PUBLISHED } }),
     database.activitySubmission.findMany({
       where: {
@@ -60,6 +66,9 @@ export const getAdminOverview = async () => {
       },
     }),
     database.lesson.findMany({
+      where: {
+        module: { course: { experience: CourseExperience.ASYNC } },
+      },
       orderBy: { updatedAt: "desc" },
       take: 6,
       select: {
@@ -90,9 +99,24 @@ export const getAdminOverview = async () => {
       },
     }),
     database.learningPath.count({ where: { status: ContentStatus.DRAFT } }),
-    database.course.count({ where: { status: ContentStatus.DRAFT } }),
-    database.module.count({ where: { status: ContentStatus.DRAFT } }),
-    database.lesson.count({ where: { status: ContentStatus.DRAFT } }),
+    database.course.count({
+      where: {
+        experience: CourseExperience.ASYNC,
+        status: ContentStatus.DRAFT,
+      },
+    }),
+    database.module.count({
+      where: {
+        status: ContentStatus.DRAFT,
+        course: { experience: CourseExperience.ASYNC },
+      },
+    }),
+    database.lesson.count({
+      where: {
+        status: ContentStatus.DRAFT,
+        module: { course: { experience: CourseExperience.ASYNC } },
+      },
+    }),
     database.communityPost.count({
       where: { status: ContentStatus.DRAFT, deletedAt: null },
     }),
