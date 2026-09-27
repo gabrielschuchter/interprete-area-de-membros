@@ -1,6 +1,6 @@
 "use client";
 
-import { useSignUp } from "@clerk/nextjs/legacy";
+import { useSignUp } from "@clerk/nextjs";
 import { type FormEvent, useState } from "react";
 
 type SignUpStep = "form" | "verification";
@@ -143,7 +143,7 @@ const getRedirectPath = () => {
 // email verification. Clerk remains the identity provider; the member record
 // is created by the authenticated application guard after the session starts.
 export const SignUp = () => {
-  const { isLoaded, setActive, signUp } = useSignUp();
+  const { fetchStatus, signUp } = useSignUp();
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [verificationCode, setVerificationCode] = useState("");
@@ -153,7 +153,7 @@ export const SignUp = () => {
   const [errorMessage, setErrorMessage] = useState("");
   const [hasExistingAccount, setHasExistingAccount] = useState(false);
 
-  if (!(isLoaded && signUp && setActive)) {
+  if (fetchStatus !== "idle" || !signUp) {
     return (
       <div aria-live="polite" className="interprete-login__loading">
         <span aria-hidden="true" />
@@ -162,12 +162,13 @@ export const SignUp = () => {
     );
   }
 
-  const activateSession = async (sessionId: string | null) => {
-    if (!sessionId) {
-      throw new Error("Não foi possível iniciar a sessão depois do cadastro.");
+  const activateSession = async () => {
+    const { error } = await signUp.finalize();
+
+    if (error) {
+      throw error;
     }
 
-    await setActive({ session: sessionId });
     window.location.assign(getRedirectPath());
   };
 
@@ -178,18 +179,27 @@ export const SignUp = () => {
       throw new Error("A senha precisa ter pelo menos 8 caracteres.");
     }
 
-    const result = await signUp.create({
+    const { error } = await signUp.password({
       emailAddress: normalizedIdentifier,
       password,
     });
 
-    if (result.status === "complete") {
-      await activateSession(result.createdSessionId);
+    if (error) {
+      throw error;
+    }
+
+    if (signUp.status === "complete") {
+      await activateSession();
       return;
     }
 
-    if (result.unverifiedFields.includes("email_address")) {
-      await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
+    if (signUp.unverifiedFields.includes("email_address")) {
+      const verificationResult = await signUp.verifications.sendEmailCode();
+
+      if (verificationResult.error) {
+        throw verificationResult.error;
+      }
+
       setStep("verification");
       return;
     }
@@ -198,12 +208,16 @@ export const SignUp = () => {
   };
 
   const handleVerifyEmail = async () => {
-    const result = await signUp.attemptEmailAddressVerification({
+    const { error } = await signUp.verifications.verifyEmailCode({
       code: verificationCode.trim(),
     });
 
-    if (result.status === "complete") {
-      await activateSession(result.createdSessionId);
+    if (error) {
+      throw error;
+    }
+
+    if (signUp.status === "complete") {
+      await activateSession();
       return;
     }
 
@@ -245,7 +259,11 @@ export const SignUp = () => {
     setIsSubmitting(true);
 
     try {
-      await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
+      const { error } = await signUp.verifications.sendEmailCode();
+
+      if (error) {
+        throw error;
+      }
     } catch (error) {
       const nextError = getSignUpErrorState(error);
       setErrorMessage(nextError.message);

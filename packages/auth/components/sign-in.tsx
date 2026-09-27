@@ -1,6 +1,6 @@
 "use client";
 
-import { useSignIn } from "@clerk/nextjs/legacy";
+import { useSignIn } from "@clerk/nextjs";
 import { type FormEvent, useState } from "react";
 
 type ResetStep = "code" | "password" | null;
@@ -94,7 +94,7 @@ const getRedirectPath = () => {
 // The component owns the finite-state rendering for password, reset, and MFA flows.
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: authentication states are intentionally kept together for one accessible form
 export const SignIn = () => {
-  const { isLoaded, setActive, signIn } = useSignIn();
+  const { fetchStatus, signIn } = useSignIn();
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [resetCode, setResetCode] = useState("");
@@ -106,7 +106,7 @@ export const SignIn = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
-  if (!(isLoaded && signIn && setActive)) {
+  if (fetchStatus !== "idle" || !signIn) {
     return (
       <div aria-live="polite" className="interprete-login__loading">
         <span aria-hidden="true" />
@@ -115,28 +115,32 @@ export const SignIn = () => {
     );
   }
 
-  const activateSession = async (sessionId: string | null) => {
-    if (!sessionId) {
-      throw new Error("A autenticação não retornou uma sessão válida.");
+  const activateSession = async () => {
+    const { error } = await signIn.finalize();
+
+    if (error) {
+      throw error;
     }
 
-    await setActive({ session: sessionId });
     window.location.assign(getRedirectPath());
   };
 
   const submitResetCode = async () => {
-    const result = await signIn.attemptFirstFactor({
-      strategy: "reset_password_email_code",
+    const { error } = await signIn.resetPasswordEmailCode.verifyCode({
       code: resetCode.trim(),
     });
 
-    if (result.status === "needs_new_password") {
+    if (error) {
+      throw error;
+    }
+
+    if (signIn.status === "needs_new_password") {
       setResetStep("password");
       return;
     }
 
-    if (result.status === "complete") {
-      await activateSession(result.createdSessionId);
+    if (signIn.status === "complete") {
+      await activateSession();
       return;
     }
 
@@ -144,10 +148,16 @@ export const SignIn = () => {
   };
 
   const submitNewPassword = async () => {
-    const result = await signIn.resetPassword({ password });
+    const { error } = await signIn.resetPasswordEmailCode.submitPassword({
+      password,
+    });
 
-    if (result.status === "complete") {
-      await activateSession(result.createdSessionId);
+    if (error) {
+      throw error;
+    }
+
+    if (signIn.status === "complete") {
+      await activateSession();
       return;
     }
 
@@ -159,13 +169,17 @@ export const SignIn = () => {
       throw new Error("Selecione uma forma de confirmação para continuar.");
     }
 
-    const result = await signIn.attemptSecondFactor({
-      strategy: secondFactorStrategy,
-      code: secondFactorCode.trim(),
-    });
+    const result =
+      secondFactorStrategy === "email_code"
+        ? await signIn.mfa.verifyEmailCode({ code: secondFactorCode.trim() })
+        : await signIn.mfa.verifyTOTP({ code: secondFactorCode.trim() });
 
-    if (result.status === "complete") {
-      await activateSession(result.createdSessionId);
+    if (result.error) {
+      throw result.error;
+    }
+
+    if (signIn.status === "complete") {
+      await activateSession();
       return;
     }
 
@@ -175,35 +189,39 @@ export const SignIn = () => {
   };
 
   const submitPassword = async () => {
-    const result = await signIn.create({
-      identifier: identifier.trim(),
+    const { error } = await signIn.password({
+      emailAddress: identifier.trim(),
       password,
-      strategy: "password",
     });
 
-    if (result.status === "complete") {
-      await activateSession(result.createdSessionId);
+    if (error) {
+      throw error;
+    }
+
+    if (signIn.status === "complete") {
+      await activateSession();
       return;
     }
 
     if (
-      result.status === "needs_second_factor" ||
-      result.status === "needs_client_trust"
+      signIn.status === "needs_second_factor" ||
+      signIn.status === "needs_client_trust"
     ) {
-      const emailCodeFactor = result.supportedSecondFactors?.find(
+      const emailCodeFactor = signIn.supportedSecondFactors?.find(
         (factor) => factor.strategy === "email_code"
       );
 
       if (emailCodeFactor) {
-        await signIn.prepareSecondFactor({
-          strategy: "email_code",
-          emailAddressId: emailCodeFactor.emailAddressId,
-        });
+        const secondFactorResult = await signIn.mfa.sendEmailCode();
+
+        if (secondFactorResult.error) {
+          throw secondFactorResult.error;
+        }
         setSecondFactorStrategy("email_code");
         return;
       }
 
-      const totpFactor = result.supportedSecondFactors?.find(
+      const totpFactor = signIn.supportedSecondFactors?.find(
         (factor) => factor.strategy === "totp"
       );
 
@@ -270,10 +288,20 @@ export const SignIn = () => {
     setIsSubmitting(true);
 
     try {
-      await signIn.create({
+      const { error } = await signIn.create({
         identifier: normalizedIdentifier,
-        strategy: "reset_password_email_code",
       });
+
+      if (error) {
+        throw error;
+      }
+
+      const resetResult = await signIn.resetPasswordEmailCode.sendCode();
+
+      if (resetResult.error) {
+        throw resetResult.error;
+      }
+
       setResetStep("code");
     } catch (error) {
       setErrorMessage(getErrorMessage(error));
