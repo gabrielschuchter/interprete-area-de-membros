@@ -1,11 +1,11 @@
 import { auth } from "@repo/auth/server";
 import { database, MemberRole } from "@repo/database";
 import { NextResponse } from "next/server";
+import { canReadMemberAssetPath } from "@/lib/member-asset-access";
 import {
   createMemberAssetPath,
   createMemberAssetSignedUrl,
   deleteMemberAsset,
-  isMemberAssetPath,
   isOwnedMemberAssetPath,
   memberAssetUrl,
   uploadMemberAsset,
@@ -23,6 +23,8 @@ const libraryTypes = new Set([...imageTypes, "application/pdf", "text/plain"]);
 // Sharp's native Linux bindings require the Node.js runtime in Vercel. Keep
 // image processing isolated from the Bun runtime used by the rest of the app.
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 const hasImageSignature = async (file: File) => {
   const bytes = new Uint8Array(await file.slice(0, 12).arrayBuffer());
@@ -61,32 +63,6 @@ const unauthorized = () =>
 const getPath = (request: Request) =>
   new URL(request.url).searchParams.get("path")?.trim() ?? "";
 
-const canReadPath = async (path: string, userId: string) => {
-  if (!isMemberAssetPath(path)) {
-    return false;
-  }
-
-  if (
-    path.startsWith("community-assets/") ||
-    path.startsWith("library-assets/")
-  ) {
-    return true;
-  }
-
-  if (isOwnedMemberAssetPath(path, userId)) {
-    return true;
-  }
-
-  const member = await database.member.findUnique({
-    where: { id: userId },
-    select: { role: true },
-  });
-
-  return (
-    member?.role === MemberRole.ADMIN || member?.role === MemberRole.TEACHER
-  );
-};
-
 export async function GET(request: Request) {
   const { userId } = await auth();
 
@@ -96,7 +72,7 @@ export async function GET(request: Request) {
 
   const path = getPath(request);
 
-  if (!(await canReadPath(path, userId))) {
+  if (!(await canReadMemberAssetPath(path, userId))) {
     return NextResponse.json(
       { error: "Asset não encontrado." },
       { status: 404 }
@@ -129,9 +105,13 @@ export async function GET(request: Request) {
   }
 
   const headers = new Headers({
-    "Cache-Control": "private, max-age=300, stale-while-revalidate=60",
+    // Authorization is evaluated with the current Clerk session for every
+    // request. Do not let a CDN or a browser reuse an authorized response
+    // across a different session.
+    "Cache-Control": "private, no-store",
     "Content-Disposition": "inline",
     "X-Content-Type-Options": "nosniff",
+    Vary: "Cookie",
   });
   const contentType = assetResponse.headers.get("content-type");
   const contentLength = assetResponse.headers.get("content-length");
