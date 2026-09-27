@@ -55,8 +55,8 @@ const enrichAuthors = async <T extends { authorId: string }>(
   return attachProfiles(rows, profiles);
 };
 
-export const getCommunitySpaces = async () => {
-  const spaces = await database.communitySpace.findMany({
+export const getCommunitySpaces = () =>
+  database.communitySpace.findMany({
     where: { status: ContentStatus.PUBLISHED },
     orderBy: [{ position: "asc" }, { title: "asc" }],
     select: {
@@ -73,38 +73,8 @@ export const getCommunitySpaces = async () => {
           },
         },
       },
-      posts: {
-        where: { status: ContentStatus.PUBLISHED, deletedAt: null },
-        orderBy: [
-          { isFeatured: "desc" },
-          { isPinned: "desc" },
-          { createdAt: "desc" },
-        ],
-        take: 3,
-        select: {
-          id: true,
-          title: true,
-          authorId: true,
-          isFeatured: true,
-          isPinned: true,
-          createdAt: true,
-          _count: {
-            select: { comments: { where: { deletedAt: null } }, votes: true },
-          },
-        },
-      },
     },
   });
-
-  const profiles = await getProfilesByClerkIds(
-    spaces.flatMap((space) => space.posts.map((post) => post.authorId))
-  );
-
-  return spaces.map((space) => ({
-    ...space,
-    posts: attachProfiles(space.posts, profiles),
-  }));
-};
 
 export const getLatestCommunityPost = async () =>
   database.communityPost.findFirst({

@@ -16,15 +16,17 @@ const LegacyCommunityPostPage = async ({
   const { postId, spaceSlug } = await params;
   const filters = await searchParams;
   const memberId = await requireMemberId();
-  const role = await getMemberRole(memberId);
   const commentsPage = Number.parseInt(filters.commentsPage ?? "1", 10);
-  const post = await getCommunityPost(
-    spaceSlug,
-    postId,
-    memberId,
-    commentsPage,
-    filters.commentId
-  );
+  const [role, post] = await Promise.all([
+    getMemberRole(memberId),
+    getCommunityPost(
+      spaceSlug,
+      postId,
+      memberId,
+      commentsPage,
+      filters.commentId
+    ),
+  ]);
 
   if (!post) {
     notFound();

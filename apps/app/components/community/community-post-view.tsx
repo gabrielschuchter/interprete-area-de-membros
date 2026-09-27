@@ -2,7 +2,6 @@ import { Badge } from "@repo/design-system/components/ui/badge";
 import { Button } from "@repo/design-system/components/ui/button";
 import {
   ArrowLeftIcon,
-  BookmarkIcon,
   MessageCircleIcon,
   PinIcon,
   ThumbsUpIcon,
@@ -12,11 +11,9 @@ import {
   setPostStatus,
   softDeleteComment,
   softDeletePost,
-  toggleBookmark,
   toggleCommentVote,
   togglePostFeatured,
   togglePostPin,
-  togglePostVote,
   toggleTopicFollow,
   toggleTopicMute,
   updateComment,
@@ -32,31 +29,33 @@ import {
   SingleFlightSubmit,
 } from "../mutations/single-flight-form";
 import { CommentComposer } from "./comment-composer";
+import { CommunityPostActions } from "./community-post-actions";
 import { MemberIdentity } from "./member-identity";
 import { MentionTextarea } from "./mention-textarea";
 
 type CommunityPost = NonNullable<
   Awaited<ReturnType<typeof getCommunityPostBySlug>>
 >;
+type CommunityComment = CommunityPost["comments"][number];
 
 interface CommentThreadProperties {
-  readonly comment: CommunityPost["comments"][number];
-  readonly comments: readonly CommunityPost["comments"][number][];
+  readonly comment: CommunityComment;
   readonly depth: number;
   readonly memberId: string;
   readonly post: CommunityPost;
+  readonly repliesByParent: ReadonlyMap<string, readonly CommunityComment[]>;
   readonly role: string;
 }
 
 const CommentThread = ({
   comment,
-  comments,
   depth,
   memberId,
   post,
+  repliesByParent,
   role,
 }: CommentThreadProperties) => {
-  const replies = comments.filter(({ parentId }) => parentId === comment.id);
+  const replies = repliesByParent.get(comment.id) ?? [];
   const canDelete =
     comment.authorId === memberId || role === "TEACHER" || role === "ADMIN";
 
@@ -186,11 +185,11 @@ const CommentThread = ({
           {replies.map((reply) => (
             <CommentThread
               comment={reply}
-              comments={comments}
               depth={depth + 1}
               key={reply.id}
               memberId={memberId}
               post={post}
+              repliesByParent={repliesByParent}
               role={role}
             />
           ))}
@@ -218,6 +217,15 @@ export function CommunityPostView({
 }: CommunityPostViewProperties) {
   const href = communityPostHref(post);
   const topLevel = post.comments.filter((comment) => !comment.parentId);
+  const repliesByParent = new Map<string, CommunityComment[]>();
+  for (const comment of post.comments) {
+    if (!comment.parentId) {
+      continue;
+    }
+    const replies = repliesByParent.get(comment.parentId) ?? [];
+    replies.push(comment);
+    repliesByParent.set(comment.parentId, replies);
+  }
   const canStaffManage = role === "TEACHER" || role === "ADMIN";
   const edited = post.updatedAt.valueOf() > post.createdAt.valueOf() + 60_000;
 
@@ -298,51 +306,13 @@ export function CommunityPostView({
             )}
           </div>
           <div className="mt-7 flex flex-wrap items-center gap-3">
-            <SingleFlightForm action={togglePostVote}>
-              <input name="postId" type="hidden" value={post.id} />
-              <input
-                name="spaceSlug"
-                type="hidden"
-                value={post.space?.slug ?? ""}
-              />
-              <input
-                name="desired"
-                type="hidden"
-                value={post.votes.length > 0 ? "off" : "on"}
-              />
-              <SingleFlightSubmit
-                pendingLabel="Salvando…"
-                size="sm"
-                variant={post.votes.length > 0 ? "default" : "outline"}
-              >
-                <ThumbsUpIcon aria-hidden="true" />{" "}
-                {post.votes.length > 0 ? "Apoiado" : "Apoiar"}
-              </SingleFlightSubmit>
-            </SingleFlightForm>
-            <SingleFlightForm action={toggleBookmark}>
-              <input name="postId" type="hidden" value={post.id} />
-              <input
-                name="spaceSlug"
-                type="hidden"
-                value={post.space?.slug ?? ""}
-              />
-              <input
-                name="desired"
-                type="hidden"
-                value={post.bookmarks.length > 0 ? "off" : "on"}
-              />
-              <SingleFlightSubmit
-                pendingLabel="Salvando…"
-                size="sm"
-                variant="ghost"
-              >
-                <BookmarkIcon
-                  aria-hidden="true"
-                  fill={post.bookmarks.length > 0 ? "currentColor" : "none"}
-                />{" "}
-                {post.bookmarks.length > 0 ? "Salvo" : "Salvar"}
-              </SingleFlightSubmit>
-            </SingleFlightForm>
+            <CommunityPostActions
+              initialBookmarked={post.bookmarks.length > 0}
+              initialVoted={post.votes.length > 0}
+              postId={post.id}
+              spaceSlug={post.space?.slug ?? ""}
+              voteCount={post._count.votes}
+            />
             <SingleFlightForm action={toggleTopicFollow}>
               <input name="postId" type="hidden" value={post.id} />
               <input
@@ -507,11 +477,11 @@ export function CommunityPostView({
               topLevel.map((comment) => (
                 <CommentThread
                   comment={comment}
-                  comments={post.comments}
                   depth={0}
                   key={comment.id}
                   memberId={memberId}
                   post={post}
+                  repliesByParent={repliesByParent}
                   role={role}
                 />
               ))

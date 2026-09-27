@@ -38,6 +38,10 @@ const articleMetadataCache = new Map<
   string,
   { readonly expiresAt: number; readonly value: ArticleMetadata | null }
 >();
+const articleMetadataRequests = new Map<
+  string,
+  Promise<ArticleMetadata | null>
+>();
 
 const yearFrom = (message: CrossrefMessage) => {
   const dates = [
@@ -79,36 +83,49 @@ const parseArticleMetadata = (value: unknown): ArticleMetadata | null => {
   };
 };
 
-const fetchArticleMetadata = async (doi: string) => {
+const fetchArticleMetadata = (doi: string) => {
   const cached = articleMetadataCache.get(doi);
   if (cached && cached.expiresAt > Date.now()) {
-    return cached.value;
+    return Promise.resolve(cached.value);
+  }
+  const activeRequest = articleMetadataRequests.get(doi);
+  if (activeRequest) {
+    return activeRequest;
   }
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), ARTICLE_REQUEST_TIMEOUT);
-  let metadata: ArticleMetadata | null = null;
-  try {
-    const response = await fetch(
-      `https://api.crossref.org/works/${encodeURIComponent(doi)}`,
-      {
-        headers: { Accept: "application/json" },
-        signal: controller.signal,
-      }
+  const request = (async () => {
+    const controller = new AbortController();
+    const timeout = setTimeout(
+      () => controller.abort(),
+      ARTICLE_REQUEST_TIMEOUT
     );
-    if (response.ok) {
-      metadata = parseArticleMetadata(await response.json());
+    let metadata: ArticleMetadata | null = null;
+    try {
+      const response = await fetch(
+        `https://api.crossref.org/works/${encodeURIComponent(doi)}`,
+        {
+          headers: { Accept: "application/json" },
+          signal: controller.signal,
+        }
+      );
+      if (response.ok) {
+        metadata = parseArticleMetadata(await response.json());
+      }
+    } catch {
+      metadata = null;
+    } finally {
+      clearTimeout(timeout);
     }
-  } catch {
-    metadata = null;
-  } finally {
-    clearTimeout(timeout);
-  }
-  articleMetadataCache.set(doi, {
-    expiresAt: Date.now() + ARTICLE_METADATA_CACHE_TTL,
-    value: metadata,
+    articleMetadataCache.set(doi, {
+      expiresAt: Date.now() + ARTICLE_METADATA_CACHE_TTL,
+      value: metadata,
+    });
+    return metadata;
+  })().finally(() => {
+    articleMetadataRequests.delete(doi);
   });
-  return metadata;
+  articleMetadataRequests.set(doi, request);
+  return request;
 };
 
 const enrichLinkMark = async (value: unknown) => {

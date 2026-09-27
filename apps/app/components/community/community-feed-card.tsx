@@ -1,20 +1,6 @@
 import { Badge } from "@repo/design-system/components/ui/badge";
-import {
-  ArrowUpRightIcon,
-  BookmarkIcon,
-  MessageCircleIcon,
-  PinIcon,
-  ThumbsUpIcon,
-} from "lucide-react";
+import { ArrowUpRightIcon, MessageCircleIcon, PinIcon } from "lucide-react";
 import Link from "next/link";
-import {
-  toggleBookmark,
-  togglePostVote,
-} from "@/app/(authenticated)/comunidade/actions";
-import {
-  SingleFlightForm,
-  SingleFlightSubmit,
-} from "@/components/mutations/single-flight-form";
 import { communityPostHref } from "@/lib/community";
 import {
   type CommunityMediaItem,
@@ -25,6 +11,7 @@ import {
   communityPostKindLabel,
 } from "@/lib/community-post-types";
 import { CommunityMediaGallery } from "./community-media-card";
+import { CommunityPostActions } from "./community-post-actions";
 import { MemberIdentity } from "./member-identity";
 
 interface CommunityFeedProfile {
@@ -70,7 +57,6 @@ const formatDate = (date: Date) =>
     year: "numeric",
   });
 
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: the shared card deliberately composes existing author, media, and interaction states without branching into duplicate cards.
 export function CommunityFeedCard({
   post,
   spaceSlug,
@@ -187,23 +173,6 @@ export function CommunityFeedCard({
       )}
 
       <div className="community-post-card__actions mt-5 flex flex-wrap items-center gap-2 border-border border-t pt-4">
-        <SingleFlightForm action={togglePostVote} className="inline-flex">
-          <input name="postId" type="hidden" value={post.id} />
-          <input name="spaceSlug" type="hidden" value={actionSpaceSlug} />
-          <input name="desired" type="hidden" value={isVoted ? "off" : "on"} />
-          <SingleFlightSubmit
-            aria-label={isVoted ? "Remover apoio" : "Apoiar conteúdo"}
-            aria-pressed={isVoted}
-            pendingLabel="…"
-            size="sm"
-            variant={isVoted ? "secondary" : "ghost"}
-          >
-            <ThumbsUpIcon aria-hidden="true" className="size-4" />
-            <span>{post._count.votes}</span>
-            <span className="sr-only">apoios</span>
-          </SingleFlightSubmit>
-        </SingleFlightForm>
-
         <Link
           className="inline-flex min-h-10 items-center gap-1.5 rounded-sm px-3 text-muted-foreground text-sm hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/35"
           href={`${href}#comments-heading`}
@@ -212,34 +181,13 @@ export function CommunityFeedCard({
           <span>{post._count.comments}</span>
           <span>respostas</span>
         </Link>
-
-        <SingleFlightForm action={toggleBookmark} className="inline-flex">
-          <input name="postId" type="hidden" value={post.id} />
-          <input name="spaceSlug" type="hidden" value={actionSpaceSlug} />
-          <input name="desired" type="hidden" value={isSaved ? "off" : "on"} />
-          <SingleFlightSubmit
-            aria-label={isSaved ? "Remover dos salvos" : "Salvar publicação"}
-            aria-pressed={isSaved}
-            className="gap-1.5 text-sm"
-            pendingLabel="Salvando…"
-            size="sm"
-            variant="ghost"
-          >
-            <BookmarkIcon
-              aria-hidden="true"
-              className="size-4"
-              fill={isSaved ? "currentColor" : "none"}
-            />
-            <span>{isSaved ? "Salvo" : "Salvar"}</span>
-          </SingleFlightSubmit>
-        </SingleFlightForm>
-
-        <Link
-          className="ml-auto inline-flex min-h-10 items-center gap-1.5 rounded-sm px-3 text-muted-foreground text-sm hover:bg-accent hover:text-brand-structural focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/35"
-          href={href}
-        >
-          Abrir <ArrowUpRightIcon aria-hidden="true" className="size-3.5" />
-        </Link>
+        <CommunityPostActions
+          initialBookmarked={isSaved}
+          initialVoted={isVoted}
+          postId={post.id}
+          spaceSlug={actionSpaceSlug}
+          voteCount={post._count.votes}
+        />
       </div>
     </article>
   );

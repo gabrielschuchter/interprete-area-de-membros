@@ -99,6 +99,48 @@ describe("community article metadata", () => {
     expect(attrs).not.toHaveProperty("year");
   });
 
+  test("shares one in-flight request when a page repeats the same DOI", async () => {
+    let resolveFetch: ((response: Response) => void) | undefined;
+    const fetchMock = vi.fn(
+      () =>
+        new Promise<Response>((resolve) => {
+          resolveFetch = resolve;
+        })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const first = enrichCommunityArticleMetadata({
+      type: "doc",
+      content: [
+        {
+          type: "communityArticle",
+          attrs: { doi: "10.5555/in-flight" },
+        },
+      ],
+    });
+    const second = enrichCommunityArticleMetadata({
+      type: "doc",
+      content: [
+        {
+          type: "communityArticle",
+          attrs: { doi: "10.5555/in-flight" },
+        },
+      ],
+    });
+
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    resolveFetch?.(
+      new Response(
+        JSON.stringify({ message: { title: ["Shared metadata"] } }),
+        { headers: { "Content-Type": "application/json" }, status: 200 }
+      )
+    );
+    await expect(Promise.all([first, second])).resolves.toMatchObject([
+      { content: [{ attrs: { title: "Shared metadata" } }] },
+      { content: [{ attrs: { title: "Shared metadata" } }] },
+    ]);
+  });
+
   test("enriches a legacy DOI link mark without changing its link behavior", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(

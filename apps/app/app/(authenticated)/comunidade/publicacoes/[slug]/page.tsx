@@ -16,14 +16,11 @@ const CommunityPublicationPage = async ({
   const { slug } = await params;
   const filters = await searchParams;
   const memberId = await requireMemberId();
-  const role = await getMemberRole(memberId);
   const commentsPage = Number.parseInt(filters.commentsPage ?? "1", 10);
-  const post = await getCommunityPostBySlug(
-    slug,
-    memberId,
-    commentsPage,
-    filters.commentId
-  );
+  const [role, post] = await Promise.all([
+    getMemberRole(memberId),
+    getCommunityPostBySlug(slug, memberId, commentsPage, filters.commentId),
+  ]);
 
   if (!post) {
     notFound();

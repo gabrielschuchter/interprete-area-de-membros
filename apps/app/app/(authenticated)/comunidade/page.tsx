@@ -52,7 +52,7 @@ const CommunityPage = async ({ searchParams }: CommunityPageProperties) => {
       page,
       spaceSlug: filters.space,
     }),
-    getOrCreateProfile(memberId, false),
+    getOrCreateProfile(memberId),
     getRecentCommunityAnnouncements(memberId),
   ]);
 

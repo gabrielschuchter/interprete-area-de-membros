@@ -147,21 +147,24 @@ export function CommunityComposer({
     const version = requestVersion.current + 1;
     requestVersion.current = version;
     setSaveState("saving");
-    requestQueue.current = requestQueue.current.then(async () => {
-      const result = await updateDraft(formDataFromSnapshot());
-      if (version !== requestVersion.current) {
-        return;
-      }
-      if (result.ok) {
-        setSpaceSlug(result.spaceSlug);
-        snapshot.current.spaceSlug = result.spaceSlug;
-        setSaveState("saved");
-      } else {
-        setErrorMessage(result.error);
-        setSaveState("error");
-      }
-    });
-    await requestQueue.current;
+    const saveRequest = requestQueue.current
+      .catch(() => undefined)
+      .then(async () => {
+        const result = await updateDraft(formDataFromSnapshot());
+        if (version !== requestVersion.current) {
+          return;
+        }
+        if (result.ok) {
+          setSpaceSlug(result.spaceSlug);
+          snapshot.current.spaceSlug = result.spaceSlug;
+          setSaveState("saved");
+        } else {
+          setErrorMessage(result.error);
+          setSaveState("error");
+        }
+      });
+    requestQueue.current = saveRequest.catch(() => undefined);
+    await saveRequest;
   };
 
   const scheduleSave = () => {

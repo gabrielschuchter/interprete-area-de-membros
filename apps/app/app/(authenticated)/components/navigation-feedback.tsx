@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 const NAVIGATION_TIMEOUT = 12_000;
@@ -50,22 +50,24 @@ const getInternalDestination = (target: EventTarget | null) => {
  */
 export const NavigationFeedback = () => {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const routeKey = `${pathname}?${searchParams.toString()}`;
   const [pending, setPending] = useState(false);
   const timeoutRef = useRef<number | null>(null);
-  const previousPathname = useRef(pathname);
+  const previousRouteKey = useRef(routeKey);
 
   useEffect(() => {
-    if (previousPathname.current === pathname) {
+    if (previousRouteKey.current === routeKey) {
       return;
     }
 
-    previousPathname.current = pathname;
+    previousRouteKey.current = routeKey;
     setPending(false);
     if (timeoutRef.current !== null) {
       window.clearTimeout(timeoutRef.current);
       timeoutRef.current = null;
     }
-  }, [pathname]);
+  }, [routeKey]);
 
   useEffect(() => {
     const begin = (event: Event) => {
