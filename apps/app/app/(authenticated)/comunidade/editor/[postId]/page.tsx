@@ -11,6 +11,7 @@ import {
   getCommunityEditorPost,
   getCommunitySpaces,
 } from "@/lib/community";
+import { communityPostKindLowerLabel } from "@/lib/community-post-types";
 import { requireMemberId } from "@/lib/learning";
 
 interface CommunityEditorPageProperties {
@@ -56,8 +57,7 @@ const CommunityEditorPage = async ({
           </Button>
           <article className="mx-auto mt-10 max-w-3xl">
             <p className="brand-eyebrow">
-              Pré-visualização ·{" "}
-              {post.kind === "PUBLICATION" ? "publicação" : "discussão"}
+              Pré-visualização · {communityPostKindLowerLabel(post.kind)}
             </p>
             <div className="mt-6">
               <MemberIdentity
@@ -103,7 +103,7 @@ const CommunityEditorPage = async ({
         <header className="mt-8 max-w-3xl">
           <p className="brand-eyebrow">
             {post.status === "DRAFT" ? "Rascunho privado" : "Edição"} ·{" "}
-            {post.kind === "PUBLICATION" ? "publicação" : "discussão"}
+            {communityPostKindLowerLabel(post.kind)}
           </p>
           <span aria-hidden="true" className="brand-rule mt-4" />
           <h1 className="mt-6 font-display text-5xl leading-none sm:text-6xl">

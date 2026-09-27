@@ -60,10 +60,12 @@ const postInput = z.object({
   content: z.string().trim().min(1).max(40_000),
 });
 
-const parseKind = (value: FormDataEntryValue | null) =>
-  textValue(value) === CommunityPostKind.PUBLICATION
-    ? CommunityPostKind.PUBLICATION
+const parseKind = (value: FormDataEntryValue | null) => {
+  const candidate = textValue(value) as CommunityPostKind;
+  return Object.values(CommunityPostKind).includes(candidate)
+    ? candidate
     : CommunityPostKind.DISCUSSION;
+};
 
 const parseTags = (value: FormDataEntryValue | null) =>
   [

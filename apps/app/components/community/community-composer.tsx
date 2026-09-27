@@ -17,9 +17,15 @@ import {
   updateDraft,
   updatePost,
 } from "@/app/(authenticated)/comunidade/actions";
+import {
+  COMMUNITY_POST_KIND_OPTIONS,
+  type CommunityPostKindValue,
+  communityPostKindHasSubtitle,
+  communityPostKindLabel,
+} from "@/lib/community-post-types";
 import { TopicEditor } from "./topic-editor";
 
-type PostKind = "DISCUSSION" | "PUBLICATION";
+type PostKind = CommunityPostKindValue;
 type PostStatus = "DRAFT" | "PUBLISHED" | "ARCHIVED";
 type SaveState = "idle" | "saving" | "saved" | "error";
 
@@ -280,7 +286,15 @@ export function CommunityComposer({
     }
   };
 
-  const isPublication = kind === "PUBLICATION";
+  const isQuestion = kind === "QUESTION";
+  const hasSubtitle = communityPostKindHasSubtitle(kind);
+  const kindLabel = communityPostKindLabel(kind);
+  let titlePlaceholder = "Dê um título ao que você quer dizer";
+  if (isQuestion) {
+    titlePlaceholder = "Qual é a sua pergunta?";
+  } else if (kind === "DISCUSSION") {
+    titlePlaceholder = "O que você quer colocar em conversa?";
+  }
   const editorAction = status === "PUBLISHED" ? updatePost : undefined;
 
   return (
@@ -346,8 +360,11 @@ export function CommunityComposer({
               }}
               value={kind}
             >
-              <option value="PUBLICATION">Publicação</option>
-              <option value="DISCUSSION">Discussão rápida</option>
+              {COMMUNITY_POST_KIND_OPTIONS.map(({ label, value }) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
             </select>
             <span>·</span>
             <select
@@ -386,16 +403,12 @@ export function CommunityComposer({
               setTitle(nextTitle);
               updateSnapshot({ title: nextTitle });
             }}
-            placeholder={
-              isPublication
-                ? "Dê um título ao que você quer dizer"
-                : "Qual é a sua pergunta?"
-            }
+            placeholder={titlePlaceholder}
             required={status === "PUBLISHED"}
             value={title === draftTitle ? "" : title}
           />
 
-          {isPublication && (
+          {hasSubtitle && (
             <Input
               aria-label="Subtítulo opcional"
               className="h-auto rounded-none border-0 px-0 py-2 text-xl shadow-none focus-visible:ring-0 sm:text-2xl"
@@ -415,7 +428,9 @@ export function CommunityComposer({
             <div className="flex flex-wrap items-center gap-3">
               <ImageIcon aria-hidden="true" className="size-4" />
               <span className="text-muted-foreground text-sm">
-                {isPublication ? "Capa da publicação" : "Imagem de capa"}
+                {kindLabel === "Publicação"
+                  ? "Capa da publicação"
+                  : "Imagem de capa"}
               </span>
               <Button
                 onClick={() => coverInputRef.current?.click()}
@@ -474,9 +489,7 @@ export function CommunityComposer({
 
         <div>
           <TopicEditor
-            ariaLabel={
-              isPublication ? "Texto da publicação" : "Texto da discussão"
-            }
+            ariaLabel={`Texto da ${kindLabel.toLocaleLowerCase("pt-BR")}`}
             defaultValue={content}
             onDocumentChange={(nextContent) => {
               setContent(nextContent);

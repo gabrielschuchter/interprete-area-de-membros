@@ -12,6 +12,7 @@ import {
   getStaffCommunityPosts,
   getStaffCommunitySpaces,
 } from "@/lib/community";
+import { communityPostKindLabel } from "@/lib/community-post-types";
 import {
   createSpace,
   setSpaceStatus,
@@ -82,9 +83,7 @@ const AdminCommunityPostRow = ({
   <div className="flex flex-wrap items-center justify-between gap-4 py-4">
     <div className="min-w-0">
       <div className="flex flex-wrap gap-2 text-muted-foreground text-xs">
-        <Badge variant="outline">
-          {post.kind === "PUBLICATION" ? "Publicação" : "Discussão"}
-        </Badge>
+        <Badge variant="outline">{communityPostKindLabel(post.kind)}</Badge>
         <Badge variant={post.status === "PUBLISHED" ? "default" : "outline"}>
           {post.status}
         </Badge>

@@ -78,6 +78,10 @@ enum CommunityVoteKind {
 enum CommunityPostKind {
   DISCUSSION
   PUBLICATION
+  QUESTION
+  CASE
+  ARTICLE
+  RESOURCE
 }
 
 enum LibraryItemKind {

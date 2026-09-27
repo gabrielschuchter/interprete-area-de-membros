@@ -1,21 +1,11 @@
 import { Badge } from "@repo/design-system/components/ui/badge";
 import { Button } from "@repo/design-system/components/ui/button";
-import {
-  ArrowLeftIcon,
-  ArrowRightIcon,
-  PlusIcon,
-  ThumbsUpIcon,
-} from "lucide-react";
+import { ArrowLeftIcon, ArrowRightIcon, PlusIcon } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { MemberIdentity } from "@/components/community/member-identity";
-import {
-  SingleFlightForm,
-  SingleFlightSubmit,
-} from "@/components/mutations/single-flight-form";
-import { communityPostHref, getCommunitySpace } from "@/lib/community";
+import { CommunityFeedCard } from "@/components/community/community-feed-card";
+import { getCommunitySpace } from "@/lib/community";
 import { requireMemberId } from "@/lib/learning";
-import { togglePostVote } from "../actions";
 
 interface CommunitySpacePageProperties {
   readonly params: Promise<{ spaceSlug: string }>;
@@ -86,76 +76,11 @@ const CommunitySpacePage = async ({
           ) : (
             <div className="mt-5 divide-y border-border border-y">
               {space.posts.map((post) => (
-                <article className="py-6" key={post.id}>
-                  <div className="flex items-start gap-4">
-                    <SingleFlightForm action={togglePostVote} className="pt-1">
-                      <input name="postId" type="hidden" value={post.id} />
-                      <input
-                        name="spaceSlug"
-                        type="hidden"
-                        value={space.slug}
-                      />
-                      <input
-                        name="desired"
-                        type="hidden"
-                        value={post.votes.length > 0 ? "off" : "on"}
-                      />
-                      <SingleFlightSubmit
-                        aria-label={
-                          post.votes.length > 0
-                            ? "Remover apoio"
-                            : "Apoiar conteúdo"
-                        }
-                        pendingLabel="…"
-                        size="sm"
-                        variant={post.votes.length > 0 ? "default" : "ghost"}
-                      >
-                        <ThumbsUpIcon aria-hidden="true" /> {post._count.votes}
-                      </SingleFlightSubmit>
-                    </SingleFlightForm>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-3 text-muted-foreground text-xs">
-                        <MemberIdentity
-                          authorId={post.authorId}
-                          compact
-                          profile={post.profile ?? undefined}
-                          showHeadline={false}
-                        />
-                        <span>·</span>
-                        <span>
-                          {(
-                            post.publishedAt ?? post.createdAt
-                          ).toLocaleDateString("pt-BR")}
-                        </span>
-                        {post.isPinned && (
-                          <Badge variant="secondary">Fixado</Badge>
-                        )}
-                      </div>
-                      <div className="mt-4 flex flex-wrap items-center gap-2">
-                        <Badge variant="outline">
-                          {post.kind === "PUBLICATION"
-                            ? "Publicação"
-                            : "Discussão"}
-                        </Badge>
-                        <h3 className="font-display text-2xl leading-tight">
-                          <Link
-                            className="hover:text-brand-structural"
-                            href={communityPostHref(post)}
-                          >
-                            {post.title}
-                          </Link>
-                        </h3>
-                      </div>
-                      <p className="mt-3 line-clamp-3 text-muted-foreground leading-7">
-                        {post.subtitle ?? post.excerpt}
-                      </p>
-                      <div className="mt-3 flex flex-wrap gap-4 text-muted-foreground text-xs">
-                        <span>{post._count.comments} respostas</span>
-                        <span>{post.readingMinutes} min de leitura</span>
-                      </div>
-                    </div>
-                  </div>
-                </article>
+                <CommunityFeedCard
+                  key={post.id}
+                  post={post}
+                  spaceSlug={space.slug}
+                />
               ))}
             </div>
           )}

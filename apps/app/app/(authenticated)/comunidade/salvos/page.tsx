@@ -8,6 +8,7 @@ import {
   SingleFlightSubmit,
 } from "@/components/mutations/single-flight-form";
 import { communityPostHref, getSavedCommunityPosts } from "@/lib/community";
+import { communityPostKindLabel } from "@/lib/community-post-types";
 import { requireMemberId } from "@/lib/learning";
 import { toggleBookmark } from "../actions";
 
@@ -71,9 +72,7 @@ const SavedCommunityPage = async () => {
                     </div>
                     <div className="mt-4 flex flex-wrap items-center gap-2">
                       <Badge variant="outline">
-                        {post.kind === "PUBLICATION"
-                          ? "Publicação"
-                          : "Discussão"}
+                        {communityPostKindLabel(post.kind)}
                       </Badge>
                       <h2 className="font-display text-2xl">
                         <Link

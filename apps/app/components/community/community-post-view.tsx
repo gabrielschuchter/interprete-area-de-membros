@@ -25,6 +25,7 @@ import {
   communityPostHref,
   type getCommunityPostBySlug,
 } from "@/lib/community";
+import { communityPostKindLabel } from "@/lib/community-post-types";
 import { RichDocument } from "../learning/rich-document";
 import {
   SingleFlightForm,
@@ -240,7 +241,7 @@ export function CommunityPostView({
               <ThumbsUpIcon aria-hidden="true" /> {post._count.votes} apoios
             </Badge>
             <Badge variant="secondary">
-              {post.kind === "PUBLICATION" ? "Publicação" : "Discussão"}
+              {communityPostKindLabel(post.kind)}
             </Badge>
             <span className="text-muted-foreground text-xs">
               {post._count.comments} respostas

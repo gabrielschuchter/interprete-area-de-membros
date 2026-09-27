@@ -1,29 +1,25 @@
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@repo/design-system/components/ui/avatar";
 import { Badge } from "@repo/design-system/components/ui/badge";
 import { Button } from "@repo/design-system/components/ui/button";
 import {
   ArrowRightIcon,
   BookmarkIcon,
-  MessageCircleIcon,
-  PinIcon,
   PlusIcon,
   SearchIcon,
-  ThumbsUpIcon,
 } from "lucide-react";
 import Link from "next/link";
+import { CommunityFeedCard } from "@/components/community/community-feed-card";
 import { CommunityHero } from "@/components/community/community-hero";
-import { MemberIdentity } from "@/components/community/member-identity";
 import { Stagger } from "@/components/motion/motion";
-import {
-  SingleFlightForm,
-  SingleFlightSubmit,
-} from "@/components/mutations/single-flight-form";
-import {
-  communityPostHref,
-  getCommunityFeed,
-  getCommunitySpaces,
-} from "@/lib/community";
+import { getCommunityFeed, getCommunitySpaces } from "@/lib/community";
 import { requireMemberId } from "@/lib/learning";
-import { toggleBookmark, togglePostVote } from "./actions";
+import { getOrCreateProfile } from "@/lib/profile";
+
+const whitespacePattern = /\s+/;
 
 interface CommunityPageProperties {
   readonly searchParams: Promise<{
@@ -39,7 +35,7 @@ const CommunityPage = async ({ searchParams }: CommunityPageProperties) => {
   const memberId = await requireMemberId();
   const sort = filters.sort === "popular" ? "popular" : "recent";
   const page = Number.parseInt(filters.page ?? "1", 10);
-  const [spaces, feed] = await Promise.all([
+  const [spaces, feed, profile] = await Promise.all([
     getCommunitySpaces(),
     getCommunityFeed(memberId, {
       query: filters.q,
@@ -47,7 +43,16 @@ const CommunityPage = async ({ searchParams }: CommunityPageProperties) => {
       page,
       spaceSlug: filters.space,
     }),
+    getOrCreateProfile(memberId, false),
   ]);
+
+  const composerInitials = (profile?.displayName ?? "Você")
+    .split(whitespacePattern)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
 
   const queryString = (nextPage: number) => {
     const params = new URLSearchParams();
@@ -73,38 +78,53 @@ const CommunityPage = async ({ searchParams }: CommunityPageProperties) => {
           aria-labelledby="community-composer-heading"
           className="community-composer mt-5"
         >
-          <div className="flex flex-col gap-4 p-4 xl:flex-row xl:items-center xl:justify-between xl:p-5">
-            <div className="flex min-w-0 items-center gap-3">
-              <span
-                aria-hidden="true"
-                className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand-structural text-primary-foreground"
-              >
-                <PlusIcon className="size-4" />
+          <div className="p-4 sm:p-5">
+            <h2 className="sr-only" id="community-composer-heading">
+              Criar uma publicação
+            </h2>
+            <Link
+              aria-label="Escreva uma publicação"
+              className="community-composer__prompt group -m-2 flex min-w-0 items-center gap-3 rounded-sm p-2 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/35"
+              href="/comunidade/novo"
+            >
+              <Avatar className="size-10 shrink-0">
+                {profile?.avatarUrl ? (
+                  <AvatarImage alt="" src={profile.avatarUrl} />
+                ) : null}
+                <AvatarFallback className="bg-brand-structural text-primary-foreground text-xs">
+                  {composerInitials || "V"}
+                </AvatarFallback>
+              </Avatar>
+              <span className="min-w-0 flex-1 truncate text-base text-muted-foreground group-hover:text-foreground">
+                Escreva uma publicação...
               </span>
-              <div className="min-w-0">
-                <p className="brand-eyebrow">Espaço de escrita</p>
-                <h2
-                  className="mt-1 max-w-[38rem] text-balance font-display text-xl leading-tight sm:text-2xl"
-                  id="community-composer-heading"
-                >
-                  Compartilhe uma ideia com a comunidade.
-                </h2>
+              <ArrowRightIcon
+                aria-hidden="true"
+                className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-brand-structural"
+              />
+            </Link>
+            <div className="mt-4 flex flex-col gap-3 border-border border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-muted-foreground text-sm">
+                Use o editor existente para publicar uma ideia ou abrir uma
+                discussão.
+              </p>
+              <div className="flex flex-wrap gap-2 sm:justify-end">
+                <Button asChild className="shrink-0">
+                  <Link href="/comunidade/novo">
+                    <PlusIcon aria-hidden="true" /> Criar conteúdo
+                  </Link>
+                </Button>
+                <Button asChild variant="outline">
+                  <Link href="/comunidade/meus-topicos">
+                    Minhas publicações
+                  </Link>
+                </Button>
+                <Button asChild variant="outline">
+                  <Link href="/comunidade/salvos">
+                    <BookmarkIcon aria-hidden="true" /> Salvos
+                  </Link>
+                </Button>
               </div>
-            </div>
-            <div className="flex flex-wrap gap-2 sm:justify-end">
-              <Button asChild className="shrink-0">
-                <Link href="/comunidade/novo">
-                  <PlusIcon aria-hidden="true" /> Criar conteúdo
-                </Link>
-              </Button>
-              <Button asChild variant="outline">
-                <Link href="/comunidade/meus-topicos">Minhas publicações</Link>
-              </Button>
-              <Button asChild variant="outline">
-                <Link href="/comunidade/salvos">
-                  <BookmarkIcon aria-hidden="true" /> Salvos
-                </Link>
-              </Button>
             </div>
           </div>
         </section>
@@ -194,162 +214,9 @@ const CommunityPage = async ({ searchParams }: CommunityPageProperties) => {
               </div>
             ) : (
               <Stagger className="mt-6 divide-y border-border border-y">
-                {feed.posts.map(
-                  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: each feed item intentionally composes its author, content, social actions, and metadata in one readable row.
-                  (post) => (
-                    <article className="py-6" key={post.id}>
-                      <div className="flex gap-4">
-                        <SingleFlightForm
-                          action={togglePostVote}
-                          className="hidden shrink-0 pt-1 sm:block"
-                        >
-                          <input name="postId" type="hidden" value={post.id} />
-                          <input
-                            name="spaceSlug"
-                            type="hidden"
-                            value={post.space?.slug ?? ""}
-                          />
-                          <input
-                            name="desired"
-                            type="hidden"
-                            value={post.votes.length > 0 ? "off" : "on"}
-                          />
-                          <SingleFlightSubmit
-                            aria-label={
-                              post.votes.length > 0
-                                ? "Remover apoio"
-                                : "Apoiar conteúdo"
-                            }
-                            pendingLabel="…"
-                            size="sm"
-                            variant={
-                              post.votes.length > 0 ? "default" : "ghost"
-                            }
-                          >
-                            <ThumbsUpIcon aria-hidden="true" />{" "}
-                            {post._count.votes}
-                          </SingleFlightSubmit>
-                        </SingleFlightForm>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-muted-foreground text-xs">
-                            <MemberIdentity
-                              authorId={post.authorId}
-                              compact
-                              profile={post.profile ?? undefined}
-                              showHeadline={false}
-                            />
-                            <span>·</span>
-                            {post.space ? (
-                              <Link
-                                className="hover:text-brand-structural"
-                                href={`/comunidade/${post.space.slug}`}
-                              >
-                                {post.space.title}
-                              </Link>
-                            ) : (
-                              <span>Feed geral</span>
-                            )}
-                            <span>·</span>
-                            <time
-                              dateTime={(
-                                post.publishedAt ?? post.createdAt
-                              ).toISOString()}
-                            >
-                              {(
-                                post.publishedAt ?? post.createdAt
-                              ).toLocaleDateString("pt-BR")}
-                            </time>
-                          </div>
-                          <div className="mt-4 flex items-start gap-3">
-                            {post.isPinned && (
-                              <PinIcon
-                                aria-label="Fixado"
-                                className="mt-1 size-4 shrink-0 text-brand-action"
-                              />
-                            )}
-                            <div className="min-w-0">
-                              <div className="mb-2 flex flex-wrap gap-2">
-                                <Badge variant="outline">
-                                  {post.kind === "PUBLICATION"
-                                    ? "Publicação"
-                                    : "Discussão"}
-                                </Badge>
-                              </div>
-                              <h3 className="font-display text-2xl leading-tight">
-                                <Link
-                                  className="hover:text-brand-structural"
-                                  href={communityPostHref(post)}
-                                >
-                                  {post.title}
-                                </Link>
-                              </h3>
-                            </div>
-                          </div>
-                          <p className="mt-3 line-clamp-3 text-muted-foreground leading-7">
-                            {post.subtitle ?? post.excerpt}
-                          </p>
-                          <div className="mt-3 flex flex-wrap gap-2">
-                            {post.tags.map((tag) => (
-                              <span
-                                className="text-muted-foreground text-xs"
-                                key={tag}
-                              >
-                                #{tag}
-                              </span>
-                            ))}
-                          </div>
-                          <div className="mt-4 flex flex-wrap items-center gap-4 text-muted-foreground text-xs">
-                            <span className="inline-flex items-center gap-1.5">
-                              <MessageCircleIcon
-                                aria-hidden="true"
-                                className="size-3.5"
-                              />{" "}
-                              {post._count.comments} respostas
-                            </span>
-                            <span className="sm:hidden">
-                              {post._count.votes} apoios
-                            </span>
-                            <span>{post.readingMinutes} min de leitura</span>
-                            <SingleFlightForm action={toggleBookmark}>
-                              <input
-                                name="postId"
-                                type="hidden"
-                                value={post.id}
-                              />
-                              <input
-                                name="spaceSlug"
-                                type="hidden"
-                                value={post.space?.slug ?? ""}
-                              />
-                              <input
-                                name="desired"
-                                type="hidden"
-                                value={post.bookmarks.length > 0 ? "off" : "on"}
-                              />
-                              <SingleFlightSubmit
-                                className="inline-flex items-center gap-1.5 underline-offset-4 hover:underline"
-                                pendingLabel="Salvando…"
-                                size="sm"
-                                variant="ghost"
-                              >
-                                <BookmarkIcon
-                                  aria-hidden="true"
-                                  className="size-3.5"
-                                  fill={
-                                    post.bookmarks.length > 0
-                                      ? "currentColor"
-                                      : "none"
-                                  }
-                                />
-                                {post.bookmarks.length > 0 ? "Salvo" : "Salvar"}
-                              </SingleFlightSubmit>
-                            </SingleFlightForm>
-                          </div>
-                        </div>
-                      </div>
-                    </article>
-                  )
-                )}
+                {feed.posts.map((post) => (
+                  <CommunityFeedCard key={post.id} post={post} />
+                ))}
               </Stagger>
             )}
             {(feed.page > 1 || feed.hasMore) && (

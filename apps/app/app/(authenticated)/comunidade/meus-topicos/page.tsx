@@ -3,6 +3,7 @@ import { Button } from "@repo/design-system/components/ui/button";
 import { ArrowLeftIcon, FileTextIcon, PlusIcon } from "lucide-react";
 import Link from "next/link";
 import { communityPostHref, getMyCommunityPosts } from "@/lib/community";
+import { communityPostKindLabel } from "@/lib/community-post-types";
 import { requireMemberId } from "@/lib/learning";
 import { setPostStatus, softDeletePost } from "../actions";
 
@@ -82,9 +83,7 @@ const MyCommunityPage = async () => {
                           {statusLabel(post.status)}
                         </Badge>
                         <Badge variant="outline">
-                          {post.kind === "PUBLICATION"
-                            ? "Publicação"
-                            : "Discussão"}
+                          {communityPostKindLabel(post.kind)}
                         </Badge>
                         <span className="text-muted-foreground text-xs">
                           {post.space?.title ?? "Feed geral"}
