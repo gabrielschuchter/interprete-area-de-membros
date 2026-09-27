@@ -23,6 +23,7 @@ import {
   RefreshCwIcon,
   SearchIcon,
   UserRoundIcon,
+  VideoIcon,
   XIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -54,6 +55,7 @@ const resultIcons = {
   module: Layers3Icon,
   lesson: PlayCircleIcon,
   activity: ClipboardCheckIcon,
+  recording: VideoIcon,
   community: MessageCircleIcon,
   library: LibraryIcon,
   profile: UserRoundIcon,

@@ -1,7 +1,10 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { auth } from "@repo/auth/server";
 import { NextResponse } from "next/server";
-import { getAccessibleAsset } from "@/lib/content-access";
+import {
+  canReadRecordingAsset,
+  getAccessibleAsset,
+} from "@/lib/content-access";
 import { requireMemberId } from "@/lib/learning";
 import {
   createLearningAssetSignedUrl,
@@ -239,6 +242,9 @@ const serveTokenizedHlsSegment = async (
   if (!userId || userId !== tokenPayload.memberId) {
     return invalidHlsSegmentResponse();
   }
+  if (!(await canReadRecordingAsset(assetId, userId))) {
+    return invalidHlsSegmentResponse();
+  }
   if (!isSafeHlsSegmentPath(hlsPart, tokenPayload.directory)) {
     return invalidHlsSegmentResponse();
   }
@@ -392,9 +398,9 @@ export const GET = async (
   const hlsToken = requestUrl.searchParams.get("hlsToken");
 
   // The playlist request performs the full member/asset authorization once.
-  // Subsequent segment requests use a short-lived, asset-bound capability
-  // instead of repeating a Prisma query and a Supabase signing request for
-  // every 1–8 MB HLS segment.
+  // Subsequent segment requests use a short-lived, asset-bound capability and
+  // re-check the current group assignment instead of issuing a new Supabase
+  // signing request for every 1–8 MB HLS segment.
   if (hlsPart && hlsToken) {
     return serveTokenizedHlsSegment(request, assetId, hlsPart, hlsToken);
   }

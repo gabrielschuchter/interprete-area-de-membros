@@ -1,6 +1,31 @@
 # Interprete Product Roadmap
 
-## Live-first migration checkpoint — 26/09/2026
+## Final audit checkpoint — 27/09/2026
+
+The official live-first foundation and member experience are now represented in
+the current checkout and the official Supabase database. The verified baseline
+is 3 Members/Profiles, 2 Courses (1 `ASYNC`, 1 `RECORDING_ARCHIVE`), 15 Modules,
+101 Lessons, 102 LessonAssets, 14 ImportedRecordingGroups, 102
+ImportedRecordings, 5 Meetings, 5 Activities and 13 CommunityPosts. No assets
+were deleted or moved; the private `learning-assets` bucket remains the Storage
+boundary. All five legacy demo Meetings are `DRAFT` and are excluded from member
+queries while remaining auditable by staff.
+
+The final audit also closes two boundary issues: global search now exposes
+authorized historical recordings as `Gravação` and never treats
+`RECORDING_ARCHIVE` as asynchronous learning, and tokenized HLS segment requests
+re-check the current recording-group assignment so revocation is immediate.
+
+The Vercel member project is `interprete-area-de-membros-app` (project ID
+`prj_bwG8vDd4x2flyPaRMq8HEvi7t5Lj`, root `apps/app`) with production on `main`
+and the stable aliases documented in `docs/deployment/vercel.md`.
+
+This checkpoint records verified evidence; it does not claim a member-to-member
+recording scenario when the official database has no currently assigned
+recording groups. That scenario becomes executable as soon as an administrator
+creates an explicit assignment.
+
+## Historical live-first migration checkpoint — 26/09/2026
 
 The official PostgreSQL connection was validated and the historical Kiwify
 inventory was separated semantically from async learning without destructive
@@ -13,31 +38,36 @@ Este documento é a fonte de verdade da execução do produto. As fases são seq
 
 ## Matriz de execução atual
 
-Atualizada em 26/09/2026. A conexão oficial do PostgreSQL foi validada para a
-camada live-first. Fases continuam `IN PROGRESS` até cada uma cumprir seus
-próprios critérios de persistência, autorização, responsividade, checks e E2E.
+Atualizada em 27/09/2026. A matriz abaixo substitui os bloqueios de credenciais
+registrados nos checkpoints históricos. “Implementado” significa que a
+superfície existe no checkout atual; os limites de QA descritos no checkpoint
+final continuam explícitos e não são inferidos a partir de compilação.
 
 | Fase | Escopo | Status | Evidência atual |
 | --- | --- | --- | --- |
-| 0 | Fundação next-forge, Bun, Prisma, Supabase, Clerk | IN PROGRESS | check, typecheck, boundaries e testes passam; build e conexão Prisma local estão bloqueados por env de banco ausente/placeholder |
-| 1 | Aprender: trilhas, cursos, módulos, aulas, progresso | IN PROGRESS | código, schema, seed opt-in e guard server-side presentes; persistência/E2E pendentes |
-| 2 | Admin/Professor: autoria, editor, preview, publicação | IN PROGRESS | rotas protegidas, editor compartilhado e ordenação presentes; fluxo real pendente |
-| 3 | Atividades e feedback | IN PROGRESS | submissão, revisão, feedback e proteção de hierarquia presentes; banco real pendente |
-| 4 | Comunidade | IN PROGRESS | espaços, tópicos, rich text, drafts, respostas, votos, bookmarks e moderação presentes; fluxo entre usuários pendente |
-| 5 | Perfis e diretório de membros | IN PROGRESS | perfil privado/público, username, diretório e papéis presentes; dados reais pendentes |
-| 6 | Encontros | IN PROGRESS | agenda, detalhe, professor e vínculo opcional com curso presentes; dados reais pendentes |
-| 7 | Biblioteca | IN PROGRESS | curadoria, busca, filtros, detalhe e edição administrativa presentes; dados reais pendentes |
-| 8 | Home inteligente | IN PROGRESS | próxima ação determinística usa atividade, aula, encontro e discussão reais; integração DB pendente |
-| 9 | Integração entre domínios | IN PROGRESS | links entre aula/atividade, encontro/curso, perfil/comunidade e home presentes; E2E pendente |
-| 10 | Responsividade, loading, vazio e erro | IN PROGRESS | estados e layouts revisados em fonte; screenshots autenticados ainda bloqueados |
-| 11 | QA funcional | IN PROGRESS | check/typecheck/boundaries/tests passam; build falha na validação de `apps/api` sem `DATABASE_URL` e o fluxo real autenticado segue bloqueado |
-| 12 | Branding/UX final | IN PROGRESS | tokens e superfícies Interprete preservados; QA visual de runtime pendente |
-| 13 | Hardening | IN PROGRESS | autorização centralizada, validação e RLS deny-by-default; auditoria runtime pendente |
-| 14 | Preparação de deploy | IN PROGRESS | projetos Vercel do app/API, Clerk Production e webhook existem; deploys Production foram tentados e aguardam `DATABASE_URL` real e validação runtime |
+| 0 | Fundação next-forge, Bun, Prisma, Supabase, Clerk | IMPLEMENTADO | schema/migrations oficiais, Clerk, Storage privado e gates técnicos verificados |
+| 1 | Aprender: trilhas, cursos, módulos, aulas, progresso | IMPLEMENTADO | `ASYNC` separado de `RECORDING_ARCHIVE`, `LessonProgress` isolado e guard server-side |
+| 2 | Admin/Professor: autoria, editor, preview, publicação | IMPLEMENTADO | rotas protegidas, publicação e preview presentes; staff QA em produção |
+| 3 | Atividades e feedback | IMPLEMENTADO | submissão, feedback e filtros de membro presentes no banco oficial |
+| 4 | Comunidade | IMPLEMENTADO | posts, comentários, votos, bookmarks, notificações e hardening server-side |
+| 5 | Perfis e diretório de membros | IMPLEMENTADO | Profile/Member, avatar privado e diretório presentes |
+| 6 | Encontros | IMPLEMENTADO | agenda, preparação, estados reais e vínculo opcional com gravações |
+| 7 | Biblioteca | IMPLEMENTADO | curadoria, busca, filtros e acesso publicado |
+| 8 | Home inteligente | IMPLEMENTADO | prioridade live-first, estados vazios honestos e retomada por playback |
+| 9 | Integração entre domínios | IMPLEMENTADO | links entre encontros, gravações, atividades, comunidade e biblioteca |
+| 10 | Responsividade, loading, vazio e erro | VERIFICADO | QA público e staff em larguras mobile/desktop; rotas protegidas sem overflow observado |
+| 11 | QA funcional | VERIFICADO | check, typecheck, boundaries, testes, Prisma, build e produção conferidos |
+| 12 | Branding/UX final | IMPLEMENTADO | tokens e superfícies Interprete preservados |
+| 13 | Hardening | IMPLEMENTADO | autorização centralizada, Storage privado, HLS revogável e busca sem vazamento de gravações |
+| 14 | Preparação de deploy | VERIFICADO | projetos/IDs/root/branch e aliases Vercel conferidos; commit publicado deve ser rechecado após cada push |
 
-O bloqueio atual é específico: os arquivos locais `apps/app/.env.local` e `packages/database/.env` existem, mas as URLs do banco ainda são placeholders. Nenhum valor secreto é registrado neste documento.
+Limite de evidência desta auditoria: a base oficial tem zero grupos de
+gravações atualmente vinculados a um Member. Por isso o fluxo de reprodução de
+um aluno atribuído e o teste negativo A/B precisam ser executados depois de uma
+atribuição administrativa real; a autorização server-side e os testes de
+isolamento do domínio já estão cobertos por código/testes.
 
-## Final checkpoint — 25/09/2026
+## Historical checkpoint — 25/09/2026
 
 - Gates estáticos do checkout atual: `bun install --frozen-lockfile`, check,
   typecheck, boundaries, testes, Prisma validate e Prisma generate passam.
@@ -65,7 +95,7 @@ O bloqueio atual é específico: os arquivos locais `apps/app/.env.local` e `pac
   coordenada) e preencher `DATABASE_URL`/`DIRECT_URL` localmente e nos dois
   projetos Vercel.
 
-## Kiwify migration checkpoint
+## Historical Kiwify migration checkpoint
 
 The verified Kiwify hierarchy is now represented in the official Supabase
 project through idempotent migration inventory: 1 course, 14 modules, 99

@@ -62,9 +62,12 @@ autorização; os assets históricos continuam no bucket privado
 
 O acesso é validado no servidor antes de emitir asset, playlist, segmento HLS,
 PDF ou posição de playback. Staff tem acesso de operação; membros só recebem
-grupos explicitamente vinculados a seu `Member.id`. A API de progresso usa
-upsert e a constraint única `(memberId, assetId)`, com persistência controlada
-no player em pausa, término, troca/desmontagem e intervalos espaçados.
+grupos explicitamente vinculados a seu `Member.id`. A playlist recebe um token
+curto, vinculado ao asset e ao membro, e cada segmento revalida o vínculo atual
+do grupo; uma revogação não depende do vencimento do token para cortar o
+acesso. A API de progresso usa upsert e a constraint única `(memberId, assetId)`,
+com persistência controlada no player em pausa, término, troca/desmontagem e
+intervalos espaçados.
 
 ## Baseline real da produção — 27/09/2026
 
@@ -88,6 +91,9 @@ por números de documentação antiga:
 Os 14 grupos continuam sem vínculo de membro. Há somente eventos de teste
 administrativo já preservados no histórico (`ASSIGNED` e `REVOKED`); eles não
 concedem acesso atual. Nenhum ownership foi inferido por nome, e-mail ou
-similaridade. A nova migração é aditiva: adiciona relações explícitas de
-recording/meeting, constraints de estado e a fonte tipada de Collections, sem
-apagar registros, paths, checksums ou objetos do Storage.
+similaridade. As cinco Meetings marcadas com `demoKey` estão em `DRAFT` no
+banco oficial e também são filtradas por `demoKey: null` nas queries de membro;
+a tela administrativa continua conseguindo auditá-las. A nova migração é
+aditiva: adiciona relações explícitas de recording/meeting, constraints de
+estado e a fonte tipada de Collections, sem apagar registros, paths, checksums
+ou objetos do Storage.

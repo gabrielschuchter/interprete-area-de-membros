@@ -1,6 +1,6 @@
 import "server-only";
 
-import { ContentStatus, database } from "@repo/database";
+import { ContentStatus, CourseExperience, database } from "@repo/database";
 import { communityPostHref } from "@/lib/community";
 import {
   getLearningAccessScope,
@@ -15,6 +15,7 @@ export type GlobalSearchResultType =
   | "module"
   | "lesson"
   | "activity"
+  | "recording"
   | "community"
   | "library"
   | "profile";
@@ -34,6 +35,7 @@ const MAX_RESULTS = 24;
 const published = { status: ContentStatus.PUBLISHED } as const;
 const publishedCourse = {
   ...published,
+  experience: CourseExperience.ASYNC,
   OR: [{ learningPathId: null }, { learningPath: { is: published } }],
 };
 
@@ -68,7 +70,7 @@ export const searchGlobal = async (memberId: string, rawQuery: string) => {
     return [] satisfies GlobalSearchResult[];
   }
 
-  const scopePromise = getLearningAccessScope(memberId);
+  const scope = await getLearningAccessScope(memberId);
   const resultsPromise = Promise.all([
     database.learningPath.findMany({
       where: {
@@ -83,7 +85,7 @@ export const searchGlobal = async (memberId: string, rawQuery: string) => {
         slug: true,
         description: true,
         courses: {
-          where: published,
+          where: { ...published, experience: CourseExperience.ASYNC },
           select: { id: true },
         },
       },
@@ -196,6 +198,35 @@ export const searchGlobal = async (memberId: string, rawQuery: string) => {
         },
       },
     }),
+    database.importedRecording.findMany({
+      where: {
+        group: scope.fullAccess ? undefined : { memberId },
+        OR: [
+          { originalTitle: contains(query) },
+          { asset: { title: contains(query) } },
+          { legacyLesson: { title: contains(query) } },
+          { group: { legacyStudentName: contains(query) } },
+        ],
+      },
+      orderBy: [{ meetingDate: "desc" }, { id: "desc" }],
+      take: MAX_RESULTS_PER_TYPE,
+      select: {
+        id: true,
+        originalTitle: true,
+        meetingDate: true,
+        legacyLesson: { select: { title: true } },
+        group: {
+          select: {
+            id: true,
+            legacyStudentName: true,
+            legacyModule: {
+              select: { title: true, course: { select: { title: true } } },
+            },
+          },
+        },
+        asset: { select: { id: true, title: true } },
+      },
+    }),
     database.communityPost.findMany({
       where: {
         status: ContentStatus.PUBLISHED,
@@ -265,9 +296,16 @@ export const searchGlobal = async (memberId: string, rawQuery: string) => {
     }),
   ]);
   const [
-    scope,
-    [paths, courses, modules, lessons, activities, posts, library, profiles],
-  ] = await Promise.all([scopePromise, resultsPromise]);
+    paths,
+    courses,
+    modules,
+    lessons,
+    activities,
+    recordings,
+    posts,
+    library,
+    profiles,
+  ] = await resultsPromise;
 
   const pathResults = paths
     .filter((path) =>
@@ -348,6 +386,16 @@ export const searchGlobal = async (memberId: string, rawQuery: string) => {
         `/atividades/${activity.slug}`
       )
     );
+  const recordingResults = recordings.map((recording) =>
+    result(
+      recording.id,
+      recording.originalTitle ?? recording.asset.title,
+      "recording",
+      "Gravação",
+      `${recording.group.legacyModule.course.title} · ${recording.group.legacyModule.title}`,
+      `/encontros/gravacoes?asset=${encodeURIComponent(recording.asset.id)}#asset-${encodeURIComponent(recording.asset.id)}`
+    )
+  );
   const communityResults = posts.map((post) =>
     result(
       post.id,
@@ -387,6 +435,7 @@ export const searchGlobal = async (memberId: string, rawQuery: string) => {
     ...moduleResults,
     ...lessonResults,
     ...activityResults,
+    ...recordingResults,
     ...communityResults,
     ...libraryResults,
     ...profileResults,

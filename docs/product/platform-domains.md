@@ -24,7 +24,17 @@ O autor é apresentado por `Profile` em feed, tópico e resposta. O editor salva
 
 ## Meetings
 
-`Meeting` guarda contexto, horário, timezone, links externos e vínculo opcional com `Course`. A área de membros destaca o próximo encontro e oferece detalhe com professor/curso; gravações são opcionais. A aplicação não implementa vídeo, WebRTC ou calendário próprio.
+`Meeting` guarda contexto, horário, timezone, links externos, preparação,
+materiais e vínculo opcional com `Course`. A área de membros destaca o próximo
+encontro, oferece detalhe com professor/curso e liga gravações históricas quando
+existem. A aplicação não implementa videoconferência própria, WebRTC ou
+calendário externo.
+
+`ImportedRecordingGroup` e `ImportedRecording` representam o arquivo histórico
+importado da Kiwify, não uma hierarquia curricular. O vínculo do grupo com um
+`Member` é explícito, administrativo e auditável; nome legado nunca concede
+acesso. `/encontros/gravacoes` é a superfície do membro e a rota antiga
+`/aprender/minhas-gravacoes` redireciona para ela.
 
 ## Library
 
@@ -32,8 +42,25 @@ O autor é apresentado por `Profile` em feed, tópico e resposta. O editor salva
 
 ## Smart Home
 
-A Home calcula o próximo passo no servidor, nessa ordem: atividade pendente, aula em andamento/próxima aula, próximo encontro e discussão recente. Se não houver dados, mostra uma orientação honesta para começar em Aprender; não inventa métricas, gráficos ou recomendações de IA.
+A Home calcula no servidor o que merece atenção agora, nesta ordem: próximo
+encontro, preparação, retomada de gravação, atividade pendente, feedback,
+conteúdo assíncrono relevante e discussão recente. Blocos sem dados não são
+renderizados. Gravações não produzem métricas de aulas concluídas.
 
-## Validação pendente
+## Progresso e curadoria
 
-Os fluxos acima passaram por `check` e `typecheck`, mas persistência real, migration status, seed, E2E autenticado e reload ainda exigem uma `DATABASE_URL`/`DIRECT_URL` válida do Supabase oficial e uma cadeia TLS confiável no ambiente de execução.
+`LessonProgress` mede conclusão de conteúdo assíncrono. `PlaybackProgress`
+guarda posição de reprodução por membro e asset e alimenta “Continue
+assistindo”; assistir uma gravação não conclui curso, módulo ou aula.
+`ContentCollection` é curadoria de apresentação, não curso, trilha ou sequência
+com percentual agregado.
+
+## Validação
+
+O schema e as migrations foram conferidos no PostgreSQL/Supabase oficial; o
+inventário live-first e a integridade de gravações estão registrados em
+[`live-first-recordings.md`](../architecture/live-first-recordings.md). Os
+gates estáticos (`check`, `typecheck`, `boundaries`, testes, Prisma e build)
+devem continuar sendo executados em cada lote. A validação autenticada de
+membro/administrador e a validação pública de produção são gates independentes
+do build e não devem ser substituídas por screenshots ou por dados de seed.

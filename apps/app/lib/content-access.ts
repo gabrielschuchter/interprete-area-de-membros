@@ -242,3 +242,34 @@ export const getAccessibleRecording = async (
   const asset = await getAccessibleAsset(assetId, memberId);
   return asset?.importedRecording ? asset : null;
 };
+
+/**
+ * Lightweight authorization check for the short-lived HLS segment capability.
+ *
+ * Playlist requests perform the full asset lookup and issue the capability.
+ * Segment requests still re-check the current recording-group pointer so an
+ * assignment revocation takes effect immediately instead of waiting for a
+ * previously issued playlist token to expire.
+ */
+export const canReadRecordingAsset = async (
+  assetId: string,
+  memberId: string
+) => {
+  const [role, asset] = await Promise.all([
+    getMemberRole(memberId),
+    database.lessonAsset.findUnique({
+      where: { id: assetId },
+      select: {
+        importedRecording: {
+          select: { group: { select: { memberId: true } } },
+        },
+      },
+    }),
+  ]);
+
+  if (role === MemberRole.ADMIN || role === MemberRole.TEACHER) {
+    return Boolean(asset?.importedRecording);
+  }
+
+  return asset?.importedRecording?.group.memberId === memberId;
+};
