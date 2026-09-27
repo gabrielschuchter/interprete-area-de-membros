@@ -3,10 +3,12 @@ import { noseconeOptions, securityMiddleware } from "@repo/security/proxy";
 import { type NextProxy, type NextRequest, NextResponse } from "next/server";
 
 const securityHeaders = securityMiddleware(noseconeOptions);
-// Keep the official Vercel project as the one visible application host. The
-// older alias is redirected here so users never land on a stale deployment.
-const canonicalAppHost = "interprete-area-de-membros-app.vercel.app";
-const legacyAppHost = "interprete-area-de-membros.vercel.app";
+// Clerk's production Frontend API proxy is registered on this Vercel alias.
+// Keep it as the single visible host until a real custom domain is configured
+// in Clerk; the other project alias is redirected here so both URLs cannot
+// serve different authentication origins.
+const canonicalAppHost = "interprete-area-de-membros.vercel.app";
+const legacyAppHost = "interprete-area-de-membros-app.vercel.app";
 const clerkProxyPrefix = "/__clerk";
 
 const redirectLegacyAppHost = (req: NextRequest) => {
