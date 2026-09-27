@@ -13,6 +13,7 @@ export const mutationLimits = {
   "asset.delete": { max: 30, windowMs: 60_000 },
   "notification.mutation": { max: 60, windowMs: 60_000 },
   "profile.update": { max: 10, windowMs: 10 * 60_000 },
+  "onboarding.save": { max: 20, windowMs: 10 * 60_000 },
   "library.bookmark": { max: 30, windowMs: 60_000 },
   "library.mutation": { max: 30, windowMs: 60_000 },
   "meeting.mutation": { max: 30, windowMs: 60_000 },

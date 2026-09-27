@@ -6,11 +6,15 @@ import { useEffect, useRef, useState } from "react";
 interface AvatarUploaderProperties {
   readonly initials: string;
   readonly initialUrl: string | null;
+  readonly onUploadingChange?: (isUploading: boolean) => void;
+  readonly onValueChange?: (value: string) => void;
 }
 
 export const AvatarUploader = ({
   initialUrl,
   initials,
+  onUploadingChange,
+  onValueChange,
 }: AvatarUploaderProperties) => {
   const [url, setUrl] = useState(initialUrl ?? "");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -62,6 +66,7 @@ export const AvatarUploader = ({
 
     uploadInFlight.current = true;
     setError("");
+    onUploadingChange?.(true);
     const localPreviewUrl = URL.createObjectURL(file);
     setPreviewUrl(localPreviewUrl);
     setIsUploading(true);
@@ -84,6 +89,7 @@ export const AvatarUploader = ({
       }
 
       setUrl(payload.url);
+      onValueChange?.(payload.url);
       uploadedUrlRef.current = payload.url;
       setPreviewUrl(null);
     } catch (uploadError) {
@@ -95,6 +101,7 @@ export const AvatarUploader = ({
     } finally {
       uploadInFlight.current = false;
       setIsUploading(false);
+      onUploadingChange?.(false);
     }
   };
 
@@ -144,6 +151,7 @@ export const AvatarUploader = ({
               uploadedUrlRef.current = null;
               setPreviewUrl(null);
               setUrl("");
+              onValueChange?.("");
             }}
             type="button"
           >

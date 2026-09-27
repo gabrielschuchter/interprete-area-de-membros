@@ -48,6 +48,12 @@ enum MemberRole {
   ADMIN
 }
 
+enum OnboardingStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+}
+
 enum ActivitySubmissionStatus {
   DRAFT
   SUBMITTED
@@ -138,6 +144,11 @@ model Member {
   email                  String?
   avatarUrl              String?
   role                   MemberRole              @default(MEMBER)
+  onboardingStatus       OnboardingStatus        @default(NOT_STARTED)
+  onboardingStep         Int                     @default(0)
+  onboardingVersion      Int                     @default(1)
+  onboardingStartedAt    DateTime?
+  onboardingCompletedAt  DateTime?
   createdAt              DateTime                @default(now())
   updatedAt              DateTime                @updatedAt
   profile                Profile?
