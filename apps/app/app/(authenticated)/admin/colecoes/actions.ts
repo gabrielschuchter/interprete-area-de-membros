@@ -7,6 +7,7 @@ import {
   database,
 } from "@repo/database";
 import { revalidatePath } from "next/cache";
+import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireStaff } from "@/lib/authorization";
@@ -71,6 +72,9 @@ export const createCollection = async (formData: FormData) => {
     revalidateCollections();
     redirectToCollections("success", "Coleção criada como rascunho.");
   } catch (error) {
+    if (isRedirectError(error)) {
+      throw error;
+    }
     mutationLog({
       action: "admin.collection.create",
       memberId: userId,
@@ -110,6 +114,9 @@ export const updateCollection = async (formData: FormData) => {
     revalidateCollections();
     redirectToCollections("success", "Coleção atualizada.");
   } catch (error) {
+    if (isRedirectError(error)) {
+      throw error;
+    }
     console.error("Collection update failed", error);
     redirectToCollections("error", "Não foi possível atualizar a coleção.");
   }
@@ -138,6 +145,9 @@ export const setCollectionStatus = async (formData: FormData) => {
     revalidateCollections();
     redirectToCollections("success", "Status da coleção atualizado.");
   } catch (error) {
+    if (isRedirectError(error)) {
+      throw error;
+    }
     console.error("Collection status update failed", error);
     redirectToCollections("error", "Não foi possível atualizar o status.");
   }
@@ -258,6 +268,9 @@ export const addCollectionItem = async (formData: FormData) => {
     revalidateCollections();
     redirectToCollections("success", "Recurso adicionado à coleção.");
   } catch (error) {
+    if (isRedirectError(error)) {
+      throw error;
+    }
     mutationLog({
       action: "admin.collection-item.create",
       memberId: userId,
@@ -287,6 +300,9 @@ export const removeCollectionItem = async (formData: FormData) => {
     revalidateCollections();
     redirectToCollections("success", "Recurso removido da coleção.");
   } catch (error) {
+    if (isRedirectError(error)) {
+      throw error;
+    }
     console.error("Collection item removal failed", error);
     redirectToCollections("error", "Não foi possível remover o recurso.");
   }

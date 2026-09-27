@@ -6,6 +6,7 @@ import {
   ImportedRecordingGroupAssignmentAction,
 } from "@repo/database";
 import { revalidatePath } from "next/cache";
+import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/authorization";
 import {
@@ -93,6 +94,9 @@ export const assignImportedRecordingGroup = async (formData: FormData) => {
     revalidatePath("/");
     finish("assigned");
   } catch (error) {
+    if (isRedirectError(error)) {
+      throw error;
+    }
     mutationLog({
       action: "admin.recording-group.assign",
       memberId: userId,
@@ -159,6 +163,9 @@ export const revokeImportedRecordingGroup = async (formData: FormData) => {
     revalidatePath("/");
     finish("revoked");
   } catch (error) {
+    if (isRedirectError(error)) {
+      throw error;
+    }
     mutationLog({
       action: "admin.recording-group.revoke",
       memberId: userId,

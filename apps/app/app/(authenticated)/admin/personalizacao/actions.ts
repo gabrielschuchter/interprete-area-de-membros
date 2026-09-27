@@ -2,6 +2,7 @@
 
 import { database, HomeBlockType, type Prisma } from "@repo/database";
 import { revalidatePath } from "next/cache";
+import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/authorization";
@@ -57,6 +58,9 @@ export const saveProductSettings = async (formData: FormData) => {
     revalidatePath("/admin/personalizacao");
     finish("success", "Configurações do produto atualizadas.");
   } catch (error) {
+    if (isRedirectError(error)) {
+      throw error;
+    }
     mutationLog({
       action: "admin.product-settings.update",
       memberId: userId,
@@ -125,6 +129,9 @@ export const saveHomeBlock = async (formData: FormData) => {
     revalidatePath("/admin/personalizacao");
     finish("success", "Seção da página inicial atualizada.");
   } catch (error) {
+    if (isRedirectError(error)) {
+      throw error;
+    }
     mutationLog({
       action: "admin.home-block.update",
       memberId: userId,
