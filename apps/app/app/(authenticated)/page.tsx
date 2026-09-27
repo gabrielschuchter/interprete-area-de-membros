@@ -93,7 +93,7 @@ const getPrimaryAction = ({
   ) {
     return {
       description: `Retome de onde você parou · ${recording.group.legacyStudentName}.`,
-      href: `/encontros/gravacoes#asset-${recording.asset.id}`,
+      href: `/encontros/gravacoes?asset=${encodeURIComponent(recording.asset.id)}#asset-${recording.asset.id}`,
       Icon: VideoIcon,
       label: "Continuar gravação",
       title: recording.asset.title,
@@ -324,7 +324,7 @@ const HomePage = async () => {
                 </p>
                 <Link
                   className="mt-5 inline-flex items-center gap-2 font-medium text-brand-structural text-sm underline underline-offset-4"
-                  href={`/encontros/gravacoes#asset-${recordings.continueWatching[0].asset.id}`}
+                  href={`/encontros/gravacoes?asset=${encodeURIComponent(recordings.continueWatching[0].asset.id)}#asset-${recordings.continueWatching[0].asset.id}`}
                 >
                   Retomar{" "}
                   <ArrowRightIcon aria-hidden="true" className="size-4" />
