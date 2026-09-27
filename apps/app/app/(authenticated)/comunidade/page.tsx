@@ -3,7 +3,6 @@ import {
   AvatarFallback,
   AvatarImage,
 } from "@repo/design-system/components/ui/avatar";
-import { Badge } from "@repo/design-system/components/ui/badge";
 import { Button } from "@repo/design-system/components/ui/button";
 import {
   ArrowRightIcon,
@@ -14,9 +13,11 @@ import {
 import Link from "next/link";
 import { CommunityFeedCard } from "@/components/community/community-feed-card";
 import { CommunityHero } from "@/components/community/community-hero";
+import { CommunityRightRail } from "@/components/community/community-right-rail";
 import { Stagger } from "@/components/motion/motion";
 import { getCommunityFeed, getCommunitySpaces } from "@/lib/community";
 import { requireMemberId } from "@/lib/learning";
+import { getRecentCommunityAnnouncements } from "@/lib/notifications";
 import { getOrCreateProfile } from "@/lib/profile";
 
 const whitespacePattern = /\s+/;
@@ -35,7 +36,7 @@ const CommunityPage = async ({ searchParams }: CommunityPageProperties) => {
   const memberId = await requireMemberId();
   const sort = filters.sort === "popular" ? "popular" : "recent";
   const page = Number.parseInt(filters.page ?? "1", 10);
-  const [spaces, feed, profile] = await Promise.all([
+  const [spaces, feed, profile, announcements] = await Promise.all([
     getCommunitySpaces(),
     getCommunityFeed(memberId, {
       query: filters.q,
@@ -44,6 +45,7 @@ const CommunityPage = async ({ searchParams }: CommunityPageProperties) => {
       spaceSlug: filters.space,
     }),
     getOrCreateProfile(memberId, false),
+    getRecentCommunityAnnouncements(memberId),
   ]);
 
   const composerInitials = (profile?.displayName ?? "Você")
@@ -242,46 +244,11 @@ const CommunityPage = async ({ searchParams }: CommunityPageProperties) => {
             )}
           </section>
 
-          <aside className="community-right-rail h-fit">
-            <div className="flex items-end justify-between border-border border-b pb-4">
-              <div>
-                <p className="brand-eyebrow">Salas abertas</p>
-                <h2 className="mt-2 font-display text-2xl">
-                  Espaços de estudo
-                </h2>
-              </div>
-              <Badge variant="outline">{spaces.length}</Badge>
-            </div>
-            {spaces.length === 0 ? (
-              <p className="border-border border-b py-5 text-muted-foreground text-sm leading-6">
-                O feed geral está aberto. Espaços temáticos podem ser criados
-                pela equipe quando fizerem sentido.
-              </p>
-            ) : (
-              <div className="divide-y border-border border-b">
-                {spaces.map((space) => (
-                  <Link
-                    className="group block py-4"
-                    href={`/comunidade/${space.slug}`}
-                    key={space.id}
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="font-medium group-hover:text-brand-structural">
-                        {space.title}
-                      </span>
-                      <ArrowRightIcon
-                        aria-hidden="true"
-                        className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1"
-                      />
-                    </div>
-                    <span className="mt-1 block text-muted-foreground text-xs">
-                      {space._count.posts} conteúdos
-                    </span>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </aside>
+          <CommunityRightRail
+            announcements={announcements}
+            profile={profile}
+            spaces={spaces}
+          />
         </div>
       </main>
     </div>

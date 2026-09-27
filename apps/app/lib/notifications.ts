@@ -347,6 +347,29 @@ export const getNotifications = async (
   };
 };
 
+export const getRecentCommunityAnnouncements = async (
+  memberId: string,
+  limit = 3
+) =>
+  database.notification.findMany({
+    where: {
+      memberId,
+      type: notificationTypes.announcement,
+      groupKey: { not: null },
+    },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    distinct: ["groupKey"],
+    take: Math.min(Math.max(limit, 1), 3),
+    select: {
+      id: true,
+      title: true,
+      body: true,
+      href: true,
+      createdAt: true,
+      groupKey: true,
+    },
+  });
+
 export const getUnreadNotificationCount = (memberId: string) =>
   database.notification.count({ where: { memberId, readAt: null } });
 

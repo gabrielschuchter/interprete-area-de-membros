@@ -1,0 +1,191 @@
+import { ArrowRightIcon } from "lucide-react";
+import Link from "next/link";
+import {
+  CommunityPresence,
+  type CommunityPresenceProfile,
+} from "./community-presence";
+
+interface CommunitySpaceSummary {
+  readonly _count: { readonly posts: number };
+  readonly id: string;
+  readonly slug: string;
+  readonly title: string;
+}
+
+interface CommunityAnnouncementSummary {
+  readonly body: string | null;
+  readonly createdAt: Date;
+  readonly groupKey: string | null;
+  readonly href: string | null;
+  readonly id: string;
+  readonly title: string;
+}
+
+interface CommunityRightRailProperties {
+  readonly announcements: readonly CommunityAnnouncementSummary[];
+  readonly profile: CommunityPresenceProfile | null;
+  readonly spaces: readonly CommunitySpaceSummary[];
+}
+
+const formatAnnouncementDate = (value: Date) =>
+  new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "short",
+  }).format(value);
+
+const isInternalHref = (href: string) =>
+  href.startsWith("/") && !href.startsWith("//");
+
+const isExternalHref = (href: string) =>
+  href.startsWith("https://") || href.startsWith("http://");
+
+const AnnouncementContent = ({
+  announcement,
+}: {
+  readonly announcement: CommunityAnnouncementSummary;
+}) => (
+  <>
+    <h3 className="font-medium text-sm leading-5">{announcement.title}</h3>
+    {announcement.body ? (
+      <p className="mt-1 line-clamp-3 text-muted-foreground text-xs leading-5">
+        {announcement.body}
+      </p>
+    ) : null}
+    <time
+      className="mt-2 block font-data text-[0.68rem] text-muted-foreground"
+      dateTime={announcement.createdAt.toISOString()}
+    >
+      {formatAnnouncementDate(announcement.createdAt)}
+    </time>
+  </>
+);
+
+export const CommunityRightRail = ({
+  announcements,
+  profile,
+  spaces,
+}: CommunityRightRailProperties) => (
+  <aside
+    aria-label="Contexto da comunidade"
+    className="community-right-rail h-fit"
+  >
+    <section
+      aria-labelledby="community-about-heading"
+      className="community-rail__block"
+    >
+      <h2 className="brand-eyebrow" id="community-about-heading">
+        Sobre a comunidade
+      </h2>
+      <p className="mt-3 max-w-[30ch] text-muted-foreground text-sm leading-6">
+        Um espaço para trocar perguntas, casos e referências sobre
+        interpretação.
+      </p>
+    </section>
+
+    <section
+      aria-labelledby="community-presence-heading"
+      className="community-rail__block"
+    >
+      <h2 className="brand-eyebrow" id="community-presence-heading">
+        Ativo agora
+      </h2>
+      <CommunityPresence profile={profile} />
+    </section>
+
+    <section
+      aria-labelledby="community-spaces-heading"
+      className="community-rail__block"
+    >
+      <h2 className="brand-eyebrow" id="community-spaces-heading">
+        Espaços
+      </h2>
+      {spaces.length === 0 ? (
+        <p className="mt-3 text-muted-foreground text-sm leading-6">
+          Nenhum espaço publicado ainda.
+        </p>
+      ) : (
+        <div className="mt-2 divide-y border-border border-y">
+          {spaces.map((space) => (
+            <Link
+              className="community-rail__space group"
+              href={"/comunidade/".concat(space.slug)}
+              key={space.id}
+            >
+              <span className="min-w-0 truncate font-medium text-sm group-hover:text-brand-structural">
+                {space.title}
+              </span>
+              <span className="flex shrink-0 items-center gap-2 text-muted-foreground text-xs">
+                <span
+                  className="font-data"
+                  title={[String(space._count.posts), "conteúdos"].join(" ")}
+                >
+                  {space._count.posts}
+                </span>
+                <ArrowRightIcon
+                  aria-hidden="true"
+                  className="size-3.5 transition-transform group-hover:translate-x-1"
+                />
+              </span>
+            </Link>
+          ))}
+        </div>
+      )}
+    </section>
+
+    <section
+      aria-labelledby="community-notices-heading"
+      className="community-rail__block"
+    >
+      <h2 className="brand-eyebrow" id="community-notices-heading">
+        Avisos
+      </h2>
+      {announcements.length === 0 ? (
+        <p className="mt-3 text-muted-foreground text-sm leading-6">
+          Nenhum aviso recente.
+        </p>
+      ) : (
+        <div className="mt-2 divide-y border-border border-y">
+          {announcements.map((announcement) => {
+            const content = <AnnouncementContent announcement={announcement} />;
+            const className = "community-rail__announcement group";
+
+            if (announcement.href && isInternalHref(announcement.href)) {
+              return (
+                <Link
+                  className={className}
+                  href={announcement.href}
+                  key={announcement.groupKey ?? announcement.id}
+                >
+                  {content}
+                </Link>
+              );
+            }
+
+            if (announcement.href && isExternalHref(announcement.href)) {
+              return (
+                <a
+                  className={className}
+                  href={announcement.href}
+                  key={announcement.groupKey ?? announcement.id}
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  {content}
+                </a>
+              );
+            }
+
+            return (
+              <article
+                className={className}
+                key={announcement.groupKey ?? announcement.id}
+              >
+                {content}
+              </article>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  </aside>
+);
