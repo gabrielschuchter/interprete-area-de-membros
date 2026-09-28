@@ -27,7 +27,9 @@ export const CommunityNavigation = ({
   active,
 }: CommunityNavigationProperties) => (
   <nav aria-label="Navegação da comunidade" className="community-section-nav">
-    <span className="brand-eyebrow">Comunidade</span>
+    <div className="community-section-nav__heading">
+      <span className="brand-eyebrow">Comunidade</span>
+    </div>
     <div className="community-section-nav__links">
       {primaryLinks.map((link) => (
         <Link
@@ -61,45 +63,52 @@ export const CommunityFeedNavigation = ({
   spaceSlug,
 }: CommunityFeedNavigationProperties) => (
   <nav aria-label="Descoberta do feed" className="community-feed-nav">
-    <div className="community-feed-nav__sort">
-      {COMMUNITY_SORT_OPTIONS.map((option) => (
-        <Link
-          aria-current={option.value === sort ? "page" : undefined}
-          className={
-            option.value === sort
-              ? "community-feed-nav__sort-link community-feed-nav__sort-link--active"
-              : "community-feed-nav__sort-link"
-          }
-          href={communityHref({ kind, query, sort: option.value, spaceSlug })}
-          key={option.value}
-        >
-          {option.label}
-        </Link>
-      ))}
-    </div>
-    <div className="community-feed-nav__kinds">
-      {COMMUNITY_KIND_FILTER_OPTIONS.map((option) => {
-        const isActive = option.value === "ALL" ? !kind : option.value === kind;
-        return (
+    <div className="community-feed-nav__group community-feed-nav__sort">
+      <span className="community-filter-label">Ordenar por</span>
+      <div className="community-feed-nav__sort-links">
+        {COMMUNITY_SORT_OPTIONS.map((option) => (
           <Link
-            aria-current={isActive ? "page" : undefined}
+            aria-current={option.value === sort ? "page" : undefined}
             className={
-              isActive
-                ? "community-feed-nav__kind community-feed-nav__kind--active"
-                : "community-feed-nav__kind"
+              option.value === sort
+                ? "community-feed-nav__sort-link community-feed-nav__sort-link--active"
+                : "community-feed-nav__sort-link"
             }
-            href={communityHref({
-              kind: option.value === "ALL" ? undefined : option.value,
-              query,
-              sort,
-              spaceSlug,
-            })}
+            href={communityHref({ kind, query, sort: option.value, spaceSlug })}
             key={option.value}
           >
             {option.label}
           </Link>
-        );
-      })}
+        ))}
+      </div>
+    </div>
+    <div className="community-feed-nav__group community-feed-nav__kinds">
+      <span className="community-filter-label">Formato</span>
+      <div className="community-feed-nav__kind-links">
+        {COMMUNITY_KIND_FILTER_OPTIONS.map((option) => {
+          const isActive =
+            option.value === "ALL" ? !kind : option.value === kind;
+          return (
+            <Link
+              aria-current={isActive ? "page" : undefined}
+              className={
+                isActive
+                  ? "community-feed-nav__kind community-feed-nav__kind--active"
+                  : "community-feed-nav__kind"
+              }
+              href={communityHref({
+                kind: option.value === "ALL" ? undefined : option.value,
+                query,
+                sort,
+                spaceSlug,
+              })}
+              key={option.value}
+            >
+              {option.label}
+            </Link>
+          );
+        })}
+      </div>
     </div>
   </nav>
 );

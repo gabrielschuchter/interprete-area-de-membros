@@ -6,7 +6,10 @@ import {
   database,
   type Prisma,
 } from "@repo/database";
-import { extractCommunityMedia } from "@/lib/community-media";
+import {
+  extractCommunityMedia,
+  normalizeCommunityCoverUrl,
+} from "@/lib/community-media";
 import { communityPopularityScore } from "@/lib/community-ranking";
 import { getProfilesByClerkIds } from "@/lib/profile";
 
@@ -74,6 +77,14 @@ export const getCommunitySpaces = () =>
         },
       },
     },
+  });
+
+export const getCommunityPresenceProfiles = (memberId: string) =>
+  database.profile.findMany({
+    where: { clerkUserId: { not: memberId } },
+    orderBy: [{ updatedAt: "desc" }, { displayName: "asc" }],
+    take: 7,
+    select: { avatarUrl: true, displayName: true, username: true },
   });
 
 export const getLatestCommunityPost = async () =>
@@ -347,6 +358,7 @@ export const getCommunityFeed = async (
   return {
     posts: enrichedPosts.map((post) => ({
       ...post,
+      coverUrl: normalizeCommunityCoverUrl(post.coverUrl),
       excerpt: post.excerpt ?? "",
       media: extractCommunityMedia(post.contentJson),
       readingMinutes: readingMinutes(post.excerpt ?? ""),
@@ -416,6 +428,7 @@ export const getCommunitySpace = async (
     ...space,
     posts: (await enrichAuthors(visiblePosts)).map((post) => ({
       ...post,
+      coverUrl: normalizeCommunityCoverUrl(post.coverUrl),
       excerpt: post.excerpt ?? "",
       media: extractCommunityMedia(post.contentJson),
       readingMinutes: readingMinutes(post.excerpt ?? ""),
@@ -547,6 +560,7 @@ const getPostWithComments = async (
 
   return {
     ...post,
+    coverUrl: normalizeCommunityCoverUrl(post.coverUrl),
     profile: profiles.get(post.authorId) ?? null,
     comments: attachProfiles(comments, profiles),
     readingMinutes: readingMinutes(post.content),
@@ -650,7 +664,11 @@ export const getCommunityEditorPost = async (
   }
 
   const profiles = await getProfilesByClerkIds([post.authorId]);
-  return { ...post, profile: profiles.get(post.authorId) ?? null };
+  return {
+    ...post,
+    coverUrl: normalizeCommunityCoverUrl(post.coverUrl),
+    profile: profiles.get(post.authorId) ?? null,
+  };
 };
 
 export const getMyCommunityPosts = async (memberId: string) => {

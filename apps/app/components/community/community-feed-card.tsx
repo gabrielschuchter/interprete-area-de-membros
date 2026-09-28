@@ -5,6 +5,7 @@ import { communityPostHref } from "@/lib/community";
 import {
   type CommunityMediaItem,
   communityMediaImageUrl,
+  normalizeCommunityCoverUrl,
 } from "@/lib/community-media";
 import {
   type CommunityPostKindValue,
@@ -67,11 +68,10 @@ export function CommunityFeedCard({
   const isSaved = post.bookmarks.length > 0;
   const summary = post.subtitle || post.excerpt;
   const media = post.media ?? [];
-  const feedMedia = post.coverUrl
-    ? media.filter(
-        (item) => item.kind !== "image" || item.src !== post.coverUrl
-      )
-    : media;
+  const coverUrl = normalizeCommunityCoverUrl(post.coverUrl);
+  // Images embedded in the rich document belong to the post body. Only the
+  // explicitly stored cover can appear as a visual lead in the feed.
+  const feedMedia = media.filter((item) => item.kind !== "image");
 
   return (
     <article
@@ -143,7 +143,7 @@ export function CommunityFeedCard({
         )}
       </div>
 
-      {post.coverUrl && (
+      {coverUrl && (
         // Cover URLs are authorized community assets or sanitized HTTPS URLs.
         // biome-ignore lint/performance/noImgElement: user-provided media may come from hosts not configured for next/image.
         <img
@@ -153,7 +153,7 @@ export function CommunityFeedCard({
           height={420}
           loading="lazy"
           referrerPolicy="no-referrer"
-          src={communityMediaImageUrl(post.coverUrl, "thumb")}
+          src={communityMediaImageUrl(coverUrl, "thumb")}
           width={960}
         />
       )}

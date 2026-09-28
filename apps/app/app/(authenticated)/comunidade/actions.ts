@@ -118,9 +118,7 @@ const safeImageUrl = (value: string, memberId: string) => {
 
   const assetPath = memberAssetPathFromUrl(value);
   if (
-    assetPath &&
-    (assetPath.startsWith("community-assets/covers/") ||
-      assetPath.startsWith("community-assets/inline/")) &&
+    assetPath?.startsWith("community-assets/covers/") &&
     isOwnedMemberAssetPath(assetPath, memberId)
   ) {
     return value.slice(0, 2000);

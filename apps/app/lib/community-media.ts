@@ -85,6 +85,27 @@ export const safeCommunityMediaUrl = (value: unknown) => {
   }
 };
 
+export const normalizeCommunityCoverUrl = (value: unknown) => {
+  const safeUrl = safeCommunityMediaUrl(value);
+  if (!safeUrl) {
+    return null;
+  }
+
+  if (safeUrl.startsWith("/api/member-assets?path=")) {
+    try {
+      const path = new URL(
+        safeUrl,
+        "https://interprete.local"
+      ).searchParams.get("path");
+      return path?.startsWith("community-assets/covers/") ? safeUrl : null;
+    } catch {
+      return null;
+    }
+  }
+
+  return safeUrl;
+};
+
 export const communityMediaImageUrl = (
   value: string,
   variant: "thumb" | "full" = "full"

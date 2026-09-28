@@ -4,7 +4,7 @@ import {
   AvatarImage,
 } from "@repo/design-system/components/ui/avatar";
 import { Button } from "@repo/design-system/components/ui/button";
-import { ArrowRightIcon, PlusIcon, SearchIcon } from "lucide-react";
+import { ArrowRightIcon, SearchIcon } from "lucide-react";
 import Link from "next/link";
 import { CommunityEmptyState } from "@/components/community/community-empty-state";
 import { CommunityFeedCard } from "@/components/community/community-feed-card";
@@ -15,7 +15,11 @@ import {
 } from "@/components/community/community-navigation";
 import { CommunityRightRail } from "@/components/community/community-right-rail";
 import { Stagger } from "@/components/motion/motion";
-import { getCommunityFeed, getCommunitySpaces } from "@/lib/community";
+import {
+  getCommunityFeed,
+  getCommunityPresenceProfiles,
+  getCommunitySpaces,
+} from "@/lib/community";
 import {
   communityHref,
   parseCommunityKind,
@@ -43,18 +47,20 @@ const CommunityPage = async ({ searchParams }: CommunityPageProperties) => {
   const sort = parseCommunitySort(filters.sort);
   const kind = parseCommunityKind(filters.kind);
   const page = Number.parseInt(filters.page ?? "1", 10);
-  const [spaces, feed, profile, announcements] = await Promise.all([
-    getCommunitySpaces(),
-    getCommunityFeed(memberId, {
-      query: filters.q,
-      sort,
-      kind,
-      page,
-      spaceSlug: filters.space,
-    }),
-    getOrCreateProfile(memberId),
-    getRecentCommunityAnnouncements(memberId),
-  ]);
+  const [spaces, feed, profile, announcements, presenceProfiles] =
+    await Promise.all([
+      getCommunitySpaces(),
+      getCommunityFeed(memberId, {
+        query: filters.q,
+        sort,
+        kind,
+        page,
+        spaceSlug: filters.space,
+      }),
+      getOrCreateProfile(memberId),
+      getRecentCommunityAnnouncements(memberId),
+      getCommunityPresenceProfiles(memberId),
+    ]);
 
   const composerInitials = (profile?.displayName ?? "Você")
     .split(whitespacePattern)
@@ -78,17 +84,24 @@ const CommunityPage = async ({ searchParams }: CommunityPageProperties) => {
 
   return (
     <div className="community-page min-h-svh bg-background">
-      <main className="community-shell mx-auto w-full max-w-[1240px] px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10 xl:px-10">
+      <main className="community-shell mx-auto w-full max-w-[1560px] px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10 xl:px-10">
         <CommunityHero />
 
         <section
           aria-labelledby="community-composer-heading"
           className="community-composer mt-5"
         >
-          <div className="p-4 sm:p-5">
+          <div className="community-composer__inner">
             <h2 className="sr-only" id="community-composer-heading">
               Criar uma publicação
             </h2>
+            <div className="community-composer__intro">
+              <span className="brand-eyebrow">Participe</span>
+              <p>
+                Compartilhe uma ideia, uma pergunta ou uma referência com a
+                comunidade.
+              </p>
+            </div>
             <Link
               aria-label="Escreva uma publicação"
               className="community-composer__prompt group -m-2 flex min-w-0 items-center gap-3 rounded-sm p-2 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/35"
@@ -110,25 +123,12 @@ const CommunityPage = async ({ searchParams }: CommunityPageProperties) => {
                 className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-brand-structural"
               />
             </Link>
-            <div className="mt-4 flex flex-col gap-3 border-border border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-muted-foreground text-sm">
-                Use o editor existente para publicar uma ideia ou abrir uma
-                discussão.
-              </p>
-              <div className="flex flex-wrap gap-2 sm:justify-end">
-                <Button asChild className="shrink-0">
-                  <Link href="/comunidade/novo">
-                    <PlusIcon aria-hidden="true" /> Criar conteúdo
-                  </Link>
-                </Button>
-              </div>
-            </div>
           </div>
         </section>
 
         <CommunityNavigation active="explore" />
 
-        <div className="community-content-grid mt-8 grid gap-8 xl:grid-cols-[minmax(0,780px)_minmax(280px,320px)] xl:justify-between xl:gap-8">
+        <div className="community-content-grid mt-8 grid gap-8">
           <section aria-labelledby="feed-heading" className="min-w-0">
             <div className="flex flex-col gap-4 border-border border-b pb-5 sm:flex-row sm:items-center sm:justify-between">
               <div>
@@ -146,7 +146,10 @@ const CommunityPage = async ({ searchParams }: CommunityPageProperties) => {
               spaceSlug={filters.space}
             />
 
-            <form className="mt-5 flex flex-col gap-3 sm:flex-row" method="get">
+            <form
+              className="community-search mt-6 flex flex-col gap-3 sm:flex-row"
+              method="get"
+            >
               <label className="relative min-w-0 flex-1">
                 <span className="sr-only">Buscar na comunidade</span>
                 <SearchIcon
@@ -187,7 +190,7 @@ const CommunityPage = async ({ searchParams }: CommunityPageProperties) => {
                 sort={sort}
               />
             ) : (
-              <Stagger className="mt-6 divide-y border-border border-y">
+              <Stagger className="mt-7 grid gap-5">
                 {feed.posts.map((post) => (
                   <CommunityFeedCard key={post.id} post={post} />
                 ))}
@@ -218,6 +221,7 @@ const CommunityPage = async ({ searchParams }: CommunityPageProperties) => {
 
           <CommunityRightRail
             announcements={announcements}
+            presenceProfiles={presenceProfiles}
             profile={profile}
             spaces={spaces}
           />

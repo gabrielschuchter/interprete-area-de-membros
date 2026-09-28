@@ -87,6 +87,7 @@ const initialFor = (member: OnlineCommunityMember) =>
     .toUpperCase() || "M";
 
 interface CommunityPresenceProperties {
+  readonly fallbackProfiles?: readonly CommunityPresenceProfile[];
   readonly profile: CommunityPresenceProfile | null;
 }
 
@@ -95,9 +96,28 @@ const ignorePromise = (promise: Promise<unknown>) => {
   promise.catch(() => undefined);
 };
 
-export const CommunityPresence = ({ profile }: CommunityPresenceProperties) => {
+export const CommunityPresence = ({
+  fallbackProfiles,
+  profile,
+}: CommunityPresenceProperties) => {
   const [members, setMembers] = useState<OnlineCommunityMember[]>([]);
   const [status, setStatus] = useState<PresenceStatus>("connecting");
+  const fallbackMembers = useMemo<OnlineCommunityMember[]>(() => {
+    const seen = new Set<string>();
+    return [profile, ...(fallbackProfiles ?? [])].flatMap((candidate) => {
+      if (!candidate || seen.has(candidate.username)) {
+        return [];
+      }
+      seen.add(candidate.username);
+      return [
+        {
+          avatarUrl: safeAvatarUrl(candidate.avatarUrl),
+          displayName: candidate.displayName?.trim() || candidate.username,
+          username: candidate.username,
+        },
+      ];
+    });
+  }, [fallbackProfiles, profile]);
   const presencePayload = useMemo(
     () => ({
       avatarUrl: profile?.avatarUrl ?? null,
@@ -335,11 +355,23 @@ export const CommunityPresence = ({ profile }: CommunityPresenceProperties) => {
     };
   }, [presencePayload, profile]);
 
-  const visibleMembers = members.slice(0, MAX_VISIBLE_MEMBERS);
-  const remainingCount = Math.max(0, members.length - visibleMembers.length);
+  const liveMembers = status === "online" ? members : [];
+  const displayedMembers =
+    liveMembers.length > 0 ? liveMembers : fallbackMembers;
+  const visibleMembers = displayedMembers.slice(0, MAX_VISIBLE_MEMBERS);
+  const remainingCount = Math.max(
+    0,
+    displayedMembers.length - visibleMembers.length
+  );
   let countLabel = "Presença indisponível";
-  if (status === "online") {
-    countLabel = formatOnlineCount(members.length);
+  if (liveMembers.length > 0) {
+    countLabel = formatOnlineCount(liveMembers.length);
+  } else if (fallbackMembers.length > 0) {
+    countLabel = [
+      String(fallbackMembers.length),
+      fallbackMembers.length === 1 ? "membro" : "membros",
+      "por aqui",
+    ].join(" ");
   } else if (status === "connecting") {
     countLabel = "Conectando…";
   }
@@ -347,13 +379,15 @@ export const CommunityPresence = ({ profile }: CommunityPresenceProperties) => {
   return (
     <div
       className="mt-3"
-      data-online-count={status === "online" ? members.length : undefined}
+      data-online-count={
+        liveMembers.length > 0 ? liveMembers.length : undefined
+      }
       data-presence-status={status}
       data-testid="community-presence"
     >
       <div className="flex min-w-0 items-center gap-3">
         <div className="community-presence__stack">
-          {visibleMembers.length === 0 && status === "online" ? (
+          {visibleMembers.length === 0 ? (
             <span aria-hidden="true" className="community-presence__empty">
               —
             </span>
@@ -392,6 +426,9 @@ export const CommunityPresence = ({ profile }: CommunityPresenceProperties) => {
           aria-live="polite"
           className="min-w-0 text-muted-foreground text-xs"
         >
+          {displayedMembers.length > 0 ? (
+            <span aria-hidden="true" className="community-presence__signal" />
+          ) : null}
           {countLabel}
         </span>
       </div>

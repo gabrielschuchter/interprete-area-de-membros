@@ -23,6 +23,7 @@ interface CommunityAnnouncementSummary {
 
 interface CommunityRightRailProperties {
   readonly announcements: readonly CommunityAnnouncementSummary[];
+  readonly presenceProfiles?: readonly CommunityPresenceProfile[];
   readonly profile: CommunityPresenceProfile | null;
   readonly spaces: readonly CommunitySpaceSummary[];
 }
@@ -63,6 +64,7 @@ const AnnouncementContent = ({
 export const CommunityRightRail = ({
   announcements,
   profile,
+  presenceProfiles,
   spaces,
 }: CommunityRightRailProperties) => (
   <aside
@@ -89,7 +91,10 @@ export const CommunityRightRail = ({
       <h2 className="brand-eyebrow" id="community-presence-heading">
         Ativo agora
       </h2>
-      <CommunityPresence profile={profile} />
+      <CommunityPresence
+        fallbackProfiles={presenceProfiles}
+        profile={profile}
+      />
     </section>
 
     <section

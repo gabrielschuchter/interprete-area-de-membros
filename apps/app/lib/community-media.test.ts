@@ -5,6 +5,7 @@ import {
   extractCommunityMedia,
   extractDoi,
   formatCommunityFileSize,
+  normalizeCommunityCoverUrl,
   safeCommunityMediaUrl,
   videoEmbedFromUrl,
 } from "./community-media";
@@ -140,6 +141,16 @@ describe("community media", () => {
     expect(
       communityMediaImageUrl("https://cdn.example/image.webp", "thumb")
     ).toBe("https://cdn.example/image.webp");
+    expect(
+      normalizeCommunityCoverUrl(
+        "/api/member-assets?path=community-assets/covers/member-1/cover.webp"
+      )
+    ).toContain("community-assets/covers/");
+    expect(
+      normalizeCommunityCoverUrl(
+        "/api/member-assets?path=community-assets/inline/member-1/body.webp"
+      )
+    ).toBeNull();
   });
 
   test("normalizes DOI and file size labels", () => {
