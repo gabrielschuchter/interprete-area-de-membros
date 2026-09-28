@@ -16,6 +16,7 @@ export const NotificationRealtime = ({
     let disposed = false;
     let cleanup: (() => void) | undefined;
 
+    // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: realtime lifecycle state machine
     const connect = async () => {
       try {
         const configResponse = await fetch(
@@ -29,8 +30,12 @@ export const NotificationRealtime = ({
         }
         const config = (await configResponse.json()) as {
           anonKey?: string;
+          configured?: boolean;
           url?: string;
         };
+        if (config.configured === false) {
+          return;
+        }
         if (!(config.url && config.anonKey)) {
           return;
         }

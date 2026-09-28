@@ -11,10 +11,7 @@ export const GET = async () => {
   const anonKey =
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? process.env.SUPABASE_ANON_KEY;
   if (!(url && anonKey)) {
-    return NextResponse.json(
-      { error: "Realtime ainda não está configurado neste ambiente." },
-      { status: 503 }
-    );
+    return NextResponse.json({ configured: false });
   }
-  return NextResponse.json({ anonKey, url });
+  return NextResponse.json({ anonKey, configured: true, url });
 };

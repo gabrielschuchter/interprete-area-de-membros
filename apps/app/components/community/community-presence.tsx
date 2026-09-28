@@ -217,8 +217,14 @@ export const CommunityPresence = ({
         }
         const config = (await configResponse.json()) as {
           anonKey?: string;
+          configured?: boolean;
           url?: string;
         };
+        if (config.configured === false) {
+          setMembers([]);
+          setStatus("unavailable");
+          return;
+        }
         if (!(config.url && config.anonKey)) {
           setStatus("unavailable");
           scheduleReconnect();
