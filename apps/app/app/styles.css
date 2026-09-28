@@ -1092,6 +1092,7 @@
     color: var(--muted-foreground);
     text-transform: uppercase;
     letter-spacing: 0.14em;
+    white-space: nowrap;
   }
 
   .community-feed-nav__sort-links,
@@ -1102,6 +1103,18 @@
     overflow-x: auto;
     overflow-y: hidden;
     scrollbar-width: thin;
+  }
+
+  .community-section-nav__links,
+  .community-feed-nav__sort-links,
+  .community-feed-nav__kind-links {
+    scrollbar-width: none;
+  }
+
+  .community-section-nav__links::-webkit-scrollbar,
+  .community-feed-nav__sort-links::-webkit-scrollbar,
+  .community-feed-nav__kind-links::-webkit-scrollbar {
+    display: none;
   }
 
   .community-feed-nav__sort {
