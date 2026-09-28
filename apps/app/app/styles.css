@@ -1126,6 +1126,7 @@
   .community-feed-nav__sort-link {
     position: relative;
     display: inline-flex;
+    flex: 0 0 auto;
     align-items: center;
     min-height: 2.45rem;
     padding: 0.2rem 0.6rem;
@@ -1162,6 +1163,7 @@
 
   .community-feed-nav__kind {
     display: inline-flex;
+    flex: 0 0 auto;
     align-items: center;
     min-height: 2rem;
     padding: 0.25rem 0.7rem;
