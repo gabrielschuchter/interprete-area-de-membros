@@ -1,99 +1,16 @@
 "use client";
 
-import { useSignIn } from "@clerk/nextjs";
-import { type FormEvent, useState } from "react";
+import { useAuth, useSignIn } from "@clerk/nextjs";
+import { type FormEvent, useEffect, useState } from "react";
+import { getAuthRedirectPath, getSignInErrorState } from "./sign-in-errors";
 
 type ResetStep = "code" | "password" | null;
 type SecondFactorStrategy = "email_code" | "totp" | null;
 
-interface ClerkError {
-  errors?: Array<{ longMessage?: string; message?: string }>;
-  longMessage?: string;
-  message?: string;
-}
-
-const fallbackError =
-  "Não foi possível entrar. Confira seus dados e tente novamente.";
-const signedOutErrorPattern = /you are signed out/i;
-const incorrectPasswordPattern =
-  /password is incorrect\. try again, or use another method\.?/i;
-const missingAccountPattern =
-  /couldn.t find your account|account could not be found/i;
-const invalidIdentifierPattern =
-  /identifier is invalid|email address is invalid/i;
-const incorrectCodePattern =
-  /verification code is incorrect|code is incorrect/i;
-const genericClerkErrorPattern = /something went wrong|internal error/i;
-
-const translateClerkError = (message: string) => {
-  const translations: [RegExp, string][] = [
-    [
-      incorrectPasswordPattern,
-      "A senha está incorreta. Tente novamente ou use outro método.",
-    ],
-    [missingAccountPattern, "Não encontramos uma conta com esses dados."],
-    [invalidIdentifierPattern, "Informe um e-mail válido."],
-    [
-      incorrectCodePattern,
-      "O código informado está incorreto. Confira e tente novamente.",
-    ],
-    [
-      genericClerkErrorPattern,
-      "Algo deu errado. Tente novamente em alguns instantes.",
-    ],
-  ];
-
-  return (
-    translations.find(([pattern]) => pattern.test(message))?.[1] ?? message
-  );
-};
-
-const getErrorMessage = (error: unknown) => {
-  const clerkError = (
-    typeof error === "object" && error !== null ? error : {}
-  ) as ClerkError;
-  const message =
-    clerkError.errors?.[0]?.longMessage ??
-    clerkError.errors?.[0]?.message ??
-    clerkError.longMessage ??
-    clerkError.message;
-
-  if (!message || signedOutErrorPattern.test(message)) {
-    return fallbackError;
-  }
-
-  return translateClerkError(message);
-};
-
-const getRedirectPath = () => {
-  if (typeof window === "undefined") {
-    return "/";
-  }
-
-  const redirectUrl = new URLSearchParams(window.location.search).get(
-    "redirect_url"
-  );
-
-  if (!redirectUrl) {
-    return "/";
-  }
-
-  try {
-    const parsedUrl = new URL(redirectUrl, window.location.origin);
-
-    if (parsedUrl.origin !== window.location.origin) {
-      return "/";
-    }
-
-    return `${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`;
-  } catch {
-    return "/";
-  }
-};
-
 // The component owns the finite-state rendering for password, reset, and MFA flows.
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: authentication states are intentionally kept together for one accessible form
 export const SignIn = () => {
+  const { isLoaded, isSignedIn } = useAuth();
   const { fetchStatus, signIn } = useSignIn();
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
@@ -106,7 +23,13 @@ export const SignIn = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
-  if (fetchStatus !== "idle" || !signIn) {
+  useEffect(() => {
+    if (isLoaded && isSignedIn) {
+      window.location.replace(getAuthRedirectPath(window.location.href));
+    }
+  }, [isLoaded, isSignedIn]);
+
+  if (!isLoaded || isSignedIn || fetchStatus !== "idle" || !signIn) {
     return (
       <div aria-live="polite" className="interprete-login__loading">
         <span aria-hidden="true" />
@@ -116,13 +39,17 @@ export const SignIn = () => {
   }
 
   const activateSession = async () => {
-    const { error } = await signIn.finalize();
+    const { error } = await signIn.finalize({
+      navigate: ({ decorateUrl }) => {
+        window.location.assign(
+          decorateUrl(getAuthRedirectPath(window.location.href))
+        );
+      },
+    });
 
     if (error) {
       throw error;
     }
-
-    window.location.assign(getRedirectPath());
   };
 
   const submitResetCode = async () => {
@@ -135,6 +62,8 @@ export const SignIn = () => {
     }
 
     if (signIn.status === "needs_new_password") {
+      setPassword("");
+      setResetCode("");
       setResetStep("password");
       return;
     }
@@ -150,6 +79,7 @@ export const SignIn = () => {
   const submitNewPassword = async () => {
     const { error } = await signIn.resetPasswordEmailCode.submitPassword({
       password,
+      signOutOfOtherSessions: true,
     });
 
     if (error) {
@@ -190,7 +120,7 @@ export const SignIn = () => {
 
   const submitPassword = async () => {
     const { error } = await signIn.password({
-      emailAddress: identifier.trim(),
+      identifier: identifier.trim(),
       password,
     });
 
@@ -266,7 +196,14 @@ export const SignIn = () => {
 
       await submitPassword();
     } catch (error) {
-      setErrorMessage(getErrorMessage(error));
+      const nextError = getSignInErrorState(error);
+
+      if (nextError.activeSession) {
+        window.location.replace(getAuthRedirectPath(window.location.href));
+        return;
+      }
+
+      setErrorMessage(nextError.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -285,9 +222,21 @@ export const SignIn = () => {
     }
 
     setErrorMessage("");
+    setPassword("");
+    setResetCode("");
+    setSecondFactorCode("");
+    setSecondFactorStrategy(null);
     setIsSubmitting(true);
 
     try {
+      // Password, MFA, and reset attempts share one Clerk SignInFuture.
+      // Reset it before starting recovery so stale attempt state cannot be reused.
+      const { error: resetError } = await signIn.reset();
+
+      if (resetError) {
+        throw resetError;
+      }
+
       const { error } = await signIn.create({
         identifier: normalizedIdentifier,
       });
@@ -304,23 +253,44 @@ export const SignIn = () => {
 
       setResetStep("code");
     } catch (error) {
-      setErrorMessage(getErrorMessage(error));
+      const nextError = getSignInErrorState(error);
+
+      if (nextError.activeSession) {
+        window.location.replace(getAuthRedirectPath(window.location.href));
+        return;
+      }
+
+      setErrorMessage(nextError.message);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleBackToSignIn = () => {
+  const handleBackToSignIn = async () => {
     if (isSubmitting) {
       return;
     }
 
-    setResetStep(null);
-    setResetCode("");
-    setSecondFactorStrategy(null);
-    setSecondFactorCode("");
-    setPassword("");
     setErrorMessage("");
+    setIsSubmitting(true);
+
+    try {
+      const { error } = await signIn.reset();
+
+      if (error) {
+        throw error;
+      }
+
+      setResetStep(null);
+      setResetCode("");
+      setSecondFactorStrategy(null);
+      setSecondFactorCode("");
+      setPassword("");
+    } catch (error) {
+      setErrorMessage(getSignInErrorState(error).message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const isResetFlow = resetStep !== null;
@@ -424,6 +394,9 @@ export const SignIn = () => {
             type="password"
             value={password}
           />
+          <p className="interprete-login__field-hint">
+            Os requisitos da senha são verificados com segurança pelo Clerk.
+          </p>
         </div>
       ) : null}
 

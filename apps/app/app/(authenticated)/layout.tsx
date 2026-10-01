@@ -13,6 +13,8 @@ import { NavigationFeedback } from "./components/navigation-feedback";
 import { RouteMotion } from "./components/route-motion";
 import { GlobalSidebar } from "./components/sidebar";
 
+export const dynamic = "force-dynamic";
+
 interface AppLayoutProperties {
   readonly children: ReactNode;
 }

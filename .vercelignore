@@ -17,3 +17,16 @@ apps/*/out
 # Kiwify migration media and checkpoints are local-only and can be very large.
 tmp
 **/tmp
+
+# Local recordings migration manifests/checkpoints are operational state,
+# not application source. Keep them out of Vercel deployments without deleting them.
+/migration-recordings-checkpoint.json
+/migration-recordings-delete-dry-run.json
+/migration-recordings-manifest.json
+/migration-recordings-remux-checkpoint.json
+/migration-recordings-remux-delete-dry-run.json
+/migration-recordings-remux-manifest.json
+/migration-recordings-resume.md
+/migration-recordings-source-inventory.json
+/scripts/recordings-drive-migration.mjs
+/scripts/recordings-drive-remux-migration.mjs

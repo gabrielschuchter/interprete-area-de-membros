@@ -6,6 +6,7 @@ import { dark } from "@clerk/themes";
 import { useTheme } from "next-themes";
 import type { ComponentProps } from "react";
 import { interpreteAuthAppearance } from "./appearance";
+import { shouldProxyClerkFrontendApi } from "./clerk-proxy";
 
 type AuthProviderProperties = ComponentProps<typeof ClerkProvider> & {
   privacyUrl?: string;
@@ -29,11 +30,14 @@ export const AuthProvider = ({
     helpPageUrl: helpUrl,
   };
 
-  const isLocalDevelopment = process.env.NODE_ENV === "development";
   // Keep the Clerk frontend API proxy same-origin. A cross-host proxy can
   // create a session on a different Vercel alias, leaving the visible app
   // without the session cookie needed to activate it.
-  const clerkProxyUrl = isLocalDevelopment ? undefined : "/__clerk";
+  const clerkProxyUrl = shouldProxyClerkFrontendApi(
+    process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+  )
+    ? "/__clerk"
+    : undefined;
 
   return (
     <ClerkProvider
@@ -44,6 +48,10 @@ export const AuthProvider = ({
         theme: baseTheme,
       }}
       localization={ptBR}
+      taskUrls={{
+        "reset-password": "/session-tasks",
+        "setup-mfa": "/session-tasks",
+      }}
       {...(clerkProxyUrl ? { proxyUrl: clerkProxyUrl } : {})}
     />
   );

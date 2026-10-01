@@ -20,7 +20,7 @@ test("keeps verification and password errors in Portuguese", () => {
   ).toBe("O código informado está incorreto. Confira e tente novamente.");
   expect(
     getSignUpErrorState({
-      errors: [{ message: "Password is too short" }],
+      errors: [{ message: "Password must be at least 15 characters" }],
     }).message
-  ).toContain("senha mais forte");
+  ).toBe("A senha precisa ter pelo menos 15 caracteres.");
 });

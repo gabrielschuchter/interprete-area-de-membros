@@ -1,7 +1,11 @@
 "use client";
 
-import { useSignUp } from "@clerk/nextjs";
-import { type FormEvent, useState } from "react";
+import { useAuth, useSignUp } from "@clerk/nextjs";
+import { type FormEvent, useEffect, useState } from "react";
+import {
+  getAuthRedirectPath,
+  isActiveClerkSessionError,
+} from "./sign-in-errors";
 
 type SignUpStep = "form" | "verification";
 
@@ -26,7 +30,9 @@ const emailAlreadyExistsPattern =
 const invalidIdentifierPattern =
   /identifier is invalid|email address is invalid|valid email/i;
 const weakPasswordPattern =
-  /password.*(?:too short|too weak|must be|at least)|password.*compromised|password.*common/i;
+  /password.*(?:too short|too weak|not strong|strong enough|must be|at least)|password.*compromised|password.*common/i;
+const minimumPasswordLengthPattern =
+  /(?:at least|minimum(?: length)?(?: is)?|min(?:imum)? of)\s*(\d+)\s*(?:characters?|chars?)/i;
 const incorrectCodePattern =
   /verification code is incorrect|code is incorrect|invalid code/i;
 const rateLimitPattern = /too many|rate limit|try again later/i;
@@ -84,9 +90,12 @@ export const getSignUpErrorState = (error: unknown) => {
   }
 
   if (weakPasswordPattern.test(message)) {
+    const minimumLength = message.match(minimumPasswordLengthPattern)?.[1];
+
     return {
-      message:
-        "Escolha uma senha mais forte e que você ainda não tenha usado em outro lugar.",
+      message: minimumLength
+        ? `A senha precisa ter pelo menos ${minimumLength} caracteres.`
+        : "A senha não atende aos requisitos de segurança da conta. Escolha outra senha e tente novamente.",
       existingAccount: false,
     };
   }
@@ -113,36 +122,11 @@ export const getSignUpErrorState = (error: unknown) => {
   return { message: fallbackError, existingAccount: false };
 };
 
-const getRedirectPath = () => {
-  if (typeof window === "undefined") {
-    return "/";
-  }
-
-  const redirectUrl = new URLSearchParams(window.location.search).get(
-    "redirect_url"
-  );
-
-  if (!redirectUrl) {
-    return "/";
-  }
-
-  try {
-    const parsedUrl = new URL(redirectUrl, window.location.origin);
-
-    if (parsedUrl.origin !== window.location.origin) {
-      return "/";
-    }
-
-    return `${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`;
-  } catch {
-    return "/";
-  }
-};
-
 // The component owns the finite-state rendering for password creation and
 // email verification. Clerk remains the identity provider; the member record
 // is created by the authenticated application guard after the session starts.
 export const SignUp = () => {
+  const { isLoaded, isSignedIn } = useAuth();
   const { fetchStatus, signUp } = useSignUp();
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
@@ -153,7 +137,13 @@ export const SignUp = () => {
   const [errorMessage, setErrorMessage] = useState("");
   const [hasExistingAccount, setHasExistingAccount] = useState(false);
 
-  if (fetchStatus !== "idle" || !signUp) {
+  useEffect(() => {
+    if (isLoaded && isSignedIn) {
+      window.location.replace(getAuthRedirectPath(window.location.href));
+    }
+  }, [isLoaded, isSignedIn]);
+
+  if (!isLoaded || isSignedIn || fetchStatus !== "idle" || !signUp) {
     return (
       <div aria-live="polite" className="interprete-login__loading">
         <span aria-hidden="true" />
@@ -163,21 +153,21 @@ export const SignUp = () => {
   }
 
   const activateSession = async () => {
-    const { error } = await signUp.finalize();
+    const { error } = await signUp.finalize({
+      navigate: ({ decorateUrl }) => {
+        window.location.assign(
+          decorateUrl(getAuthRedirectPath(window.location.href))
+        );
+      },
+    });
 
     if (error) {
       throw error;
     }
-
-    window.location.assign(getRedirectPath());
   };
 
   const handleCreateAccount = async () => {
     const normalizedIdentifier = identifier.trim();
-
-    if (password.length < 8) {
-      throw new Error("A senha precisa ter pelo menos 8 caracteres.");
-    }
 
     const { error } = await signUp.password({
       emailAddress: normalizedIdentifier,
@@ -242,6 +232,11 @@ export const SignUp = () => {
         await handleCreateAccount();
       }
     } catch (error) {
+      if (isActiveClerkSessionError(error)) {
+        window.location.replace(getAuthRedirectPath(window.location.href));
+        return;
+      }
+
       const nextError = getSignUpErrorState(error);
       setErrorMessage(nextError.message);
       setHasExistingAccount(nextError.existingAccount);
@@ -265,6 +260,11 @@ export const SignUp = () => {
         throw error;
       }
     } catch (error) {
+      if (isActiveClerkSessionError(error)) {
+        window.location.replace(getAuthRedirectPath(window.location.href));
+        return;
+      }
+
       const nextError = getSignUpErrorState(error);
       setErrorMessage(nextError.message);
       setHasExistingAccount(nextError.existingAccount);
@@ -353,7 +353,6 @@ export const SignUp = () => {
               className="interprete-login__input"
               disabled={isSubmitting}
               id="interprete-sign-up-password"
-              minLength={8}
               onChange={(event) => setPassword(event.target.value)}
               placeholder="Crie uma senha"
               required
@@ -371,7 +370,7 @@ export const SignUp = () => {
             </button>
           </div>
           <p className="interprete-login__field-hint">
-            Use pelo menos 8 caracteres.
+            Os requisitos da senha são verificados com segurança pelo Clerk.
           </p>
         </div>
       )}

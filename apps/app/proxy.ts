@@ -1,3 +1,4 @@
+import { shouldProxyClerkFrontendApi } from "@repo/auth/clerk-proxy";
 import { authMiddleware } from "@repo/auth/proxy";
 import { noseconeOptions, securityMiddleware } from "@repo/security/proxy";
 import { type NextProxy, type NextRequest, NextResponse } from "next/server";
@@ -10,6 +11,41 @@ const securityHeaders = securityMiddleware(noseconeOptions);
 const canonicalAppHost = "interprete-area-de-membros.vercel.app";
 const legacyAppHost = "interprete-area-de-membros-app.vercel.app";
 const clerkProxyPrefix = "/__clerk";
+// Clerk's Frontend API proxy is configured for the production instance only.
+// Development instances use their accounts.dev host directly.
+const shouldProxyClerkRequests = shouldProxyClerkFrontendApi(
+  process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+);
+const sessionTaskPath = "/session-tasks";
+const protectedRoutePrefixes = [
+  "/",
+  "/onboarding",
+  "/admin",
+  "/aprender",
+  "/atividades",
+  "/biblioteca",
+  "/colecoes",
+  "/comunidade",
+  "/configuracoes",
+  "/encontros",
+  "/membros",
+  "/notificacoes",
+  "/perfil",
+  "/search",
+];
+
+const matchesPath = (pathname: string, pathPrefix: string) =>
+  pathPrefix === "/"
+    ? pathname === "/"
+    : pathname === pathPrefix || pathname.startsWith(`${pathPrefix}/`);
+
+const isProtectedRoute = (pathname: string) =>
+  protectedRoutePrefixes.some((pathPrefix) =>
+    matchesPath(pathname, pathPrefix)
+  );
+
+const isSessionTaskRoute = (pathname: string) =>
+  matchesPath(pathname, sessionTaskPath);
 
 const redirectLegacyAppHost = (req: NextRequest) => {
   const url = req.nextUrl.clone();
@@ -37,7 +73,7 @@ const redirectLegacyAppHost = (req: NextRequest) => {
 // For apps using Clerk, compose middleware inside authMiddleware callback
 // For apps without Clerk, use createNEMO for composition (see apps/web)
 export default authMiddleware(
-  (_auth, req) => {
+  async (auth, req) => {
     // Keep one visible application host. The legacy alias remains available
     // only long enough to redirect users to the current production project.
     if (
@@ -47,9 +83,41 @@ export default authMiddleware(
       return redirectLegacyAppHost(req);
     }
 
+    // Keep the commonly used /login URL compatible with the custom Clerk UI.
+    // The sign-in layout sends authenticated users straight back to the app.
+    if (req.nextUrl.pathname === "/login") {
+      const url = req.nextUrl.clone();
+      url.pathname = "/sign-in";
+      return NextResponse.redirect(url, 308);
+    }
+
+    // Validate and refresh the Clerk session before protected pages render.
+    // Route handlers keep their own 401/403 behavior and are guarded server-side.
+    if (isProtectedRoute(req.nextUrl.pathname)) {
+      const authState = await auth();
+
+      if (authState.sessionStatus === "pending") {
+        return NextResponse.redirect(new URL("/session-tasks", req.url));
+      }
+
+      await auth.protect();
+    }
+
+    // An interrupted Clerk task must stay resumable instead of bouncing between
+    // the protected app and the sign-in page.
+    if (isSessionTaskRoute(req.nextUrl.pathname)) {
+      const authState = await auth();
+
+      if (authState.sessionStatus !== "pending") {
+        return NextResponse.redirect(
+          new URL(authState.userId ? "/" : "/sign-in", req.url)
+        );
+      }
+    }
+
     return securityHeaders();
   },
-  { frontendApiProxy: { enabled: true } }
+  { frontendApiProxy: { enabled: shouldProxyClerkRequests } }
 ) as unknown as NextProxy;
 
 export const config = {

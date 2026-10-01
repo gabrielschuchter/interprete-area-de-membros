@@ -8,6 +8,7 @@ interface InterpreteAuthShellProperties {
   readonly accountPrompt: string;
   readonly children: ReactNode;
   readonly description: ReactNode;
+  readonly showAccountSwitch?: boolean;
   readonly title: string;
 }
 
@@ -17,6 +18,7 @@ export const InterpreteAuthShell = ({
   accountPrompt,
   children,
   description,
+  showAccountSwitch = true,
   title,
 }: InterpreteAuthShellProperties) => (
   <main className="interprete-login">
@@ -72,10 +74,12 @@ export const InterpreteAuthShell = ({
 
           {children}
 
-          <p className="interprete-login__account-switch">
-            <span>{accountPrompt}</span>{" "}
-            <Link href={accountHref}>{accountActionLabel}</Link>
-          </p>
+          {showAccountSwitch ? (
+            <p className="interprete-login__account-switch">
+              <span>{accountPrompt}</span>{" "}
+              <Link href={accountHref}>{accountActionLabel}</Link>
+            </p>
+          ) : null}
 
           <div className="interprete-login__help">
             <p>
