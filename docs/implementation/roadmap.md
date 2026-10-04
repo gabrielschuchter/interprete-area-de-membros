@@ -475,6 +475,45 @@ não haver endereço/CAPTCHA/código de teste controlados, o Preview compartilha
 identidade real. Escritas, jornadas autenticadas, RLS, realtime, Cron/Vault e
 isolamento por role continuam sem prova funcional.
 
+### Revisão de publicação e QA final — 04/10/2026
+
+O estado atual da branch é o commit `d68900807a102cc3ba78392cb140a6b785605fac`,
+enviado a `origin/codex/interprete-member-area-release-2026-10-04`. Os Previews
+Ready associados a esse SHA são o app em
+`https://interprete-area-de-membros-dz0lv2nm3-gabrielschuchters-projects.vercel.app`
+e a API em
+`https://interprete-area-de-membros-qfrlua7e4-gabrielschuchters-projects.vercel.app`.
+O domínio oficial permanece na implantação Production anterior. Não promovi o
+novo código: 16 migrations aditivas ainda faltam no Supabase e as rotas de
+produto dependem do schema novo.
+
+Na revisão do checkout, não havia diff rastreado. `apps/api/CLAUDE.md` é o único
+arquivo não rastreado e foi preservado fora do commit. `.env.local` e os
+manifests/checkpoints locais de gravações estão ignorados pelo Git; os artefatos
+operacionais também estão excluídos do contexto de deploy pelo `.vercelignore`.
+Não há arquivo de segredo ou dump rastreado. A inspeção direcionada dos
+serviços de atribuição, outbox/notificações, grupos e permissões não encontrou
+uma correção local segura adicional. Como nenhum código mudou após os gates
+registrados acima, não repeti a suíte nesta revisão.
+
+A validação do Preview permanece limitada a visitante: formulários públicos,
+validação de campos vazios, recuperação sem envio de código, navegação e
+redirects das rotas protegidas, viewport de 320 a 1280 px e console sem erro
+foram exercitados conforme descrito na seção anterior. Nenhuma identidade foi
+criada e nenhuma mutação foi enviada ao banco oficial. Não houve deploy ou
+operação sobre dados de Production nesta revisão. Signup confirmado, sessão
+autenticada e expirada, CRUD, isolamento real por role, leitura/gravação no
+Supabase, RLS das migrations novas, realtime entre contas, Cron/Vault e a API
+atrás do SSO seguem sem validação funcional segura neste Preview.
+
+Todas as fases 1–12 continuam `IN PROGRESS`; não há evidência suficiente para
+marcar qualquer uma como `DONE`. Para retomar o release, primeiro é necessário
+que o Supabase saia da restrição de quota/Fair Use e que a sequência de
+migrations/backfills seja executada e reconciliada sem perda de dados. A
+associação dos 99 vídeos continua aguardando os links reais. A rotação da chave
+secreta Clerk Production comprometida ainda é uma ação manual no Dashboard e
+deve ocorrer antes de uma promoção Production.
+
 ## Matriz da fundação anterior — registro histórico até 03/10/2026
 
 Esta matriz descreve a sequência fundacional anterior à reestruturação integrada
