@@ -76,18 +76,18 @@ resultado Lighthouse ou uma medição de rede em sessão autenticada.
 
 | Fase | Escopo | Status | Evidência |
 | --- | --- | --- | --- |
-| 1 | Integridade, contratos e eventos/outbox | IN PROGRESS | Contratos, dispatcher e migrations implementados localmente; remoto tem 40/40 tabelas com RLS, mas `OutboxJob` ainda não existe e as migrations novas estão pendentes. |
-| 2 | Notificações duráveis e realtime | IN PROGRESS | Consumidor e cliente realtime implementados; remoto ainda não tem outbox, policy de tópico privado nem job Cron; Vault existe, sem segredo/schedule configurado. |
-| 3 | Grupos, membros e convites | IN PROGRESS | Membership, privacidade e convites implementados; migrations pendentes impedem validar isolamento e persistência remotos. |
-| 4 | Atribuição unificada e acesso específico | IN PROGRESS | Atribuições e grants tipados implementados; backfill remoto e teste de revogação continuam pendentes. |
-| 5 | YouTube e Minhas gravações | IN PROGRESS | Provider/player e navegação implementados; associação e validação dos 99 assets dependem dos links reais ainda não disponíveis. |
-| 6 | Aprender por trilhas horizontais | IN PROGRESS | Rails e gestão reutilizam cursos, aulas e coleções; migration de catálogo pendente e nenhuma sessão autenticada para QA visual/funcional. |
-| 7 | Comunidade e editor simplificados | IN PROGRESS | Editor, CRUD, avisos, menções e skeleton implementados localmente; sem E2E autenticado e migrations editoriais pendentes no remoto. |
-| 8 | Biblioteca global e pessoal | IN PROGRESS | Catálogo curado local de 110 referências em 13 categorias (10 itens legados enriquecidos e 100 novos preparados); filtros, metadados e paginação ajustados. Migration e importação oficiais não foram aplicadas; falta QA autenticado com schema remoto. |
-| 9 | Exercícios | IN PROGRESS | Motor, versões imutáveis e correção server-side implementados; schema remoto pendente e QA autenticado indisponível. |
-| 10 | Estudo, metas, tarefas e dashboard | IN PROGRESS | Intervalos, metas, tarefas e dashboard implementados; migration remota pendente, sem reconciliação de dados ou sincronização entre contas/dispositivos reais. |
-| 11 | Badges e perfil | IN PROGRESS | Critérios versionados, concessão idempotente e perfil implementados; migrations remotas pendentes e nenhum evento real validado. |
-| 12 | Consolidação, acessibilidade e release | IN PROGRESS | Cinco gates passaram (134 testes); auth pública revisada em 1440×1000/390×844, sem overflow mobile; rotas protegidas redirecionam. Revisão das páginas autenticadas, Lighthouse protegido e release aguardam staging/infra. |
+| 1 | Integridade, contratos e eventos/outbox | IN PROGRESS | Contratos, dispatcher e migrations locais validados; consulta remota atual encontra 46 migrations, 16 pendentes, sem aplicar alterações. |
+| 2 | Notificações duráveis e realtime | IN PROGRESS | Consumidor e cliente realtime implementados; outbox, policy privada e Cron ainda não existem no remoto; sem teste entre contas. |
+| 3 | Grupos, membros e convites | IN PROGRESS | Membership, privacidade e convites implementados; persistência e isolamento remoto aguardam as migrations. |
+| 4 | Atribuição unificada e acesso específico | IN PROGRESS | Atribuições e grants tipados implementados; backfill remoto e revogação não foram executados. |
+| 5 | YouTube e Minhas gravações | IN PROGRESS | Provider/player e navegação implementados; 99 associações aguardam links reais. |
+| 6 | Aprender por trilhas horizontais | IN PROGRESS | Rails e gestão reutilizam cursos, aulas e coleções; QA Preview confirma redirect sem sessão, mas não há QA autenticado nem schema remoto. |
+| 7 | Comunidade e editor simplificados | IN PROGRESS | Editor, CRUD, avisos, menções e skeleton implementados localmente; mutations e integridade ainda não foram testadas em sessão autenticada. |
+| 8 | Biblioteca global e pessoal | IN PROGRESS | 110 referências em 13 categorias (10 enriquecidas e 100 novas); 99 URLs responderam 2xx/3xx e 11 foram inconclusivas por 403 anti-bot. Migration/importação remota e QA autenticado pendentes. |
+| 9 | Exercícios | IN PROGRESS | Motor, versões imutáveis e correção server-side implementados; schema remoto e jornadas autenticadas pendentes. |
+| 10 | Estudo, metas, tarefas e dashboard | IN PROGRESS | Intervalos, metas, tarefas e dashboard implementados; sem reconciliação de dados ou sincronização real entre contas/dispositivos. |
+| 11 | Badges e perfil | IN PROGRESS | Critérios versionados, concessão idempotente e perfil implementados; nenhum evento real foi validado no ambiente oficial. |
+| 12 | Consolidação, acessibilidade e release | IN PROGRESS | Cinco gates passam com 160 testes. App Preview Ready; auth pública e 16 prefixos protegidos foram testados, sem overflow em 320/375/390/768/1280 px. Produção não foi promovida por 16 migrations pendentes. |
 
 ### Expansão editorial da Biblioteca — 04/10/2026
 
@@ -330,6 +330,82 @@ testes e arquivos gerados) não encontrou pendências. Essa evidência não subs
 uma sessão autenticada: nenhuma escrita ou migration remota foi executada, e as
 12 fases continuam `IN PROGRESS` até persistência, autorização e jornadas reais
 poderem ser validadas com segurança.
+
+### Publicação do candidato e QA remoto seguro — 04/10/2026
+
+O branch `codex/interprete-member-area-release-2026-10-04` foi enviado ao
+origin. O commit de código é `31f628c480e12dcc7a3019cc3fa9991978865431`,
+descendente do commit integrado `a57c42d`; o segundo commit corrige resolução
+de caminhos Windows no runner de CA e mantém verificação TLS ativa. O working
+tree não contém alterações de implementação pendentes. Capturas e manifests de
+migração são arquivos operacionais locais, agora explicitamente ignorados pelo
+Git e pelo Vercel.
+
+O app foi construído em Preview como `dpl_FBBRLT3uJaDCLi1aALkz8kogibd1`,
+Ready em `https://interprete-area-de-membros-wepdfn8j4-gabrielschuchters-projects.vercel.app`.
+O API Preview `dpl_5ju8ZXJvJFsBeBEeJRQKPi2YRrg6` também está Ready, mas seus
+endpoints retornam o SSO de proteção da Vercel quando chamados anonimamente.
+O alias oficial resolve para o deployment Production anterior
+`dpl_2wYwiRMcVWGdKAdF212zEutZcZeW`, criado em 01/10. Ele não recebeu estes
+commits. Não houve merge para `main`, promoção de alias, deploy Production ou
+alteração de dados oficiais.
+
+O primeiro Preview do app falhou ao renderizar Clerk porque faltava
+`NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` no escopo Preview. Foram configuradas
+variáveis Clerk exclusivamente Development, somente para o Preview deste
+branch; nenhum segredo Production foi copiado para esse escopo. Depois do
+redeploy, o formulário público carregou e a tentativa com credencial inválida
+retornou a mensagem específica de credenciais, sem confundir o estado com erro
+de sessão. Cadastro vazio/invalidamente formatado respeitou validação HTML; os
+inputs de senha não impõem `minLength`/`maxLength` locais. Recuperação alcançou
+a etapa de código com mensagem neutra para conta inexistente/não confirmada;
+código inválido não avançou. Nenhum usuário foi criado e nenhuma senha foi
+alterada.
+
+Em navegador anônimo, os 16 prefixes protegidos — incluindo início, onboarding,
+admin, Aprender, atividades, biblioteca, coleções, comunidade, configurações,
+encontros, membros, notificações, perfil, busca, tarefas e exercícios —
+redirecionaram para sign-in preservando o destino. `/session-tasks` sem tarefa
+pendente retornou ao sign-in mantendo `/perfil?tab=convites`. Sign-in e sign-up
+continuaram acessíveis diretamente. As rotas públicas de autenticação foram
+revisadas visualmente em desktop e mobile; o fluxo público foi verificado em
+320×640, 375×812, 390×844, 768×1024 e 1280×900, sem overflow horizontal. O
+teclado alcança o formulário com foco visível e o toggle mostra/oculta a senha.
+O console registrou zero erros e somente avisos esperados de chave Clerk
+Development; nenhuma chave secreta ou token apareceu em HTML/log de navegador.
+
+GETs anônimos em notificações, token realtime, busca de membros e busca global
+retornaram 401 JSON com `Cache-Control: private, no-store`; o asset educacional
+protegido redirecionou a autenticação. Nenhum endpoint de mutação foi chamado.
+O domínio oficial foi aberto em contexto anônimo: `/` redirecionou a sign-in e
+os formulários de autenticação carregaram, mas o produto novo não foi promovido.
+
+`prisma migrate status` foi executado somente para leitura: encontrou 46
+migrations e 16 pendentes, de `20261003100000_member_domain_events` a
+`20261004100000_library_catalog_metadata`. O código depende do schema aditivo
+pendente; promover a aplicação com esse schema antigo não é seguro. A quota/
+Fair Use do Supabase segue como bloqueio externo. Nenhuma migration, backfill,
+seed, alteração de linhas ou operação destrutiva foi feita.
+
+Após o commit de correção passaram novamente `check` (493 arquivos),
+`typecheck` (16 tarefas), `boundaries` (475 arquivos), `test` (160 testes),
+`build` (8 tarefas), `prisma validate` e `prisma generate`. Depois de ignorar
+artefatos locais de diagnóstico, a última execução passou `check` em 484
+arquivos, `typecheck` (16 tarefas), `boundaries` (475 arquivos), `test` (160
+testes), `build` (8 tarefas), `prisma validate` e `prisma generate`. O candidato Preview
+está disponível para inspeção sem sessão; fluxos autenticados que consultam ou
+alteram dados não foram executados contra o banco oficial. Sign-up confirmado,
+sessão válida, sign-out, redefinição com código, conta autenticada e páginas de
+membro aguardam identidade de teste e banco isolado ou recuperação segura do
+Supabase.
+
+O segredo Clerk Production exposto em saída de ferramenta anterior permanece
+comprometido: o responsável deve rotacioná-lo em Clerk Dashboard → instância
+Production → API Keys e atualizar a variável Production do Vercel. Os 99 vídeos
+continuam aguardando seus links reais. Das 110 URLs da Biblioteca, 99 tiveram
+resposta 2xx/3xx e 11 retornaram 403 anti-bot; essas 11 permanecem inconclusivas.
+As 12 fases continuam `IN PROGRESS` até cumprir seus gates autenticados e de
+persistência, e a Fase 12 ainda aguarda rollout compatível com as migrations.
 
 ## Matriz da fundação anterior — registro histórico até 03/10/2026
 
