@@ -1744,7 +1744,7 @@ export const libraryCatalog: LibraryCatalogEntry[] = [
     category: "Nutrição baseada em evidências",
     description:
       "Coleção atual de revisões sistemáticas e evidence scans produzidos para apoiar o comitê consultivo de diretrizes alimentares dos EUA.",
-    url: "https://nesr.usda.gov/",
+    url: "https://nesr.usda.gov/2025-dietary-guidelines-advisory-committee-systematic-reviews",
     tags: ["nutrição", "diretriz", "revisão sistemática", "2025"],
     language: "en",
     difficulty: "ADVANCED",

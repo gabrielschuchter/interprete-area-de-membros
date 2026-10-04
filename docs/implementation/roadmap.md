@@ -76,14 +76,14 @@ resultado Lighthouse ou uma medição de rede em sessão autenticada.
 
 | Fase | Escopo | Status | Evidência |
 | --- | --- | --- | --- |
-| 1 | Integridade, contratos e eventos/outbox | IN PROGRESS | Contratos, dispatcher e migrations locais validados; consulta remota atual encontra 46 migrations, 16 pendentes, sem aplicar alterações. |
+| 1 | Integridade, contratos e eventos/outbox | IN PROGRESS | Contratos, dispatcher e migrations locais validados; consulta Prisma somente de leitura encontrou 46 migrations, 16 pendentes. O painel confirma serviços Supabase sob Fair Use/402; nenhuma alteração remota aplicada. |
 | 2 | Notificações duráveis e realtime | IN PROGRESS | Consumidor e cliente realtime implementados; outbox, policy privada e Cron ainda não existem no remoto; sem teste entre contas. |
 | 3 | Grupos, membros e convites | IN PROGRESS | Membership, privacidade e convites implementados; persistência e isolamento remoto aguardam as migrations. |
 | 4 | Atribuição unificada e acesso específico | IN PROGRESS | Atribuições e grants tipados implementados; backfill remoto e revogação não foram executados. |
 | 5 | YouTube e Minhas gravações | IN PROGRESS | Provider/player e navegação implementados; 99 associações aguardam links reais. |
 | 6 | Aprender por trilhas horizontais | IN PROGRESS | Rails e gestão reutilizam cursos, aulas e coleções; QA Preview confirma redirect sem sessão, mas não há QA autenticado nem schema remoto. |
 | 7 | Comunidade e editor simplificados | IN PROGRESS | Editor, CRUD, avisos, menções e skeleton implementados localmente; mutations e integridade ainda não foram testadas em sessão autenticada. |
-| 8 | Biblioteca global e pessoal | IN PROGRESS | 110 referências em 13 categorias (10 enriquecidas e 100 novas); 99 URLs responderam 2xx/3xx e 11 foram inconclusivas por 403 anti-bot. Migration/importação remota e QA autenticado pendentes. |
+| 8 | Biblioteca global e pessoal | IN PROGRESS | 110 referências em 13 categorias (10 enriquecidas e 100 novas); sem duplicatas. O verificador atual encontrou 98 respostas 2xx/3xx, 11 respostas 403 e um timeout da BVS, depois aberta no Edge. Sete URLs 403 tiveram conteúdo confirmado separadamente; quatro seguem inacessíveis neste ambiente. Corrigido o destino das revisões DGAC 2025. Migration/importação remota e QA autenticado pendentes. |
 | 9 | Exercícios | IN PROGRESS | Motor, versões imutáveis e correção server-side implementados; schema remoto e jornadas autenticadas pendentes. |
 | 10 | Estudo, metas, tarefas e dashboard | IN PROGRESS | Intervalos, metas, tarefas e dashboard implementados; sem reconciliação de dados ou sincronização real entre contas/dispositivos. |
 | 11 | Badges e perfil | IN PROGRESS | Critérios versionados, concessão idempotente e perfil implementados; nenhum evento real foi validado no ambiente oficial. |
@@ -406,6 +406,40 @@ continuam aguardando seus links reais. Das 110 URLs da Biblioteca, 99 tiveram
 resposta 2xx/3xx e 11 retornaram 403 anti-bot; essas 11 permanecem inconclusivas.
 As 12 fases continuam `IN PROGRESS` até cumprir seus gates autenticados e de
 persistência, e a Fase 12 ainda aguarda rollout compatível com as migrations.
+
+### Continuação da auditoria — 04/10/2026
+
+O estado remoto foi rechecado sem escrita. O comando
+`bun run --cwd=packages/database prisma migrate status --schema=prisma/schema.prisma`
+confirmou 46 migrations, com as mesmas 16 pendentes. O painel da organização
+confirma que os serviços estão restritos por Fair Use e podem responder `402`;
+os limites excedidos são egress, cached egress e armazenamento. O ciclo exibido
+é 24/09–24/10. Não apliquei migrations, backfills, seeds nem alterações em
+dados ou objetos.
+
+O CLI pelo Bun direto tentou baixar um manifest e falhou ao validar o certificado
+do registry; usei o binário Prisma já instalado no workspace, com TLS verificado,
+para obter o status somente de leitura. O changelog atual do Supabase também foi
+revisado. A busca estática no schema e nas migrations versionadas não encontrou
+uso de `ltree`, índices `btree_gist`, operadores customizados ou cifra PGP
+legada; o estado remoto dessas extensões não foi consultado. Como o serviço
+segue restrito, não executei as consultas de detecção remota daquele aviso de
+versão.
+
+Após a troca de destino do item “2025 Dietary Guidelines Advisory Committee
+systematic reviews”, o verificador automatizado encontrou 110 URLs únicas, sem
+duplicatas: 98 com resposta 2xx/3xx, 11 com 403 e a BVS com timeout. O portal BVS
+carregou depois no Edge. Europe PMC e Epistemonikos também abriram no Edge apesar
+do 403 automatizado; as páginas CDC e NIH ODS tiveram o conteúdo aberto pelo
+leitor web. O DOAJ parou numa verificação Cloudflare, e os três links NESR deram
+403 no Edge; os resultados oficiais de busca confirmam que os recursos NESR
+existem, mas a acessibilidade direta permanece sem prova nesta rede. O destino
+do item DGAC agora aponta para a página específica das revisões de 2025, em vez
+da home NESR.
+
+A correção editorial é local e não requer migration. O registro nesta seção não
+promove as fases: a quota continua bloqueando as migrations e qualquer jornada
+que precise persistir no Supabase oficial.
 
 ## Matriz da fundação anterior — registro histórico até 03/10/2026
 
