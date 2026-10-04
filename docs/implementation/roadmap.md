@@ -441,6 +441,40 @@ A correção editorial é local e não requer migration. O registro nesta seçã
 promove as fases: a quota continua bloqueando as migrations e qualquer jornada
 que precise persistir no Supabase oficial.
 
+### Publicação Preview e QA de navegador — 04/10/2026
+
+O commit `b5284ff1801f118ac59165a72f24c9ce443e48b4` foi enviado ao branch
+`codex/interprete-member-area-release-2026-10-04`. Os deployments Preview dos
+projetos Vercel do app e da API chegaram a `READY`, ambos associados ao mesmo
+SHA e branch. O alias de Production não foi promovido e continua na implantação
+anterior; os 16 schemas pendentes e a restrição Supabase tornam inseguro ativar
+este código sobre os dados oficiais.
+
+No navegador isolado sem sessão, `/sign-in` e `/sign-up` carregaram e hidrataram
+com Clerk Development (`accounts.dev`) sem erros de console. O cadastro e o
+login rejeitaram submissão vazia com validação compreensível; a recuperação
+aberta sem endereço pediu e-mail/telefone, sem enviar código. A senha do
+cadastro não impõe `minlength`/`maxlength` próprio. Navegação entre login e
+cadastro e voltar/avançar preservaram as páginas esperadas. Termos, Privacidade
+e Suporte abriram como páginas públicas.
+
+As rotas `/`, `/aprender`, `/biblioteca`, `/biblioteca/pessoal`, `/exercicios`,
+`/tarefas`, `/notificacoes`, `/perfil`, `/configuracoes`, `/encontros`,
+`/encontros/gravacoes`, `/comunidade` e `/comunidade/meus-topicos` redirecionaram
+ao login com seu próprio destino preservado. O login não apresentou overflow
+horizontal em viewports de 320, 375, 390, 768 e 1280 px; cadastro foi revisto
+visualmente em desktop e mobile e as páginas públicas não tiveram overflow a
+390 px.
+
+O Preview da API exige Vercel SSO: a consulta anônima de `/health` recebe `302`
+para `/sso-api`, e não houve tentativa de contornar essa proteção. Os nomes das
+variáveis Preview necessárias estão configurados e foram conferidos sem ler ou
+registrar valores. Não houve conta Clerk criada nem sessão autenticada; além de
+não haver endereço/CAPTCHA/código de teste controlados, o Preview compartilha
+`DATABASE_URL` de Production, de modo que concluir signup poderia gravar uma
+identidade real. Escritas, jornadas autenticadas, RLS, realtime, Cron/Vault e
+isolamento por role continuam sem prova funcional.
+
 ## Matriz da fundação anterior — registro histórico até 03/10/2026
 
 Esta matriz descreve a sequência fundacional anterior à reestruturação integrada
