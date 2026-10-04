@@ -477,20 +477,27 @@ isolamento por role continuam sem prova funcional.
 
 ### Revisão de publicação e QA final — 04/10/2026
 
-O estado atual da branch é o commit `d68900807a102cc3ba78392cb140a6b785605fac`,
-enviado a `origin/codex/interprete-member-area-release-2026-10-04`. Os Previews
-Ready associados a esse SHA são o app em
-`https://interprete-area-de-membros-dz0lv2nm3-gabrielschuchters-projects.vercel.app`
-e a API em
-`https://interprete-area-de-membros-qfrlua7e4-gabrielschuchters-projects.vercel.app`.
-O domínio oficial permanece na implantação Production anterior. Não promovi o
-novo código: 16 migrations aditivas ainda faltam no Supabase e as rotas de
-produto dependem do schema novo.
+O candidato de código validado é o commit
+`d68900807a102cc3ba78392cb140a6b785605fac`; a atualização documental final foi
+enviada como `c7be8f758f01a3c0c025387c7ee0ffcedc64ed3f` para
+`origin/codex/interprete-member-area-release-2026-10-04`. A integração Git da
+Vercel construiu os dois Previews como `READY` para `c7be8f7`: app em
+`https://interprete-area-de-membros-a2mjt2xlo-gabrielschuchters-projects.vercel.app`
+e API em
+`https://interprete-area-de-membros-6txn56nb2-gabrielschuchters-projects.vercel.app`.
+O alias Production `interprete-area-de-membros.vercel.app` e o alias de projeto
+`interprete-area-de-membros-app.vercel.app` continuam no deployment anterior,
+do commit `138dd326af633a10286e5faf56b21665769c786b`. Não promovi o novo código:
+16 migrations aditivas ainda faltam no Supabase e as rotas de produto dependem
+do schema novo.
 
 Na revisão do checkout, não havia diff rastreado. `apps/api/CLAUDE.md` é o único
 arquivo não rastreado e foi preservado fora do commit. `.env.local` e os
 manifests/checkpoints locais de gravações estão ignorados pelo Git; os artefatos
 operacionais também estão excluídos do contexto de deploy pelo `.vercelignore`.
+O vínculo local padrão da Vercel é o projeto da API; a inspeção dos dois
+projetos foi feita explicitamente pelos nomes registrados em
+`docs/deployment/vercel.md`, sem iniciar deploy manual no projeto errado.
 Não há arquivo de segredo ou dump rastreado. A inspeção direcionada dos
 serviços de atribuição, outbox/notificações, grupos e permissões não encontrou
 uma correção local segura adicional. Como nenhum código mudou após os gates
@@ -500,7 +507,7 @@ A validação do Preview permanece limitada a visitante: formulários públicos,
 validação de campos vazios, recuperação sem envio de código, navegação e
 redirects das rotas protegidas, viewport de 320 a 1280 px e console sem erro
 foram exercitados conforme descrito na seção anterior. Nenhuma identidade foi
-criada e nenhuma mutação foi enviada ao banco oficial. Não houve deploy ou
+criada e nenhuma mutação foi enviada ao banco oficial. Não houve promoção ou
 operação sobre dados de Production nesta revisão. Signup confirmado, sessão
 autenticada e expirada, CRUD, isolamento real por role, leitura/gravação no
 Supabase, RLS das migrations novas, realtime entre contas, Cron/Vault e a API
