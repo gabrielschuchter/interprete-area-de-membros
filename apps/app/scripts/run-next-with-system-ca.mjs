@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { resolve } from "node:path";
+import { resolve, win32 } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const supportedSystemCaVersions = [
@@ -42,7 +42,10 @@ export function getNextRuntimeConfiguration({
     command: process.execPath,
     args: [
       "--use-system-ca",
-      resolve(cwd, "node_modules/next/dist/bin/next"),
+      (platform === "win32" ? win32.resolve : resolve)(
+        cwd,
+        "node_modules/next/dist/bin/next"
+      ),
       ...args,
     ],
     env: { ...env, NODE_USE_SYSTEM_CA: "1" },
