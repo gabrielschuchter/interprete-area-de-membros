@@ -1,7 +1,7 @@
-import { auth } from "@repo/auth/server";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { InterpreteAuthShell } from "@/components/auth/interprete-auth-shell";
+import { auth } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +10,11 @@ interface SignUpLayoutProps {
 }
 
 const SignUpLayout = async ({ children }: SignUpLayoutProps) => {
-  const { userId } = await auth();
+  const { userId, memberDeactivated } = await auth();
+
+  if (memberDeactivated) {
+    redirect("/conta-desativada");
+  }
 
   if (userId) {
     redirect("/");

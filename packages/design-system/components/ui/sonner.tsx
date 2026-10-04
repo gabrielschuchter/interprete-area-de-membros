@@ -51,7 +51,7 @@ const Toaster = () => {
             <Icon
               aria-hidden="true"
               className={cn(
-                "mt-0.5 size-4 shrink-0 text-brand-action",
+                "mt-0.5 size-4 shrink-0 text-brand-action-text",
                 record.type === "loading" && "animate-spin"
               )}
             />

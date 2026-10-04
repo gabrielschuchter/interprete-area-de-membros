@@ -62,6 +62,8 @@ const preferenceGroups: readonly {
         key: "followedTopicActivity",
         label: "Atualizações de discussões que você segue",
       },
+      { key: "groupInvitations", label: "Convites para grupos de estudo" },
+      { key: "groupPosts", label: "Novas publicações nos seus grupos" },
     ],
   },
   {
@@ -70,6 +72,7 @@ const preferenceGroups: readonly {
       { key: "lessonAvailable", label: "Novas aulas disponíveis" },
       { key: "moduleAvailable", label: "Novos módulos disponíveis" },
       { key: "activityAssigned", label: "Nova atividade" },
+      { key: "contentAssignments", label: "Conteúdos atribuídos a você" },
       { key: "feedbackReceived", label: "Feedback recebido" },
       { key: "activityDeadline", label: "Lembretes de prazo" },
     ],
@@ -823,7 +826,10 @@ const LinksStep = ({
       ).map(([field, label, placeholder]) => (
         <label className="block" htmlFor={`onboarding-${field}`} key={field}>
           <span className="flex items-center gap-2 text-sm">
-            <LinkIcon aria-hidden="true" className="size-4 text-brand-action" />
+            <LinkIcon
+              aria-hidden="true"
+              className="size-4 text-brand-action-text"
+            />
             {label}
           </span>
           <Input
@@ -963,7 +969,7 @@ const FinishStep = ({
       ) : null}
     </div>
     <p className="mt-6 inline-flex items-center gap-2 text-muted-foreground text-sm">
-      <CheckIcon aria-hidden="true" className="size-4 text-brand-action" />
+      <CheckIcon aria-hidden="true" className="size-4 text-brand-action-text" />
       Esse é o seu lugar por aqui.
     </p>
   </StepFrame>

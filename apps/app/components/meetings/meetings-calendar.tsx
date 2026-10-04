@@ -66,6 +66,19 @@ const formatDate = (value: string, timezone: string) =>
     timeZone: timezone,
   }).format(new Date(value));
 
+const meetingHasPassed = (meeting: CalendarMeeting, now: Date) =>
+  new Date(meeting.endsAt ?? meeting.startsAt).getTime() < now.getTime();
+
+const meetingStateClass = (isSelected: boolean, isPast: boolean) => {
+  if (isSelected) {
+    return "border-brand-structural bg-brand-structural/10";
+  }
+  if (isPast) {
+    return "border-border bg-muted/50 hover:bg-muted";
+  }
+  return "border-brand-structural/40 bg-accent/70 hover:bg-accent";
+};
+
 export const MeetingsCalendar = ({ meetings }: MeetingsCalendarProperties) => {
   const today = new Date();
   const [view, setView] = useState<"month" | "week">("month");
@@ -177,29 +190,37 @@ export const MeetingsCalendar = ({ meetings }: MeetingsCalendarProperties) => {
               Nenhum encontro neste período.
             </p>
           ) : (
-            meetings.map((meeting) => (
-              <button
-                className="flex w-full items-start justify-between gap-4 p-4 text-left transition-colors hover:bg-muted/30"
-                key={meeting.id}
-                onClick={() => setSelected(meeting)}
-                type="button"
-              >
-                <span className="min-w-0">
-                  <span className="brand-eyebrow block">
-                    {new Intl.DateTimeFormat("pt-BR", {
-                      dateStyle: "medium",
-                      timeZone: meeting.timezone,
-                    }).format(new Date(meeting.startsAt))}
+            meetings.map((meeting) => {
+              const isPast = meetingHasPassed(meeting, today);
+              const isSelected = selected?.id === meeting.id;
+              return (
+                <button
+                  aria-pressed={isSelected}
+                  className={`flex w-full items-start justify-between gap-4 border-l-2 p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-brand-action focus-visible:ring-inset ${meetingStateClass(isSelected, isPast)}`}
+                  key={meeting.id}
+                  onClick={() => setSelected(meeting)}
+                  type="button"
+                >
+                  <span className="min-w-0">
+                    <span className="brand-eyebrow block">
+                      {new Intl.DateTimeFormat("pt-BR", {
+                        dateStyle: "medium",
+                        timeZone: meeting.timezone,
+                      }).format(new Date(meeting.startsAt))}
+                    </span>
+                    <span className="mt-2 block truncate font-display text-xl">
+                      {meeting.title}
+                    </span>
+                    <span className="mt-1 block font-data text-[10px] text-secondary uppercase tracking-[0.1em]">
+                      {isPast ? "Realizado" : "Agendado"}
+                    </span>
                   </span>
-                  <span className="mt-2 block truncate font-display text-xl">
-                    {meeting.title}
+                  <span className="shrink-0 font-data text-foreground text-sm">
+                    {formatTime(meeting.startsAt, meeting.timezone)}
                   </span>
-                </span>
-                <span className="shrink-0 font-data text-brand-structural text-xs">
-                  {formatTime(meeting.startsAt, meeting.timezone)}
-                </span>
-              </button>
-            ))
+                </button>
+              );
+            })
           )}
         </div>
         <div className="hidden sm:block">
@@ -222,30 +243,38 @@ export const MeetingsCalendar = ({ meetings }: MeetingsCalendarProperties) => {
               const isCurrentMonth = day.getMonth() === anchor.getMonth();
               return (
                 <div
-                  className={`min-h-24 border-border border-r border-b p-1.5 sm:min-h-32 sm:p-2 ${isCurrentMonth ? "" : "bg-muted/10 text-muted-foreground/50"}`}
+                  className={`min-h-24 border-border border-r border-b p-1.5 sm:min-h-32 sm:p-2 ${isToday ? "bg-accent/25" : ""} ${isCurrentMonth ? "" : "bg-muted/20 text-muted-foreground"}`}
                   key={dateKey(day)}
                 >
-                  <div
-                    className={`mb-1 flex size-6 items-center justify-center rounded-full font-data text-xs ${isToday ? "bg-brand-structural text-primary-foreground" : ""}`}
+                  <span
+                    aria-current={isToday ? "date" : undefined}
+                    className={`mb-1 flex size-7 items-center justify-center rounded-full font-data text-xs ${isToday ? "bg-brand-structural font-semibold text-primary-foreground ring-2 ring-brand-structural/30 ring-offset-1" : "text-foreground"}`}
+                    title={isToday ? "Hoje" : undefined}
                   >
                     {day.getDate()}
-                  </div>
+                  </span>
                   <div className="space-y-1">
-                    {dayMeetings.map((meeting) => (
-                      <button
-                        className="block w-full rounded-sm border border-brand-action/25 bg-brand-action/10 px-1.5 py-1 text-left text-[10px] leading-tight transition-colors hover:bg-brand-action/20 sm:text-xs"
-                        key={meeting.id}
-                        onClick={() => setSelected(meeting)}
-                        type="button"
-                      >
-                        <span className="font-data text-[9px] text-brand-structural sm:text-[10px]">
-                          {formatTime(meeting.startsAt, meeting.timezone)}
-                        </span>
-                        <span className="mt-0.5 block truncate font-medium">
-                          {meeting.title}
-                        </span>
-                      </button>
-                    ))}
+                    {dayMeetings.map((meeting) => {
+                      const isPast = meetingHasPassed(meeting, today);
+                      const isSelected = selected?.id === meeting.id;
+                      return (
+                        <button
+                          aria-label={`${meeting.title}, ${isPast ? "realizado" : "agendado"}, ${formatTime(meeting.startsAt, meeting.timezone)}`}
+                          aria-pressed={isSelected}
+                          className={`block w-full rounded-sm border px-1.5 py-1 text-left text-[10px] leading-tight transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-brand-action focus-visible:ring-offset-1 sm:text-xs ${meetingStateClass(isSelected, isPast)}`}
+                          key={meeting.id}
+                          onClick={() => setSelected(meeting)}
+                          type="button"
+                        >
+                          <span className="font-data text-[9px] text-brand-structural sm:text-[10px]">
+                            {formatTime(meeting.startsAt, meeting.timezone)}
+                          </span>
+                          <span className="mt-0.5 block truncate font-medium">
+                            {meeting.title}
+                          </span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               );

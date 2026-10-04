@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { ReactNode } from "react";
 import { CommunityMediaCard } from "@/components/community/community-media-card";
 import {
@@ -19,6 +20,8 @@ interface RichNode {
   readonly text?: string;
   readonly type?: string;
 }
+
+const memberUsernamePattern = /^[a-z0-9](?:[a-z0-9-]{0,28}[a-z0-9])?$/i;
 
 const asRichNode = (value: unknown): RichNode | null => {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -137,30 +140,47 @@ const renderInline = (
   }
 
   if (node.type === "mention") {
-    const id = typeof node.attrs?.id === "string" ? node.attrs.id : "";
-    let username = "membro";
-    if (typeof node.attrs?.username === "string") {
-      username = node.attrs.username;
-    } else if (typeof node.attrs?.label === "string") {
-      username = node.attrs.label;
-    }
-    return (
-      <span
-        className={
-          id && id === currentMemberId
-            ? "community-mention community-mention-current"
-            : "community-mention"
-        }
-        data-mention-id={id || undefined}
-        key={key}
-      >
-        @{username}
-      </span>
-    );
+    return renderMention(node, key, currentMemberId);
   }
 
   return getChildren(node).map((child, index) =>
     renderInline(child, `${key}-${index}`, currentMemberId)
+  );
+};
+
+const renderMention = (
+  node: RichNode,
+  key: string,
+  currentMemberId?: string
+) => {
+  const id = typeof node.attrs?.id === "string" ? node.attrs.id : "";
+  const username =
+    (typeof node.attrs?.username === "string" && node.attrs.username) ||
+    (typeof node.attrs?.label === "string" && node.attrs.label) ||
+    "membro";
+  const className =
+    id && id === currentMemberId
+      ? "community-mention community-mention-current"
+      : "community-mention";
+  const safeUsername = memberUsernamePattern.test(username)
+    ? username.toLowerCase()
+    : null;
+  if (!safeUsername) {
+    return (
+      <span className={className} data-mention-id={id || undefined} key={key}>
+        @{username}
+      </span>
+    );
+  }
+  return (
+    <Link
+      className={className}
+      data-mention-id={id || undefined}
+      href={`/membros/${safeUsername}`}
+      key={key}
+    >
+      @{username}
+    </Link>
   );
 };
 

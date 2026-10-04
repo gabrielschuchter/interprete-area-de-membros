@@ -1,7 +1,17 @@
 import "server-only";
 
-import { ContentStatus, CourseExperience, database } from "@repo/database";
+import {
+  ContentStatus,
+  CourseExperience,
+  database,
+  MemberRole,
+} from "@repo/database";
+import { getMemberRole } from "@/lib/authorization";
 import { communityPostHref } from "@/lib/community";
+import {
+  communityPostAudienceWhere,
+  communitySpaceAudienceWhere,
+} from "@/lib/community-space-rules";
 import {
   getLearningAccessScope,
   hasCourseAccess,
@@ -72,7 +82,12 @@ export const searchGlobal = async (memberId: string, rawQuery: string) => {
     return [] satisfies GlobalSearchResult[];
   }
 
-  const scope = await getLearningAccessScope(memberId);
+  const [scope, role] = await Promise.all([
+    getLearningAccessScope(memberId),
+    getMemberRole(memberId),
+  ]);
+  const canModeratePrivateGroups =
+    role === MemberRole.ADMIN || role === MemberRole.TEACHER;
   const resultsPromise = Promise.all([
     database.learningPath.findMany({
       where: {
@@ -233,13 +248,8 @@ export const searchGlobal = async (memberId: string, rawQuery: string) => {
       where: {
         status: ContentStatus.PUBLISHED,
         deletedAt: null,
+        ...communityPostAudienceWhere(memberId, canModeratePrivateGroups),
         AND: [
-          {
-            OR: [
-              { space: null },
-              { space: { is: { status: ContentStatus.PUBLISHED } } },
-            ],
-          },
           {
             OR: [
               { title: contains(query) },
@@ -269,10 +279,7 @@ export const searchGlobal = async (memberId: string, rawQuery: string) => {
           is: {
             status: ContentStatus.PUBLISHED,
             deletedAt: null,
-            OR: [
-              { space: null },
-              { space: { is: { status: ContentStatus.PUBLISHED } } },
-            ],
+            ...communityPostAudienceWhere(memberId, canModeratePrivateGroups),
           },
         },
       },
@@ -294,6 +301,7 @@ export const searchGlobal = async (memberId: string, rawQuery: string) => {
     database.communitySpace.findMany({
       where: {
         status: ContentStatus.PUBLISHED,
+        ...communitySpaceAudienceWhere(memberId, canModeratePrivateGroups),
         OR: [{ title: contains(query) }, { description: contains(query) }],
       },
       orderBy: [{ position: "asc" }, { title: "asc" }],

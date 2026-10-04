@@ -4,9 +4,11 @@ import { randomUUID } from "node:crypto";
 import {
   AccessPermission,
   AccessResourceType,
+  AnnouncementAudience,
   ContentStatus,
   database,
   EnrollmentStatus,
+  LessonAssetMediaProvider,
   LessonKind,
   MemberRole,
   type Prisma,
@@ -22,6 +24,7 @@ import {
   notifyLessonAvailable,
   notifyModuleAvailable,
 } from "@/lib/notifications";
+import { getYoutubeVideoId } from "@/lib/youtube-video";
 
 const PARAGRAPH_SPLIT = /\r?\n\r?\n/;
 const LIST_SPLIT = /[\n,]/;
@@ -897,6 +900,58 @@ export const updateLesson = async (formData: FormData) => {
   revalidatePath(`/admin/learning/courses/${lesson.module.courseId}`);
 };
 
+export const updateLessonAssetMedia = async (formData: FormData) => {
+  await requireStaffMutation();
+  const assetId = asText(formData.get("assetId"));
+  const providerValue = asText(formData.get("mediaProvider"));
+  if (
+    !(
+      assetId &&
+      Object.values(LessonAssetMediaProvider).includes(
+        providerValue as LessonAssetMediaProvider
+      )
+    )
+  ) {
+    return;
+  }
+
+  const provider = providerValue as LessonAssetMediaProvider;
+  const current = await database.lessonAsset.findUnique({
+    where: { id: assetId },
+    select: { lesson: { select: { module: { select: { courseId: true } } } } },
+  });
+  if (!current) {
+    return;
+  }
+
+  let mediaExternalId: string | null = null;
+  let externalUrl: string | null | undefined;
+  if (provider === LessonAssetMediaProvider.YOUTUBE) {
+    mediaExternalId = getYoutubeVideoId(asText(formData.get("youtubeUrl")));
+    if (!mediaExternalId) {
+      return;
+    }
+  } else if (provider === LessonAssetMediaProvider.EXTERNAL_URL) {
+    externalUrl = asHttpUrl(asText(formData.get("externalUrl")));
+    if (!externalUrl) {
+      return;
+    }
+  }
+
+  await database.lessonAsset.update({
+    where: { id: assetId },
+    data: {
+      mediaProvider: provider,
+      mediaExternalId,
+      ...(externalUrl !== undefined ? { externalUrl } : {}),
+    },
+  });
+  const courseId = current.lesson.module.courseId;
+  revalidatePath(`/admin/learning/courses/${courseId}`);
+  revalidatePath("/aprender");
+  revalidatePath("/encontros/gravacoes");
+};
+
 export const updateLearningPath = async (formData: FormData) => {
   await requireStaffMutation();
   const pathId = asText(formData.get("pathId"));
@@ -1239,59 +1294,268 @@ export const setContentStatus = async (formData: FormData) => {
   }
 };
 
-const announcementAudiences = ["ALL", "STAFF", "SELECTED"] as const;
-type AnnouncementAudience = (typeof announcementAudiences)[number];
-
+const announcementAudienceValues = Object.values(AnnouncementAudience);
 const isAnnouncementAudience = (value: string): value is AnnouncementAudience =>
-  announcementAudiences.includes(value as AnnouncementAudience);
+  announcementAudienceValues.includes(value as AnnouncementAudience);
 
-export const createAnnouncement = async (formData: FormData) => {
-  const { userId } = await requireStaffMutation();
+const readAnnouncementInput = (formData: FormData) => {
   const title = asText(formData.get("title")).slice(0, 180);
   const body = asText(formData.get("body")).slice(0, 10_000);
   const audienceValue = asText(formData.get("audience"));
-  const href = asText(formData.get("href"));
+  const rawHref = asText(formData.get("href"));
+  const href =
+    rawHref.startsWith("/") && !rawHref.startsWith("//")
+      ? rawHref.slice(0, 500)
+      : asHttpUrl(rawHref);
+  const rawStartsAt = asText(formData.get("startsAt"));
+  const rawEndsAt = asText(formData.get("endsAt"));
+  const startsAt = rawStartsAt ? new Date(rawStartsAt) : null;
+  const endsAt = rawEndsAt ? new Date(rawEndsAt) : null;
+  const statusValue = asText(formData.get("status")) || "PUBLISHED";
+  const status = Object.values(ContentStatus).includes(
+    statusValue as ContentStatus
+  )
+    ? (statusValue as ContentStatus)
+    : null;
   const recipientIds = asList(formData.get("recipientIds"), 200);
+  if (
+    !(title && body && isAnnouncementAudience(audienceValue) && status) ||
+    (startsAt && !Number.isFinite(startsAt.valueOf())) ||
+    (endsAt && !Number.isFinite(endsAt.valueOf())) ||
+    (startsAt && endsAt && endsAt <= startsAt) ||
+    (audienceValue === AnnouncementAudience.SELECTED &&
+      recipientIds.length === 0)
+  ) {
+    return null;
+  }
+  return {
+    title,
+    body,
+    href: href ?? null,
+    audience: audienceValue,
+    recipientIds:
+      audienceValue === AnnouncementAudience.SELECTED ? recipientIds : [],
+    startsAt,
+    endsAt,
+    isPinned: asText(formData.get("isPinned")) === "on",
+    status,
+  };
+};
 
-  if (!(title && body && isAnnouncementAudience(audienceValue))) {
+const announcementRecipients = async (
+  audience: AnnouncementAudience,
+  recipientIds: readonly string[],
+  actorId: string
+) => {
+  const audienceCondition = (() => {
+    if (audience === AnnouncementAudience.STAFF) {
+      return { role: { in: [MemberRole.TEACHER, MemberRole.ADMIN] } };
+    }
+    if (audience === AnnouncementAudience.SELECTED) {
+      return { id: { in: [...recipientIds] } };
+    }
+    return {};
+  })();
+  const members = await database.member.findMany({
+    where: {
+      deactivatedAt: null,
+      id: { not: actorId },
+      ...audienceCondition,
+    },
+    select: { id: true },
+    take: 10_000,
+  });
+  return members;
+};
+
+const dispatchAnnouncement = async (
+  announcement: {
+    readonly id: string;
+    readonly title: string;
+    readonly body: string;
+    readonly href: string | null;
+    readonly audience: AnnouncementAudience;
+    readonly recipientIds: readonly string[];
+    readonly startsAt: Date | null;
+    readonly endsAt: Date | null;
+    readonly status: ContentStatus;
+  },
+  actorId: string
+) => {
+  const now = new Date();
+  if (
+    announcement.status !== ContentStatus.PUBLISHED ||
+    (announcement.startsAt && announcement.startsAt > now) ||
+    (announcement.endsAt && announcement.endsAt <= now)
+  ) {
     return;
   }
-
-  const audience = audienceValue as AnnouncementAudience;
-  let recipients: { id: string }[];
-  if (audience === "ALL") {
-    recipients = await database.member.findMany({ select: { id: true } });
-  } else if (audience === "STAFF") {
-    recipients = await database.member.findMany({
-      where: { role: { in: [MemberRole.TEACHER, MemberRole.ADMIN] } },
-      select: { id: true },
-    });
-  } else {
-    recipients = await database.member.findMany({
-      where: { id: { in: recipientIds } },
-      select: { id: true },
-    });
-  }
-
-  if (recipients.length === 0) {
-    return;
-  }
-
-  const announcementId = randomUUID();
-  const safeHref = href.startsWith("/") ? href.slice(0, 500) : asHttpUrl(href);
-
+  const recipients = await announcementRecipients(
+    announcement.audience,
+    announcement.recipientIds,
+    actorId
+  );
   await Promise.all(
     recipients.map(({ id }) =>
       notifyAnnouncement({
-        actorId: userId,
-        announcementId,
-        body,
-        href: safeHref ?? undefined,
+        actorId,
+        announcementId: announcement.id,
+        body: announcement.body,
+        href: announcement.href ?? "/comunidade",
         recipientId: id,
-        title,
+        title: announcement.title,
       })
     )
   );
+};
 
+const revalidateAnnouncementSurfaces = () => {
   revalidatePath("/admin/avisos");
+  revalidatePath("/comunidade");
+  revalidatePath("/notificacoes");
+};
+
+export const createAnnouncement = async (formData: FormData) => {
+  const { userId } = await requireStaffMutation();
+  const parsed = readAnnouncementInput(formData);
+  if (!parsed) {
+    return;
+  }
+  const now = new Date();
+  const announcement = await database.announcement.create({
+    data: {
+      id: randomUUID(),
+      ...parsed,
+      createdByMemberId: userId,
+      publishedAt: parsed.status === ContentStatus.PUBLISHED ? now : null,
+      archivedAt: parsed.status === ContentStatus.ARCHIVED ? now : null,
+    },
+    select: {
+      id: true,
+      title: true,
+      body: true,
+      href: true,
+      audience: true,
+      recipientIds: true,
+      startsAt: true,
+      endsAt: true,
+      status: true,
+    },
+  });
+  await dispatchAnnouncement(announcement, userId);
+  revalidateAnnouncementSurfaces();
+};
+
+export const updateAnnouncement = async (formData: FormData) => {
+  const { userId } = await requireStaffMutation();
+  const id = asText(formData.get("id"));
+  const parsed = readAnnouncementInput(formData);
+  if (!(id && parsed)) {
+    return;
+  }
+  const existing = await database.announcement.findUnique({
+    where: { id, deletedAt: null },
+    select: { id: true, publishedAt: true },
+  });
+  if (!existing) {
+    return;
+  }
+  const now = new Date();
+  const announcement = await database.announcement.update({
+    where: { id },
+    data: {
+      ...parsed,
+      publishedAt:
+        parsed.status === ContentStatus.PUBLISHED
+          ? (existing.publishedAt ?? now)
+          : existing.publishedAt,
+      archivedAt: parsed.status === ContentStatus.ARCHIVED ? now : null,
+    },
+    select: {
+      id: true,
+      title: true,
+      body: true,
+      href: true,
+      audience: true,
+      recipientIds: true,
+      startsAt: true,
+      endsAt: true,
+      status: true,
+    },
+  });
+  if (announcement.status === ContentStatus.PUBLISHED) {
+    const safeHref = announcement.href ?? "/comunidade";
+    await database.notification.updateMany({
+      where: { groupKey: `announcement:${id}` },
+      data: {
+        title: announcement.title,
+        body: announcement.body,
+        href: safeHref,
+      },
+    });
+    await dispatchAnnouncement(announcement, userId);
+  }
+  revalidateAnnouncementSurfaces();
+};
+
+export const setAnnouncementStatus = async (formData: FormData) => {
+  const { userId } = await requireStaffMutation();
+  const id = asText(formData.get("id"));
+  const statusValue = asText(formData.get("status"));
+  if (
+    !(id && Object.values(ContentStatus).includes(statusValue as ContentStatus))
+  ) {
+    return;
+  }
+  const existing = await database.announcement.findUnique({
+    where: { id, deletedAt: null },
+  });
+  if (!existing) {
+    return;
+  }
+  const status = statusValue as ContentStatus;
+  const now = new Date();
+  const announcement = await database.announcement.update({
+    where: { id },
+    data: {
+      status,
+      publishedAt:
+        status === ContentStatus.PUBLISHED
+          ? (existing.publishedAt ?? now)
+          : existing.publishedAt,
+      archivedAt: status === ContentStatus.ARCHIVED ? now : null,
+    },
+    select: {
+      id: true,
+      title: true,
+      body: true,
+      href: true,
+      audience: true,
+      recipientIds: true,
+      startsAt: true,
+      endsAt: true,
+      status: true,
+    },
+  });
+  if (status === ContentStatus.PUBLISHED) {
+    await dispatchAnnouncement(announcement, userId);
+  }
+  revalidateAnnouncementSurfaces();
+};
+
+export const deleteAnnouncement = async (formData: FormData) => {
+  await requireStaffMutation();
+  const id = asText(formData.get("id"));
+  if (!id) {
+    return;
+  }
+  await database.announcement.updateMany({
+    where: { id, deletedAt: null },
+    data: {
+      status: ContentStatus.ARCHIVED,
+      archivedAt: new Date(),
+      deletedAt: new Date(),
+    },
+  });
+  revalidateAnnouncementSurfaces();
 };

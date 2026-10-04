@@ -1,4 +1,5 @@
-import { ArrowRightIcon } from "lucide-react";
+import { Button } from "@repo/design-system/components/ui/button";
+import { ArrowRightIcon, PlusIcon } from "lucide-react";
 import Link from "next/link";
 import {
   CommunityPresence,
@@ -23,6 +24,7 @@ interface CommunityAnnouncementSummary {
 
 interface CommunityRightRailProperties {
   readonly announcements: readonly CommunityAnnouncementSummary[];
+  readonly memberId: string;
   readonly presenceProfiles?: readonly CommunityPresenceProfile[];
   readonly profile: CommunityPresenceProfile | null;
   readonly spaces: readonly CommunitySpaceSummary[];
@@ -63,6 +65,7 @@ const AnnouncementContent = ({
 
 export const CommunityRightRail = ({
   announcements,
+  memberId,
   profile,
   presenceProfiles,
   spaces,
@@ -93,6 +96,7 @@ export const CommunityRightRail = ({
       </h2>
       <CommunityPresence
         fallbackProfiles={presenceProfiles}
+        memberId={memberId}
         profile={profile}
       />
     </section>
@@ -102,11 +106,11 @@ export const CommunityRightRail = ({
       className="community-rail__block"
     >
       <h2 className="brand-eyebrow" id="community-spaces-heading">
-        Espaços
+        Grupos de estudo
       </h2>
       {spaces.length === 0 ? (
         <p className="mt-3 text-muted-foreground text-sm leading-6">
-          Nenhum espaço publicado ainda.
+          Nenhum grupo publicado ainda.
         </p>
       ) : (
         <div className="mt-2 divide-y border-border border-y">
@@ -135,6 +139,11 @@ export const CommunityRightRail = ({
           ))}
         </div>
       )}
+      <Button asChild className="mt-4 w-full" size="sm" variant="outline">
+        <Link href="/comunidade/grupos/novo">
+          <PlusIcon aria-hidden="true" /> Criar grupo de estudo
+        </Link>
+      </Button>
     </section>
 
     <section

@@ -9,7 +9,6 @@ import {
   SingleFlightSubmit,
 } from "@/components/mutations/single-flight-form";
 import { communityPostHref, getMyCommunityPosts } from "@/lib/community";
-import { communityPostKindLabel } from "@/lib/community-post-types";
 import { requireMemberId } from "@/lib/learning";
 import { setPostStatus, softDeletePost } from "../actions";
 
@@ -53,7 +52,7 @@ const MyCommunityPage = async () => {
           <div className="paper-surface mt-10 border p-8 sm:p-12">
             <FileTextIcon
               aria-hidden="true"
-              className="size-6 text-brand-action"
+              className="size-6 text-brand-action-text"
             />
             <h2 className="mt-5 font-display text-3xl">
               Você ainda não publicou nada.
@@ -83,9 +82,6 @@ const MyCommunityPage = async () => {
                           }
                         >
                           {statusLabel(post.status)}
-                        </Badge>
-                        <Badge variant="outline">
-                          {communityPostKindLabel(post.kind)}
                         </Badge>
                         <span className="text-muted-foreground text-xs">
                           {post.space?.title ?? "Feed geral"}

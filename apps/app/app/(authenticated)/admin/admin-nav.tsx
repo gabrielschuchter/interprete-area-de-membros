@@ -9,6 +9,8 @@ const groups = [
     label: "Acompanhar",
     items: [
       ["Visão geral", "/admin"],
+      ["Atribuições", "/admin/atribuicoes"],
+      ["Metas e tarefas", "/admin/estudo"],
       ["Atividades", "/admin/activities"],
       ["Encontros", "/admin/meetings"],
       ["Gravações", "/admin/gravacoes"],
@@ -20,6 +22,8 @@ const groups = [
     items: [
       ["Conteúdo", "/admin/learning"],
       ["Biblioteca", "/admin/library"],
+      ["Exercícios", "/admin/exercicios"],
+      ["Medalhas", "/admin/badges"],
       ["Coleções", "/admin/colecoes"],
       ["Comunidade", "/admin/community"],
     ],

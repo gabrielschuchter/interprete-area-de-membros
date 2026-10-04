@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { CommunityPostView } from "@/components/community/community-post-view";
+import { StudyHeartbeat } from "@/components/learning/study-heartbeat";
 import { getMemberRole } from "@/lib/authorization";
 import { getCommunityPost } from "@/lib/community";
 import { requireMemberId } from "@/lib/learning";
@@ -32,7 +33,12 @@ const LegacyCommunityPostPage = async ({
     notFound();
   }
 
-  return <CommunityPostView memberId={memberId} post={post} role={role} />;
+  return (
+    <>
+      <StudyHeartbeat activityKind="COMMUNITY" resourceId={post.id} />
+      <CommunityPostView memberId={memberId} post={post} role={role} />
+    </>
+  );
 };
 
 export default LegacyCommunityPostPage;

@@ -57,7 +57,7 @@ const SettingsPage = async () => {
             <div className="mt-7 flex items-start gap-3 border-border border-t pt-5">
               <MailIcon
                 aria-hidden="true"
-                className="mt-0.5 size-4 shrink-0 text-brand-action"
+                className="mt-0.5 size-4 shrink-0 text-brand-action-text"
               />
               <div className="min-w-0">
                 <p className="text-muted-foreground text-xs uppercase tracking-[0.16em]">
@@ -94,7 +94,7 @@ const SettingsPage = async () => {
             <div className="mt-7 flex items-start gap-3 border-border border-t pt-5">
               <UserRoundIcon
                 aria-hidden="true"
-                className="mt-0.5 size-4 shrink-0 text-brand-action"
+                className="mt-0.5 size-4 shrink-0 text-brand-action-text"
               />
               <p className="text-muted-foreground text-sm leading-6">
                 Atualize sua foto, nome, bio, profissão, interesses e links no

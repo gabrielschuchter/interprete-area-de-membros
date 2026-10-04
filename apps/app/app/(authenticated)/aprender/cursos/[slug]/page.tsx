@@ -109,7 +109,7 @@ const CoursePage = async ({ params }: CoursePageProperties) => {
         <section className="paper-surface flex min-h-64 flex-col items-start justify-center border p-7 sm:p-10">
           <ListTreeIcon
             aria-hidden="true"
-            className="size-6 text-brand-action"
+            className="size-6 text-brand-action-text"
           />
           <p className="brand-eyebrow mt-6">Estrutura do curso</p>
           <h2 className="mt-3 font-display text-3xl">
@@ -141,7 +141,7 @@ const CoursePage = async ({ params }: CoursePageProperties) => {
                 >
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="flex items-start gap-4">
-                      <span className="font-data text-brand-action text-sm">
+                      <span className="font-data text-brand-action-text text-sm">
                         {String(moduleIndex + 1).padStart(2, "0")}
                       </span>
                       <div>
@@ -189,12 +189,12 @@ const CoursePage = async ({ params }: CoursePageProperties) => {
                               {isCompleted ? (
                                 <CheckCircle2Icon
                                   aria-label="Aula concluída"
-                                  className="size-5 shrink-0 text-brand-action"
+                                  className="size-5 shrink-0 text-brand-action-text"
                                 />
                               ) : (
                                 <PlayCircleIcon
                                   aria-label="Abrir aula"
-                                  className="size-5 shrink-0 text-muted-foreground transition-colors group-hover:text-brand-action"
+                                  className="size-5 shrink-0 text-muted-foreground transition-colors group-hover:text-brand-action-text"
                                 />
                               )}
                             </Link>
@@ -217,7 +217,7 @@ const CoursePage = async ({ params }: CoursePageProperties) => {
           ["Retome", "O caminho permanece aberto para uma segunda passagem."],
         ].map(([title, description], index) => (
           <div className="border-brand-action/60 border-l-2 pl-4" key={title}>
-            <span className="font-data text-brand-action text-xs">
+            <span className="font-data text-brand-action-text text-xs">
               {String(index + 1).padStart(2, "0")}
             </span>
             <h3 className="mt-3 font-display text-2xl">{title}</h3>

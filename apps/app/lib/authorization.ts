@@ -18,10 +18,10 @@ export const requireSession = async () => {
 export const getMemberRole = cache(async (userId: string) => {
   const member = await database.member.findUnique({
     where: { id: userId },
-    select: { role: true },
+    select: { role: true, deactivatedAt: true },
   });
 
-  return member?.role ?? MemberRole.MEMBER;
+  return member && !member.deactivatedAt ? member.role : MemberRole.MEMBER;
 });
 
 export const requireStaff = async () => {

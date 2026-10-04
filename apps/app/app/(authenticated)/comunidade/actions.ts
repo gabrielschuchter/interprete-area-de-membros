@@ -1,23 +1,35 @@
 "use server";
 
-import { auth } from "@repo/auth/server";
+import { randomUUID } from "node:crypto";
 import {
-  CommunityPostKind,
+  BadgeCriterion,
+  CommunitySpaceInvitationStatus,
+  CommunitySpaceMemberRole,
+  CommunitySpaceVisibility,
   CommunityVoteKind,
   ContentStatus,
   database,
   type Prisma,
 } from "@repo/database";
+import { enqueueNotificationBatch } from "@repo/member-domain";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { auth } from "@/lib/auth";
 import { getMemberRole, requireStaff } from "@/lib/authorization";
+import { evaluateMemberBadges } from "@/lib/badges";
 import { enrichCommunityArticleMetadata } from "@/lib/community-article-metadata";
 import {
   plainTextFromDocument,
   sanitizeRichDocument,
 } from "@/lib/community-content";
 import { createCommunityComment } from "@/lib/community-mutations";
+import {
+  communityPostMutationAudienceWhere,
+  communitySpaceMemberAudienceWhere,
+  communitySpaceSlugBase,
+  normalizeCommunitySpaceTitle,
+} from "@/lib/community-space-rules";
 import {
   deleteMemberAsset,
   isOwnedMemberAssetPath,
@@ -29,6 +41,7 @@ import {
   isMutationRateLimitError,
   isUniqueConstraintError,
 } from "@/lib/mutation-reliability";
+import { dispatchPendingNotifications } from "@/lib/notification-outbox-dispatch";
 import {
   documentHasGroupMention,
   extractMentionIdsFromDocument,
@@ -60,13 +73,6 @@ const postInput = z.object({
   title: z.string().trim().min(4).max(180),
   content: z.string().trim().min(1).max(40_000),
 });
-
-const parseKind = (value: FormDataEntryValue | null) => {
-  const candidate = textValue(value) as CommunityPostKind;
-  return Object.values(CommunityPostKind).includes(candidate)
-    ? candidate
-    : CommunityPostKind.DISCUSSION;
-};
 
 const parseTags = (value: FormDataEntryValue | null) =>
   [
@@ -234,42 +240,61 @@ const excerptFrom = (content: string) => {
   return normalized.length > 360 ? `${normalized.slice(0, 357)}…` : normalized;
 };
 
-const publishedPostWhere = (postId: string, spaceSlug?: string) => ({
-  id: postId,
-  status: ContentStatus.PUBLISHED,
-  deletedAt: null,
-  ...(spaceSlug
-    ? {
-        space: {
-          is: { slug: spaceSlug, status: ContentStatus.PUBLISHED },
-        },
-      }
-    : {
-        OR: [
-          { space: null },
-          { space: { is: { status: ContentStatus.PUBLISHED } } },
-        ],
-      }),
-});
+const publishedPostWhere = async (
+  postId: string,
+  memberId: string,
+  spaceSlug?: string
+) => {
+  const role = await getMemberRole(memberId);
+  const canModeratePrivateGroups = canModerate(role);
+  return {
+    id: postId,
+    status: ContentStatus.PUBLISHED,
+    deletedAt: null,
+    ...(spaceSlug
+      ? {
+          space: {
+            is: {
+              slug: spaceSlug,
+              status: ContentStatus.PUBLISHED,
+              ...communitySpaceMemberAudienceWhere(
+                memberId,
+                canModeratePrivateGroups
+              ),
+            },
+          },
+        }
+      : communityPostMutationAudienceWhere(memberId, canModeratePrivateGroups)),
+  };
+};
 
-const publishedSpace = (spaceId: string, spaceSlug?: string) => {
+const publishedSpace = async (
+  spaceId: string,
+  memberId: string,
+  spaceSlug?: string
+) => {
   if (!spaceId) {
     return null;
   }
+  const role = await getMemberRole(memberId);
   return database.communitySpace.findFirst({
     where: {
       id: spaceId,
       status: ContentStatus.PUBLISHED,
+      ...communitySpaceMemberAudienceWhere(memberId, canModerate(role)),
       ...(spaceSlug ? { slug: spaceSlug } : {}),
     },
-    select: { id: true, slug: true },
+    select: { id: true, slug: true, visibility: true, ownerId: true },
   });
 };
 
-const spaceData = async (formData: FormData) => {
+const spaceData = async (formData: FormData, memberId: string) => {
   const spaceId = textValue(formData.get("spaceId"));
   const spaceSlug = textValue(formData.get("spaceSlug"));
-  const space = await publishedSpace(spaceId, spaceSlug || undefined);
+  const space = await publishedSpace(spaceId, memberId, spaceSlug || undefined);
+  if ((spaceId || spaceSlug) && !space) {
+    redirect("/comunidade");
+  }
   return { spaceId: space?.id ?? null, space };
 };
 
@@ -331,7 +356,7 @@ export const startDraft = async (formData: FormData) => {
   if (!(userId && idempotencyKey)) {
     return;
   }
-  const { space } = await spaceData(formData);
+  const { space } = await spaceData(formData, userId);
   const existing = await database.communityPost.findUnique({
     where: {
       authorId_idempotencyKey: { authorId: userId, idempotencyKey },
@@ -354,7 +379,7 @@ export const startDraft = async (formData: FormData) => {
         spaceId: space?.id ?? null,
         authorId: userId,
         idempotencyKey,
-        kind: parseKind(formData.get("kind")),
+        kind: "DISCUSSION",
         title: draftTitle,
         content: "",
         excerpt: "",
@@ -386,7 +411,7 @@ export const createDraft = async (formData: FormData) => {
   if (!(userId && idempotencyKey)) {
     return { ok: false as const };
   }
-  const { space } = await spaceData(formData);
+  const { space } = await spaceData(formData, userId);
   const existing = await database.communityPost.findUnique({
     where: {
       authorId_idempotencyKey: { authorId: userId, idempotencyKey },
@@ -413,7 +438,7 @@ export const createDraft = async (formData: FormData) => {
         spaceId: space?.id ?? null,
         authorId: userId,
         idempotencyKey,
-        kind: parseKind(formData.get("kind")),
+        kind: "DISCUSSION",
         title: draftTitle,
         content: "",
         excerpt: "",
@@ -445,7 +470,7 @@ export const createPost = async (formData: FormData) => {
   if (!(userId && idempotencyKey)) {
     return;
   }
-  const { space } = await spaceData(formData);
+  const { space } = await spaceData(formData, userId);
   const { document, plainText } = contentFromForm(formData);
   if (
     documentHasGroupMention(document) &&
@@ -492,30 +517,47 @@ export const createPost = async (formData: FormData) => {
   await getOrCreateProfile(userId);
   const persistedDocument = await enrichCommunityArticleMetadata(document);
   const slug = await uniquePostSlug(parsed.data.title);
+  const publishedAt = new Date();
   let post: {
     id: string;
     slug: string | null;
     space: { slug: string } | null;
   };
   try {
-    post = await database.communityPost.create({
-      data: {
-        spaceId: space?.id ?? null,
-        authorId: userId,
-        idempotencyKey,
-        kind: parseKind(formData.get("kind")),
-        title: parsed.data.title,
-        subtitle: textValue(formData.get("subtitle")) || null,
-        coverUrl: safeImageUrl(textValue(formData.get("coverUrl")), userId),
-        content: parsed.data.content,
-        excerpt: excerptFrom(parsed.data.content),
-        contentJson: persistedDocument as Prisma.InputJsonValue | undefined,
-        tags: parseTags(formData.get("tags")),
-        slug,
-        status: ContentStatus.PUBLISHED,
-        publishedAt: new Date(),
-      },
-      select: { id: true, slug: true, space: { select: { slug: true } } },
+    post = await database.$transaction(async (transaction) => {
+      const created = await transaction.communityPost.create({
+        data: {
+          spaceId: space?.id ?? null,
+          authorId: userId,
+          idempotencyKey,
+          kind: "DISCUSSION",
+          title: parsed.data.title,
+          subtitle: textValue(formData.get("subtitle")) || null,
+          coverUrl: safeImageUrl(textValue(formData.get("coverUrl")), userId),
+          content: parsed.data.content,
+          excerpt: excerptFrom(parsed.data.content),
+          contentJson: persistedDocument as Prisma.InputJsonValue | undefined,
+          tags: parseTags(formData.get("tags")),
+          slug,
+          status: ContentStatus.PUBLISHED,
+          publishedAt,
+        },
+        select: { id: true, slug: true, space: { select: { slug: true } } },
+      });
+      if (space) {
+        await enqueueCommunityGroupPostNotifications(transaction, {
+          actorId: userId,
+          groupId: space.id,
+          occurredAt: publishedAt,
+          postId: created.id,
+          href: communityHref(created),
+        });
+      }
+      await evaluateMemberBadges(transaction, userId, publishedAt, {
+        criteria: [BadgeCriterion.COMMUNITY_PUBLICATIONS],
+        force: true,
+      });
+      return created;
     });
   } catch (error) {
     if (!isUniqueConstraintError(error)) {
@@ -532,6 +574,7 @@ export const createPost = async (formData: FormData) => {
     }
     redirect(communityHref(canonical));
   }
+  await dispatchPendingNotifications();
   await ensureTopicFollow(userId, post.id);
   await notifyCommunityPost({
     actorId: userId,
@@ -555,7 +598,7 @@ export const updateDraft = async (formData: FormData) => {
     action: "community.mutation",
     memberId: userId,
   });
-  const { spaceId, space } = await spaceData(formData);
+  const { spaceId, space } = await spaceData(formData, userId);
   const { document, plainText } = contentFromForm(formData);
   const post = await database.communityPost.findFirst({
     where: {
@@ -579,7 +622,6 @@ export const updateDraft = async (formData: FormData) => {
     where: { id: post.id },
     data: {
       spaceId,
-      kind: parseKind(formData.get("kind")),
       title: title.slice(0, 180),
       subtitle: textValue(formData.get("subtitle")).slice(0, 1000) || null,
       coverUrl: safeImageUrl(textValue(formData.get("coverUrl")), userId),
@@ -619,7 +661,7 @@ export const publishPost = async (formData: FormData) => {
     action: "community.mutation",
     memberId: userId,
   });
-  const { spaceId, space } = await spaceData(formData);
+  const { spaceId, space } = await spaceData(formData, userId);
   const { document, plainText } = contentFromForm(formData);
   if (
     documentHasGroupMention(document) &&
@@ -683,24 +725,61 @@ export const publishPost = async (formData: FormData) => {
   }
   const persistedDocument = await enrichCommunityArticleMetadata(document);
   const slug = await uniquePostSlug(parsed.data.title, post.id);
-  const updatedPost = await database.communityPost.update({
-    where: { id: post.id },
-    data: {
-      spaceId,
-      kind: parseKind(formData.get("kind")),
-      title: parsed.data.title,
-      subtitle: textValue(formData.get("subtitle")).slice(0, 1000) || null,
-      coverUrl: safeImageUrl(textValue(formData.get("coverUrl")), userId),
-      content: parsed.data.content,
-      excerpt: excerptFrom(parsed.data.content),
-      contentJson: persistedDocument as Prisma.InputJsonValue | undefined,
-      tags: parseTags(formData.get("tags")),
-      slug,
-      status: ContentStatus.PUBLISHED,
-      publishedAt: new Date(),
-    },
-    select: { id: true, slug: true, space: { select: { slug: true } } },
+  const publishedAt = new Date();
+  const role = await getMemberRole(userId);
+  const updatedPost = await database.$transaction(async (transaction) => {
+    if (
+      spaceId &&
+      !(await transaction.communitySpace.findFirst({
+        where: {
+          id: spaceId,
+          status: ContentStatus.PUBLISHED,
+          ...communitySpaceMemberAudienceWhere(userId, canModerate(role)),
+        },
+        select: { id: true },
+      }))
+    ) {
+      return null;
+    }
+    const published = await transaction.communityPost.update({
+      where: { id: post.id },
+      data: {
+        spaceId,
+        title: parsed.data.title,
+        subtitle: textValue(formData.get("subtitle")).slice(0, 1000) || null,
+        coverUrl: safeImageUrl(textValue(formData.get("coverUrl")), userId),
+        content: parsed.data.content,
+        excerpt: excerptFrom(parsed.data.content),
+        contentJson: persistedDocument as Prisma.InputJsonValue | undefined,
+        tags: parseTags(formData.get("tags")),
+        slug,
+        status: ContentStatus.PUBLISHED,
+        publishedAt,
+      },
+      select: { id: true, slug: true, space: { select: { slug: true } } },
+    });
+    if (space) {
+      await enqueueCommunityGroupPostNotifications(transaction, {
+        actorId: userId,
+        groupId: space.id,
+        occurredAt: publishedAt,
+        postId: published.id,
+        href: `/comunidade/publicacoes/${slug}`,
+      });
+    }
+    await evaluateMemberBadges(transaction, userId, publishedAt, {
+      criteria: [BadgeCriterion.COMMUNITY_PUBLICATIONS],
+      force: true,
+    });
+    return published;
   });
+  if (!updatedPost) {
+    return {
+      ok: false as const,
+      error: "Você não pode publicar neste grupo.",
+    };
+  }
+  await dispatchPendingNotifications();
   await ensureTopicFollow(userId, updatedPost.id);
   await notifyCommunityPost({
     actorId: userId,
@@ -736,7 +815,7 @@ export const updatePost = async (formData: FormData) => {
     action: "community.mutation",
     memberId: userId,
   });
-  const { spaceId, space } = await spaceData(formData);
+  const { spaceId, space } = await spaceData(formData, userId);
   const { document, plainText } = contentFromForm(formData);
   if (
     documentHasGroupMention(document) &&
@@ -774,7 +853,6 @@ export const updatePost = async (formData: FormData) => {
     where: { id: post.id },
     data: {
       spaceId,
-      kind: parseKind(formData.get("kind")),
       title: parsed.data.title,
       subtitle: textValue(formData.get("subtitle")).slice(0, 1000) || null,
       coverUrl: safeImageUrl(textValue(formData.get("coverUrl")), userId),
@@ -783,6 +861,7 @@ export const updatePost = async (formData: FormData) => {
       contentJson: persistedDocument as Prisma.InputJsonValue | undefined,
       tags: parseTags(formData.get("tags")),
       slug,
+      editedAt: new Date(),
     },
   });
   if (post.status === ContentStatus.PUBLISHED) {
@@ -844,12 +923,13 @@ export const setPostStatus = async (formData: FormData) => {
     },
     select: {
       authorId: true,
+      status: true,
       title: true,
       content: true,
       contentJson: true,
       slug: true,
       publishedAt: true,
-      space: { select: { slug: true } },
+      space: { select: { id: true, slug: true } },
     },
   });
   const role = await getMemberRole(userId);
@@ -878,15 +958,45 @@ export const setPostStatus = async (formData: FormData) => {
     requestedStatus === ContentStatus.PUBLISHED
       ? (post.slug ?? (await uniquePostSlug(post.title, postId)))
       : post.slug;
-  await database.communityPost.update({
-    where: { id: postId },
-    data: {
-      status: requestedStatus as ContentStatus,
-      ...(requestedStatus === ContentStatus.PUBLISHED
-        ? { publishedAt: post.publishedAt ?? new Date(), slug }
-        : {}),
-    },
+  const publishedAt = post.publishedAt ?? new Date();
+  await database.$transaction(async (transaction) => {
+    await transaction.communityPost.update({
+      where: { id: postId },
+      data: {
+        status: requestedStatus as ContentStatus,
+        ...(requestedStatus === ContentStatus.PUBLISHED
+          ? { publishedAt, slug }
+          : {}),
+      },
+    });
+    if (
+      requestedStatus === ContentStatus.PUBLISHED &&
+      post.space?.id &&
+      post.publishedAt === null
+    ) {
+      await enqueueCommunityGroupPostNotifications(transaction, {
+        actorId: userId,
+        groupId: post.space.id,
+        occurredAt: publishedAt,
+        postId,
+        href: slug
+          ? `/comunidade/publicacoes/${slug}`
+          : `/comunidade/${post.space.slug}/${postId}`,
+      });
+    }
+    if (
+      requestedStatus === ContentStatus.PUBLISHED &&
+      post.status !== ContentStatus.PUBLISHED
+    ) {
+      await evaluateMemberBadges(transaction, post.authorId, publishedAt, {
+        criteria: [BadgeCriterion.COMMUNITY_PUBLICATIONS],
+        force: true,
+      });
+    }
   });
+  if (requestedStatus === ContentStatus.PUBLISHED) {
+    await dispatchPendingNotifications();
+  }
   if (requestedStatus === ContentStatus.PUBLISHED) {
     await ensureTopicFollow(post.authorId, postId);
     await notifyCommunityPost({
@@ -923,7 +1033,7 @@ export const toggleBookmark = async (formData: FormData) => {
     memberId: userId,
   });
   const post = await database.communityPost.findFirst({
-    where: publishedPostWhere(postId, spaceSlug || undefined),
+    where: await publishedPostWhere(postId, userId, spaceSlug || undefined),
     select: { id: true, slug: true, space: { select: { slug: true } } },
   });
   if (!post) {
@@ -960,7 +1070,7 @@ export const toggleTopicFollow = async (formData: FormData) => {
     memberId: userId,
   });
   const post = await database.communityPost.findFirst({
-    where: publishedPostWhere(postId, spaceSlug || undefined),
+    where: await publishedPostWhere(postId, userId, spaceSlug || undefined),
     select: { id: true, slug: true, space: { select: { slug: true } } },
   });
   if (!post) {
@@ -993,7 +1103,7 @@ export const toggleTopicMute = async (formData: FormData) => {
     memberId: userId,
   });
   const post = await database.communityPost.findFirst({
-    where: publishedPostWhere(postId, spaceSlug || undefined),
+    where: await publishedPostWhere(postId, userId, spaceSlug || undefined),
     select: { id: true, slug: true, space: { select: { slug: true } } },
   });
   if (!post) {
@@ -1101,7 +1211,9 @@ export const updateComment = async (formData: FormData) => {
       postId,
       authorId: userId,
       deletedAt: null,
-      post: { is: publishedPostWhere(postId, spaceSlug || undefined) },
+      post: {
+        is: await publishedPostWhere(postId, userId, spaceSlug || undefined),
+      },
     },
     select: {
       id: true,
@@ -1125,6 +1237,7 @@ export const updateComment = async (formData: FormData) => {
     data: {
       content,
       contentJson: document as Prisma.InputJsonValue | undefined,
+      editedAt: new Date(),
     },
   });
   if (
@@ -1168,7 +1281,7 @@ export const togglePostVote = async (formData: FormData) => {
     memberId: userId,
   });
   const post = await database.communityPost.findFirst({
-    where: publishedPostWhere(postId, spaceSlug || undefined),
+    where: await publishedPostWhere(postId, userId, spaceSlug || undefined),
     select: { id: true, slug: true, space: { select: { slug: true } } },
   });
   if (!post) {
@@ -1212,7 +1325,9 @@ export const toggleCommentVote = async (formData: FormData) => {
       id: commentId,
       postId,
       deletedAt: null,
-      post: { is: publishedPostWhere(postId, spaceSlug || undefined) },
+      post: {
+        is: await publishedPostWhere(postId, userId, spaceSlug || undefined),
+      },
     },
     select: { id: true },
   });
@@ -1279,7 +1394,9 @@ export const softDeleteComment = async (formData: FormData) => {
   const comment = await database.communityComment.findFirst({
     where: {
       id: commentId,
-      post: { is: publishedPostWhere(postId, spaceSlug || undefined) },
+      post: {
+        is: await publishedPostWhere(postId, userId, spaceSlug || undefined),
+      },
     },
     select: { authorId: true, deletedAt: true },
   });
@@ -1312,7 +1429,7 @@ export const togglePostPin = async (formData: FormData) => {
   });
   const post = await database.communityPost.findFirst({
     where: {
-      ...publishedPostWhere(postId, spaceSlug || undefined),
+      ...(await publishedPostWhere(postId, userId, spaceSlug || undefined)),
     },
     select: {
       id: true,
@@ -1343,7 +1460,9 @@ export const togglePostFeatured = async (formData: FormData) => {
     memberId: userId,
   });
   const post = await database.communityPost.findFirst({
-    where: { ...publishedPostWhere(postId, spaceSlug || undefined) },
+    where: {
+      ...(await publishedPostWhere(postId, userId, spaceSlug || undefined)),
+    },
     select: {
       id: true,
       slug: true,
@@ -1362,6 +1481,330 @@ export const togglePostFeatured = async (formData: FormData) => {
   });
   revalidateCommunity(post.space?.slug, postId, post.slug ?? undefined);
   revalidatePath("/admin/community");
+};
+
+const groupCreateSchema = z.object({
+  title: z.string().trim().min(3).max(80),
+  description: z.string().trim().max(500),
+  details: z.string().trim().max(2400),
+  coverUrl: z.string().trim().max(2000),
+  visibility: z.nativeEnum(CommunitySpaceVisibility),
+});
+
+const formInviteeIds = (formData: FormData) =>
+  [...new Set(formData.getAll("inviteeIds"))]
+    .filter((value): value is string => typeof value === "string")
+    .map((id) => id.trim())
+    .filter((id) => id.length > 0);
+
+const enqueueGroupInvitationNotifications = async (
+  transaction: Prisma.TransactionClient,
+  input: {
+    readonly actorId: string;
+    readonly createdAt: Date;
+    readonly groupId: string;
+    readonly invitations: readonly {
+      readonly id: string;
+      readonly inviteeId: string;
+    }[];
+  }
+) => {
+  if (input.invitations.length === 0) {
+    return;
+  }
+  await enqueueNotificationBatch(transaction, {
+    actorId: input.actorId,
+    aggregateType: "CommunitySpaceInvitationBatch",
+    aggregateId: input.groupId,
+    idempotencyKey: `community-space-invitations:${input.groupId}:${input.createdAt.getTime()}`,
+    occurredAt: input.createdAt,
+    notifications: input.invitations.map((invitation) => ({
+      recipientId: invitation.inviteeId,
+      type: "GROUP_INVITATION",
+      entityType: "COMMUNITY_INVITATION",
+      entityId: invitation.id,
+      dedupeKey: `community-space-invitation:${invitation.id}`,
+      groupKey: input.groupId,
+      href: "/perfil#convites",
+    })),
+  });
+};
+
+const enqueueCommunityGroupPostNotifications = async (
+  transaction: Prisma.TransactionClient,
+  input: {
+    readonly actorId: string;
+    readonly groupId: string;
+    readonly occurredAt: Date;
+    readonly postId: string;
+    readonly href: string;
+  }
+) => {
+  const [space, memberships] = await Promise.all([
+    transaction.communitySpace.findUnique({
+      where: { id: input.groupId },
+      select: { ownerId: true, visibility: true, status: true },
+    }),
+    transaction.communitySpaceMember.findMany({
+      where: {
+        spaceId: input.groupId,
+        member: { deactivatedAt: null },
+      },
+      select: { memberId: true },
+    }),
+  ]);
+  if (!(space && space.status === ContentStatus.PUBLISHED)) {
+    return;
+  }
+  const recipients = [
+    ...new Set([
+      ...(space.ownerId ? [space.ownerId] : []),
+      ...memberships.map(({ memberId }) => memberId),
+    ]),
+  ].filter((memberId) => memberId !== input.actorId);
+  if (recipients.length === 0) {
+    return;
+  }
+  await enqueueNotificationBatch(transaction, {
+    actorId: input.actorId,
+    aggregateType: "CommunityPost",
+    aggregateId: input.postId,
+    idempotencyKey: `community-group-post:${input.postId}`,
+    occurredAt: input.occurredAt,
+    notifications: recipients.map((recipientId) => ({
+      recipientId,
+      type: "GROUP_POST",
+      entityType: "TOPIC",
+      entityId: input.postId,
+      groupKey: input.groupId,
+      dedupeKey: `community-group-post:${input.postId}:${recipientId}`,
+      href: input.href,
+    })),
+  });
+};
+
+export const createStudyGroup = async (formData: FormData) => {
+  const memberId = await currentUserId();
+  if (!memberId) {
+    redirect("/sign-in");
+  }
+  const parsed = groupCreateSchema.safeParse({
+    title: textValue(formData.get("title")),
+    description: textValue(formData.get("description")),
+    details: textValue(formData.get("details")),
+    coverUrl: textValue(formData.get("coverUrl")),
+    visibility: textValue(formData.get("visibility")) || "PRIVATE",
+  });
+  const inviteeIds = formInviteeIds(formData);
+  if (!(parsed.success && inviteeIds.length <= 50)) {
+    redirect("/comunidade/grupos/novo?error=form");
+  }
+  const normalizedTitle = normalizeCommunitySpaceTitle(parsed.data.title);
+  if (!normalizedTitle) {
+    redirect("/comunidade/grupos/novo?error=name");
+  }
+  await consumeMutationRateLimit({
+    action: "community.group.create",
+    memberId,
+  });
+  await getOrCreateProfile(memberId);
+  const coverUrl = safeImageUrl(parsed.data.coverUrl, memberId);
+  const slugBase = communitySpaceSlugBase(parsed.data.title);
+  const ownerSuffix = communitySpaceSlugBase(memberId).slice(-7) || "member";
+
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    try {
+      const result = await database.$transaction(async (transaction) => {
+        const duplicateName = await transaction.communitySpace.findFirst({
+          where: { ownerId: memberId, normalizedTitle },
+          select: { id: true },
+        });
+        if (duplicateName) {
+          return { duplicateName: true as const };
+        }
+
+        const suffix =
+          attempt === 0
+            ? ""
+            : `-${ownerSuffix}${attempt > 1 ? `-${attempt}` : ""}`;
+        const slug = `${slugBase.slice(0, 80 - suffix.length)}${suffix}`;
+        const space = await transaction.communitySpace.create({
+          data: {
+            title: parsed.data.title,
+            normalizedTitle,
+            slug,
+            description: parsed.data.description || null,
+            details: parsed.data.details || null,
+            coverUrl,
+            visibility: parsed.data.visibility,
+            ownerId: memberId,
+            status: ContentStatus.PUBLISHED,
+            members: {
+              create: { memberId, role: CommunitySpaceMemberRole.OWNER },
+            },
+          },
+          select: { id: true, slug: true },
+        });
+
+        let invitations: { id: string; inviteeId: string }[] = [];
+        if (inviteeIds.length > 0) {
+          const activeInvitees = await transaction.member.findMany({
+            where: {
+              id: { in: inviteeIds },
+              deactivatedAt: null,
+              NOT: { id: memberId },
+            },
+            select: { id: true },
+          });
+          if (activeInvitees.length > 0) {
+            invitations =
+              await transaction.communitySpaceInvitation.createManyAndReturn({
+                data: activeInvitees.map(({ id }) => ({
+                  id: randomUUID(),
+                  spaceId: space.id,
+                  inviteeId: id,
+                  inviterId: memberId,
+                })),
+                skipDuplicates: true,
+                select: { id: true, inviteeId: true },
+              });
+            await enqueueGroupInvitationNotifications(transaction, {
+              actorId: memberId,
+              createdAt: new Date(),
+              groupId: space.id,
+              invitations,
+            });
+          }
+        }
+        return { duplicateName: false as const, slug: space.slug };
+      });
+      if (result.duplicateName) {
+        redirect("/comunidade/grupos/novo?error=name");
+      }
+      await dispatchPendingNotifications();
+      revalidatePath("/comunidade");
+      revalidatePath("/perfil");
+      redirect(`/comunidade/${result.slug}`);
+    } catch (error) {
+      if (!isUniqueConstraintError(error)) {
+        throw error;
+      }
+      const duplicateName = await database.communitySpace.findFirst({
+        where: { ownerId: memberId, normalizedTitle },
+        select: { id: true },
+      });
+      if (duplicateName) {
+        redirect("/comunidade/grupos/novo?error=name");
+      }
+    }
+  }
+  redirect("/comunidade/grupos/novo?error=slug");
+};
+
+export const inviteStudyGroupMembers = async (formData: FormData) => {
+  const memberId = await currentUserId();
+  const groupId = textValue(formData.get("groupId"));
+  const inviteeIds = formInviteeIds(formData);
+  if (
+    !(memberId && groupId) ||
+    inviteeIds.length === 0 ||
+    inviteeIds.length > 50
+  ) {
+    return;
+  }
+  await consumeMutationRateLimit({
+    action: "community.group.invite",
+    memberId,
+  });
+  const role = await getMemberRole(memberId);
+  const group = await database.communitySpace.findFirst({
+    where: {
+      id: groupId,
+      status: ContentStatus.PUBLISHED,
+      ...(canModerate(role) ? {} : { ownerId: memberId }),
+    },
+    select: { id: true, slug: true, ownerId: true, visibility: true },
+  });
+  if (!group) {
+    return;
+  }
+  const createdAt = new Date();
+  const invitations = await database.$transaction(async (transaction) => {
+    const activeInvitees = await transaction.member.findMany({
+      where: {
+        id: { in: inviteeIds },
+        deactivatedAt: null,
+        NOT: { id: memberId },
+        communitySpaceMemberships: { none: { spaceId: groupId } },
+      },
+      select: { id: true },
+    });
+    const pending = await transaction.communitySpaceInvitation.findMany({
+      where: {
+        spaceId: groupId,
+        status: CommunitySpaceInvitationStatus.PENDING,
+        inviteeId: { in: activeInvitees.map(({ id }) => id) },
+      },
+      select: { inviteeId: true },
+    });
+    const pendingIds = new Set(pending.map(({ inviteeId }) => inviteeId));
+    const newInvitees = activeInvitees.filter(({ id }) => !pendingIds.has(id));
+    if (newInvitees.length === 0) {
+      return [];
+    }
+    const created =
+      await transaction.communitySpaceInvitation.createManyAndReturn({
+        data: newInvitees.map(({ id }) => ({
+          id: randomUUID(),
+          spaceId: groupId,
+          inviteeId: id,
+          inviterId: memberId,
+        })),
+        skipDuplicates: true,
+        select: { id: true, inviteeId: true },
+      });
+    await enqueueGroupInvitationNotifications(transaction, {
+      actorId: memberId,
+      createdAt,
+      groupId,
+      invitations: created,
+    });
+    return created;
+  });
+  if (invitations.length > 0) {
+    await dispatchPendingNotifications();
+    revalidatePath("/perfil");
+    revalidatePath(`/comunidade/${group.slug}`);
+  }
+};
+
+export const joinPublicStudyGroup = async (formData: FormData) => {
+  const memberId = await currentUserId();
+  const groupId = textValue(formData.get("groupId"));
+  if (!(memberId && groupId)) {
+    return;
+  }
+  await consumeMutationRateLimit({
+    action: "community.group.join",
+    memberId,
+  });
+  const group = await database.communitySpace.findFirst({
+    where: {
+      id: groupId,
+      status: ContentStatus.PUBLISHED,
+      visibility: CommunitySpaceVisibility.PUBLIC,
+    },
+    select: { id: true, slug: true },
+  });
+  if (!group) {
+    return;
+  }
+  await database.communitySpaceMember.upsert({
+    where: { spaceId_memberId: { spaceId: group.id, memberId } },
+    create: { spaceId: group.id, memberId },
+    update: {},
+  });
+  revalidatePath(`/comunidade/${group.slug}`);
 };
 
 export const createSpace = async (formData: FormData) => {

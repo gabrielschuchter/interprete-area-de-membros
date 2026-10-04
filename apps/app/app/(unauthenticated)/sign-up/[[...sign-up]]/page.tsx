@@ -1,3 +1,4 @@
+import { AuthLoadingState } from "@repo/auth/components/auth-loading-state";
 import { createMetadata } from "@repo/seo/metadata";
 import type { Metadata } from "next";
 import dynamic from "next/dynamic";
@@ -7,12 +8,7 @@ const description = "Crie sua conta na área de membros.";
 const SignUp = dynamic(
   () => import("@repo/auth/components/sign-up").then((mod) => mod.SignUp),
   {
-    loading: () => (
-      <div aria-live="polite" className="interprete-login__loading">
-        <span aria-hidden="true" />
-        Carregando cadastro…
-      </div>
-    ),
+    loading: () => <AuthLoadingState loadingLabel="Carregando cadastro…" />,
   }
 );
 

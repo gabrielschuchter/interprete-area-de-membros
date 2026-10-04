@@ -1,5 +1,5 @@
-import { auth } from "@repo/auth/server";
 import { NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
 
 export const GET = async () => {
   const { userId } = await auth();
@@ -8,10 +8,13 @@ export const GET = async () => {
   }
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL;
-  const anonKey =
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? process.env.SUPABASE_ANON_KEY;
-  if (!(url && anonKey)) {
+  const publishableKey =
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
+    process.env.SUPABASE_PUBLISHABLE_KEY ??
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
+    process.env.SUPABASE_ANON_KEY;
+  if (!(url && publishableKey)) {
     return NextResponse.json({ configured: false });
   }
-  return NextResponse.json({ anonKey, configured: true, url });
+  return NextResponse.json({ configured: true, publishableKey, url });
 };

@@ -11,7 +11,10 @@ export type OnboardingPreferenceKey =
   | "activityAssigned"
   | "feedbackReceived"
   | "activityDeadline"
-  | "announcements";
+  | "announcements"
+  | "groupInvitations"
+  | "groupPosts"
+  | "contentAssignments";
 
 export type OnboardingPreferences = Record<OnboardingPreferenceKey, boolean>;
 
@@ -40,6 +43,9 @@ export const defaultOnboardingPreferences: OnboardingPreferences = {
   commentReplies: true,
   feedbackReceived: true,
   followedTopicActivity: true,
+  groupInvitations: true,
+  groupPosts: true,
+  contentAssignments: true,
   lessonAvailable: true,
   mentions: true,
   moduleAvailable: true,

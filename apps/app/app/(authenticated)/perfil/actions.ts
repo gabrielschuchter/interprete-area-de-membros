@@ -1,9 +1,14 @@
 "use server";
 
-import { auth } from "@repo/auth/server";
-import { database } from "@repo/database";
+import {
+  CommunitySpaceInvitationStatus,
+  CommunitySpaceMemberRole,
+  database,
+} from "@repo/database";
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { auth } from "@/lib/auth";
 import {
   deleteMemberAsset,
   isOwnedMemberAssetPath,
@@ -169,4 +174,71 @@ export const updateProfile = async (formData: FormData) => {
   }
 
   redirect("/perfil?saved=1");
+};
+
+export const respondToStudyGroupInvitation = async (formData: FormData) => {
+  const { userId } = await auth();
+  if (!userId) {
+    redirect("/sign-in");
+  }
+  const invitationId = value(formData, "invitationId").trim();
+  const response = value(formData, "response").trim();
+  if (!invitationId || (response !== "ACCEPTED" && response !== "DECLINED")) {
+    return;
+  }
+  await consumeMutationRateLimit({
+    action: "community.group.invitation.respond",
+    memberId: userId,
+  });
+  const invitation = await database.$transaction(async (transaction) => {
+    const current = await transaction.communitySpaceInvitation.findFirst({
+      where: {
+        id: invitationId,
+        inviteeId: userId,
+        status: CommunitySpaceInvitationStatus.PENDING,
+        space: { is: { status: "PUBLISHED" } },
+      },
+      select: {
+        id: true,
+        spaceId: true,
+        space: { select: { slug: true } },
+      },
+    });
+    if (!current) {
+      return null;
+    }
+    const result = await transaction.communitySpaceInvitation.updateMany({
+      where: {
+        id: current.id,
+        inviteeId: userId,
+        status: CommunitySpaceInvitationStatus.PENDING,
+      },
+      data: {
+        status: response,
+        respondedAt: new Date(),
+      },
+    });
+    if (result.count !== 1) {
+      return null;
+    }
+    if (response === "ACCEPTED") {
+      await transaction.communitySpaceMember.upsert({
+        where: {
+          spaceId_memberId: { spaceId: current.spaceId, memberId: userId },
+        },
+        create: {
+          spaceId: current.spaceId,
+          memberId: userId,
+          role: CommunitySpaceMemberRole.MEMBER,
+        },
+        update: {},
+      });
+    }
+    return current;
+  });
+  if (invitation) {
+    revalidatePath("/perfil");
+    revalidatePath("/comunidade");
+    revalidatePath(`/comunidade/${invitation.space.slug}`);
+  }
 };

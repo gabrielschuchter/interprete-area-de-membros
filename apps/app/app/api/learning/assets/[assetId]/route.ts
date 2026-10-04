@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { auth } from "@repo/auth/server";
 import { NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
 import {
   canReadRecordingAsset,
   getAccessibleAsset,
@@ -13,6 +13,7 @@ import {
 } from "@/lib/learning-storage";
 
 export const dynamic = "force-dynamic";
+const youtubeVideoIdPattern = /^[A-Za-z0-9_-]{11}$/;
 
 interface AssetRouteProperties {
   readonly params: Promise<{ assetId: string }>;
@@ -410,6 +411,16 @@ export const GET = async (
 
   if (!asset) {
     return NextResponse.json({ error: "Asset not found" }, { status: 404 });
+  }
+
+  if (
+    asset.mediaProvider === "YOUTUBE" &&
+    youtubeVideoIdPattern.test(asset.mediaExternalId ?? "")
+  ) {
+    return NextResponse.redirect(
+      `https://www.youtube.com/watch?v=${asset.mediaExternalId}`,
+      { status: 307, headers: { "Cache-Control": "private, no-store" } }
+    );
   }
 
   if (asset.storagePath) {

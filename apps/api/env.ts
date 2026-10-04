@@ -6,6 +6,7 @@ import { keys as core } from "@repo/next-config/keys";
 import { keys as observability } from "@repo/observability/keys";
 import { keys as payments } from "@repo/payments/keys";
 import { createEnv } from "@t3-oss/env-nextjs";
+import { z } from "zod";
 
 export const env = createEnv({
   skipValidation: process.env.SKIP_ENV_VALIDATION === "true",
@@ -18,7 +19,11 @@ export const env = createEnv({
     observability(),
     payments(),
   ],
-  server: {},
+  server: {
+    CRON_SECRET: z.string().min(32).optional(),
+  },
   client: {},
-  runtimeEnv: {},
+  runtimeEnv: {
+    CRON_SECRET: process.env.CRON_SECRET,
+  },
 });

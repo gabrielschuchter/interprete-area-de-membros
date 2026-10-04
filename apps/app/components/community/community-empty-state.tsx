@@ -1,18 +1,15 @@
 import { Button } from "@repo/design-system/components/ui/button";
 import { PlusIcon } from "lucide-react";
 import Link from "next/link";
-import type { CommunityPostKindValue } from "@/lib/community-post-types";
 import { type CommunitySort, communityHref } from "@/lib/community-query";
 
 interface CommunityEmptyStateProperties {
   readonly hasFilters: boolean;
-  readonly kind?: CommunityPostKindValue;
   readonly sort: CommunitySort;
 }
 
 export const CommunityEmptyState = ({
   hasFilters,
-  kind,
   sort,
 }: CommunityEmptyStateProperties) => {
   let title = "A primeira ideia pode começar aqui.";
@@ -20,10 +17,7 @@ export const CommunityEmptyState = ({
     "Escreva uma publicação para colocar uma ideia em movimento.";
 
   if (sort === "unanswered") {
-    title =
-      kind === "QUESTION"
-        ? "Nenhuma pergunta sem resposta."
-        : "Nenhuma publicação sem resposta.";
+    title = "Nenhuma publicação sem resposta.";
     description =
       "Quando uma nova pergunta aparecer, ela ficará disponível aqui até receber uma resposta.";
   } else if (hasFilters) {

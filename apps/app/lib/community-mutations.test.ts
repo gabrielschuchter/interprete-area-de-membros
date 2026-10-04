@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
+vi.mock("@/lib/authorization", () => ({
+  getMemberRole: vi.fn().mockResolvedValue("MEMBER"),
+}));
 
 interface MockComment {
   authorId: string;

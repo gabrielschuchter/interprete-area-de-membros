@@ -11,7 +11,6 @@ import {
   getCommunityEditorPost,
   getCommunitySpaces,
 } from "@/lib/community";
-import { communityPostKindLowerLabel } from "@/lib/community-post-types";
 import { requireMemberId } from "@/lib/learning";
 
 interface CommunityEditorPageProperties {
@@ -33,7 +32,7 @@ const CommunityEditorPage = async ({
   const memberId = await requireMemberId();
   const [post, spaces] = await Promise.all([
     getCommunityEditorPost(postId, memberId),
-    getCommunitySpaces(),
+    getCommunitySpaces(memberId),
   ]);
 
   if (!post) {
@@ -56,9 +55,7 @@ const CommunityEditorPage = async ({
             </Link>
           </Button>
           <article className="mx-auto mt-10 max-w-3xl">
-            <p className="brand-eyebrow">
-              Pré-visualização · {communityPostKindLowerLabel(post.kind)}
-            </p>
+            <p className="brand-eyebrow">Pré-visualização · publicação</p>
             <div className="mt-6">
               <MemberIdentity
                 authorId={post.authorId}
@@ -102,13 +99,13 @@ const CommunityEditorPage = async ({
         </Button>
         <header className="mt-8 max-w-3xl">
           <p className="brand-eyebrow">
-            {post.status === "DRAFT" ? "Rascunho privado" : "Edição"} ·{" "}
-            {communityPostKindLowerLabel(post.kind)}
+            {post.status === "DRAFT" ? "Rascunho privado" : "Edição"} ·
+            publicação
           </p>
           <span aria-hidden="true" className="brand-rule mt-4" />
           <h1 className="mt-6 font-display text-5xl leading-none sm:text-6xl">
             {post.status === "DRAFT"
-              ? "Escreva com calma. A comunidade espera por boas perguntas."
+              ? "Escreva com calma. A comunidade espera pela sua publicação."
               : "Dê mais nitidez ao que você publicou."}
           </h1>
           <p className="mt-5 max-w-2xl text-muted-foreground leading-7">
@@ -120,7 +117,6 @@ const CommunityEditorPage = async ({
         <CommunityComposer
           initialContent={document}
           initialCoverUrl={post.coverUrl}
-          initialKind={post.kind}
           initialSpaceId={post.space?.id ?? null}
           initialSpaceSlug={post.space?.slug ?? null}
           initialSubtitle={post.subtitle}

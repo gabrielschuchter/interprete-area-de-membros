@@ -5,9 +5,13 @@ import {
   AvatarFallback,
   AvatarImage,
 } from "@repo/design-system/components/ui/avatar";
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import {
+  getAuthenticatedRealtimeClient,
+  refreshRealtimeAuth,
+} from "@/lib/realtime-client";
 
 const PRESENCE_CHANNEL = "community-presence";
 const HEARTBEAT_INTERVAL_MS = 45_000;
@@ -88,6 +92,7 @@ const initialFor = (member: OnlineCommunityMember) =>
 
 interface CommunityPresenceProperties {
   readonly fallbackProfiles?: readonly CommunityPresenceProfile[];
+  readonly memberId: string;
   readonly profile: CommunityPresenceProfile | null;
 }
 
@@ -98,6 +103,7 @@ const ignorePromise = (promise: Promise<unknown>) => {
 
 export const CommunityPresence = ({
   fallbackProfiles,
+  memberId,
   profile,
 }: CommunityPresenceProperties) => {
   const [members, setMembers] = useState<OnlineCommunityMember[]>([]);
@@ -137,8 +143,7 @@ export const CommunityPresence = ({
     let connecting = false;
     let reconnectTimer: number | undefined;
     let reconnectAttempt = 0;
-    type PresenceChannel = ReturnType<SupabaseClient["channel"]>;
-    let channel: PresenceChannel | null = null;
+    let channel: RealtimeChannel | null = null;
     let client: SupabaseClient | null = null;
 
     const clearReconnect = () => {
@@ -195,7 +200,6 @@ export const CommunityPresence = ({
 
     // The connection path deliberately handles configuration, token, socket,
     // presence state and reconnect statuses in one place.
-    // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: realtime lifecycle state machine
     const connect = async () => {
       if (disposed || connecting) {
         return;
@@ -204,60 +208,14 @@ export const CommunityPresence = ({
       setStatus("connecting");
 
       try {
-        const configResponse = await fetch(
-          "/api/notifications/realtime-config",
-          { headers: { Accept: "application/json" } }
-        );
-        if (!configResponse.ok || disposed) {
-          if (!disposed) {
-            setStatus("unavailable");
-            scheduleReconnect();
-          }
-          return;
-        }
-        const config = (await configResponse.json()) as {
-          anonKey?: string;
-          configured?: boolean;
-          url?: string;
-        };
-        if (config.configured === false) {
-          setMembers([]);
-          setStatus("unavailable");
-          return;
-        }
-        if (!(config.url && config.anonKey)) {
-          setStatus("unavailable");
-          scheduleReconnect();
-          return;
-        }
-
-        const tokenResponse = await fetch("/api/notifications/realtime-token", {
-          headers: { Accept: "application/json" },
-        });
-        if (!tokenResponse.ok || disposed) {
-          if (!disposed) {
-            setStatus("unavailable");
-            scheduleReconnect();
-          }
-          return;
-        }
-        const tokenPayload = (await tokenResponse.json()) as { token?: string };
-        if (!tokenPayload.token) {
-          setStatus("unavailable");
-          scheduleReconnect();
+        const authenticated = await getAuthenticatedRealtimeClient(memberId);
+        if (disposed) {
           return;
         }
 
         removeChannel();
-        const nextClient = createClient(config.url, config.anonKey, {
-          auth: { autoRefreshToken: false, persistSession: false },
-        });
+        const nextClient = authenticated.client;
         client = nextClient;
-        await nextClient.realtime.setAuth(tokenPayload.token);
-        if (disposed) {
-          ignorePromise(nextClient.removeAllChannels());
-          return;
-        }
 
         const nextChannel = nextClient.channel(PRESENCE_CHANNEL, {
           config: {
@@ -308,16 +266,7 @@ export const CommunityPresence = ({
         return;
       }
       try {
-        const response = await fetch("/api/notifications/realtime-token", {
-          headers: { Accept: "application/json" },
-        });
-        if (!response.ok) {
-          return;
-        }
-        const payload = (await response.json()) as { token?: string };
-        if (payload.token && client) {
-          await client.realtime.setAuth(payload.token);
-        }
+        await refreshRealtimeAuth(memberId);
       } catch {
         // The channel can keep its current authorization while a refresh is
         // retried on the next interval or a websocket reconnect.
@@ -359,7 +308,7 @@ export const CommunityPresence = ({
       leave();
       removeChannel();
     };
-  }, [presencePayload, profile]);
+  }, [memberId, presencePayload, profile]);
 
   const liveMembers = status === "online" ? members : [];
   const displayedMembers =

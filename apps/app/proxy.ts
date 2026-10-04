@@ -1,5 +1,11 @@
 import { shouldProxyClerkFrontendApi } from "@repo/auth/clerk-proxy";
 import { authMiddleware } from "@repo/auth/proxy";
+import {
+  getAuthRedirectPath,
+  getSafeInternalPath,
+  getSessionTaskPath,
+  getSignInPath,
+} from "@repo/auth/redirects";
 import { noseconeOptions, securityMiddleware } from "@repo/security/proxy";
 import { type NextProxy, type NextRequest, NextResponse } from "next/server";
 
@@ -47,6 +53,14 @@ const isProtectedRoute = (pathname: string) =>
 const isSessionTaskRoute = (pathname: string) =>
   matchesPath(pathname, sessionTaskPath);
 
+const isAuthenticationEntryRoute = (pathname: string) =>
+  matchesPath(pathname, "/sign-in") ||
+  matchesPath(pathname, "/sign-up") ||
+  matchesPath(pathname, "/login");
+
+const redirectToSessionTask = (req: NextRequest, returnPath: string) =>
+  NextResponse.redirect(new URL(getSessionTaskPath(returnPath), req.url));
+
 const redirectLegacyAppHost = (req: NextRequest) => {
   const url = req.nextUrl.clone();
   url.hostname = canonicalAppHost;
@@ -73,6 +87,7 @@ const redirectLegacyAppHost = (req: NextRequest) => {
 // For apps using Clerk, compose middleware inside authMiddleware callback
 // For apps without Clerk, use createNEMO for composition (see apps/web)
 export default authMiddleware(
+  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: the middleware coordinates Clerk auth states, proxy routing and canonical host redirects in one ordered request boundary
   async (auth, req) => {
     // Keep one visible application host. The legacy alias remains available
     // only long enough to redirect users to the current production project.
@@ -93,14 +108,35 @@ export default authMiddleware(
 
     // Validate and refresh the Clerk session before protected pages render.
     // Route handlers keep their own 401/403 behavior and are guarded server-side.
-    if (isProtectedRoute(req.nextUrl.pathname)) {
+    if (
+      isProtectedRoute(req.nextUrl.pathname) ||
+      isAuthenticationEntryRoute(req.nextUrl.pathname)
+    ) {
       const authState = await auth();
 
       if (authState.sessionStatus === "pending") {
-        return NextResponse.redirect(new URL("/session-tasks", req.url));
+        const returnPath = isProtectedRoute(req.nextUrl.pathname)
+          ? getSafeInternalPath(
+              `${req.nextUrl.pathname}${req.nextUrl.search}`,
+              req.nextUrl.origin
+            )
+          : getAuthRedirectPath(req.url);
+
+        return redirectToSessionTask(req, returnPath);
       }
 
-      await auth.protect();
+      if (
+        isAuthenticationEntryRoute(req.nextUrl.pathname) &&
+        authState.isAuthenticated
+      ) {
+        return NextResponse.redirect(
+          new URL(getAuthRedirectPath(req.url), req.url)
+        );
+      }
+
+      if (isProtectedRoute(req.nextUrl.pathname)) {
+        await auth.protect();
+      }
     }
 
     // An interrupted Clerk task must stay resumable instead of bouncing between
@@ -109,8 +145,16 @@ export default authMiddleware(
       const authState = await auth();
 
       if (authState.sessionStatus !== "pending") {
+        const returnPath = getSafeInternalPath(
+          req.nextUrl.searchParams.get("redirect_url") ?? "/",
+          req.nextUrl.origin
+        );
+
         return NextResponse.redirect(
-          new URL(authState.userId ? "/" : "/sign-in", req.url)
+          new URL(
+            authState.isAuthenticated ? returnPath : getSignInPath(returnPath),
+            req.url
+          )
         );
       }
     }

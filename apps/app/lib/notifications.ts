@@ -1,6 +1,16 @@
 import "server-only";
 
-import { database, MemberRole, type Prisma } from "@repo/database";
+import {
+  AnnouncementAudience,
+  ContentStatus,
+  database,
+  MemberRole,
+  type Prisma,
+} from "@repo/database";
+import {
+  notificationPreferenceForType,
+  notificationTitleForType,
+} from "@repo/member-domain";
 import {
   mergeNotificationRecipients,
   notificationFilterTypes,
@@ -18,6 +28,10 @@ export const notificationTypes = {
   feedbackReceived: "FEEDBACK_RECEIVED",
   activityDeadline: "ACTIVITY_DEADLINE",
   announcement: "ANNOUNCEMENT",
+  groupInvitation: "GROUP_INVITATION",
+  groupPost: "GROUP_POST",
+  contentAssigned: "LEARNING_CONTENT_ASSIGNED",
+  badgeAwarded: "BADGE_AWARDED",
 } as const;
 
 export type NotificationType =
@@ -31,43 +45,25 @@ export type NotificationEntityType =
   | "LESSON"
   | "MODULE"
   | "MEETING"
-  | "ANNOUNCEMENT";
+  | "ANNOUNCEMENT"
+  | "COMMUNITY_INVITATION"
+  | "BADGE"
+  | "LEARNING_TASK";
 
 export type NotificationFilter =
   | "ALL"
   | "MENTIONS"
   | "COMMUNITY"
   | "ACTIVITIES"
-  | "LEARNING";
-
-const preferenceForType: Record<NotificationType, string> = {
-  MENTION: "mentions",
-  COMMENT_REPLY: "commentReplies",
-  TOPIC_COMMENT: "topicComments",
-  FOLLOWED_TOPIC_ACTIVITY: "followedTopicActivity",
-  LESSON_AVAILABLE: "lessonAvailable",
-  MODULE_AVAILABLE: "moduleAvailable",
-  ACTIVITY_ASSIGNED: "activityAssigned",
-  FEEDBACK_RECEIVED: "feedbackReceived",
-  ACTIVITY_DEADLINE: "activityDeadline",
-  ANNOUNCEMENT: "announcements",
-};
+  | "LEARNING"
+  | "BADGES";
 
 const priorityForType: Record<NotificationType, number> = {
   ...notificationPriority,
 };
 
 const titleForType: Record<NotificationType, string> = {
-  MENTION: "Você foi mencionado",
-  COMMENT_REPLY: "Nova resposta ao seu comentário",
-  TOPIC_COMMENT: "Novo comentário no seu tópico",
-  FOLLOWED_TOPIC_ACTIVITY: "Nova atividade em uma discussão seguida",
-  LESSON_AVAILABLE: "Nova aula disponível",
-  MODULE_AVAILABLE: "Novo módulo disponível",
-  ACTIVITY_ASSIGNED: "Nova atividade para você",
-  FEEDBACK_RECEIVED: "Você recebeu feedback",
-  ACTIVITY_DEADLINE: "Prazo de atividade se aproximando",
-  ANNOUNCEMENT: "Novo comunicado",
+  ...notificationTitleForType,
 };
 
 const commentHref = (href: string, commentId: string) =>
@@ -108,6 +104,26 @@ const decodeNotificationCursor = (value: string | undefined) => {
   }
 };
 
+const memberNotificationAudienceWhere = async (
+  memberId: string
+): Promise<Prisma.NotificationWhereInput> => {
+  const groups = await database.communitySpace.findMany({
+    where: {
+      OR: [{ ownerId: memberId }, { members: { some: { memberId } } }],
+    },
+    select: { id: true },
+  });
+  return {
+    OR: [
+      { type: { not: notificationTypes.groupPost } },
+      {
+        type: notificationTypes.groupPost,
+        groupKey: { in: groups.map(({ id }) => id) },
+      },
+    ],
+  };
+};
+
 const isNotificationType = (value: string): value is NotificationType =>
   Object.values(notificationTypes).includes(value as NotificationType);
 
@@ -128,6 +144,9 @@ const preferenceEnabled = async (memberId: string, type: NotificationType) => {
       feedbackReceived: true,
       activityDeadline: true,
       announcements: true,
+      groupInvitations: true,
+      groupPosts: true,
+      contentAssignments: true,
     },
   });
 
@@ -135,9 +154,13 @@ const preferenceEnabled = async (memberId: string, type: NotificationType) => {
     return true;
   }
 
-  return preference[
-    preferenceForType[type] as keyof typeof preference
-  ] as boolean;
+  const preferenceKey =
+    notificationPreferenceForType[
+      type as keyof typeof notificationPreferenceForType
+    ];
+  return preferenceKey
+    ? (preference[preferenceKey as keyof typeof preference] as boolean)
+    : true;
 };
 
 export const getOrCreateNotificationPreferences = (memberId: string) =>
@@ -291,12 +314,16 @@ export const getNotifications = async (
   const types = options.filter
     ? getNotificationFilterTypes(options.filter)
     : undefined;
-  const baseWhere = { memberId, ...(types ? { type: types } : {}) };
+  const [audienceWhere, baseWhere] = await Promise.all([
+    memberNotificationAudienceWhere(memberId),
+    Promise.resolve({ memberId, ...(types ? { type: types } : {}) }),
+  ]);
+  const visibleBaseWhere = { AND: [baseWhere, audienceWhere] };
   const cursor = decodeNotificationCursor(options.cursor);
   const where = cursor
     ? {
         AND: [
-          baseWhere,
+          visibleBaseWhere,
           {
             OR: [
               { priority: { lt: cursor.priority } },
@@ -313,7 +340,7 @@ export const getNotifications = async (
           },
         ],
       }
-    : baseWhere;
+    : visibleBaseWhere;
   const items = await database.notification.findMany({
     where,
     orderBy: [{ priority: "desc" }, { createdAt: "desc" }, { id: "desc" }],
@@ -325,8 +352,12 @@ export const getNotifications = async (
     items.pop();
   }
   const [unreadCount, unseenCount] = await Promise.all([
-    database.notification.count({ where: { memberId, readAt: null } }),
-    database.notification.count({ where: { memberId, seenAt: null } }),
+    database.notification.count({
+      where: { AND: [visibleBaseWhere, { readAt: null }] },
+    }),
+    database.notification.count({
+      where: { AND: [visibleBaseWhere, { seenAt: null }] },
+    }),
   ]);
   return {
     items,
@@ -350,15 +381,34 @@ export const getNotifications = async (
 export const getRecentCommunityAnnouncements = async (
   memberId: string,
   limit = 3
-) =>
-  database.notification.findMany({
+) => {
+  const [member, now] = await Promise.all([
+    database.member.findUnique({
+      where: { id: memberId },
+      select: { role: true },
+    }),
+    Promise.resolve(new Date()),
+  ]);
+  const isStaff =
+    member?.role === MemberRole.TEACHER || member?.role === MemberRole.ADMIN;
+  const announcements = await database.announcement.findMany({
     where: {
-      memberId,
-      type: notificationTypes.announcement,
-      groupKey: { not: null },
+      status: ContentStatus.PUBLISHED,
+      deletedAt: null,
+      AND: [
+        { OR: [{ startsAt: null }, { startsAt: { lte: now } }] },
+        { OR: [{ endsAt: null }, { endsAt: { gt: now } }] },
+      ],
+      OR: [
+        { audience: AnnouncementAudience.ALL },
+        ...(isStaff ? [{ audience: AnnouncementAudience.STAFF }] : []),
+        {
+          audience: AnnouncementAudience.SELECTED,
+          recipientIds: { has: memberId },
+        },
+      ],
     },
-    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-    distinct: ["groupKey"],
+    orderBy: [{ isPinned: "desc" }, { publishedAt: "desc" }, { id: "desc" }],
     take: Math.min(Math.max(limit, 1), 3),
     select: {
       id: true,
@@ -366,15 +416,35 @@ export const getRecentCommunityAnnouncements = async (
       body: true,
       href: true,
       createdAt: true,
-      groupKey: true,
+      publishedAt: true,
+    },
+  });
+  return announcements.map((announcement) => ({
+    ...announcement,
+    createdAt: announcement.publishedAt ?? announcement.createdAt,
+    groupKey: `announcement:${announcement.id}`,
+  }));
+};
+
+export const getUnreadNotificationCount = async (memberId: string) =>
+  database.notification.count({
+    where: {
+      AND: [
+        { memberId, readAt: null },
+        await memberNotificationAudienceWhere(memberId),
+      ],
     },
   });
 
-export const getUnreadNotificationCount = (memberId: string) =>
-  database.notification.count({ where: { memberId, readAt: null } });
-
-export const getUnseenNotificationCount = (memberId: string) =>
-  database.notification.count({ where: { memberId, seenAt: null } });
+export const getUnseenNotificationCount = async (memberId: string) =>
+  database.notification.count({
+    where: {
+      AND: [
+        { memberId, seenAt: null },
+        await memberNotificationAudienceWhere(memberId),
+      ],
+    },
+  });
 
 export const extractMentionUsernames = (content: string) =>
   [
@@ -525,6 +595,40 @@ export const recordMentions = async (input: {
   });
 };
 
+const filterPrivateCommunityRecipients = async (
+  postId: string,
+  recipientIds: readonly string[]
+) => {
+  const uniqueIds = [...new Set(recipientIds)];
+  if (uniqueIds.length === 0) {
+    return uniqueIds;
+  }
+  const post = await database.communityPost.findUnique({
+    where: { id: postId },
+    select: {
+      space: {
+        select: { id: true, visibility: true, ownerId: true },
+      },
+    },
+  });
+  if (!post?.space || post.space.visibility !== "PRIVATE") {
+    return uniqueIds;
+  }
+  const members = await database.communitySpaceMember.findMany({
+    where: {
+      spaceId: post.space.id,
+      memberId: { in: uniqueIds },
+      member: { deactivatedAt: null },
+    },
+    select: { memberId: true },
+  });
+  const allowed = new Set(members.map(({ memberId }) => memberId));
+  if (post.space.ownerId) {
+    allowed.add(post.space.ownerId);
+  }
+  return uniqueIds.filter((memberId) => allowed.has(memberId));
+};
+
 export const notifyCommunityComment = async (input: {
   readonly actorId: string;
   readonly postId: string;
@@ -542,13 +646,6 @@ export const notifyCommunityComment = async (input: {
     content: input.commentContent,
     document: input.document,
   });
-  await recordMentions({
-    actorId: input.actorId,
-    mentionedUserIds: mentionedIds,
-    entityType: "COMMENT",
-    entityId: input.commentId,
-  });
-
   const recipientCandidates: {
     readonly memberId: string | null | undefined;
     readonly type: NotificationType;
@@ -578,26 +675,48 @@ export const notifyCommunityComment = async (input: {
     });
   }
 
+  const allowedRecipients = new Set(
+    await filterPrivateCommunityRecipients(
+      input.postId,
+      recipientCandidates
+        .map(({ memberId }) => memberId)
+        .filter((memberId): memberId is string => Boolean(memberId))
+    )
+  );
+  const allowedMentions = mentionedIds.filter((memberId) =>
+    allowedRecipients.has(memberId)
+  );
+  await recordMentions({
+    actorId: input.actorId,
+    mentionedUserIds: allowedMentions,
+    entityType: "COMMENT",
+    entityId: input.commentId,
+  });
+
   await Promise.all(
-    mergeNotificationRecipients(input.actorId, recipientCandidates).map(
-      ([recipientId, type]) =>
-        createNotification({
-          recipientId,
-          actorId: input.actorId,
-          type,
-          entityType: "COMMENT",
-          entityId: input.commentId,
-          parentEntityType: input.parentCommentId ? "COMMENT" : "TOPIC",
-          parentEntityId: input.parentCommentId ?? input.postId,
-          groupKey:
-            type === notificationTypes.followedTopicActivity
-              ? `topic:${input.postId}:activity`
-              : undefined,
-          metadata: { postId: input.postId },
-          dedupeKey: `${type}:${recipientId}:${input.commentId}`,
-          body: input.postTitle,
-          href: commentHref(input.href, input.commentId),
-        })
+    mergeNotificationRecipients(
+      input.actorId,
+      recipientCandidates.filter(({ memberId }) =>
+        memberId ? allowedRecipients.has(memberId) : false
+      )
+    ).map(([recipientId, type]) =>
+      createNotification({
+        recipientId,
+        actorId: input.actorId,
+        type,
+        entityType: "COMMENT",
+        entityId: input.commentId,
+        parentEntityType: input.parentCommentId ? "COMMENT" : "TOPIC",
+        parentEntityId: input.parentCommentId ?? input.postId,
+        groupKey:
+          type === notificationTypes.followedTopicActivity
+            ? `topic:${input.postId}:activity`
+            : undefined,
+        metadata: { postId: input.postId },
+        dedupeKey: `${type}:${recipientId}:${input.commentId}`,
+        body: input.postTitle,
+        href: commentHref(input.href, input.commentId),
+      })
     )
   );
 };
@@ -615,16 +734,20 @@ export const notifyCommunityPost = async (input: {
     content: input.commentContent,
     document: input.document,
   });
+  const allowedMentionIds = await filterPrivateCommunityRecipients(
+    input.postId,
+    mentionedIds
+  );
 
   await recordMentions({
     actorId: input.actorId,
-    mentionedUserIds: mentionedIds,
+    mentionedUserIds: allowedMentionIds,
     entityType: "TOPIC",
     entityId: input.postId,
   });
 
   await Promise.all(
-    mentionedIds.map((recipientId) =>
+    allowedMentionIds.map((recipientId) =>
       createNotification({
         recipientId,
         actorId: input.actorId,

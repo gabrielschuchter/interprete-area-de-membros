@@ -46,6 +46,7 @@ interface NotificationItem {
 interface NotificationsResponse {
   readonly error?: string;
   readonly items?: NotificationItem[];
+  readonly unreadCount?: number;
   readonly unseenCount?: number;
 }
 
@@ -53,6 +54,7 @@ interface NotificationsPopoverProperties {
   readonly onOpenChange: (open: boolean) => void;
   readonly onUnreadCountChange: (count: number) => void;
   readonly open: boolean;
+  readonly realtimeConnected: boolean;
   readonly refreshSignal?: number;
 }
 
@@ -145,19 +147,25 @@ export const NotificationsPopover = ({
   onOpenChange,
   onUnreadCountChange,
   refreshSignal = 0,
+  realtimeConnected,
 }: NotificationsPopoverProperties) => {
   const router = useRouter();
   const [items, setItems] = useState<NotificationItem[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [unseenCount, setUnseenCount] = useState(0);
   const [state, setState] = useState<LoadingState>("idle");
   const [errorMessage, setErrorMessage] = useState("");
   const [filter, setFilter] = useState<NotificationFilter>("ALL");
 
-  const updateUnseenCount = useCallback(
-    (count: number) => {
-      const normalized = Math.max(0, count);
-      setUnseenCount(normalized);
-      onUnreadCountChange(normalized);
+  const updateCounts = useCallback(
+    (counts: {
+      readonly unreadCount?: number;
+      readonly unseenCount?: number;
+    }) => {
+      const nextUnread = Math.max(0, counts.unreadCount ?? 0);
+      setUnreadCount(nextUnread);
+      setUnseenCount(Math.max(0, counts.unseenCount ?? 0));
+      onUnreadCountChange(nextUnread);
     },
     [onUnreadCountChange]
   );
@@ -175,7 +183,7 @@ export const NotificationsPopover = ({
       }
       const nextItems = payload.items ?? [];
       setItems(nextItems);
-      updateUnseenCount(payload.unseenCount ?? 0);
+      updateCounts(payload);
       setState("ready");
       const ids = nextItems
         .filter((item) => !item.seenAt)
@@ -199,7 +207,7 @@ export const NotificationsPopover = ({
         if (summaryResponse.ok) {
           const summary =
             (await summaryResponse.json()) as NotificationsResponse;
-          updateUnseenCount(summary.unseenCount ?? 0);
+          updateCounts(summary);
         }
       }
     } catch (error) {
@@ -210,27 +218,27 @@ export const NotificationsPopover = ({
           : "Não foi possível carregar as notificações agora."
       );
     }
-  }, [filter, updateUnseenCount]);
+  }, [filter, updateCounts]);
 
-  const loadUnseenCount = useCallback(async () => {
+  const loadSummary = useCallback(async () => {
     try {
       const response = await fetch("/api/notifications?summary=1", {
         headers: { Accept: "application/json" },
       });
       const payload = (await response.json()) as NotificationsResponse;
       if (response.ok) {
-        updateUnseenCount(payload.unseenCount ?? 0);
+        updateCounts(payload);
       }
     } catch {
       // The header remains usable when the optional badge is unavailable.
     }
-  }, [updateUnseenCount]);
+  }, [updateCounts]);
 
   useEffect(() => {
     if (refreshSignal >= 0) {
-      loadUnseenCount().catch(() => undefined);
+      loadSummary().catch(() => undefined);
     }
-  }, [loadUnseenCount, refreshSignal]);
+  }, [loadSummary, refreshSignal]);
 
   useEffect(() => {
     if (open && refreshSignal >= 0) {
@@ -239,13 +247,60 @@ export const NotificationsPopover = ({
   }, [open, loadNotifications, refreshSignal]);
 
   useEffect(() => {
-    const interval = window.setInterval(() => {
-      loadUnseenCount().catch(() => undefined);
-    }, 30_000);
-    return () => window.clearInterval(interval);
-  }, [loadUnseenCount]);
+    if (realtimeConnected) {
+      return;
+    }
+
+    let disposed = false;
+    let timer: number | undefined;
+    let delayMs = 15_000;
+
+    const schedule = () => {
+      if (disposed || document.visibilityState !== "visible") {
+        return;
+      }
+      const jitter = Math.round(delayMs * (Math.random() * 0.2 - 0.1));
+      timer = window.setTimeout(async () => {
+        await loadSummary();
+        delayMs = Math.min(delayMs * 2, 120_000);
+        schedule();
+      }, delayMs + jitter);
+    };
+
+    const refreshWhenActive = () => {
+      if (document.visibilityState !== "visible") {
+        if (timer !== undefined) {
+          window.clearTimeout(timer);
+        }
+        return;
+      }
+      if (timer !== undefined) {
+        window.clearTimeout(timer);
+      }
+      delayMs = 15_000;
+      loadSummary()
+        .finally(schedule)
+        .catch(() => undefined);
+    };
+
+    document.addEventListener("visibilitychange", refreshWhenActive);
+    window.addEventListener("focus", refreshWhenActive);
+    window.addEventListener("online", refreshWhenActive);
+    schedule();
+
+    return () => {
+      disposed = true;
+      if (timer !== undefined) {
+        window.clearTimeout(timer);
+      }
+      document.removeEventListener("visibilitychange", refreshWhenActive);
+      window.removeEventListener("focus", refreshWhenActive);
+      window.removeEventListener("online", refreshWhenActive);
+    };
+  }, [loadSummary, realtimeConnected]);
 
   const markReadAndOpen = async (item: NotificationItem) => {
+    const wasUnread = !item.readAt;
     setItems((current) =>
       current.map((notification) =>
         notification.id === item.id
@@ -256,18 +311,30 @@ export const NotificationsPopover = ({
           : notification
       )
     );
-    await fetch(`/api/notifications/${item.id}`, {
-      body: JSON.stringify({ read: true }),
-      headers: { "Content-Type": "application/json" },
-      method: "PATCH",
-    });
-    onOpenChange(false);
-    if (item.href) {
-      router.push(item.href);
+    if (wasUnread) {
+      updateCounts({ unreadCount: unreadCount - 1, unseenCount });
+    }
+    try {
+      const response = await fetch(`/api/notifications/${item.id}`, {
+        body: JSON.stringify({ read: true }),
+        headers: { "Content-Type": "application/json" },
+        method: "PATCH",
+      });
+      if (!response.ok) {
+        throw new Error("Não foi possível atualizar a notificação.");
+      }
+      onOpenChange(false);
+      if (item.href) {
+        router.push(item.href);
+      }
+    } catch {
+      await loadNotifications();
     }
   };
 
   const markAllRead = async () => {
+    const previousItems = items;
+    const previousCount = unreadCount;
     setItems((current) =>
       current.map((item) => ({
         ...item,
@@ -275,12 +342,23 @@ export const NotificationsPopover = ({
         seenAt: item.seenAt ?? new Date().toISOString(),
       }))
     );
-    await fetch("/api/notifications/read-all", { method: "POST" });
-    updateUnseenCount(0);
+    updateCounts({ unreadCount: 0, unseenCount: 0 });
+    try {
+      const response = await fetch("/api/notifications/read-all", {
+        method: "POST",
+      });
+      if (!response.ok) {
+        throw new Error("Não foi possível atualizar as notificações.");
+      }
+    } catch {
+      setItems(previousItems);
+      updateCounts({ unreadCount: previousCount, unseenCount });
+      await loadSummary();
+    }
   };
 
   const displayItems = useMemo(() => groupNotifications(items), [items]);
-  const badgeLabel = unseenCount > 9 ? "9+" : String(unseenCount);
+  const badgeLabel = unreadCount > 9 ? "9+" : String(unreadCount);
 
   return (
     <Popover onOpenChange={onOpenChange} open={open}>
@@ -289,8 +367,8 @@ export const NotificationsPopover = ({
           aria-expanded={open}
           aria-haspopup="dialog"
           aria-label={
-            unseenCount > 0
-              ? `Notificações, ${unseenCount} novas`
+            unreadCount > 0
+              ? `Notificações, ${unreadCount} não lidas`
               : "Notificações"
           }
           className="relative size-10 rounded-full text-muted-foreground hover:bg-accent hover:text-foreground"
@@ -299,8 +377,8 @@ export const NotificationsPopover = ({
           variant="ghost"
         >
           <BellIcon aria-hidden="true" />
-          {unseenCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 min-w-4 rounded-full bg-brand-classic-crimson px-1 text-[0.6rem] text-white leading-4">
+          {unreadCount > 0 && (
+            <span className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-background bg-brand-classic-crimson px-1 font-bold text-[0.65rem] text-white leading-none shadow-[0_0_12px_rgba(175,34,56,0.7)] motion-safe:animate-pulse">
               {badgeLabel}
             </span>
           )}

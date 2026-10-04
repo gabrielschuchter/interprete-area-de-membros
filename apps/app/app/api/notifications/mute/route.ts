@@ -1,6 +1,8 @@
-import { auth } from "@repo/auth/server";
 import { ContentStatus, database } from "@repo/database";
 import { NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { getMemberRole } from "@/lib/authorization";
+import { communityPostMutationAudienceWhere } from "@/lib/community-space-rules";
 import {
   consumeMutationRateLimit,
   isMutationRateLimitError,
@@ -26,11 +28,16 @@ export const POST = async (request: Request) => {
         { status: 400 }
       );
     }
+    const role = await getMemberRole(userId);
     const topic = await database.communityPost.findFirst({
       where: {
         id: payload.topicId,
         status: ContentStatus.PUBLISHED,
         deletedAt: null,
+        ...communityPostMutationAudienceWhere(
+          userId,
+          role === "ADMIN" || role === "TEACHER"
+        ),
       },
       select: { id: true },
     });

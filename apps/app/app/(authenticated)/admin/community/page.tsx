@@ -11,7 +11,6 @@ import {
   getStaffCommunityPosts,
   getStaffCommunitySpaces,
 } from "@/lib/community";
-import { communityPostKindLabel } from "@/lib/community-post-types";
 import {
   createSpace,
   setSpaceStatus,
@@ -82,7 +81,6 @@ const AdminCommunityPostRow = ({
   <div className="flex flex-wrap items-center justify-between gap-4 py-4">
     <div className="min-w-0">
       <div className="flex flex-wrap gap-2 text-muted-foreground text-xs">
-        <Badge variant="outline">{communityPostKindLabel(post.kind)}</Badge>
         <Badge variant={post.status === "PUBLISHED" ? "default" : "outline"}>
           {post.status}
         </Badge>
@@ -119,10 +117,10 @@ const AdminCommunityPage = async () => {
       <header className="mt-10 max-w-3xl">
         <p className="brand-eyebrow">Professor · comunidade</p>
         <h1 className="mt-4 font-display text-5xl leading-none">
-          Cuide da sala sem interromper a conversa.
+          Cuide dos grupos de estudo sem interromper as conversas.
         </h1>
         <p className="mt-5 text-muted-foreground leading-7">
-          Crie espaços de discussão e remova apenas o que realmente precisa
+          Organize grupos de estudo e remova apenas o que realmente precisa
           sair. O soft delete preserva o fio da conversa.
         </p>
       </header>
@@ -151,11 +149,11 @@ const AdminCommunityPage = async () => {
       <div className="mt-10 grid gap-10 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
         <section>
           <h2 className="border-border border-b pb-3 font-display text-3xl">
-            Salas e perguntas
+            Grupos e publicações
           </h2>
           <div className="mt-5 grid gap-5">
             {spaces.length === 0 ? (
-              <p className="text-muted-foreground">Nenhuma sala criada.</p>
+              <p className="text-muted-foreground">Nenhum grupo criado.</p>
             ) : (
               spaces.map((space) => (
                 <article className="paper-surface border p-6" key={space.id}>
@@ -180,7 +178,7 @@ const AdminCommunityPage = async () => {
                         <input name="spaceId" type="hidden" value={space.id} />
                         <input name="status" type="hidden" value="PUBLISHED" />
                         <SingleFlightSubmit size="sm">
-                          Publicar sala
+                          Publicar grupo
                         </SingleFlightSubmit>
                       </SingleFlightForm>
                     )}
@@ -189,7 +187,7 @@ const AdminCommunityPage = async () => {
                         <input name="spaceId" type="hidden" value={space.id} />
                         <input name="status" type="hidden" value="ARCHIVED" />
                         <SingleFlightSubmit size="sm" variant="outline">
-                          Arquivar sala
+                          Arquivar grupo
                         </SingleFlightSubmit>
                       </SingleFlightForm>
                     )}
@@ -209,7 +207,7 @@ const AdminCommunityPage = async () => {
                   </div>
                   <details className="mt-5 border-border border-t pt-4">
                     <summary className="cursor-pointer text-muted-foreground text-sm underline underline-offset-4">
-                      Editar espaço
+                      Editar grupo
                     </summary>
                     <SingleFlightForm
                       action={updateSpace}
@@ -224,7 +222,7 @@ const AdminCommunityPage = async () => {
                         placeholder="Descrição"
                       />
                       <SingleFlightSubmit size="sm">
-                        Salvar espaço
+                        Salvar grupo
                       </SingleFlightSubmit>
                     </SingleFlightForm>
                   </details>
@@ -272,7 +270,7 @@ const AdminCommunityPage = async () => {
           </div>
         </section>
         <aside className="paper-surface border p-6 lg:sticky lg:top-24">
-          <p className="brand-eyebrow">Novo espaço</p>
+          <p className="brand-eyebrow">Novo grupo institucional</p>
           <SingleFlightForm action={createSpace} className="mt-5 space-y-4">
             <label className="block" htmlFor="space-title">
               <span className="brand-eyebrow">Título</span>

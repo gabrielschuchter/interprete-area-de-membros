@@ -1,9 +1,11 @@
 import { randomUUID } from "node:crypto";
+import { libraryCatalog } from "@repo/database";
 import { Badge } from "@repo/design-system/components/ui/badge";
 import { Button } from "@repo/design-system/components/ui/button";
 import { Input } from "@repo/design-system/components/ui/input";
 import { Textarea } from "@repo/design-system/components/ui/textarea";
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { getCourseOptions } from "@/lib/admin-learning";
 import { getStaffLibraryItems } from "@/lib/library";
 
@@ -19,11 +21,36 @@ const statusLabel = (status: string) => {
 
 import {
   createLibraryItem,
+  importCuratedLibraryCatalog,
   setLibraryStatus,
   updateLibraryItem,
 } from "../../biblioteca/actions";
 
-const AdminLibraryPage = async () => {
+interface AdminLibraryPageProperties {
+  readonly searchParams: Promise<{ catalog?: string }>;
+}
+
+const LibraryEditField = ({
+  children,
+  fieldId,
+  label,
+}: {
+  readonly children: ReactNode;
+  readonly fieldId: string;
+  readonly label: string;
+}) => (
+  <div className="grid gap-1.5 text-sm">
+    <label className="brand-eyebrow" htmlFor={fieldId}>
+      {label}
+    </label>
+    {children}
+  </div>
+);
+
+const AdminLibraryPage = async ({
+  searchParams,
+}: AdminLibraryPageProperties) => {
+  const query = await searchParams;
   const [items, courses] = await Promise.all([
     getStaffLibraryItems(),
     getCourseOptions(),
@@ -47,6 +74,28 @@ const AdminLibraryPage = async () => {
           substitui um Storage: ele organiza referências que já têm uma origem
           segura.
         </p>
+        <form
+          action={importCuratedLibraryCatalog}
+          className="mt-6 flex flex-col gap-3 border-y py-4 sm:flex-row sm:items-center sm:justify-between"
+        >
+          <div>
+            <p className="font-medium text-sm">Curadoria PBE revisada</p>
+            <p className="mt-1 max-w-2xl text-muted-foreground text-xs leading-5">
+              {libraryCatalog.length} recursos institucionais gratuitos. A
+              importação é aditiva, evita duplicatas por link/DOI e atualiza
+              metadados de itens correspondentes.
+            </p>
+          </div>
+          <Button className="shrink-0" type="submit">
+            Importar curadoria verificada
+          </Button>
+        </form>
+        {query.catalog === "imported" && (
+          <output className="mt-4 block border border-brand-action/35 bg-brand-action/5 px-4 py-3 text-sm">
+            Curadoria importada. Recursos correspondentes foram atualizados sem
+            remover relações ou materiais existentes.
+          </output>
+        )}
       </header>
       <div className="mt-10 grid gap-10 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
         <section>
@@ -75,6 +124,17 @@ const AdminLibraryPage = async () => {
                     <p className="mt-1 text-muted-foreground text-sm">
                       {item.kind} · {item.category ?? "sem categoria"}
                     </p>
+                    <p className="mt-1 text-muted-foreground text-xs">
+                      {item.language ?? "idioma não informado"} ·{" "}
+                      {item.difficulty ?? "nível não informado"} ·{" "}
+                      {item.accessType ?? "acesso não classificado"}
+                      {item.version ? ` · ${item.version}` : ""}
+                    </p>
+                    {item.coverUrl && (
+                      <p className="mt-1 max-w-md truncate text-muted-foreground text-xs">
+                        Capa: {item.coverUrl}
+                      </p>
+                    )}
                     {(item.lesson || item.activities.length > 0) && (
                       <p className="mt-1 text-muted-foreground text-xs">
                         {item.lesson ? `Aula: ${item.lesson.title}` : ""}
@@ -93,38 +153,90 @@ const AdminLibraryPage = async () => {
                         encType="multipart/form-data"
                       >
                         <input name="id" type="hidden" value={item.id} />
-                        <Input
-                          defaultValue={item.title}
-                          name="title"
-                          required
-                        />
-                        <Textarea
-                          defaultValue={item.description ?? ""}
-                          name="description"
-                          placeholder="Descrição"
-                        />
-                        <select
-                          className="h-11 rounded-sm border bg-transparent px-3 text-sm"
-                          defaultValue={item.kind}
-                          name="kind"
+                        <LibraryEditField
+                          fieldId={`library-${item.id}-edit-title`}
+                          label="Título"
                         >
-                          <option value="ARTICLE">Artigo</option>
-                          <option value="PDF">PDF</option>
-                          <option value="GUIDE">Guia</option>
-                          <option value="LINK">Link</option>
-                          <option value="VIDEO">Vídeo</option>
-                        </select>
-                        <Input
-                          defaultValue={item.category ?? ""}
-                          name="category"
-                          placeholder="Categoria"
-                        />
-                        <Input
-                          defaultValue={item.tags.join(", ")}
-                          name="tags"
-                          placeholder="Tags"
-                        />
-                        <Input defaultValue={item.url} name="url" type="url" />
+                          <Input
+                            defaultValue={item.title}
+                            id={`library-${item.id}-edit-title`}
+                            name="title"
+                            required
+                          />
+                        </LibraryEditField>
+                        <LibraryEditField
+                          fieldId={`library-${item.id}-edit-description`}
+                          label="Descrição"
+                        >
+                          <Textarea
+                            defaultValue={item.description ?? ""}
+                            id={`library-${item.id}-edit-description`}
+                            name="description"
+                            placeholder="Descrição"
+                          />
+                        </LibraryEditField>
+                        <LibraryEditField
+                          fieldId={`library-${item.id}-edit-cover`}
+                          label="URL HTTPS da capa"
+                        >
+                          <Input
+                            defaultValue={item.coverUrl ?? ""}
+                            id={`library-${item.id}-edit-cover`}
+                            name="coverUrl"
+                            placeholder="URL HTTPS da capa (opcional)"
+                            type="url"
+                          />
+                        </LibraryEditField>
+                        <LibraryEditField
+                          fieldId={`library-${item.id}-edit-kind`}
+                          label="Tipo do material"
+                        >
+                          <select
+                            className="h-11 rounded-sm border bg-transparent px-3 text-sm"
+                            defaultValue={item.kind}
+                            id={`library-${item.id}-edit-kind`}
+                            name="kind"
+                          >
+                            <option value="ARTICLE">Artigo</option>
+                            <option value="PDF">PDF</option>
+                            <option value="GUIDE">Guia</option>
+                            <option value="LINK">Link</option>
+                            <option value="VIDEO">Vídeo</option>
+                          </select>
+                        </LibraryEditField>
+                        <LibraryEditField
+                          fieldId={`library-${item.id}-edit-category`}
+                          label="Categoria"
+                        >
+                          <Input
+                            defaultValue={item.category ?? ""}
+                            id={`library-${item.id}-edit-category`}
+                            name="category"
+                            placeholder="Categoria"
+                          />
+                        </LibraryEditField>
+                        <LibraryEditField
+                          fieldId={`library-${item.id}-edit-tags`}
+                          label="Tags separadas por vírgula"
+                        >
+                          <Input
+                            defaultValue={item.tags.join(", ")}
+                            id={`library-${item.id}-edit-tags`}
+                            name="tags"
+                            placeholder="Tags"
+                          />
+                        </LibraryEditField>
+                        <LibraryEditField
+                          fieldId={`library-${item.id}-edit-url`}
+                          label="URL do material"
+                        >
+                          <Input
+                            defaultValue={item.url}
+                            id={`library-${item.id}-edit-url`}
+                            name="url"
+                            type="url"
+                          />
+                        </LibraryEditField>
                         <label
                           className="grid gap-2 text-sm"
                           htmlFor={`library-file-${item.id}`}
@@ -139,43 +251,142 @@ const AdminLibraryPage = async () => {
                             type="file"
                           />
                         </label>
-                        <Input
-                          defaultValue={item.authors ?? ""}
-                          name="authors"
-                          placeholder="Autores"
-                        />
-                        <Input
-                          defaultValue={item.year ?? ""}
-                          name="year"
-                          placeholder="Ano"
-                          type="number"
-                        />
-                        <Input
-                          defaultValue={item.doi ?? ""}
-                          name="doi"
-                          placeholder="DOI (opcional)"
-                        />
-                        <Input
-                          defaultValue={item.pmid ?? ""}
-                          name="pmid"
-                          placeholder="PMID (opcional)"
-                        />
-                        <select
-                          className="h-11 rounded-sm border bg-transparent px-3 text-sm"
-                          defaultValue={item.lesson?.id ?? ""}
-                          name="lessonId"
+                        <LibraryEditField
+                          fieldId={`library-${item.id}-edit-authors`}
+                          label="Autor ou instituição"
                         >
-                          <option value="">Nenhuma aula relacionada</option>
-                          {courses.flatMap((course) =>
-                            course.modules.flatMap((module) =>
-                              module.lessons.map((lesson) => (
-                                <option key={lesson.id} value={lesson.id}>
-                                  {course.title} · {lesson.title}
-                                </option>
-                              ))
-                            )
-                          )}
-                        </select>
+                          <Input
+                            defaultValue={item.authors ?? ""}
+                            id={`library-${item.id}-edit-authors`}
+                            name="authors"
+                            placeholder="Autores"
+                          />
+                        </LibraryEditField>
+                        <LibraryEditField
+                          fieldId={`library-${item.id}-edit-year`}
+                          label="Ano de publicação"
+                        >
+                          <Input
+                            defaultValue={item.year ?? ""}
+                            id={`library-${item.id}-edit-year`}
+                            name="year"
+                            placeholder="Ano"
+                            type="number"
+                          />
+                        </LibraryEditField>
+                        <LibraryEditField
+                          fieldId={`library-${item.id}-edit-doi`}
+                          label="DOI (opcional)"
+                        >
+                          <Input
+                            defaultValue={item.doi ?? ""}
+                            id={`library-${item.id}-edit-doi`}
+                            name="doi"
+                            placeholder="DOI (opcional)"
+                          />
+                        </LibraryEditField>
+                        <LibraryEditField
+                          fieldId={`library-${item.id}-edit-pmid`}
+                          label="PMID (opcional)"
+                        >
+                          <Input
+                            defaultValue={item.pmid ?? ""}
+                            id={`library-${item.id}-edit-pmid`}
+                            name="pmid"
+                            placeholder="PMID (opcional)"
+                          />
+                        </LibraryEditField>
+                        <LibraryEditField
+                          fieldId={`library-${item.id}-edit-language`}
+                          label="Idiomas (use códigos como en, pt ou es)"
+                        >
+                          <Input
+                            defaultValue={item.language ?? ""}
+                            id={`library-${item.id}-edit-language`}
+                            name="language"
+                            placeholder="Idioma(s), ex.: en,pt"
+                          />
+                        </LibraryEditField>
+                        <LibraryEditField
+                          fieldId={`library-${item.id}-edit-difficulty`}
+                          label="Nível de dificuldade"
+                        >
+                          <select
+                            className="h-11 rounded-sm border bg-transparent px-3 text-sm"
+                            defaultValue={item.difficulty ?? ""}
+                            id={`library-${item.id}-edit-difficulty`}
+                            name="difficulty"
+                          >
+                            <option value="">Nível não classificado</option>
+                            <option value="INTRODUCTORY">Introdutório</option>
+                            <option value="INTERMEDIATE">Intermediário</option>
+                            <option value="ADVANCED">Avançado</option>
+                          </select>
+                        </LibraryEditField>
+                        <LibraryEditField
+                          fieldId={`library-${item.id}-edit-access-type`}
+                          label="Classificação de acesso"
+                        >
+                          <select
+                            className="h-11 rounded-sm border bg-transparent px-3 text-sm"
+                            defaultValue={item.accessType ?? ""}
+                            id={`library-${item.id}-edit-access-type`}
+                            name="accessType"
+                          >
+                            <option value="">Acesso não classificado</option>
+                            <option value="OPEN_ACCESS">Acesso aberto</option>
+                            <option value="FREE_TO_READ">
+                              Leitura gratuita
+                            </option>
+                            <option value="FREE_TOOL">
+                              Ferramenta gratuita
+                            </option>
+                          </select>
+                        </LibraryEditField>
+                        <LibraryEditField
+                          fieldId={`library-${item.id}-edit-version`}
+                          label="Versão ou edição"
+                        >
+                          <Input
+                            defaultValue={item.version ?? ""}
+                            id={`library-${item.id}-edit-version`}
+                            name="version"
+                            placeholder="Versão/edição (opcional)"
+                          />
+                        </LibraryEditField>
+                        <LibraryEditField
+                          fieldId={`library-${item.id}-edit-access-note`}
+                          label="Condições de acesso e limitações"
+                        >
+                          <Textarea
+                            defaultValue={item.accessNote ?? ""}
+                            id={`library-${item.id}-edit-access-note`}
+                            name="accessNote"
+                            placeholder="Condições de acesso e eventuais limitações"
+                          />
+                        </LibraryEditField>
+                        <LibraryEditField
+                          fieldId={`library-${item.id}-edit-lesson`}
+                          label="Aula relacionada (opcional)"
+                        >
+                          <select
+                            className="h-11 rounded-sm border bg-transparent px-3 text-sm"
+                            defaultValue={item.lesson?.id ?? ""}
+                            id={`library-${item.id}-edit-lesson`}
+                            name="lessonId"
+                          >
+                            <option value="">Nenhuma aula relacionada</option>
+                            {courses.flatMap((course) =>
+                              course.modules.flatMap((module) =>
+                                module.lessons.map((lesson) => (
+                                  <option key={lesson.id} value={lesson.id}>
+                                    {course.title} · {lesson.title}
+                                  </option>
+                                ))
+                              )
+                            )}
+                          </select>
+                        </LibraryEditField>
                         <Button size="sm" type="submit">
                           Salvar alterações
                         </Button>
@@ -247,6 +458,16 @@ const AdminLibraryPage = async () => {
                 <option value="VIDEO">Vídeo</option>
               </select>
             </label>
+            <label className="block" htmlFor="library-cover-url">
+              <span className="brand-eyebrow">Capa ou imagem (URL HTTPS)</span>
+              <Input
+                className="mt-2"
+                id="library-cover-url"
+                name="coverUrl"
+                placeholder="https://…"
+                type="url"
+              />
+            </label>
             <label className="block" htmlFor="library-category">
               <span className="brand-eyebrow">Categoria</span>
               <Input className="mt-2" id="library-category" name="category" />
@@ -266,7 +487,7 @@ const AdminLibraryPage = async () => {
                 className="mt-2"
                 id="library-url"
                 name="url"
-                placeholder="https://..."
+                placeholder="https://…"
                 type="url"
               />
             </label>
@@ -283,26 +504,109 @@ const AdminLibraryPage = async () => {
                 PDF, imagem ou texto · até 20 MB.
               </span>
             </label>
-            <Input name="authors" placeholder="Autores" />
-            <Input name="year" placeholder="Ano" type="number" />
-            <Input name="doi" placeholder="DOI (opcional)" />
-            <Input name="pmid" placeholder="PMID (opcional)" />
-            <select
-              className="h-11 rounded-sm border bg-transparent px-3 text-sm"
-              defaultValue=""
-              name="lessonId"
-            >
-              <option value="">Nenhuma aula relacionada</option>
-              {courses.flatMap((course) =>
-                course.modules.flatMap((module) =>
-                  module.lessons.map((lesson) => (
-                    <option key={lesson.id} value={lesson.id}>
-                      {course.title} · {lesson.title}
-                    </option>
-                  ))
-                )
-              )}
-            </select>
+            <label className="block" htmlFor="library-authors">
+              <span className="brand-eyebrow">Autor ou instituição</span>
+              <Input
+                className="mt-2"
+                id="library-authors"
+                name="authors"
+                placeholder="Autores"
+              />
+            </label>
+            <label className="block" htmlFor="library-year">
+              <span className="brand-eyebrow">Ano</span>
+              <Input
+                className="mt-2"
+                id="library-year"
+                name="year"
+                placeholder="Ano"
+                type="number"
+              />
+            </label>
+            <label className="block" htmlFor="library-doi">
+              <span className="brand-eyebrow">DOI (opcional)</span>
+              <Input className="mt-2" id="library-doi" name="doi" />
+            </label>
+            <label className="block" htmlFor="library-pmid">
+              <span className="brand-eyebrow">PMID (opcional)</span>
+              <Input className="mt-2" id="library-pmid" name="pmid" />
+            </label>
+            <label className="block" htmlFor="library-language">
+              <span className="brand-eyebrow">Idioma(s)</span>
+              <Input
+                className="mt-2"
+                id="library-language"
+                name="language"
+                placeholder="en,pt"
+              />
+              <span className="mt-1 block text-muted-foreground text-xs">
+                Use códigos como en, pt ou es.
+              </span>
+            </label>
+            <label className="block" htmlFor="library-difficulty">
+              <span className="brand-eyebrow">Nível</span>
+              <select
+                className="mt-2 h-11 w-full rounded-sm border bg-transparent px-3 text-sm"
+                defaultValue="INTERMEDIATE"
+                id="library-difficulty"
+                name="difficulty"
+              >
+                <option value="INTRODUCTORY">Introdutório</option>
+                <option value="INTERMEDIATE">Intermediário</option>
+                <option value="ADVANCED">Avançado</option>
+              </select>
+            </label>
+            <label className="block" htmlFor="library-access-type">
+              <span className="brand-eyebrow">Acesso</span>
+              <select
+                className="mt-2 h-11 w-full rounded-sm border bg-transparent px-3 text-sm"
+                defaultValue="FREE_TO_READ"
+                id="library-access-type"
+                name="accessType"
+              >
+                <option value="OPEN_ACCESS">Acesso aberto</option>
+                <option value="FREE_TO_READ">Leitura gratuita</option>
+                <option value="FREE_TOOL">Ferramenta gratuita</option>
+              </select>
+            </label>
+            <label className="block" htmlFor="library-version">
+              <span className="brand-eyebrow">Versão/edição</span>
+              <Input
+                className="mt-2"
+                id="library-version"
+                name="version"
+                placeholder="Versão/edição (opcional)"
+              />
+            </label>
+            <label className="block" htmlFor="library-access-note">
+              <span className="brand-eyebrow">Condições de acesso</span>
+              <Textarea
+                className="mt-2"
+                id="library-access-note"
+                name="accessNote"
+                placeholder="Acesso aberto, cadastro gratuito ou limitações"
+              />
+            </label>
+            <label className="grid gap-2 text-sm" htmlFor="library-lesson">
+              <span className="brand-eyebrow">Aula relacionada (opcional)</span>
+              <select
+                className="h-11 rounded-sm border bg-transparent px-3 text-sm"
+                defaultValue=""
+                id="library-lesson"
+                name="lessonId"
+              >
+                <option value="">Nenhuma aula relacionada</option>
+                {courses.flatMap((course) =>
+                  course.modules.flatMap((module) =>
+                    module.lessons.map((lesson) => (
+                      <option key={lesson.id} value={lesson.id}>
+                        {course.title} · {lesson.title}
+                      </option>
+                    ))
+                  )
+                )}
+              </select>
+            </label>
             <Button className="w-full" type="submit">
               Salvar como rascunho
             </Button>

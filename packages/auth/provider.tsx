@@ -49,6 +49,7 @@ export const AuthProvider = ({
       }}
       localization={ptBR}
       taskUrls={{
+        "choose-organization": "/session-tasks",
         "reset-password": "/session-tasks",
         "setup-mfa": "/session-tasks",
       }}

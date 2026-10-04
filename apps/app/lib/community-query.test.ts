@@ -1,28 +1,21 @@
 import { describe, expect, test } from "vitest";
-import {
-  communityHref,
-  parseCommunityKind,
-  parseCommunitySort,
-} from "./community-query";
+import { communityHref, parseCommunitySort } from "./community-query";
 
 describe("community query state", () => {
-  test("normalizes unsupported sort and kind values", () => {
+  test("normalizes unsupported sort values", () => {
     expect(parseCommunitySort("inventado")).toBe("recent");
-    expect(parseCommunityKind("inventado")).toBeUndefined();
-    expect(parseCommunityKind("QUESTION")).toBe("QUESTION");
   });
 
-  test("keeps combined discovery filters in a stable URL", () => {
+  test("keeps supported discovery state in a stable URL", () => {
     expect(
       communityHref({
-        kind: "QUESTION",
         page: 3,
         query: "  método clínico  ",
         sort: "unanswered",
         spaceSlug: "pratica-clinica",
       })
     ).toBe(
-      "/comunidade?q=m%C3%A9todo+cl%C3%ADnico&sort=unanswered&kind=QUESTION&space=pratica-clinica&page=3"
+      "/comunidade?q=m%C3%A9todo+cl%C3%ADnico&sort=unanswered&space=pratica-clinica&page=3"
     );
   });
 

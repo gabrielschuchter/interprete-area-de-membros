@@ -1,10 +1,10 @@
 "use server";
 
-import { auth } from "@repo/auth/server";
 import { database, OnboardingStatus, type Prisma } from "@repo/database";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import type { OnboardingPreferences } from "@/components/onboarding/types";
+import { auth } from "@/lib/auth";
 import {
   deleteMemberAsset,
   isOwnedMemberAssetPath,
@@ -131,6 +131,9 @@ const preferenceKeys = [
   "feedbackReceived",
   "activityDeadline",
   "announcements",
+  "groupInvitations",
+  "groupPosts",
+  "contentAssignments",
 ] as const;
 
 const preferencesSchema = z.object(

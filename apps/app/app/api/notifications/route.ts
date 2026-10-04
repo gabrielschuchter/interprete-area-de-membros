@@ -1,5 +1,5 @@
-import { auth } from "@repo/auth/server";
 import { NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
 import {
   getNotifications,
   getUnreadNotificationCount,
@@ -23,6 +23,7 @@ export const GET = async (request: Request) => {
       "COMMUNITY",
       "ACTIVITIES",
       "LEARNING",
+      "BADGES",
     ] as const;
     const filter = filters.includes(filterValue as (typeof filters)[number])
       ? (filterValue as NotificationFilter)

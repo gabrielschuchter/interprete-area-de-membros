@@ -1,5 +1,5 @@
-import { auth } from "@repo/auth/server";
 import { NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
 import { markNotificationsSeen } from "@/lib/notifications";
 
 export const POST = async (request: Request) => {

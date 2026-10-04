@@ -2,6 +2,13 @@ import { describe, expect, test, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 vi.mock("@repo/database", () => ({
+  ContentStatus: { PUBLISHED: "PUBLISHED" },
+  CourseExperience: { ASYNC: "ASYNC", RECORDING_ARCHIVE: "RECORDING_ARCHIVE" },
+  LearningAssignmentStatus: {
+    NEW: "NEW",
+    VIEWED: "VIEWED",
+    STARTED: "STARTED",
+  },
   MemberRole: { ADMIN: "ADMIN", TEACHER: "TEACHER" },
   database: {},
 }));

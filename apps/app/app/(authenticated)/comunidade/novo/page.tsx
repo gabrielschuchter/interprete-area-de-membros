@@ -6,8 +6,8 @@ import { getCommunitySpaces } from "@/lib/community";
 import { requireMemberId } from "@/lib/learning";
 
 const NewCommunityContentPage = async () => {
-  await requireMemberId();
-  const spaces = await getCommunitySpaces();
+  const memberId = await requireMemberId();
+  const spaces = await getCommunitySpaces(memberId);
 
   return (
     <div className="min-h-svh bg-background">
@@ -21,12 +21,11 @@ const NewCommunityContentPage = async () => {
           <p className="brand-eyebrow">Escrita · comunidade</p>
           <span aria-hidden="true" className="brand-rule mt-4" />
           <h1 className="mt-6 font-display text-5xl leading-none sm:text-6xl">
-            O que você quer colocar em movimento?
+            Nova publicação
           </h1>
           <p className="mt-5 text-muted-foreground leading-7 sm:text-lg">
-            Todo membro pode escrever. Escolha uma publicação mais elaborada ou
-            abra uma discussão rápida; em ambos os casos, seu rascunho fica
-            salvo enquanto você pensa.
+            Compartilhe uma ideia, um estudo ou uma referência. Seu rascunho
+            fica salvo enquanto você escreve.
           </p>
         </header>
         <CommunityStartPanel

@@ -10,6 +10,7 @@ import {
   VideoIcon,
 } from "lucide-react";
 import Link from "next/link";
+import { StudyDashboard } from "@/components/learning/study-dashboard";
 import { communityPostHref } from "@/lib/community";
 import {
   collectionItemHref,
@@ -18,6 +19,7 @@ import {
 import { getHomeData } from "@/lib/home";
 import { requireMemberId } from "@/lib/learning";
 import { getOrCreateProfile } from "@/lib/profile";
+import { getStudyDashboardData } from "@/lib/study-dashboard";
 
 const whitespacePattern = /\s+/;
 const firstName = (displayName: string) =>
@@ -26,9 +28,10 @@ const firstName = (displayName: string) =>
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: the Home composition intentionally gates independent editorial blocks without a client-side dashboard state machine.
 const HomePage = async () => {
   const memberId = await requireMemberId();
-  const [profile, data] = await Promise.all([
+  const [profile, data, studyDashboard] = await Promise.all([
     getOrCreateProfile(memberId),
     getHomeData(memberId),
+    getStudyDashboardData(memberId),
   ]);
   const enabledBlocks = new Set(
     data.homeBlocks.filter((block) => block.enabled).map((block) => block.type)
@@ -78,6 +81,8 @@ const HomePage = async () => {
           fazem sentido para você.
         </p>
       </header>
+
+      <StudyDashboard data={studyDashboard} />
 
       {nextMeeting && isEnabled(HomeBlockType.NEXT_MEETING) ? (
         <section className="paper-surface mt-14 border border-brand-structural/35 p-6 shadow-[var(--shadow-paper)] sm:p-10">
@@ -146,7 +151,7 @@ const HomePage = async () => {
               <article className="paper-surface border p-6">
                 <CheckCircle2Icon
                   aria-hidden="true"
-                  className="size-5 text-brand-action"
+                  className="size-5 text-brand-action-text"
                 />
                 <p className="brand-eyebrow mt-6">Atividade</p>
                 <h3 className="mt-2 font-display text-2xl">
@@ -165,7 +170,7 @@ const HomePage = async () => {
               <article className="paper-surface border p-6">
                 <BookOpenIcon
                   aria-hidden="true"
-                  className="size-5 text-brand-action"
+                  className="size-5 text-brand-action-text"
                 />
                 <p className="brand-eyebrow mt-6">Leitura</p>
                 <h3 className="mt-2 font-display text-2xl">
@@ -216,7 +221,7 @@ const HomePage = async () => {
                   >
                     <VideoIcon
                       aria-hidden="true"
-                      className="size-5 text-brand-action"
+                      className="size-5 text-brand-action-text"
                     />
                     <p className="brand-eyebrow mt-6">
                       {recording.group.legacyStudentName}
@@ -261,7 +266,7 @@ const HomePage = async () => {
               <article className="paper-surface border p-6">
                 <CheckCircle2Icon
                   aria-hidden="true"
-                  className="size-5 text-brand-action"
+                  className="size-5 text-brand-action-text"
                 />
                 <p className="brand-eyebrow mt-6">Prática</p>
                 <h3 className="mt-2 font-display text-2xl">
@@ -281,7 +286,7 @@ const HomePage = async () => {
               <article className="paper-surface border border-brand-action/35 p-6">
                 <MessageSquareQuoteIcon
                   aria-hidden="true"
-                  className="size-5 text-brand-action"
+                  className="size-5 text-brand-action-text"
                 />
                 <p className="brand-eyebrow mt-6">Feedback novo</p>
                 <h3 className="mt-2 font-display text-2xl">
@@ -303,7 +308,7 @@ const HomePage = async () => {
               <article className="paper-surface border p-6">
                 <MessageCircleIcon
                   aria-hidden="true"
-                  className="size-5 text-brand-action"
+                  className="size-5 text-brand-action-text"
                 />
                 <p className="brand-eyebrow mt-6">Comunidade</p>
                 <h3 className="mt-2 font-display text-2xl">

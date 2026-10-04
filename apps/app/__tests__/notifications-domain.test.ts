@@ -31,6 +31,7 @@ describe("notification domain rules", () => {
     expect(notificationFilterTypes.LEARNING).toEqual([
       "LESSON_AVAILABLE",
       "MODULE_AVAILABLE",
+      "LEARNING_CONTENT_ASSIGNED",
     ]);
   });
 

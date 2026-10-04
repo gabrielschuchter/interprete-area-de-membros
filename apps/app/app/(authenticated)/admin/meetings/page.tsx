@@ -20,6 +20,7 @@ const statusLabel = (status: string) => {
 
 import {
   createMeeting,
+  saveMeetingAttendance,
   setMeetingStatus,
   updateMeeting,
 } from "../../encontros/actions";
@@ -37,6 +38,7 @@ const AdminMeetingsPage = async () => {
       getStaffMeetings(),
       getCourseOptions(),
       database.member.findMany({
+        where: { deactivatedAt: null },
         orderBy: { displayName: "asc" },
         select: { id: true, displayName: true, email: true },
         take: 200,
@@ -271,6 +273,116 @@ const AdminMeetingsPage = async () => {
                       </Button>
                     </form>
                   </details>
+                  {meeting.startsAt <= new Date() &&
+                    meeting.participants.length > 0 &&
+                    (meeting.status === "PUBLISHED" ||
+                      meeting.status === "ARCHIVED") && (
+                      <details className="mt-4 border-border border-t pt-4">
+                        <summary className="cursor-pointer text-foreground text-sm underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                          Registrar presença confirmada
+                        </summary>
+                        <p className="mt-3 max-w-2xl text-muted-foreground text-sm leading-6">
+                          Marque quem esteve presente. O registro é feito pela
+                          equipe e não é inferido ao abrir o link do encontro.
+                        </p>
+                        <form
+                          action={saveMeetingAttendance}
+                          className="mt-4 space-y-4"
+                        >
+                          <input
+                            name="meetingId"
+                            type="hidden"
+                            value={meeting.id}
+                          />
+                          <fieldset className="grid gap-2 sm:grid-cols-2">
+                            <legend className="sr-only">
+                              Participantes de {meeting.title}
+                            </legend>
+                            {meeting.participants.map(({ memberId }) => {
+                              const member = members.find(
+                                (candidate) => candidate.id === memberId
+                              );
+                              if (!member) {
+                                return null;
+                              }
+                              const attendance = meeting.attendance.find(
+                                (entry) => entry.memberId === memberId
+                              );
+                              return (
+                                <label
+                                  className="flex min-h-11 cursor-pointer items-center gap-3 rounded-sm border border-border px-3 py-2 text-sm focus-within:ring-2 focus-within:ring-ring"
+                                  key={memberId}
+                                >
+                                  <input
+                                    className="size-4 accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                    defaultChecked={attendance?.isPresent}
+                                    name="attendeeIds"
+                                    type="checkbox"
+                                    value={memberId}
+                                  />
+                                  <span className="min-w-0">
+                                    <span className="block truncate text-foreground">
+                                      {member.displayName || member.email}
+                                    </span>
+                                    {attendance && (
+                                      <span className="mt-0.5 block text-muted-foreground text-xs">
+                                        Registro atualizado em{" "}
+                                        {formatDate(
+                                          attendance.markedAt,
+                                          meeting.timezone
+                                        )}
+                                      </span>
+                                    )}
+                                  </span>
+                                </label>
+                              );
+                            })}
+                          </fieldset>
+                          <Button size="sm" type="submit">
+                            Salvar presença
+                          </Button>
+                        </form>
+                        {meeting.attendance.some(
+                          (entry) =>
+                            !meeting.participants.some(
+                              ({ memberId }) => memberId === entry.memberId
+                            )
+                        ) && (
+                          <div className="mt-5 border-border border-t pt-4">
+                            <p className="brand-eyebrow">
+                              Registros de participantes removidos
+                            </p>
+                            <ul className="mt-2 space-y-2 text-sm">
+                              {meeting.attendance
+                                .filter(
+                                  (entry) =>
+                                    !meeting.participants.some(
+                                      ({ memberId }) =>
+                                        memberId === entry.memberId
+                                    )
+                                )
+                                .map((entry) => (
+                                  <li
+                                    className="flex flex-wrap justify-between gap-2 text-muted-foreground"
+                                    key={entry.memberId}
+                                  >
+                                    <span>
+                                      {entry.member.displayName ||
+                                        entry.member.email ||
+                                        "Membro"}
+                                    </span>
+                                    <span>
+                                      {entry.isPresent
+                                        ? "Presença confirmada"
+                                        : "Ausência registrada"}
+                                    </span>
+                                  </li>
+                                ))}
+                            </ul>
+                          </div>
+                        )}
+                      </details>
+                    )}
                 </article>
               ))
             )}

@@ -51,6 +51,10 @@ const AdminMemberDetailPage = async ({
   }
 
   const displayName = member.displayName ?? member.email ?? "Membro";
+  const activityAssignments = member.assignments.flatMap(
+    ({ activity, ...assignment }) =>
+      activity ? [{ ...assignment, activity }] : []
+  );
 
   return (
     <main className="mx-auto w-full max-w-[1280px] px-5 py-10 sm:px-8 lg:px-12 lg:py-14">
@@ -138,16 +142,16 @@ const AdminMemberDetailPage = async ({
               Atividades
             </h2>
             <span className="font-data text-muted-foreground text-xs">
-              {member.assignments.length} atribuídas
+              {activityAssignments.length} atribuídas
             </span>
           </div>
-          {member.assignments.length === 0 ? (
+          {activityAssignments.length === 0 ? (
             <p className="mt-5 text-muted-foreground text-sm">
               Nenhuma atividade atribuída.
             </p>
           ) : (
             <ul className="mt-5 divide-y border-border border-y">
-              {member.assignments.map((assignment) => (
+              {activityAssignments.map((assignment) => (
                 <li
                   className="flex items-center justify-between gap-4 py-4"
                   key={assignment.activity.id}

@@ -1,6 +1,6 @@
-import { auth } from "@repo/auth/server";
 import type { Prisma } from "@repo/database";
 import { NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
 import {
   plainTextFromDocument,
   sanitizeRichDocument,

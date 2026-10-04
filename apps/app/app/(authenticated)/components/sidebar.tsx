@@ -24,8 +24,10 @@ import {
   CheckSquareIcon,
   HouseIcon,
   LibraryIcon,
+  ListChecksIcon,
   MessageCircleIcon,
   SettingsIcon,
+  TargetIcon,
   VideoIcon,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
@@ -47,16 +49,22 @@ interface GlobalSidebarProperties {
   readonly children: ReactNode;
   readonly displayName: string;
   readonly productConfig: {
-    readonly recordingsExperienceV2: boolean;
     readonly showLearnNavigation: boolean;
   };
 }
 
 const baseNavigation = [
   { href: "/", label: "Início", icon: HouseIcon },
+  { href: "/tarefas", label: "Metas e tarefas", icon: TargetIcon },
   { href: "/encontros", label: "Encontros", icon: CalendarDaysIcon },
-  { href: "/encontros/gravacoes", label: "Gravações", icon: VideoIcon },
+  {
+    href: "/encontros/gravacoes",
+    label: "Minhas gravações",
+    icon: VideoIcon,
+  },
+  { href: "/comunidade/salvos", label: "Salvos", icon: BookmarkIcon },
   { href: "/atividades", label: "Atividades", icon: CheckSquareIcon },
+  { href: "/exercicios", label: "Exercícios", icon: ListChecksIcon },
   {
     href: "/comunidade",
     label: "Comunidade",
@@ -84,22 +92,27 @@ export const GlobalSidebar = ({
   const navigation = [
     baseNavigation[0],
     ...(productConfig.showLearnNavigation ? [learnNavigation] : []),
-    ...baseNavigation
-      .slice(1)
-      .filter(
-        (item) =>
-          item.href !== "/encontros/gravacoes" ||
-          productConfig.recordingsExperienceV2
-      ),
+    ...baseNavigation.slice(1),
   ];
   const activePath = pendingHref ?? pathname;
-  const isActivePath = useCallback(
-    (href: string) =>
-      href === "/"
-        ? activePath === "/"
-        : activePath === href || activePath.startsWith(`${href}/`),
-    [activePath]
-  );
+  const isActivePath = (href: string) => {
+    const knownHrefs = [
+      ...navigation.map((item) => item.href),
+      "/comunidade/meus-topicos",
+      "/configuracoes",
+      "/perfil",
+      ...(canManageContent ? ["/admin"] : []),
+    ];
+    const mostSpecificHref = knownHrefs
+      .filter(
+        (candidate) =>
+          activePath === candidate ||
+          (candidate !== "/" && activePath.startsWith(`${candidate}/`))
+      )
+      .sort((left, right) => right.length - left.length)[0];
+
+    return href === "/" ? activePath === "/" : mostSpecificHref === href;
+  };
   const handleNavigationStart = useCallback(
     (href: string) => {
       if (href !== pathname) {
@@ -137,24 +150,6 @@ export const GlobalSidebar = ({
                   />
                   <span className="hidden font-display text-2xl text-sidebar-foreground group-data-[collapsible=icon]:inline">
                     I.
-                  </span>
-                </IntentLink>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                className="rounded-sm"
-                isActive={isActivePath("/comunidade/salvos")}
-                tooltip="Salvos"
-              >
-                <IntentLink
-                  href="/comunidade/salvos"
-                  onNavigationStart={handleNavigationStart}
-                >
-                  <BookmarkIcon />
-                  <span className="group-data-[collapsible=icon]:hidden">
-                    Salvos
                   </span>
                 </IntentLink>
               </SidebarMenuButton>

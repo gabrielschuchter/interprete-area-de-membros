@@ -29,7 +29,6 @@ describe("CommunityNavigation", () => {
   test("preserves all combined feed filters in discovery links", () => {
     render(
       <CommunityFeedNavigation
-        kind="QUESTION"
         query="método"
         sort="unanswered"
         spaceSlug="pratica-clinica"
@@ -43,12 +42,10 @@ describe("CommunityNavigation", () => {
     ).toBe("page");
     expect(
       screen.getByRole("link", { name: "Em alta" }).getAttribute("href")
-    ).toBe(
-      "/comunidade?q=m%C3%A9todo&sort=popular&kind=QUESTION&space=pratica-clinica"
-    );
+    ).toBe("/comunidade?q=m%C3%A9todo&sort=popular&space=pratica-clinica");
     expect(
-      screen.getByRole("link", { name: "Todos" }).getAttribute("href")
-    ).toBe("/comunidade?q=m%C3%A9todo&sort=unanswered&space=pratica-clinica");
+      screen.getByRole("navigation", { name: "Descoberta do feed" }).textContent
+    ).not.toContain("Formato");
   });
 
   test("marks the primary community destination without duplicating actions", () => {

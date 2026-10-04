@@ -1,6 +1,13 @@
 import "server-only";
 
-import { ContentStatus, database, type Prisma } from "@repo/database";
+import {
+  ContentStatus,
+  database,
+  LearningAssignmentStatus,
+  LearningAssignmentTargetType,
+  type Prisma,
+} from "@repo/database";
+import { markLearningAssignmentStarted } from "@/lib/learning-assignments";
 import {
   getLearningAccessScope,
   hasLessonAccess,
@@ -35,12 +42,18 @@ const publishedActivityWhere = {
   ],
 } satisfies Prisma.ActivityWhereInput;
 
-const memberActivityWhere = (memberId: string): Prisma.ActivityWhereInput => ({
-  ...publishedActivityWhere,
-  OR: [{ assignments: { none: {} } }, { assignments: { some: { memberId } } }],
+const currentMemberAssignmentWhere = (memberId: string, now = new Date()) => ({
+  memberId,
+  revokedAt: null,
+  status: { not: LearningAssignmentStatus.REVOKED },
+  AND: [
+    { OR: [{ availableAt: null }, { availableAt: { lte: now } }] },
+    { OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] },
+  ],
 });
 
 interface ActivityAccessContext {
+  readonly assignments: readonly { readonly dueAt: Date | null }[];
   readonly courseId: string | null;
   readonly lesson: {
     readonly id: string;
@@ -52,7 +65,7 @@ const canReadActivity = (
   activity: ActivityAccessContext,
   scope: Awaited<ReturnType<typeof getLearningAccessScope>>
 ) => {
-  if (scope.fullAccess) {
+  if (scope.fullAccess || activity.assignments.length > 0) {
     return true;
   }
 
@@ -76,9 +89,14 @@ export const canAccessPublishedActivity = async (
 ) => {
   const [activity, scope] = await Promise.all([
     database.activity.findFirst({
-      where: { id: activityId, ...memberActivityWhere(memberId) },
+      where: { id: activityId, ...publishedActivityWhere },
       select: {
         courseId: true,
+        assignments: {
+          where: currentMemberAssignmentWhere(memberId),
+          select: { dueAt: true },
+          take: 1,
+        },
         lesson: {
           select: {
             id: true,
@@ -101,7 +119,7 @@ export const getPublishedActivities = async (
     ? Promise.resolve(accessScope)
     : getLearningAccessScope(memberId);
   const activitiesPromise = database.activity.findMany({
-    where: memberActivityWhere(memberId),
+    where: publishedActivityWhere,
     orderBy: [
       { dueAt: { sort: "asc", nulls: "last" } },
       { position: "asc" },
@@ -116,8 +134,10 @@ export const getPublishedActivities = async (
       deliveryKind: true,
       dueAt: true,
       assignments: {
-        where: { memberId },
+        where: currentMemberAssignmentWhere(memberId),
+        orderBy: { assignedAt: "desc" },
         select: { dueAt: true },
+        take: 1,
       },
       course: { select: { id: true, title: true, slug: true } },
       lesson: {
@@ -153,7 +173,7 @@ export const getPublishedActivity = async (slug: string, memberId: string) => {
   const [scope, activity] = await Promise.all([
     getLearningAccessScope(memberId),
     database.activity.findFirst({
-      where: { slug, ...memberActivityWhere(memberId) },
+      where: { slug, ...publishedActivityWhere },
       select: {
         id: true,
         courseId: true,
@@ -164,8 +184,10 @@ export const getPublishedActivity = async (slug: string, memberId: string) => {
         deliveryKind: true,
         dueAt: true,
         assignments: {
-          where: { memberId },
+          where: currentMemberAssignmentWhere(memberId),
+          orderBy: { assignedAt: "desc" },
           select: { dueAt: true },
+          take: 1,
         },
         course: { select: { id: true, title: true, slug: true } },
         lesson: {
@@ -197,7 +219,15 @@ export const getPublishedActivity = async (slug: string, memberId: string) => {
     }),
   ]);
 
-  return activity && canReadActivity(activity, scope) ? activity : null;
+  if (!(activity && canReadActivity(activity, scope))) {
+    return null;
+  }
+  await markLearningAssignmentStarted(
+    memberId,
+    LearningAssignmentTargetType.ACTIVITY,
+    activity.id
+  );
+  return activity;
 };
 
 export const getStaffActivities = async () =>

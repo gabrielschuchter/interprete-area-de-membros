@@ -1,6 +1,10 @@
 export const mutationLimits = {
   "community.comment.create": { max: 10, windowMs: 60_000 },
   "community.post.create": { max: 5, windowMs: 10 * 60_000 },
+  "community.group.create": { max: 4, windowMs: 60 * 60_000 },
+  "community.group.invite": { max: 30, windowMs: 60 * 60_000 },
+  "community.group.join": { max: 20, windowMs: 60 * 60_000 },
+  "community.group.invitation.respond": { max: 30, windowMs: 60 * 60_000 },
   "community.mutation": { max: 60, windowMs: 60_000 },
   "community.vote": { max: 30, windowMs: 60_000 },
   "community.bookmark": { max: 30, windowMs: 60_000 },
@@ -15,9 +19,11 @@ export const mutationLimits = {
   "profile.update": { max: 10, windowMs: 10 * 60_000 },
   "onboarding.save": { max: 20, windowMs: 10 * 60_000 },
   "library.bookmark": { max: 30, windowMs: 60_000 },
+  "library.catalog-import": { max: 3, windowMs: 60 * 60_000 },
   "library.mutation": { max: 30, windowMs: 60_000 },
   "meeting.mutation": { max: 30, windowMs: 60_000 },
   "learning.playback": { max: 30, windowMs: 60_000 },
+  "study.heartbeat": { max: 180, windowMs: 60_000 },
   "admin.mutation": { max: 60, windowMs: 60_000 },
 } as const;
 

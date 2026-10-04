@@ -6,7 +6,8 @@ import type {
   UserJSON,
   WebhookEvent,
 } from "@repo/auth/server";
-import { database } from "@repo/database";
+import { database, type Prisma } from "@repo/database";
+import { withMemberIdentityLock } from "@repo/member-domain";
 import { log } from "@repo/observability/log";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
@@ -46,10 +47,22 @@ const getUserFields = (data: UserJSON) => {
   };
 };
 
-const syncMemberProfile = async (data: UserJSON) => {
+const syncMemberProfileInTransaction = async (
+  transaction: Prisma.TransactionClient,
+  data: UserJSON,
+  useFallbackUsername = false
+) => {
   const fields = getUserFields(data);
+  const existingMember = await transaction.member.findUnique({
+    where: { id: data.id },
+    select: { deactivatedAt: true },
+  });
 
-  await database.member.upsert({
+  if (existingMember?.deactivatedAt) {
+    return false;
+  }
+
+  await transaction.member.upsert({
     where: { id: data.id },
     update: {
       displayName: fields.displayName,
@@ -64,7 +77,7 @@ const syncMemberProfile = async (data: UserJSON) => {
     },
   });
 
-  const existing = await database.profile.findUnique({
+  const existing = await transaction.profile.findUnique({
     where: { clerkUserId: data.id },
     select: { id: true, username: true, displayName: true, avatarUrl: true },
   });
@@ -76,51 +89,109 @@ const syncMemberProfile = async (data: UserJSON) => {
     };
 
     if (Object.keys(profileUpdate).length > 0) {
-      await database.profile.update({
+      await transaction.profile.update({
         where: { id: existing.id },
         data: profileUpdate,
       });
     }
-    return;
+    return true;
   }
 
-  try {
-    await database.profile.create({
-      data: {
-        clerkUserId: data.id,
-        username: fields.username,
-        displayName: fields.displayName,
-        avatarUrl: fields.avatarUrl,
-        interests: [],
-      },
-    });
-  } catch {
-    // A concurrent request may have claimed the candidate username. The
-    // deterministic fallback keeps webhook delivery idempotent without
-    // overwriting an existing member profile.
-    const created = await database.profile.findUnique({
-      where: { clerkUserId: data.id },
-      select: { id: true },
-    });
+  await transaction.profile.create({
+    data: {
+      clerkUserId: data.id,
+      username: useFallbackUsername ? fields.fallbackUsername : fields.username,
+      displayName: fields.displayName,
+      avatarUrl: fields.avatarUrl,
+      interests: [],
+    },
+  });
 
-    if (created) {
-      return;
+  return true;
+};
+
+const isUniqueConstraintError = (error: unknown) =>
+  typeof error === "object" &&
+  error !== null &&
+  "code" in error &&
+  error.code === "P2002";
+
+const syncMemberProfile = async (data: UserJSON) => {
+  const sync = (useFallbackUsername: boolean) =>
+    database.$transaction((transaction) =>
+      withMemberIdentityLock(transaction, data.id, () =>
+        syncMemberProfileInTransaction(transaction, data, useFallbackUsername)
+      )
+    );
+
+  try {
+    return await sync(false);
+  } catch (error) {
+    if (!isUniqueConstraintError(error)) {
+      throw error;
     }
 
-    await database.profile.create({
-      data: {
-        clerkUserId: data.id,
-        username: fields.fallbackUsername,
-        displayName: fields.displayName,
-        avatarUrl: fields.avatarUrl,
-        interests: [],
-      },
-    });
+    // The first transaction is rolled back before retrying with the stable
+    // Clerk-ID suffix, so a profile conflict cannot leave an aborted tx open.
+    return sync(true);
   }
 };
 
+const deactivateMember = async (memberId: string) => {
+  await database.$transaction((transaction) =>
+    withMemberIdentityLock(transaction, memberId, async () => {
+      const existing = await transaction.member.findUnique({
+        where: { id: memberId },
+        select: { deactivatedAt: true },
+      });
+
+      if (existing?.deactivatedAt) {
+        return;
+      }
+
+      const now = new Date();
+      await transaction.member.upsert({
+        where: { id: memberId },
+        update: {
+          deactivatedAt: now,
+          displayName: "Membro removido",
+          email: null,
+          avatarUrl: null,
+        },
+        create: {
+          id: memberId,
+          deactivatedAt: now,
+          displayName: "Membro removido",
+        },
+      });
+
+      await transaction.profile.updateMany({
+        where: { clerkUserId: memberId },
+        data: {
+          displayName: "Membro removido",
+          avatarUrl: null,
+          headline: null,
+          bio: null,
+          occupation: null,
+          institution: null,
+          city: null,
+          state: null,
+          country: null,
+          website: null,
+          instagram: null,
+          linkedin: null,
+          interests: [],
+        },
+      });
+    })
+  );
+};
+
 const handleUserCreated = async (data: UserJSON) => {
-  await syncMemberProfile(data);
+  const isActive = await syncMemberProfile(data);
+  if (!isActive) {
+    return new Response("User is deactivated", { status: 201 });
+  }
   analytics?.identify({
     distinctId: data.id,
     properties: {
@@ -142,7 +213,10 @@ const handleUserCreated = async (data: UserJSON) => {
 };
 
 const handleUserUpdated = async (data: UserJSON) => {
-  await syncMemberProfile(data);
+  const isActive = await syncMemberProfile(data);
+  if (!isActive) {
+    return new Response("User is deactivated", { status: 201 });
+  }
   analytics?.identify({
     distinctId: data.id,
     properties: {
@@ -165,10 +239,9 @@ const handleUserUpdated = async (data: UserJSON) => {
 
 const handleUserDeleted = async (data: DeletedObjectJSON) => {
   if (data.id) {
-    // Keep historical community content, but remove the internal identity and
-    // all data whose lifecycle is owned by the member. deleteMany makes a
-    // retried Clerk delivery idempotent.
-    await database.member.deleteMany({ where: { id: data.id } });
+    // Keep historical records and their author identity while removing the
+    // member's ability to authenticate and redact direct profile details.
+    await deactivateMember(data.id);
 
     analytics?.identify({
       distinctId: data.id,

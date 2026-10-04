@@ -1,6 +1,11 @@
 import "server-only";
 
 import { ContentStatus, database, type Prisma } from "@repo/database";
+import { getMemberRole } from "@/lib/authorization";
+import {
+  communityPostMutationAudienceWhere,
+  communitySpaceMemberAudienceWhere,
+} from "@/lib/community-space-rules";
 import type { MutationAction } from "@/lib/mutation-contract";
 import {
   consumeMutationRateLimit,
@@ -14,23 +19,30 @@ import {
 } from "@/lib/notifications";
 import { getOrCreateProfile } from "@/lib/profile";
 
-const publishedPostWhere = (postId: string, spaceSlug?: string) => ({
-  id: postId,
-  status: ContentStatus.PUBLISHED,
-  deletedAt: null,
-  ...(spaceSlug
-    ? {
-        space: {
-          is: { slug: spaceSlug, status: ContentStatus.PUBLISHED },
-        },
-      }
-    : {
-        OR: [
-          { space: null },
-          { space: { is: { status: ContentStatus.PUBLISHED } } },
-        ],
-      }),
-});
+const publishedPostWhere = async (
+  postId: string,
+  memberId: string,
+  spaceSlug?: string
+) => {
+  const role = await getMemberRole(memberId);
+  const canModerate = role === "TEACHER" || role === "ADMIN";
+  return {
+    id: postId,
+    status: ContentStatus.PUBLISHED,
+    deletedAt: null,
+    ...(spaceSlug
+      ? {
+          space: {
+            is: {
+              slug: spaceSlug,
+              status: ContentStatus.PUBLISHED,
+              ...communitySpaceMemberAudienceWhere(memberId, canModerate),
+            },
+          },
+        }
+      : communityPostMutationAudienceWhere(memberId, canModerate)),
+  };
+};
 
 const communityHref = (post: {
   readonly id: string;
@@ -275,7 +287,11 @@ export const createCommunityComment = async (
   }
 
   const post = await database.communityPost.findFirst({
-    where: publishedPostWhere(input.postId, input.spaceSlug),
+    where: await publishedPostWhere(
+      input.postId,
+      input.actorId,
+      input.spaceSlug
+    ),
     select: {
       id: true,
       authorId: true,

@@ -11,6 +11,11 @@ let nextConfig: NextConfig = withLogging(config);
 // an individual handler has a chance to add its more specific headers.
 nextConfig = {
   ...nextConfig,
+  logging: {
+    incomingRequests: {
+      ignore: [/__clerk_/],
+    },
+  },
   async headers() {
     return [
       {

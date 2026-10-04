@@ -1,7 +1,7 @@
-import { auth } from "@repo/auth/server";
 import { database } from "@repo/database";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { auth } from "@/lib/auth";
 import { getAccessibleRecording } from "@/lib/content-access";
 import {
   consumeMutationRateLimit,

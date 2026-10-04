@@ -13,7 +13,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
-type Filter = "ALL" | "MENTIONS" | "COMMUNITY" | "ACTIVITIES" | "LEARNING";
+type Filter =
+  | "ALL"
+  | "MENTIONS"
+  | "COMMUNITY"
+  | "ACTIVITIES"
+  | "LEARNING"
+  | "BADGES";
 
 interface Item {
   readonly actor?: {
@@ -55,6 +61,7 @@ const filters: readonly { label: string; value: Filter }[] = [
   { label: "Comunidade", value: "COMMUNITY" },
   { label: "Atividades", value: "ACTIVITIES" },
   { label: "Aprender", value: "LEARNING" },
+  { label: "Conquistas", value: "BADGES" },
 ];
 
 const topicActivitySuffixPattern = /:activity$/;
@@ -308,7 +315,7 @@ export const NotificationsPageClient = ({ initial }: Properties) => {
             <div className="paper-surface border p-8 text-center sm:p-12">
               <BellIcon
                 aria-hidden="true"
-                className="mx-auto size-8 text-brand-action"
+                className="mx-auto size-8 text-brand-action-text"
               />
               <h2 className="mt-4 font-display text-2xl">
                 Nenhuma notificação por aqui.

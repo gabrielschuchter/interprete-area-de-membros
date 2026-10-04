@@ -34,6 +34,39 @@ const statusLabel = (status: string) => {
   return "Rascunho";
 };
 
+const dateTimeLocal = (value: Date | null) => {
+  if (!value) {
+    return "";
+  }
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(value);
+  const part = (type: string) =>
+    parts.find((entry) => entry.type === type)?.value ?? "";
+  return `${part("year")}-${part("month")}-${part("day")}T${part("hour")}:${part("minute")}`;
+};
+
+type AdminCollection = Awaited<ReturnType<typeof getAdminCollections>>[number];
+
+const collectionVisibilityLabel = (collection: AdminCollection) => {
+  const audience = collection.audienceSpace
+    ? `Grupo ${collection.audienceSpace.title}`
+    : "Todos os membros";
+  const available = collection.availableAt
+    ? `libera ${new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeZone: "America/Sao_Paulo" }).format(collection.availableAt)}`
+    : null;
+  const expires = collection.expiresAt
+    ? `encerra ${new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeZone: "America/Sao_Paulo" }).format(collection.expiresAt)}`
+    : null;
+  return [audience, available, expires].filter(Boolean).join(" · ");
+};
+
 const CollectionsPage = async ({ searchParams }: CollectionsPageProperties) => {
   await requireStaff();
   const [{ message, status }, collections, resources] = await Promise.all([
@@ -162,6 +195,9 @@ const CollectionsPage = async ({ searchParams }: CollectionsPageProperties) => {
                   </div>
                   <p className="mt-4 text-muted-foreground leading-6">
                     {collection.description ?? "Sem descrição editorial."}
+                  </p>
+                  <p className="mt-3 font-data text-muted-foreground text-xs">
+                    Visibilidade: {collectionVisibilityLabel(collection)}
                   </p>
                   <div className="mt-6 divide-y border-y">
                     {collection.items.length === 0 ? (
@@ -297,10 +333,57 @@ const CollectionsPage = async ({ searchParams }: CollectionsPageProperties) => {
                         name="position"
                         type="number"
                       />
+                      <Input
+                        defaultValue={collection.coverUrl ?? ""}
+                        name="coverUrl"
+                        placeholder="URL HTTPS da capa"
+                        type="url"
+                      />
                       <Textarea
                         defaultValue={collection.description ?? ""}
                         name="description"
                       />
+                      <label className="grid gap-1 text-sm">
+                        <span>Público</span>
+                        <select
+                          className="h-10 border bg-background px-3"
+                          defaultValue={collection.audienceSpaceId ?? ""}
+                          name="audienceSpaceId"
+                        >
+                          <option value="">Todos os membros</option>
+                          {resources.studyGroups.map((group) => (
+                            <option key={group.id} value={group.id}>
+                              Grupo · {group.title}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <label
+                          className="grid gap-1 text-sm"
+                          htmlFor={`collection-available-${collection.id}`}
+                        >
+                          <span>Disponível a partir de</span>
+                          <Input
+                            defaultValue={dateTimeLocal(collection.availableAt)}
+                            id={`collection-available-${collection.id}`}
+                            name="availableAt"
+                            type="datetime-local"
+                          />
+                        </label>
+                        <label
+                          className="grid gap-1 text-sm"
+                          htmlFor={`collection-expires-${collection.id}`}
+                        >
+                          <span>Disponível até</span>
+                          <Input
+                            defaultValue={dateTimeLocal(collection.expiresAt)}
+                            id={`collection-expires-${collection.id}`}
+                            name="expiresAt"
+                            type="datetime-local"
+                          />
+                        </label>
+                      </div>
                       <Button size="sm" type="submit">
                         Salvar coleção
                       </Button>
@@ -323,10 +406,50 @@ const CollectionsPage = async ({ searchParams }: CollectionsPageProperties) => {
             />
             <Input name="slug" placeholder="para-a-proxima-conversa" required />
             <Input defaultValue={0} name="position" type="number" />
+            <Input name="coverUrl" placeholder="URL HTTPS da capa" type="url" />
             <Textarea
               name="description"
               placeholder="O fio que conecta estes materiais"
             />
+            <label className="grid gap-1 text-sm">
+              <span>Público</span>
+              <select
+                className="h-10 border bg-background px-3"
+                defaultValue=""
+                name="audienceSpaceId"
+              >
+                <option value="">Todos os membros</option>
+                {resources.studyGroups.map((group) => (
+                  <option key={group.id} value={group.id}>
+                    Grupo · {group.title}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label
+                className="grid gap-1 text-sm"
+                htmlFor="new-collection-available"
+              >
+                <span>Disponível a partir de</span>
+                <Input
+                  id="new-collection-available"
+                  name="availableAt"
+                  type="datetime-local"
+                />
+              </label>
+              <label
+                className="grid gap-1 text-sm"
+                htmlFor="new-collection-expires"
+              >
+                <span>Disponível até</span>
+                <Input
+                  id="new-collection-expires"
+                  name="expiresAt"
+                  type="datetime-local"
+                />
+              </label>
+            </div>
             <Button className="w-full" type="submit">
               Criar rascunho
             </Button>

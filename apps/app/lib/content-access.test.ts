@@ -3,12 +3,46 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 
 const { databaseMock, getMemberRole } = vi.hoisted(() => ({
-  databaseMock: { lessonAsset: { findUnique: vi.fn() } },
+  databaseMock: {
+    accessGrant: { findMany: vi.fn().mockResolvedValue([]) },
+    activityAssignment: { findMany: vi.fn().mockResolvedValue([]) },
+    enrollment: { findMany: vi.fn().mockResolvedValue([]) },
+    lesson: { findMany: vi.fn().mockResolvedValue([]) },
+    lessonAsset: {
+      findMany: vi.fn().mockResolvedValue([]),
+      findUnique: vi.fn(),
+    },
+    module: { findMany: vi.fn().mockResolvedValue([]) },
+  },
   getMemberRole: vi.fn(),
 }));
 
 vi.mock("@repo/database", () => ({
-  MemberRole: { ADMIN: "ADMIN", TEACHER: "TEACHER" },
+  AccessResourceType: {
+    COURSE: "COURSE",
+    MODULE: "MODULE",
+    LESSON: "LESSON",
+    ASSET: "ASSET",
+  },
+  ContentStatus: { PUBLISHED: "PUBLISHED" },
+  CourseExperience: { ASYNC: "ASYNC" },
+  LearningAssignmentStatus: {
+    NEW: "NEW",
+    VIEWED: "VIEWED",
+    STARTED: "STARTED",
+    COMPLETED: "COMPLETED",
+    REVOKED: "REVOKED",
+  },
+  LearningAssignmentTargetType: {
+    ACTIVITY: "ACTIVITY",
+    COURSE: "COURSE",
+    MODULE: "MODULE",
+    LESSON: "LESSON",
+    ASSET: "ASSET",
+    LIBRARY_ITEM: "LIBRARY_ITEM",
+    EXERCISE_LIST: "EXERCISE_LIST",
+  },
+  MemberRole: { ADMIN: "ADMIN", TEACHER: "TEACHER", MEMBER: "MEMBER" },
   database: databaseMock,
 }));
 
@@ -19,6 +53,12 @@ import { canReadRecordingAsset } from "./content-access";
 describe("current recording asset authorization", () => {
   beforeEach(() => {
     databaseMock.lessonAsset.findUnique.mockReset();
+    databaseMock.lessonAsset.findMany.mockResolvedValue([]);
+    databaseMock.enrollment.findMany.mockResolvedValue([]);
+    databaseMock.accessGrant.findMany.mockResolvedValue([]);
+    databaseMock.activityAssignment.findMany.mockResolvedValue([]);
+    databaseMock.module.findMany.mockResolvedValue([]);
+    databaseMock.lesson.findMany.mockResolvedValue([]);
     getMemberRole.mockReset();
     getMemberRole.mockResolvedValue("MEMBER");
   });

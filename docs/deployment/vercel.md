@@ -33,6 +33,29 @@ As rotas Clerk são `/sign-in` e `/sign-up`, com retorno para `/`. `NEXT_PUBLIC_
 
 Resend, Stripe, SVIX, Better Stack, PostHog e Google Analytics permanecem ausentes quando não há credencial válida; integrações opcionais não devem bloquear o build.
 
+## Recuperação da fila de notificações
+
+`apps/api` expõe `POST /cron/outbox`, protegido por `CRON_SECRET`. Configure
+um segredo aleatório de pelo menos 32 caracteres no ambiente Production do
+projeto `interprete-area-de-membros-api`. A rota de prazos existente em
+`apps/app` usa o mesmo nome de variável no projeto da aplicação para a agenda
+Vercel já configurada.
+
+Para a recuperação durável do outbox, habilite `pg_cron` e `pg_net` no projeto
+Supabase. No Vault, crie `interprete_member_outbox_url` com a URL HTTPS de
+Production terminada em `/cron/outbox` e `interprete_member_outbox_secret` com o
+mesmo valor de `CRON_SECRET` configurado na API. Execute
+[`supabase-outbox-cron.sql`](supabase-outbox-cron.sql) no SQL Editor; o script
+valida os pré-requisitos, substitui somente o job com nome
+`interprete-member-outbox` e agenda a chamada a cada minuto. Ele lê os segredos
+do Vault durante cada execução e não grava seus valores no comando agendado.
+
+Depois da configuração, confirme `POST /cron/outbox` autenticado, a linha do
+job em `cron.job`, o resultado HTTP correspondente em `net._http_response` e a
+redução do backlog `PENDING`/`RETRY`. O SQL não foi aplicado ao projeto oficial
+nesta execução por causa da restrição temporária de quota informada pelo
+usuário.
+
 ## Verificação
 
 O branch de produção é `main`. O projeto correto e o alias oficial foram

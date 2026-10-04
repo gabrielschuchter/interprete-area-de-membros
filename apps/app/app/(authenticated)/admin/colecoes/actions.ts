@@ -19,15 +19,87 @@ import {
 const text = (value: FormDataEntryValue | null) =>
   typeof value === "string" ? value.trim() : "";
 
-const collectionFields = z.object({
-  description: z.string().max(500),
-  position: z.number().int().min(0).max(999),
-  slug: z
-    .string()
-    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
-    .max(120),
-  title: z.string().min(1).max(120),
+const parseCollectionDate = (value: string) =>
+  value ? new Date(`${value}:00-03:00`) : null;
+
+const isHttpsUrl = (value: string) => {
+  if (!value) {
+    return true;
+  }
+  try {
+    return new URL(value).protocol === "https:";
+  } catch {
+    return false;
+  }
+};
+
+const collectionFields = z
+  .object({
+    audienceSpaceId: z.string().max(128),
+    availableAt: z
+      .string()
+      .max(16)
+      .refine(
+        (value) => !value || Boolean(parseCollectionDate(value)?.getTime())
+      ),
+    coverUrl: z.string().max(2000).refine(isHttpsUrl),
+    description: z.string().max(500),
+    expiresAt: z
+      .string()
+      .max(16)
+      .refine(
+        (value) => !value || Boolean(parseCollectionDate(value)?.getTime())
+      ),
+    position: z.number().int().min(0).max(999),
+    slug: z
+      .string()
+      .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+      .max(120),
+    title: z.string().min(1).max(120),
+  })
+  .superRefine((fields, context) => {
+    const availableAt = parseCollectionDate(fields.availableAt);
+    const expiresAt = parseCollectionDate(fields.expiresAt);
+    if (availableAt && expiresAt && expiresAt <= availableAt) {
+      context.addIssue({
+        code: "custom",
+        message: "A data de encerramento deve ser posterior à liberação.",
+        path: ["expiresAt"],
+      });
+    }
+  });
+
+const parseCollectionForm = (formData: FormData) =>
+  collectionFields.safeParse({
+    audienceSpaceId: text(formData.get("audienceSpaceId")),
+    availableAt: text(formData.get("availableAt")),
+    coverUrl: text(formData.get("coverUrl")),
+    description: text(formData.get("description")),
+    expiresAt: text(formData.get("expiresAt")),
+    position: Number(text(formData.get("position")) || 0),
+    slug: text(formData.get("slug")).toLowerCase(),
+    title: text(formData.get("title")),
+  });
+
+const collectionInputData = (fields: z.infer<typeof collectionFields>) => ({
+  audienceSpaceId: fields.audienceSpaceId || null,
+  availableAt: parseCollectionDate(fields.availableAt),
+  coverUrl: fields.coverUrl || null,
+  description: fields.description || null,
+  expiresAt: parseCollectionDate(fields.expiresAt),
+  position: fields.position,
+  slug: fields.slug,
+  title: fields.title,
 });
+
+const isValidAudienceSpace = async (spaceId: string) =>
+  !spaceId ||
+  Boolean(
+    await database.communitySpace.findFirst({
+      where: { id: spaceId, status: ContentStatus.PUBLISHED },
+      select: { id: true },
+    })
+  );
 
 const redirectToCollections = (status: "success" | "error", message: string) =>
   redirect(
@@ -36,6 +108,7 @@ const redirectToCollections = (status: "success" | "error", message: string) =>
 
 const revalidateCollections = () => {
   revalidatePath("/admin/colecoes");
+  revalidatePath("/aprender");
   revalidatePath("/");
 };
 
@@ -45,21 +118,20 @@ export const createCollection = async (formData: FormData) => {
     action: "admin.mutation",
     memberId: userId,
   });
-  const parsed = collectionFields.safeParse({
-    description: text(formData.get("description")),
-    position: Number(text(formData.get("position")) || 0),
-    slug: text(formData.get("slug")).toLowerCase(),
-    title: text(formData.get("title")),
-  });
-  if (!parsed.success) {
+  const parsed = parseCollectionForm(formData);
+  if (
+    !(
+      parsed.success &&
+      (await isValidAudienceSpace(parsed.data.audienceSpaceId))
+    )
+  ) {
     return redirectToCollections("error", "Revise título, slug e posição.");
   }
 
   try {
     await database.contentCollection.create({
       data: {
-        ...parsed.data,
-        description: parsed.data.description || null,
+        ...collectionInputData(parsed.data),
         createdByMemberId: userId,
         updatedByMemberId: userId,
       },
@@ -92,13 +164,14 @@ export const updateCollection = async (formData: FormData) => {
     memberId: userId,
   });
   const id = text(formData.get("id"));
-  const parsed = collectionFields.safeParse({
-    description: text(formData.get("description")),
-    position: Number(text(formData.get("position")) || 0),
-    slug: text(formData.get("slug")).toLowerCase(),
-    title: text(formData.get("title")),
-  });
-  if (!(id && parsed.success)) {
+  const parsed = parseCollectionForm(formData);
+  if (
+    !(
+      id &&
+      parsed.success &&
+      (await isValidAudienceSpace(parsed.data.audienceSpaceId))
+    )
+  ) {
     return redirectToCollections("error", "Revise os dados da coleção.");
   }
 
@@ -106,8 +179,7 @@ export const updateCollection = async (formData: FormData) => {
     await database.contentCollection.update({
       where: { id },
       data: {
-        ...parsed.data,
-        description: parsed.data.description || null,
+        ...collectionInputData(parsed.data),
         updatedByMemberId: userId,
       },
     });

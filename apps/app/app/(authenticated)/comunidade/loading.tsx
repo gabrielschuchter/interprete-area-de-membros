@@ -1,16 +1,16 @@
-import { CommunityHero } from "@/components/community/community-hero";
-
-const Skeleton = ({ className }: { readonly className: string }) => (
-  <div aria-hidden="true" className={`bg-muted/70 ${className}`} />
-);
+import { Skeleton } from "@repo/design-system/components/ui/skeleton";
 
 const CommunityLoading = () => (
   <div
     aria-busy="true"
-    className="community-page mx-auto w-full max-w-[1240px] px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10 xl:px-10"
+    className="community-page mx-auto w-full max-w-[1560px] px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10 xl:px-10"
     data-route-loading
   >
-    <CommunityHero />
+    <header className="max-w-3xl animate-pulse space-y-4">
+      <Skeleton className="h-3 w-32" />
+      <Skeleton className="h-14 w-4/5 max-w-2xl" />
+      <Skeleton className="h-5 w-full max-w-xl" />
+    </header>
 
     <section className="community-composer mt-5 animate-pulse p-4 sm:p-5">
       <div className="flex items-center gap-3">

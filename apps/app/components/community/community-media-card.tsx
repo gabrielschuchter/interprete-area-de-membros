@@ -99,7 +99,7 @@ function CommunityMediaCard({
       <article className="community-media-card community-media-card--article">
         <BookOpenIcon
           aria-hidden="true"
-          className="size-5 shrink-0 text-brand-action"
+          className="size-5 shrink-0 text-brand-action-text"
         />
         <div className="min-w-0 flex-1">
           <p className="brand-eyebrow">Artigo científico</p>
@@ -137,7 +137,7 @@ function CommunityMediaCard({
       <article className="community-media-card community-media-card--file">
         <FileTextIcon
           aria-hidden="true"
-          className="size-5 shrink-0 text-brand-action"
+          className="size-5 shrink-0 text-brand-action-text"
         />
         <div className="min-w-0 flex-1">
           <p className="brand-eyebrow">{communityMediaTypeLabel(item)}</p>
@@ -167,7 +167,7 @@ function CommunityMediaCard({
     >
       <ExternalLinkIcon
         aria-hidden="true"
-        className="size-5 shrink-0 text-brand-action"
+        className="size-5 shrink-0 text-brand-action-text"
       />
       <div className="min-w-0 flex-1">
         <p className="brand-eyebrow">Link</p>

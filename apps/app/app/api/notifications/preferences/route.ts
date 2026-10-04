@@ -1,7 +1,7 @@
-import { auth } from "@repo/auth/server";
 import { database } from "@repo/database";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { auth } from "@/lib/auth";
 import {
   consumeMutationRateLimit,
   isMutationRateLimitError,
@@ -19,6 +19,9 @@ const preferenceKeys = [
   "feedbackReceived",
   "activityDeadline",
   "announcements",
+  "groupInvitations",
+  "groupPosts",
+  "contentAssignments",
 ] as const;
 
 const preferenceInput = z.object(

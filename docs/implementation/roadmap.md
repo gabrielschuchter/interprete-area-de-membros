@@ -39,12 +39,304 @@ own persistence, authorization, responsive, check and E2E gates.
 
 Este documento é a fonte de verdade da execução do produto. As fases são sequenciais; uma fase só muda para `DONE` depois de cumprir seus critérios de aceite e os gates técnicos do repositório.
 
-## Matriz de execução atual
+## Reestruturação integrada autorizada — 03/10/2026
 
-Atualizada em 27/09/2026. A matriz abaixo substitui os bloqueios de credenciais
-registrados nos checkpoints históricos. “Implementado” significa que a
-superfície existe no checkout atual; os limites de QA descritos no checkpoint
-final continuam explícitos e não são inferidos a partir de compilação.
+Esta sequência controla o trabalho novo solicitado para a área de membros. A
+implementação local percorreu as fases em ordem. Nenhuma fase recebe `DONE`
+antes de comprovar persistência no ambiente oficial, autorização autenticada,
+responsividade, testes funcionais e os cinco checks do monorepo.
+
+### Checkpoint local — 03/10/2026 (antes da rechecagem final)
+
+O schema Prisma valida e o cliente foi regenerado. `bun run check`,
+`bun run typecheck`, `bun run boundaries`, `bun run test` e `bun run build`
+passaram; a última execução cobriu 134 casos (117 no app, 9 na API e 8 no
+domínio compartilhado). As tabelas novas das migrations têm RLS habilitado e não há
+policies públicas permissivas; essa auditoria foi local e ainda precisa ser
+confirmada no Supabase oficial. Nenhuma migration foi aplicada remotamente e
+nenhum deploy foi feito nesta execução.
+
+O Supabase está sujeito à restrição temporária de quota/Fair Use informada pelo
+usuário. Persistência oficial, grants, realtime entre contas, RLS remoto e
+workers/Cron/Vault seguem pendentes de validação quando o acesso estiver
+disponível; respostas 402 não serão tratadas como falha do produto nem usadas
+para mudar a arquitetura. Os 99 assets históricos de vídeo ainda precisam dos
+links reais para associação e validação do player. Não há evidência E2E
+autenticada das novas jornadas nesta execução.
+
+A análise local de bundle do Next.js registrou 1,45 MB comprimidos estimados,
+4,13 MB sem compressão e 887 módulos no grafo agregado da rota `/`. Essa visão
+inclui dependências carregadas sob demanda. No manifesto do build da rota
+autenticada `/`, `rootMainFiles` e polyfills somam aproximadamente 174 KB gzip;
+incluindo o chunk listado separadamente no manifesto React Loadable, o total
+listado é aproximadamente 178 KB gzip. Esses arquivos não contêm Zod nem suas
+localidades. O shim de observabilidade contém referências de carregamento
+dinâmico para Sentry e PostHog. Isso é uma medição local do manifesto, não um
+resultado Lighthouse ou uma medição de rede em sessão autenticada.
+
+| Fase | Escopo | Status | Evidência |
+| --- | --- | --- | --- |
+| 1 | Integridade, contratos e eventos/outbox | IN PROGRESS | Contratos, dispatcher e migrations implementados localmente; remoto tem 40/40 tabelas com RLS, mas `OutboxJob` ainda não existe e as migrations novas estão pendentes. |
+| 2 | Notificações duráveis e realtime | IN PROGRESS | Consumidor e cliente realtime implementados; remoto ainda não tem outbox, policy de tópico privado nem job Cron; Vault existe, sem segredo/schedule configurado. |
+| 3 | Grupos, membros e convites | IN PROGRESS | Membership, privacidade e convites implementados; migrations pendentes impedem validar isolamento e persistência remotos. |
+| 4 | Atribuição unificada e acesso específico | IN PROGRESS | Atribuições e grants tipados implementados; backfill remoto e teste de revogação continuam pendentes. |
+| 5 | YouTube e Minhas gravações | IN PROGRESS | Provider/player e navegação implementados; associação e validação dos 99 assets dependem dos links reais ainda não disponíveis. |
+| 6 | Aprender por trilhas horizontais | IN PROGRESS | Rails e gestão reutilizam cursos, aulas e coleções; migration de catálogo pendente e nenhuma sessão autenticada para QA visual/funcional. |
+| 7 | Comunidade e editor simplificados | IN PROGRESS | Editor, CRUD, avisos, menções e skeleton implementados localmente; sem E2E autenticado e migrations editoriais pendentes no remoto. |
+| 8 | Biblioteca global e pessoal | IN PROGRESS | Catálogo curado local de 110 referências em 13 categorias (10 itens legados enriquecidos e 100 novos preparados); filtros, metadados e paginação ajustados. Migration e importação oficiais não foram aplicadas; falta QA autenticado com schema remoto. |
+| 9 | Exercícios | IN PROGRESS | Motor, versões imutáveis e correção server-side implementados; schema remoto pendente e QA autenticado indisponível. |
+| 10 | Estudo, metas, tarefas e dashboard | IN PROGRESS | Intervalos, metas, tarefas e dashboard implementados; migration remota pendente, sem reconciliação de dados ou sincronização entre contas/dispositivos reais. |
+| 11 | Badges e perfil | IN PROGRESS | Critérios versionados, concessão idempotente e perfil implementados; migrations remotas pendentes e nenhum evento real validado. |
+| 12 | Consolidação, acessibilidade e release | IN PROGRESS | Cinco gates passaram (134 testes); auth pública revisada em 1440×1000/390×844, sem overflow mobile; rotas protegidas redirecionam. Revisão das páginas autenticadas, Lighthouse protegido e release aguardam staging/infra. |
+
+### Expansão editorial da Biblioteca — 04/10/2026
+
+O inventário somente de leitura disponível antes desta expansão encontrou 10
+materiais publicados. O catálogo versionado agora contém 110 referências:
+preserva e enriquece os 10 materiais de base e prepara 100 novos itens. Nenhum
+material existente foi removido e nenhuma importação ou escrita foi feita no
+Supabase oficial. A migration `20261004100000_library_catalog_metadata` é
+aditiva e local; continua pendente de execução remota enquanto durar a
+restrição de quota/Fair Use.
+
+A taxonomia ficou organizada em 13 categorias: Fundamentos e perguntas
+clínicas; Busca bibliográfica; Epidemiologia e desenhos de estudo;
+Bioestatística e interpretação; Leitura crítica e risco de viés; Revisões
+sistemáticas e meta-análises; Certeza da evidência e GRADE; Diretrizes e
+decisão clínica; Diagnóstico e prognóstico; Protocolos e registro; Relato
+científico; Nutrição baseada em evidências; Ciência aberta e
+reprodutibilidade. As categorias antigas foram normalizadas nessas áreas.
+
+A seleção inclui recursos oficiais do Cochrane Handbook, GRADE, JBI,
+EQUATOR/PRISMA, PubMed/NCBI, CDC, CONITEC/Ministério da Saúde, USDA NESR e NIH
+ODS, além de RoB 2, ROBINS-I, QUADAS, AMSTAR, GRADEpro, PRESS e protocolos de
+relato. O Embase aparece como documentação metodológica gratuita; o registro
+explica que o acesso à base Embase pode depender de assinatura institucional.
+Oito URLs do núcleo legado foram substituídas por destinos oficiais/canônicos;
+nenhum recurso foi removido.
+
+O verificador conferiu 110 URLs HTTPS únicas: 99 responderam com sucesso e 11
+devolveram 403 de proteção anti-bot. Não houve duplicatas nem outras falhas
+HTTP. Essas 11 respostas foram tratadas como inconclusivas, não como links
+quebrados; as fontes oficiais foram confirmadas por páginas e resultados de
+busca quando disponíveis. A página SQUIRE foi direcionada à entrada oficial da
+EQUATOR Network. A revisão também corrigiu um bug de paginação que aplicava o
+deslocamento duas vezes e impedia o indicador de próxima página; agora há
+sentinela de paginação e teste de regressão. Removido ainda um fetch redundante
+de bookmarks. Os formulários editoriais receberam rótulos visíveis para todos
+os metadados, e a importação administrativa ganhou limite próprio de taxa.
+
+Os filtros atuais cobrem busca, tipo, categoria, idioma, dificuldade e ordem
+por recência/relevância; a composição usa colunas progressivas em telas
+pequenas, médias e amplas. A rota autenticada foi aberta em navegador local e
+redirecionou corretamente para `/sign-in?redirect_url=…` sem sessão. Isso
+confirma o guard, mas não substitui revisão visual autenticada da Biblioteca.
+
+`bun run check`, `bun run typecheck`, `bun run boundaries`, `bun run test`,
+`bun run build`, Prisma validate e Prisma generate passaram nesta revisão. A
+suíte totalizou 160 testes (143 do app, 9 da API e 8 do domínio compartilhado);
+os testes direcionados de catálogo, apresentação, paginação e limite de
+mutações também passaram. A verificação HTTP permanece em 99 respostas 2xx/3xx
+e 11 respostas 403 de proteção anti-bot, sem outras falhas ou duplicatas.
+
+Permanecem pendentes: aplicar a migration e importar os 110 registros no
+Supabase oficial, indisponível sob a restrição de quota/Fair Use; conferir
+filtros, salvamento e persistência em sessão autenticada, pois não há credencial
+de membro de teste disponível neste ambiente; e confirmar em navegador comum as
+11 páginas que recusaram o verificador automatizado. A rota protegida foi
+validada apenas quanto ao redirecionamento sem sessão. Não marcar Fase 8 `DONE`
+antes dessas evidências remotas/autenticadas.
+
+### Revisão final local — 03/10/2026
+
+A revisão removeu o envio/aceite de `kind` oculto nas publicações e eliminou
+as opções, filtros e estilos mortos de tipo. O enum e os valores já persistidos
+continuam no banco para preservar compatibilidade histórica. O vermelho de ação
+mantém o tom original nos fundos; o texto usa uma variante com contraste
+calculado de 4,83:1 no canvas claro e 5,70:1 na superfície branca. Os cards do
+Aprender expõem a descrição em bloco no mobile/tablet e por hover/foco em telas
+grandes.
+
+Esta revisão também integrou a leitura de itens publicados da biblioteca ao
+tempo de estudo, usando uma consulta reduzida que respeita a autorização da
+aula vinculada. Wheel e movimento touch renovam a atividade; o scroll gerado
+programaticamente não a renova. A janela de 60 segundos de avaliação de badges
+agora afeta apenas varreduras completas/de estudo e não atrasa critérios de
+exercício ou outros eventos.
+
+Foram reexecutados `check`, `typecheck`, `boundaries`, `test` (134 casos: 117 no
+app, 9 na API e 8 no domínio compartilhado) e
+`build`; todos passaram. O schema passou `prisma validate`. A auditoria estática
+confirmou RLS nas 32 tabelas novas, sem tabela criada sem RLS, e uma policy
+restrita ao tópico privado de notificações em `realtime.messages`. As migrations
+não removem tabelas/colunas nem apagam linhas; a substituição de índice da
+atribuição preserva a unicidade pelo novo lote. Nenhuma migration remota foi
+aplicada.
+
+Autenticação local foi diagnosticada na cadeia exata. Sem a CA do sistema, o
+endpoint `GET /__clerk/npm/@clerk/clerk-js@6/dist/clerk.browser.js` retorna
+`502 proxy_request_failed`; a mensagem aponta falha de verificação TLS do Bun
+(`unable to verify the first certificate`), antes de qualquer resposta HTTP do
+upstream. Uma chamada direta do Bun ao Frontend API público reproduz a falha e
+retorna HTTP 200 ao usar `--use-system-ca`. Os scripts locais de `apps/app` e
+`apps/api` agora habilitam a CA confiável do sistema, sem desativar TLS. O
+middleware já encaminha `/__clerk` via `frontendApiProxy`, com matcher
+correspondente; a implementação atual do Clerk encaminha headers e corpo.
+
+Separadamente, os `.env.local` de app/API carregavam chaves `pk_live_`/`sk_live_`
+da Production. Consultas somente de leitura confirmaram que os dois segredos
+pertencem à mesma instância Production; o FAPI codificado pela chave pública é
+consistente com o domínio Clerk de produção e o proxy publicado responde
+`GET /__clerk/v1/environment` com HTTP 200. Clerk rejeita essa instância em
+`localhost`, conforme a documentação oficial. O ambiente local também tinha
+`NEXT_PUBLIC_CLERK_PROXY_URL` apontando ao host Production; removido de
+`apps/app/.env.local`, pois o SDK o usa como fallback quando o provider não
+recebe `proxyUrl`. A FAPI Development deste app deve ser direta, portanto o
+projeto agora rejeita chaves Production, pares com prefixos de ambiente
+diferentes e proxy/FAPI overrides locais junto a `pk_test_`.
+
+O par legado `pk_test_`/`sk_test_` da raiz foi verificado sem expor os valores:
+o segredo identifica uma instância Development, seu endpoint de domínio
+corresponde ao FAPI codificado na chave pública e ambos os ambientes estão no
+mesmo workspace Clerk. O par foi copiado para os `.env.local` específicos de
+`apps/app` e `apps/api`. Sem `BUN_OPTIONS`, `apps/app` agora inicia, o navegador
+carrega ClerkJS diretamente de `accounts.dev` sem erros de console além do
+aviso normal de chaves Development, e `/aprender` redireciona para o sign-in
+com o destino de retorno. A rota `/__clerk` não é usada para esta instância.
+O middleware não emite log próprio para a falha; o corpo 502 sanitizado é a
+evidência server-side disponível e confirma que o TLS falhou antes de resposta
+HTTP do upstream.
+
+O formulário de recuperação avançou até a etapa de código. O browser tinha um
+identificador previamente preenchido e o clique em “Esqueci minha senha”
+disparou `resetPasswordEmailCode.sendCode()`; nenhum código foi submetido e
+nenhuma senha foi alterada. Não repetirei a ação usando dados autofillados.
+O formulário local ficou preparado com o endereço sintético
+`codex-qa-interprete-20261003+clerk_test@example.com`, sem senha. A entrada da
+senha e o envio precisam ser feitos pelo usuário no navegador; não compartilhe a
+senha com o agente. Para Development, Clerk documenta o endereço de teste
+`+clerk_test` e código fixo `424242`. Ainda não há sessão autenticada para
+revisar áreas protegidas. O ambiente local tem o par Development configurado;
+nenhuma ação no Clerk Dashboard é necessária agora.
+
+O Supabase continua sujeito à restrição temporária de quota/Fair Use. Nenhuma
+migration remota, alteração de dados ou deploy foi feito. A rota de outbox
+valida `CRON_SECRET` por comparação segura, e o setup idempotente de Cron/Vault
+está documentado sem aplicar SQL remoto. As fases permanecem `IN PROGRESS`;
+não há evidência de release ou de runtime autenticado nesta revisão.
+`bun env:check` reporta `READY` para presença e formato das variáveis, mas não
+testa uma conexão real com o PostgreSQL.
+
+Depois que o usuário concluir o cadastro e autenticar, ainda será necessária
+validação autenticada das páginas protegidas e jornadas que não dependem do
+Supabase. Escritas/leitura persistente, RLS e realtime entre contas continuam
+dependentes do Supabase. Os 99 assets históricos continuam aguardando os links
+reais de YouTube.
+
+O rollout permanece local até que cada fase passe seus gates. Migrations de
+produção e deployment precisam seguir a compatibilidade expandir/backfill/
+validar/retirar descrita em `docs/architecture/member-domain-events.md` e não
+fazem parte de uma validação de build.
+
+### Rechecagem de execução — 03/10/2026
+
+Esta rechecagem atualiza a evidência remota e local sem repetir a revisão geral
+do código nem alterar dados. O endpoint PostgreSQL oficial foi alcançado por
+`DIRECT_URL`; `prisma migrate status` terminou sem erros e confirmou 30 de 45
+migrations aplicadas, zero migrations falhas/não resolvidas e 15 migrations
+pendentes da reestruturação. A consulta é somente de leitura; nenhuma migration,
+backfill, seed, alteração de dados ou deploy foi executado.
+
+O Dashboard Supabase mostra todos os serviços restritos por quota/Fair Use,
+incluindo Cached Egress, Egress e Storage; endpoints afetados podem responder
+HTTP 402. A API local
+respondeu `GET /health` com 200 e `GET /health?deep=1` com `database: ok`; essa
+checagem executa somente `SELECT 1` e confirma alcance básico do SQL. Ela não
+autoriza writes enquanto a organização estiver restrita. No schema remoto
+atual, 40/40 tabelas públicas têm RLS habilitado e há uma policy de
+`SELECT` restrita ao próprio destinatário em `Notification`; um probe de leitura
+com role `authenticated` e um `sub` inexistente retornou zero linhas. Isso
+confirma a proteção observada no estado atual, não as policies das migrations
+pendentes. As tabelas `OutboxJob`, o tópico/regras privadas de realtime e o job
+Cron da reestruturação não existem no remoto neste momento; Vault existe, mas
+nenhuma credencial foi criada/alterada.
+
+As 15 migrations pendentes são `20261003100000_member_domain_events`,
+`20261003120000_private_notification_realtime_topics`,
+`20261003140000_community_study_groups`,
+`20261003160000_unified_learning_assignments`,
+`20261003180000_lesson_asset_media_provider`,
+`20261003200000_learning_catalog_rails`,
+`20261003220000_community_edit_timestamps`,
+`20261003230000_library_personal_relevance`,
+`20261003240000_editorial_announcements`, `20261003260000_exercises`,
+`20261003270000_study_goals_tasks`, `20261003280000_badges_profile`,
+`20261003290000_badge_attendance_criteria`,
+`20261003300000_meeting_attendance` e
+`20261004010000_library_read_study_tracking`.
+
+O ambiente local reporta as URLs necessárias como presentes e válidas; conexão
+direta e `SELECT 1` confirmam alcance de leitura básica, mas não houve leitura ou
+escrita funcional autenticada de produto. O endpoint local `/cron/outbox`
+respondeu 503 sem `CRON_SECRET`; Cron/Vault e processamento de jobs não foram
+configurados nem executados. Não há Docker Engine nem
+PostgreSQL local disponível para montar um Supabase substituto, e outro banco
+não é permitido pela arquitetura. Nenhum resultado de 402 foi tratado como bug
+da aplicação.
+
+O Clerk Development usa o Frontend API oficial diretamente, sem o proxy
+`/__clerk`; `/sign-up` local responde 200 e `/aprender` sem sessão redireciona
+para `/sign-in`. A tentativa anterior de executar Next dentro do Bun com
+`--use-system-ca` não corrigia a chamada do middleware a
+`api.clerk.com/v1/jwks`: o processo continuava falhando na validação TLS. A
+correção causal foi confirmada depois, executando o Next em Node com a CA
+confiável do sistema; ver a seção “Fechamento da auditoria de autenticação —
+04/10/2026” no fim deste roadmap. A cadeia do proxy `/__clerk` permanece intacta
+para produção. Nenhum usuário de teste foi criado: o primeiro acesso
+autenticado aciona `getOrCreateProfile` e pode gravar `Member`/`Profile` no
+Supabase oficial. Não houve envio de código nem alteração de senha.
+
+As fases 1–12 permanecem `IN PROGRESS`. Nesta rechecagem passaram `check`
+(481 arquivos), `typecheck` (16 tarefas), `boundaries` (464 arquivos), `test`
+(134 testes: 117 app, 9 API, 8 domínio) e `build` (8 tarefas). `prisma validate`
+e `prisma generate` passaram; `env:check` reporta `READY`. `prisma migrate status`
+conectou em leitura e confirmou 15 pendentes; seu código de saída 1
+representa essas migrations ainda não aplicadas, e nenhuma foi aplicada.
+
+A inspeção visual em Playwright cobriu as páginas públicas de autenticação em
+1440×1000 e 390×844. A página mobile tem 390 px de largura de documento, sem
+overflow horizontal; o formulário mantém rolagem vertical normal. O link “Fale
+com o time” foi ajustado para não quebrar em palavras no desktop. Foram
+exercitados estados sem sessão: login/cadastro renderizam, recuperação sem
+email apresenta validação local, suporte/termos/privacidade respondem 200 e as
+rotas de membro/admin testadas redirecionam para sign-in. Console sem erros; o
+único warning é o aviso esperado de chaves Clerk Development. Isso não equivale
+a E2E autenticado ou QA visual das áreas protegidas.
+
+### Verificação complementar — 04/10/2026
+
+Após a geração do client Prisma, `prisma validate` e `prisma generate` passaram
+com Prisma 7.10.0. Nesta conferência final, `check` passou (481 arquivos),
+`typecheck` passou (16 tarefas), `boundaries` passou (464 arquivos), `test`
+passou (134 testes) e `build` passou (8 tarefas). Uma primeira execução paralela
+do typecheck cruzou a regeneração do client iniciada pelo build e reportou tipos
+temporariamente incompletos; o typecheck sequencial após a geração terminou sem
+erros. `git diff --check` também passou.
+
+O smoke test local final retornou 200 em `/sign-in` e `/sign-up`; `/aprender`
+retornou 307 para autenticação, como esperado sem sessão. A busca direcionada
+por `TODO`, `FIXME`, `HACK` e `NotImplemented` em código de produto (excluindo
+testes e arquivos gerados) não encontrou pendências. Essa evidência não substitui
+uma sessão autenticada: nenhuma escrita ou migration remota foi executada, e as
+12 fases continuam `IN PROGRESS` até persistência, autorização e jornadas reais
+poderem ser validadas com segurança.
+
+## Matriz da fundação anterior — registro histórico até 03/10/2026
+
+Esta matriz descreve a sequência fundacional anterior à reestruturação integrada
+aprovada em 03/10/2026. O checklist vigente é a tabela de fases 1–12 acima;
+estados históricos abaixo não substituem seus gates de persistência, autorização,
+responsividade e E2E.
 
 | Fase | Escopo | Status | Evidência atual |
 | --- | --- | --- | --- |
@@ -104,10 +396,17 @@ The verified Kiwify hierarchy is now represented in the official Supabase
 project through idempotent migration inventory: 1 course, 14 modules, 99
 lessons and 16 student-match records. The repository also contains the
 server-side access model and private `learning-assets` bucket foundation.
-Videos, attachments and student access grants are intentionally not marked as
-migrated: the local database password is still a placeholder and the
-authenticated Kiwify browser did not expose downloadable media URLs. See
+Videos, attachments and student access grants were intentionally not marked as
+migrated at that historical checkpoint: the authenticated Kiwify browser did
+not expose downloadable media URLs. Current credential/connectivity status and
+the remaining 99 YouTube source URLs are recorded in the integrated checkpoint
+above. See
 `docs/migration/kiwify.md` for the exact resumption point.
+
+> As fases legadas iniciadas abaixo documentam a entrega fundacional e suas
+> decisões originais. Suas antigas listas de pendências sobre credenciais ou
+> sequência de implementação não são gates atuais; consulte a reestruturação
+> integrada autorizada no início deste documento.
 
 ## Phase 1 — Learning
 
@@ -485,3 +784,87 @@ Consolidar a tradução do Design System oficial do Interprete. em todas as supe
 - desktop/mobile, acessibilidade, lint, typecheck, boundaries, testes e build;
 - screenshots e navegação real nas rotas principais;
 - nenhuma superfície pode voltar a depender de dados demo ou visual SaaS genérico.
+
+### Fechamento da auditoria de autenticação — 04/10/2026
+
+A causa do erro local ficou entre a Frontend API do browser e a verificação
+server-side da sessão. O browser carregou a instância Clerk Development e seus
+assets pelo domínio `accounts.dev`; os erros `UNABLE_TO_VERIFY_LEAF_SIGNATURE`
+vinham depois do middleware tentar buscar `https://api.clerk.com/v1/jwks` para
+resolver o handshake. O aviso subsequente do Clerk sobre “infinite redirect
+loop” era consequência dessa falha de TLS, não uma divergência de chaves. As
+chaves locais seguem sendo do ambiente Development, o FAPI local não tem
+override/proxy Production, e o proxy `/__clerk` de produção não foi removido ou
+alterado.
+
+O runtime Bun continuou reproduzindo a falha mesmo com `--use-system-ca` e
+`NODE_OPTIONS`; o Next executado em Node 24 com `--use-system-ca` funcionou sem
+`NODE_OPTIONS`. O runner local agora fixa esse runtime para `dev` e `start`,
+propaga `NODE_USE_SYSTEM_CA=1` a processos-filhos e encerra com mensagem clara
+se o Node for antigo demais, em vez de iniciar autenticação que falha de forma
+ambígua. A validação TLS permanece habilitada. A mudança é estritamente local;
+não altera runtime nem configuração de produção.
+
+A inspeção do processo de desenvolvimento também encontrou que o logger padrão
+do Next imprimia requisições contendo `__clerk_handshake` com o query string
+completo. A configuração oficial `logging.incomingRequests.ignore` agora omite
+no terminal de desenvolvimento requisições com parâmetros internos `__clerk_`;
+isso não altera respostas e não afeta logs de produção.
+
+Com o novo caminho, a rota protegida `/aprender` redireciona ao formulário
+`/sign-in` com o destino `/aprender` preservado; após hidratação do Clerk os
+campos aparecem, sem loading preso. A execução de navegador e logs do servidor
+não mostraram falha JWKS/TLS, erro de handshake ou aviso de loop. A página
+`/sign-up` e o redirect de usuário sem sessão foram exercitados; o detalhe dos
+estados autenticados e as mutações de conta ainda dependem de uma identidade de
+teste segura, CAPTCHA e confirmação de e-mail.
+
+Nesta auditoria, nenhum usuário Clerk foi finalizado: não foi resolvido CAPTCHA
+nem submetido código de verificação, e o primeiro login bem-sucedido também
+criaria `Member`/`Profile` no banco Supabase oficial, que está sob restrição
+Fair Use/quota. Assim, signin válido, refresh de uma sessão válida, signout,
+recuperação com código e alteração real de senha permanecem sem E2E autenticado.
+Os fluxos sem credenciais e as regressões de estado/redirect são cobertos por
+testes automatizados e pelo smoke local descrito acima; a conclusão desses
+cenários exige ambiente de teste isolado do banco oficial.
+
+### Validação complementar do fluxo Clerk local — 04/10/2026
+
+O processo `bun run start` iniciou Next sob Node com a CA do sistema. Requisições
+sem sessão para `/sign-in`, `/sign-up` e `/aprender` foram encaminhadas pelo
+Clerk Development ao endpoint `/v1/client/handshake`; ao seguir essa etapa com
+TLS validado, a Frontend API respondeu com o redirect de volta ao app. O
+middleware autenticado carregou os formulários no Edge, e `/aprender` terminou
+em `/sign-in` preservando o destino. A rota de tarefa sem sessão também voltou
+ao login preservando `/perfil` e sua query interna. Navegação por link e
+voltar/avançar alternou entre login e cadastro sem ciclo.
+
+O cadastro renderizou no viewport mobile de 390 px; a página não teve overflow
+horizontal (375 px de largura útil e de conteúdo). Os campos não impõem
+`minlength`/`maxlength` próprios; o toggle de senha funcionou. O formulário de
+login também hidratou no mobile. A tela de cadastro mostrou o fallback de
+carregamento durante a inicialização do SDK, depois carregou os campos; existe
+fallback acessível com ação de retry após 15 s, coberto por teste com relógio
+controlado. O teste de credencial inválida e a mensagem neutra de recuperação
+estão documentados na validação anterior. Nada foi submetido com a credencial
+salva/autopreenchida pelo navegador.
+
+Nos logs do servidor não reapareceram query parameters internos `__clerk_`,
+erros de TLS/JWKS ou avisos de redirect loop. O console do navegador apresentou
+somente o aviso esperado de uso de chaves Development. Durante uma execução de
+diagnóstico anterior, o logger padrão do Next chegou a imprimir uma URL de
+handshake Development efêmera antes da regra de filtro ser adicionada; não havia
+uma sessão autenticada. Esse valor não foi persistido no repositório nem
+reproduzido neste documento. A chave secreta Production tratada como
+comprometida continua exigindo rotação manual descrita abaixo.
+
+Ainda não houve signup verificado, signin válido, refresh/revogação de sessão,
+signout ou alteração de credenciais: não foi usado um endereço de teste
+controlado, não foi concluído CAPTCHA/código, e a primeira autenticação da app
+pode escrever identidade no Supabase oficial sob restrição de quota. Essas
+restrições não foram contornadas.
+
+Uma chave secreta Clerk Production apareceu em saída de ferramenta anterior e
+é considerada comprometida. É necessária rotação manual no Dashboard da
+instância Production e atualização do segredo no gerenciador de ambiente de
+deploy; nenhum valor foi repetido nem alterado durante a auditoria.

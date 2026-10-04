@@ -3,13 +3,7 @@
 import { Button } from "@repo/design-system/components/ui/button";
 import { Input } from "@repo/design-system/components/ui/input";
 import type { JSONContent } from "@tiptap/core";
-import {
-  EyeIcon,
-  FileTextIcon,
-  ImageIcon,
-  SaveIcon,
-  XIcon,
-} from "lucide-react";
+import { EyeIcon, ImageIcon, SaveIcon, XIcon } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -17,15 +11,8 @@ import {
   updateDraft,
   updatePost,
 } from "@/app/(authenticated)/comunidade/actions";
-import {
-  COMMUNITY_POST_KIND_OPTIONS,
-  type CommunityPostKindValue,
-  communityPostKindHasSubtitle,
-  communityPostKindLabel,
-} from "@/lib/community-post-types";
 import { TopicEditor } from "./topic-editor";
 
-type PostKind = CommunityPostKindValue;
 type PostStatus = "DRAFT" | "PUBLISHED" | "ARCHIVED";
 type SaveState = "idle" | "saving" | "saved" | "error";
 
@@ -38,7 +25,6 @@ interface ComposerSpace {
 interface CommunityComposerProperties {
   readonly initialContent: JSONContent;
   readonly initialCoverUrl: string | null;
-  readonly initialKind: PostKind;
   readonly initialSpaceId: string | null;
   readonly initialSpaceSlug: string | null;
   readonly initialSubtitle: string | null;
@@ -72,7 +58,6 @@ const saveLabel = (state: SaveState) => {
 export function CommunityComposer({
   initialContent,
   initialCoverUrl,
-  initialKind,
   initialSpaceId,
   initialSpaceSlug,
   initialSubtitle,
@@ -86,8 +71,6 @@ export function CommunityComposer({
   const [subtitle, setSubtitle] = useState(initialSubtitle ?? "");
   const [coverUrl, setCoverUrl] = useState(initialCoverUrl ?? "");
   const [coverPreviewUrl, setCoverPreviewUrl] = useState<string | null>(null);
-  const [tags, setTags] = useState(initialTags.join(", "));
-  const [kind, setKind] = useState<PostKind>(initialKind);
   const [spaceId, setSpaceId] = useState(initialSpaceId ?? "");
   const [spaceSlug, setSpaceSlug] = useState(initialSpaceSlug ?? "");
   const [content, setContent] = useState<JSONContent>(
@@ -112,7 +95,6 @@ export function CommunityComposer({
     subtitle: initialSubtitle ?? "",
     coverUrl: initialCoverUrl ?? "",
     tags: initialTags.join(", "),
-    kind: initialKind,
     spaceId: initialSpaceId ?? "",
     spaceSlug: initialSpaceSlug ?? "",
     content: initialContent ?? emptyDocument,
@@ -126,7 +108,6 @@ export function CommunityComposer({
     formData.set("subtitle", current.subtitle);
     formData.set("coverUrl", current.coverUrl);
     formData.set("tags", current.tags);
-    formData.set("kind", current.kind);
     formData.set("spaceId", current.spaceId);
     formData.set("spaceSlug", current.spaceSlug);
     formData.set("contentJson", JSON.stringify(current.content));
@@ -309,15 +290,6 @@ export function CommunityComposer({
     }
   };
 
-  const isQuestion = kind === "QUESTION";
-  const hasSubtitle = communityPostKindHasSubtitle(kind);
-  const kindLabel = communityPostKindLabel(kind);
-  let titlePlaceholder = "Dê um título ao que você quer dizer";
-  if (isQuestion) {
-    titlePlaceholder = "Qual é a sua pergunta?";
-  } else if (kind === "DISCUSSION") {
-    titlePlaceholder = "O que você quer colocar em conversa?";
-  }
   const editorAction = status === "PUBLISHED" ? updatePost : undefined;
 
   return (
@@ -371,28 +343,16 @@ export function CommunityComposer({
         <input name="postId" type="hidden" value={postId} />
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-3 text-muted-foreground text-xs">
-            <FileTextIcon aria-hidden="true" className="size-4" />
-            <select
-              aria-label="Tipo de conteúdo"
-              className="h-9 rounded-sm border bg-background px-3 text-foreground text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/35"
-              name="kind"
-              onChange={(event) => {
-                const nextKind = event.target.value as PostKind;
-                setKind(nextKind);
-                updateSnapshot({ kind: nextKind });
-              }}
-              value={kind}
+            <label
+              className="text-muted-foreground text-xs"
+              htmlFor="community-post-space"
             >
-              {COMMUNITY_POST_KIND_OPTIONS.map(({ label, value }) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
-            <span>·</span>
+              Publicar em
+            </label>
             <select
-              aria-label="Espaço da comunidade"
+              aria-label="Publicar em feed ou grupo de estudo"
               className="h-9 max-w-full rounded-sm border bg-background px-3 text-foreground text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/35"
+              id="community-post-space"
               name="spaceId"
               onChange={(event) => {
                 const nextSpaceId = event.target.value;
@@ -414,6 +374,7 @@ export function CommunityComposer({
               ))}
             </select>
             <input name="spaceSlug" type="hidden" value={spaceSlug} />
+            <input name="tags" type="hidden" value={snapshot.current.tags} />
           </div>
 
           <Input
@@ -426,34 +387,30 @@ export function CommunityComposer({
               setTitle(nextTitle);
               updateSnapshot({ title: nextTitle });
             }}
-            placeholder={titlePlaceholder}
+            placeholder="Dê um título à sua publicação"
             required={status === "PUBLISHED"}
             value={title === draftTitle ? "" : title}
           />
 
-          {hasSubtitle && (
-            <Input
-              aria-label="Subtítulo opcional"
-              className="h-auto rounded-none border-0 px-0 py-2 text-xl shadow-none focus-visible:ring-0 sm:text-2xl"
-              name="subtitle"
-              onBlur={() => flushSave().catch(() => undefined)}
-              onChange={(event) => {
-                const nextSubtitle = event.target.value;
-                setSubtitle(nextSubtitle);
-                updateSnapshot({ subtitle: nextSubtitle });
-              }}
-              placeholder="Um subtítulo opcional para orientar a leitura"
-              value={subtitle}
-            />
-          )}
+          <Input
+            aria-label="Subtítulo opcional"
+            className="h-auto rounded-none border-0 px-0 py-2 text-xl shadow-none focus-visible:ring-0 sm:text-2xl"
+            name="subtitle"
+            onBlur={() => flushSave().catch(() => undefined)}
+            onChange={(event) => {
+              const nextSubtitle = event.target.value;
+              setSubtitle(nextSubtitle);
+              updateSnapshot({ subtitle: nextSubtitle });
+            }}
+            placeholder="Subtítulo opcional"
+            value={subtitle}
+          />
 
           <div className="border-border border-y py-4">
             <div className="flex flex-wrap items-center gap-3">
               <ImageIcon aria-hidden="true" className="size-4" />
               <span className="text-muted-foreground text-sm">
-                {kindLabel === "Publicação"
-                  ? "Capa da publicação"
-                  : "Imagem de capa"}
+                Capa ou imagem da publicação
               </span>
               <Button
                 onClick={() => coverInputRef.current?.click()}
@@ -512,7 +469,7 @@ export function CommunityComposer({
 
         <div>
           <TopicEditor
-            ariaLabel={`Texto da ${kindLabel.toLocaleLowerCase("pt-BR")}`}
+            ariaLabel="Conteúdo da publicação"
             defaultValue={content}
             enableCommunityMedia
             onDocumentChange={(nextContent) => {
@@ -526,26 +483,6 @@ export function CommunityComposer({
             onUploadStateChange={setIsUploadingInlineImage}
           />
         </div>
-
-        <label className="block max-w-xl" htmlFor="community-editor-tags">
-          <span className="brand-eyebrow">Tags</span>
-          <Input
-            className="mt-2"
-            id="community-editor-tags"
-            name="tags"
-            onBlur={() => flushSave().catch(() => undefined)}
-            onChange={(event) => {
-              const nextTags = event.target.value;
-              setTags(nextTags);
-              updateSnapshot({ tags: nextTags });
-            }}
-            placeholder="epidemiologia, causalidade, meta-análise"
-            value={tags}
-          />
-          <span className="mt-2 block text-muted-foreground text-xs">
-            Separe por vírgulas. Até cinco tags.
-          </span>
-        </label>
       </form>
     </div>
   );

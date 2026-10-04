@@ -7,17 +7,23 @@ import {
 import { Button } from "@repo/design-system/components/ui/button";
 import { Input } from "@repo/design-system/components/ui/input";
 import { Textarea } from "@repo/design-system/components/ui/textarea";
-import { CheckCircle2Icon, ExternalLinkIcon, MailIcon } from "lucide-react";
+import {
+  CheckCircle2Icon,
+  ExternalLinkIcon,
+  MailIcon,
+  XIcon,
+} from "lucide-react";
 import Link from "next/link";
 import {
   SingleFlightForm,
   SingleFlightSubmit,
 } from "@/components/mutations/single-flight-form";
 import { AvatarUploader } from "@/components/profile/avatar-uploader";
+import { ProfileBadges } from "@/components/profile/profile-badges";
 import { getCurrentUser } from "@/lib/auth";
 import { getMemberRole } from "@/lib/authorization";
 import { getOrCreateProfile } from "@/lib/profile";
-import { updateProfile } from "./actions";
+import { respondToStudyGroupInvitation, updateProfile } from "./actions";
 
 const whitespacePattern = /\s+/;
 
@@ -67,18 +73,66 @@ const ProfilePage = async ({ searchParams }: ProfilePageProperties) => {
     return null;
   }
 
-  const [profile, role, completedLessons, enrollments, topicCount] =
-    await Promise.all([
-      getOrCreateProfile(memberId),
-      getMemberRole(memberId),
-      database.lessonProgress.count({
-        where: { memberId, status: "COMPLETED" },
-      }),
-      database.enrollment.count({ where: { memberId } }),
-      database.communityPost.count({
-        where: { authorId: memberId, deletedAt: null },
-      }),
-    ]);
+  const [
+    profile,
+    role,
+    completedLessons,
+    enrollments,
+    topicCount,
+    pendingInvitations,
+    earnedBadges,
+  ] = await Promise.all([
+    getOrCreateProfile(memberId),
+    getMemberRole(memberId),
+    database.lessonProgress.count({
+      where: { memberId, status: "COMPLETED" },
+    }),
+    database.enrollment.count({ where: { memberId } }),
+    database.communityPost.count({
+      where: { authorId: memberId, deletedAt: null },
+    }),
+    database.communitySpaceInvitation.findMany({
+      where: {
+        inviteeId: memberId,
+        status: "PENDING",
+        space: { is: { status: "PUBLISHED" } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+      select: {
+        id: true,
+        createdAt: true,
+        message: true,
+        inviter: {
+          select: {
+            displayName: true,
+            profile: { select: { displayName: true, username: true } },
+          },
+        },
+        space: {
+          select: {
+            title: true,
+            slug: true,
+            description: true,
+            visibility: true,
+          },
+        },
+      },
+    }),
+    database.badgeAward.findMany({
+      where: {
+        memberId,
+        badge: { is: { status: { in: ["PUBLISHED", "ARCHIVED"] } } },
+      },
+      orderBy: { awardedAt: "desc" },
+      take: 100,
+      select: {
+        id: true,
+        awardedAt: true,
+        definitionRevision: { select: { title: true, description: true } },
+      },
+    }),
+  ]);
 
   if (!profile) {
     return null;
@@ -121,6 +175,96 @@ const ProfilePage = async ({ searchParams }: ProfilePageProperties) => {
             A foto enviada não pertence a este perfil.
           </p>
         )}
+
+        <section
+          aria-labelledby="pending-group-invitations-heading"
+          className="paper-surface mt-8 border p-5 sm:p-7"
+          id="convites"
+        >
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="brand-eyebrow">Sua comunidade</p>
+              <h2
+                className="mt-2 font-display text-3xl"
+                id="pending-group-invitations-heading"
+              >
+                Convites pendentes
+              </h2>
+            </div>
+            <span className="font-data text-muted-foreground text-sm">
+              {pendingInvitations.length}
+            </span>
+          </div>
+          {pendingInvitations.length === 0 ? (
+            <p className="mt-4 text-muted-foreground text-sm leading-6">
+              Quando alguém convidar você para um grupo de estudo, o convite
+              aparecerá aqui.
+            </p>
+          ) : (
+            <ul className="mt-5 divide-y border-y">
+              {pendingInvitations.map((invitation) => (
+                <li
+                  className="flex flex-col gap-4 py-5 sm:flex-row sm:items-center sm:justify-between"
+                  key={invitation.id}
+                >
+                  <div className="min-w-0">
+                    <Link
+                      className="font-display text-2xl hover:underline"
+                      href={`/comunidade/${invitation.space.slug}`}
+                    >
+                      {invitation.space.title}
+                    </Link>
+                    {invitation.space.description ? (
+                      <p className="mt-1 max-w-2xl text-muted-foreground text-sm leading-6">
+                        {invitation.space.description}
+                      </p>
+                    ) : null}
+                    <p className="mt-2 text-muted-foreground text-xs">
+                      Convite de{" "}
+                      {invitation.inviter?.profile?.displayName ??
+                        invitation.inviter?.displayName ??
+                        invitation.inviter?.profile?.username ??
+                        "membro"}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 flex-wrap gap-2">
+                    <SingleFlightForm action={respondToStudyGroupInvitation}>
+                      <input
+                        name="invitationId"
+                        type="hidden"
+                        value={invitation.id}
+                      />
+                      <input name="response" type="hidden" value="ACCEPTED" />
+                      <SingleFlightSubmit size="sm">
+                        Aceitar convite
+                      </SingleFlightSubmit>
+                    </SingleFlightForm>
+                    <SingleFlightForm action={respondToStudyGroupInvitation}>
+                      <input
+                        name="invitationId"
+                        type="hidden"
+                        value={invitation.id}
+                      />
+                      <input name="response" type="hidden" value="DECLINED" />
+                      <SingleFlightSubmit size="sm" variant="outline">
+                        <XIcon aria-hidden="true" /> Recusar
+                      </SingleFlightSubmit>
+                    </SingleFlightForm>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <ProfileBadges
+          badges={earnedBadges.map((award) => ({
+            id: award.id,
+            awardedAt: award.awardedAt,
+            title: award.definitionRevision.title,
+            description: award.definitionRevision.description,
+          }))}
+        />
 
         <div className="mt-12 grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
           <section className="paper-surface border p-6 sm:p-10">
@@ -301,7 +445,7 @@ const ProfilePage = async ({ searchParams }: ProfilePageProperties) => {
             <div className="paper-surface border p-6">
               <CheckCircle2Icon
                 aria-hidden="true"
-                className="size-5 text-brand-action"
+                className="size-5 text-brand-action-text"
               />
               <p className="mt-5 font-data text-3xl text-brand-structural">
                 {completedLessons}

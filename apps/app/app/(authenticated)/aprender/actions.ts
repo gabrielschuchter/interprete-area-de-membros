@@ -1,9 +1,18 @@
 "use server";
 
-import { auth } from "@repo/auth/server";
-import { ContentStatus, database, ProgressStatus } from "@repo/database";
+import {
+  BadgeCriterion,
+  ContentStatus,
+  database,
+  LearningAssignmentStatus,
+  LearningAssignmentTargetType,
+  ProgressStatus,
+} from "@repo/database";
 import { revalidatePath } from "next/cache";
+import { auth } from "@/lib/auth";
+import { evaluateMemberBadges } from "@/lib/badges";
 import { getLearningAccessScope, hasLessonAccess } from "@/lib/content-access";
+import { dispatchPendingNotifications } from "@/lib/notification-outbox-dispatch";
 
 export interface CompleteLessonState {
   readonly message?: string;
@@ -105,7 +114,108 @@ export const completeLesson = async (
         completedAt: existingProgress?.completedAt ?? completedAt,
       },
     });
+
+    const incompleteAssignmentStates = {
+      in: [
+        LearningAssignmentStatus.NEW,
+        LearningAssignmentStatus.VIEWED,
+        LearningAssignmentStatus.STARTED,
+      ],
+    };
+    await transaction.activityAssignment.updateMany({
+      where: {
+        memberId: userId,
+        targetType: LearningAssignmentTargetType.LESSON,
+        targetId: lessonId,
+        status: incompleteAssignmentStates,
+        revokedAt: null,
+      },
+      data: { status: LearningAssignmentStatus.COMPLETED, completedAt },
+    });
+
+    const [moduleLessonCount, completedModuleLessonCount] = await Promise.all([
+      transaction.lesson.count({
+        where: { moduleId: lesson.module.id, status: ContentStatus.PUBLISHED },
+      }),
+      transaction.lessonProgress.count({
+        where: {
+          memberId: userId,
+          status: ProgressStatus.COMPLETED,
+          lesson: {
+            moduleId: lesson.module.id,
+            status: ContentStatus.PUBLISHED,
+          },
+        },
+      }),
+    ]);
+    if (
+      moduleLessonCount > 0 &&
+      completedModuleLessonCount >= moduleLessonCount
+    ) {
+      await transaction.activityAssignment.updateMany({
+        where: {
+          memberId: userId,
+          targetType: LearningAssignmentTargetType.MODULE,
+          targetId: lesson.module.id,
+          status: incompleteAssignmentStates,
+          revokedAt: null,
+        },
+        data: { status: LearningAssignmentStatus.COMPLETED, completedAt },
+      });
+    }
+
+    const [courseLessonCount, completedCourseLessonCount] = await Promise.all([
+      transaction.lesson.count({
+        where: {
+          status: ContentStatus.PUBLISHED,
+          module: {
+            is: {
+              courseId: lesson.module.course.id,
+              status: ContentStatus.PUBLISHED,
+            },
+          },
+        },
+      }),
+      transaction.lessonProgress.count({
+        where: {
+          memberId: userId,
+          status: ProgressStatus.COMPLETED,
+          lesson: {
+            module: {
+              is: {
+                courseId: lesson.module.course.id,
+                status: ContentStatus.PUBLISHED,
+              },
+            },
+          },
+        },
+      }),
+    ]);
+    if (
+      courseLessonCount > 0 &&
+      completedCourseLessonCount >= courseLessonCount
+    ) {
+      await transaction.activityAssignment.updateMany({
+        where: {
+          memberId: userId,
+          targetType: LearningAssignmentTargetType.COURSE,
+          targetId: lesson.module.course.id,
+          status: incompleteAssignmentStates,
+          revokedAt: null,
+        },
+        data: { status: LearningAssignmentStatus.COMPLETED, completedAt },
+      });
+    }
+    await evaluateMemberBadges(transaction, userId, completedAt, {
+      criteria: [
+        BadgeCriterion.LESSONS_COMPLETED,
+        BadgeCriterion.LEARNING_PATHS_COMPLETED,
+      ],
+      force: true,
+    });
   });
+
+  await dispatchPendingNotifications();
 
   revalidatePath("/aprender", "page");
   revalidatePath(`/aprender/cursos/${lesson.module.course.slug}`, "page");

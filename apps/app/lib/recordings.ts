@@ -1,7 +1,14 @@
 import "server-only";
 
-import { database, MemberRole, type Prisma } from "@repo/database";
+import {
+  AccessResourceType,
+  database,
+  LearningAssignmentTargetType,
+  MemberRole,
+  type Prisma,
+} from "@repo/database";
 import { getMemberRole } from "./authorization";
+import { activeAssignmentStatuses } from "./learning-assignments";
 
 const yearPattern = /^\d{4}$/;
 
@@ -17,12 +24,79 @@ export const canReadRecordingGroup = (
 
 const getRecordingAccessContext = async (
   memberId: string
-): Promise<RecordingAccessContext> => {
+): Promise<
+  RecordingAccessContext & {
+    recordingWhere?: Prisma.ImportedRecordingWhereInput;
+  }
+> => {
   const role = await getMemberRole(memberId);
+  const fullAccess = role === MemberRole.ADMIN || role === MemberRole.TEACHER;
+  if (fullAccess) {
+    return { memberId, fullAccess };
+  }
+
+  const now = new Date();
+  const [assignments, grants] = await Promise.all([
+    database.activityAssignment.findMany({
+      where: {
+        memberId,
+        status: { in: [...activeAssignmentStatuses] },
+        revokedAt: null,
+        AND: [
+          { OR: [{ availableAt: null }, { availableAt: { lte: now } }] },
+          { OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] },
+        ],
+      },
+      select: { targetType: true, targetId: true },
+    }),
+    database.accessGrant.findMany({
+      where: {
+        memberId,
+        OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+      },
+      select: { resourceType: true, resourceId: true },
+    }),
+  ]);
+
+  const filters: Prisma.ImportedRecordingWhereInput[] = [
+    { group: { memberId } },
+  ];
+  const addTarget = (
+    type: AccessResourceType | LearningAssignmentTargetType,
+    targetId: string
+  ) => {
+    switch (type) {
+      case AccessResourceType.COURSE:
+      case LearningAssignmentTargetType.COURSE:
+        filters.push({ legacyLesson: { module: { courseId: targetId } } });
+        break;
+      case AccessResourceType.MODULE:
+      case LearningAssignmentTargetType.MODULE:
+        filters.push({ legacyLesson: { moduleId: targetId } });
+        break;
+      case AccessResourceType.LESSON:
+      case LearningAssignmentTargetType.LESSON:
+        filters.push({ legacyLessonId: targetId });
+        break;
+      case AccessResourceType.ASSET:
+      case LearningAssignmentTargetType.ASSET:
+        filters.push({ assetId: targetId });
+        break;
+      default:
+        break;
+    }
+  };
+  for (const assignment of assignments) {
+    addTarget(assignment.targetType, assignment.targetId);
+  }
+  for (const grant of grants) {
+    addTarget(grant.resourceType, grant.resourceId);
+  }
 
   return {
     memberId,
-    fullAccess: role === MemberRole.ADMIN || role === MemberRole.TEACHER,
+    fullAccess,
+    recordingWhere: { OR: filters },
   };
 };
 
@@ -55,6 +129,8 @@ const recordingGroupSelection = (memberId: string) => ({
           kind: true,
           mimeType: true,
           durationSeconds: true,
+          mediaProvider: true,
+          mediaExternalId: true,
           playbackProgress: {
             where: { memberId },
             select: {
@@ -71,6 +147,29 @@ const recordingGroupSelection = (memberId: string) => ({
   },
 });
 
+export const getAccessibleRecordingIds = async (
+  memberId: string,
+  candidateIds: readonly string[]
+) => {
+  if (candidateIds.length === 0) {
+    return new Set<string>();
+  }
+  const access = await getRecordingAccessContext(memberId);
+  if (access.fullAccess) {
+    return new Set(candidateIds);
+  }
+  const recordings = await database.importedRecording.findMany({
+    where: {
+      AND: [
+        { id: { in: [...candidateIds] } },
+        ...(access.recordingWhere ? [access.recordingWhere] : []),
+      ],
+    },
+    select: { id: true },
+  });
+  return new Set(recordings.map(({ id }) => id));
+};
+
 /**
  * The home page only needs the few recordings the member can resume. Keeping
  * this query separate from the archive listing avoids loading every imported
@@ -78,16 +177,19 @@ const recordingGroupSelection = (memberId: string) => ({
  */
 export const getMemberContinueWatching = async (memberId: string) => {
   const access = await getRecordingAccessContext(memberId);
+  const accessibleRecordings = await database.importedRecording.findMany({
+    where: access.recordingWhere,
+    orderBy: [{ meetingDate: "desc" }, { id: "desc" }],
+    take: 1000,
+    select: { assetId: true },
+  });
+  const accessibleAssetIds = accessibleRecordings.map(({ assetId }) => assetId);
   const progressRows = await database.playbackProgress.findMany({
     where: {
       memberId,
+      assetId: { in: accessibleAssetIds },
       positionSeconds: { gt: 0 },
       completedPlaybackAt: null,
-      asset: {
-        importedRecording: access.fullAccess
-          ? { isNot: null }
-          : { is: { group: { memberId } } },
-      },
     },
     orderBy: { lastViewedAt: "desc" },
     take: 6,
@@ -103,6 +205,8 @@ export const getMemberContinueWatching = async (memberId: string) => {
           kind: true,
           mimeType: true,
           durationSeconds: true,
+          mediaProvider: true,
+          mediaExternalId: true,
           importedRecording: {
             select: {
               id: true,
@@ -143,6 +247,8 @@ export const getMemberContinueWatching = async (memberId: string) => {
             kind: row.asset.kind,
             mimeType: row.asset.mimeType,
             durationSeconds: row.asset.durationSeconds,
+            mediaProvider: row.asset.mediaProvider,
+            mediaExternalId: row.asset.mediaExternalId,
           },
           group: {
             id: importedRecording.group.id,
@@ -244,6 +350,8 @@ const recordingPageSelection = (memberId: string) => ({
       kind: true,
       mimeType: true,
       durationSeconds: true,
+      mediaProvider: true,
+      mediaExternalId: true,
       playbackProgress: {
         where: { memberId },
         select: {
@@ -261,7 +369,7 @@ const recordingPageSelection = (memberId: string) => ({
 /**
  * Archive listing query. It pages recordings rather than loading every
  * imported lesson just to paint the first viewport. Authorization remains on
- * ImportedRecordingGroup.memberId (or staff role) and is applied in SQL.
+ * An explicit group assignment or content-level access is applied in SQL.
  */
 export const getMemberRecordingPage = async (
   memberId: string,
@@ -272,28 +380,46 @@ export const getMemberRecordingPage = async (
   const query = options.query?.trim();
   const year = options.year?.match(yearPattern)?.[0];
   const where: Prisma.ImportedRecordingWhereInput = {
-    group: access.fullAccess ? undefined : { memberId },
-    ...(query
-      ? {
-          OR: [
-            { originalTitle: { contains: query, mode: "insensitive" } },
-            { asset: { title: { contains: query, mode: "insensitive" } } },
+    AND: [
+      ...(access.recordingWhere ? [access.recordingWhere] : []),
+      ...(query
+        ? [
             {
-              group: {
-                legacyStudentName: { contains: query, mode: "insensitive" },
+              OR: [
+                {
+                  originalTitle: {
+                    contains: query,
+                    mode: "insensitive" as const,
+                  },
+                },
+                {
+                  asset: {
+                    title: { contains: query, mode: "insensitive" as const },
+                  },
+                },
+                {
+                  group: {
+                    legacyStudentName: {
+                      contains: query,
+                      mode: "insensitive" as const,
+                    },
+                  },
+                },
+              ],
+            },
+          ]
+        : []),
+      ...(year
+        ? [
+            {
+              meetingDate: {
+                gte: new Date(`${year}-01-01T00:00:00.000Z`),
+                lt: new Date(`${Number(year) + 1}-01-01T00:00:00.000Z`),
               },
             },
-          ],
-        }
-      : {}),
-    ...(year
-      ? {
-          meetingDate: {
-            gte: new Date(`${year}-01-01T00:00:00.000Z`),
-            lt: new Date(`${Number(year) + 1}-01-01T00:00:00.000Z`),
-          },
-        }
-      : {}),
+          ]
+        : []),
+    ],
   };
 
   const [rows, requested] = await Promise.all([

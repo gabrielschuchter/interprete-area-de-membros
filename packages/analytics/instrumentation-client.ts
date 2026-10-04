@@ -1,15 +1,20 @@
-import posthog from "posthog-js";
-import { keys } from "./keys";
+let posthogClient: Promise<typeof import("posthog-js")> | null = null;
 
-export const initializeAnalytics = () => {
-  const { NEXT_PUBLIC_POSTHOG_KEY, NEXT_PUBLIC_POSTHOG_HOST } = keys();
+const loadPostHog = () => (posthogClient ??= import("posthog-js"));
 
-  if (!(NEXT_PUBLIC_POSTHOG_KEY && NEXT_PUBLIC_POSTHOG_HOST)) {
+export const initializeAnalytics = (): Promise<void> | undefined => {
+  const key = process.env.NEXT_PUBLIC_POSTHOG_KEY;
+  const host = process.env.NEXT_PUBLIC_POSTHOG_HOST;
+  if (!(key && host)) {
     return;
   }
 
-  posthog.init(NEXT_PUBLIC_POSTHOG_KEY, {
-    api_host: NEXT_PUBLIC_POSTHOG_HOST,
-    defaults: "2025-05-24",
-  });
+  return loadPostHog()
+    .then(({ default: posthog }) => {
+      posthog.init(key, {
+        api_host: host,
+        defaults: "2025-05-24",
+      });
+    })
+    .catch(() => undefined);
 };

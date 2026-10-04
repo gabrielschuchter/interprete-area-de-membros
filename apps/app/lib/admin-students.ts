@@ -66,7 +66,11 @@ export const getAdminMemberDetail = async (memberId: string) => {
         },
       }),
       database.activityAssignment.findMany({
-        where: { memberId },
+        where: {
+          memberId,
+          targetType: "ACTIVITY",
+          activityId: { not: null },
+        },
         orderBy: [{ dueAt: "asc" }, { updatedAt: "desc" }],
         take: 24,
         select: {

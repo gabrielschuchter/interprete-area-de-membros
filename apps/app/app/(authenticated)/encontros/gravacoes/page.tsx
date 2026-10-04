@@ -10,7 +10,6 @@ import Link from "next/link";
 import { LearningPageFrame } from "@/components/learning/learning-page-frame";
 import { LessonPlayer } from "@/components/learning/lesson-player";
 import { requireMemberId } from "@/lib/learning";
-import { getMemberProductConfig } from "@/lib/product-config";
 import {
   getMemberContinueWatching,
   getMemberRecordingPage,
@@ -77,40 +76,16 @@ const RecordingLibraryPage = async ({
 }: RecordingLibraryPageProperties) => {
   const memberId = await requireMemberId();
   const params = await searchParams;
-  const [{ asset, q, year }, page, continueData, productConfig] =
-    await Promise.all([
-      Promise.resolve(params),
-      getMemberRecordingPage(memberId, {
-        cursor: params.cursor,
-        query: params.q,
-        requestedAssetId: params.asset,
-        year: params.year,
-      }),
-      getMemberContinueWatching(memberId),
-      getMemberProductConfig(memberId),
-    ]);
-
-  if (!(productConfig.recordingsExperienceV2 || page.access.fullAccess)) {
-    return (
-      <LearningPageFrame
-        description="O arquivo histórico está sendo organizado pela equipe do Interprete. Quando estiver liberado para sua conta, seus encontros aparecerão aqui."
-        eyebrow="Encontros · arquivo"
-        title="Estamos preparando seus encontros anteriores."
-      >
-        <section className="paper-surface border p-8 sm:p-12">
-          <p className="text-muted-foreground leading-7">
-            Enquanto isso, você continua com acesso aos encontros publicados e
-            às atividades da sua área de membros.
-          </p>
-          <Button asChild className="mt-7" variant="outline">
-            <Link href="/encontros">
-              Voltar para encontros <ArrowRightIcon aria-hidden="true" />
-            </Link>
-          </Button>
-        </section>
-      </LearningPageFrame>
-    );
-  }
+  const [{ asset, q, year }, page, continueData] = await Promise.all([
+    Promise.resolve(params),
+    getMemberRecordingPage(memberId, {
+      cursor: params.cursor,
+      query: params.q,
+      requestedAssetId: params.asset,
+      year: params.year,
+    }),
+    getMemberContinueWatching(memberId),
+  ]);
 
   const selectedRecording =
     page.requestedRecording ??
@@ -148,8 +123,8 @@ const RecordingLibraryPage = async ({
   return (
     <LearningPageFrame
       description="Um arquivo dos encontros que já aconteceram. Aqui você retoma uma conversa, uma pergunta ou um ponto que merece outra passagem — sem transformar gravação em aula obrigatória."
-      eyebrow="Encontros · arquivo"
-      title="Seus encontros anteriores."
+      eyebrow="Aprender · arquivo pessoal"
+      title="Minhas gravações."
     >
       {page.access.fullAccess && (
         <p className="border-brand-action/40 border-l-2 bg-brand-action/5 px-4 py-3 text-muted-foreground text-sm leading-6">
@@ -216,8 +191,12 @@ const RecordingLibraryPage = async ({
           <div className="paper-surface mt-6 border p-3 sm:p-6">
             <LessonPlayer
               assetId={selectedRecording.asset.id}
+              mediaExternalId={selectedRecording.asset.mediaExternalId}
+              mediaProvider={selectedRecording.asset.mediaProvider}
               mimeType={selectedRecording.asset.mimeType}
               persistProgress
+              studyActivityKind="RECORDING"
+              studyResourceId={selectedRecording.asset.id}
               title={selectedRecording.asset.title}
             />
           </div>
@@ -285,7 +264,7 @@ const RecordingLibraryPage = async ({
           <section className="paper-surface mt-6 border p-8 sm:p-12">
             <VideoIcon
               aria-hidden="true"
-              className="size-6 text-brand-action"
+              className="size-6 text-brand-action-text"
             />
             <p className="brand-eyebrow mt-8">Ainda não há um arquivo seu</p>
             <h3 className="mt-3 font-display text-3xl">
@@ -322,12 +301,12 @@ const RecordingLibraryPage = async ({
                           {recording.asset.kind === "VIDEO" ? (
                             <VideoIcon
                               aria-hidden="true"
-                              className="mt-1 size-5 shrink-0 text-brand-action"
+                              className="mt-1 size-5 shrink-0 text-brand-action-text"
                             />
                           ) : (
                             <FileTextIcon
                               aria-hidden="true"
-                              className="mt-1 size-5 shrink-0 text-brand-action"
+                              className="mt-1 size-5 shrink-0 text-brand-action-text"
                             />
                           )}
                           <div className="min-w-0">

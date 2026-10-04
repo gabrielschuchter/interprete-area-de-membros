@@ -1,15 +1,6 @@
-export const notificationPriority = {
-  ACTIVITY_ASSIGNED: 2,
-  ACTIVITY_DEADLINE: 2,
-  ANNOUNCEMENT: 2,
-  COMMENT_REPLY: 3,
-  FEEDBACK_RECEIVED: 3,
-  FOLLOWED_TOPIC_ACTIVITY: 2,
-  LESSON_AVAILABLE: 1,
-  MENTION: 4,
-  MODULE_AVAILABLE: 1,
-  TOPIC_COMMENT: 2,
-} as const;
+import { notificationPriority as sharedNotificationPriority } from "@repo/member-domain";
+
+export const notificationPriority = sharedNotificationPriority;
 
 export type NotificationDomainType = keyof typeof notificationPriority;
 
@@ -45,10 +36,21 @@ export const mergeNotificationRecipients = (
 
 export const notificationFilterTypes = {
   ACTIVITIES: ["ACTIVITY_ASSIGNED", "FEEDBACK_RECEIVED", "ACTIVITY_DEADLINE"],
-  COMMUNITY: ["COMMENT_REPLY", "TOPIC_COMMENT", "FOLLOWED_TOPIC_ACTIVITY"],
-  LEARNING: ["LESSON_AVAILABLE", "MODULE_AVAILABLE"],
+  COMMUNITY: [
+    "COMMENT_REPLY",
+    "TOPIC_COMMENT",
+    "FOLLOWED_TOPIC_ACTIVITY",
+    "GROUP_INVITATION",
+    "GROUP_POST",
+  ],
+  LEARNING: [
+    "LESSON_AVAILABLE",
+    "MODULE_AVAILABLE",
+    "LEARNING_CONTENT_ASSIGNED",
+  ],
+  BADGES: ["BADGE_AWARDED"],
   MENTIONS: ["MENTION"],
 } as const satisfies Record<
-  "MENTIONS" | "COMMUNITY" | "ACTIVITIES" | "LEARNING",
+  "MENTIONS" | "COMMUNITY" | "ACTIVITIES" | "LEARNING" | "BADGES",
   readonly NotificationDomainType[]
 >;

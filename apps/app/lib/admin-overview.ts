@@ -5,6 +5,8 @@ import {
   ContentStatus,
   CourseExperience,
   database,
+  LearningAssignmentStatus,
+  LearningAssignmentTargetType,
   MemberRole,
 } from "@repo/database";
 import { getProfilesByClerkIds } from "./profile";
@@ -122,8 +124,18 @@ export const getAdminOverview = async () => {
     }),
     database.activityAssignment.findMany({
       where: {
+        targetType: LearningAssignmentTargetType.ACTIVITY,
+        activityId: { not: null },
+        status: {
+          in: [
+            LearningAssignmentStatus.NEW,
+            LearningAssignmentStatus.VIEWED,
+            LearningAssignmentStatus.STARTED,
+          ],
+        },
+        revokedAt: null,
         dueAt: { lt: now },
-        activity: { status: ContentStatus.PUBLISHED },
+        activity: { is: { status: ContentStatus.PUBLISHED } },
       },
       orderBy: { dueAt: "asc" },
       take: 12,
@@ -137,10 +149,22 @@ export const getAdminOverview = async () => {
     }),
   ]);
 
-  const overdueSubmissionPairs = overdueAssignments.length
+  const overdueActivityAssignments = overdueAssignments.flatMap((assignment) =>
+    assignment.activityId && assignment.activity
+      ? [
+          {
+            ...assignment,
+            activityId: assignment.activityId,
+            activity: assignment.activity,
+          },
+        ]
+      : []
+  );
+
+  const overdueSubmissionPairs = overdueActivityAssignments.length
     ? await database.activitySubmission.findMany({
         where: {
-          OR: overdueAssignments.map(({ activityId, memberId }) => ({
+          OR: overdueActivityAssignments.map(({ activityId, memberId }) => ({
             activityId,
             memberId,
           })),
@@ -159,7 +183,7 @@ export const getAdminOverview = async () => {
       ({ activityId, memberId }) => `${activityId}:${memberId}`
     )
   );
-  const overdue = overdueAssignments.filter(
+  const overdue = overdueActivityAssignments.filter(
     ({ activityId, memberId }) =>
       !completedOverduePairs.has(`${activityId}:${memberId}`)
   );

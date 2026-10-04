@@ -3,6 +3,7 @@ import { Button } from "@repo/design-system/components/ui/button";
 import { ArrowLeftIcon, ExternalLinkIcon } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { StudyHeartbeat } from "@/components/learning/study-heartbeat";
 import {
   SingleFlightForm,
   SingleFlightSubmit,
@@ -43,6 +44,7 @@ const ActivityPage = async ({ params }: ActivityPageProperties) => {
   return (
     <div className="min-h-svh bg-background">
       <main className="mx-auto w-full max-w-[1280px] px-5 py-8 sm:px-8 lg:px-12 lg:py-14">
+        <StudyHeartbeat activityKind="ACTIVITY" resourceId={activity.id} />
         <Button asChild className="mb-10 -ml-3" variant="ghost">
           <Link href="/atividades">
             <ArrowLeftIcon aria-hidden="true" /> Todas as atividades

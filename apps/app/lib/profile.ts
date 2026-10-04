@@ -1,8 +1,9 @@
 import "server-only";
 
-import { database } from "@repo/database";
+import { database, type Prisma } from "@repo/database";
+import { withMemberIdentityLock } from "@repo/member-domain";
 import { cache } from "react";
-import { getCurrentUser } from "./auth";
+import { getCurrentUser, getMemberIdentitySnapshot } from "./auth";
 
 const USERNAME_MAX_LENGTH = 30;
 const USERNAME_PATTERN = /^[a-z0-9](?:[a-z0-9-]{1,28}[a-z0-9])?$/;
@@ -36,8 +37,12 @@ const usernameFromClerkUser = (
     : `${normalized}-membro`.slice(0, USERNAME_MAX_LENGTH);
 };
 
-const uniqueUsername = async (base: string, clerkUserId: string) => {
-  const existing = await database.profile.findUnique({
+const uniqueUsername = async (
+  base: string,
+  clerkUserId: string,
+  transaction: Prisma.TransactionClient
+) => {
+  const existing = await transaction.profile.findUnique({
     where: { username: base },
     select: { clerkUserId: true },
   });
@@ -59,44 +64,70 @@ const isUniqueConstraintError = (error: unknown) =>
   "code" in error &&
   error.code === "P2002";
 
-const createProfileSafely = async (data: {
-  clerkUserId: string;
-  username: string;
-  displayName: string | null;
-  avatarUrl: string | null;
-}) => {
-  try {
-    return await database.profile.create({
-      data: {
-        ...data,
-        interests: [],
-      },
+const createProfileInTransaction = async (
+  transaction: Prisma.TransactionClient,
+  data: {
+    clerkUserId: string;
+    username: string;
+    displayName: string | null;
+    avatarUrl: string | null;
+  },
+  useFallbackUsername: boolean
+) => {
+  const username = useFallbackUsername
+    ? `${data.username.slice(0, USERNAME_MAX_LENGTH - 9)}-${normalizeUsername(data.clerkUserId).slice(-8) || "member"}`
+    : data.username;
+
+  return transaction.profile.create({
+    data: {
+      ...data,
+      username: await uniqueUsername(username, data.clerkUserId, transaction),
+      interests: [],
+    },
+  });
+};
+
+const syncMemberIdentity = async (
+  transaction: Prisma.TransactionClient,
+  clerkUserId: string,
+  member: {
+    deactivatedAt: Date | null;
+    displayName: string | null;
+    email: string | null;
+    avatarUrl: string | null;
+  } | null,
+  profileAvatarUrl: string | null | undefined,
+  identity: {
+    displayName: string | null;
+    email: string | null;
+    avatarUrl: string | null;
+  }
+) => {
+  if (member?.deactivatedAt) {
+    return false;
+  }
+
+  const nextAvatarUrl =
+    profileAvatarUrl === undefined ? identity.avatarUrl : profileAvatarUrl;
+  if (!member) {
+    await transaction.member.create({
+      data: { id: clerkUserId, ...identity },
     });
-  } catch (error) {
-    if (!isUniqueConstraintError(error)) {
-      throw error;
-    }
+    return true;
+  }
 
-    // Concurrent authenticated requests can race between findUnique and
-    // create. Prefer the row that won the race for this Clerk identity.
-    const existingProfile = await database.profile.findUnique({
-      where: { clerkUserId: data.clerkUserId },
-    });
-
-    if (existingProfile) {
-      return existingProfile;
-    }
-
-    // A different member may have claimed the same generated display name in
-    // the same window. The Clerk id suffix keeps the fallback deterministic.
-    return database.profile.create({
-      data: {
-        ...data,
-        username: await uniqueUsername(data.username, data.clerkUserId),
-        interests: [],
-      },
+  if (
+    member.displayName !== identity.displayName ||
+    member.email !== identity.email ||
+    member.avatarUrl !== nextAvatarUrl
+  ) {
+    await transaction.member.update({
+      where: { id: clerkUserId },
+      data: { ...identity, avatarUrl: nextAvatarUrl },
     });
   }
+
+  return true;
 };
 
 export const getOrCreateProfile = cache(
@@ -116,35 +147,89 @@ export const getOrCreateProfile = cache(
       user.fullName ??
       ([user.firstName, user.lastName].filter(Boolean).join(" ") || null);
     const email = user.primaryEmailAddress?.emailAddress ?? null;
-    const existing = await database.profile.findUnique({
-      where: { clerkUserId },
-    });
-    // A profile row is the application source of truth once it exists. The
-    // Clerk image is only the creation-time fallback and is resolved by the
-    // shell/profile view when the member has no custom avatar.
-    const avatarUrl = existing ? existing.avatarUrl : (user.imageUrl ?? null);
+    const [memberSnapshot, existingProfile] = await Promise.all([
+      getMemberIdentitySnapshot(clerkUserId),
+      database.profile.findUnique({ where: { clerkUserId } }),
+    ]);
 
-    await database.member.upsert({
-      where: { id: clerkUserId },
-      update: { displayName, email, avatarUrl },
-      create: { id: clerkUserId, displayName, email, avatarUrl },
-    });
-
-    if (existing) {
-      return existing;
+    if (memberSnapshot?.deactivatedAt) {
+      return existingProfile;
     }
 
-    const username = await uniqueUsername(
-      usernameFromClerkUser(user),
-      clerkUserId
-    );
+    const expectedAvatarUrl = existingProfile
+      ? existingProfile.avatarUrl
+      : (user.imageUrl ?? null);
+    if (
+      existingProfile &&
+      memberSnapshot?.displayName === displayName &&
+      memberSnapshot.email === email &&
+      memberSnapshot.avatarUrl === expectedAvatarUrl
+    ) {
+      return existingProfile;
+    }
 
-    return createProfileSafely({
-      clerkUserId,
-      username,
-      displayName,
-      avatarUrl,
-    });
+    const createOrSync = (useFallbackUsername: boolean) =>
+      database.$transaction((transaction) =>
+        withMemberIdentityLock(transaction, clerkUserId, async () => {
+          const member = await transaction.member.findUnique({
+            where: { id: clerkUserId },
+            select: {
+              deactivatedAt: true,
+              displayName: true,
+              email: true,
+              avatarUrl: true,
+            },
+          });
+          const existing = await transaction.profile.findUnique({
+            where: { clerkUserId },
+          });
+
+          const isActive = await syncMemberIdentity(
+            transaction,
+            clerkUserId,
+            member,
+            existing?.avatarUrl,
+            { displayName, email, avatarUrl: user.imageUrl ?? null }
+          );
+
+          if (!isActive) {
+            return existing;
+          }
+
+          if (existing) {
+            return existing;
+          }
+
+          return createProfileInTransaction(
+            transaction,
+            {
+              clerkUserId,
+              username: usernameFromClerkUser(user),
+              displayName,
+              avatarUrl: user.imageUrl ?? null,
+            },
+            useFallbackUsername
+          );
+        })
+      );
+
+    try {
+      return await createOrSync(false);
+    } catch (error) {
+      if (!isUniqueConstraintError(error)) {
+        throw error;
+      }
+
+      // A concurrent member may claim the same username. The failed
+      // transaction has rolled back before retrying with the Clerk-ID suffix.
+      const existing = await database.profile.findUnique({
+        where: { clerkUserId },
+      });
+      if (existing) {
+        return existing;
+      }
+      return createOrSync(true);
+    }
   }
 );
 

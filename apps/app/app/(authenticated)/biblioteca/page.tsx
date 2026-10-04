@@ -16,16 +16,22 @@ import {
 } from "@/components/mutations/single-flight-form";
 import { requireMemberId } from "@/lib/learning";
 import { getLibraryCategories, getLibraryItems } from "@/lib/library";
-import { memberAssetUrl } from "@/lib/member-storage";
-import { toggleLibraryBookmark } from "./actions";
+import {
+  libraryAccessLabel,
+  libraryDifficultyLabel,
+  libraryLanguageLabel,
+} from "@/lib/library-presentation";
+import { openLibraryItem, toggleLibraryBookmark } from "./actions";
 
 interface LibraryPageProperties {
   readonly searchParams: Promise<{
     q?: string;
     kind?: string;
     category?: string;
+    language?: string;
+    difficulty?: string;
     page?: string;
-    sort?: "recent" | "title" | "year";
+    sort?: "recent" | "relevant";
   }>;
 }
 
@@ -64,6 +70,8 @@ const LibraryPage = async ({ searchParams }: LibraryPageProperties) => {
       query: filters.q,
       kind: filters.kind,
       category: filters.category,
+      language: filters.language,
+      difficulty: filters.difficulty,
       page: currentPage,
       sort: filters.sort,
       memberId,
@@ -81,6 +89,12 @@ const LibraryPage = async ({ searchParams }: LibraryPageProperties) => {
   if (filters.category) {
     queryString.set("category", filters.category);
   }
+  if (filters.language) {
+    queryString.set("language", filters.language);
+  }
+  if (filters.difficulty) {
+    queryString.set("difficulty", filters.difficulty);
+  }
   if (filters.sort) {
     queryString.set("sort", filters.sort);
   }
@@ -89,14 +103,19 @@ const LibraryPage = async ({ searchParams }: LibraryPageProperties) => {
     nextQuery.set("page", String(targetPage));
     return `/biblioteca?${nextQuery.toString()}`;
   };
-
   return (
     <div className="min-h-svh bg-background">
       <main className="mx-auto w-full max-w-[1280px] px-5 py-10 sm:px-8 lg:px-12 lg:py-16">
+        <a
+          className="sr-only rounded-sm bg-background px-3 py-2 text-foreground focus:not-sr-only focus:absolute focus:z-50 focus-visible:outline-2 focus-visible:outline-brand-action focus-visible:outline-offset-2"
+          href="#library-heading"
+        >
+          Pular filtros e ir aos materiais
+        </a>
         <header className="max-w-3xl">
           <p className="brand-eyebrow">Arquivo de estudo · curadoria</p>
           <span aria-hidden="true" className="brand-rule mt-4" />
-          <h1 className="mt-6 font-display text-5xl leading-[0.98] tracking-tight sm:text-7xl">
+          <h1 className="mt-6 text-balance font-display text-5xl leading-[0.98] tracking-tight sm:text-7xl">
             Leia um pouco além da aula.
           </h1>
           <p className="mt-6 max-w-2xl text-base text-muted-foreground leading-7 sm:text-lg">
@@ -104,8 +123,13 @@ const LibraryPage = async ({ searchParams }: LibraryPageProperties) => {
             é um arquivo vivo, não uma pasta de downloads.
           </p>
         </header>
+        <div className="mt-7">
+          <Button asChild variant="outline">
+            <Link href="/biblioteca/pessoal">Minha biblioteca pessoal</Link>
+          </Button>
+        </div>
         <form
-          className="mt-12 grid gap-3 border-border border-y py-4 md:grid-cols-[minmax(0,1fr)_12rem_14rem_auto]"
+          className="mt-12 grid gap-3 border-border border-y py-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-[minmax(12rem,1.5fr)_8rem_8rem_8rem_minmax(10rem,1fr)_8rem_auto]"
           method="get"
         >
           <label className="sr-only" htmlFor="library-search">
@@ -121,7 +145,8 @@ const LibraryPage = async ({ searchParams }: LibraryPageProperties) => {
               defaultValue={filters.q}
               id="library-search"
               name="q"
-              placeholder="Buscar por título, tema ou palavra..."
+              placeholder="Buscar por título, tema ou palavra…"
+              type="search"
             />
           </div>
           <label className="sr-only" htmlFor="library-kind">
@@ -140,6 +165,34 @@ const LibraryPage = async ({ searchParams }: LibraryPageProperties) => {
             <option value="LINK">Links</option>
             <option value="VIDEO">Vídeos</option>
           </select>
+          <label className="sr-only" htmlFor="library-language">
+            Idioma
+          </label>
+          <select
+            className="h-11 rounded-sm border bg-transparent px-3 text-sm"
+            defaultValue={filters.language ?? ""}
+            id="library-language"
+            name="language"
+          >
+            <option value="">Todos os idiomas</option>
+            <option value="pt">Português</option>
+            <option value="en">English</option>
+            <option value="es">Español</option>
+          </select>
+          <label className="sr-only" htmlFor="library-difficulty">
+            Nível
+          </label>
+          <select
+            className="h-11 rounded-sm border bg-transparent px-3 text-sm"
+            defaultValue={filters.difficulty ?? ""}
+            id="library-difficulty"
+            name="difficulty"
+          >
+            <option value="">Todos os níveis</option>
+            <option value="INTRODUCTORY">Introdutório</option>
+            <option value="INTERMEDIATE">Intermediário</option>
+            <option value="ADVANCED">Avançado</option>
+          </select>
           <label className="sr-only" htmlFor="library-category">
             Categoria
           </label>
@@ -156,22 +209,31 @@ const LibraryPage = async ({ searchParams }: LibraryPageProperties) => {
               </option>
             ))}
           </select>
+          <label className="sr-only" htmlFor="library-sort">
+            Ordenação
+          </label>
           <select
             className="h-11 rounded-sm border bg-transparent px-3 text-sm"
             defaultValue={filters.sort ?? "recent"}
+            id="library-sort"
             name="sort"
           >
             <option value="recent">Mais recentes</option>
-            <option value="title">Título</option>
-            <option value="year">Ano</option>
+            <option value="relevant">Mais relevantes</option>
           </select>
           <Button type="submit">Filtrar</Button>
         </form>
         <section aria-labelledby="library-heading" className="mt-12">
           <div className="flex items-end justify-between border-border border-b pb-3">
-            <h2 className="font-display text-3xl" id="library-heading">
-              Materiais para a mesa
-            </h2>
+            <div>
+              <h2 className="font-display text-3xl" id="library-heading">
+                Materiais para a mesa
+              </h2>
+              <p className="mt-2 text-muted-foreground text-sm">
+                Relevância combina leitores únicos, aberturas repetidas e itens
+                salvos; a busca desempata por correspondência textual.
+              </p>
+            </div>
             <span className="font-data text-muted-foreground text-xs">
               {items.length.toString().padStart(2, "0")} itens
             </span>
@@ -196,7 +258,7 @@ const LibraryPage = async ({ searchParams }: LibraryPageProperties) => {
                 const Icon = iconFor(item.kind);
                 return (
                   <article
-                    className="motion-card paper-surface flex min-h-56 flex-col border p-6 hover:border-brand-action"
+                    className="motion-card paper-surface flex min-h-56 flex-col border p-5 hover:border-brand-action sm:p-6"
                     key={item.id}
                   >
                     <div className="flex items-start justify-between gap-3">
@@ -204,11 +266,13 @@ const LibraryPage = async ({ searchParams }: LibraryPageProperties) => {
                         <Icon aria-hidden="true" /> {labelFor(item.kind)}
                       </Badge>
                       {item.category && (
-                        <span className="brand-eyebrow">{item.category}</span>
+                        <span className="brand-eyebrow max-w-[48%] break-words text-right leading-tight">
+                          {item.category}
+                        </span>
                       )}
                     </div>
                     <div className="mt-3 flex items-center justify-between gap-3 text-muted-foreground text-xs">
-                      <span>
+                      <span className="line-clamp-2 min-w-0">
                         {item.year ?? ""}
                         {item.authors ? ` · ${item.authors}` : ""}
                       </span>
@@ -232,7 +296,30 @@ const LibraryPage = async ({ searchParams }: LibraryPageProperties) => {
                         </SingleFlightSubmit>
                       </SingleFlightForm>
                     </div>
-                    <h3 className="mt-5 font-display text-2xl leading-tight">
+                    <div className="relative mt-4 aspect-[16/9] overflow-hidden border bg-[linear-gradient(135deg,#352832,#74465a_52%,#d2b697)]">
+                      {item.coverUrl ? (
+                        // Cover URLs are staff-provided HTTPS assets; keep arbitrary hosts outside the Next image optimizer.
+                        // biome-ignore lint/performance/noImgElement: editorial cover may be hosted outside configured image domains.
+                        <img
+                          alt={`Capa: ${item.title}`}
+                          className="size-full object-cover"
+                          decoding="async"
+                          height={360}
+                          loading="lazy"
+                          referrerPolicy="no-referrer"
+                          src={item.coverUrl}
+                          width={640}
+                        />
+                      ) : (
+                        <div className="absolute inset-0 grid place-items-center bg-[radial-gradient(ellipse_at_70%_15%,rgba(241,215,181,.38),transparent_43%),linear-gradient(135deg,rgba(57,39,48,.96),rgba(117,65,79,.88))]">
+                          <Icon
+                            aria-hidden="true"
+                            className="size-8 text-white/85"
+                          />
+                        </div>
+                      )}
+                    </div>
+                    <h3 className="mt-5 break-words font-display text-2xl leading-tight">
                       <Link
                         className="hover:text-brand-structural"
                         href={`/biblioteca/${item.id}`}
@@ -245,6 +332,12 @@ const LibraryPage = async ({ searchParams }: LibraryPageProperties) => {
                         {item.description}
                       </p>
                     )}
+                    <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-muted-foreground text-xs">
+                      <span>{libraryLanguageLabel(item.language)}</span>
+                      <span>{libraryDifficultyLabel(item.difficulty)}</span>
+                      <span>{libraryAccessLabel(item.accessType)}</span>
+                      {item.version && <span>{item.version}</span>}
+                    </div>
                     {item.tags.length > 0 && (
                       <div className="mt-4 flex flex-wrap gap-1.5">
                         {item.tags.slice(0, 3).map((tag) => (
@@ -255,22 +348,16 @@ const LibraryPage = async ({ searchParams }: LibraryPageProperties) => {
                       </div>
                     )}
                     <div className="mt-auto pt-6">
-                      <a
-                        className="inline-flex items-center gap-2 font-medium text-brand-structural text-sm underline underline-offset-4"
-                        href={
-                          item.storagePath
-                            ? memberAssetUrl(item.storagePath)
-                            : item.url
-                        }
-                        rel="noreferrer"
-                        target="_blank"
-                      >
-                        Abrir material{" "}
-                        <ArrowUpRightIcon
-                          aria-hidden="true"
-                          className="size-4"
-                        />
-                      </a>
+                      <form action={openLibraryItem}>
+                        <input name="itemId" type="hidden" value={item.id} />
+                        <Button size="sm" type="submit">
+                          Abrir material{" "}
+                          <ArrowUpRightIcon
+                            aria-hidden="true"
+                            className="size-4"
+                          />
+                        </Button>
+                      </form>
                     </div>
                   </article>
                 );

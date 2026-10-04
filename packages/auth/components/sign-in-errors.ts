@@ -1,3 +1,5 @@
+export { getAuthRedirectPath } from "../redirects";
+
 interface ClerkErrorItem {
   code?: string;
   longMessage?: string;
@@ -6,8 +8,6 @@ interface ClerkErrorItem {
 
 interface ClerkError {
   errors?: ClerkErrorItem[];
-  longMessage?: string;
-  message?: string;
 }
 
 const activeSessionCodes = new Set([
@@ -16,82 +16,101 @@ const activeSessionCodes = new Set([
   "already_signed_in",
 ]);
 
-const incorrectPasswordPattern =
-  /password is incorrect|incorrect password|password.*incorrect/i;
-const missingAccountPattern =
-  /couldn.t find your account|account could not be found/i;
-const invalidIdentifierPattern =
-  /identifier is invalid|email address is invalid/i;
-const incorrectCodePattern =
-  /verification code is incorrect|code is incorrect|incorrect (?:verification )?code/i;
-const genericClerkErrorPattern = /something went wrong|internal error/i;
-const activeSessionPattern =
+const accountNotFoundCodes = new Set([
+  "form_identifier_not_found",
+  "form_password_or_identifier_incorrect",
+]);
+
+const invalidCredentialCodes = new Set([
+  "form_password_incorrect",
+  "form_identifier_not_found",
+  "form_password_or_identifier_incorrect",
+]);
+
+const genericCredentialError =
+  "E-mail ou telefone e senha não correspondem. Confira os dados e tente novamente.";
+const genericError =
+  "Não foi possível concluir esta etapa. Tente novamente em alguns instantes.";
+const incorrectCodeError =
+  "O código informado está incorreto ou expirou. Confira e tente novamente.";
+const activeSessionMessagePattern =
   /already (?:signed|logged|authenticated) in|session already exists|currently signed in/i;
-const expiredSessionPattern =
-  /session (?:has )?(?:expired|is invalid)|session token.*(?:expired|invalid)|you are signed out/i;
-const passwordRequirementPattern =
-  /password.*(?:too short|too weak|not strong|must be|at least|minimum|compromised|common)/i;
+const accountNotFoundMessagePattern =
+  /couldn.t find your account|account could not be found|identifier.*not found/i;
 const minimumPasswordLengthPattern =
   /(?:at least|minimum(?: length)?(?: is)?|min(?:imum)? of)\s*(\d+)\s*(?:characters?|chars?)/i;
-const signedOutPattern = /you are signed out/i;
+const passwordPolicyMessagePattern =
+  /password.*(?:too short|too weak|not strong|must be|at least|minimum|compromised|common)/i;
+const expiredSessionMessagePattern =
+  /session (?:has )?(?:expired|is invalid)|session token.*(?:expired|invalid)|you are signed out/i;
+const invalidCredentialMessagePattern =
+  /password is incorrect|incorrect password|password.*incorrect|couldn.t find your account|account could not be found|identifier.*not found/i;
+const incorrectCodeMessagePattern =
+  /verification code is incorrect|code is incorrect|incorrect (?:verification )?code|invalid code/i;
+const invalidIdentifierMessagePattern =
+  /identifier is invalid|email address is invalid|valid email/i;
+const tooManyRequestsMessagePattern = /too many|rate limit|try again later/i;
+
+const readClerkError = (error: unknown) => {
+  if (typeof error !== "object" || error === null) {
+    return { code: undefined, message: "" };
+  }
+
+  const clerkError = error as ClerkError;
+  const firstError = clerkError.errors?.[0];
+
+  return {
+    code: firstError?.code,
+    // Clerk's text is used only to classify known states. It is never surfaced
+    // verbatim, since it can contain internal details or change by locale.
+    message: firstError?.longMessage ?? firstError?.message ?? "",
+  };
+};
 
 export const isActiveClerkSessionError = (error: unknown) => {
-  const clerkError = (
-    typeof error === "object" && error !== null ? error : {}
-  ) as ClerkError;
-  const firstError = clerkError.errors?.[0];
-  const message =
-    firstError?.longMessage ??
-    firstError?.message ??
-    clerkError.longMessage ??
-    clerkError.message ??
-    "";
+  const { code, message } = readClerkError(error);
 
   return (
-    (firstError?.code !== undefined &&
-      activeSessionCodes.has(firstError.code)) ||
-    activeSessionPattern.test(message)
+    (code !== undefined && activeSessionCodes.has(code)) ||
+    activeSessionMessagePattern.test(message)
   );
 };
 
-export const getAuthRedirectPath = (currentHref: string) => {
-  try {
-    const currentUrl = new URL(currentHref);
-    const redirectUrl = currentUrl.searchParams.get("redirect_url");
+export const isUnknownAccountError = (error: unknown) => {
+  const { code, message } = readClerkError(error);
 
-    if (!redirectUrl) {
-      return "/";
-    }
+  return (
+    (code !== undefined && accountNotFoundCodes.has(code)) ||
+    accountNotFoundMessagePattern.test(message)
+  );
+};
 
-    const targetUrl = new URL(redirectUrl, currentUrl.origin);
+const getPasswordPolicyMessage = (message: string) => {
+  const minimumLength = message.match(minimumPasswordLengthPattern)?.[1];
 
-    if (targetUrl.origin !== currentUrl.origin) {
-      return "/";
-    }
-
-    return `${targetUrl.pathname}${targetUrl.search}${targetUrl.hash}`;
-  } catch {
-    return "/";
+  if (minimumLength) {
+    return `A senha precisa ter pelo menos ${minimumLength} caracteres, conforme os requisitos da conta.`;
   }
+
+  if (passwordPolicyMessagePattern.test(message)) {
+    return "A senha não atende aos requisitos de segurança da conta. Escolha outra senha e tente novamente.";
+  }
+
+  return undefined;
 };
 
 export const getSignInErrorState = (error: unknown) => {
-  const clerkError = (
-    typeof error === "object" && error !== null ? error : {}
-  ) as ClerkError;
-  const firstError = clerkError.errors?.[0];
-  const message =
-    firstError?.longMessage ??
-    firstError?.message ??
-    clerkError.longMessage ??
-    clerkError.message ??
-    "";
+  const { code, message } = readClerkError(error);
 
   if (isActiveClerkSessionError(error)) {
     return { activeSession: true, message: "" };
   }
 
-  if (expiredSessionPattern.test(message)) {
+  if (
+    code === "session_expired" ||
+    code === "session_invalid" ||
+    expiredSessionMessagePattern.test(message)
+  ) {
     return {
       activeSession: false,
       message:
@@ -99,41 +118,63 @@ export const getSignInErrorState = (error: unknown) => {
     };
   }
 
-  const translations: [RegExp, string][] = [
-    [incorrectPasswordPattern, "A senha está incorreta. Tente novamente."],
-    [missingAccountPattern, "Não encontramos uma conta com esses dados."],
-    [invalidIdentifierPattern, "Informe um e-mail válido."],
-    [
-      incorrectCodePattern,
-      "O código informado está incorreto. Confira e tente novamente.",
-    ],
-    [
-      genericClerkErrorPattern,
-      "Algo deu errado. Tente novamente em alguns instantes.",
-    ],
-  ];
-  const translated = translations.find(([pattern]) =>
-    pattern.test(message)
-  )?.[1];
-  const minimumLength = message.match(minimumPasswordLengthPattern)?.[1];
-  let passwordMessage: string | undefined;
-
-  if (minimumLength) {
-    passwordMessage = `A senha precisa ter pelo menos ${minimumLength} caracteres.`;
-  } else if (passwordRequirementPattern.test(message)) {
-    passwordMessage =
-      "A senha não atende aos requisitos de segurança da conta. Escolha outra senha e tente novamente.";
+  if (
+    (code !== undefined && invalidCredentialCodes.has(code)) ||
+    invalidCredentialMessagePattern.test(message)
+  ) {
+    return { activeSession: false, message: genericCredentialError };
   }
 
-  let fallbackMessage = message;
+  if (
+    code === "verification_code_incorrect" ||
+    code === "verification_code_invalid" ||
+    incorrectCodeMessagePattern.test(message)
+  ) {
+    return { activeSession: false, message: incorrectCodeError };
+  }
 
-  if (!fallbackMessage || signedOutPattern.test(fallbackMessage)) {
-    fallbackMessage =
-      "Não foi possível validar o acesso. Tente novamente ou atualize a página.";
+  const passwordPolicyMessage = getPasswordPolicyMessage(message);
+  if (passwordPolicyMessage) {
+    return { activeSession: false, message: passwordPolicyMessage };
+  }
+
+  if (
+    code === "form_identifier_invalid" ||
+    code === "form_param_format_invalid" ||
+    invalidIdentifierMessagePattern.test(message)
+  ) {
+    return {
+      activeSession: false,
+      message: "Informe um e-mail ou telefone válido.",
+    };
+  }
+
+  if (
+    code === "too_many_requests" ||
+    tooManyRequestsMessagePattern.test(message)
+  ) {
+    return {
+      activeSession: false,
+      message:
+        "Muitas tentativas em sequência. Espere um pouco e tente novamente.",
+    };
+  }
+
+  return { activeSession: false, message: genericError };
+};
+
+export const getPasswordRecoveryErrorState = (error: unknown) => {
+  if (isUnknownAccountError(error)) {
+    return {
+      activeSession: false,
+      message:
+        "Se houver uma conta com esses dados, enviaremos um código de recuperação.",
+      accountMayNotExist: true,
+    };
   }
 
   return {
-    activeSession: false,
-    message: translated ?? passwordMessage ?? fallbackMessage,
+    ...getSignInErrorState(error),
+    accountMayNotExist: false,
   };
 };

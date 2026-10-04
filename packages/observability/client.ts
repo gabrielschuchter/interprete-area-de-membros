@@ -1,44 +1,52 @@
 /*
- * This file configures the initialization of Sentry on the client.
- * The config you add here will be used whenever a users loads a page in their browser.
- * https://docs.sentry.io/platforms/javascript/guides/nextjs/
+ * Client observability is optional. Keep its SDK and server-side environment
+ * validation out of the initial application bundle when no public DSN exists.
  */
 
-// biome-ignore lint/performance/noNamespaceImport: Sentry SDK convention
-import * as Sentry from "@sentry/nextjs";
-import { keys } from "./keys";
+type SentryClient = typeof import("@sentry/nextjs");
 
-export const initializeSentry = (): ReturnType<typeof Sentry.init> =>
-  Sentry.init({
-    dsn: keys().NEXT_PUBLIC_SENTRY_DSN,
+const loadSentry = (() => {
+  let client: Promise<SentryClient> | null = null;
+  return () => (client ??= import("@sentry/nextjs"));
+})();
 
-    // Enable logging
-    enableLogs: true,
+const clientDsn = () => process.env.NEXT_PUBLIC_SENTRY_DSN;
 
-    // Adjust this value in production, or use tracesSampler for greater control
-    tracesSampleRate: 1,
+export const initializeSentry = (): Promise<void> | undefined => {
+  const dsn = clientDsn();
+  if (!dsn) {
+    return;
+  }
 
-    // Setting this option to true will print useful information to the console while you're setting up Sentry.
-    debug: false,
+  return loadSentry()
+    .then((Sentry) => {
+      Sentry.init({
+        dsn,
+        enableLogs: true,
+        tracesSampleRate: 1,
+        debug: false,
+        replaysOnErrorSampleRate: 1,
+        replaysSessionSampleRate: 0.1,
+        integrations: [
+          Sentry.replayIntegration({
+            maskAllText: true,
+            blockAllMedia: true,
+          }),
+          Sentry.consoleLoggingIntegration({
+            levels: ["log", "error", "warn"],
+          }),
+        ],
+      });
+    })
+    .catch(() => undefined);
+};
 
-    replaysOnErrorSampleRate: 1,
-
-    /*
-     * This sets the sample rate to be 10%. You may want this to be 100% while
-     * in development and sample at a lower rate in production
-     */
-    replaysSessionSampleRate: 0.1,
-
-    // You can remove this option if you're not planning to use the Sentry Session Replay feature:
-    integrations: [
-      Sentry.replayIntegration({
-        // Additional Replay configuration goes in here, for example:
-        maskAllText: true,
-        blockAllMedia: true,
-      }),
-      // Send console.log, console.error, and console.warn calls as logs to Sentry
-      Sentry.consoleLoggingIntegration({ levels: ["log", "error", "warn"] }),
-    ],
-  });
-
-export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;
+export const onRouterTransitionStart: typeof import("@sentry/nextjs").captureRouterTransitionStart =
+  (...args) => {
+    if (!clientDsn()) {
+      return;
+    }
+    return loadSentry()
+      .then((Sentry) => Sentry.captureRouterTransitionStart(...args))
+      .catch(() => undefined);
+  };

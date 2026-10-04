@@ -1,21 +1,63 @@
 "use client";
 
-import { useAuth, useSignIn } from "@clerk/nextjs";
+import { useAuth, useSession, useSignIn } from "@clerk/nextjs";
 import { type FormEvent, useEffect, useState } from "react";
-import { getAuthRedirectPath, getSignInErrorState } from "./sign-in-errors";
+import { getAuthCompletionPath } from "../redirects";
+import { AuthLoadingState } from "./auth-loading-state";
+import {
+  getAuthRedirectPath,
+  getPasswordRecoveryErrorState,
+  getSignInErrorState,
+  isUnknownAccountError,
+} from "./sign-in-errors";
 
 type ResetStep = "code" | "password" | null;
-type SecondFactorStrategy = "email_code" | "totp" | null;
+type ResetStrategy = "email_code" | "phone_code";
+type SecondFactorStrategy =
+  | "email_code"
+  | "email_link"
+  | "phone_code"
+  | "totp"
+  | "backup_code"
+  | null;
+
+const secondFactorLabels: Record<
+  Exclude<SecondFactorStrategy, null>,
+  string
+> = {
+  email_code: "Código enviado por e-mail",
+  email_link: "Link enviado por e-mail",
+  phone_code: "Código enviado por SMS",
+  totp: "Código do aplicativo autenticador",
+  backup_code: "Código de recuperação da autenticação em duas etapas",
+};
+
+const getSubmitErrorState = (error: unknown, isPasswordRecovery: boolean) =>
+  isPasswordRecovery
+    ? getPasswordRecoveryErrorState(error)
+    : getSignInErrorState(error);
+
+const throwClerkError = (result: { error?: unknown }) => {
+  if (result.error) {
+    throw result.error;
+  }
+};
 
 // The component owns the finite-state rendering for password, reset, and MFA flows.
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: authentication states are intentionally kept together for one accessible form
 export const SignIn = () => {
-  const { isLoaded, isSignedIn } = useAuth();
+  const { isLoaded: isAuthLoaded, isSignedIn } = useAuth();
+  const { isLoaded: isSessionLoaded, session } = useSession();
   const { fetchStatus, signIn } = useSignIn();
+  const isLoaded = isAuthLoaded && isSessionLoaded;
+  const currentTaskKey = session?.currentTask?.key;
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [resetCode, setResetCode] = useState("");
   const [resetStep, setResetStep] = useState<ResetStep>(null);
+  const [resetStrategy, setResetStrategy] =
+    useState<ResetStrategy>("email_code");
+  const [recoveryNotice, setRecoveryNotice] = useState("");
   const [secondFactorCode, setSecondFactorCode] = useState("");
   const [secondFactorStrategy, setSecondFactorStrategy] =
     useState<SecondFactorStrategy>(null);
@@ -25,24 +67,26 @@ export const SignIn = () => {
 
   useEffect(() => {
     if (isLoaded && isSignedIn) {
-      window.location.replace(getAuthRedirectPath(window.location.href));
+      window.location.replace(
+        getAuthCompletionPath(window.location.href, currentTaskKey)
+      );
     }
-  }, [isLoaded, isSignedIn]);
+  }, [currentTaskKey, isLoaded, isSignedIn]);
 
   if (!isLoaded || isSignedIn || fetchStatus !== "idle" || !signIn) {
-    return (
-      <div aria-live="polite" className="interprete-login__loading">
-        <span aria-hidden="true" />
-        Carregando acesso…
-      </div>
-    );
+    return <AuthLoadingState loadingLabel="Carregando acesso…" />;
   }
 
   const activateSession = async () => {
     const { error } = await signIn.finalize({
-      navigate: ({ decorateUrl }) => {
+      navigate: ({ session, decorateUrl }) => {
         window.location.assign(
-          decorateUrl(getAuthRedirectPath(window.location.href))
+          decorateUrl(
+            getAuthCompletionPath(
+              window.location.href,
+              session?.currentTask?.key
+            )
+          )
         );
       },
     });
@@ -52,13 +96,63 @@ export const SignIn = () => {
     }
   };
 
-  const submitResetCode = async () => {
-    const { error } = await signIn.resetPasswordEmailCode.verifyCode({
-      code: resetCode.trim(),
-    });
+  const prepareSecondFactor = async () => {
+    const factors = signIn.supportedSecondFactors ?? [];
+    const priority: Exclude<SecondFactorStrategy, null>[] = [
+      "email_code",
+      "phone_code",
+      "email_link",
+      "totp",
+      "backup_code",
+    ];
+    const selectedStrategy = priority.find((strategy) =>
+      factors.some((factor) => factor.strategy === strategy)
+    );
 
-    if (error) {
-      throw error;
+    if (!selectedStrategy) {
+      throw new Error("second_factor_unavailable");
+    }
+
+    if (selectedStrategy === "email_code") {
+      const result = await signIn.mfa.sendEmailCode();
+      if (result.error) {
+        throw result.error;
+      }
+    } else if (selectedStrategy === "phone_code") {
+      const result = await signIn.mfa.sendPhoneCode();
+      if (result.error) {
+        throw result.error;
+      }
+    } else if (selectedStrategy === "email_link") {
+      const verificationUrl = new URL("/sign-in", window.location.origin);
+      verificationUrl.searchParams.set(
+        "redirect_url",
+        getAuthRedirectPath(window.location.href)
+      );
+      const result = await signIn.emailLink.sendLink({
+        verificationUrl: verificationUrl.toString(),
+      });
+      if (result.error) {
+        throw result.error;
+      }
+    }
+
+    setSecondFactorCode("");
+    setSecondFactorStrategy(selectedStrategy);
+  };
+
+  const submitResetCode = async () => {
+    const result =
+      resetStrategy === "email_code"
+        ? await signIn.resetPasswordEmailCode.verifyCode({
+            code: resetCode.trim(),
+          })
+        : await signIn.resetPasswordPhoneCode.verifyCode({
+            code: resetCode.trim(),
+          });
+
+    if (result.error) {
+      throw result.error;
     }
 
     if (signIn.status === "needs_new_password") {
@@ -73,21 +167,43 @@ export const SignIn = () => {
       return;
     }
 
+    if (
+      signIn.status === "needs_second_factor" ||
+      signIn.status === "needs_client_trust"
+    ) {
+      await prepareSecondFactor();
+      return;
+    }
+
     throw new Error("O código ainda não pode ser utilizado.");
   };
 
   const submitNewPassword = async () => {
-    const { error } = await signIn.resetPasswordEmailCode.submitPassword({
-      password,
-      signOutOfOtherSessions: true,
-    });
+    const result =
+      resetStrategy === "email_code"
+        ? await signIn.resetPasswordEmailCode.submitPassword({
+            password,
+            signOutOfOtherSessions: true,
+          })
+        : await signIn.resetPasswordPhoneCode.submitPassword({
+            password,
+            signOutOfOtherSessions: true,
+          });
 
-    if (error) {
-      throw error;
+    if (result.error) {
+      throw result.error;
     }
 
     if (signIn.status === "complete") {
       await activateSession();
+      return;
+    }
+
+    if (
+      signIn.status === "needs_second_factor" ||
+      signIn.status === "needs_client_trust"
+    ) {
+      await prepareSecondFactor();
       return;
     }
 
@@ -99,13 +215,17 @@ export const SignIn = () => {
       throw new Error("Selecione uma forma de confirmação para continuar.");
     }
 
-    const result =
-      secondFactorStrategy === "email_code"
-        ? await signIn.mfa.verifyEmailCode({ code: secondFactorCode.trim() })
-        : await signIn.mfa.verifyTOTP({ code: secondFactorCode.trim() });
-
-    if (result.error) {
-      throw result.error;
+    const code = secondFactorCode.trim();
+    if (secondFactorStrategy === "email_link") {
+      throwClerkError(await signIn.emailLink.waitForVerification());
+    } else if (secondFactorStrategy === "email_code") {
+      throwClerkError(await signIn.mfa.verifyEmailCode({ code }));
+    } else if (secondFactorStrategy === "phone_code") {
+      throwClerkError(await signIn.mfa.verifyPhoneCode({ code }));
+    } else if (secondFactorStrategy === "backup_code") {
+      throwClerkError(await signIn.mfa.verifyBackupCode({ code }));
+    } else {
+      throwClerkError(await signIn.mfa.verifyTOTP({ code }));
     }
 
     if (signIn.status === "complete") {
@@ -137,35 +257,47 @@ export const SignIn = () => {
       signIn.status === "needs_second_factor" ||
       signIn.status === "needs_client_trust"
     ) {
-      const emailCodeFactor = signIn.supportedSecondFactors?.find(
-        (factor) => factor.strategy === "email_code"
-      );
-
-      if (emailCodeFactor) {
-        const secondFactorResult = await signIn.mfa.sendEmailCode();
-
-        if (secondFactorResult.error) {
-          throw secondFactorResult.error;
-        }
-        setSecondFactorStrategy("email_code");
-        return;
-      }
-
-      const totpFactor = signIn.supportedSecondFactors?.find(
-        (factor) => factor.strategy === "totp"
-      );
-
-      if (totpFactor) {
-        setSecondFactorStrategy("totp");
-        return;
-      }
-
-      throw new Error(
-        "Sua conta exige uma segunda etapa de segurança que não está disponível nesta tela."
-      );
+      await prepareSecondFactor();
+      return;
     }
 
     throw new Error("Não foi possível concluir o acesso.");
+  };
+
+  const submitCurrentStep = async () => {
+    if (secondFactorStrategy) {
+      await submitSecondFactor();
+      return;
+    }
+
+    if (resetStep === "code") {
+      await submitResetCode();
+      return;
+    }
+
+    if (resetStep === "password") {
+      await submitNewPassword();
+      return;
+    }
+
+    await submitPassword();
+  };
+
+  const showSignInError = (error: unknown, isPasswordRecovery = false) => {
+    const nextError = getSubmitErrorState(error, isPasswordRecovery);
+
+    if (nextError.activeSession) {
+      if (isSignedIn) {
+        window.location.replace(getAuthRedirectPath(window.location.href));
+      } else {
+        setErrorMessage(
+          "Não conseguimos confirmar o estado da sua sessão. Atualize a página e tente novamente."
+        );
+      }
+      return;
+    }
+
+    setErrorMessage(nextError.message);
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -179,34 +311,47 @@ export const SignIn = () => {
     setIsSubmitting(true);
 
     try {
-      if (resetStep === "code") {
-        await submitResetCode();
-        return;
-      }
-
-      if (resetStep === "password") {
-        await submitNewPassword();
-        return;
-      }
-
-      if (secondFactorStrategy) {
-        await submitSecondFactor();
-        return;
-      }
-
-      await submitPassword();
+      await submitCurrentStep();
     } catch (error) {
-      const nextError = getSignInErrorState(error);
-
-      if (nextError.activeSession) {
-        window.location.replace(getAuthRedirectPath(window.location.href));
-        return;
-      }
-
-      setErrorMessage(nextError.message);
+      showSignInError(error, resetStep !== null && !secondFactorStrategy);
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const beginPasswordRecovery = async (normalizedIdentifier: string) => {
+    // Password, MFA, and reset attempts share one Clerk SignInFuture.
+    // Reset it before starting recovery so stale attempt state cannot be reused.
+    const { error: resetError } = await signIn.reset();
+    if (resetError) {
+      throw resetError;
+    }
+
+    const strategy: ResetStrategy = normalizedIdentifier.includes("@")
+      ? "email_code"
+      : "phone_code";
+    setResetStrategy(strategy);
+
+    const { error } = await signIn.create({ identifier: normalizedIdentifier });
+    if (error && !isUnknownAccountError(error)) {
+      throw error;
+    }
+
+    if (!error) {
+      const resetResult =
+        strategy === "email_code"
+          ? await signIn.resetPasswordEmailCode.sendCode()
+          : await signIn.resetPasswordPhoneCode.sendCode();
+
+      if (resetResult.error && !isUnknownAccountError(resetResult.error)) {
+        throw resetResult.error;
+      }
+    }
+
+    setResetStep("code");
+    setRecoveryNotice(
+      "Se houver uma conta com esses dados, enviaremos um código de recuperação."
+    );
   };
 
   const handlePasswordReset = async () => {
@@ -217,50 +362,22 @@ export const SignIn = () => {
     const normalizedIdentifier = identifier.trim();
 
     if (!normalizedIdentifier) {
-      setErrorMessage("Informe seu e-mail para recuperar a senha.");
+      setErrorMessage("Informe seu e-mail ou telefone para recuperar a senha.");
       return;
     }
 
     setErrorMessage("");
     setPassword("");
     setResetCode("");
+    setRecoveryNotice("");
     setSecondFactorCode("");
     setSecondFactorStrategy(null);
     setIsSubmitting(true);
 
     try {
-      // Password, MFA, and reset attempts share one Clerk SignInFuture.
-      // Reset it before starting recovery so stale attempt state cannot be reused.
-      const { error: resetError } = await signIn.reset();
-
-      if (resetError) {
-        throw resetError;
-      }
-
-      const { error } = await signIn.create({
-        identifier: normalizedIdentifier,
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      const resetResult = await signIn.resetPasswordEmailCode.sendCode();
-
-      if (resetResult.error) {
-        throw resetResult.error;
-      }
-
-      setResetStep("code");
+      await beginPasswordRecovery(normalizedIdentifier);
     } catch (error) {
-      const nextError = getSignInErrorState(error);
-
-      if (nextError.activeSession) {
-        window.location.replace(getAuthRedirectPath(window.location.href));
-        return;
-      }
-
-      setErrorMessage(nextError.message);
+      showSignInError(error, true);
     } finally {
       setIsSubmitting(false);
     }
@@ -283,9 +400,11 @@ export const SignIn = () => {
 
       setResetStep(null);
       setResetCode("");
+      setRecoveryNotice("");
       setSecondFactorStrategy(null);
       setSecondFactorCode("");
       setPassword("");
+      setResetStrategy("email_code");
     } catch (error) {
       setErrorMessage(getSignInErrorState(error).message);
     } finally {
@@ -297,12 +416,14 @@ export const SignIn = () => {
   let primaryLabel = "Entrar";
   if (isSubmitting) {
     primaryLabel = "Aguarde…";
+  } else if (secondFactorStrategy === "email_link") {
+    primaryLabel = "Já confirmei o link";
+  } else if (secondFactorStrategy) {
+    primaryLabel = "Confirmar acesso";
   } else if (resetStep === "code") {
     primaryLabel = "Confirmar código";
   } else if (resetStep === "password") {
     primaryLabel = "Definir senha";
-  } else if (secondFactorStrategy) {
-    primaryLabel = "Confirmar acesso";
   }
 
   const isSecondFactorFlow = secondFactorStrategy !== null;
@@ -326,23 +447,23 @@ export const SignIn = () => {
       ) : null}
 
       <div className="interprete-login__field">
-        <label htmlFor="interprete-login-email">E-mail</label>
+        <label htmlFor="interprete-login-email">E-mail ou telefone</label>
         <div className="interprete-login__input-wrap interprete-login__input-wrap--email">
           <input
-            autoComplete="email"
+            autoComplete="username"
             className="interprete-login__input"
             disabled={isSubmitting || isVerificationFlow}
             id="interprete-login-email"
             onChange={(event) => setIdentifier(event.target.value)}
-            placeholder="seu@email.com"
+            placeholder="seu@email.com ou +55 11 99999-9999"
             required
-            type="email"
+            type="text"
             value={identifier}
           />
         </div>
       </div>
 
-      {resetStep === "code" ? (
+      {resetStep === "code" && !isSecondFactorFlow ? (
         <div className="interprete-login__field">
           <label htmlFor="interprete-login-reset-code">Código recebido</label>
           <input
@@ -352,7 +473,7 @@ export const SignIn = () => {
             id="interprete-login-reset-code"
             inputMode="numeric"
             onChange={(event) => setResetCode(event.target.value)}
-            placeholder="Digite o código enviado por e-mail"
+            placeholder="Digite o código de recuperação"
             required
             value={resetCode}
           />
@@ -361,26 +482,39 @@ export const SignIn = () => {
 
       {isSecondFactorFlow ? (
         <div className="interprete-login__field">
-          <label htmlFor="interprete-login-second-factor">
-            {secondFactorStrategy === "email_code"
-              ? "Código enviado por e-mail"
-              : "Código do aplicativo autenticador"}
-          </label>
-          <input
-            autoComplete="one-time-code"
-            className="interprete-login__input"
-            disabled={isSubmitting}
-            id="interprete-login-second-factor"
-            inputMode="numeric"
-            onChange={(event) => setSecondFactorCode(event.target.value)}
-            placeholder="Digite o código de segurança"
-            required
-            value={secondFactorCode}
-          />
+          {secondFactorStrategy === "email_link" ? (
+            <output aria-live="polite" className="interprete-login__field-hint">
+              Enviamos um link de segurança para seu e-mail. Abra-o neste mesmo
+              navegador e depois confirme abaixo.
+            </output>
+          ) : (
+            <>
+              <label htmlFor="interprete-login-second-factor">
+                {secondFactorLabels[secondFactorStrategy]}
+              </label>
+              <input
+                autoComplete="one-time-code"
+                className="interprete-login__input"
+                disabled={isSubmitting}
+                id="interprete-login-second-factor"
+                inputMode={
+                  secondFactorStrategy === "backup_code" ? "text" : "numeric"
+                }
+                onChange={(event) => setSecondFactorCode(event.target.value)}
+                placeholder={
+                  secondFactorStrategy === "backup_code"
+                    ? "Digite um código de backup"
+                    : "Digite o código de segurança"
+                }
+                required
+                value={secondFactorCode}
+              />
+            </>
+          )}
         </div>
       ) : null}
 
-      {resetStep === "password" ? (
+      {resetStep === "password" && !isSecondFactorFlow ? (
         <div className="interprete-login__field">
           <label htmlFor="interprete-login-new-password">Nova senha</label>
           <input
@@ -428,6 +562,8 @@ export const SignIn = () => {
         </div>
       )}
 
+      <div data-cl-size="flexible" data-cl-theme="light" id="clerk-captcha" />
+
       {errorMessage ? (
         <p
           aria-live="assertive"
@@ -436,6 +572,12 @@ export const SignIn = () => {
         >
           {errorMessage}
         </p>
+      ) : null}
+
+      {recoveryNotice ? (
+        <output aria-live="polite" className="interprete-login__field-hint">
+          {recoveryNotice}
+        </output>
       ) : null}
 
       <button

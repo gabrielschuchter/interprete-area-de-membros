@@ -23,9 +23,11 @@
         "@repo/database": "workspace:*",
         "@repo/design-system": "workspace:*",
         "@repo/email": "workspace:*",
+        "@repo/member-domain": "workspace:*",
         "@repo/next-config": "workspace:*",
         "@repo/observability": "workspace:*",
         "@repo/payments": "workspace:*",
+        "@repo/security": "workspace:*",
         "@sentry/nextjs": "^10.42.0",
         "@t3-oss/env-nextjs": "^0.13.10",
         "import-in-the-middle": "^3.0.0",
@@ -53,6 +55,7 @@
         "@repo/auth": "workspace:*",
         "@repo/database": "workspace:*",
         "@repo/design-system": "workspace:*",
+        "@repo/member-domain": "workspace:*",
         "@repo/next-config": "workspace:*",
         "@repo/observability": "workspace:*",
         "@repo/security": "workspace:*",
@@ -276,6 +279,19 @@
         "@types/react": "19.2.14",
         "@types/react-dom": "19.2.3",
         "typescript": "^5.9.3",
+      },
+    },
+    "packages/member-domain": {
+      "name": "@repo/member-domain",
+      "version": "0.0.0",
+      "dependencies": {
+        "@repo/database": "workspace:*",
+        "server-only": "0.0.1",
+        "zod": "^4.6.5",
+      },
+      "devDependencies": {
+        "@repo/typescript-config": "workspace:*",
+        "vitest": "^4.1.11",
       },
     },
     "packages/next-config": {
@@ -1246,6 +1262,8 @@
     "@repo/design-system": ["@repo/design-system@workspace:packages/design-system"],
 
     "@repo/email": ["@repo/email@workspace:packages/email"],
+
+    "@repo/member-domain": ["@repo/member-domain@workspace:packages/member-domain"],
 
     "@repo/next-config": ["@repo/next-config@workspace:packages/next-config"],
 

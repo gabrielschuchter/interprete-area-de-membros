@@ -1,13 +1,22 @@
 "use server";
 
-import { ContentStatus, database, MeetingKind } from "@repo/database";
+import {
+  BadgeCriterion,
+  ContentStatus,
+  database,
+  MeetingKind,
+  Prisma,
+} from "@repo/database";
 import { revalidatePath } from "next/cache";
 import { requireStaff } from "@/lib/authorization";
+import { evaluateMemberBadges } from "@/lib/badges";
+import { resolveMeetingAttendance } from "@/lib/meeting-attendance";
 import { readIdempotencyKey } from "@/lib/mutation-contract";
 import {
   consumeMutationRateLimit,
   isUniqueConstraintError,
 } from "@/lib/mutation-reliability";
+import { dispatchPendingNotifications } from "@/lib/notification-outbox-dispatch";
 
 const value = (entry: FormDataEntryValue | null) =>
   typeof entry === "string" ? entry.trim() : "";
@@ -83,7 +92,7 @@ const validMembers = async (ids: string[]) => {
     return [];
   }
   const rows = await database.member.findMany({
-    where: { id: { in: ids } },
+    where: { id: { in: ids }, deactivatedAt: null },
     select: { id: true },
   });
   return rows.map((row) => row.id);
@@ -276,6 +285,106 @@ export const updateMeeting = async (formData: FormData) => {
   revalidatePath("/admin/meetings");
   revalidatePath("/encontros");
   revalidatePath(`/encontros/${id}`);
+};
+
+export const saveMeetingAttendance = async (formData: FormData) => {
+  const { userId } = await requireStaff();
+  await consumeMutationRateLimit({
+    action: "meeting.mutation",
+    memberId: userId,
+  });
+  const meetingId = value(formData.get("meetingId"));
+  const selectedMemberIds = [
+    ...new Set(
+      formData
+        .getAll("attendeeIds")
+        .flatMap((entry) =>
+          typeof entry === "string" ? entry.split(MEMBER_ID_SPLIT) : []
+        )
+        .map((entry) => entry.trim())
+        .filter(Boolean)
+    ),
+  ].slice(0, 200);
+
+  if (!meetingId) {
+    return;
+  }
+
+  const now = new Date();
+  await database.$transaction(async (transaction) => {
+    const lockedMeeting = await transaction.$queryRaw<Array<{ id: string }>>(
+      Prisma.sql`SELECT "id" FROM "Meeting" WHERE "id" = ${meetingId} FOR UPDATE`
+    );
+    if (lockedMeeting.length === 0) {
+      return;
+    }
+    const meeting = await transaction.meeting.findFirst({
+      where: {
+        id: meetingId,
+        status: { in: [ContentStatus.PUBLISHED, ContentStatus.ARCHIVED] },
+        startsAt: { lte: now },
+        OR: [{ endsAt: null }, { endsAt: { lte: now } }],
+      },
+      select: {
+        id: true,
+        participants: {
+          where: { member: { deactivatedAt: null } },
+          select: { memberId: true },
+        },
+      },
+    });
+    if (!meeting || meeting.participants.length === 0) {
+      return;
+    }
+
+    const attendance = resolveMeetingAttendance(
+      selectedMemberIds,
+      meeting.participants.map(({ memberId }) => memberId)
+    );
+    if (!attendance) {
+      return;
+    }
+
+    for (const entry of attendance) {
+      await transaction.meetingAttendance.upsert({
+        where: {
+          meetingId_memberId: {
+            meetingId: meeting.id,
+            memberId: entry.memberId,
+          },
+        },
+        create: {
+          meetingId: meeting.id,
+          memberId: entry.memberId,
+          isPresent: entry.isPresent,
+          markedAt: now,
+          markedByMemberId: userId,
+        },
+        update: {
+          isPresent: entry.isPresent,
+          markedAt: now,
+          markedByMemberId: userId,
+        },
+      });
+    }
+
+    for (const { memberId, isPresent } of attendance) {
+      if (isPresent) {
+        await evaluateMemberBadges(transaction, memberId, now, {
+          criteria: [BadgeCriterion.MEETINGS_ATTENDED],
+          force: true,
+        });
+      }
+    }
+  });
+
+  if (selectedMemberIds.length > 0) {
+    await dispatchPendingNotifications();
+  }
+
+  revalidatePath("/admin/meetings");
+  revalidatePath("/encontros");
+  revalidatePath("/perfil");
 };
 
 export const setMeetingStatus = async (formData: FormData) => {

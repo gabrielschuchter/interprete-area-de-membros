@@ -1,7 +1,5 @@
 import Link from "next/link";
-import type { CommunityPostKindValue } from "@/lib/community-post-types";
 import {
-  COMMUNITY_KIND_FILTER_OPTIONS,
   COMMUNITY_SORT_OPTIONS,
   type CommunitySort,
   communityHref,
@@ -50,14 +48,12 @@ export const CommunityNavigation = ({
 );
 
 interface CommunityFeedNavigationProperties {
-  readonly kind?: CommunityPostKindValue;
   readonly query?: string;
   readonly sort: CommunitySort;
   readonly spaceSlug?: string;
 }
 
 export const CommunityFeedNavigation = ({
-  kind,
   query,
   sort,
   spaceSlug,
@@ -74,40 +70,12 @@ export const CommunityFeedNavigation = ({
                 ? "community-feed-nav__sort-link community-feed-nav__sort-link--active"
                 : "community-feed-nav__sort-link"
             }
-            href={communityHref({ kind, query, sort: option.value, spaceSlug })}
+            href={communityHref({ query, sort: option.value, spaceSlug })}
             key={option.value}
           >
             {option.label}
           </Link>
         ))}
-      </div>
-    </div>
-    <div className="community-feed-nav__group community-feed-nav__kinds">
-      <span className="community-filter-label">Formato</span>
-      <div className="community-feed-nav__kind-links">
-        {COMMUNITY_KIND_FILTER_OPTIONS.map((option) => {
-          const isActive =
-            option.value === "ALL" ? !kind : option.value === kind;
-          return (
-            <Link
-              aria-current={isActive ? "page" : undefined}
-              className={
-                isActive
-                  ? "community-feed-nav__kind community-feed-nav__kind--active"
-                  : "community-feed-nav__kind"
-              }
-              href={communityHref({
-                kind: option.value === "ALL" ? undefined : option.value,
-                query,
-                sort,
-                spaceSlug,
-              })}
-              key={option.value}
-            >
-              {option.label}
-            </Link>
-          );
-        })}
       </div>
     </div>
   </nav>

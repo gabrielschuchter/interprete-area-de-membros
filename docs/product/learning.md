@@ -2,7 +2,8 @@
 
 ## Status
 
-`IN PROGRESS` — Phase 1 do [roadmap operacional](../implementation/roadmap.md).
+`IN PROGRESS` — a fundação de aprendizagem está implementada; sua evolução
+integrada segue as fases 4–6 e 8–11 do [roadmap operacional](../implementation/roadmap.md).
 
 ## Objetivo
 
@@ -20,7 +21,10 @@ O membro deve conseguir encontrar conteúdo publicado, abrir um curso, navegar p
 - progresso do curso derivado das aulas concluídas, sem porcentagem persistida;
 - rotas de trilha, curso e aula protegidas pelo layout autenticado.
 
-Autoria de conteúdo, draft/preview/publish administrativo e a autorização de professor/admin são tratados na Phase 2. As outras fases usam seus próprios modelos e gates; a Phase 1 continua `IN PROGRESS` até a validação de banco e E2E.
+Autoria, atribuição, disponibilidade e curadoria reaproveitam os domínios
+existentes e são detalhados nas fases integradas do roadmap. Esta página
+preserva o contrato da fundação inicial; não representa uma segunda fila de
+implementação independente.
 
 ## Modelo de dados
 
@@ -75,12 +79,14 @@ O renderer atual suporta documento, parágrafo, headings, listas, blockquote, se
 
 ## Migration
 
-`packages/database/prisma/migrations/20260924170000_learning_foundation/migration.sql` cria as tabelas da Phase 1; `20260924220000_learning_foreign_key_indexes` cobre índices de FK; `20260924230000_product_domains/migration.sql` cria papéis, atividades, comunidade, encontros e biblioteca com RLS. O deploy deve ser executado com `bun run migrate:deploy` somente contra o projeto Supabase oficial, após as credenciais serem fornecidas.
+`packages/database/prisma/migrations/20260924170000_learning_foundation/migration.sql` cria as tabelas da fundação inicial; `20260924220000_learning_foreign_key_indexes` cobre índices de FK; `20260924230000_product_domains/migration.sql` cria papéis, atividades, comunidade, encontros e biblioteca com RLS. Essas migrations constam no histórico aplicado. As migrations aditivas da reestruturação permanecem pendentes enquanto o Supabase reportar restrição de quota/Fair Use; não executar deploy durante esse bloqueio.
 
 ## Pendências da fase
 
-- executar migration e seed contra Supabase real;
-- validar persistência, idempotência e reload do progresso contra o banco oficial;
+- aplicar e validar as migrations aditivas da reestruturação quando o Supabase
+  estiver operacional, preservando o histórico existente;
+- validar persistência, idempotência e reload do progresso contra o banco
+  oficial após a liberação da infraestrutura;
 - validar E2E autenticado com Clerk;
 - testar as larguras 375, 768, 1024 e 1440px em ambiente renderizado;
 - concluir os gates do roadmap antes de iniciar Teacher/Admin.

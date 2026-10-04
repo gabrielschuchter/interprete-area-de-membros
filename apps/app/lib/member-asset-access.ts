@@ -51,10 +51,25 @@ const hasPublishedCommunityReference = async (
         OR position(${serializedUrl} in COALESCE(p."contentJson"::text, '')) > 0
       )
       AND (
-        p."authorId" = ${memberId}
+        (p."authorId" = ${memberId} AND p."status" <> 'PUBLISHED')
         OR (
           p."status" = 'PUBLISHED'
-          AND (p."spaceId" IS NULL OR s."status" = 'PUBLISHED')
+          AND (
+            p."spaceId" IS NULL
+            OR (
+              s."status" = 'PUBLISHED'
+              AND (
+                s."visibility" = 'PUBLIC'
+                OR s."ownerId" = ${memberId}
+                OR EXISTS (
+                  SELECT 1
+                  FROM "CommunitySpaceMember" membership
+                  WHERE membership."spaceId" = s."id"
+                    AND membership."memberId" = ${memberId}
+                )
+              )
+            )
+          )
         )
       )
     LIMIT 1
@@ -71,12 +86,22 @@ const hasPublishedCommunityReference = async (
     LEFT JOIN "CommunitySpace" s ON s."id" = p."spaceId"
     WHERE c."deletedAt" IS NULL
       AND position(${serializedUrl} in COALESCE(c."contentJson"::text, '')) > 0
+      AND p."status" = 'PUBLISHED'
+      AND p."deletedAt" IS NULL
       AND (
-        c."authorId" = ${memberId}
-        OR p."authorId" = ${memberId}
+        p."spaceId" IS NULL
         OR (
-          p."status" = 'PUBLISHED'
-          AND (p."spaceId" IS NULL OR s."status" = 'PUBLISHED')
+          s."status" = 'PUBLISHED'
+          AND (
+            s."visibility" = 'PUBLIC'
+            OR s."ownerId" = ${memberId}
+            OR EXISTS (
+              SELECT 1
+              FROM "CommunitySpaceMember" membership
+              WHERE membership."spaceId" = s."id"
+                AND membership."memberId" = ${memberId}
+            )
+          )
         )
       )
     LIMIT 1

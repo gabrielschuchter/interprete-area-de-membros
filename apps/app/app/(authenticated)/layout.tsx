@@ -24,7 +24,11 @@ const AppLayout = async ({ children }: AppLayoutProperties) => {
     await secure(["CATEGORY:PREVIEW"]);
   }
 
-  const { userId, redirectToSignIn } = await getAuth();
+  const { userId, memberDeactivated, redirectToSignIn } = await getAuth();
+
+  if (memberDeactivated) {
+    redirect("/conta-desativada");
+  }
 
   if (!userId) {
     return redirectToSignIn();

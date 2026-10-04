@@ -19,6 +19,7 @@ export const ManageAccountButton = () => {
 export const SignOutButton = () => {
   const { signOut } = useClerk();
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [signOutFailed, setSignOutFailed] = useState(false);
 
   const handleSignOut = async () => {
     if (isSigningOut) {
@@ -26,23 +27,38 @@ export const SignOutButton = () => {
     }
 
     setIsSigningOut(true);
+    setSignOutFailed(false);
 
     try {
       await signOut({ redirectUrl: "/sign-in" });
+    } catch {
+      setSignOutFailed(true);
     } finally {
       setIsSigningOut(false);
     }
   };
 
   return (
-    <Button
-      disabled={isSigningOut}
-      onClick={handleSignOut}
-      type="button"
-      variant="ghost"
-    >
-      <LogOutIcon aria-hidden="true" />
-      {isSigningOut ? "Saindo..." : "Sair da conta"}
-    </Button>
+    <div className="flex flex-col items-start gap-2">
+      <Button
+        disabled={isSigningOut}
+        onClick={handleSignOut}
+        type="button"
+        variant="ghost"
+      >
+        <LogOutIcon aria-hidden="true" />
+        {isSigningOut ? "Saindo..." : "Sair da conta"}
+      </Button>
+      {signOutFailed ? (
+        <p
+          aria-live="assertive"
+          className="text-destructive text-sm"
+          role="alert"
+        >
+          Não foi possível encerrar a sessão. Verifique sua conexão e tente
+          novamente.
+        </p>
+      ) : null}
+    </div>
   );
 };

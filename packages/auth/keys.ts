@@ -1,5 +1,6 @@
 import { createEnv } from "@t3-oss/env-nextjs";
 import { z } from "zod";
+import { getClerkDevelopmentConfigurationError } from "./clerk-proxy";
 
 const optionalPrefixedString = (prefix: string) =>
   z.preprocess((value) => {
@@ -20,8 +21,21 @@ const optionalPath = z.preprocess((value) => {
   return normalized || undefined;
 }, z.string().startsWith("/").optional());
 
-export const keys = () =>
-  createEnv({
+export const keys = () => {
+  const developmentConfigurationError = getClerkDevelopmentConfigurationError({
+    nodeEnv: process.env.NODE_ENV,
+    publishableKey: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
+    secretKey: process.env.CLERK_SECRET_KEY,
+    proxyUrl:
+      process.env.NEXT_PUBLIC_CLERK_PROXY_URL ?? process.env.CLERK_PROXY_URL,
+    frontendApi: process.env.NEXT_PUBLIC_CLERK_FAPI ?? process.env.CLERK_FAPI,
+  });
+
+  if (developmentConfigurationError) {
+    throw new Error(developmentConfigurationError);
+  }
+
+  return createEnv({
     skipValidation: process.env.SKIP_ENV_VALIDATION === "true",
     server: {
       CLERK_SECRET_KEY: optionalPrefixedString("sk_"),
@@ -47,3 +61,4 @@ export const keys = () =>
         process.env.NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL,
     },
   });
+};

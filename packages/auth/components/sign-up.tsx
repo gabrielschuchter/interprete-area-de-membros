@@ -1,13 +1,16 @@
 "use client";
 
-import { useAuth, useSignUp } from "@clerk/nextjs";
+import { useAuth, useSession, useSignUp } from "@clerk/nextjs";
 import { type FormEvent, useEffect, useState } from "react";
+import { getAuthCompletionPath } from "../redirects";
+import { AuthLoadingState } from "./auth-loading-state";
 import {
   getAuthRedirectPath,
   isActiveClerkSessionError,
 } from "./sign-in-errors";
 
-type SignUpStep = "form" | "verification";
+type SignUpStep = "form" | "verification" | "requirements";
+type VerificationTarget = "email_address" | "phone_number";
 
 interface ClerkErrorItem {
   code?: string;
@@ -23,24 +26,36 @@ interface ClerkError {
 
 const fallbackError =
   "Não foi possível criar sua conta. Confira os dados e tente novamente.";
-const existingAccountError =
-  "Este e-mail já está associado a uma conta. Entre por aqui.";
-const emailAlreadyExistsPattern =
-  /already (?:exists|registered|connected)|identifier.*already|email.*(?:already|in use|taken|exists)/i;
-const invalidIdentifierPattern =
+const additionalRequirementError =
+  "O cadastro precisa de informações adicionais. Revise os campos e tente novamente.";
+const invalidIdentifierCodes = new Set([
+  "form_identifier_invalid",
+  "form_param_format_invalid",
+]);
+const passwordPolicyCodes = new Set([
+  "form_password_length_too_short",
+  "form_password_not_strong_enough",
+  "form_password_pwned",
+  "form_password_compromised",
+]);
+const incorrectCodeCodes = new Set([
+  "verification_code_incorrect",
+  "verification_code_invalid",
+  "verification_expired",
+]);
+const additionalRequirementPattern = /additional_signup_requirement/i;
+const verificationPendingPattern = /verification_pending/i;
+const invalidIdentifierMessagePattern =
   /identifier is invalid|email address is invalid|valid email/i;
-const weakPasswordPattern =
+const passwordPolicyMessagePattern =
   /password.*(?:too short|too weak|not strong|strong enough|must be|at least)|password.*compromised|password.*common/i;
 const minimumPasswordLengthPattern =
   /(?:at least|minimum(?: length)?(?: is)?|min(?:imum)? of)\s*(\d+)\s*(?:characters?|chars?)/i;
-const incorrectCodePattern =
+const incorrectCodeMessagePattern =
   /verification code is incorrect|code is incorrect|invalid code/i;
-const rateLimitPattern = /too many|rate limit|try again later/i;
-const additionalRequirementPattern = /additional_signup_requirement/i;
-const verificationPendingPattern = /verification_pending/i;
-const portugueseMessagePattern = /^[\u00C0-\u024F\s.,!?;:'"()\-/]+$/;
+const tooManyRequestsMessagePattern = /too many|rate limit|try again later/i;
 
-const getClerkMessage = (error: unknown) => {
+const readClerkError = (error: unknown) => {
   const clerkError = (
     typeof error === "object" && error !== null ? error : {}
   ) as ClerkError;
@@ -58,56 +73,70 @@ const getClerkMessage = (error: unknown) => {
 };
 
 export const getSignUpErrorState = (error: unknown) => {
-  const { code, message } = getClerkMessage(error);
+  const { code, message } = readClerkError(error);
+
+  if (code === "form_identifier_exists") {
+    // Keep registration responses generic to avoid confirming whether an
+    // account exists. The sign-in route remains available in the page shell.
+    return { message: fallbackError, existingAccount: false };
+  }
 
   if (
-    code === "form_identifier_exists" ||
-    emailAlreadyExistsPattern.test(message)
+    code === "additional_signup_requirement" ||
+    additionalRequirementPattern.test(message)
   ) {
-    return { message: existingAccountError, existingAccount: true };
+    return { message: additionalRequirementError, existingAccount: false };
   }
 
-  if (additionalRequirementPattern.test(message)) {
+  if (
+    code === "verification_pending" ||
+    verificationPendingPattern.test(message)
+  ) {
     return {
-      message:
-        "Ainda falta uma confirmação para concluir o cadastro. Tente novamente.",
+      message: "Digite o código de confirmação para continuar.",
       existingAccount: false,
     };
   }
 
-  if (verificationPendingPattern.test(message)) {
-    return {
-      message: "Digite o código que enviamos para continuar.",
-      existingAccount: false,
-    };
-  }
-
-  if (invalidIdentifierPattern.test(message)) {
+  if (
+    (code !== undefined && invalidIdentifierCodes.has(code)) ||
+    invalidIdentifierMessagePattern.test(message)
+  ) {
     return {
       message: "Informe um e-mail válido.",
       existingAccount: false,
     };
   }
 
-  if (weakPasswordPattern.test(message)) {
+  if (
+    (code !== undefined && passwordPolicyCodes.has(code)) ||
+    passwordPolicyMessagePattern.test(message)
+  ) {
     const minimumLength = message.match(minimumPasswordLengthPattern)?.[1];
 
     return {
       message: minimumLength
-        ? `A senha precisa ter pelo menos ${minimumLength} caracteres.`
+        ? `A senha precisa ter pelo menos ${minimumLength} caracteres, conforme os requisitos da conta.`
         : "A senha não atende aos requisitos de segurança da conta. Escolha outra senha e tente novamente.",
       existingAccount: false,
     };
   }
 
-  if (incorrectCodePattern.test(message)) {
+  if (
+    (code !== undefined && incorrectCodeCodes.has(code)) ||
+    incorrectCodeMessagePattern.test(message)
+  ) {
     return {
-      message: "O código informado está incorreto. Confira e tente novamente.",
+      message:
+        "O código informado está incorreto ou expirou. Confira e tente novamente.",
       existingAccount: false,
     };
   }
 
-  if (rateLimitPattern.test(message)) {
+  if (
+    code === "too_many_requests" ||
+    tooManyRequestsMessagePattern.test(message)
+  ) {
     return {
       message:
         "Muitas tentativas em sequência. Espere um pouco e tente novamente.",
@@ -115,48 +144,54 @@ export const getSignUpErrorState = (error: unknown) => {
     };
   }
 
-  if (message && portugueseMessagePattern.test(message)) {
-    return { message, existingAccount: false };
-  }
-
   return { message: fallbackError, existingAccount: false };
 };
 
-// The component owns the finite-state rendering for password creation and
-// email verification. Clerk remains the identity provider; the member record
-// is created by the authenticated application guard after the session starts.
+// Clerk remains the identity provider. The app creates the member/profile only
+// after a finalized session and a successful server-side authentication guard.
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: signup is a finite multi-step Clerk state machine with a single accessible form
 export const SignUp = () => {
-  const { isLoaded, isSignedIn } = useAuth();
+  const { isLoaded: isAuthLoaded, isSignedIn } = useAuth();
+  const { isLoaded: isSessionLoaded, session } = useSession();
   const { fetchStatus, signUp } = useSignUp();
+  const isLoaded = isAuthLoaded && isSessionLoaded;
+  const currentTaskKey = session?.currentTask?.key;
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [verificationCode, setVerificationCode] = useState("");
+  const [verificationTarget, setVerificationTarget] =
+    useState<VerificationTarget>("email_address");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [legalAccepted, setLegalAccepted] = useState(false);
   const [step, setStep] = useState<SignUpStep>("form");
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  const [hasExistingAccount, setHasExistingAccount] = useState(false);
 
   useEffect(() => {
     if (isLoaded && isSignedIn) {
-      window.location.replace(getAuthRedirectPath(window.location.href));
+      window.location.replace(
+        getAuthCompletionPath(window.location.href, currentTaskKey)
+      );
     }
-  }, [isLoaded, isSignedIn]);
+  }, [currentTaskKey, isLoaded, isSignedIn]);
 
   if (!isLoaded || isSignedIn || fetchStatus !== "idle" || !signUp) {
-    return (
-      <div aria-live="polite" className="interprete-login__loading">
-        <span aria-hidden="true" />
-        Carregando cadastro…
-      </div>
-    );
+    return <AuthLoadingState loadingLabel="Carregando cadastro…" />;
   }
 
   const activateSession = async () => {
     const { error } = await signUp.finalize({
-      navigate: ({ decorateUrl }) => {
+      navigate: ({ session, decorateUrl }) => {
         window.location.assign(
-          decorateUrl(getAuthRedirectPath(window.location.href))
+          decorateUrl(
+            getAuthCompletionPath(
+              window.location.href,
+              session?.currentTask?.key
+            )
+          )
         );
       },
     });
@@ -166,11 +201,45 @@ export const SignUp = () => {
     }
   };
 
-  const handleCreateAccount = async () => {
-    const normalizedIdentifier = identifier.trim();
+  const continueSignUp = async () => {
+    if (signUp.status === "complete") {
+      await activateSession();
+      return;
+    }
 
+    if (signUp.unverifiedFields.includes("email_address")) {
+      const result = await signUp.verifications.sendEmailCode();
+      if (result.error) {
+        throw result.error;
+      }
+
+      setVerificationTarget("email_address");
+      setStep("verification");
+      return;
+    }
+
+    if (signUp.unverifiedFields.includes("phone_number")) {
+      const result = await signUp.verifications.sendPhoneCode();
+      if (result.error) {
+        throw result.error;
+      }
+
+      setVerificationTarget("phone_number");
+      setStep("verification");
+      return;
+    }
+
+    if (signUp.status === "missing_requirements") {
+      setStep("requirements");
+      return;
+    }
+
+    throw new Error("additional_signup_requirement");
+  };
+
+  const handleCreateAccount = async () => {
     const { error } = await signUp.password({
-      emailAddress: normalizedIdentifier,
+      emailAddress: identifier.trim(),
       password,
     });
 
@@ -178,40 +247,62 @@ export const SignUp = () => {
       throw error;
     }
 
-    if (signUp.status === "complete") {
-      await activateSession();
-      return;
-    }
-
-    if (signUp.unverifiedFields.includes("email_address")) {
-      const verificationResult = await signUp.verifications.sendEmailCode();
-
-      if (verificationResult.error) {
-        throw verificationResult.error;
-      }
-
-      setStep("verification");
-      return;
-    }
-
-    throw new Error("additional_signup_requirement");
+    await continueSignUp();
   };
 
-  const handleVerifyEmail = async () => {
-    const { error } = await signUp.verifications.verifyEmailCode({
-      code: verificationCode.trim(),
-    });
+  const handleVerifyContact = async () => {
+    const result =
+      verificationTarget === "email_address"
+        ? await signUp.verifications.verifyEmailCode({
+            code: verificationCode.trim(),
+          })
+        : await signUp.verifications.verifyPhoneCode({
+            code: verificationCode.trim(),
+          });
 
+    if (result.error) {
+      throw result.error;
+    }
+
+    setVerificationCode("");
+    await continueSignUp();
+  };
+
+  const handleUpdateRequirements = async () => {
+    const missingFields = new Set(signUp.missingFields);
+    const update: {
+      emailAddress?: string;
+      firstName?: string;
+      lastName?: string;
+      legalAccepted?: boolean;
+      phoneNumber?: string;
+    } = {};
+
+    if (
+      missingFields.has("email_address") ||
+      missingFields.has("email_address_or_phone_number")
+    ) {
+      update.emailAddress = identifier.trim();
+    }
+    if (missingFields.has("first_name")) {
+      update.firstName = firstName.trim();
+    }
+    if (missingFields.has("last_name")) {
+      update.lastName = lastName.trim();
+    }
+    if (missingFields.has("phone_number")) {
+      update.phoneNumber = phoneNumber.trim();
+    }
+    if (missingFields.has("legal_accepted")) {
+      update.legalAccepted = legalAccepted;
+    }
+
+    const { error } = await signUp.update(update);
     if (error) {
       throw error;
     }
 
-    if (signUp.status === "complete") {
-      await activateSession();
-      return;
-    }
-
-    throw new Error("verification_pending");
+    await continueSignUp();
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -222,12 +313,13 @@ export const SignUp = () => {
     }
 
     setErrorMessage("");
-    setHasExistingAccount(false);
     setIsSubmitting(true);
 
     try {
       if (step === "verification") {
-        await handleVerifyEmail();
+        await handleVerifyContact();
+      } else if (step === "requirements") {
+        await handleUpdateRequirements();
       } else {
         await handleCreateAccount();
       }
@@ -237,9 +329,7 @@ export const SignUp = () => {
         return;
       }
 
-      const nextError = getSignUpErrorState(error);
-      setErrorMessage(nextError.message);
-      setHasExistingAccount(nextError.existingAccount);
+      setErrorMessage(getSignUpErrorState(error).message);
     } finally {
       setIsSubmitting(false);
     }
@@ -254,10 +344,13 @@ export const SignUp = () => {
     setIsSubmitting(true);
 
     try {
-      const { error } = await signUp.verifications.sendEmailCode();
+      const result =
+        verificationTarget === "email_address"
+          ? await signUp.verifications.sendEmailCode()
+          : await signUp.verifications.sendPhoneCode();
 
-      if (error) {
-        throw error;
+      if (result.error) {
+        throw result.error;
       }
     } catch (error) {
       if (isActiveClerkSessionError(error)) {
@@ -265,31 +358,56 @@ export const SignUp = () => {
         return;
       }
 
-      const nextError = getSignUpErrorState(error);
-      setErrorMessage(nextError.message);
-      setHasExistingAccount(nextError.existingAccount);
+      setErrorMessage(getSignUpErrorState(error).message);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleBackToForm = () => {
+  const handleBackToForm = async () => {
     if (isSubmitting) {
       return;
     }
 
-    setStep("form");
-    setVerificationCode("");
     setErrorMessage("");
-    setHasExistingAccount(false);
+    setIsSubmitting(true);
+
+    try {
+      const { error } = await signUp.reset();
+      if (error) {
+        throw error;
+      }
+
+      setStep("form");
+      setVerificationCode("");
+      setErrorMessage("");
+    } catch (error) {
+      setErrorMessage(getSignUpErrorState(error).message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const isVerificationStep = step === "verification";
+  const missingFields = new Set(signUp.missingFields);
+  const knownMissingFields = new Set([
+    "email_address",
+    "email_address_or_phone_number",
+    "first_name",
+    "last_name",
+    "phone_number",
+    "legal_accepted",
+  ]);
+  const hasUnsupportedMissingField = [...missingFields].some(
+    (field) => !knownMissingFields.has(field)
+  );
+
   let primaryLabel = "Criar conta";
   if (isSubmitting) {
     primaryLabel = "Aguarde…";
-  } else if (isVerificationStep) {
-    primaryLabel = "Confirmar e entrar";
+  } else if (step === "verification") {
+    primaryLabel = "Confirmar e continuar";
+  } else if (step === "requirements") {
+    primaryLabel = "Continuar cadastro";
   }
 
   return (
@@ -298,7 +416,7 @@ export const SignUp = () => {
       className="interprete-login__form"
       onSubmit={handleSubmit}
     >
-      {isVerificationStep ? (
+      {step !== "form" ? (
         <button
           className="interprete-login__back"
           disabled={isSubmitting}
@@ -309,42 +427,29 @@ export const SignUp = () => {
         </button>
       ) : null}
 
-      <div className="interprete-login__field">
-        <label htmlFor="interprete-sign-up-email">E-mail</label>
-        <div className="interprete-login__input-wrap interprete-login__input-wrap--email">
-          <input
-            autoComplete="email"
-            className="interprete-login__input"
-            disabled={isSubmitting || isVerificationStep}
-            id="interprete-sign-up-email"
-            onChange={(event) => setIdentifier(event.target.value)}
-            placeholder="seu@email.com"
-            required
-            type="email"
-            value={identifier}
-          />
-        </div>
-      </div>
-
-      {isVerificationStep ? (
+      {step === "form" ||
+      (step === "requirements" &&
+        (missingFields.has("email_address") ||
+          missingFields.has("email_address_or_phone_number"))) ? (
         <div className="interprete-login__field">
-          <label htmlFor="interprete-sign-up-code">Código de confirmação</label>
-          <input
-            autoComplete="one-time-code"
-            className="interprete-login__input"
-            disabled={isSubmitting}
-            id="interprete-sign-up-code"
-            inputMode="numeric"
-            onChange={(event) => setVerificationCode(event.target.value)}
-            placeholder="Digite o código enviado por e-mail"
-            required
-            value={verificationCode}
-          />
-          <p className="interprete-login__field-hint">
-            Enviamos um código para confirmar este e-mail.
-          </p>
+          <label htmlFor="interprete-sign-up-email">E-mail</label>
+          <div className="interprete-login__input-wrap interprete-login__input-wrap--email">
+            <input
+              autoComplete="email"
+              className="interprete-login__input"
+              disabled={isSubmitting}
+              id="interprete-sign-up-email"
+              onChange={(event) => setIdentifier(event.target.value)}
+              placeholder="seu@email.com"
+              required
+              type="email"
+              value={identifier}
+            />
+          </div>
         </div>
-      ) : (
+      ) : null}
+
+      {step === "form" ? (
         <div className="interprete-login__field">
           <label htmlFor="interprete-sign-up-password">Senha</label>
           <div className="interprete-login__input-wrap interprete-login__input-wrap--password">
@@ -373,33 +478,130 @@ export const SignUp = () => {
             Os requisitos da senha são verificados com segurança pelo Clerk.
           </p>
         </div>
-      )}
+      ) : null}
+
+      {step === "verification" ? (
+        <div className="interprete-login__field">
+          <label htmlFor="interprete-sign-up-code">
+            {verificationTarget === "email_address"
+              ? "Código de confirmação do e-mail"
+              : "Código de confirmação do telefone"}
+          </label>
+          <input
+            autoComplete="one-time-code"
+            className="interprete-login__input"
+            disabled={isSubmitting}
+            id="interprete-sign-up-code"
+            inputMode="numeric"
+            onChange={(event) => setVerificationCode(event.target.value)}
+            placeholder="Digite o código de confirmação"
+            required
+            value={verificationCode}
+          />
+          <p className="interprete-login__field-hint">
+            Enviamos um código para confirmar este contato.
+          </p>
+        </div>
+      ) : null}
+
+      {step === "requirements" ? (
+        <>
+          {missingFields.has("first_name") ? (
+            <div className="interprete-login__field">
+              <label htmlFor="interprete-sign-up-first-name">Nome</label>
+              <input
+                autoComplete="given-name"
+                className="interprete-login__input"
+                disabled={isSubmitting}
+                id="interprete-sign-up-first-name"
+                onChange={(event) => setFirstName(event.target.value)}
+                required
+                value={firstName}
+              />
+            </div>
+          ) : null}
+          {missingFields.has("last_name") ? (
+            <div className="interprete-login__field">
+              <label htmlFor="interprete-sign-up-last-name">Sobrenome</label>
+              <input
+                autoComplete="family-name"
+                className="interprete-login__input"
+                disabled={isSubmitting}
+                id="interprete-sign-up-last-name"
+                onChange={(event) => setLastName(event.target.value)}
+                required
+                value={lastName}
+              />
+            </div>
+          ) : null}
+          {missingFields.has("phone_number") ? (
+            <div className="interprete-login__field">
+              <label htmlFor="interprete-sign-up-phone">Telefone</label>
+              <input
+                autoComplete="tel"
+                className="interprete-login__input"
+                disabled={isSubmitting}
+                id="interprete-sign-up-phone"
+                onChange={(event) => setPhoneNumber(event.target.value)}
+                placeholder="+55 11 99999-9999"
+                required
+                type="tel"
+                value={phoneNumber}
+              />
+            </div>
+          ) : null}
+          {missingFields.has("legal_accepted") ? (
+            <label className="interprete-login__field-hint flex items-start gap-2">
+              <input
+                checked={legalAccepted}
+                disabled={isSubmitting}
+                onChange={(event) => setLegalAccepted(event.target.checked)}
+                required
+                type="checkbox"
+              />
+              <span>
+                Li e aceito os <a href="/termos-de-uso">Termos de uso</a> e o
+                aviso de <a href="/privacidade">Privacidade</a>.
+              </span>
+            </label>
+          ) : null}
+          {hasUnsupportedMissingField ? (
+            <div className="interprete-login__error" role="alert">
+              <p>
+                Esta conta exige uma informação adicional que não está
+                disponível neste formulário. Fale com o suporte para continuar.
+              </p>
+              <a href="/suporte">Falar com o time</a>
+            </div>
+          ) : null}
+        </>
+      ) : null}
 
       <div data-cl-size="flexible" data-cl-theme="light" id="clerk-captcha" />
 
       {errorMessage ? (
-        <div
+        <p
           aria-live="assertive"
           className="interprete-login__error"
           role="alert"
         >
-          <p>{errorMessage}</p>
-          {hasExistingAccount ? (
-            <a href="/sign-in">Entrar na minha conta</a>
-          ) : null}
-        </div>
+          {errorMessage}
+        </p>
       ) : null}
 
       <button
         className="interprete-login__submit"
-        disabled={isSubmitting}
+        disabled={
+          isSubmitting ||
+          (step === "requirements" && hasUnsupportedMissingField)
+        }
         type="submit"
       >
         <span>{primaryLabel}</span>
         <span aria-hidden="true">→</span>
       </button>
 
-      {isVerificationStep ? (
+      {step === "verification" ? (
         <button
           className="interprete-login__forgot"
           disabled={isSubmitting}

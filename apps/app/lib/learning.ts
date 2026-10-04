@@ -4,6 +4,7 @@ import {
   ContentStatus,
   CourseExperience,
   database,
+  LearningAssignmentTargetType,
   ProgressStatus,
 } from "@repo/database";
 import { requireSession } from "./authorization";
@@ -16,6 +17,7 @@ import {
   hasModuleAccess,
   type LearningAccessScope,
 } from "./content-access";
+import { markLearningAssignmentStarted } from "./learning-assignments";
 import { calculateLearningProgress } from "./learning-progress";
 
 export const requireMemberId = requireSession;
@@ -92,7 +94,10 @@ export const getPublishedLearningPaths = async (
           title: true,
           slug: true,
           experience: true,
+          coverUrl: true,
           description: true,
+          subtitle: true,
+          durationMinutes: true,
           modules: {
             where: published,
             orderBy: [{ position: "asc" }, { title: "asc" }],
@@ -257,6 +262,12 @@ export const getPublishedCourse = async (slug: string, memberId: string) => {
     return null;
   }
 
+  await markLearningAssignmentStarted(
+    memberId,
+    LearningAssignmentTargetType.COURSE,
+    course.id
+  );
+
   const visibleCourse = filterCourse(course, scope);
   const lessons = visibleCourse.modules.flatMap((module) => module.lessons);
 
@@ -306,10 +317,13 @@ export const getPublishedLesson = async (
             title: true,
             kind: true,
             scope: true,
+            mediaProvider: true,
+            mediaExternalId: true,
             storagePath: true,
             externalUrl: true,
             mimeType: true,
             ownerMemberId: true,
+            importedRecording: { select: { id: true } },
             position: true,
           },
         },
@@ -376,6 +390,24 @@ export const getPublishedLesson = async (
   ) {
     return null;
   }
+
+  await Promise.all([
+    markLearningAssignmentStarted(
+      memberId,
+      LearningAssignmentTargetType.COURSE,
+      courseId
+    ),
+    markLearningAssignmentStarted(
+      memberId,
+      LearningAssignmentTargetType.MODULE,
+      lesson.module.id
+    ),
+    markLearningAssignmentStarted(
+      memberId,
+      LearningAssignmentTargetType.LESSON,
+      lesson.id
+    ),
+  ]);
 
   const visibleModules = filterCourse(lesson.module.course, scope).modules;
   const siblings = visibleModules.flatMap((module) => module.lessons);

@@ -16,11 +16,12 @@
   --brand-dark-amaranth: #8c1535;
   --brand-crimson-violet: #410230;
   --brand-classic-crimson: #d62839;
+  --brand-action-text: #c62236;
   --brand-debian-red: #d60858;
 
   --text-primary: #40222f;
   --text-secondary: #7a5a69;
-  --text-muted: #a08a93;
+  --text-muted: #7a5a69;
   --surface: #ffffff;
   --surface-paper: #fbf9f7;
   --surface-muted: #eee5e1;
@@ -51,7 +52,7 @@
   --warning: #9b5b18;
   --info: var(--brand-dark-amaranth);
   --border: var(--border-subtle);
-  --input: var(--border-subtle);
+  --input: #97727c;
   --ring: var(--brand-dark-amaranth);
   --chart-1: var(--brand-dark-amaranth);
   --chart-2: var(--brand-classic-crimson);
@@ -125,8 +126,9 @@
   --destructive: var(--brand-classic-crimson);
   --destructive-foreground: var(--surface);
   --border: #7c3c55;
-  --input: #7c3c55;
+  --input: #bb8294;
   --ring: var(--brand-classic-crimson);
+  --brand-action-text: #ff929a;
   --sidebar: var(--brand-crimson-violet);
   --sidebar-foreground: var(--brand-pink-essence);
   --sidebar-primary: var(--brand-classic-crimson);
@@ -148,6 +150,7 @@
   --color-brand-structural: var(--brand-dark-amaranth);
   --color-brand-depth: var(--brand-crimson-violet);
   --color-brand-action: var(--brand-classic-crimson);
+  --color-brand-action-text: var(--brand-action-text);
   --color-brand-accent: var(--brand-debian-red);
   --color-text-primary: var(--text-primary);
   --color-text-secondary: var(--text-secondary);

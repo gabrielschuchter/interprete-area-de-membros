@@ -63,6 +63,9 @@ const OnboardingPage = async () => {
       feedbackReceived: preferences.feedbackReceived,
       activityDeadline: preferences.activityDeadline,
       announcements: preferences.announcements,
+      groupInvitations: preferences.groupInvitations,
+      groupPosts: preferences.groupPosts,
+      contentAssignments: preferences.contentAssignments,
     },
   };
 

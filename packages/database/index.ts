@@ -47,3 +47,4 @@ if (process.env.NODE_ENV !== "production" && runtimeDatabaseUrl) {
 }
 
 export * from "./generated/client";
+export * from "./library-catalog";

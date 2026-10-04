@@ -1,7 +1,7 @@
-import { auth } from "@repo/auth/server";
 import { database } from "@repo/database";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
+import { auth } from "@/lib/auth";
 import { getOrCreateProfile } from "@/lib/profile";
 
 const OnboardingLayout = async ({
@@ -9,7 +9,10 @@ const OnboardingLayout = async ({
 }: {
   readonly children: ReactNode;
 }) => {
-  const { userId } = await auth();
+  const { userId, memberDeactivated } = await auth();
+  if (memberDeactivated) {
+    redirect("/conta-desativada");
+  }
   if (!userId) {
     redirect("/sign-in");
   }

@@ -13,6 +13,7 @@ import { notFound, redirect } from "next/navigation";
 import { CompleteLessonButton } from "@/components/learning/complete-lesson-button";
 import { LearningPageFrame } from "@/components/learning/learning-page-frame";
 import { LessonPlayer } from "@/components/learning/lesson-player";
+import { StudyHeartbeat } from "@/components/learning/study-heartbeat";
 
 const assetKindLabel = (kind: string) => {
   switch (kind) {
@@ -83,6 +84,7 @@ const LessonPage = async ({ params }: LessonPageProperties) => {
       eyebrow={`${lesson.module.course.title} · ${lesson.module.title}`}
       title={lesson.title}
     >
+      <StudyHeartbeat activityKind="LESSON" resourceId={lesson.id} />
       <div className="mb-2 flex flex-wrap items-center gap-3 border-b pb-5">
         <Link
           className="inline-flex min-h-11 items-center gap-2 text-muted-foreground text-sm transition-colors hover:text-brand-structural"
@@ -130,7 +132,7 @@ const LessonPage = async ({ params }: LessonPageProperties) => {
                             {isCompleted ? (
                               <CheckCircle2Icon
                                 aria-hidden="true"
-                                className="mt-0.5 size-4 shrink-0 text-brand-action"
+                                className="mt-0.5 size-4 shrink-0 text-brand-action-text"
                               />
                             ) : (
                               <span
@@ -159,7 +161,7 @@ const LessonPage = async ({ params }: LessonPageProperties) => {
               </span>
             </div>
             {lesson.isCompleted && (
-              <span className="inline-flex items-center gap-2 font-data text-brand-action text-xs uppercase tracking-[0.12em]">
+              <span className="inline-flex items-center gap-2 font-data text-brand-action-text text-xs uppercase tracking-[0.12em]">
                 <CheckCircle2Icon aria-hidden="true" className="size-4" />
                 Concluída
               </span>
@@ -192,7 +194,7 @@ const LessonPage = async ({ params }: LessonPageProperties) => {
               <div className="flex items-start gap-3">
                 <PaperclipIcon
                   aria-hidden="true"
-                  className="mt-1 size-5 text-brand-action"
+                  className="mt-1 size-5 text-brand-action-text"
                 />
                 <div>
                   <p className="brand-eyebrow">Materiais da aula</p>
@@ -207,11 +209,16 @@ const LessonPage = async ({ params }: LessonPageProperties) => {
                     <div className="space-y-3" key={asset.id}>
                       <LessonPlayer
                         assetId={asset.id}
+                        mediaExternalId={asset.mediaExternalId}
+                        mediaProvider={asset.mediaProvider}
                         mimeType={asset.mimeType}
+                        persistProgress={Boolean(asset.importedRecording)}
+                        studyActivityKind="LESSON"
+                        studyResourceId={lesson.id}
                         title={asset.title}
                       />
                       {asset.scope === "INDIVIDUAL" && (
-                        <p className="font-data text-brand-action text-xs uppercase tracking-[0.12em]">
+                        <p className="font-data text-brand-action-text text-xs uppercase tracking-[0.12em]">
                           Gravação protegida da sua aula
                         </p>
                       )}
@@ -246,7 +253,7 @@ const LessonPage = async ({ params }: LessonPageProperties) => {
               <div className="flex items-start gap-3">
                 <PaperclipIcon
                   aria-hidden="true"
-                  className="mt-1 size-5 text-brand-action"
+                  className="mt-1 size-5 text-brand-action-text"
                 />
                 <div>
                   <p className="brand-eyebrow">Para continuar a investigação</p>
@@ -298,7 +305,7 @@ const LessonPage = async ({ params }: LessonPageProperties) => {
               <div className="flex items-start gap-3">
                 <ClipboardCheckIcon
                   aria-hidden="true"
-                  className="mt-1 size-5 text-brand-action"
+                  className="mt-1 size-5 text-brand-action-text"
                 />
                 <div>
                   <p className="brand-eyebrow">Prática relacionada</p>

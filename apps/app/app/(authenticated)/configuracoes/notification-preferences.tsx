@@ -14,7 +14,10 @@ type PreferenceKey =
   | "activityAssigned"
   | "feedbackReceived"
   | "activityDeadline"
-  | "announcements";
+  | "announcements"
+  | "groupInvitations"
+  | "groupPosts"
+  | "contentAssignments";
 
 type Preferences = Record<PreferenceKey, boolean>;
 
@@ -32,6 +35,8 @@ const groups: readonly {
         key: "followedTopicActivity",
         label: "Atualizações de discussões que sigo",
       },
+      { key: "groupInvitations", label: "Convites para grupos de estudo" },
+      { key: "groupPosts", label: "Novas publicações nos meus grupos" },
     ],
   },
   {
@@ -39,6 +44,7 @@ const groups: readonly {
     items: [
       { key: "lessonAvailable", label: "Novas aulas disponíveis" },
       { key: "moduleAvailable", label: "Novos módulos disponíveis" },
+      { key: "contentAssignments", label: "Conteúdos atribuídos a mim" },
     ],
   },
   {
@@ -62,6 +68,9 @@ const emptyPreferences: Preferences = {
   commentReplies: true,
   feedbackReceived: true,
   followedTopicActivity: true,
+  groupInvitations: true,
+  groupPosts: true,
+  contentAssignments: true,
   lessonAvailable: true,
   mentions: true,
   moduleAvailable: true,
@@ -134,7 +143,7 @@ export const NotificationPreferences = () => {
       <div className="flex items-start gap-3">
         <BellIcon
           aria-hidden="true"
-          className="mt-1 size-5 shrink-0 text-brand-action"
+          className="mt-1 size-5 shrink-0 text-brand-action-text"
         />
         <div>
           <p className="brand-eyebrow text-muted-foreground">Preferências</p>

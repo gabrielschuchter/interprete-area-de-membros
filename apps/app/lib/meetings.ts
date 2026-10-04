@@ -209,6 +209,14 @@ export const getStaffMeetings = async () =>
       ...meetingSelection,
       status: true,
       participants: { select: { memberId: true } },
+      attendance: {
+        select: {
+          memberId: true,
+          isPresent: true,
+          markedAt: true,
+          member: { select: { displayName: true, email: true } },
+        },
+      },
       _count: { select: { participants: true } },
     },
   });

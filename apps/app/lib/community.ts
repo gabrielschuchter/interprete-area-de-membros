@@ -1,16 +1,21 @@
 import "server-only";
 
 import {
-  type CommunityPostKind,
   ContentStatus,
   database,
+  MemberRole,
   type Prisma,
 } from "@repo/database";
+import { getMemberRole } from "@/lib/authorization";
 import {
   extractCommunityMedia,
   normalizeCommunityCoverUrl,
 } from "@/lib/community-media";
 import { communityPopularityScore } from "@/lib/community-ranking";
+import {
+  communityPostAudienceWhere,
+  communitySpaceAudienceWhere,
+} from "@/lib/community-space-rules";
 import { getProfilesByClerkIds } from "@/lib/profile";
 
 const POST_PAGE_SIZE = 20;
@@ -58,9 +63,16 @@ const enrichAuthors = async <T extends { authorId: string }>(
   return attachProfiles(rows, profiles);
 };
 
-export const getCommunitySpaces = () =>
-  database.communitySpace.findMany({
-    where: { status: ContentStatus.PUBLISHED },
+export const getCommunitySpaces = async (memberId: string) => {
+  const role = await getMemberRole(memberId);
+  return database.communitySpace.findMany({
+    where: {
+      status: ContentStatus.PUBLISHED,
+      ...communitySpaceAudienceWhere(
+        memberId,
+        role === MemberRole.ADMIN || role === MemberRole.TEACHER
+      ),
+    },
     orderBy: [{ position: "asc" }, { title: "asc" }],
     select: {
       id: true,
@@ -68,7 +80,10 @@ export const getCommunitySpaces = () =>
       slug: true,
       description: true,
       icon: true,
+      coverUrl: true,
+      visibility: true,
       commentsClosed: true,
+      ownerId: true,
       _count: {
         select: {
           posts: {
@@ -76,8 +91,14 @@ export const getCommunitySpaces = () =>
           },
         },
       },
+      members: {
+        where: { memberId },
+        select: { id: true },
+        take: 1,
+      },
     },
   });
+};
 
 export const getCommunityPresenceProfiles = (memberId: string) =>
   database.profile.findMany({
@@ -92,10 +113,7 @@ export const getLatestCommunityPost = async () =>
     where: {
       status: ContentStatus.PUBLISHED,
       deletedAt: null,
-      OR: [
-        { space: null },
-        { space: { is: { status: ContentStatus.PUBLISHED } } },
-      ],
+      ...communityPostAudienceWhere(null),
     },
     orderBy: [
       { isFeatured: "desc" },
@@ -112,7 +130,6 @@ export const getLatestCommunityPost = async () =>
   });
 
 interface CommunityFeedOptions {
-  readonly kind?: CommunityPostKind;
   readonly page?: number;
   readonly query?: string;
   readonly sort?: "recent" | "popular" | "unanswered";
@@ -125,7 +142,6 @@ const communityFeedSelect = (memberId: string) =>
     title: true,
     subtitle: true,
     slug: true,
-    kind: true,
     excerpt: true,
     contentJson: true,
     tags: true,
@@ -174,31 +190,36 @@ const findMatchingCommunityAuthorIds = async (query: string) => {
 
 const communityFeedWhere = ({
   authorIds,
-  kind,
+  canModeratePrivateGroups,
+  memberId,
   query,
   sort,
   spaceSlug,
 }: {
   readonly authorIds?: string[];
-  readonly kind?: CommunityPostKind;
+  readonly canModeratePrivateGroups: boolean;
+  readonly memberId: string;
   readonly query: string;
   readonly sort: CommunityFeedSort;
   readonly spaceSlug?: string;
 }): Prisma.CommunityPostWhereInput => ({
   status: ContentStatus.PUBLISHED,
   deletedAt: null,
-  ...(kind ? { kind } : {}),
+  ...(spaceSlug
+    ? {}
+    : communityPostAudienceWhere(memberId, canModeratePrivateGroups)),
   ...(sort === "unanswered" ? { comments: { none: { deletedAt: null } } } : {}),
   ...(spaceSlug
     ? {
-        space: { is: { slug: spaceSlug, status: ContentStatus.PUBLISHED } },
+        space: {
+          is: {
+            slug: spaceSlug,
+            status: ContentStatus.PUBLISHED,
+            ...communitySpaceAudienceWhere(memberId, canModeratePrivateGroups),
+          },
+        },
       }
-    : {
-        OR: [
-          { space: null },
-          { space: { is: { status: ContentStatus.PUBLISHED } } },
-        ],
-      }),
+    : {}),
   ...(query
     ? {
         AND: [
@@ -340,10 +361,15 @@ export const getCommunityFeed = async (
   const page = normalizeCommunityPage(options.page);
   const query = options.query?.trim().slice(0, 100) ?? "";
   const sort = normalizeCommunitySort(options.sort);
-  const authorIds = await findMatchingCommunityAuthorIds(query);
+  const [authorIds, role] = await Promise.all([
+    findMatchingCommunityAuthorIds(query),
+    getMemberRole(memberId),
+  ]);
   const where = communityFeedWhere({
     authorIds,
-    kind: options.kind,
+    canModeratePrivateGroups:
+      role === MemberRole.ADMIN || role === MemberRole.TEACHER,
+    memberId,
     query,
     sort,
     spaceSlug: options.spaceSlug,
@@ -377,14 +403,32 @@ export const getCommunitySpace = async (
   page = 1
 ) => {
   const currentPage = Number.isInteger(page) && page > 0 ? page : 1;
+  const role = await getMemberRole(memberId);
   const space = await database.communitySpace.findFirst({
-    where: { slug, status: ContentStatus.PUBLISHED },
+    where: {
+      slug,
+      status: ContentStatus.PUBLISHED,
+      ...communitySpaceAudienceWhere(
+        memberId,
+        role === MemberRole.ADMIN || role === MemberRole.TEACHER
+      ),
+    },
     select: {
       id: true,
       title: true,
       slug: true,
       description: true,
       icon: true,
+      coverUrl: true,
+      details: true,
+      visibility: true,
+      ownerId: true,
+      members: {
+        where: { memberId },
+        select: { id: true, role: true },
+        take: 1,
+      },
+      _count: { select: { members: true } },
       commentsClosed: true,
       posts: {
         where: { status: ContentStatus.PUBLISHED, deletedAt: null },
@@ -400,7 +444,6 @@ export const getCommunitySpace = async (
           title: true,
           subtitle: true,
           slug: true,
-          kind: true,
           excerpt: true,
           contentJson: true,
           tags: true,
@@ -443,7 +486,6 @@ const communityPostSelect = {
   title: true,
   subtitle: true,
   slug: true,
-  kind: true,
   content: true,
   excerpt: true,
   contentJson: true,
@@ -456,6 +498,7 @@ const communityPostSelect = {
   publishedAt: true,
   createdAt: true,
   updatedAt: true,
+  editedAt: true,
   space: {
     select: { id: true, title: true, slug: true, commentsClosed: true },
   },
@@ -464,7 +507,7 @@ const communityPostSelect = {
   },
 } as const;
 
-const getPublishedPost = (
+const getPublishedPost = async (
   where: {
     readonly id?: string;
     readonly slug?: string;
@@ -478,18 +521,20 @@ const getPublishedPost = (
   } else if (where.slug) {
     identityWhere = { OR: [{ slug: where.slug }, { id: where.slug }] };
   }
+  const role = await getMemberRole(memberId);
+  const canModeratePrivateGroups =
+    role === MemberRole.ADMIN || role === MemberRole.TEACHER;
   const audienceWhere: Prisma.CommunityPostWhereInput = where.spaceSlug
     ? {
         space: {
-          is: { slug: where.spaceSlug, status: ContentStatus.PUBLISHED },
+          is: {
+            slug: where.spaceSlug,
+            status: ContentStatus.PUBLISHED,
+            ...communitySpaceAudienceWhere(memberId, canModeratePrivateGroups),
+          },
         },
       }
-    : {
-        OR: [
-          { space: null },
-          { space: { is: { status: ContentStatus.PUBLISHED } } },
-        ],
-      };
+    : communityPostAudienceWhere(memberId, canModeratePrivateGroups);
 
   return database.communityPost.findFirst({
     where: {
@@ -517,7 +562,7 @@ const getPostWithComments = async (
   commentsPage: number
 ) => {
   const commentRoots = await database.communityComment.findMany({
-    where: { postId: post.id, parentId: null, deletedAt: null },
+    where: { postId: post.id, parentId: null },
     orderBy: [{ createdAt: "asc" }, { id: "asc" }],
     skip: (commentsPage - 1) * COMMENT_PAGE_SIZE,
     take: COMMENT_PAGE_SIZE + 1,
@@ -533,7 +578,6 @@ const getPostWithComments = async (
       : await database.communityComment.findMany({
           where: {
             postId: post.id,
-            deletedAt: null,
             OR: [
               { id: { in: visibleRootIds } },
               { parentId: { in: visibleRootIds } },
@@ -548,6 +592,8 @@ const getPostWithComments = async (
             contentJson: true,
             createdAt: true,
             updatedAt: true,
+            editedAt: true,
+            deletedAt: true,
             _count: { select: { votes: true } },
             votes: { where: { memberId }, select: { id: true } },
           },
@@ -555,7 +601,9 @@ const getPostWithComments = async (
 
   const profiles = await getProfilesByClerkIds([
     post.authorId,
-    ...comments.map((comment) => comment.authorId),
+    ...comments
+      .filter((comment) => !comment.deletedAt)
+      .map((comment) => comment.authorId),
   ]);
 
   return {
@@ -577,7 +625,7 @@ export const getCommunityCommentPage = async (
   commentId: string
 ) => {
   const initialComment = await database.communityComment.findFirst({
-    where: { id: commentId, postId, deletedAt: null },
+    where: { id: commentId, postId },
     select: { id: true, parentId: true, createdAt: true },
   });
 
@@ -590,7 +638,7 @@ export const getCommunityCommentPage = async (
   while (comment.parentId && !visited.has(comment.id)) {
     visited.add(comment.id);
     const parentComment = await database.communityComment.findFirst({
-      where: { id: comment.parentId, postId, deletedAt: null },
+      where: { id: comment.parentId, postId },
       select: { id: true, parentId: true, createdAt: true },
     });
     if (!parentComment) {
@@ -603,7 +651,6 @@ export const getCommunityCommentPage = async (
     where: {
       postId,
       parentId: null,
-      deletedAt: null,
       OR: [
         { createdAt: { lt: comment.createdAt } },
         { createdAt: comment.createdAt, id: { lte: comment.id } },
@@ -681,7 +728,6 @@ export const getMyCommunityPosts = async (memberId: string) => {
       title: true,
       subtitle: true,
       slug: true,
-      kind: true,
       excerpt: true,
       status: true,
       tags: true,
@@ -698,16 +744,17 @@ export const getMyCommunityPosts = async (memberId: string) => {
 };
 
 export const getSavedCommunityPosts = async (memberId: string) => {
+  const role = await getMemberRole(memberId);
   const bookmarks = await database.communityBookmark.findMany({
     where: {
       memberId,
       post: {
         status: ContentStatus.PUBLISHED,
         deletedAt: null,
-        OR: [
-          { space: null },
-          { space: { is: { status: ContentStatus.PUBLISHED } } },
-        ],
+        ...communityPostAudienceWhere(
+          memberId,
+          role === MemberRole.ADMIN || role === MemberRole.TEACHER
+        ),
       },
     },
     orderBy: { createdAt: "desc" },
@@ -720,7 +767,6 @@ export const getSavedCommunityPosts = async (memberId: string) => {
           title: true,
           subtitle: true,
           slug: true,
-          kind: true,
           excerpt: true,
           tags: true,
           publishedAt: true,
@@ -778,7 +824,6 @@ export const getStaffCommunityPosts = async () =>
       title: true,
       authorId: true,
       status: true,
-      kind: true,
       slug: true,
       isPinned: true,
       isFeatured: true,

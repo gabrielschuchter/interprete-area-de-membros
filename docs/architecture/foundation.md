@@ -32,6 +32,12 @@ Os exemplos de ambiente estão em `packages/database/.env.example`, `apps/app/.e
 
 Clerk permanece como autenticação inicial. O middleware em `apps/app/proxy.ts` compõe Clerk com os headers de segurança, e o layout `(authenticated)` mantém uma segunda guarda server-side antes de renderizar a área de membros. `Member.id` é o `userId` do Clerk e `Member.role` é consultado server-side para proteger autoria/moderação; não existe organização, workspace ou autorização baseada em e-mail.
 
+O desenvolvimento local executa o Next.js em Node com a CA confiável do sistema
+(`NODE_USE_SYSTEM_CA=1`), pois a verificação server-side de JWKS do Clerk precisa
+confiar na cadeia presente no ambiente. TLS continua validado. O ambiente
+Development usa seu Frontend API direto; o proxy de Frontend API permanece na
+configuração de produção.
+
 ### Segurança e observabilidade
 
 Sentry/logging e o pacote de segurança permanecem como infraestrutura opcional. Arcjet só é usado quando `ARCJET_KEY` existe. Analytics não é configurado por padrão; seus hooks continuam neutros quando as chaves estão ausentes.
@@ -75,4 +81,9 @@ bun run test
 bun run build
 ```
 
-O acesso real ao Supabase, migrações, seed, persistência e E2E só pode ser validado depois que `packages/database/.env` contenha uma senha válida e a CA necessária esteja confiável no ambiente local. A configuração não desabilita verificação TLS como atalho.
+O endpoint PostgreSQL oficial foi alcançado por `DIRECT_URL` em uma consulta
+somente de leitura e em `prisma migrate status`; a CA confiável do sistema é
+usada sem desabilitar TLS. No checkpoint de 03/10/2026, o projeto Supabase
+estava com todos os serviços restritos por quota/Fair Use (HTTP 402), então
+migrations, seed, escrita/persistência de produto e E2E com banco real continuam
+bloqueados. Ver `docs/implementation/roadmap.md` para o estado remoto observado.

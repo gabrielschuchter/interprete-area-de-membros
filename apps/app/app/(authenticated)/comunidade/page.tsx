@@ -20,11 +20,7 @@ import {
   getCommunityPresenceProfiles,
   getCommunitySpaces,
 } from "@/lib/community";
-import {
-  communityHref,
-  parseCommunityKind,
-  parseCommunitySort,
-} from "@/lib/community-query";
+import { communityHref, parseCommunitySort } from "@/lib/community-query";
 import { requireMemberId } from "@/lib/learning";
 import { getRecentCommunityAnnouncements } from "@/lib/notifications";
 import { getOrCreateProfile } from "@/lib/profile";
@@ -35,7 +31,6 @@ interface CommunityPageProperties {
   readonly searchParams: Promise<{
     q?: string;
     sort?: string;
-    kind?: string;
     page?: string;
     space?: string;
   }>;
@@ -45,15 +40,13 @@ const CommunityPage = async ({ searchParams }: CommunityPageProperties) => {
   const filters = await searchParams;
   const memberId = await requireMemberId();
   const sort = parseCommunitySort(filters.sort);
-  const kind = parseCommunityKind(filters.kind);
   const page = Number.parseInt(filters.page ?? "1", 10);
   const [spaces, feed, profile, announcements, presenceProfiles] =
     await Promise.all([
-      getCommunitySpaces(),
+      getCommunitySpaces(memberId),
       getCommunityFeed(memberId, {
         query: filters.q,
         sort,
-        kind,
         page,
         spaceSlug: filters.space,
       }),
@@ -71,11 +64,10 @@ const CommunityPage = async ({ searchParams }: CommunityPageProperties) => {
     .toUpperCase();
 
   const hasDiscoveryFilters = Boolean(
-    filters.q || kind || filters.space || sort !== "recent"
+    filters.q || filters.space || sort !== "recent"
   );
   const queryString = (nextPage: number) =>
     communityHref({
-      kind,
       page: nextPage,
       query: filters.q,
       sort,
@@ -140,7 +132,6 @@ const CommunityPage = async ({ searchParams }: CommunityPageProperties) => {
             </div>
 
             <CommunityFeedNavigation
-              kind={kind}
               query={filters.q}
               sort={sort}
               spaceSlug={filters.space}
@@ -164,12 +155,12 @@ const CommunityPage = async ({ searchParams }: CommunityPageProperties) => {
                 />
               </label>
               <select
-                aria-label="Filtrar por espaço"
+                aria-label="Filtrar por grupo de estudo"
                 className="h-10 rounded-sm border bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/35"
                 defaultValue={filters.space ?? ""}
                 name="space"
               >
-                <option value="">Todos os espaços</option>
+                <option value="">Todos os grupos</option>
                 {spaces.map((space) => (
                   <option key={space.slug} value={space.slug}>
                     {space.title}
@@ -177,7 +168,6 @@ const CommunityPage = async ({ searchParams }: CommunityPageProperties) => {
                 ))}
               </select>
               <input name="sort" type="hidden" value={sort} />
-              {kind ? <input name="kind" type="hidden" value={kind} /> : null}
               <Button type="submit" variant="outline">
                 Buscar
               </Button>
@@ -186,7 +176,6 @@ const CommunityPage = async ({ searchParams }: CommunityPageProperties) => {
             {feed.posts.length === 0 ? (
               <CommunityEmptyState
                 hasFilters={hasDiscoveryFilters}
-                kind={kind}
                 sort={sort}
               />
             ) : (
@@ -221,6 +210,7 @@ const CommunityPage = async ({ searchParams }: CommunityPageProperties) => {
 
           <CommunityRightRail
             announcements={announcements}
+            memberId={memberId}
             presenceProfiles={presenceProfiles}
             profile={profile}
             spaces={spaces}

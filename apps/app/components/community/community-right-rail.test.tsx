@@ -40,6 +40,7 @@ describe("CommunityRightRail", () => {
             title: "Roda de discussão",
           },
         ]}
+        memberId="ana-id"
         profile={{
           avatarUrl: null,
           displayName: "Ana",
@@ -60,7 +61,12 @@ describe("CommunityRightRail", () => {
       screen
         .getAllByRole("heading", { level: 2 })
         .map((heading) => heading.textContent)
-    ).toEqual(["Sobre a comunidade", "Ativo agora", "Espaços", "Avisos"]);
+    ).toEqual([
+      "Sobre a comunidade",
+      "Ativo agora",
+      "Grupos de estudo",
+      "Avisos",
+    ]);
     expect(screen.getByTestId("mock-community-presence").textContent).toContain(
       "2 membros online"
     );
@@ -74,11 +80,16 @@ describe("CommunityRightRail", () => {
 
   test("renders a compact empty notice state without inventing content", () => {
     render(
-      <CommunityRightRail announcements={[]} profile={null} spaces={[]} />
+      <CommunityRightRail
+        announcements={[]}
+        memberId="ana-id"
+        profile={null}
+        spaces={[]}
+      />
     );
 
     expect(screen.getByText("Nenhum aviso recente.")).toBeTruthy();
-    expect(screen.getByText("Nenhum espaço publicado ainda.")).toBeTruthy();
+    expect(screen.getByText("Nenhum grupo publicado ainda.")).toBeTruthy();
   });
 
   test("does not turn an unsafe notice URL into a navigable link", () => {
@@ -94,6 +105,7 @@ describe("CommunityRightRail", () => {
             title: "Aviso sem destino seguro",
           },
         ]}
+        memberId="ana-id"
         profile={null}
         spaces={[]}
       />

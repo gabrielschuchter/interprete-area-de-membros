@@ -18,5 +18,9 @@ describe("mutation contract", () => {
     });
     expect(mutationLimits["community.vote"].max).toBeGreaterThan(0);
     expect(mutationLimits["asset.upload"].windowMs).toBeGreaterThan(60_000);
+    expect(mutationLimits["library.catalog-import"]).toEqual({
+      max: 3,
+      windowMs: 60 * 60_000,
+    });
   });
 });

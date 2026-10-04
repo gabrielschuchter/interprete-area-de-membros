@@ -1,290 +1,260 @@
-import { Button } from "@repo/design-system/components/ui/button";
-import { Progress } from "@repo/design-system/components/ui/progress";
 import {
-  ArrowRightIcon,
-  BookOpenIcon,
-  CheckCircle2Icon,
-  CompassIcon,
-} from "lucide-react";
-import Image from "next/image";
-import Link from "next/link";
+  LearningContentRail,
+  type LearningRailCard,
+} from "@/components/learning/learning-content-rail";
 import { LearningPageFrame } from "@/components/learning/learning-page-frame";
+import {
+  collectionItemHref,
+  collectionItemLabel,
+  getPublishedCollectionsForMember,
+} from "@/lib/content-collections";
 import { getPublishedLearningPaths, requireMemberId } from "@/lib/learning";
+import { getReceivedLearningAssignments } from "@/lib/learning-assignments";
+import { getMemberLearningBookmarkKeys } from "@/lib/library";
+import { getMemberContinueWatching } from "@/lib/recordings";
 
 export const dynamic = "force-dynamic";
 
+const formatDate = (value: Date | null) =>
+  value
+    ? new Intl.DateTimeFormat("pt-BR", {
+        dateStyle: "medium",
+        timeZone: "America/Sao_Paulo",
+      }).format(value)
+    : null;
+
+const assignmentState = {
+  NEW: "Novo",
+  VIEWED: "Visto",
+  STARTED: "Em andamento",
+  COMPLETED: "Concluído",
+  REVOKED: "Revogado",
+} as const;
+
+type LearningCollection = Awaited<
+  ReturnType<typeof getPublishedCollectionsForMember>
+>[number];
+type LearningCollectionItem = LearningCollection["items"][number];
+
+const collectionBookmarkTarget = (item: LearningCollectionItem) => {
+  if (item.lesson) {
+    return { targetId: item.lesson.id, targetType: "LESSON" as const };
+  }
+  const assetId = item.recording?.asset.id ?? item.asset?.id;
+  if (assetId) {
+    return { targetId: assetId, targetType: "ASSET" as const };
+  }
+  if (item.libraryItem) {
+    return {
+      targetId: item.libraryItem.id,
+      targetType: "LIBRARY_ITEM" as const,
+    };
+  }
+  return undefined;
+};
+
+const toCollectionCard = (
+  collection: LearningCollection,
+  item: LearningCollectionItem,
+  bookmarkKeys: ReadonlySet<string>
+): LearningRailCard | null => {
+  const href = collectionItemHref(item);
+  if (!href) {
+    return null;
+  }
+  const recording = item.recording ?? item.asset?.importedRecording ?? null;
+  const recordingThumbnail = recording?.thumbnailPath
+    ? `/api/learning/recordings/${recording.id}/thumbnail`
+    : null;
+  let label = "Biblioteca";
+  if (item.lesson) {
+    label = "Aula";
+  } else if (recording) {
+    label = "Gravação";
+  }
+  const meta =
+    item.lesson?.module.course.title ??
+    (recording
+      ? (formatDate(recording.meetingDate) ?? "Gravação preservada")
+      : (item.libraryItem?.kind ?? null));
+  const bookmark = collectionBookmarkTarget(item);
+
+  return {
+    bookmark: bookmark
+      ? {
+          ...bookmark,
+          saved: bookmarkKeys.has(
+            `${bookmark.targetType}:${bookmark.targetId}`
+          ),
+        }
+      : undefined,
+    coverUrl:
+      item.lesson?.module.course.coverUrl ??
+      recordingThumbnail ??
+      collection.coverUrl,
+    description:
+      item.lesson?.description ??
+      item.libraryItem?.description ??
+      collection.description,
+    href,
+    label,
+    meta,
+    title: collectionItemLabel(item),
+  };
+};
+
 const LearnPage = async () => {
   const memberId = await requireMemberId();
-  const paths = await getPublishedLearningPaths(memberId);
-  const courses = paths.flatMap((path) => path.courses);
-  const totalLessons = courses.reduce(
-    (total, course) => total + course.lessonCount,
-    0
-  );
-  const completedLessons = courses.reduce(
-    (total, course) => total + course.progress.completedLessons,
-    0
-  );
-  const overallProgress =
-    totalLessons === 0
-      ? 0
-      : Math.round((completedLessons / totalLessons) * 100);
-  const nextCourse = courses.find(
-    (course) => course.progress.completedLessons < course.progress.totalLessons
-  );
+  const [paths, assignments, collections, continueData, bookmarkKeys] =
+    await Promise.all([
+      getPublishedLearningPaths(memberId),
+      getReceivedLearningAssignments(memberId),
+      getPublishedCollectionsForMember(memberId),
+      getMemberContinueWatching(memberId),
+      getMemberLearningBookmarkKeys(memberId),
+    ]);
+
+  const assignmentCards = assignments.map((assignment) => {
+    const availability = assignment.availableAt
+      ? `Disponível em ${formatDate(assignment.availableAt)}`
+      : null;
+    const due = assignment.dueAt
+      ? `Prazo ${formatDate(assignment.dueAt)}`
+      : null;
+    return {
+      description: assignment.message,
+      bookmark: [
+        "COURSE",
+        "MODULE",
+        "LESSON",
+        "ASSET",
+        "LIBRARY_ITEM",
+      ].includes(assignment.target.type)
+        ? {
+            targetId: assignment.target.id,
+            targetType: assignment.target.type as
+              | "COURSE"
+              | "MODULE"
+              | "LESSON"
+              | "ASSET"
+              | "LIBRARY_ITEM",
+            saved: bookmarkKeys.has(
+              `${assignment.target.type}:${assignment.target.id}`
+            ),
+          }
+        : undefined,
+      href: `/aprender/atribuicoes/${assignment.id}`,
+      label: assignmentState[assignment.status],
+      meta:
+        [availability, due].filter(Boolean).join(" · ") ||
+        assignment.target.type,
+      title: assignment.target.title,
+    };
+  });
+
+  const resumeCards = continueData.continueWatching.map((recording) => ({
+    bookmark: {
+      targetId: recording.asset.id,
+      targetType: "ASSET" as const,
+      saved: bookmarkKeys.has(`ASSET:${recording.asset.id}`),
+    },
+    coverUrl: recording.thumbnailUrl,
+    description: recording.legacyLesson.title,
+    href: `/encontros/gravacoes?asset=${encodeURIComponent(recording.asset.id)}`,
+    label: "Gravação",
+    meta: `${recording.group.courseTitle} · ${recording.group.moduleTitle}`,
+    progress:
+      recording.progress.durationSeconds &&
+      recording.progress.durationSeconds > 0
+        ? Math.round(
+            (recording.progress.positionSeconds /
+              recording.progress.durationSeconds) *
+              100
+          )
+        : null,
+    title: recording.asset.title,
+  }));
+
+  const pathRails = paths.map((path) => ({
+    cards: path.courses.map((course) => ({
+      bookmark: {
+        targetId: course.id,
+        targetType: "COURSE" as const,
+        saved: bookmarkKeys.has(`COURSE:${course.id}`),
+      },
+      coverUrl: course.coverUrl ?? path.coverUrl,
+      description: course.description ?? path.description,
+      href: `/aprender/cursos/${course.slug}`,
+      label: "Trilha",
+      meta: `${course.progress.completedLessons}/${course.progress.totalLessons} aulas · ${course.progress.percentage}%`,
+      progress: course.progress.percentage,
+      title: course.title,
+    })),
+    description: path.description,
+    headingId: `learning-path-${path.id}`,
+    title: path.title,
+  }));
+
+  const collectionRails = collections.map((collection) => ({
+    cards: collection.items.flatMap((item) => {
+      const card = toCollectionCard(collection, item, bookmarkKeys);
+      return card ? [card] : [];
+    }),
+    description: collection.description,
+    headingId: `collection-${collection.id}`,
+    title: collection.title,
+  }));
+
+  const hasContent =
+    assignmentCards.length > 0 ||
+    resumeCards.length > 0 ||
+    pathRails.some((rail) => rail.cards.length > 0) ||
+    collectionRails.some((rail) => rail.cards.length > 0);
 
   return (
     <LearningPageFrame
-      description="Um percurso para buscar, ler e interpretar evidência com mais autonomia — uma pergunta de cada vez."
-      eyebrow="Estudo guiado · método antes do veredito"
-      title="Aprender é tornar o raciocínio visível."
+      description="Aulas, gravações e materiais organizados para você continuar de onde parou."
+      eyebrow="Sua área de aprendizagem"
+      title="Aprender"
     >
-      {paths.length === 0 ? (
-        <section className="paper-surface grid overflow-hidden border shadow-[var(--shadow-paper)] lg:grid-cols-[minmax(0,1fr)_minmax(22rem,0.82fr)]">
-          <div className="flex flex-col items-start justify-center p-7 sm:p-12">
-            <div className="flex size-12 items-center justify-center border border-brand-action/40 text-brand-action">
-              <CompassIcon aria-hidden="true" className="size-5" />
-            </div>
-            <p className="brand-eyebrow mt-8">
-              O percurso está sendo preparado
-            </p>
-            <h2 className="mt-4 max-w-xl font-display text-3xl leading-[1.08] tracking-tight sm:text-5xl">
-              Toda leitura começa antes do primeiro parágrafo.
+      <div className="space-y-10 sm:space-y-12">
+        <LearningContentRail
+          cards={assignmentCards}
+          description="Conteúdos enviados pela equipe, com prazos e andamento acompanhados na sua conta."
+          headingId="assigned-learning-title"
+          title="Enviados para você"
+        />
+        <LearningContentRail
+          cards={resumeCards}
+          description="Retome uma aula ou encontro a partir do ponto salvo."
+          headingId="resume-learning-title"
+          title="Continue assistindo"
+        />
+        {pathRails.map((rail) => (
+          <LearningContentRail key={rail.headingId} {...rail} />
+        ))}
+        {collectionRails.map((rail) => (
+          <LearningContentRail key={rail.headingId} {...rail} />
+        ))}
+        {!hasContent && (
+          <section
+            aria-labelledby="learning-empty-title"
+            className="border-y py-12"
+          >
+            <p className="brand-eyebrow">O próximo capítulo será seu</p>
+            <h2
+              className="mt-3 max-w-2xl font-display text-3xl leading-tight sm:text-4xl"
+              id="learning-empty-title"
+            >
+              Ainda não há conteúdo liberado para esta conta.
             </h2>
-            <p className="mt-5 max-w-xl text-muted-foreground leading-7">
-              Ainda não há uma trilha publicada para a sua turma. Quando o
-              conteúdo estiver disponível, ele aparecerá aqui com a sequência,
-              as aulas e o seu progresso real.
+            <p className="mt-4 max-w-2xl text-muted-foreground leading-7">
+              Quando uma trilha for publicada ou um professor enviar uma aula,
+              ela aparecerá aqui automaticamente.
             </p>
-          </div>
-          <figure className="relative min-h-72 border-t bg-brand-depth/10 lg:border-t-0 lg:border-l">
-            <Image
-              alt="Artigo e anotações em uma tela de estudo."
-              className="object-cover"
-              fill
-              sizes="(min-width: 1024px) 42vw, 100vw"
-              src="/brand/learning/evidence-screen.png"
-            />
-          </figure>
-        </section>
-      ) : (
-        <>
-          <section className="grid gap-8 border-y py-8 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,0.62fr)] lg:gap-12 lg:py-10">
-            <div className="flex flex-col justify-center">
-              <p className="brand-eyebrow">Seu ponto de partida</p>
-              <h2 className="mt-4 max-w-2xl font-display text-3xl leading-[1.08] tracking-tight sm:text-5xl">
-                {nextCourse
-                  ? "Continue de onde a sua pergunta ficou."
-                  : "Você percorreu este capítulo inteiro."}
-              </h2>
-              <p className="mt-5 max-w-xl text-muted-foreground leading-7">
-                {nextCourse
-                  ? "A sequência abaixo é organizada para que cada aula prepare a próxima. Você pode voltar, reler e avançar sem perder o fio do método."
-                  : "Revisitar uma aula também é parte da prática baseada em evidências. Escolha um curso para reler o caminho ou aguarde a próxima trilha publicada."}
-              </p>
-              {nextCourse && (
-                <div className="mt-8 flex flex-wrap items-center gap-4">
-                  <Button asChild>
-                    <Link href={`/aprender/cursos/${nextCourse.slug}`}>
-                      Continuar estudo
-                      <ArrowRightIcon aria-hidden="true" />
-                    </Link>
-                  </Button>
-                  <span className="font-data text-muted-foreground text-xs uppercase tracking-[0.14em]">
-                    {nextCourse.title}
-                  </span>
-                </div>
-              )}
-            </div>
-            <div className="paper-surface border p-6 sm:p-8">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="brand-eyebrow">Percurso até aqui</p>
-                  <p className="mt-3 font-display text-4xl text-brand-structural">
-                    {overallProgress}%
-                  </p>
-                </div>
-                <BookOpenIcon
-                  aria-hidden="true"
-                  className="size-5 text-brand-action"
-                />
-              </div>
-              <Progress
-                aria-label={`${overallProgress}% do percurso concluído`}
-                className="mt-6 h-2.5"
-                value={overallProgress}
-              />
-              <div className="mt-4 flex items-center justify-between gap-4 font-data text-muted-foreground text-xs">
-                <span>{completedLessons} aulas concluídas</span>
-                <span>{totalLessons} aulas publicadas</span>
-              </div>
-              <div className="mt-8 border-t pt-5">
-                <p className="text-muted-foreground text-sm leading-6">
-                  O progresso é salvo por aula e pertence somente à sua conta.
-                </p>
-              </div>
-            </div>
           </section>
-
-          <section className="space-y-7">
-            <div className="flex flex-col gap-3 border-b pb-5 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <p className="brand-eyebrow">Mapa de estudo</p>
-                <h2 className="mt-3 font-display text-3xl leading-tight sm:text-4xl">
-                  Trilhas para pensar com mais clareza
-                </h2>
-              </div>
-              <span className="font-data text-muted-foreground text-xs uppercase tracking-[0.14em]">
-                {paths.length} {paths.length === 1 ? "trilha" : "trilhas"}
-              </span>
-            </div>
-
-            <div className="space-y-10">
-              {paths.map((path, pathIndex) => {
-                const pathLessons = path.courses.reduce(
-                  (total, course) => total + course.lessonCount,
-                  0
-                );
-                const pathCompleted = path.courses.reduce(
-                  (total, course) => total + course.progress.completedLessons,
-                  0
-                );
-                const pathProgress =
-                  pathLessons === 0
-                    ? 0
-                    : Math.round((pathCompleted / pathLessons) * 100);
-
-                return (
-                  <section className="relative" key={path.id}>
-                    <div className="flex flex-col gap-5 border-b pb-5 sm:flex-row sm:items-end sm:justify-between">
-                      <div className="flex items-start gap-4">
-                        <span className="font-data text-brand-action text-sm">
-                          {String(pathIndex + 1).padStart(2, "0")}
-                        </span>
-                        <div>
-                          <p className="brand-eyebrow">
-                            Trilha de aprendizagem
-                          </p>
-                          <h3 className="mt-2 font-display text-3xl leading-tight">
-                            <Link
-                              className="underline decoration-brand-action/40 underline-offset-8 transition-colors hover:text-brand-structural"
-                              href={`/aprender/trilhas/${path.slug}`}
-                            >
-                              {path.title}
-                            </Link>
-                          </h3>
-                          {path.description && (
-                            <p className="mt-3 max-w-2xl text-muted-foreground leading-6">
-                              {path.description}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      <div className="min-w-44 sm:text-right">
-                        <div className="flex items-center justify-between gap-4 font-data text-muted-foreground text-xs sm:justify-end">
-                          <span>
-                            {pathCompleted}/{pathLessons} aulas
-                          </span>
-                          <span>{pathProgress}%</span>
-                        </div>
-                        <Progress
-                          aria-label={`${pathProgress}% da trilha concluída`}
-                          className="mt-3"
-                          value={pathProgress}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="divide-y border-b">
-                      {path.courses.map((course, courseIndex) => {
-                        const completed =
-                          course.progress.completedLessons ===
-                            course.progress.totalLessons &&
-                          course.progress.totalLessons > 0;
-
-                        return (
-                          <Link
-                            className="group flex min-h-24 items-center gap-4 py-5 transition-colors hover:bg-brand-action/5 sm:gap-6 sm:px-4"
-                            href={`/aprender/cursos/${course.slug}`}
-                            key={course.id}
-                          >
-                            <span className="font-data text-muted-foreground text-xs">
-                              {pathIndex + 1}.{courseIndex + 1}
-                            </span>
-                            <span className="flex min-w-0 flex-1 flex-col gap-1">
-                              <span className="font-display text-xl leading-tight transition-colors group-hover:text-brand-structural">
-                                {course.title}
-                              </span>
-                              <span className="text-muted-foreground text-sm">
-                                {course.moduleCount}{" "}
-                                {course.moduleCount === 1
-                                  ? "módulo"
-                                  : "módulos"}{" "}
-                                · {course.lessonCount}{" "}
-                                {course.lessonCount === 1 ? "aula" : "aulas"}
-                              </span>
-                            </span>
-                            <span className="hidden min-w-28 sm:block">
-                              <Progress
-                                aria-label={`${course.progress.percentage}% do curso concluído`}
-                                value={course.progress.percentage}
-                              />
-                            </span>
-                            {completed ? (
-                              <CheckCircle2Icon
-                                aria-label="Curso concluído"
-                                className="size-5 shrink-0 text-brand-action"
-                              />
-                            ) : (
-                              <ArrowRightIcon
-                                aria-hidden="true"
-                                className="size-5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-brand-action"
-                              />
-                            )}
-                          </Link>
-                        );
-                      })}
-                    </div>
-                  </section>
-                );
-              })}
-            </div>
-          </section>
-
-          <section className="grid gap-6 border-t pt-8 sm:grid-cols-3">
-            {[
-              [
-                "01",
-                "Perguntar",
-                "Comece delimitando o que precisa ser compreendido.",
-              ],
-              [
-                "02",
-                "Interpretar",
-                "Observe o que o estudo mede e o que ele não autoriza dizer.",
-              ],
-              [
-                "03",
-                "Aplicar",
-                "Leve o raciocínio para o contexto real, sem receita pronta.",
-              ],
-            ].map(([index, title, description]) => (
-              <div
-                className="border-brand-action/60 border-l-2 pl-4"
-                key={index}
-              >
-                <span className="font-data text-brand-action text-xs">
-                  {index}
-                </span>
-                <h3 className="mt-3 font-display text-2xl">{title}</h3>
-                <p className="mt-2 text-muted-foreground text-sm leading-6">
-                  {description}
-                </p>
-              </div>
-            ))}
-          </section>
-        </>
-      )}
+        )}
+      </div>
     </LearningPageFrame>
   );
 };

@@ -10,6 +10,7 @@ import {
 } from "@repo/database";
 import { getMemberRole } from "./authorization";
 import { getLearningAccessScope, hasLessonAccess } from "./content-access";
+import { getAccessibleRecordingIds } from "./recordings";
 
 const collectionItemSelect = {
   id: true,
@@ -33,6 +34,7 @@ const collectionItemSelect = {
               id: true,
               title: true,
               slug: true,
+              coverUrl: true,
               status: true,
               experience: true,
             },
@@ -46,6 +48,7 @@ const collectionItemSelect = {
       id: true,
       originalTitle: true,
       meetingDate: true,
+      thumbnailPath: true,
       group: {
         select: {
           id: true,
@@ -77,6 +80,7 @@ const collectionItemSelect = {
           id: true,
           originalTitle: true,
           meetingDate: true,
+          thumbnailPath: true,
           group: {
             select: {
               id: true,
@@ -106,6 +110,10 @@ const collectionSelect = {
   title: true,
   slug: true,
   description: true,
+  coverUrl: true,
+  audienceSpaceId: true,
+  availableAt: true,
+  expiresAt: true,
   status: true,
   position: true,
   items: {
@@ -122,6 +130,11 @@ export const getAdminCollections = async () =>
       title: true,
       slug: true,
       description: true,
+      coverUrl: true,
+      audienceSpaceId: true,
+      availableAt: true,
+      expiresAt: true,
+      audienceSpace: { select: { id: true, title: true, slug: true } },
       status: true,
       position: true,
       items: {
@@ -155,7 +168,7 @@ export const getAdminCollections = async () =>
   });
 
 export const getCollectionResources = async () => {
-  const [lessons, recordings, libraryItems] = await Promise.all([
+  const [lessons, recordings, libraryItems, studyGroups] = await Promise.all([
     database.lesson.findMany({
       where: {
         module: { course: { experience: CourseExperience.ASYNC } },
@@ -189,9 +202,15 @@ export const getCollectionResources = async () => {
       select: { id: true, title: true, kind: true },
       take: 500,
     }),
+    database.communitySpace.findMany({
+      where: { status: ContentStatus.PUBLISHED },
+      orderBy: [{ title: "asc" }],
+      select: { id: true, title: true, slug: true, visibility: true },
+      take: 500,
+    }),
   ]);
 
-  return { lessons, libraryItems, recordings };
+  return { lessons, libraryItems, recordings, studyGroups };
 };
 
 export const collectionItemLabel = (item: {
@@ -265,7 +284,8 @@ export const canReadCollectionItem = (
   item: CollectionWithItems["items"][number],
   memberId: string,
   fullAccess: boolean,
-  scope: Awaited<ReturnType<typeof getLearningAccessScope>>
+  scope: Awaited<ReturnType<typeof getLearningAccessScope>>,
+  accessibleRecordingIds?: ReadonlySet<string>
 ) => {
   if (item.itemType === "LESSON") {
     const lesson = item.lesson;
@@ -285,7 +305,10 @@ export const canReadCollectionItem = (
   if (item.itemType === "RECORDING") {
     const recording = resolveLegacyRecording(item);
     return Boolean(
-      recording && (fullAccess || recording.group.memberId === memberId)
+      recording &&
+        (accessibleRecordingIds
+          ? accessibleRecordingIds.has(recording.id)
+          : fullAccess || recording.group.memberId === memberId)
     );
   }
 
@@ -299,26 +322,70 @@ const filterCollectionForMember = (
   collection: CollectionWithItems,
   memberId: string,
   fullAccess: boolean,
-  scope: Awaited<ReturnType<typeof getLearningAccessScope>>
+  scope: Awaited<ReturnType<typeof getLearningAccessScope>>,
+  accessibleRecordingIds?: ReadonlySet<string>
 ) => ({
   ...collection,
   items: collection.items.filter((item) =>
-    canReadCollectionItem(item, memberId, fullAccess, scope)
+    canReadCollectionItem(
+      item,
+      memberId,
+      fullAccess,
+      scope,
+      accessibleRecordingIds
+    )
   ),
 });
 
+const getReadableCollectionAudienceIds = async (
+  memberId: string,
+  audienceSpaceIds: readonly string[]
+) => {
+  if (audienceSpaceIds.length === 0) {
+    return new Set<string>();
+  }
+  const spaces = await database.communitySpace.findMany({
+    where: {
+      id: { in: [...new Set(audienceSpaceIds)] },
+      status: ContentStatus.PUBLISHED,
+      OR: [{ ownerId: memberId }, { members: { some: { memberId } } }],
+    },
+    select: { id: true },
+  });
+  return new Set(spaces.map(({ id }) => id));
+};
+
+const getCollectionRecordingIds = async (
+  collection: CollectionWithItems,
+  memberId: string
+) =>
+  getAccessibleRecordingIds(
+    memberId,
+    collection.items.flatMap((item) => {
+      const recording = resolveLegacyRecording(item);
+      return recording ? [recording.id] : [];
+    })
+  );
+
 /**
- * Returns only published, authorized collection resources. Recording access
- * is resolved through ImportedRecordingGroup.memberId, never through the
- * legacy student label or the underlying LessonAsset alone.
+ * Returns only published, authorized collection resources. Both the group
+ * audience and each recording's current content grant are checked server-side.
  */
 export const getPublishedCollectionForMember = async (
   slug: string,
   memberId: string
 ) => {
+  const now = new Date();
   const [collection, role, scope] = await Promise.all([
-    database.contentCollection.findUnique({
-      where: { slug, status: ContentStatus.PUBLISHED },
+    database.contentCollection.findFirst({
+      where: {
+        slug,
+        status: ContentStatus.PUBLISHED,
+        AND: [
+          { OR: [{ availableAt: null }, { availableAt: { lte: now } }] },
+          { OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] },
+        ],
+      },
       select: collectionSelect,
     }),
     getMemberRole(memberId),
@@ -329,11 +396,27 @@ export const getPublishedCollectionForMember = async (
     return null;
   }
 
+  const fullAccess = role === MemberRole.ADMIN || role === MemberRole.TEACHER;
+  if (collection.audienceSpaceId && !fullAccess) {
+    const readableSpaceIds = await getReadableCollectionAudienceIds(memberId, [
+      collection.audienceSpaceId,
+    ]);
+    if (!readableSpaceIds.has(collection.audienceSpaceId)) {
+      return null;
+    }
+  }
+
+  const accessibleRecordingIds = await getCollectionRecordingIds(
+    collection,
+    memberId
+  );
+
   return filterCollectionForMember(
     collection,
     memberId,
     role === MemberRole.ADMIN || role === MemberRole.TEACHER,
-    scope
+    scope,
+    accessibleRecordingIds
   );
 };
 
@@ -341,9 +424,16 @@ export const getPublishedCollectionsForMember = async (
   memberId: string,
   take = 20
 ) => {
+  const now = new Date();
   const [collections, role, scope] = await Promise.all([
     database.contentCollection.findMany({
-      where: { status: ContentStatus.PUBLISHED },
+      where: {
+        status: ContentStatus.PUBLISHED,
+        AND: [
+          { OR: [{ availableAt: null }, { availableAt: { lte: now } }] },
+          { OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] },
+        ],
+      },
       orderBy: [{ position: "asc" }, { title: "asc" }],
       take: Math.min(Math.max(take, 1), 50),
       select: collectionSelect,
@@ -352,10 +442,37 @@ export const getPublishedCollectionsForMember = async (
     getLearningAccessScope(memberId),
   ]);
   const fullAccess = role === MemberRole.ADMIN || role === MemberRole.TEACHER;
+  const audienceSpaceIds = collections.flatMap((collection) =>
+    collection.audienceSpaceId ? [collection.audienceSpaceId] : []
+  );
+  const readableSpaceIds = fullAccess
+    ? new Set(audienceSpaceIds)
+    : await getReadableCollectionAudienceIds(memberId, audienceSpaceIds);
+  const visibleCollections = collections.filter(
+    (collection) =>
+      !collection.audienceSpaceId ||
+      readableSpaceIds.has(collection.audienceSpaceId)
+  );
+  const recordingCandidates = visibleCollections.flatMap((collection) =>
+    collection.items.flatMap((item) => {
+      const recording = resolveLegacyRecording(item);
+      return recording ? [recording.id] : [];
+    })
+  );
+  const accessibleRecordingIds = await getAccessibleRecordingIds(
+    memberId,
+    recordingCandidates
+  );
 
-  return collections
+  return visibleCollections
     .map((collection) =>
-      filterCollectionForMember(collection, memberId, fullAccess, scope)
+      filterCollectionForMember(
+        collection,
+        memberId,
+        fullAccess,
+        scope,
+        accessibleRecordingIds
+      )
     )
     .filter((collection) => collection.items.length > 0);
 };

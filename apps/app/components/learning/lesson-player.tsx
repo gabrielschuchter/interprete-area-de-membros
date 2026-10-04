@@ -1,21 +1,29 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { StudyHeartbeat } from "./study-heartbeat";
 
 interface LessonPlayerProperties {
   readonly assetId: string;
+  readonly mediaExternalId?: string | null;
+  readonly mediaProvider?: "STORAGE" | "YOUTUBE" | "EXTERNAL_URL";
   readonly mimeType?: string | null;
   readonly persistProgress?: boolean;
+  readonly studyActivityKind?: "LESSON" | "RECORDING";
+  readonly studyResourceId?: string;
   readonly title: string;
 }
 
 const playbackRates = [1, 1.25, 1.5, 2];
 
-export const LessonPlayer = ({
+const StoredLessonPlayer = ({
   assetId,
   title,
   mimeType,
   persistProgress = false,
+  studyActivityKind,
+  studyResourceId,
 }: LessonPlayerProperties) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const resumePositionRef = useRef<number | null>(null);
@@ -23,6 +31,7 @@ export const LessonPlayer = ({
   const lastSavedAtRef = useRef(0);
   const saveInFlightRef = useRef<Promise<void> | null>(null);
   const [rate, setRate] = useState(1);
+  const [isPlaying, setIsPlaying] = useState(false);
   const [saveState, setSaveState] = useState<
     "idle" | "saving" | "saved" | "error"
   >("idle");
@@ -44,6 +53,23 @@ export const LessonPlayer = ({
       video.currentTime = resumePosition;
       resumePositionRef.current = null;
     }
+  }, []);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) {
+      return;
+    }
+    const handlePlay = () => setIsPlaying(true);
+    const handleStop = () => setIsPlaying(false);
+    video.addEventListener("play", handlePlay);
+    video.addEventListener("pause", handleStop);
+    video.addEventListener("ended", handleStop);
+    return () => {
+      video.removeEventListener("play", handlePlay);
+      video.removeEventListener("pause", handleStop);
+      video.removeEventListener("ended", handleStop);
+    };
   }, []);
 
   useEffect(() => {
@@ -217,6 +243,13 @@ export const LessonPlayer = ({
 
   return (
     <div className="space-y-3">
+      {studyActivityKind && studyResourceId && (
+        <StudyHeartbeat
+          activityKind={studyActivityKind}
+          playbackActive={isPlaying}
+          resourceId={studyResourceId}
+        />
+      )}
       <div className="overflow-hidden border bg-brand-depth">
         <video
           className="aspect-video w-full bg-black object-contain"
@@ -262,4 +295,37 @@ export const LessonPlayer = ({
       </div>
     </div>
   );
+};
+
+const YouTubeLessonPlayer = dynamic(
+  () =>
+    import("./youtube-lesson-player").then(
+      (module) => module.YouTubeLessonPlayer
+    ),
+  {
+    loading: () => (
+      <output
+        aria-label="Preparando o player de vídeo"
+        className="aspect-video animate-pulse border bg-brand-depth"
+      />
+    ),
+    ssr: false,
+  }
+);
+
+export const LessonPlayer = (properties: LessonPlayerProperties) => {
+  if (properties.mediaProvider === "YOUTUBE" && properties.mediaExternalId) {
+    return (
+      <YouTubeLessonPlayer
+        assetId={properties.assetId}
+        persistProgress={properties.persistProgress}
+        studyActivityKind={properties.studyActivityKind}
+        studyResourceId={properties.studyResourceId}
+        title={properties.title}
+        videoId={properties.mediaExternalId}
+      />
+    );
+  }
+
+  return <StoredLessonPlayer {...properties} />;
 };

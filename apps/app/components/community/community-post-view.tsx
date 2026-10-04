@@ -22,7 +22,6 @@ import {
   communityPostHref,
   type getCommunityPostBySlug,
 } from "@/lib/community";
-import { communityPostKindLabel } from "@/lib/community-post-types";
 import { RichDocument } from "../learning/rich-document";
 import {
   SingleFlightForm,
@@ -38,6 +37,28 @@ type CommunityPost = NonNullable<
 >;
 type CommunityComment = CommunityPost["comments"][number];
 
+const CommentContent = ({
+  comment,
+  memberId,
+}: {
+  readonly comment: CommunityComment;
+  readonly memberId: string;
+}) => {
+  if (comment.deletedAt) {
+    return null;
+  }
+  if (comment.contentJson) {
+    return (
+      <div className="mt-2">
+        <RichDocument currentMemberId={memberId} value={comment.contentJson} />
+      </div>
+    );
+  }
+  return (
+    <p className="mt-2 whitespace-pre-wrap leading-7">{comment.content}</p>
+  );
+};
+
 interface CommentThreadProperties {
   readonly comment: CommunityComment;
   readonly depth: number;
@@ -46,6 +67,109 @@ interface CommentThreadProperties {
   readonly repliesByParent: ReadonlyMap<string, readonly CommunityComment[]>;
   readonly role: string;
 }
+
+const CommentControls = ({
+  comment,
+  memberId,
+  post,
+  replies,
+  role,
+}: Omit<CommentThreadProperties, "depth" | "repliesByParent"> & {
+  readonly replies: readonly CommunityComment[];
+}) => {
+  const canDelete =
+    !comment.deletedAt &&
+    (comment.authorId === memberId || role === "TEACHER" || role === "ADMIN");
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-3">
+      <SingleFlightForm action={toggleCommentVote}>
+        <input name="commentId" type="hidden" value={comment.id} />
+        <input name="postId" type="hidden" value={post.id} />
+        <input name="spaceSlug" type="hidden" value={post.space?.slug ?? ""} />
+        <input
+          name="desired"
+          type="hidden"
+          value={comment.votes.length > 0 ? "off" : "on"}
+        />
+        <SingleFlightSubmit
+          pendingLabel="Salvando…"
+          size="sm"
+          variant={comment.votes.length > 0 ? "default" : "ghost"}
+        >
+          <ThumbsUpIcon aria-hidden="true" />{" "}
+          {comment.votes.length > 0 ? "Apoiado" : "Apoiar"}
+        </SingleFlightSubmit>
+      </SingleFlightForm>
+      <span className="text-muted-foreground text-xs">
+        {replies.length} respostas
+      </span>
+      {!(comment.deletedAt || post.space?.commentsClosed) && (
+        <details>
+          <summary className="cursor-pointer text-muted-foreground text-xs underline underline-offset-4">
+            Responder
+          </summary>
+          <CommentComposer
+            ariaLabel={`Responder a ${(comment.content || "comentário removido").slice(0, 40)}`}
+            className="mt-3 grid gap-3"
+            parentId={comment.id}
+            placeholder="Escreva uma resposta... Use @nome para mencionar alguém."
+            postId={post.id}
+            spaceSlug={post.space?.slug ?? ""}
+          />
+        </details>
+      )}
+      {!comment.deletedAt && comment.authorId === memberId && (
+        <details>
+          <summary className="cursor-pointer text-muted-foreground text-xs underline underline-offset-4">
+            Editar
+          </summary>
+          <SingleFlightForm action={updateComment} className="mt-3 grid gap-3">
+            <input name="commentId" type="hidden" value={comment.id} />
+            <input name="postId" type="hidden" value={post.id} />
+            <input
+              name="spaceSlug"
+              type="hidden"
+              value={post.space?.slug ?? ""}
+            />
+            <MentionTextarea
+              className="min-h-24 w-full rounded-sm border bg-background px-3 py-2 text-sm leading-6 outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/35"
+              defaultDocument={comment.contentJson}
+              defaultValue={comment.content}
+              name="content"
+              required
+            />
+            <SingleFlightSubmit
+              className="w-fit"
+              pendingLabel="Salvando…"
+              size="sm"
+            >
+              Salvar resposta
+            </SingleFlightSubmit>
+          </SingleFlightForm>
+        </details>
+      )}
+      {canDelete && (
+        <SingleFlightForm action={softDeleteComment}>
+          <input name="commentId" type="hidden" value={comment.id} />
+          <input name="postId" type="hidden" value={post.id} />
+          <input
+            name="spaceSlug"
+            type="hidden"
+            value={post.space?.slug ?? ""}
+          />
+          <SingleFlightSubmit
+            className="text-muted-foreground"
+            pendingLabel="Apagando…"
+            size="sm"
+            variant="ghost"
+          >
+            Apagar
+          </SingleFlightSubmit>
+        </SingleFlightForm>
+      )}
+    </div>
+  );
+};
 
 const CommentThread = ({
   comment,
@@ -56,130 +180,46 @@ const CommentThread = ({
   role,
 }: CommentThreadProperties) => {
   const replies = repliesByParent.get(comment.id) ?? [];
-  const canDelete =
-    comment.authorId === memberId || role === "TEACHER" || role === "ADMIN";
-
   return (
     <div
       className={`${depth === 0 ? "border-border border-l-2 pl-4 sm:pl-6" : "border-border border-t pt-5 pl-4 sm:pl-6"} community-comment scroll-mt-24`}
       id={`comment-${comment.id}`}
     >
       <div className="flex flex-wrap items-center gap-2">
-        <MemberIdentity
-          authorId={comment.authorId}
-          compact
-          profile={comment.profile ?? undefined}
-          showHeadline={false}
-        />
+        {comment.deletedAt ? (
+          <span className="text-muted-foreground text-sm italic">
+            Comentário removido
+          </span>
+        ) : (
+          <MemberIdentity
+            authorId={comment.authorId}
+            compact
+            profile={comment.profile ?? undefined}
+            showHeadline={false}
+          />
+        )}
         {depth > 0 && <span className="brand-eyebrow">Resposta</span>}
-        <span className="text-muted-foreground text-xs">
-          · {comment._count.votes} apoios
-        </span>
+        {!comment.deletedAt && (
+          <>
+            {comment.editedAt && (
+              <span className="text-muted-foreground text-xs">· Editado</span>
+            )}
+            <span className="text-muted-foreground text-xs">
+              · {comment._count.votes} apoios
+            </span>
+          </>
+        )}
       </div>
-      {comment.contentJson ? (
-        <div className="mt-2">
-          <RichDocument
-            currentMemberId={memberId}
-            value={comment.contentJson}
-          />
-        </div>
-      ) : (
-        <p className="mt-2 whitespace-pre-wrap leading-7">{comment.content}</p>
+      <CommentContent comment={comment} memberId={memberId} />
+      {!comment.deletedAt && (
+        <CommentControls
+          comment={comment}
+          memberId={memberId}
+          post={post}
+          replies={replies}
+          role={role}
+        />
       )}
-      <div className="mt-3 flex flex-wrap items-center gap-3">
-        <SingleFlightForm action={toggleCommentVote}>
-          <input name="commentId" type="hidden" value={comment.id} />
-          <input name="postId" type="hidden" value={post.id} />
-          <input
-            name="spaceSlug"
-            type="hidden"
-            value={post.space?.slug ?? ""}
-          />
-          <input
-            name="desired"
-            type="hidden"
-            value={comment.votes.length > 0 ? "off" : "on"}
-          />
-          <SingleFlightSubmit
-            pendingLabel="Salvando…"
-            size="sm"
-            variant={comment.votes.length > 0 ? "default" : "ghost"}
-          >
-            <ThumbsUpIcon aria-hidden="true" />{" "}
-            {comment.votes.length > 0 ? "Apoiado" : "Apoiar"}
-          </SingleFlightSubmit>
-        </SingleFlightForm>
-        <span className="text-muted-foreground text-xs">
-          {replies.length} respostas
-        </span>
-        {!post.space?.commentsClosed && (
-          <details>
-            <summary className="cursor-pointer text-muted-foreground text-xs underline underline-offset-4">
-              Responder
-            </summary>
-            <CommentComposer
-              ariaLabel={`Responder a ${comment.content.slice(0, 40)}`}
-              className="mt-3 grid gap-3"
-              parentId={comment.id}
-              placeholder="Escreva uma resposta... Use @nome para mencionar alguém."
-              postId={post.id}
-              spaceSlug={post.space?.slug ?? ""}
-            />
-          </details>
-        )}
-        {comment.authorId === memberId && (
-          <details>
-            <summary className="cursor-pointer text-muted-foreground text-xs underline underline-offset-4">
-              Editar
-            </summary>
-            <SingleFlightForm
-              action={updateComment}
-              className="mt-3 grid gap-3"
-            >
-              <input name="commentId" type="hidden" value={comment.id} />
-              <input name="postId" type="hidden" value={post.id} />
-              <input
-                name="spaceSlug"
-                type="hidden"
-                value={post.space?.slug ?? ""}
-              />
-              <MentionTextarea
-                className="min-h-24 w-full rounded-sm border bg-background px-3 py-2 text-sm leading-6 outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/35"
-                defaultDocument={comment.contentJson}
-                defaultValue={comment.content}
-                name="content"
-                required
-              />
-              <SingleFlightSubmit
-                className="w-fit"
-                pendingLabel="Salvando…"
-                size="sm"
-              >
-                Salvar resposta
-              </SingleFlightSubmit>
-            </SingleFlightForm>
-          </details>
-        )}
-        {canDelete && (
-          <SingleFlightForm action={softDeleteComment}>
-            <input name="commentId" type="hidden" value={comment.id} />
-            <input name="postId" type="hidden" value={post.id} />
-            <input
-              name="spaceSlug"
-              type="hidden"
-              value={post.space?.slug ?? ""}
-            />
-            <SingleFlightSubmit
-              className="text-muted-foreground"
-              pendingLabel="Apagando…"
-              size="sm"
-              variant="ghost"
-            >
-              Apagar
-            </SingleFlightSubmit>
-          </SingleFlightForm>
-        )}
-      </div>
       {replies.length > 0 && (
         <div className="mt-5 space-y-5">
           {replies.map((reply) => (
@@ -227,7 +267,7 @@ export function CommunityPostView({
     repliesByParent.set(comment.parentId, replies);
   }
   const canStaffManage = role === "TEACHER" || role === "ADMIN";
-  const edited = post.updatedAt.valueOf() > post.createdAt.valueOf() + 60_000;
+  const edited = Boolean(post.editedAt);
 
   return (
     <div className="min-h-svh bg-background">
@@ -247,9 +287,6 @@ export function CommunityPostView({
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant={post.votes.length > 0 ? "default" : "outline"}>
               <ThumbsUpIcon aria-hidden="true" /> {post._count.votes} apoios
-            </Badge>
-            <Badge variant="secondary">
-              {communityPostKindLabel(post.kind)}
             </Badge>
             <span className="text-muted-foreground text-xs">
               {post._count.comments} respostas
@@ -468,7 +505,7 @@ export function CommunityPostView({
           </div>
           {post.space?.commentsClosed ? (
             <p className="paper-surface mt-5 border p-5 text-muted-foreground sm:p-6">
-              Os comentários deste espaço estão fechados pela equipe.
+              Os comentários deste grupo estão fechados pela equipe.
             </p>
           ) : (
             <div className="paper-surface mt-5 border p-5 sm:p-6">

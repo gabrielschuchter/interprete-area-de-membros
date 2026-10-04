@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import {
   ActivityDeliveryKind,
@@ -10,6 +11,7 @@ import {
   PrismaClient,
   ResourceKind,
 } from "../generated/client";
+import { libraryCatalog } from "../library-catalog";
 import { databaseSsl, normalizeRuntimeDatabaseUrl } from "../ssl";
 
 const connectionString = process.env.DIRECT_URL ?? process.env.DATABASE_URL;
@@ -389,10 +391,50 @@ const seed = async () => {
       },
     ];
 
+    const matchedCatalogUrls = new Set<string>();
+    const findCatalogReference = (reference: {
+      doi?: string;
+      pmid?: string;
+      title: string;
+      url: string;
+    }) =>
+      libraryCatalog.find(
+        (item) =>
+          item.url === reference.url ||
+          (item.doi && item.doi === reference.doi) ||
+          (item.pmid && item.pmid === reference.pmid) ||
+          item.title.trim().toLocaleLowerCase("en") ===
+            reference.title.trim().toLocaleLowerCase("en")
+      );
+    const seededLibraryReferences = [
+      ...libraryReferences.map((reference) => {
+        const curated = findCatalogReference(reference);
+        if (curated) {
+          matchedCatalogUrls.add(curated.url);
+          return { ...reference, ...curated };
+        }
+        return reference;
+      }),
+      ...libraryCatalog.filter((item) => !matchedCatalogUrls.has(item.url)),
+    ];
     const libraryItems = new Map<string, { id: string }>();
-    for (const reference of libraryReferences) {
+    for (const reference of seededLibraryReferences) {
+      const catalogKey = `curated:v1:${createHash("sha256")
+        .update(reference.url)
+        .digest("hex")}`;
       const current = await database.libraryItem.findFirst({
-        where: { url: reference.url },
+        where: {
+          OR: [
+            { url: reference.url },
+            ...("doi" in reference && reference.doi
+              ? [{ doi: reference.doi }]
+              : []),
+            ...("pmid" in reference && reference.pmid
+              ? [{ pmid: reference.pmid }]
+              : []),
+            { title: { equals: reference.title, mode: "insensitive" } },
+          ],
+        },
         select: { id: true },
       });
       const item = current
@@ -400,6 +442,7 @@ const seed = async () => {
             where: { id: current.id },
             data: {
               ...reference,
+              catalogKey,
               status: ContentStatus.PUBLISHED,
               updatedBy: actorId,
             },
@@ -408,6 +451,7 @@ const seed = async () => {
         : await database.libraryItem.create({
             data: {
               ...reference,
+              catalogKey,
               status: ContentStatus.PUBLISHED,
               createdBy: actorId,
               updatedBy: actorId,
@@ -519,16 +563,33 @@ const seed = async () => {
       });
       demoActivities.push(activity);
       if (demoMember) {
-        await database.activityAssignment.upsert({
+        const existingAssignment = await database.activityAssignment.findFirst({
           where: {
-            activityId_memberId: {
+            activityId: activity.id,
+            memberId: demoMember.id,
+            status: { not: "REVOKED" },
+          },
+          select: { id: true },
+        });
+        const assignmentData = {
+          targetType: "ACTIVITY" as const,
+          targetId: activity.id,
+          dueAt,
+        };
+        if (existingAssignment) {
+          await database.activityAssignment.update({
+            where: { id: existingAssignment.id },
+            data: assignmentData,
+          });
+        } else {
+          await database.activityAssignment.create({
+            data: {
+              ...assignmentData,
               activityId: activity.id,
               memberId: demoMember.id,
             },
-          },
-          update: { dueAt },
-          create: { activityId: activity.id, memberId: demoMember.id, dueAt },
-        });
+          });
+        }
       }
     }
 
@@ -759,7 +820,7 @@ const seed = async () => {
     }
 
     console.log(
-      `Development product fixtures ready: ${demoActivities.length} activities / ${meetingDefinitions.length} meetings / ${libraryReferences.length} references`
+      `Development product fixtures ready: ${demoActivities.length} activities / ${meetingDefinitions.length} meetings / ${seededLibraryReferences.length} references`
     );
   }
 

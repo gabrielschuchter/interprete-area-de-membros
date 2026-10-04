@@ -68,7 +68,7 @@ const CollectionPage = async ({ params }: CollectionPageProperties) => {
                     className="group flex items-start gap-5 px-1 py-6 transition-colors hover:bg-muted/30 sm:px-4"
                     href={href}
                   >
-                    <span className="font-data text-brand-action text-sm">
+                    <span className="font-data text-brand-action-text text-sm">
                       {String(index + 1).padStart(2, "0")}
                     </span>
                     <span className="min-w-0 flex-1">
@@ -81,7 +81,7 @@ const CollectionPage = async ({ params }: CollectionPageProperties) => {
                     </span>
                     <ArrowRightIcon
                       aria-hidden="true"
-                      className="mt-1 size-5 shrink-0 text-brand-action transition-transform group-hover:translate-x-1"
+                      className="mt-1 size-5 shrink-0 text-brand-action-text transition-transform group-hover:translate-x-1"
                     />
                   </Link>
                 ) : (

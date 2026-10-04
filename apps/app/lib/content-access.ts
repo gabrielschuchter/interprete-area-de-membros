@@ -1,8 +1,14 @@
 import "server-only";
 
-import { AccessResourceType, database, MemberRole } from "@repo/database";
+import {
+  AccessResourceType,
+  database,
+  LearningAssignmentTargetType,
+  MemberRole,
+} from "@repo/database";
 import { cache } from "react";
 import { getMemberRole } from "./authorization";
+import { activeAssignmentStatuses } from "./learning-assignments";
 
 const activeGrant = {
   OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
@@ -26,64 +32,81 @@ const emptyScope = (): LearningAccessScope => ({
   assetIds: new Set(),
 });
 
-const getLearningAccessScopeUncached = async (
-  memberId: string
-): Promise<LearningAccessScope> => {
-  const role = await getMemberRole(memberId);
+interface MutableAccessScope {
+  assetIds: Set<string>;
+  courseIds: Set<string>;
+  fullAccess: false;
+  fullCourseIds: Set<string>;
+  lessonIds: Set<string>;
+  moduleIds: Set<string>;
+}
 
-  if (role === MemberRole.TEACHER || role === MemberRole.ADMIN) {
-    return {
-      ...emptyScope(),
-      fullAccess: true,
-    };
+const addResourceAccess = (
+  scope: MutableAccessScope,
+  resourceType: AccessResourceType | LearningAssignmentTargetType,
+  resourceId: string
+) => {
+  switch (resourceType) {
+    case AccessResourceType.COURSE:
+    case LearningAssignmentTargetType.COURSE:
+      scope.fullCourseIds.add(resourceId);
+      scope.courseIds.add(resourceId);
+      break;
+    case AccessResourceType.MODULE:
+    case LearningAssignmentTargetType.MODULE:
+      scope.moduleIds.add(resourceId);
+      break;
+    case AccessResourceType.LESSON:
+    case LearningAssignmentTargetType.LESSON:
+      scope.lessonIds.add(resourceId);
+      break;
+    case AccessResourceType.ASSET:
+    case LearningAssignmentTargetType.ASSET:
+      scope.assetIds.add(resourceId);
+      break;
+    default:
+      return;
   }
+};
 
-  const [enrollments, grants] = await Promise.all([
-    database.enrollment.findMany({
-      where: {
-        memberId,
-        status: { in: ["ACTIVE", "COMPLETED"] },
-      },
-      select: { courseId: true },
-    }),
-    database.accessGrant.findMany({
-      where: { memberId, ...activeGrant },
-      select: { resourceType: true, resourceId: true },
-    }),
-  ]);
-
+const buildScopedResources = (
+  enrollments: readonly { courseId: string }[],
+  grants: readonly { resourceType: AccessResourceType; resourceId: string }[],
+  assignments: readonly {
+    targetType: LearningAssignmentTargetType;
+    targetId: string;
+  }[]
+): MutableAccessScope => {
   const fullCourseIds = new Set(enrollments.map(({ courseId }) => courseId));
-  const courseIds = new Set(fullCourseIds);
-  const moduleIds = new Set<string>();
-  const lessonIds = new Set<string>();
-  const assetIds = new Set<string>();
-
+  const scope: MutableAccessScope = {
+    ...emptyScope(),
+    fullAccess: false,
+    fullCourseIds,
+    courseIds: new Set(fullCourseIds),
+    moduleIds: new Set(),
+    lessonIds: new Set(),
+    assetIds: new Set(),
+  };
   for (const grant of grants) {
-    if (grant.resourceType === AccessResourceType.COURSE) {
-      fullCourseIds.add(grant.resourceId);
-      courseIds.add(grant.resourceId);
-    }
-    if (grant.resourceType === AccessResourceType.MODULE) {
-      moduleIds.add(grant.resourceId);
-    }
-    if (grant.resourceType === AccessResourceType.LESSON) {
-      lessonIds.add(grant.resourceId);
-    }
-    if (grant.resourceType === AccessResourceType.ASSET) {
-      assetIds.add(grant.resourceId);
-    }
+    addResourceAccess(scope, grant.resourceType, grant.resourceId);
   }
+  for (const assignment of assignments) {
+    addResourceAccess(scope, assignment.targetType, assignment.targetId);
+  }
+  return scope;
+};
 
-  const [grantedModules, grantedLessons, grantedAssets] = await Promise.all([
-    moduleIds.size
+const expandParentResources = async (scope: MutableAccessScope) => {
+  const [modules, lessons, assets] = await Promise.all([
+    scope.moduleIds.size
       ? database.module.findMany({
-          where: { id: { in: [...moduleIds] } },
+          where: { id: { in: [...scope.moduleIds] } },
           select: { id: true, courseId: true },
         })
       : [],
-    lessonIds.size
+    scope.lessonIds.size
       ? database.lesson.findMany({
-          where: { id: { in: [...lessonIds] } },
+          where: { id: { in: [...scope.lessonIds] } },
           select: {
             id: true,
             moduleId: true,
@@ -91,9 +114,9 @@ const getLearningAccessScopeUncached = async (
           },
         })
       : [],
-    assetIds.size
+    scope.assetIds.size
       ? database.lessonAsset.findMany({
-          where: { id: { in: [...assetIds] } },
+          where: { id: { in: [...scope.assetIds] } },
           select: {
             id: true,
             lessonId: true,
@@ -108,26 +131,69 @@ const getLearningAccessScopeUncached = async (
       : [],
   ]);
 
-  for (const module of grantedModules) {
-    courseIds.add(module.courseId);
+  for (const module of modules) {
+    scope.courseIds.add(module.courseId);
   }
-  for (const lesson of grantedLessons) {
-    moduleIds.add(lesson.moduleId);
-    courseIds.add(lesson.module.courseId);
+  for (const lesson of lessons) {
+    scope.moduleIds.add(lesson.moduleId);
+    scope.courseIds.add(lesson.module.courseId);
   }
-  for (const asset of grantedAssets) {
-    lessonIds.add(asset.lessonId);
-    moduleIds.add(asset.lesson.moduleId);
-    courseIds.add(asset.lesson.module.courseId);
+  for (const asset of assets) {
+    scope.lessonIds.add(asset.lessonId);
+    scope.moduleIds.add(asset.lesson.moduleId);
+    scope.courseIds.add(asset.lesson.module.courseId);
   }
+};
+
+const getLearningAccessScopeUncached = async (
+  memberId: string
+): Promise<LearningAccessScope> => {
+  const role = await getMemberRole(memberId);
+
+  if (role === MemberRole.TEACHER || role === MemberRole.ADMIN) {
+    return {
+      ...emptyScope(),
+      fullAccess: true,
+    };
+  }
+
+  const now = new Date();
+  const [enrollments, grants, assignments] = await Promise.all([
+    database.enrollment.findMany({
+      where: {
+        memberId,
+        status: { in: ["ACTIVE", "COMPLETED"] },
+      },
+      select: { courseId: true },
+    }),
+    database.accessGrant.findMany({
+      where: { memberId, ...activeGrant },
+      select: { resourceType: true, resourceId: true },
+    }),
+    database.activityAssignment.findMany({
+      where: {
+        memberId,
+        status: { in: [...activeAssignmentStatuses] },
+        revokedAt: null,
+        AND: [
+          { OR: [{ availableAt: null }, { availableAt: { lte: now } }] },
+          { OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] },
+        ],
+      },
+      select: { targetType: true, targetId: true },
+    }),
+  ]);
+
+  const scope = buildScopedResources(enrollments, grants, assignments);
+  await expandParentResources(scope);
 
   return {
     fullAccess: false,
-    fullCourseIds,
-    courseIds,
-    moduleIds,
-    lessonIds,
-    assetIds,
+    fullCourseIds: scope.fullCourseIds,
+    courseIds: scope.courseIds,
+    moduleIds: scope.moduleIds,
+    lessonIds: scope.lessonIds,
+    assetIds: scope.assetIds,
   };
 };
 
@@ -190,6 +256,8 @@ export const getAccessibleAsset = async (assetId: string, memberId: string) => {
       scope: true,
       storagePath: true,
       externalUrl: true,
+      mediaProvider: true,
+      mediaExternalId: true,
       mimeType: true,
       durationSeconds: true,
       ownerMemberId: true,
@@ -221,7 +289,9 @@ export const getAccessibleAsset = async (assetId: string, memberId: string) => {
     asset.lesson.id
   );
   const canReadAsset = asset.importedRecording
-    ? scope.fullAccess || asset.importedRecording.group.memberId === memberId
+    ? scope.fullAccess ||
+      asset.importedRecording.group.memberId === memberId ||
+      scope.assetIds.has(asset.id)
     : scope.fullAccess ||
       (asset.scope === "GENERAL" && canReadLesson) ||
       asset.ownerMemberId === memberId ||
@@ -255,21 +325,26 @@ export const canReadRecordingAsset = async (
   assetId: string,
   memberId: string
 ) => {
-  const [role, asset] = await Promise.all([
+  const [role, asset, scope] = await Promise.all([
     getMemberRole(memberId),
     database.lessonAsset.findUnique({
       where: { id: assetId },
       select: {
+        id: true,
         importedRecording: {
           select: { group: { select: { memberId: true } } },
         },
       },
     }),
+    getLearningAccessScope(memberId),
   ]);
 
   if (role === MemberRole.ADMIN || role === MemberRole.TEACHER) {
     return Boolean(asset?.importedRecording);
   }
 
-  return asset?.importedRecording?.group.memberId === memberId;
+  return (
+    asset?.importedRecording?.group.memberId === memberId ||
+    Boolean(asset?.importedRecording && scope.assetIds.has(asset.id))
+  );
 };

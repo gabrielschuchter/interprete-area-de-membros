@@ -1,8 +1,9 @@
 import { Button } from "@repo/design-system/components/ui/button";
 import { ArrowLeftIcon } from "lucide-react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { CommunityStartPanel } from "@/components/community/community-start-panel";
+import { getMemberRole } from "@/lib/authorization";
 import { getCommunitySpaces } from "@/lib/community";
 import { requireMemberId } from "@/lib/learning";
 
@@ -14,11 +15,15 @@ const NewCommunitySpacePage = async ({
   params,
 }: NewCommunitySpacePageProperties) => {
   const { spaceSlug } = await params;
-  await requireMemberId();
-  const spaces = await getCommunitySpaces();
+  const memberId = await requireMemberId();
+  const spaces = await getCommunitySpaces(memberId);
   const space = spaces.find(({ slug }) => slug === spaceSlug);
   if (!space) {
     notFound();
+  }
+  const role = await getMemberRole(memberId);
+  if (space.members.length === 0 && role !== "TEACHER" && role !== "ADMIN") {
+    redirect(`/comunidade/${space.slug}`);
   }
 
   return (

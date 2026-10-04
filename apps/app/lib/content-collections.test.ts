@@ -9,6 +9,11 @@ vi.mock("@repo/database", () => ({
   },
   ContentStatus: { PUBLISHED: "PUBLISHED" },
   CourseExperience: { ASYNC: "ASYNC" },
+  LearningAssignmentStatus: {
+    NEW: "NEW",
+    VIEWED: "VIEWED",
+    STARTED: "STARTED",
+  },
   MemberRole: { ADMIN: "ADMIN", TEACHER: "TEACHER" },
   database: {},
 }));

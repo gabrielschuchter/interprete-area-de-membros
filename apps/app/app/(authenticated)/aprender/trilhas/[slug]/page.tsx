@@ -56,7 +56,7 @@ const LearningPathPage = async ({ params }: LearningPathPageProperties) => {
           <div className="flex items-center gap-3 font-data text-muted-foreground text-xs uppercase tracking-[0.14em]">
             <BookOpenIcon
               aria-hidden="true"
-              className="size-4 text-brand-action"
+              className="size-4 text-brand-action-text"
             />
             <span>
               {path.courses.length}{" "}
@@ -88,7 +88,7 @@ const LearningPathPage = async ({ params }: LearningPathPageProperties) => {
                 {progress}%
               </p>
             </div>
-            <span className="font-data text-brand-action text-xs">
+            <span className="font-data text-brand-action-text text-xs">
               {completedLessons}/{totalLessons}
             </span>
           </div>
@@ -123,7 +123,7 @@ const LearningPathPage = async ({ params }: LearningPathPageProperties) => {
                 className="relative pb-8 pl-7 last:pb-0 sm:pl-10"
                 key={course.id}
               >
-                <span className="absolute top-0 -left-[0.55rem] flex size-4 items-center justify-center bg-background text-brand-action">
+                <span className="absolute top-0 -left-[0.55rem] flex size-4 items-center justify-center bg-background text-brand-action-text">
                   {isComplete ? (
                     <CheckCircle2Icon
                       aria-label="Curso concluído"
@@ -138,7 +138,7 @@ const LearningPathPage = async ({ params }: LearningPathPageProperties) => {
                 </span>
                 <div className="flex flex-col gap-5 border-b pb-8 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0">
-                    <span className="font-data text-brand-action text-xs">
+                    <span className="font-data text-brand-action-text text-xs">
                       Curso {String(index + 1).padStart(2, "0")}
                     </span>
                     <h3 className="mt-2 font-display text-2xl leading-tight sm:text-3xl">
@@ -171,7 +171,7 @@ const LearningPathPage = async ({ params }: LearningPathPageProperties) => {
                       value={course.progress.percentage}
                     />
                     <Link
-                      className="inline-flex min-h-11 items-center gap-2 text-brand-structural text-sm underline decoration-brand-action/40 underline-offset-4 hover:text-brand-action"
+                      className="inline-flex min-h-11 items-center gap-2 text-brand-structural text-sm underline decoration-brand-action/40 underline-offset-4 hover:text-brand-action-text"
                       href={`/aprender/cursos/${course.slug}`}
                     >
                       Ver curso

@@ -76,6 +76,18 @@ export const getAdminCourse = async (id: string) =>
               kind: true,
               position: true,
               status: true,
+              assets: {
+                where: { kind: "VIDEO" },
+                orderBy: { position: "asc" },
+                select: {
+                  id: true,
+                  title: true,
+                  mediaProvider: true,
+                  mediaExternalId: true,
+                  externalUrl: true,
+                  storagePath: true,
+                },
+              },
               resources: {
                 orderBy: { position: "asc" },
                 select: { id: true, title: true, kind: true, url: true },

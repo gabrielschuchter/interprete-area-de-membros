@@ -28,6 +28,7 @@ import {
   setContentStatus,
   updateCourse,
   updateLesson,
+  updateLessonAssetMedia,
   updateLessonResource,
   updateModule,
 } from "../../../actions";
@@ -601,6 +602,75 @@ const AdminCoursePage = async ({ params }: AdminCoursePageProperties) => {
                           </Button>
                         </form>
                       </div>
+                      {lesson.assets.length > 0 && (
+                        <div className="mt-4 border-border border-t pt-4">
+                          <p className="brand-eyebrow">Vídeo e gravação</p>
+                          <div className="mt-3 grid gap-3">
+                            {lesson.assets.map((asset) => (
+                              <form
+                                action={updateLessonAssetMedia}
+                                className="grid gap-3 rounded-sm border p-3 sm:grid-cols-[minmax(0,1fr)_minmax(12rem,1fr)_auto] sm:items-end"
+                                key={asset.id}
+                              >
+                                <input
+                                  name="assetId"
+                                  type="hidden"
+                                  value={asset.id}
+                                />
+                                <div className="min-w-0">
+                                  <p className="truncate font-medium text-sm">
+                                    {asset.title}
+                                  </p>
+                                  <p className="mt-1 text-muted-foreground text-xs">
+                                    {asset.storagePath
+                                      ? "Arquivo de origem preservado"
+                                      : "Sem arquivo de origem disponível"}
+                                  </p>
+                                </div>
+                                <div className="grid gap-2">
+                                  <label className="grid gap-1 text-xs">
+                                    <span>Fonte</span>
+                                    <select
+                                      className="h-10 rounded-sm border bg-background px-3 text-sm"
+                                      defaultValue={asset.mediaProvider}
+                                      name="mediaProvider"
+                                    >
+                                      <option value="STORAGE">
+                                        Arquivo protegido
+                                      </option>
+                                      <option value="YOUTUBE">
+                                        YouTube não listado
+                                      </option>
+                                      <option value="EXTERNAL_URL">
+                                        URL externa
+                                      </option>
+                                    </select>
+                                  </label>
+                                  <Input
+                                    defaultValue={
+                                      asset.mediaExternalId
+                                        ? `https://youtu.be/${asset.mediaExternalId}`
+                                        : ""
+                                    }
+                                    name="youtubeUrl"
+                                    placeholder="Link ou ID do YouTube"
+                                    type="url"
+                                  />
+                                  <Input
+                                    defaultValue={asset.externalUrl ?? ""}
+                                    name="externalUrl"
+                                    placeholder="URL externa (quando selecionada)"
+                                    type="url"
+                                  />
+                                </div>
+                                <Button size="sm" type="submit">
+                                  Salvar mídia
+                                </Button>
+                              </form>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

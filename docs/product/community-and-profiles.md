@@ -24,6 +24,11 @@ Todas as mutations derivam o autor da sessão Clerk. O formulário fornece apena
 
 As tabelas continuam com RLS habilitado e sem policies públicas porque o caminho oficial da aplicação é Prisma server-side. A evolução de schema está em `packages/database/prisma/migrations/20260924234500_profiles_and_rich_topics/migration.sql`; as migrations seguintes restringem o helper interno de RLS (`20260925010000_restrict_rls_helper` e `20260925011000_revoke_public_rls_helper`) e adicionam drafts/metadados/bookmarks (`20260925020000_community_drafts_bookmarks`). Todas foram aplicadas ao projeto Supabase oficial.
 
-O teste local de Prisma ainda depende de preencher a senha real do pooler nos arquivos ignorados `.env`/`.env.local`. A aplicação das DDLs via integração de gerenciamento do Supabase não substitui a verificação do histórico local do Prisma: o próximo passo, com a credencial disponível, é executar `prisma migrate status` e concluir o baseline/registro da história Prisma se necessário, antes de declarar a estratégia de migrations totalmente validada.
+O Prisma CLI local alcançou o PostgreSQL oficial por `DIRECT_URL` e `prisma
+migrate status` confirmou 30 migrations aplicadas, 15 pendentes e nenhuma falha
+ou migration não resolvida. As 15 novas migrations da reestruturação não foram
+aplicadas: o Supabase está temporariamente restrito por quota/Fair Use (HTTP
+402). Repetir o status é seguro; aplicar DDL ou fazer backfill não é, até a
+restrição ser removida. O baseline histórico não deve ser refeito.
 
 As migrations `profile_member_identity` e `meeting_course_relation` foram aplicadas ao projeto oficial e validam, respectivamente, o vínculo obrigatório `Profile.clerkUserId -> Member.id` e o vínculo opcional `Meeting.courseId -> Course.id`. Não há dados de produção ou fixtures persistidos no banco remoto; o seed continua opt-in e somente para desenvolvimento.

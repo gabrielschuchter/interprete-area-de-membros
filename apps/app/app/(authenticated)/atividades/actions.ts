@@ -1,15 +1,23 @@
 "use server";
 
-import { auth } from "@repo/auth/server";
 import {
   ActivityDeliveryKind,
   ActivitySubmissionStatus,
+  BadgeCriterion,
   ContentStatus,
   database,
+  LearningAssignmentTargetType,
 } from "@repo/database";
 import { revalidatePath } from "next/cache";
 import { canAccessPublishedActivity } from "@/lib/activities";
+import { auth } from "@/lib/auth";
 import { requireStaff } from "@/lib/authorization";
+import { evaluateMemberBadges } from "@/lib/badges";
+import {
+  enqueueLearningAssignmentNotifications,
+  markLearningAssignmentCompleted,
+  reconcileActivityAssignments,
+} from "@/lib/learning-assignments";
 import {
   createMemberAssetPath,
   deleteMemberAsset,
@@ -20,10 +28,8 @@ import {
   consumeMutationRateLimit,
   isUniqueConstraintError,
 } from "@/lib/mutation-reliability";
-import {
-  notifyActivityAssigned,
-  notifyFeedbackReceived,
-} from "@/lib/notifications";
+import { dispatchPendingNotifications } from "@/lib/notification-outbox-dispatch";
+import { notifyFeedbackReceived } from "@/lib/notifications";
 
 const value = (formData: FormData, name: string) => {
   const entry = formData.get(name);
@@ -46,25 +52,27 @@ const assignmentIds = (formData: FormData) =>
   ].slice(0, 200);
 
 const ensureActivityAssignments = async ({
+  assignedByMemberId,
   activityId,
   dueAt,
   memberIds,
+  notify = false,
 }: {
+  readonly assignedByMemberId: string;
   readonly activityId: string;
   readonly dueAt: Date | null;
   readonly memberIds: readonly string[];
+  readonly notify?: boolean;
 }) => {
-  if (memberIds.length === 0) {
-    return;
-  }
-  const members = await database.member.findMany({
-    where: { id: { in: [...memberIds] } },
-    select: { id: true },
-  });
-  await database.activityAssignment.createMany({
-    data: members.map((member) => ({ activityId, memberId: member.id, dueAt })),
-    skipDuplicates: true,
-  });
+  await database.$transaction((transaction) =>
+    reconcileActivityAssignments(transaction, {
+      activityId,
+      assignedByMemberId,
+      dueAt,
+      memberIds,
+      notify,
+    })
+  );
 };
 
 const allowedAttachmentTypes = new Set([
@@ -261,27 +269,42 @@ export const submitActivity = async (formData: FormData) => {
   }
   const attachmentPath =
     uploadedAttachment?.attachmentPath ?? previous?.attachmentPath ?? null;
-
-  await database.activitySubmission.upsert({
-    where: { activityId_memberId: { activityId, memberId: userId } },
-    create: {
+  const submittedAt = new Date();
+  await database.$transaction(async (transaction) => {
+    await transaction.activitySubmission.upsert({
+      where: { activityId_memberId: { activityId, memberId: userId } },
+      create: {
+        activityId,
+        memberId: userId,
+        content: normalizedContent || "(entrega em arquivo)",
+        status: ActivitySubmissionStatus.SUBMITTED,
+        attachmentPath,
+        attachmentName: uploadedAttachment?.attachmentName ?? null,
+        attachmentMimeType: uploadedAttachment?.attachmentMimeType ?? null,
+        attachmentSizeBytes: uploadedAttachment?.attachmentSizeBytes ?? null,
+        submittedAt,
+      },
+      update: {
+        content: normalizedContent || "(entrega em arquivo)",
+        status: ActivitySubmissionStatus.SUBMITTED,
+        ...(uploadedAttachment ?? {}),
+        submittedAt,
+      },
+    });
+    await markLearningAssignmentCompleted(
+      userId,
+      LearningAssignmentTargetType.ACTIVITY,
       activityId,
-      memberId: userId,
-      content: normalizedContent || "(entrega em arquivo)",
-      status: ActivitySubmissionStatus.SUBMITTED,
-      attachmentPath,
-      attachmentName: uploadedAttachment?.attachmentName ?? null,
-      attachmentMimeType: uploadedAttachment?.attachmentMimeType ?? null,
-      attachmentSizeBytes: uploadedAttachment?.attachmentSizeBytes ?? null,
-      submittedAt: new Date(),
-    },
-    update: {
-      content: normalizedContent || "(entrega em arquivo)",
-      status: ActivitySubmissionStatus.SUBMITTED,
-      ...(uploadedAttachment ?? {}),
-      submittedAt: new Date(),
-    },
+      submittedAt,
+      transaction
+    );
+    await evaluateMemberBadges(transaction, userId, submittedAt, {
+      criteria: [BadgeCriterion.ACTIVITIES_COMPLETED],
+      force: true,
+    });
   });
+
+  await dispatchPendingNotifications();
 
   if (previous?.attachmentPath && previous.attachmentPath !== attachmentPath) {
     await deleteMemberAsset(previous.attachmentPath);
@@ -395,13 +418,15 @@ export const createActivity = async (formData: FormData) => {
 
   const existingActivity = await database.activity.findUnique({
     where: { createdBy_idempotencyKey: { createdBy: userId, idempotencyKey } },
-    select: { id: true },
+    select: { id: true, status: true },
   });
   if (existingActivity) {
     await ensureActivityAssignments({
+      assignedByMemberId: userId,
       activityId: existingActivity.id,
       dueAt: dueDate,
       memberIds: assignmentIds(formData),
+      notify: existingActivity.status === ContentStatus.PUBLISHED,
     });
     revalidatePath("/admin/activities");
     return;
@@ -453,6 +478,7 @@ export const createActivity = async (formData: FormData) => {
   }
 
   await ensureActivityAssignments({
+    assignedByMemberId: userId,
     activityId: activity.id,
     dueAt: dueDate,
     memberIds: assignmentIds(formData),
@@ -525,54 +551,18 @@ export const updateActivity = async (formData: FormData) => {
       },
     });
     if (formData.has("memberIds")) {
-      const memberIds = assignmentIds(formData);
-      const members = await transaction.member.findMany({
-        where: { id: { in: memberIds } },
-        select: { id: true },
-      });
-      await transaction.activityAssignment.deleteMany({
-        where: { activityId },
-      });
-      await transaction.activityAssignment.createMany({
-        data: members.map((member) => ({
-          activityId,
-          memberId: member.id,
-          dueAt: dueDate,
-        })),
-        skipDuplicates: true,
+      await reconcileActivityAssignments(transaction, {
+        activityId,
+        assignedByMemberId: userId,
+        dueAt: dueDate,
+        memberIds: assignmentIds(formData),
+        notify: existingActivity.status === ContentStatus.PUBLISHED,
       });
     }
   });
 
   revalidatePath("/admin/activities");
   revalidatePath("/atividades");
-
-  if (
-    existingActivity.status === ContentStatus.PUBLISHED &&
-    formData.has("memberIds")
-  ) {
-    const activity = await database.activity.findUnique({
-      where: { id: activityId },
-      select: { id: true, slug: true, title: true },
-    });
-    const assignments = await database.activityAssignment.findMany({
-      where: { activityId },
-      select: { memberId: true },
-    });
-    if (activity) {
-      await Promise.all(
-        assignments.map(({ memberId }) =>
-          notifyActivityAssigned({
-            recipientId: memberId,
-            actorId: userId,
-            activityId: activity.id,
-            activityTitle: activity.title,
-            href: `/atividades/${activity.slug}`,
-          })
-        )
-      );
-    }
-  }
 };
 
 export const setActivityStatus = async (formData: FormData) => {
@@ -592,29 +582,39 @@ export const setActivityStatus = async (formData: FormData) => {
     return;
   }
 
-  const activity = await database.activity.update({
-    where: { id: activityId },
-    data: { status: status as ContentStatus, updatedBy: userId },
-    select: { id: true, title: true, slug: true, status: true },
-  });
-
-  if (activity.status === ContentStatus.PUBLISHED) {
-    const assignments = await database.activityAssignment.findMany({
-      where: { activityId: activity.id },
-      select: { memberId: true },
+  await database.$transaction(async (transaction) => {
+    const activity = await transaction.activity.update({
+      where: { id: activityId },
+      data: { status: status as ContentStatus, updatedBy: userId },
+      select: { id: true, status: true },
     });
-    await Promise.all(
-      assignments.map(({ memberId }) =>
-        notifyActivityAssigned({
-          recipientId: memberId,
-          actorId: userId,
-          activityId: activity.id,
-          activityTitle: activity.title,
-          href: `/atividades/${activity.slug}`,
-        })
-      )
-    );
-  }
+    if (activity.status !== ContentStatus.PUBLISHED) {
+      return;
+    }
+    const assignments = await transaction.activityAssignment.findMany({
+      where: {
+        activityId: activity.id,
+        revokedAt: null,
+        status: { not: "REVOKED" },
+      },
+      select: { id: true, memberId: true, batchId: true },
+    });
+    const byBatch = new Map<string, { id: string; memberId: string }[]>();
+    for (const assignment of assignments) {
+      const batchId = assignment.batchId ?? activity.id;
+      const batch = byBatch.get(batchId) ?? [];
+      batch.push({ id: assignment.id, memberId: assignment.memberId });
+      byBatch.set(batchId, batch);
+    }
+    for (const [batchId, batchAssignments] of byBatch) {
+      await enqueueLearningAssignmentNotifications(transaction, {
+        actorId: userId,
+        assignments: batchAssignments,
+        batchId,
+        createdAt: new Date(),
+      });
+    }
+  });
 
   revalidatePath("/admin/activities");
   revalidatePath("/atividades");

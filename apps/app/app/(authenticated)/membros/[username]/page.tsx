@@ -14,8 +14,11 @@ import {
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { RichDocument } from "@/components/learning/rich-document";
+import { ProfileBadges } from "@/components/profile/profile-badges";
 import { getMemberRole } from "@/lib/authorization";
 import { communityPostHref } from "@/lib/community";
+import { communityPostAudienceWhere } from "@/lib/community-space-rules";
+import { requireMemberId } from "@/lib/learning";
 import { getPublicProfile } from "@/lib/profile";
 
 interface PublicProfilePageProperties {
@@ -63,37 +66,55 @@ const PublicProfilePage = async ({ params }: PublicProfilePageProperties) => {
     notFound();
   }
 
-  const [role, topics] = await Promise.all([
+  const viewerId = await requireMemberId();
+  const [role, viewerRole, earnedBadges] = await Promise.all([
     getMemberRole(profile.clerkUserId),
-    database.communityPost.findMany({
+    getMemberRole(viewerId),
+    database.badgeAward.findMany({
       where: {
-        authorId: profile.clerkUserId,
-        status: "PUBLISHED",
-        deletedAt: null,
-        OR: [{ space: null }, { space: { is: { status: "PUBLISHED" } } }],
+        memberId: profile.clerkUserId,
+        badge: { is: { status: { in: ["PUBLISHED", "ARCHIVED"] } } },
       },
-      orderBy: [{ isPinned: "desc" }, { createdAt: "desc" }],
-      take: 12,
+      orderBy: { awardedAt: "desc" },
+      take: 100,
       select: {
         id: true,
-        title: true,
-        subtitle: true,
-        slug: true,
-        kind: true,
-        content: true,
-        excerpt: true,
-        contentJson: true,
-        createdAt: true,
-        space: { select: { title: true, slug: true } },
-        _count: {
-          select: {
-            comments: { where: { deletedAt: null } },
-            votes: true,
-          },
-        },
+        awardedAt: true,
+        definitionRevision: { select: { title: true, description: true } },
       },
     }),
   ]);
+  const topics = await database.communityPost.findMany({
+    where: {
+      authorId: profile.clerkUserId,
+      status: "PUBLISHED",
+      deletedAt: null,
+      ...communityPostAudienceWhere(
+        viewerId,
+        viewerRole === "ADMIN" || viewerRole === "TEACHER"
+      ),
+    },
+    orderBy: [{ isPinned: "desc" }, { createdAt: "desc" }],
+    take: 12,
+    select: {
+      id: true,
+      title: true,
+      subtitle: true,
+      slug: true,
+      kind: true,
+      content: true,
+      excerpt: true,
+      contentJson: true,
+      createdAt: true,
+      space: { select: { title: true, slug: true } },
+      _count: {
+        select: {
+          comments: { where: { deletedAt: null } },
+          votes: true,
+        },
+      },
+    },
+  });
 
   const name = profile.displayName ?? profile.username;
   const location = [profile.city, profile.state, profile.country]
@@ -177,6 +198,15 @@ const PublicProfilePage = async ({ params }: PublicProfilePageProperties) => {
             </div>
           </div>
         </section>
+
+        <ProfileBadges
+          badges={earnedBadges.map((award) => ({
+            id: award.id,
+            awardedAt: award.awardedAt,
+            title: award.definitionRevision.title,
+            description: award.definitionRevision.description,
+          }))}
+        />
 
         <section aria-labelledby="member-topics" className="mt-12">
           <div className="flex items-end justify-between border-border border-b pb-4">

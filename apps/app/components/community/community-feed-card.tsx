@@ -1,4 +1,3 @@
-import { Badge } from "@repo/design-system/components/ui/badge";
 import { ArrowUpRightIcon, MessageCircleIcon, PinIcon } from "lucide-react";
 import Link from "next/link";
 import { communityPostHref } from "@/lib/community";
@@ -7,10 +6,6 @@ import {
   communityMediaImageUrl,
   normalizeCommunityCoverUrl,
 } from "@/lib/community-media";
-import {
-  type CommunityPostKindValue,
-  communityPostKindLabel,
-} from "@/lib/community-post-types";
 import { CommunityMediaGallery } from "./community-media-card";
 import { CommunityPostActions } from "./community-post-actions";
 import { MemberIdentity } from "./member-identity";
@@ -33,7 +28,6 @@ export interface CommunityFeedCardPost {
   readonly id: string;
   readonly isFeatured?: boolean;
   readonly isPinned: boolean;
-  readonly kind: CommunityPostKindValue | string;
   readonly media?: readonly CommunityMediaItem[];
   readonly profile?: CommunityFeedProfile | null;
   readonly publishedAt: Date | null;
@@ -75,7 +69,7 @@ export function CommunityFeedCard({
 
   return (
     <article
-      className={`community-post-card ${post.isPinned ? "community-post-card--pinned" : ""}`}
+      className={`community-post-card relative ${post.isPinned ? "community-post-card--pinned" : ""}`}
     >
       {post.isPinned && (
         <div className="community-post-card__pin mb-5 flex items-center gap-2">
@@ -84,7 +78,7 @@ export function CommunityFeedCard({
         </div>
       )}
 
-      <header className="flex min-w-0 items-start justify-between gap-4">
+      <header className="relative z-10 flex min-w-0 items-start justify-between gap-4">
         <div className="flex min-w-0 items-center gap-3">
           <MemberIdentity
             authorId={post.authorId}
@@ -126,13 +120,15 @@ export function CommunityFeedCard({
 
       <div className="mt-5">
         <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="outline">{communityPostKindLabel(post.kind)}</Badge>
           {post.isFeatured && (
             <span className="brand-eyebrow">Em destaque</span>
           )}
         </div>
         <h3 className="mt-3 break-words font-display text-2xl leading-[1.08] tracking-tight sm:text-3xl">
-          <Link className="hover:text-brand-structural" href={href}>
+          <Link
+            className="after:absolute after:inset-0 after:z-0 hover:text-brand-structural focus-visible:outline-none focus-visible:after:rounded-sm focus-visible:after:ring-[3px] focus-visible:after:ring-ring/50"
+            href={href}
+          >
             {post.title}
           </Link>
         </h3>
@@ -148,7 +144,7 @@ export function CommunityFeedCard({
         // biome-ignore lint/performance/noImgElement: user-provided media may come from hosts not configured for next/image.
         <img
           alt={`Capa: ${post.title}`}
-          className="community-post-card__media mt-5 aspect-[16/7] w-full rounded-sm object-cover"
+          className="community-post-card__media relative z-10 mt-5 aspect-[16/7] w-full rounded-sm object-cover"
           decoding="async"
           height={420}
           loading="lazy"
@@ -159,7 +155,9 @@ export function CommunityFeedCard({
       )}
 
       {feedMedia.length > 0 && (
-        <CommunityMediaGallery items={feedMedia} thumbnail />
+        <div className="relative z-10">
+          <CommunityMediaGallery items={feedMedia} thumbnail />
+        </div>
       )}
 
       {post.tags.length > 0 && (
@@ -172,7 +170,7 @@ export function CommunityFeedCard({
         </ul>
       )}
 
-      <div className="community-post-card__actions mt-5 flex flex-wrap items-center gap-2 border-border border-t pt-4">
+      <div className="community-post-card__actions relative z-10 mt-5 flex flex-wrap items-center gap-2 border-border border-t pt-4">
         <Link
           className="inline-flex min-h-10 items-center gap-1.5 rounded-sm px-3 text-muted-foreground text-sm hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/35"
           href={`${href}#comments-heading`}

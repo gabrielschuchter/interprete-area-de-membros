@@ -1,6 +1,6 @@
-import { auth } from "@repo/auth/server";
 import { database, MemberRole } from "@repo/database";
 import { NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
 import { canReadMemberAssetPath } from "@/lib/member-asset-access";
 import {
   createMemberAssetPath,

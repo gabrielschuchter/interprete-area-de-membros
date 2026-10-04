@@ -9,7 +9,6 @@ import {
   SingleFlightSubmit,
 } from "@/components/mutations/single-flight-form";
 import { communityPostHref, getSavedCommunityPosts } from "@/lib/community";
-import { communityPostKindLabel } from "@/lib/community-post-types";
 import { requireMemberId } from "@/lib/learning";
 import { toggleBookmark } from "../actions";
 
@@ -36,7 +35,7 @@ const SavedCommunityPage = async () => {
           <div className="paper-surface mt-10 border p-8 sm:p-12">
             <BookmarkIcon
               aria-hidden="true"
-              className="size-6 text-brand-action"
+              className="size-6 text-brand-action-text"
             />
             <h2 className="mt-5 font-display text-3xl">
               Nenhuma leitura foi salva.
@@ -68,9 +67,6 @@ const SavedCommunityPage = async () => {
                       <span>{post._count.comments} respostas</span>
                     </div>
                     <div className="mt-4 flex flex-wrap items-center gap-2">
-                      <Badge variant="outline">
-                        {communityPostKindLabel(post.kind)}
-                      </Badge>
                       <h2 className="font-display text-2xl">
                         <Link
                           className="hover:text-brand-structural"

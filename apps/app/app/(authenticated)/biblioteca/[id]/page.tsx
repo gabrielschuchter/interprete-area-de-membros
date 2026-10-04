@@ -9,14 +9,19 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { StudyHeartbeat } from "@/components/learning/study-heartbeat";
 import {
   SingleFlightForm,
   SingleFlightSubmit,
 } from "@/components/mutations/single-flight-form";
 import { requireMemberId } from "@/lib/learning";
 import { getPublishedLibraryItem } from "@/lib/library";
-import { memberAssetUrl } from "@/lib/member-storage";
-import { toggleLibraryBookmark } from "../actions";
+import {
+  libraryAccessLabel,
+  libraryDifficultyLabel,
+  libraryLanguageLabel,
+} from "@/lib/library-presentation";
+import { openLibraryItem, toggleLibraryBookmark } from "../actions";
 
 interface LibraryItemPageProperties {
   readonly params: Promise<{ id: string }>;
@@ -62,6 +67,7 @@ const LibraryItemPage = async ({ params }: LibraryItemPageProperties) => {
   return (
     <div className="min-h-svh bg-background">
       <main className="mx-auto w-full max-w-[960px] px-5 py-8 sm:px-8 lg:px-12 lg:py-14">
+        <StudyHeartbeat activityKind="LIBRARY_ITEM" resourceId={item.id} />
         <Button asChild className="-ml-3" variant="ghost">
           <Link href="/biblioteca">
             <ArrowLeftIcon aria-hidden="true" /> Voltar para a biblioteca
@@ -75,8 +81,11 @@ const LibraryItemPage = async ({ params }: LibraryItemPageProperties) => {
             {item.category && (
               <span className="brand-eyebrow">{item.category}</span>
             )}
+            <Badge variant="secondary">
+              {libraryAccessLabel(item.accessType)}
+            </Badge>
           </div>
-          <h1 className="mt-6 font-display text-5xl leading-tight sm:text-6xl">
+          <h1 className="mt-6 text-balance break-words font-display text-5xl leading-tight sm:text-6xl">
             {item.title}
           </h1>
           {item.description && (
@@ -84,9 +93,28 @@ const LibraryItemPage = async ({ params }: LibraryItemPageProperties) => {
               {item.description}
             </p>
           )}
+          {item.coverUrl && (
+            // Cover URLs are staff-provided HTTPS assets and may use approved external hosts.
+            // biome-ignore lint/performance/noImgElement: editorial cover may be hosted outside configured image domains.
+            <img
+              alt={`Capa: ${item.title}`}
+              className="mt-7 max-h-[32rem] w-full rounded-sm border object-cover"
+              decoding="async"
+              height={640}
+              loading="lazy"
+              referrerPolicy="no-referrer"
+              src={item.coverUrl}
+              width={1200}
+            />
+          )}
           <div className="mt-4 flex flex-wrap items-center gap-4 text-muted-foreground text-sm">
             {item.year ? <span>{item.year}</span> : null}
             {item.authors ? <span>{item.authors}</span> : null}
+            <span>{libraryLanguageLabel(item.language)}</span>
+            {item.difficulty ? (
+              <span>{libraryDifficultyLabel(item.difficulty)}</span>
+            ) : null}
+            {item.version ? <span>{item.version}</span> : null}
             {item.doi ? <span>DOI: {item.doi}</span> : null}
             {item.pmid ? <span>PMID: {item.pmid}</span> : null}
             <SingleFlightForm action={toggleLibraryBookmark}>
@@ -101,6 +129,20 @@ const LibraryItemPage = async ({ params }: LibraryItemPageProperties) => {
               </SingleFlightSubmit>
             </SingleFlightForm>
           </div>
+          {item.accessNote && (
+            <p className="mt-5 max-w-2xl border-brand-action/50 border-l-2 pl-4 text-muted-foreground text-sm leading-6">
+              {item.accessNote}
+            </p>
+          )}
+          {item.linkCheckedAt && (
+            <p className="mt-3 text-muted-foreground text-xs">
+              Link conferido em{" "}
+              {new Intl.DateTimeFormat("pt-BR", {
+                dateStyle: "medium",
+                timeZone: "UTC",
+              }).format(item.linkCheckedAt)}
+            </p>
+          )}
           {item.tags.length > 0 && (
             <div className="mt-7 flex flex-wrap gap-2">
               {item.tags.map((tag) => (
@@ -111,17 +153,12 @@ const LibraryItemPage = async ({ params }: LibraryItemPageProperties) => {
             </div>
           )}
           <div className="mt-10 border-border border-t pt-7">
-            <Button asChild size="lg">
-              <a
-                href={
-                  item.storagePath ? memberAssetUrl(item.storagePath) : item.url
-                }
-                rel="noreferrer"
-                target="_blank"
-              >
+            <form action={openLibraryItem}>
+              <input name="itemId" type="hidden" value={item.id} />
+              <Button size="lg" type="submit">
                 Abrir material <ArrowUpRightIcon aria-hidden="true" />
-              </a>
-            </Button>
+              </Button>
+            </form>
           </div>
         </article>
       </main>

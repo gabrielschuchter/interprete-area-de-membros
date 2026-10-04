@@ -28,7 +28,7 @@ const sectionForPathname = (pathname: string) => {
     return "Biblioteca";
   }
   if (pathname.startsWith("/encontros/gravacoes")) {
-    return "Gravações";
+    return "Minhas gravações";
   }
   if (pathname.startsWith("/encontros")) {
     return "Encontros";
