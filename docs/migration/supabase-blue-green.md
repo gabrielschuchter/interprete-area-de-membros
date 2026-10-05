@@ -4,15 +4,16 @@
 
 **Destino (green):** `qffqhilydtnrggbcnogh`
 **Estado atual:** green restaurado; 48 migrations Prisma aplicadas, zero
-pendentes. Runtime de Production continua apontando para blue. Foi adicionada
-`CRON_SECRET` como Secret no target Production do projeto Vercel do app; o
-deployment atual ainda não consome essa env. O código local contém mudanças
-legítimas ainda não commitadas; nenhum arquivo integra um release imutável. O
-último Preview registrado foi construído de SHA antigo com working tree dirty.
-Não promover esse deployment. Storage blue continua em 402 e não será sondado.
-Os 15 objetos são perda aceita; as 99 associações de vídeo permanecem
-deferred/non-blocking. **Última conferência:** 05/10/2026 08:00 BRT
-(11:00 UTC).
+pendentes. Production e blue permanecem intactos; não houve cutover. Release
+imutável `310fb6955f0f02143417f0597f935c9bebe46b4c` está commitado e enviado à
+branch de migração. App e API Preview desse commit estão `READY`; a suíte de
+navegador real passou 51/51 checks no app Preview, com escritas somente no
+green. A working tree mantém apenas o arquivo preexistente e não relacionado
+`apps/api/CLAUDE.md` fora do release. `CRON_SECRET` já existe no target
+Production do app, mas só será consumido por novo deployment. Storage blue
+continua em 402 e não será sondado; os 15 objetos são perda aceita e as 99
+associações de vídeo permanecem deferred/non-blocking. **Última conferência:**
+05/10/2026 08:33 BRT (11:33 UTC).
 
 ## Estado operacional atual — fonte de verdade
 
@@ -25,11 +26,25 @@ altere os aliases. A API canônica é
 
 O domínio Clerk Production `interprete-area-de-membros.vercel.app` está
 **Verified** e **Primary**. O Frontend API usa o proxy
-`https://interprete-area-de-membros.vercel.app/__clerk`; a sessão autenticada
-existente continua funcional no runtime atual. A integração nativa Supabase está
-desligada na instância Clerk Production. O green ainda confia somente no issuer
-Development `teaching-stinkbug-5249.clerk.accounts.dev`; portanto, `getToken()`
-Production com role `authenticated` e Realtime do green não foram provados.
+`https://interprete-area-de-membros.vercel.app/__clerk`; preserve-o. Com
+autorização expressa do usuário, a integração nativa Supabase foi habilitada na
+instância Clerk Production e o Setup mostra `Enabled`. A própria tela Clerk
+fornece esse valor como “Clerk domain”. O cadastro correspondente em Auth →
+Third-Party Auth do green foi tentado uma vez e recusado pelo validador: domínios
+Clerk Production precisam começar por `https://clerk.`. O formulário foi fechado
+sem salvar; o green permanece configurado apenas com o issuer Development
+`teaching-stinkbug-5249.clerk.accounts.dev`. A documentação Clerk define `iss`
+como a URL do Frontend API e mostra `https://clerk.<domínio>` para Production; a
+documentação Supabase exige issuer/JWKS de um provedor third-party. O valor FAPI
+com caminho `/__clerk` fornecido pelo Setup Clerk não passou no formulário e o
+`iss` de um token Production ainda não foi observado de modo seguro. Assim, a
+sessão Clerk do app não prova que Supabase aceite o token. Token Production com
+`role=authenticated` aceito pelo green e Realtime Production continuam sem
+prova. Não inventar um host `clerk.*`, remover o proxy ou configurar JWT
+template/segredo compartilhado como contorno. Referências oficiais: [claims de
+session token Clerk](https://clerk.com/docs/guides/sessions/session-tokens),
+[integração Clerk/Supabase](https://supabase.com/docs/guides/auth/third-party/clerk)
+e [proxy FAPI Clerk](https://clerk.com/docs/guides/dashboard/dns-domains/proxy-fapi).
 
 O endpoint do webhook Clerk Production aponta para o hostname estável e correto
 da API, `https://interprete-area-de-membros-api.vercel.app/webhooks/auth`, mas
@@ -37,6 +52,22 @@ continua **desabilitado**. O painel registra 102 falhas nos últimos sete dias.
 `CLERK_WEBHOOK_SIGNING_SECRET` existe no target Production da API Vercel, mas seu
 pareamento com o signing secret oculto do endpoint ainda não foi provado. Não
 reativar entregas enquanto a API Production ainda usa blue.
+
+O commit `310fb6955f0f02143417f0597f935c9bebe46b4c` contém a barreira de freeze,
+os handlers revisados e o ajuste para que um GET de atribuição não grave estado
+durante freeze. App Preview
+`https://interprete-area-de-membros-khm9jq5x2-gabrielschuchters-projects.vercel.app`
+(`dpl_Hy9YTBDjjwYUAxQuqmQ8MtNxC1LU`) e API Preview
+`https://interprete-area-de-membros-39zgooqzw-gabrielschuchters-projects.vercel.app`
+(`dpl_Brnz1GXTQthq8r7zi2dsNrUCzJSm`) estão `READY`. O harness Playwright no app
+Preview concluiu **51/51 checks**: Clerk Development, persistência/reload,
+leitura e escrita no Green, papéis e negações, cursos/aulas/progresso,
+atividades/submissões, comunidade/comentários/votos/bookmarks, notificações,
+Realtime próprio e negação de canal alheio, Storage privado/upload/readback,
+logout, mobile e gravação pendente controlada. `browserErrors=[]`,
+`sourceWrites=0`, `productionChanged=false`, e o único hostname Supabase
+observado foi o Green. Isso comprova Development/Preview; não substitui a
+confiança do issuer Clerk Production nem a entrega real do webhook Production.
 
 `APP_WRITE_FREEZE` bloqueia métodos mutáveis e Server Actions; as rotas GET de
 Cron/webhook também recebem 503. Em runtime local isolado, 21/21 checks passaram:
@@ -74,19 +105,21 @@ Matriz resumida no estado atual:
 
 | Gate | Estado | Evidência / próximo passo |
 | --- | --- | --- |
-| Restore green, dados, schema, migrations, RLS, Realtime e QA | `PASS` | 48 migrations, zero pendentes; diff Prisma vazio, hashes/FKs e Preview anteriores aprovados. O teste runtime do freeze passou nesta execução. |
+| Restore green, dados, schema, migrations, RLS, Realtime e QA | `PASS` | 48 migrations, zero pendentes; diff Prisma vazio, hashes/FKs e QA real do Preview no SHA candidato: 51/51. |
 | Storage antigo e vídeos | `ACCEPTED DATA LOSS / NON-BLOCKING`; `DEFERRED / NON-BLOCKING` | Não baixar nem copiar; ausência controlada já aprovada. |
 | Domínio/alias/proxy Clerk | `PASS` | Domínio verificado/primário; aliases do app convergem; `/__clerk` preservado. |
-| Clerk Production domain/proxy/session atual | `PASS — runtime blue` | Production Dashboard mostra domínio canônico Verified/Primary e `/__clerk`; navegador real manteve sessão autenticada no app oficial. Isso ainda não valida Supabase Realtime green. |
-| Clerk Production token/Realtime no green | `BLOCKED — ação no painel` | Integração Supabase está desligada em Clerk Production. O green só registra o issuer Development; ativar a integração revela o domínio/issuer exato e adiciona `role=authenticated`, depois registrar esse issuer no green e validar token/realtime. |
+| Clerk Production domain/proxy/session atual | `PASS — runtime blue` | Dashboard mostra domínio canônico Verified/Primary e proxy `/__clerk`; sessão autenticada do app oficial segue funcionando. Nenhum alias/proxy foi alterado. |
+| Clerk Production native Supabase integration | `PASS — habilitada` | A integração está `Enabled` no Clerk Production por autorização do usuário; o setup fornece o FAPI atual com `/__clerk`. |
+| Clerk Production token/Realtime no green | `BLOCKED-EXTERNAL` | Integração nativa Clerk Production está `Enabled`, mas Green rejeitou o domínio FAPI com `/__clerk` fornecido pela tela oficial Clerk, exigindo host Production `https://clerk.*`; nada foi salvo. Somente issuer Development está cadastrado. Não registrar domínio inventado, mudar proxy/alias nem usar JWT template compartilhando o signing secret Supabase. É necessário obter configuração suportada por Clerk/Supabase que preserve o domínio/proxy atual; então verificar `iss`, `role=authenticated`, token e Realtime no green. |
 | Webhook Clerk | `BLOCKED — cutover` | Endpoint canônico está correto, mas disabled; 102 falhas/7 dias. Secret Vercel existe, pareamento e entrega real não provados. Reativar após API Production apontar para green e teste assinado/replay. |
-| Vercel Cron | `READY-FOR-CUTOVER` | Schedule do app confirmado e Secret `CRON_SECRET` armazenado em Production. O próximo deploy deve provar `401` sem/valor errado e execução controlada com Bearer; confirmar remoção do Cron API obsoleto. |
+| Vercel Cron | `READY-FOR-CUTOVER` | Read-only confirma `/api/cron/activity-deadlines` diário no app e ainda `/cron/keep-alive` no deployment Production antigo da API. O commit candidato não declara Cron na API; reconciliar após deploy e antes de tirar freeze. `CRON_SECRET` está armazenado no target Production do app. |
 | Writers acessíveis | `PASS — inventário de config` | Vercel: dois schedules conhecidos; Clerk webhook disabled; Supabase Cron/Functions/Vault inativos; Task Scheduler Windows sem tarefas Interprete; GitHub REST lista apenas Dependabot Updates, sem workflow executável de produto. Scripts importadores são manuais e dependem de invocação explícita. |
-| APP_WRITE_FREEZE e pausa de uploads | `PASS — runtime local` | 21/21 checks no app/API local contra green após a correção do efeito GET de atribuição; Clerk Development autenticado; leituras continuam; mutações, Server Actions, Cron e webhook recebem 503; uploads pausados; toggle OFF restaura escrita. Ainda falta deploy desse SHA em Preview e ativação em Production só na janela. |
+| APP_WRITE_FREEZE e pausa de uploads | `PASS — runtime local; Preview sem freeze` | 21/21 checks de runtime local no app/API contra Green: freeze OFF grava; ON bloqueia APIs, Server Actions, Cron, webhook e upload enquanto leitura/Clerk continuam; OFF restaura escrita. O Preview com freeze desligado passou 51/51 no SHA candidato. Ativar em Production somente na janela de virada. |
 | 765/766 | `PASS` — divergência explicada | Uma atualização de timestamp sem mudança de conteúdo; limpeza de rate limits expirada identificada por row fingerprint e timestamps acima. Ver detalhes acima. |
 | Snapshot final e green refresh | `READY-FOR-CUTOVER` | Divergência 765/766 explicada. No freeze gerar novo T0 e aplicar o sincronizador idempotente upsert-only; preservar QA green-only e comparar de novo. Não fazer reset nem deletar dados. |
-| Release imutável | `IN PROGRESS` | Working tree contém changes legítimas não commitadas; checks locais passaram; falta revisar/stage seletivo (preservar `apps/api/CLAUDE.md`), commit e Preview novo do SHA exato. |
-| Cutover | `BLOCKED` | Falta habilitar a integração Clerk Supabase Production e registrar o issuer real no green; confirmar secret pairing e entrega/replay do webhook após a API apontar ao green; deploy Preview do SHA final; confirmar Cron/remoção do schedule obsoleto no deploy. Runtime Production continua no blue. |
+| Release imutável | `PASS` | SHA commitado/enviado, `git diff --check` e checks do monorepo passaram; Previews app/API estão `READY` para o SHA candidato. Único arquivo untracked é `apps/api/CLAUDE.md`, preservado fora do release por ser preexistente e alheio à migração. |
+| API Preview isolada | `READY-FOR-CUTOVER` | Deployment `READY` e proteção de Preview preservada. Health, webhook assinado/inválido/replay e Cron foram exercitados localmente contra Green em 8/8 checks; o E2E do app Preview alcançou as APIs integradas. Não criar bypass duradouro de proteção só para repetir handlers. |
+| Cutover | `BLOCKED — issuer Clerk Production e webhook` | Native integration Clerk Production está habilitada, mas Supabase Green recusou o FAPI com `/__clerk`; o green não confia em tokens Production. Webhook Production continua disabled; o secret configurado na API não pode ser comparado ao segredo mascarado do endpoint nem testado contra Preview protegido. Production continua em Blue. |
 
 `apps/app/vercel.json` declara somente `/api/cron/activity-deadlines` (`0 12 * * *`).
 `apps/api/vercel.json` não declara Cron, mas o projeto remoto API ainda mostra
