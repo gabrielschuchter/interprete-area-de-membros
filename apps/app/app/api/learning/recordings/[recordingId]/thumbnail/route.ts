@@ -1,5 +1,10 @@
 import { database, MemberRole } from "@repo/database";
+import {
+  createUploadsPausedResponse,
+  shouldPauseUploadDuringRollback,
+} from "@repo/security/write-freeze";
 import { NextResponse } from "next/server";
+import { env } from "@/env";
 import { auth } from "@/lib/auth";
 import { getMemberRole } from "@/lib/authorization";
 import { MemberImageError, normalizeMemberImage } from "@/lib/member-image";
@@ -129,6 +134,16 @@ export const POST = async (
       { error: "Acesso não autorizado." },
       { status: 403 }
     );
+  }
+
+  if (
+    shouldPauseUploadDuringRollback({
+      method: request.method,
+      pathname: new URL(request.url).pathname,
+      enabled: env.UPLOADS_PAUSED_FOR_ROLLBACK === "true",
+    })
+  ) {
+    return createUploadsPausedResponse();
   }
 
   const formData = await request.formData();

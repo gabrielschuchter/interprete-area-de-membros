@@ -365,6 +365,7 @@ model Member {
   badgeDefinitionRevisionsCreated     BadgeDefinitionRevision[]          @relation("BadgeRevisionCreator")
 
   @@index([role])
+  @@index([onboardingStatus], map: "Member_onboardingStatus_idx")
 }
 
 model Profile {
@@ -1035,6 +1036,7 @@ model CommunityPost {
   @@index([status, publishedAt, createdAt])
   @@index([authorId, createdAt])
   @@index([isPinned, status, createdAt])
+  @@index([isFeatured, status, createdAt], map: "CommunityPost_isFeatured_status_createdAt_idx")
 }
 
 model CommunityBookmark {
@@ -1363,6 +1365,14 @@ model DomainEvent {
 
   @@index([aggregateType, aggregateId, createdAt])
   @@index([eventType, createdAt])
+}
+
+model ClerkWebhookReceipt {
+  id         String   @id
+  eventType  String
+  receivedAt DateTime @default(now())
+
+  @@index([receivedAt])
 }
 
 model OutboxJob {

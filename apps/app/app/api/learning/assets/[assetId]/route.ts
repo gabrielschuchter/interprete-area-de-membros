@@ -11,9 +11,9 @@ import {
   getLearningAssetStorageHeaders,
   getLearningAssetStorageUrl,
 } from "@/lib/learning-storage";
+import { resolveYoutubePlayback } from "@/lib/youtube-video";
 
 export const dynamic = "force-dynamic";
-const youtubeVideoIdPattern = /^[A-Za-z0-9_-]{11}$/;
 
 interface AssetRouteProperties {
   readonly params: Promise<{ assetId: string }>;
@@ -413,12 +413,21 @@ export const GET = async (
     return NextResponse.json({ error: "Asset not found" }, { status: 404 });
   }
 
-  if (
-    asset.mediaProvider === "YOUTUBE" &&
-    youtubeVideoIdPattern.test(asset.mediaExternalId ?? "")
-  ) {
+  const youtubePlayback = resolveYoutubePlayback(
+    asset.mediaProvider,
+    asset.mediaExternalId
+  );
+
+  if (youtubePlayback.kind === "pending") {
+    return NextResponse.json(
+      { error: "YouTube playback is awaiting a video association" },
+      { status: 409, headers: { "Cache-Control": "no-store" } }
+    );
+  }
+
+  if (youtubePlayback.kind === "ready") {
     return NextResponse.redirect(
-      `https://www.youtube.com/watch?v=${asset.mediaExternalId}`,
+      `https://www.youtube.com/watch?v=${youtubePlayback.videoId}`,
       { status: 307, headers: { "Cache-Control": "private, no-store" } }
     );
   }

@@ -3,6 +3,7 @@ import "server-only";
 import { database, type Prisma } from "@repo/database";
 import { withMemberIdentityLock } from "@repo/member-domain";
 import { cache } from "react";
+import { env } from "@/env";
 import { getCurrentUser, getMemberIdentitySnapshot } from "./auth";
 
 const USERNAME_MAX_LENGTH = 30;
@@ -131,9 +132,18 @@ const syncMemberIdentity = async (
 };
 
 export const getOrCreateProfile = cache(
+  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: the read-only maintenance guard must precede identity synchronization in this cached helper.
   async (userId?: string, syncFromClerk = true) => {
     if (userId && !syncFromClerk) {
       return database.profile.findUnique({ where: { clerkUserId: userId } });
+    }
+
+    if (env.APP_WRITE_FREEZE === "true") {
+      const currentUser = await getCurrentUser();
+      const clerkUserId = userId ?? currentUser?.id;
+      return clerkUserId
+        ? database.profile.findUnique({ where: { clerkUserId } })
+        : null;
     }
 
     const user = await getCurrentUser();

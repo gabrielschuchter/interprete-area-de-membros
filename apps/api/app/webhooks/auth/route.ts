@@ -49,8 +49,7 @@ const getUserFields = (data: UserJSON) => {
 
 const syncMemberProfileInTransaction = async (
   transaction: Prisma.TransactionClient,
-  data: UserJSON,
-  useFallbackUsername = false
+  data: UserJSON
 ) => {
   const fields = getUserFields(data);
   const existingMember = await transaction.member.findUnique({
@@ -97,10 +96,36 @@ const syncMemberProfileInTransaction = async (
     return true;
   }
 
+  const usernameCandidates = [
+    fields.username,
+    fields.fallbackUsername,
+    normalizeUsername(data.id).slice(0, 30),
+  ].filter(
+    (candidate, index, values) =>
+      candidate.length >= 3 && values.indexOf(candidate) === index
+  );
+  let username: string | undefined;
+  for (const candidate of usernameCandidates) {
+    await transaction.$queryRaw`
+      SELECT pg_advisory_xact_lock(hashtextextended(${`clerk-username:${candidate}`}, 0))::text
+    `;
+    const owner = await transaction.profile.findUnique({
+      where: { username: candidate },
+      select: { clerkUserId: true },
+    });
+    if (!owner || owner.clerkUserId === data.id) {
+      username = candidate;
+      break;
+    }
+  }
+  if (!username) {
+    throw new Error("Could not allocate a unique Clerk profile username.");
+  }
+
   await transaction.profile.create({
     data: {
       clerkUserId: data.id,
-      username: useFallbackUsername ? fields.fallbackUsername : fields.username,
+      username,
       displayName: fields.displayName,
       avatarUrl: fields.avatarUrl,
       interests: [],
@@ -110,85 +135,66 @@ const syncMemberProfileInTransaction = async (
   return true;
 };
 
-const isUniqueConstraintError = (error: unknown) =>
-  typeof error === "object" &&
-  error !== null &&
-  "code" in error &&
-  error.code === "P2002";
+const syncMemberProfile = (
+  transaction: Prisma.TransactionClient,
+  data: UserJSON
+) =>
+  withMemberIdentityLock(transaction, data.id, () =>
+    syncMemberProfileInTransaction(transaction, data)
+  );
 
-const syncMemberProfile = async (data: UserJSON) => {
-  const sync = (useFallbackUsername: boolean) =>
-    database.$transaction((transaction) =>
-      withMemberIdentityLock(transaction, data.id, () =>
-        syncMemberProfileInTransaction(transaction, data, useFallbackUsername)
-      )
-    );
+const deactivateMember = async (
+  transaction: Prisma.TransactionClient,
+  memberId: string
+) => {
+  await withMemberIdentityLock(transaction, memberId, async () => {
+    const existing = await transaction.member.findUnique({
+      where: { id: memberId },
+      select: { deactivatedAt: true },
+    });
 
-  try {
-    return await sync(false);
-  } catch (error) {
-    if (!isUniqueConstraintError(error)) {
-      throw error;
+    if (existing?.deactivatedAt) {
+      return;
     }
 
-    // The first transaction is rolled back before retrying with the stable
-    // Clerk-ID suffix, so a profile conflict cannot leave an aborted tx open.
-    return sync(true);
-  }
+    const now = new Date();
+    await transaction.member.upsert({
+      where: { id: memberId },
+      update: {
+        deactivatedAt: now,
+        displayName: "Membro removido",
+        email: null,
+        avatarUrl: null,
+      },
+      create: {
+        id: memberId,
+        deactivatedAt: now,
+        displayName: "Membro removido",
+      },
+    });
+
+    await transaction.profile.updateMany({
+      where: { clerkUserId: memberId },
+      data: {
+        displayName: "Membro removido",
+        avatarUrl: null,
+        headline: null,
+        bio: null,
+        occupation: null,
+        institution: null,
+        city: null,
+        state: null,
+        country: null,
+        website: null,
+        instagram: null,
+        linkedin: null,
+        interests: [],
+      },
+    });
+  });
 };
 
-const deactivateMember = async (memberId: string) => {
-  await database.$transaction((transaction) =>
-    withMemberIdentityLock(transaction, memberId, async () => {
-      const existing = await transaction.member.findUnique({
-        where: { id: memberId },
-        select: { deactivatedAt: true },
-      });
-
-      if (existing?.deactivatedAt) {
-        return;
-      }
-
-      const now = new Date();
-      await transaction.member.upsert({
-        where: { id: memberId },
-        update: {
-          deactivatedAt: now,
-          displayName: "Membro removido",
-          email: null,
-          avatarUrl: null,
-        },
-        create: {
-          id: memberId,
-          deactivatedAt: now,
-          displayName: "Membro removido",
-        },
-      });
-
-      await transaction.profile.updateMany({
-        where: { clerkUserId: memberId },
-        data: {
-          displayName: "Membro removido",
-          avatarUrl: null,
-          headline: null,
-          bio: null,
-          occupation: null,
-          institution: null,
-          city: null,
-          state: null,
-          country: null,
-          website: null,
-          instagram: null,
-          linkedin: null,
-          interests: [],
-        },
-      });
-    })
-  );
-};
-
-const handleUserCreated = async (data: UserJSON) => {
-  const isActive = await syncMemberProfile(data);
+const handleUserCreated = (data: UserJSON, isActive: boolean) => {
   if (!isActive) {
     return new Response("User is deactivated", { status: 201 });
   }
@@ -212,8 +218,7 @@ const handleUserCreated = async (data: UserJSON) => {
   return new Response("User created", { status: 201 });
 };
 
-const handleUserUpdated = async (data: UserJSON) => {
-  const isActive = await syncMemberProfile(data);
+const handleUserUpdated = (data: UserJSON, isActive: boolean) => {
   if (!isActive) {
     return new Response("User is deactivated", { status: 201 });
   }
@@ -237,12 +242,8 @@ const handleUserUpdated = async (data: UserJSON) => {
   return new Response("User updated", { status: 201 });
 };
 
-const handleUserDeleted = async (data: DeletedObjectJSON) => {
+const handleUserDeleted = (data: DeletedObjectJSON) => {
   if (data.id) {
-    // Keep historical records and their author identity while removing the
-    // member's ability to authenticate and redact direct profile details.
-    await deactivateMember(data.id);
-
     analytics?.identify({
       distinctId: data.id,
       properties: {
@@ -374,49 +375,72 @@ export const POST = async (request: Request): Promise<Response> => {
     });
   }
 
-  // Get the ID and type
-  const { id } = event.data;
+  // The signed delivery id, not the user id in the event body, is the
+  // idempotency key for Clerk/Svix retries.
   const eventType = event.type;
 
-  log.info("Webhook", { id, eventType });
+  const { duplicate, afterCommit, response } = await database.$transaction(
+    async (transaction) => {
+      const claimed = await transaction.clerkWebhookReceipt.createMany({
+        data: { id: svixId, eventType },
+        skipDuplicates: true,
+      });
+      if (claimed.count === 0) {
+        return {
+          duplicate: true,
+          afterCommit: undefined,
+          response: new Response("Webhook already processed", { status: 200 }),
+        };
+      }
 
-  let response: Response = new Response("", { status: 201 });
+      let afterCommit: (() => Response) | undefined;
+      switch (eventType) {
+        case "user.created": {
+          const active = await syncMemberProfile(transaction, event.data);
+          afterCommit = () => handleUserCreated(event.data, active);
+          break;
+        }
+        case "user.updated": {
+          const active = await syncMemberProfile(transaction, event.data);
+          afterCommit = () => handleUserUpdated(event.data, active);
+          break;
+        }
+        case "user.deleted": {
+          if (event.data.id) {
+            // Keep historical records and author identity while removing this
+            // member's ability to authenticate and redact direct profile data.
+            await deactivateMember(transaction, event.data.id);
+          }
+          afterCommit = () => handleUserDeleted(event.data);
+          break;
+        }
+        case "organization.created":
+          afterCommit = () => handleOrganizationCreated(event.data);
+          break;
+        case "organization.updated":
+          afterCommit = () => handleOrganizationUpdated(event.data);
+          break;
+        case "organizationMembership.created":
+          afterCommit = () => handleOrganizationMembershipCreated(event.data);
+          break;
+        case "organizationMembership.deleted":
+          afterCommit = () => handleOrganizationMembershipDeleted(event.data);
+          break;
+        default:
+          break;
+      }
 
-  switch (eventType) {
-    case "user.created": {
-      response = await handleUserCreated(event.data);
-      break;
+      return {
+        duplicate: false,
+        afterCommit,
+        response: new Response("Webhook accepted", { status: 201 }),
+      };
     }
-    case "user.updated": {
-      response = await handleUserUpdated(event.data);
-      break;
-    }
-    case "user.deleted": {
-      response = await handleUserDeleted(event.data);
-      break;
-    }
-    case "organization.created": {
-      response = handleOrganizationCreated(event.data);
-      break;
-    }
-    case "organization.updated": {
-      response = handleOrganizationUpdated(event.data);
-      break;
-    }
-    case "organizationMembership.created": {
-      response = handleOrganizationMembershipCreated(event.data);
-      break;
-    }
-    case "organizationMembership.deleted": {
-      response = handleOrganizationMembershipDeleted(event.data);
-      break;
-    }
-    default: {
-      break;
-    }
-  }
+  );
 
+  log.info("Webhook", { svixId, eventType, duplicate });
+  const processedResponse = afterCommit?.() ?? response;
   await analytics?.shutdown();
 
-  return response;
+  return processedResponse;
 };

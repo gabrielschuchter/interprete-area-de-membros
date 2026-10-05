@@ -1,7 +1,11 @@
 import { database, LearningAssignmentStatus } from "@repo/database";
 import { notFound, redirect } from "next/navigation";
+import { env } from "@/env";
 import { requireMemberId } from "@/lib/learning";
-import { resolveLearningAssignmentTarget } from "@/lib/learning-assignments";
+import {
+  resolveLearningAssignmentTarget,
+  shouldMarkAssignmentViewed,
+} from "@/lib/learning-assignments";
 
 interface AssignedContentPageProperties {
   readonly params: Promise<{ readonly assignmentId: string }>;
@@ -52,7 +56,14 @@ const AssignedContentPage = async ({
     if (!target) {
       return null;
     }
-    if (assignment.status === LearningAssignmentStatus.NEW) {
+    // A page load marks a new assignment as viewed. During the cutover freeze,
+    // keep the read/redirect available without materializing that GET side effect.
+    if (
+      shouldMarkAssignmentViewed(
+        assignment.status,
+        env.APP_WRITE_FREEZE === "true"
+      )
+    ) {
       const updated = await transaction.activityAssignment.updateMany({
         where: {
           id: assignment.id,

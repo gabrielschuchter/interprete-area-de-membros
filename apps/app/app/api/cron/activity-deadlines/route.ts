@@ -11,6 +11,13 @@ import { env } from "@/env";
 import { notifyActivityDeadline } from "@/lib/notifications";
 
 export const GET = async (request: Request) => {
+  if (!env.CRON_SECRET) {
+    return NextResponse.json(
+      { error: "O processamento agendado não está configurado." },
+      { status: 503 }
+    );
+  }
+
   if (!isAuthorizedCronRequest(request, env.CRON_SECRET)) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   }

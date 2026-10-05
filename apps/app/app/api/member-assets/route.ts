@@ -1,5 +1,10 @@
 import { database, MemberRole } from "@repo/database";
+import {
+  createUploadsPausedResponse,
+  shouldPauseUploadDuringRollback,
+} from "@repo/security/write-freeze";
 import { NextResponse } from "next/server";
+import { env } from "@/env";
 import { auth } from "@/lib/auth";
 import { canReadMemberAssetPath } from "@/lib/member-asset-access";
 import {
@@ -168,6 +173,16 @@ export async function POST(request: Request) {
 
   if (!userId) {
     return unauthorized();
+  }
+
+  if (
+    shouldPauseUploadDuringRollback({
+      method: request.method,
+      pathname: new URL(request.url).pathname,
+      enabled: env.UPLOADS_PAUSED_FOR_ROLLBACK === "true",
+    })
+  ) {
+    return createUploadsPausedResponse();
   }
 
   try {

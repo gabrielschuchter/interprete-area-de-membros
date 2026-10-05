@@ -5,6 +5,7 @@ import {
   defaultOnboardingPreferences,
   type OnboardingInitialData,
 } from "@/components/onboarding/types";
+import { env } from "@/env";
 import { getCurrentUser } from "@/lib/auth";
 import { getOrCreateNotificationPreferences } from "@/lib/notifications";
 import { getOrCreateProfile } from "@/lib/profile";
@@ -17,6 +18,17 @@ const OnboardingPage = async () => {
 
   const profile = await getOrCreateProfile(user.id);
   if (!profile) {
+    if (env.APP_WRITE_FREEZE === "true") {
+      return (
+        <main className="mx-auto flex min-h-[60vh] max-w-xl flex-col justify-center gap-3 px-6 py-12 text-center">
+          <h1 className="font-semibold text-2xl">Atualização temporária</h1>
+          <p className="text-muted-foreground">
+            Estamos concluindo uma atualização segura. Seu cadastro não foi
+            alterado. Tente novamente em alguns minutos.
+          </p>
+        </main>
+      );
+    }
     redirect("/sign-in");
   }
 

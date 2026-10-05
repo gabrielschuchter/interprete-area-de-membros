@@ -41,12 +41,14 @@ const assignmentRoutePattern = /^\/aprender\/atribuicoes\//;
 
 import {
   LearningAssignmentAudienceType,
+  LearningAssignmentStatus,
   LearningAssignmentTargetType,
   type Prisma,
 } from "@repo/database";
 import {
   createLearningAssignmentBatch,
   resolveLearningAssignmentTarget,
+  shouldMarkAssignmentViewed,
 } from "./learning-assignments";
 
 const makeInput = (overrides: Record<string, unknown> = {}) => ({
@@ -62,6 +64,18 @@ const makeInput = (overrides: Record<string, unknown> = {}) => ({
   targetId: "activity_1",
   targetType: LearningAssignmentTargetType.ACTIVITY,
   ...overrides,
+});
+
+test("GET assignment view side effect pauses during the cutover freeze", () => {
+  expect(shouldMarkAssignmentViewed(LearningAssignmentStatus.NEW, false)).toBe(
+    true
+  );
+  expect(shouldMarkAssignmentViewed(LearningAssignmentStatus.NEW, true)).toBe(
+    false
+  );
+  expect(
+    shouldMarkAssignmentViewed(LearningAssignmentStatus.VIEWED, false)
+  ).toBe(false);
 });
 
 const makeTransaction = () => {

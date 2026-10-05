@@ -5,6 +5,7 @@ import {
   normalizeRuntimeDatabaseUrl,
 } from "../packages/database/ssl.ts";
 import { manifest } from "./kiwify-manifest-data.mjs";
+import { assertNotSupabaseProject } from "./lib/supabase-project-guard.mjs";
 
 const ENV_LINE_SPLIT = /\r?\n/;
 const ENV_LINE_PATTERN = /^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/;
@@ -57,6 +58,12 @@ const loadLocalEnvironment = async () => {
 };
 
 await loadLocalEnvironment();
+
+assertNotSupabaseProject({
+  databaseUrl: process.env.DATABASE_URL,
+  operation: "Kiwify historical database import",
+  projectRef: "qffqhilydtnrggbcnogh",
+});
 
 const { PrismaPg } = await import(
   "../packages/database/node_modules/@prisma/adapter-pg/dist/index.mjs"

@@ -7,7 +7,13 @@ import {
   getSignInPath,
 } from "@repo/auth/redirects";
 import { noseconeOptions, securityMiddleware } from "@repo/security/proxy";
+import {
+  createWriteFreezeResponse,
+  isClerkFrontendApiProxyPath,
+  shouldBlockRequestDuringWriteFreeze,
+} from "@repo/security/write-freeze";
 import { type NextProxy, type NextRequest, NextResponse } from "next/server";
+import { env } from "@/env";
 
 const securityHeaders = securityMiddleware(noseconeOptions);
 // Clerk's production Frontend API proxy is registered on this Vercel alias.
@@ -89,6 +95,19 @@ const redirectLegacyAppHost = (req: NextRequest) => {
 export default authMiddleware(
   // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: the middleware coordinates Clerk auth states, proxy routing and canonical host redirects in one ordered request boundary
   async (auth, req) => {
+    if (
+      shouldBlockRequestDuringWriteFreeze({
+        method: req.method,
+        pathname: req.nextUrl.pathname,
+        enabled: env.APP_WRITE_FREEZE === "true",
+        clerkFrontendApiProxy: isClerkFrontendApiProxyPath(
+          req.nextUrl.pathname
+        ),
+      })
+    ) {
+      return createWriteFreezeResponse(req);
+    }
+
     // Keep one visible application host. The legacy alias remains available
     // only long enough to redirect users to the current production project.
     if (

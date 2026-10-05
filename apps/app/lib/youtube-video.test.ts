@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { getYoutubeVideoId, getYoutubeWatchUrl } from "./youtube-video";
+import {
+  getYoutubeVideoId,
+  getYoutubeWatchUrl,
+  resolveYoutubePlayback,
+} from "./youtube-video";
 
 describe("YouTube media URLs", () => {
   it.each([
@@ -27,5 +31,27 @@ describe("YouTube media URLs", () => {
       "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
     );
     expect(getYoutubeWatchUrl("bad")).toBeNull();
+  });
+
+  it("keeps YouTube assets pending when a video association is missing", () => {
+    expect(resolveYoutubePlayback("YOUTUBE", null)).toEqual({
+      kind: "pending",
+    });
+    expect(resolveYoutubePlayback("YOUTUBE", "not-a-video-id")).toEqual({
+      kind: "pending",
+    });
+  });
+
+  it("returns only validated YouTube IDs for mapped assets", () => {
+    expect(resolveYoutubePlayback("YOUTUBE", "dQw4w9WgXcQ")).toEqual({
+      kind: "ready",
+      videoId: "dQw4w9WgXcQ",
+    });
+  });
+
+  it("does not change the handling of other media providers", () => {
+    expect(resolveYoutubePlayback("STORAGE", "dQw4w9WgXcQ")).toEqual({
+      kind: "other-provider",
+    });
   });
 });

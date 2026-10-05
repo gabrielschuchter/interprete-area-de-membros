@@ -27,7 +27,7 @@ import {
 } from "../../biblioteca/actions";
 
 interface AdminLibraryPageProperties {
-  readonly searchParams: Promise<{ catalog?: string }>;
+  readonly searchParams: Promise<{ catalog?: string; uploadPaused?: string }>;
 }
 
 const LibraryEditField = ({
@@ -94,6 +94,13 @@ const AdminLibraryPage = async ({
           <output className="mt-4 block border border-brand-action/35 bg-brand-action/5 px-4 py-3 text-sm">
             Curadoria importada. Recursos correspondentes foram atualizados sem
             remover relações ou materiais existentes.
+          </output>
+        )}
+        {query.uploadPaused === "1" && (
+          <output className="mt-4 block border border-brand-action/35 bg-brand-action/5 px-4 py-3 text-sm">
+            O envio de arquivos está temporariamente pausado durante a janela de
+            segurança. Você ainda pode cadastrar ou editar referências por link;
+            tente enviar o arquivo novamente depois da liberação.
           </output>
         )}
       </header>

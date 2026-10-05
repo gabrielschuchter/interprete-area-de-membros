@@ -5,6 +5,7 @@ import {
   normalizeRuntimeDatabaseUrl,
 } from "../packages/database/ssl.ts";
 import { manifest } from "./kiwify-manifest-data.mjs";
+import { assertNotSupabaseProject } from "./lib/supabase-project-guard.mjs";
 
 const repositoryRoot = process.cwd();
 const sourcePlatform = "KIWIFY";
@@ -102,6 +103,12 @@ if (!(supabaseUrl && secret)) {
     "SUPABASE_URL and SUPABASE_SECRET_KEY are required for HLS migration."
   );
 }
+assertNotSupabaseProject({
+  databaseUrl: process.env.DATABASE_URL,
+  operation: "Kiwify HLS migration",
+  projectRef: "qffqhilydtnrggbcnogh",
+  supabaseUrl,
+});
 
 const safeName = (value) =>
   String(value || "asset")

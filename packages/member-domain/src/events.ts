@@ -79,7 +79,7 @@ export const withMemberIdentityLock = async <T>(
 ) => {
   const safeMemberId = z.string().min(1).max(255).parse(memberId);
   await transaction.$queryRaw`
-    SELECT pg_advisory_xact_lock(hashtextextended(${safeMemberId}, 0))
+    SELECT pg_advisory_xact_lock(hashtextextended(${safeMemberId}, 0))::text
   `;
   return operation();
 };

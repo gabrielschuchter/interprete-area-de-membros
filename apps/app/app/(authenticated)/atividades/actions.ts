@@ -8,7 +8,10 @@ import {
   database,
   LearningAssignmentTargetType,
 } from "@repo/database";
+import { shouldPauseStorageUploadDuringRollback } from "@repo/security/write-freeze";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { env } from "@/env";
 import { canAccessPublishedActivity } from "@/lib/activities";
 import { auth } from "@/lib/auth";
 import { requireStaff } from "@/lib/authorization";
@@ -251,6 +254,15 @@ export const submitActivity = async (formData: FormData) => {
     (requiresFile && !validAttachment)
   ) {
     return;
+  }
+
+  if (
+    shouldPauseStorageUploadDuringRollback({
+      enabled: env.UPLOADS_PAUSED_FOR_ROLLBACK === "true",
+      hasFile: Boolean(validAttachment),
+    })
+  ) {
+    redirect(`/atividades/${activity.slug}?uploadsPaused=1`);
   }
 
   const previous = await database.activitySubmission.findUnique({

@@ -2,6 +2,7 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 import { database, Prisma } from "@repo/database";
+import { isAppWriteFreezeEnabled } from "@repo/security/write-freeze";
 import type { MutationAction } from "./mutation-contract";
 import { mutationLimits } from "./mutation-contract";
 
@@ -38,6 +39,18 @@ export const consumeMutationRateLimit = async ({
   const config = mutationLimits[action];
   const now = Date.now();
   const windowStart = windowStartFor(now, config.windowMs);
+  if (isAppWriteFreezeEnabled()) {
+    return {
+      count: 0,
+      limit: config.max,
+      remaining: config.max,
+      retryAfterSeconds: Math.max(
+        1,
+        Math.ceil((windowStart.getTime() + config.windowMs - now) / 1000)
+      ),
+    };
+  }
+
   const rows = await database.$queryRaw<Array<{ count: number }>>(Prisma.sql`
     INSERT INTO "MutationRateLimit" ("id", "memberId", "action", "windowStart", "count", "updatedAt")
     VALUES (${randomUUID()}, ${memberId}, ${action}, ${windowStart}, 1, NOW())

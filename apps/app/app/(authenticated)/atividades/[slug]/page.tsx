@@ -15,10 +15,23 @@ import { submitActivity } from "../actions";
 
 interface ActivityPageProperties {
   readonly params: Promise<{ slug: string }>;
+  readonly searchParams: Promise<{ uploadsPaused?: string }>;
 }
 
-const ActivityPage = async ({ params }: ActivityPageProperties) => {
-  const { slug } = await params;
+const UploadPauseNotice = ({ visible }: { readonly visible: boolean }) =>
+  visible ? (
+    <output className="mt-6 block border border-brand-action/35 bg-brand-action/5 px-4 py-3 text-sm leading-6">
+      O envio de arquivos está temporariamente pausado durante a janela de
+      segurança. Sua resposta não foi enviada; tente novamente quando os anexos
+      forem reativados.
+    </output>
+  ) : null;
+
+const ActivityPage = async ({
+  params,
+  searchParams,
+}: ActivityPageProperties) => {
+  const [{ slug }, query] = await Promise.all([params, searchParams]);
   const memberId = await requireMemberId();
   const activity = await getPublishedActivity(slug, memberId);
 
@@ -88,6 +101,7 @@ const ActivityPage = async ({ params }: ActivityPageProperties) => {
                   }).format(dueAt)
                 : "sem prazo definido"}
             </p>
+            <UploadPauseNotice visible={query.uploadsPaused === "1"} />
           </article>
 
           <aside className="paper-surface border p-6 shadow-[var(--shadow-paper)] sm:p-8 lg:sticky lg:top-24">

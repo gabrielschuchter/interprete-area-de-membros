@@ -43,3 +43,17 @@ export const getYoutubeWatchUrl = (videoId: string) =>
   videoIdPattern.test(videoId)
     ? `https://www.youtube.com/watch?v=${videoId}`
     : null;
+
+export const resolveYoutubePlayback = (
+  mediaProvider: string | null | undefined,
+  mediaExternalId: string | null | undefined
+) => {
+  if (mediaProvider !== "YOUTUBE") {
+    return { kind: "other-provider" } as const;
+  }
+
+  const videoId = mediaExternalId ? getYoutubeVideoId(mediaExternalId) : null;
+  return videoId
+    ? ({ kind: "ready", videoId } as const)
+    : ({ kind: "pending" } as const);
+};

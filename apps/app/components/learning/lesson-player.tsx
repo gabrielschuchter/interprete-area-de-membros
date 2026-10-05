@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { resolveYoutubePlayback } from "@/lib/youtube-video";
 import { StudyHeartbeat } from "./study-heartbeat";
 
 interface LessonPlayerProperties {
@@ -314,7 +315,31 @@ const YouTubeLessonPlayer = dynamic(
 );
 
 export const LessonPlayer = (properties: LessonPlayerProperties) => {
-  if (properties.mediaProvider === "YOUTUBE" && properties.mediaExternalId) {
+  const youtubePlayback = resolveYoutubePlayback(
+    properties.mediaProvider,
+    properties.mediaExternalId
+  );
+
+  if (youtubePlayback.kind === "pending") {
+    return (
+      <output
+        aria-live="polite"
+        className="flex aspect-video items-center justify-center border bg-brand-depth p-6 text-center"
+      >
+        <div className="max-w-lg space-y-2">
+          <p className="font-data text-muted-foreground text-xs uppercase tracking-[0.16em]">
+            Reprodução pendente
+          </p>
+          <p className="font-display text-2xl">{properties.title}</p>
+          <p className="text-muted-foreground text-sm leading-6">
+            Esta gravação ainda não está associada a um vídeo do YouTube.
+          </p>
+        </div>
+      </output>
+    );
+  }
+
+  if (youtubePlayback.kind === "ready") {
     return (
       <YouTubeLessonPlayer
         assetId={properties.assetId}
@@ -322,7 +347,7 @@ export const LessonPlayer = (properties: LessonPlayerProperties) => {
         studyActivityKind={properties.studyActivityKind}
         studyResourceId={properties.studyResourceId}
         title={properties.title}
-        videoId={properties.mediaExternalId}
+        videoId={youtubePlayback.videoId}
       />
     );
   }

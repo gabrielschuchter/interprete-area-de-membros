@@ -11,6 +11,7 @@ import {
   notificationPreferenceForType,
   notificationTitleForType,
 } from "@repo/member-domain";
+import { env } from "@/env";
 import {
   mergeNotificationRecipients,
   notificationFilterTypes,
@@ -163,12 +164,54 @@ const preferenceEnabled = async (memberId: string, type: NotificationType) => {
     : true;
 };
 
-export const getOrCreateNotificationPreferences = (memberId: string) =>
-  database.notificationPreference.upsert({
+export const getOrCreateNotificationPreferences = async (memberId: string) => {
+  if (env.APP_WRITE_FREEZE === "true") {
+    const current = await database.notificationPreference.findUnique({
+      where: { memberId },
+      select: {
+        memberId: true,
+        mentions: true,
+        commentReplies: true,
+        topicComments: true,
+        followedTopicActivity: true,
+        lessonAvailable: true,
+        moduleAvailable: true,
+        activityAssigned: true,
+        feedbackReceived: true,
+        activityDeadline: true,
+        announcements: true,
+        groupInvitations: true,
+        groupPosts: true,
+        contentAssignments: true,
+      },
+    });
+
+    return (
+      current ?? {
+        memberId,
+        mentions: true,
+        commentReplies: true,
+        topicComments: true,
+        followedTopicActivity: true,
+        lessonAvailable: true,
+        moduleAvailable: true,
+        activityAssigned: true,
+        feedbackReceived: true,
+        activityDeadline: true,
+        announcements: true,
+        groupInvitations: true,
+        groupPosts: true,
+        contentAssignments: true,
+      }
+    );
+  }
+
+  return database.notificationPreference.upsert({
     where: { memberId },
     create: { memberId },
     update: {},
   });
+};
 
 export const getNotificationFilterTypes = (filter: NotificationFilter) =>
   filter === "ALL" ? undefined : { in: [...filterTypes[filter]] };

@@ -9,6 +9,7 @@ import { createEnv } from "@t3-oss/env-nextjs";
 import { z } from "zod";
 
 export const env = createEnv({
+  emptyStringAsUndefined: true,
   skipValidation: process.env.SKIP_ENV_VALIDATION === "true",
   extends: [
     auth(),
@@ -21,9 +22,11 @@ export const env = createEnv({
   ],
   server: {
     CRON_SECRET: z.string().min(32).optional(),
+    APP_WRITE_FREEZE: z.enum(["true", "false"]).default("false"),
   },
   client: {},
   runtimeEnv: {
     CRON_SECRET: process.env.CRON_SECRET,
+    APP_WRITE_FREEZE: process.env.APP_WRITE_FREEZE,
   },
 });

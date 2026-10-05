@@ -8,8 +8,9 @@ secrets.
 
 - PostgreSQL: Supabase project `wkclodjbrynerfgufmyb`, ref
   `wkclodjbrynerfgufmyb`, region `sa-east-1`.
-- Runtime database access: `@repo/database` through Prisma and
-  `@prisma/adapter-pg`; no Supabase client is required by the application.
+- Database access: `@repo/database` through Prisma and `@prisma/adapter-pg`.
+  The app also uses `@supabase/supabase-js` only for Realtime; private Storage
+  operations use server-side HTTP calls. It does not use Supabase Auth sessions.
 - Authentication: a dedicated Clerk Development instance is required locally,
   and a separate Production instance is configured for the Interprete
   application. The embedded
@@ -32,6 +33,7 @@ secrets.
 | `CLERK_WEBHOOK_SIGNING_SECRET` | API Clerk webhook route | API env file | Preview / Production when webhook is enabled | Feature | Clerk Dashboard webhook endpoint |
 | `SUPABASE_URL` | Server-side Storage signing | `apps/app/.env.local` | Preview / Production when private assets are enabled | Feature | Supabase project API settings |
 | `SUPABASE_STORAGE_BUCKET` | Server-side Storage signing | `apps/app/.env.local` | Preview / Production when private assets are enabled | Feature | The private bucket name; current default is `learning-assets` |
+| `SUPABASE_PUBLISHABLE_KEY` | Clerk-authenticated Realtime configuration endpoint | `apps/app/.env.local` | Preview / Production when Realtime is enabled | Feature | Supabase API Keys; public key, never a service-role credential |
 | `SUPABASE_SECRET_KEY` | Server-side private Storage signing | `apps/app/.env.local` | Preview / Production when private assets are enabled | Feature | Supabase API settings; never expose to the browser |
 | `CRON_SECRET` | Scheduled routes in `apps/app` and `apps/api` | Each app's `.env.local` | Vercel Production environments | Feature | Generate at least 32 characters; keep the API value synchronized with Supabase Vault |
 
@@ -40,6 +42,14 @@ is the session pooler URL used by `packages/database/prisma.config.ts` for
 migrations and introspection. The database password is not recoverable from the
 Supabase dashboard after creation; resetting it is a coordinated credential
 rotation and is not performed automatically.
+
+`prisma.config.ts` enforces `sslmode=verify-full` and the bundled Supabase CA
+for Prisma CLI connections, even if a copied connection string contains a
+weaker SSL mode. `@supabase/ssr` and `@supabase/server` are not required for the
+current application: the Supabase quickstart's cookie/session middleware and
+Supabase Auth examples would introduce a second authentication system. Clerk
+remains the identity source; the Realtime client receives a Clerk session token
+from the authenticated server route.
 
 `packages/database/ssl.ts` uses the bundled Supabase CA certificate at
 `packages/database/certs/supabase-prod-ca-2021.crt` by default. A

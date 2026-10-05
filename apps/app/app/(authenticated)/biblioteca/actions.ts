@@ -10,8 +10,10 @@ import {
   LibraryItemKind,
   libraryCatalog,
 } from "@repo/database";
+import { shouldPauseStorageUploadDuringRollback } from "@repo/security/write-freeze";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { env } from "@/env";
 import { requireStaff } from "@/lib/authorization";
 import {
   getLearningAccessScope,
@@ -133,6 +135,17 @@ const uploadLibraryFile = async (file: File, memberId: string) => {
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: multipart validation, storage upload, and metadata persistence must remain one atomic staff action.
 export const createLibraryItem = async (formData: FormData) => {
   const { userId } = await requireStaff();
+  const fileEntry = formData.get("file");
+  const hasUpload = fileEntry instanceof File && fileEntry.size > 0;
+  if (
+    shouldPauseStorageUploadDuringRollback({
+      enabled: env.UPLOADS_PAUSED_FOR_ROLLBACK === "true",
+      hasFile: hasUpload,
+    })
+  ) {
+    redirect("/admin/library?uploadPaused=1");
+  }
+
   await consumeMutationRateLimit({
     action: "library.mutation",
     memberId: userId,
@@ -151,7 +164,7 @@ export const createLibraryItem = async (formData: FormData) => {
   const version = value(formData.get("version")).slice(0, 240);
   const lessonId = value(formData.get("lessonId"));
   const coverUrl = safeCoverUrl(value(formData.get("coverUrl")));
-  const file = validLibraryFile(formData.get("file"));
+  const file = validLibraryFile(fileEntry);
   const idempotencyKey = readIdempotencyKey(formData.get("idempotencyKey"));
 
   if (
@@ -268,6 +281,17 @@ export const setLibraryStatus = async (formData: FormData) => {
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: replacement uploads and safe cleanup are deliberately coordinated in one staff action.
 export const updateLibraryItem = async (formData: FormData) => {
   const { userId } = await requireStaff();
+  const fileEntry = formData.get("file");
+  const hasUpload = fileEntry instanceof File && fileEntry.size > 0;
+  if (
+    shouldPauseStorageUploadDuringRollback({
+      enabled: env.UPLOADS_PAUSED_FOR_ROLLBACK === "true",
+      hasFile: hasUpload,
+    })
+  ) {
+    redirect("/admin/library?uploadPaused=1");
+  }
+
   await consumeMutationRateLimit({
     action: "library.mutation",
     memberId: userId,
@@ -287,7 +311,7 @@ export const updateLibraryItem = async (formData: FormData) => {
   const version = value(formData.get("version")).slice(0, 240);
   const lessonId = value(formData.get("lessonId"));
   const coverUrl = safeCoverUrl(value(formData.get("coverUrl")));
-  const file = validLibraryFile(formData.get("file"));
+  const file = validLibraryFile(fileEntry);
   if (
     !(
       id &&

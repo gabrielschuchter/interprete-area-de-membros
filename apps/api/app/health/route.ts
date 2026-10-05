@@ -1,3 +1,5 @@
+import { databaseProjectRef } from "@repo/database/project-target";
+
 export const dynamic = "force-dynamic";
 
 const sanitizeDatabaseError = (error: unknown) => {
@@ -51,6 +53,7 @@ export const GET = async (request?: Request): Promise<Response> => {
     return Response.json(
       {
         ok: authConfigured,
+        databaseProjectRef: databaseProjectRef(),
         checks: {
           auth: authConfigured ? "configured" : "missing",
           database: "ok",

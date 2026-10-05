@@ -12,6 +12,7 @@ import {
   type Prisma,
 } from "@repo/database";
 import { enqueueNotificationBatch } from "@repo/member-domain";
+import { isAppWriteFreezeEnabled } from "@repo/security/write-freeze";
 
 type AssignmentClient = typeof database | Prisma.TransactionClient;
 
@@ -21,6 +22,11 @@ export interface LearningAssignmentTarget {
   readonly title: string;
   readonly type: LearningAssignmentTargetType;
 }
+
+export const shouldMarkAssignmentViewed = (
+  status: LearningAssignmentStatus,
+  writeFreezeEnabled: boolean
+) => status === LearningAssignmentStatus.NEW && !writeFreezeEnabled;
 
 export interface CreateLearningAssignmentInput {
   readonly assignedByMemberId: string;
@@ -655,19 +661,21 @@ export const markLearningAssignmentViewed = async (
   memberId: string,
   at = new Date()
 ) =>
-  database.activityAssignment.updateMany({
-    where: {
-      id: assignmentId,
-      memberId,
-      status: LearningAssignmentStatus.NEW,
-      revokedAt: null,
-      AND: [
-        { OR: [{ availableAt: null }, { availableAt: { lte: at } }] },
-        { OR: [{ expiresAt: null }, { expiresAt: { gt: at } }] },
-      ],
-    },
-    data: { status: LearningAssignmentStatus.VIEWED, viewedAt: at },
-  });
+  isAppWriteFreezeEnabled()
+    ? { count: 0 }
+    : database.activityAssignment.updateMany({
+        where: {
+          id: assignmentId,
+          memberId,
+          status: LearningAssignmentStatus.NEW,
+          revokedAt: null,
+          AND: [
+            { OR: [{ availableAt: null }, { availableAt: { lte: at } }] },
+            { OR: [{ expiresAt: null }, { expiresAt: { gt: at } }] },
+          ],
+        },
+        data: { status: LearningAssignmentStatus.VIEWED, viewedAt: at },
+      });
 
 export const markLearningAssignmentStarted = async (
   memberId: string,
@@ -675,25 +683,27 @@ export const markLearningAssignmentStarted = async (
   targetId: string,
   at = new Date()
 ) =>
-  database.activityAssignment.updateMany({
-    where: {
-      memberId,
-      targetType,
-      targetId,
-      status: {
-        in: [LearningAssignmentStatus.NEW, LearningAssignmentStatus.VIEWED],
-      },
-      revokedAt: null,
-      AND: [
-        { OR: [{ availableAt: null }, { availableAt: { lte: at } }] },
-        { OR: [{ expiresAt: null }, { expiresAt: { gt: at } }] },
-      ],
-    },
-    data: {
-      status: LearningAssignmentStatus.STARTED,
-      startedAt: at,
-    },
-  });
+  isAppWriteFreezeEnabled()
+    ? { count: 0 }
+    : database.activityAssignment.updateMany({
+        where: {
+          memberId,
+          targetType,
+          targetId,
+          status: {
+            in: [LearningAssignmentStatus.NEW, LearningAssignmentStatus.VIEWED],
+          },
+          revokedAt: null,
+          AND: [
+            { OR: [{ availableAt: null }, { availableAt: { lte: at } }] },
+            { OR: [{ expiresAt: null }, { expiresAt: { gt: at } }] },
+          ],
+        },
+        data: {
+          status: LearningAssignmentStatus.STARTED,
+          startedAt: at,
+        },
+      });
 
 export const markLearningAssignmentCompleted = async (
   memberId: string,

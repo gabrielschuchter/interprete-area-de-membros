@@ -1,3 +1,4 @@
+import { databaseProjectRef } from "@repo/database/project-target";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -28,6 +29,7 @@ export const GET = async (): Promise<Response> => {
     return NextResponse.json(
       {
         ok: authConfigured,
+        databaseProjectRef: databaseProjectRef(),
         checks: {
           auth: authConfigured ? "configured" : "missing",
           database: "ok",

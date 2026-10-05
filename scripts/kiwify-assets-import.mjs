@@ -14,6 +14,7 @@ import {
   databaseSsl,
   normalizeRuntimeDatabaseUrl,
 } from "../packages/database/ssl.ts";
+import { assertNotSupabaseProject } from "./lib/supabase-project-guard.mjs";
 
 const ENV_LINE_SPLIT = /\r?\n/;
 const ENV_LINE_PATTERN = /^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/;
@@ -313,6 +314,12 @@ failIfMissing(
   "SUPABASE_SECRET_KEY",
   process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY
 );
+assertNotSupabaseProject({
+  databaseUrl: process.env.DATABASE_URL,
+  operation: "Kiwify asset import",
+  projectRef: "qffqhilydtnrggbcnogh",
+  supabaseUrl: process.env.SUPABASE_URL,
+});
 
 const bucket = process.env.SUPABASE_STORAGE_BUCKET ?? "learning-assets";
 const secret =
