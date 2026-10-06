@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import type { AnchorHTMLAttributes, PointerEvent, ReactNode } from "react";
-import { useCallback } from "react";
+import { useCallback, useLayoutEffect, useState } from "react";
 import { reserveNavigationPrefetch } from "./navigation-prefetch";
 
 type IntentLinkProperties = Omit<
@@ -14,6 +14,11 @@ type IntentLinkProperties = Omit<
   readonly href: string;
   readonly onNavigationStart?: (href: string) => void;
 };
+
+interface PrefetchIntent {
+  readonly destination: string;
+  readonly sourceRoute: string;
+}
 
 /**
  * Keep the authenticated shell quiet until navigation is intentional.
@@ -31,16 +36,28 @@ export const IntentLink = ({
   onPointerEnter,
   ...props
 }: IntentLinkProperties) => {
-  const router = useRouter();
   const pathname = usePathname();
+  const [prefetchIntent, setPrefetchIntent] = useState<PrefetchIntent | null>(
+    null
+  );
+
+  useLayoutEffect(() => {
+    if (prefetchIntent?.sourceRoute !== pathname) {
+      setPrefetchIntent(null);
+    }
+  }, [pathname, prefetchIntent?.sourceRoute]);
 
   const prefetch = useCallback(() => {
     if (!reserveNavigationPrefetch(pathname, href)) {
       return;
     }
 
-    router.prefetch(href);
-  }, [href, pathname, router]);
+    setPrefetchIntent({ destination: href, sourceRoute: pathname });
+  }, [href, pathname]);
+
+  const shouldPrefetchFullRoute =
+    prefetchIntent?.sourceRoute === pathname &&
+    prefetchIntent.destination === href;
 
   const startNavigation = useCallback(
     (event: PointerEvent<HTMLAnchorElement>) => {
@@ -91,7 +108,7 @@ export const IntentLink = ({
         onPointerEnter?.(event);
         prefetch();
       }}
-      prefetch={false}
+      prefetch={shouldPrefetchFullRoute}
     >
       {children}
     </Link>

@@ -301,3 +301,49 @@ sample, with 1 result and 397–624 ms content readiness. No production mutation
 was submitted. MEMBER/ADMIN sessions, physical Android/4G, throttled network,
 real-user percentiles, hydration/INP, and persistence/rollback mutation tests
 remain open. Observability Plus was not enabled.
+
+### Post-feedback Production verification — 06/10/2026
+
+Commit `083b862` was pushed to
+`codex/interprete-member-area-release-2026-10-04` and deployed as Production
+`dpl_7amD4bgH6iiiyveApJ4rKjJNtebR`. Vercel lists the Next page/API Functions in
+`gru1`; the canonical alias was assigned to this deployment. A fresh canonical
+`/health` returned HTTP 200, database `ok`, GREEN project ref
+`qffqhilydtnrggbcnogh`, and `X-Vercel-Id: gru1::gru1::hf94z-...`. The latest
+build ran 254 app tests and passed the 225 KiB route bundle budget
+(188.8–192.7 KiB gzip). Build logs note that Better Stack has no runtime
+observability environment variables and sends Web Vitals to `/dev/null`; no
+Observability Plus was enabled.
+
+Authenticated Production QA used the existing signed-in TEACHER account in Edge
+at the canonical host. On a normal desktop viewport without network throttling,
+the pending announcement was observed 130–164 ms from the automation's click
+start. The capture handler now calls `flushSync` before Next handles the link,
+but this automation interval is not an event-to-paint measurement and does not
+prove the <=100-ms budget. The minimum visible interval avoids a vanishing
+indicator; it does not delay navigation.
+
+For navigation, each click followed a fresh screenshot and a calibrated sidebar
+pointer target. On repeat, warmed route transitions reached structure/content
+at 478–479 ms for Library and 476–477 ms for Community; route URL commits were
+77–83 ms. One initial Library visit after a production reload took 945 ms to
+structure and 1,188 ms to its first material heading. Teacher overview reached
+its first content heading in 622 ms (URL commit 270 ms). These are individual
+samples, not percentiles. A Community reload shortly after alias cutover took
+3,238 ms to the post content; subsequent authenticated Teacher
+overview reloads took 1,044 ms and 779 ms. This is evidence that startup/cache
+state matters, not enough data to estimate cold-start frequency or p95.
+
+Global Search remained responsive while its API fan-out completed: typing
+`epidemiologia` was acknowledged in 43 ms and the results list (8 items) appeared
+in 500 ms. A prior Production query for `causalidade` returned one result in
+397–624 ms. Search did not mutate data. No exercise submission, bookmark, post,
+or other production write was used for this verification.
+
+The deployment confirms the region and keeps warmed Library/Community below
+500 ms, but the 300-ms warmed-route budget remains unmet in this interaction
+method. The single cold/reload result above 3 seconds and the 0.78–1.19-second
+warm/cold spread deserve repeated measurement across ordinary sessions. Search
+results met the 1-second goal in the observed sample. These results do not prove
+p75/p95, mobile/4G, MEMBER/ADMIN behavior, hydration/INP, or mutation persistence
+and rollback. Phase 10 and the performance initiative remain `IN PROGRESS`.
