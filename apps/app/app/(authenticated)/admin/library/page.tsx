@@ -8,6 +8,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { getCourseOptions } from "@/lib/admin-learning";
 import { getStaffLibraryItems } from "@/lib/library";
+import { IntentLink } from "../../components/intent-link";
 
 const statusLabel = (status: string) => {
   if (status === "PUBLISHED") {
@@ -445,9 +446,9 @@ const AdminLibraryPage = async ({
             >
               {page > 1 ? (
                 <Button asChild variant="outline">
-                  <Link href={`/admin/library?page=${page - 1}`}>
+                  <IntentLink href={`/admin/library?page=${page - 1}`}>
                     Página anterior
-                  </Link>
+                  </IntentLink>
                 </Button>
               ) : (
                 <span />
@@ -460,9 +461,9 @@ const AdminLibraryPage = async ({
               </span>
               {hasMore && (
                 <Button asChild variant="outline">
-                  <Link href={`/admin/library?page=${page + 1}`}>
+                  <IntentLink href={`/admin/library?page=${page + 1}`}>
                     Próxima página
-                  </Link>
+                  </IntentLink>
                 </Button>
               )}
             </nav>
