@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import type { AnchorHTMLAttributes, PointerEvent, ReactNode } from "react";
 import { useCallback, useLayoutEffect, useState } from "react";
 import { reserveNavigationPrefetch } from "./navigation-prefetch";
@@ -37,26 +37,31 @@ export const IntentLink = ({
   ...props
 }: IntentLinkProperties) => {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const serializedSearchParams = searchParams.toString();
+  const routeKey = serializedSearchParams
+    ? `${pathname}?${serializedSearchParams}`
+    : pathname;
   const [prefetchIntent, setPrefetchIntent] = useState<PrefetchIntent | null>(
     null
   );
 
   useLayoutEffect(() => {
-    if (prefetchIntent?.sourceRoute !== pathname) {
+    if (prefetchIntent?.sourceRoute !== routeKey) {
       setPrefetchIntent(null);
     }
-  }, [pathname, prefetchIntent?.sourceRoute]);
+  }, [routeKey, prefetchIntent?.sourceRoute]);
 
   const prefetch = useCallback(() => {
-    if (!reserveNavigationPrefetch(pathname, href)) {
+    if (!reserveNavigationPrefetch(routeKey, href)) {
       return;
     }
 
-    setPrefetchIntent({ destination: href, sourceRoute: pathname });
-  }, [href, pathname]);
+    setPrefetchIntent({ destination: href, sourceRoute: routeKey });
+  }, [href, routeKey]);
 
   const shouldPrefetchFullRoute =
-    prefetchIntent?.sourceRoute === pathname &&
+    prefetchIntent?.sourceRoute === routeKey &&
     prefetchIntent.destination === href;
 
   const startNavigation = useCallback(

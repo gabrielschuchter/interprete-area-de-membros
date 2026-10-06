@@ -8,6 +8,7 @@ const { currentPath } = vi.hoisted(() => ({ currentPath: { value: "/" } }));
 
 vi.mock("next/navigation", () => ({
   usePathname: () => currentPath.value,
+  useSearchParams: () => new URLSearchParams(),
   useRouter: () => ({ prefetch: vi.fn() }),
 }));
 

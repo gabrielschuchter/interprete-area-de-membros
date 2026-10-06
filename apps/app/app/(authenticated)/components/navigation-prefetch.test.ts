@@ -21,6 +21,19 @@ test("starts a fresh intent budget after the route changes", () => {
   expect(reserveNavigationPrefetch("/aprender", "/comunidade")).toBe(true);
 });
 
+test("starts a fresh intent budget when pagination changes query parameters", () => {
+  expect(
+    reserveNavigationPrefetch("/admin/library?page=1", "/admin/library?page=2")
+  ).toBe(true);
+  expect(
+    reserveNavigationPrefetch("/admin/library?page=1", "/admin/library?page=3")
+  ).toBe(true);
+
+  expect(
+    reserveNavigationPrefetch("/admin/library?page=2", "/admin/library?page=3")
+  ).toBe(true);
+});
+
 test("does not prefetch when data saving or a constrained network is active", () => {
   expect(canPrefetchForConnection({ saveData: true })).toBe(false);
   expect(canPrefetchForConnection({ effectiveType: "2g" })).toBe(false);
