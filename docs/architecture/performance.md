@@ -347,3 +347,31 @@ warm/cold spread deserve repeated measurement across ordinary sessions. Search
 results met the 1-second goal in the observed sample. These results do not prove
 p75/p95, mobile/4G, MEMBER/ADMIN behavior, hydration/INP, or mutation persistence
 and rollback. Phase 10 and the performance initiative remain `IN PROGRESS`.
+
+### Intent-prefetch trial and Admin Library baseline — 06/10/2026
+
+Commit `9f4ba71` deployed as `dpl_FY48LbuwQm8reiSvcDfBMZoLifVf`. The page and
+API Functions were listed in `gru1`; the canonical `/health` returned HTTP 200
+with database `ok`, the same GREEN project ref, and
+`X-Vercel-Id: gru1::gru1::wz2fj-...`.
+
+Using the same authenticated TEACHER session in Edge, keyboard focus initiated
+route prefetch and was held for 600 ms before Enter. Community → Library reached
+the Library structure marker in 233 ms and its first material heading in 235
+ms; Library → Community reached its structure marker in 167 ms and first post
+heading in 170 ms. Neither sample displayed `[data-route-loading]`. Compared
+with the prior 411–412 ms Community sample after the same focus dwell, the
+observed content interval fell by about 59%. Teacher overview reached its
+confirmed dashboard card in 159 ms (URL commit 85 ms). Samples are single-run
+browser automation timings, not field INP or percentiles; feedback observations
+(159–229 ms) include automation transport and do not measure event-to-paint.
+
+The same session exposed a remaining Gestão outlier. After a clean authenticated
+Admin overview reload and 600 ms focus on Admin Library, its unique page title
+appeared at 1,166 ms, the catalog heading at 1,182 ms, and the first catalog
+item at 1,201 ms. The rendered page showed 110 catalog items. Before the next
+tranche, `getStaffLibraryItems()` fetched every item and the page waited for the
+full list before returning its header; no loading fallback was observed. This
+sample missed the 300-ms intent-warmed route target and motivated SQL-backed
+pagination plus a route-specific loading shell. No Production mutation was
+submitted.

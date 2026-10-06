@@ -746,9 +746,20 @@ export const getPersonalLibraryItems = async (memberId: string) => {
   });
 };
 
-export const getStaffLibraryItems = async () =>
-  database.libraryItem.findMany({
-    orderBy: [{ status: "asc" }, { position: "asc" }, { title: "asc" }],
+export const getStaffLibraryItems = async (requestedPage = 1) => {
+  const page =
+    Number.isSafeInteger(requestedPage) && requestedPage > 0
+      ? Math.min(requestedPage, 10_000)
+      : 1;
+  const rows = await database.libraryItem.findMany({
+    orderBy: [
+      { status: "asc" },
+      { position: "asc" },
+      { title: "asc" },
+      { id: "asc" },
+    ],
+    skip: (page - 1) * LIBRARY_PAGE_SIZE,
+    take: LIBRARY_PAGE_SIZE + 1,
     select: {
       id: true,
       title: true,
@@ -776,3 +787,12 @@ export const getStaffLibraryItems = async () =>
       sizeBytes: true,
     },
   });
+
+  return {
+    ...pageLibraryRows(rows, page, {
+      pageSize: LIBRARY_PAGE_SIZE,
+      rowsAlreadyOffset: true,
+    }),
+    page,
+  };
+};

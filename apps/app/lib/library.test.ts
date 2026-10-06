@@ -29,7 +29,7 @@ vi.mock("./content-access", () => ({
   hasModuleAccess: vi.fn(),
 }));
 
-import { getLibraryItems } from "./library";
+import { getLibraryItems, getStaffLibraryItems } from "./library";
 
 describe("library lesson access", () => {
   beforeEach(() => {
@@ -95,6 +95,38 @@ describe("library lesson access", () => {
           },
         },
       ],
+    });
+  });
+
+  test("paginates the staff catalog without gaps between pages", async () => {
+    const firstPageRows = Array.from({ length: 25 }, (_, index) => ({
+      id: `item-${index + 1}`,
+    }));
+    const secondPageRows = Array.from({ length: 10 }, (_, index) => ({
+      id: `item-${index + 25}`,
+    }));
+    database.libraryItem.findMany
+      .mockResolvedValueOnce(firstPageRows)
+      .mockResolvedValueOnce(secondPageRows);
+
+    const firstPage = await getStaffLibraryItems(1);
+    const secondPage = await getStaffLibraryItems(2);
+
+    expect(firstPage.items.map(({ id }) => id)).toEqual(
+      Array.from({ length: 24 }, (_, index) => `item-${index + 1}`)
+    );
+    expect(firstPage.hasMore).toBe(true);
+    expect(secondPage.items.map(({ id }) => id)).toEqual(
+      Array.from({ length: 10 }, (_, index) => `item-${index + 25}`)
+    );
+    expect(secondPage.hasMore).toBe(false);
+    expect(database.libraryItem.findMany.mock.calls[0]?.[0]).toMatchObject({
+      skip: 0,
+      take: 25,
+    });
+    expect(database.libraryItem.findMany.mock.calls[1]?.[0]).toMatchObject({
+      skip: 24,
+      take: 25,
     });
   });
 });

@@ -27,7 +27,11 @@ import {
 } from "../../biblioteca/actions";
 
 interface AdminLibraryPageProperties {
-  readonly searchParams: Promise<{ catalog?: string; uploadPaused?: string }>;
+  readonly searchParams: Promise<{
+    catalog?: string;
+    page?: string;
+    uploadPaused?: string;
+  }>;
 }
 
 const LibraryEditField = ({
@@ -51,10 +55,16 @@ const AdminLibraryPage = async ({
   searchParams,
 }: AdminLibraryPageProperties) => {
   const query = await searchParams;
-  const [items, courses] = await Promise.all([
-    getStaffLibraryItems(),
+  const requestedPage = Number(query.page);
+  const page =
+    Number.isSafeInteger(requestedPage) && requestedPage > 0
+      ? Math.min(requestedPage, 10_000)
+      : 1;
+  const [catalog, courses] = await Promise.all([
+    getStaffLibraryItems(page),
     getCourseOptions(),
   ]);
+  const { hasMore, items } = catalog;
 
   return (
     <main className="mx-auto w-full max-w-[1280px] px-5 py-10 sm:px-8 lg:px-12 lg:py-14">
@@ -111,7 +121,11 @@ const AdminLibraryPage = async ({
           </h2>
           <div className="mt-5 divide-y border-border border-y">
             {items.length === 0 ? (
-              <p className="py-5 text-muted-foreground">Nenhum item criado.</p>
+              <p className="py-5 text-muted-foreground">
+                {page === 1
+                  ? "Nenhum item criado."
+                  : "Nenhum item nesta página."}
+              </p>
             ) : (
               // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: the card keeps reference editing, relations, and publishing controls together.
               items.map((item) => (
@@ -424,6 +438,35 @@ const AdminLibraryPage = async ({
               ))
             )}
           </div>
+          {items.length > 0 && (page > 1 || hasMore) && (
+            <nav
+              aria-label="Paginação do catálogo"
+              className="mt-8 flex flex-wrap items-center justify-between gap-3"
+            >
+              {page > 1 ? (
+                <Button asChild variant="outline">
+                  <Link href={`/admin/library?page=${page - 1}`}>
+                    Página anterior
+                  </Link>
+                </Button>
+              ) : (
+                <span />
+              )}
+              <span
+                aria-live="polite"
+                className="text-muted-foreground text-sm"
+              >
+                Página {page}
+              </span>
+              {hasMore && (
+                <Button asChild variant="outline">
+                  <Link href={`/admin/library?page=${page + 1}`}>
+                    Próxima página
+                  </Link>
+                </Button>
+              )}
+            </nav>
+          )}
         </section>
         <aside className="paper-surface border p-6 lg:sticky lg:top-24">
           <p className="brand-eyebrow">Novo material</p>
