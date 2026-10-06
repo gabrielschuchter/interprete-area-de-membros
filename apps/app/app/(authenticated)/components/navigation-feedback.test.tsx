@@ -1,14 +1,21 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act } from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
+const navigationState = vi.hoisted(() => ({ pathname: "/origem" }));
+
 vi.mock("next/navigation", () => ({
-  usePathname: () => "/origem",
+  usePathname: () => navigationState.pathname,
   useSearchParams: () => new URLSearchParams(),
 }));
 
 import { NavigationFeedback } from "./navigation-feedback";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+  navigationState.pathname = "/origem";
+});
 
 describe("NavigationFeedback", () => {
   test("keeps feedback when the client router prevents native navigation", () => {
@@ -59,5 +66,32 @@ describe("NavigationFeedback", () => {
     });
 
     expect(screen.getByText("Abrindo conteúdo")).toBeTruthy();
+  });
+
+  test("keeps the acknowledgement visible briefly when the route commits immediately", () => {
+    vi.useFakeTimers();
+    const { rerender } = render(
+      <>
+        <NavigationFeedback />
+        <a href="/destino">Abrir destino</a>
+      </>
+    );
+
+    fireEvent.pointerDown(screen.getByRole("link", { name: "Abrir destino" }));
+    navigationState.pathname = "/destino";
+    rerender(
+      <>
+        <NavigationFeedback />
+        <a href="/destino">Abrir destino</a>
+      </>
+    );
+
+    expect(screen.getByText("Abrindo conteúdo")).toBeTruthy();
+
+    act(() => {
+      vi.advanceTimersByTime(150);
+    });
+
+    expect(screen.queryByText("Abrindo conteúdo")).toBeNull();
   });
 });

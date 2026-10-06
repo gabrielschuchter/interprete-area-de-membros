@@ -2,8 +2,10 @@
 
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 
 const NAVIGATION_TIMEOUT = 12_000;
+const MINIMUM_FEEDBACK_DURATION = 150;
 
 const getInternalDestination = (target: EventTarget | null) => {
   if (!(target instanceof Element)) {
@@ -68,6 +70,7 @@ export const NavigationFeedback = () => {
   const routeKey = `${pathname}?${searchParams.toString()}`;
   const [pending, setPending] = useState(false);
   const timeoutRef = useRef<number | null>(null);
+  const pendingSinceRef = useRef<number | null>(null);
   const previousRouteKey = useRef(routeKey);
 
   useEffect(() => {
@@ -76,11 +79,28 @@ export const NavigationFeedback = () => {
     }
 
     previousRouteKey.current = routeKey;
-    setPending(false);
     if (timeoutRef.current !== null) {
       window.clearTimeout(timeoutRef.current);
       timeoutRef.current = null;
     }
+
+    const pendingSince = pendingSinceRef.current;
+    const remainingFeedback =
+      pendingSince === null
+        ? 0
+        : MINIMUM_FEEDBACK_DURATION - (Date.now() - pendingSince);
+
+    if (remainingFeedback > 0) {
+      timeoutRef.current = window.setTimeout(() => {
+        pendingSinceRef.current = null;
+        setPending(false);
+        timeoutRef.current = null;
+      }, remainingFeedback);
+      return;
+    }
+
+    pendingSinceRef.current = null;
+    setPending(false);
   }, [routeKey]);
 
   useEffect(() => {
@@ -91,11 +111,17 @@ export const NavigationFeedback = () => {
         return;
       }
 
-      setPending(true);
+      if (pendingSinceRef.current === null) {
+        pendingSinceRef.current = Date.now();
+        // Commit the acknowledgement during capture, before Next handles the
+        // same activation and starts its route transition.
+        flushSync(() => setPending(true));
+      }
       if (timeoutRef.current !== null) {
         window.clearTimeout(timeoutRef.current);
       }
       timeoutRef.current = window.setTimeout(() => {
+        pendingSinceRef.current = null;
         setPending(false);
         timeoutRef.current = null;
       }, NAVIGATION_TIMEOUT);

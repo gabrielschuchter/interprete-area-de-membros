@@ -257,3 +257,47 @@ latency remain unverified. A local follow-up fixes the navigation live region
 being cleared when Next intercepts an internal link; it passed the monorepo
 gates but still needs an authenticated deployment measurement before release.
 Phase 10 and this initiative remain `IN PROGRESS`.
+
+### Repeated warm Production navigation sample — 06/10/2026
+
+After the region rollout, I repeated authenticated warm navigations in the same
+Edge `TEACHER` session using a fresh browser screenshot before every physical
+pointer click, then recorded click dispatch, route commit, route structure, and
+a route-specific usable-content marker separately. With that calibrated method,
+click dispatch took 29–40 ms and route commit took approximately 67–93 ms. Five
+warm samples reached usable content in:
+
+| Flow | Median, n=5 | Range, n=5 | Structure median |
+| --- | ---: | ---: | ---: |
+| Community | 437 ms | 422–445 ms | 424 ms |
+| Library | 445 ms | 416–468 ms | 433 ms |
+| Teacher overview | 438 ms | 420–596 ms | 424 ms |
+| Learn | 439 ms | 431–495 ms | 85 ms |
+| Exercises | 428 ms | 424–438 ms | 414 ms |
+
+These warmed route samples are below the 1-second first-visit goal but remain
+above the 300-ms warmed/prefetched goal. The Learn shell is visible much sooner
+than its usable course content. They are five samples, not p95 evidence, and
+include browser automation/DOM polling; they are not field INP. A prior uncalibrated
+measurement occasionally added about 800 ms because Windows coordinate clicks
+were mapped from a stale screenshot; those readings are excluded from this
+sample and must not be compared as an apples-to-apples baseline.
+
+The old global navigation progress indicator was observed in only 2 of 25
+calibrated attempts, at 115 ms and 118 ms from the automation's click start;
+route commit could clear it before it was visible. A follow-up now flushes the
+pending state during the capture event and retains it for at least 150 ms while
+content proceeds independently. Its focused regression test and all five
+monorepo gates pass locally. This follow-up is not included in the currently
+published `c92d87a` deployment and still needs Production QA. The indicator
+observation is not proof of the <=100-ms feedback budget.
+
+The Production deployment `dpl_2vqLQfcQhaV29V7tGcmE2rbkfohH`, built from
+`c92d87a`, lists the Next page/API functions in `gru1`; canonical `/health`
+returns HTTP 200 and `X-Vercel-Id: gru1::gru1::...`. Five calibrated samples
+from the same signed-in TEACHER session cover Community, Library, teacher
+overview, Learn, and Exercises. Search was tested read-only in the preceding
+sample, with 1 result and 397–624 ms content readiness. No production mutation
+was submitted. MEMBER/ADMIN sessions, physical Android/4G, throttled network,
+real-user percentiles, hydration/INP, and persistence/rollback mutation tests
+remain open. Observability Plus was not enabled.
