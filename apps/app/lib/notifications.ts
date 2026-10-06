@@ -11,7 +11,9 @@ import {
   notificationPreferenceForType,
   notificationTitleForType,
 } from "@repo/member-domain";
+import { tracePerformance } from "@repo/observability/performance";
 import { env } from "@/env";
+import { getMemberRole } from "./authorization";
 import {
   mergeNotificationRecipients,
   notificationFilterTypes,
@@ -425,43 +427,47 @@ export const getRecentCommunityAnnouncements = async (
   memberId: string,
   limit = 3
 ) => {
-  const [member, now] = await Promise.all([
-    database.member.findUnique({
-      where: { id: memberId },
-      select: { role: true },
-    }),
+  const [role, now] = await Promise.all([
+    getMemberRole(memberId),
     Promise.resolve(new Date()),
   ]);
-  const isStaff =
-    member?.role === MemberRole.TEACHER || member?.role === MemberRole.ADMIN;
-  const announcements = await database.announcement.findMany({
-    where: {
-      status: ContentStatus.PUBLISHED,
-      deletedAt: null,
-      AND: [
-        { OR: [{ startsAt: null }, { startsAt: { lte: now } }] },
-        { OR: [{ endsAt: null }, { endsAt: { gt: now } }] },
-      ],
-      OR: [
-        { audience: AnnouncementAudience.ALL },
-        ...(isStaff ? [{ audience: AnnouncementAudience.STAFF }] : []),
-        {
-          audience: AnnouncementAudience.SELECTED,
-          recipientIds: { has: memberId },
+  const isStaff = role === MemberRole.TEACHER || role === MemberRole.ADMIN;
+  const announcements = await tracePerformance(
+    "member.community.announcements",
+    () =>
+      database.announcement.findMany({
+        where: {
+          status: ContentStatus.PUBLISHED,
+          deletedAt: null,
+          AND: [
+            { OR: [{ startsAt: null }, { startsAt: { lte: now } }] },
+            { OR: [{ endsAt: null }, { endsAt: { gt: now } }] },
+          ],
+          OR: [
+            { audience: AnnouncementAudience.ALL },
+            ...(isStaff ? [{ audience: AnnouncementAudience.STAFF }] : []),
+            {
+              audience: AnnouncementAudience.SELECTED,
+              recipientIds: { has: memberId },
+            },
+          ],
         },
-      ],
-    },
-    orderBy: [{ isPinned: "desc" }, { publishedAt: "desc" }, { id: "desc" }],
-    take: Math.min(Math.max(limit, 1), 3),
-    select: {
-      id: true,
-      title: true,
-      body: true,
-      href: true,
-      createdAt: true,
-      publishedAt: true,
-    },
-  });
+        orderBy: [
+          { isPinned: "desc" },
+          { publishedAt: "desc" },
+          { id: "desc" },
+        ],
+        take: Math.min(Math.max(limit, 1), 3),
+        select: {
+          id: true,
+          title: true,
+          body: true,
+          href: true,
+          createdAt: true,
+          publishedAt: true,
+        },
+      })
+  );
   return announcements.map((announcement) => ({
     ...announcement,
     createdAt: announcement.publishedAt ?? announcement.createdAt,

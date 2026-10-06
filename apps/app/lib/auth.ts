@@ -2,6 +2,7 @@ import "server-only";
 
 import { auth as clerkAuth, currentUser } from "@repo/auth/server";
 import { database } from "@repo/database";
+import { tracePerformance } from "@repo/observability/performance";
 import { cache } from "react";
 import { applyMemberDeactivation } from "./auth-state";
 
@@ -13,6 +14,7 @@ export type MemberAuthResult = Pick<
   "userId" | "isAuthenticated" | "redirectToSignIn" | "redirectToSignUp"
 > & {
   memberDeactivated?: boolean;
+  memberSnapshot?: Awaited<ReturnType<typeof getMemberIdentitySnapshot>>;
 };
 
 export const getMemberIdentitySnapshot = cache(async (userId: string) =>
@@ -23,18 +25,27 @@ export const getMemberIdentitySnapshot = cache(async (userId: string) =>
       displayName: true,
       email: true,
       avatarUrl: true,
+      role: true,
+      onboardingStatus: true,
     },
   })
 );
 
 export const getAuth = cache(async (): Promise<MemberAuthResult> => {
-  const session = await clerkAuth();
+  const session = await tracePerformance("member.auth.clerk", () =>
+    clerkAuth()
+  );
 
   const member = session.userId
-    ? await getMemberIdentitySnapshot(session.userId)
+    ? await tracePerformance("member.auth.snapshot", () =>
+        getMemberIdentitySnapshot(session.userId as string)
+      )
     : null;
 
-  return applyMemberDeactivation(session, Boolean(member?.deactivatedAt));
+  return {
+    ...applyMemberDeactivation(session, Boolean(member?.deactivatedAt)),
+    memberSnapshot: member?.deactivatedAt ? null : member,
+  };
 });
 
 // Keep the familiar Clerk function name at app call sites while enforcing the

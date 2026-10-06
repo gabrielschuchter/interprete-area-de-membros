@@ -6,6 +6,7 @@ import {
   database,
   MemberRole,
 } from "@repo/database";
+import { tracePerformance } from "@repo/observability/performance";
 import { getMemberRole } from "@/lib/authorization";
 import { communityPostHref } from "@/lib/community";
 import {
@@ -88,267 +89,302 @@ export const searchGlobal = async (memberId: string, rawQuery: string) => {
   ]);
   const canModeratePrivateGroups =
     role === MemberRole.ADMIN || role === MemberRole.TEACHER;
-  const resultsPromise = Promise.all([
-    database.learningPath.findMany({
-      where: {
-        ...published,
-        OR: [{ title: contains(query) }, { description: contains(query) }],
-      },
-      orderBy: [{ position: "asc" }, { title: "asc" }],
-      take: MAX_RESULTS_PER_TYPE,
-      select: {
-        id: true,
-        title: true,
-        slug: true,
-        description: true,
-        courses: {
-          where: { ...published, experience: CourseExperience.ASYNC },
-          select: { id: true },
-        },
-      },
-    }),
-    database.course.findMany({
-      where: {
-        AND: [
-          publishedCourse,
-          {
+  const resultsPromise = tracePerformance("member.search.query-fanout", () =>
+    Promise.all([
+      tracePerformance("member.search.paths", () =>
+        database.learningPath.findMany({
+          where: {
+            ...published,
             OR: [{ title: contains(query) }, { description: contains(query) }],
           },
-        ],
-      },
-      orderBy: [{ position: "asc" }, { title: "asc" }],
-      take: MAX_RESULTS_PER_TYPE,
-      select: {
-        id: true,
-        title: true,
-        slug: true,
-        description: true,
-        learningPath: { select: { title: true } },
-      },
-    }),
-    database.module.findMany({
-      where: {
-        ...published,
-        OR: [{ title: contains(query) }],
-        course: { is: publishedCourse },
-      },
-      orderBy: [{ position: "asc" }, { title: "asc" }],
-      take: MAX_RESULTS_PER_TYPE,
-      select: {
-        id: true,
-        title: true,
-        slug: true,
-        course: { select: { id: true, title: true, slug: true } },
-      },
-    }),
-    database.lesson.findMany({
-      where: {
-        ...published,
-        OR: [{ title: contains(query) }, { description: contains(query) }],
-        module: {
-          is: {
-            ...published,
-            course: { is: publishedCourse },
-          },
-        },
-      },
-      orderBy: [{ position: "asc" }, { title: "asc" }],
-      take: MAX_RESULTS_PER_TYPE,
-      select: {
-        id: true,
-        title: true,
-        slug: true,
-        description: true,
-        module: {
+          orderBy: [{ position: "asc" }, { title: "asc" }],
+          take: MAX_RESULTS_PER_TYPE,
           select: {
             id: true,
             title: true,
-            course: { select: { id: true, title: true, slug: true } },
+            slug: true,
+            description: true,
+            courses: {
+              where: { ...published, experience: CourseExperience.ASYNC },
+              select: { id: true },
+            },
           },
-        },
-      },
-    }),
-    database.activity.findMany({
-      where: {
-        ...published,
-        AND: [
-          {
-            OR: [
-              { title: contains(query) },
-              { prompt: contains(query) },
-              { instructions: contains(query) },
-            ],
-          },
-          {
-            OR: [{ courseId: null }, { course: { is: published } }],
-          },
-          {
-            OR: [
-              { lessonId: null },
+        })
+      ),
+      tracePerformance("member.search.courses", () =>
+        database.course.findMany({
+          where: {
+            AND: [
+              publishedCourse,
               {
-                lesson: {
-                  is: {
-                    ...published,
-                    module: { is: { ...published, course: { is: published } } },
-                  },
-                },
+                OR: [
+                  { title: contains(query) },
+                  { description: contains(query) },
+                ],
               },
             ],
           },
-        ],
-      },
-      orderBy: [{ dueAt: { sort: "asc", nulls: "last" } }, { title: "asc" }],
-      take: MAX_RESULTS_PER_TYPE,
-      select: {
-        id: true,
-        title: true,
-        slug: true,
-        prompt: true,
-        courseId: true,
-        lessonId: true,
-        course: { select: { title: true } },
-        lesson: {
-          select: {
-            title: true,
-            module: { select: { id: true, courseId: true } },
-          },
-        },
-      },
-    }),
-    database.importedRecording.findMany({
-      where: {
-        group: scope.fullAccess ? undefined : { memberId },
-        OR: [
-          { originalTitle: contains(query) },
-          { asset: { title: contains(query) } },
-          { legacyLesson: { title: contains(query) } },
-          { group: { legacyStudentName: contains(query) } },
-        ],
-      },
-      orderBy: [{ meetingDate: "desc" }, { id: "desc" }],
-      take: MAX_RESULTS_PER_TYPE,
-      select: {
-        id: true,
-        originalTitle: true,
-        meetingDate: true,
-        legacyLesson: { select: { title: true } },
-        group: {
+          orderBy: [{ position: "asc" }, { title: "asc" }],
+          take: MAX_RESULTS_PER_TYPE,
           select: {
             id: true,
-            legacyStudentName: true,
-            legacyModule: {
-              select: { title: true, course: { select: { title: true } } },
+            title: true,
+            slug: true,
+            description: true,
+            learningPath: { select: { title: true } },
+          },
+        })
+      ),
+      tracePerformance("member.search.modules", () =>
+        database.module.findMany({
+          where: {
+            ...published,
+            OR: [{ title: contains(query) }],
+            course: { is: publishedCourse },
+          },
+          orderBy: [{ position: "asc" }, { title: "asc" }],
+          take: MAX_RESULTS_PER_TYPE,
+          select: {
+            id: true,
+            title: true,
+            slug: true,
+            course: { select: { id: true, title: true, slug: true } },
+          },
+        })
+      ),
+      tracePerformance("member.search.lessons", () =>
+        database.lesson.findMany({
+          where: {
+            ...published,
+            OR: [{ title: contains(query) }, { description: contains(query) }],
+            module: {
+              is: {
+                ...published,
+                course: { is: publishedCourse },
+              },
             },
           },
-        },
-        asset: { select: { id: true, title: true } },
-      },
-    }),
-    database.communityPost.findMany({
-      where: {
-        status: ContentStatus.PUBLISHED,
-        deletedAt: null,
-        ...communityPostAudienceWhere(memberId, canModeratePrivateGroups),
-        AND: [
-          {
-            OR: [
-              { title: contains(query) },
-              { content: contains(query) },
-              { excerpt: contains(query) },
-              { space: { is: { title: contains(query) } } },
+          orderBy: [{ position: "asc" }, { title: "asc" }],
+          take: MAX_RESULTS_PER_TYPE,
+          select: {
+            id: true,
+            title: true,
+            slug: true,
+            description: true,
+            module: {
+              select: {
+                id: true,
+                title: true,
+                course: { select: { id: true, title: true, slug: true } },
+              },
+            },
+          },
+        })
+      ),
+      tracePerformance("member.search.activities", () =>
+        database.activity.findMany({
+          where: {
+            ...published,
+            AND: [
+              {
+                OR: [
+                  { title: contains(query) },
+                  { prompt: contains(query) },
+                  { instructions: contains(query) },
+                ],
+              },
+              {
+                OR: [{ courseId: null }, { course: { is: published } }],
+              },
+              {
+                OR: [
+                  { lessonId: null },
+                  {
+                    lesson: {
+                      is: {
+                        ...published,
+                        module: {
+                          is: { ...published, course: { is: published } },
+                        },
+                      },
+                    },
+                  },
+                ],
+              },
             ],
           },
-        ],
-      },
-      orderBy: [{ isPinned: "desc" }, { createdAt: "desc" }],
-      take: MAX_RESULTS_PER_TYPE,
-      select: {
-        id: true,
-        title: true,
-        slug: true,
-        content: true,
-        excerpt: true,
-        space: { select: { title: true, slug: true } },
-      },
-    }),
-    database.communityComment.findMany({
-      where: {
-        content: contains(query),
-        deletedAt: null,
-        post: {
-          is: {
+          orderBy: [
+            { dueAt: { sort: "asc", nulls: "last" } },
+            { title: "asc" },
+          ],
+          take: MAX_RESULTS_PER_TYPE,
+          select: {
+            id: true,
+            title: true,
+            slug: true,
+            prompt: true,
+            courseId: true,
+            lessonId: true,
+            course: { select: { title: true } },
+            lesson: {
+              select: {
+                title: true,
+                module: { select: { id: true, courseId: true } },
+              },
+            },
+          },
+        })
+      ),
+      tracePerformance("member.search.recordings", () =>
+        database.importedRecording.findMany({
+          where: {
+            group: scope.fullAccess ? undefined : { memberId },
+            OR: [
+              { originalTitle: contains(query) },
+              { asset: { title: contains(query) } },
+              { legacyLesson: { title: contains(query) } },
+              { group: { legacyStudentName: contains(query) } },
+            ],
+          },
+          orderBy: [{ meetingDate: "desc" }, { id: "desc" }],
+          take: MAX_RESULTS_PER_TYPE,
+          select: {
+            id: true,
+            originalTitle: true,
+            meetingDate: true,
+            legacyLesson: { select: { title: true } },
+            group: {
+              select: {
+                id: true,
+                legacyStudentName: true,
+                legacyModule: {
+                  select: { title: true, course: { select: { title: true } } },
+                },
+              },
+            },
+            asset: { select: { id: true, title: true } },
+          },
+        })
+      ),
+      tracePerformance("member.search.community-posts", () =>
+        database.communityPost.findMany({
+          where: {
             status: ContentStatus.PUBLISHED,
             deletedAt: null,
             ...communityPostAudienceWhere(memberId, canModeratePrivateGroups),
+            AND: [
+              {
+                OR: [
+                  { title: contains(query) },
+                  { content: contains(query) },
+                  { excerpt: contains(query) },
+                  { space: { is: { title: contains(query) } } },
+                ],
+              },
+            ],
           },
-        },
-      },
-      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-      take: MAX_RESULTS_PER_TYPE,
-      select: {
-        id: true,
-        content: true,
-        post: {
+          orderBy: [{ isPinned: "desc" }, { createdAt: "desc" }],
+          take: MAX_RESULTS_PER_TYPE,
           select: {
+            id: true,
             title: true,
             slug: true,
-            id: true,
+            content: true,
+            excerpt: true,
             space: { select: { title: true, slug: true } },
           },
-        },
-      },
-    }),
-    database.communitySpace.findMany({
-      where: {
-        status: ContentStatus.PUBLISHED,
-        ...communitySpaceAudienceWhere(memberId, canModeratePrivateGroups),
-        OR: [{ title: contains(query) }, { description: contains(query) }],
-      },
-      orderBy: [{ position: "asc" }, { title: "asc" }],
-      take: MAX_RESULTS_PER_TYPE,
-      select: {
-        id: true,
-        title: true,
-        slug: true,
-        description: true,
-      },
-    }),
-    database.libraryItem.findMany({
-      where: {
-        ...published,
-        OR: [
-          { title: contains(query) },
-          { description: contains(query) },
-          { category: contains(query) },
-        ],
-      },
-      orderBy: [{ position: "asc" }, { createdAt: "desc" }],
-      take: MAX_RESULTS_PER_TYPE,
-      select: {
-        id: true,
-        title: true,
-        description: true,
-        category: true,
-      },
-    }),
-    database.profile.findMany({
-      where: {
-        OR: [
-          { username: contains(query.toLowerCase()) },
-          { displayName: contains(query) },
-          { headline: contains(query) },
-        ],
-      },
-      orderBy: [{ displayName: "asc" }, { username: "asc" }],
-      take: MAX_RESULTS_PER_TYPE,
-      select: {
-        clerkUserId: true,
-        username: true,
-        displayName: true,
-        headline: true,
-      },
-    }),
-  ]);
+        })
+      ),
+      tracePerformance("member.search.community-comments", () =>
+        database.communityComment.findMany({
+          where: {
+            content: contains(query),
+            deletedAt: null,
+            post: {
+              is: {
+                status: ContentStatus.PUBLISHED,
+                deletedAt: null,
+                ...communityPostAudienceWhere(
+                  memberId,
+                  canModeratePrivateGroups
+                ),
+              },
+            },
+          },
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+          take: MAX_RESULTS_PER_TYPE,
+          select: {
+            id: true,
+            content: true,
+            post: {
+              select: {
+                title: true,
+                slug: true,
+                id: true,
+                space: { select: { title: true, slug: true } },
+              },
+            },
+          },
+        })
+      ),
+      tracePerformance("member.search.community-spaces", () =>
+        database.communitySpace.findMany({
+          where: {
+            status: ContentStatus.PUBLISHED,
+            ...communitySpaceAudienceWhere(memberId, canModeratePrivateGroups),
+            OR: [{ title: contains(query) }, { description: contains(query) }],
+          },
+          orderBy: [{ position: "asc" }, { title: "asc" }],
+          take: MAX_RESULTS_PER_TYPE,
+          select: {
+            id: true,
+            title: true,
+            slug: true,
+            description: true,
+          },
+        })
+      ),
+      tracePerformance("member.search.library", () =>
+        database.libraryItem.findMany({
+          where: {
+            ...published,
+            OR: [
+              { title: contains(query) },
+              { description: contains(query) },
+              { category: contains(query) },
+            ],
+          },
+          orderBy: [{ position: "asc" }, { createdAt: "desc" }],
+          take: MAX_RESULTS_PER_TYPE,
+          select: {
+            id: true,
+            title: true,
+            description: true,
+            category: true,
+          },
+        })
+      ),
+      tracePerformance("member.search.profiles", () =>
+        database.profile.findMany({
+          where: {
+            OR: [
+              { username: contains(query.toLowerCase()) },
+              { displayName: contains(query) },
+              { headline: contains(query) },
+            ],
+          },
+          orderBy: [{ displayName: "asc" }, { username: "asc" }],
+          take: MAX_RESULTS_PER_TYPE,
+          select: {
+            clerkUserId: true,
+            username: true,
+            displayName: true,
+            headline: true,
+          },
+        })
+      ),
+    ])
+  );
   const [
     paths,
     courses,

@@ -48,6 +48,11 @@ vi.mock("@repo/database", () => ({
   LearningAssignmentTargetType: { EXERCISE_LIST: "EXERCISE_LIST" },
   database: mocks.database,
 }));
+vi.mock("server-only", () => ({}));
+vi.mock("@repo/observability/performance", () => ({
+  tracePerformance: (_name: string, operation: () => Promise<unknown>) =>
+    operation(),
+}));
 vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidatePath }));
 vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
 vi.mock("@/lib/authorization", () => ({ requireStaff: vi.fn() }));
@@ -80,13 +85,25 @@ const exerciseQuestion = {
   session: {
     id: "session_1",
     listId: "list_1",
-    questions: [{ id: "session_question_1" }],
+    status: "IN_PROGRESS",
+    questions: [{ id: "session_question_1", answer: null }],
   },
   questionVersion: {
+    explanation: "Explicação confirmada.",
     type: "SINGLE_CHOICE",
     options: [
-      { id: "option_correct", content: "Correta", isCorrect: true },
-      { id: "option_wrong", content: "Incorreta", isCorrect: false },
+      {
+        id: "option_correct",
+        label: "A",
+        content: "Correta",
+        isCorrect: true,
+      },
+      {
+        id: "option_wrong",
+        label: "B",
+        content: "Incorreta",
+        isCorrect: false,
+      },
     ],
   },
 };
@@ -187,9 +204,19 @@ test("completing an assigned exercise list updates assignment in the answer tran
   });
   answerForm.append("optionIds", "option_correct");
 
-  await expect(submitExerciseAnswer(answerForm)).rejects.toThrow(
-    "NEXT_REDIRECT:/exercicios/sessoes/session_1?respondida=session_question_1"
-  );
+  await expect(
+    submitExerciseAnswer({ status: "idle" }, answerForm)
+  ).resolves.toEqual({
+    status: "success",
+    feedback: {
+      correctOptionLabels: ["A"],
+      explanation: "Explicação confirmada.",
+      isCorrect: true,
+      isSessionComplete: true,
+      nextHref: null,
+      resultHref: "/exercicios/sessoes/session_1?resultado=final",
+    },
+  });
 
   expect(mocks.transaction.exerciseSession.update).toHaveBeenCalledWith(
     expect.objectContaining({
@@ -205,4 +232,26 @@ test("completing an assigned exercise list updates assignment in the answer tran
     mocks.transaction
   );
   expect(mocks.revalidatePath).toHaveBeenCalledWith("/aprender");
+  expect(mocks.dispatchPendingNotifications).toHaveBeenCalledTimes(1);
+});
+
+test("returns confirmed feedback inline instead of redirecting the session", async () => {
+  mocks.transaction.exerciseAnswer.count.mockResolvedValue(0);
+  const answerForm = formData({
+    sessionId: "session_1",
+    sessionQuestionId: "session_question_1",
+  });
+  answerForm.append("optionIds", "option_wrong");
+
+  const result = await submitExerciseAnswer({ status: "idle" }, answerForm);
+
+  expect(result).toMatchObject({
+    status: "success",
+    feedback: {
+      isCorrect: true,
+      isSessionComplete: false,
+      nextHref: "/exercicios/sessoes/session_1?proxima=session_question_1",
+    },
+  });
+  expect(mocks.redirect).not.toHaveBeenCalled();
 });

@@ -4,11 +4,12 @@ import { Button } from "@repo/design-system/components/ui/button";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ExerciseAnswerFeedback } from "@/components/exercises/exercise-answer-feedback";
+import { ExerciseAnswerForm } from "@/components/exercises/exercise-answer-form";
 import { StudyHeartbeat } from "@/components/learning/study-heartbeat";
 import { scoreExerciseSession } from "@/lib/exercise-engine";
 import { getMemberExerciseSession } from "@/lib/exercises";
 import { requireMemberId } from "@/lib/learning";
-import { submitExerciseAnswer, toggleExerciseFavorite } from "../../actions";
+import { toggleExerciseFavorite } from "../../actions";
 
 interface ExerciseSessionPageProperties {
   readonly params: Promise<{ readonly sessionId: string }>;
@@ -114,50 +115,6 @@ const ExerciseResultPanel = ({
   </section>
 );
 
-const ExerciseAnswerForm = ({
-  question,
-  session,
-}: {
-  readonly question: SessionQuestion;
-  readonly session: MemberSession;
-}) => {
-  const multipleChoice = question.questionVersion.type === "MULTIPLE_CHOICE";
-  return (
-    <form action={submitExerciseAnswer} className="mt-7">
-      <input name="sessionId" type="hidden" value={session.id} />
-      <input name="sessionQuestionId" type="hidden" value={question.id} />
-      <fieldset className="grid gap-3">
-        <legend className="mb-3 font-medium text-sm">
-          {multipleChoice
-            ? "Selecione todas as alternativas corretas."
-            : "Selecione uma alternativa."}
-        </legend>
-        {question.questionVersion.options.map((option) => (
-          <label
-            className="flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition-colors hover:bg-muted/60 has-[:checked]:border-primary has-[:checked]:bg-primary/5"
-            key={option.id}
-          >
-            <input
-              className="mt-1 accent-primary"
-              name="optionIds"
-              required={!multipleChoice}
-              type={multipleChoice ? "checkbox" : "radio"}
-              value={option.id}
-            />
-            <span className="flex-1 whitespace-pre-wrap leading-6">
-              <span className="mr-2 font-semibold">{option.label}.</span>
-              {option.content}
-            </span>
-          </label>
-        ))}
-      </fieldset>
-      <Button className="mt-6" type="submit">
-        Confirmar resposta
-      </Button>
-    </form>
-  );
-};
-
 const ExerciseQuestionPanel = ({
   question,
   session,
@@ -220,7 +177,11 @@ const ExerciseQuestionPanel = ({
         resultHref={`/exercicios/sessoes/${session.id}`}
       />
     ) : (
-      <ExerciseAnswerForm question={question} session={session} />
+      <ExerciseAnswerForm
+        initialError={hasInvalidAnswer}
+        question={question}
+        session={session}
+      />
     )}
   </section>
 );

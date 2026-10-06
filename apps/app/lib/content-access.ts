@@ -6,6 +6,7 @@ import {
   LearningAssignmentTargetType,
   MemberRole,
 } from "@repo/database";
+import { tracePerformance } from "@repo/observability/performance";
 import { cache } from "react";
 import { getMemberRole } from "./authorization";
 import { activeAssignmentStatuses } from "./learning-assignments";
@@ -206,7 +207,11 @@ const getLearningAccessScopeUncached = async (
   };
 };
 
-export const getLearningAccessScope = cache(getLearningAccessScopeUncached);
+export const getLearningAccessScope = cache((memberId: string) =>
+  tracePerformance("member.learning.access-scope", () =>
+    getLearningAccessScopeUncached(memberId)
+  )
+);
 
 export const hasCourseAccess = (scope: LearningAccessScope, courseId: string) =>
   scope.fullAccess || scope.courseIds.has(courseId);

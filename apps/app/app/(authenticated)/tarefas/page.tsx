@@ -1,9 +1,12 @@
 import { Badge } from "@repo/design-system/components/ui/badge";
-import { Button } from "@repo/design-system/components/ui/button";
 import { Input } from "@repo/design-system/components/ui/input";
 import { Textarea } from "@repo/design-system/components/ui/textarea";
 import { CheckCircle2Icon, CircleIcon } from "lucide-react";
 import Link from "next/link";
+import {
+  SingleFlightForm,
+  SingleFlightSubmit,
+} from "@/components/mutations/single-flight-form";
 import { requireMemberId } from "@/lib/learning";
 import {
   getMemberTaskHistory,
@@ -84,7 +87,7 @@ const TasksPage = async ({ searchParams }: TasksPageProperties) => {
               ["MONTHLY", "Meta mensal", dashboard.goals.monthlyMinutes],
             ] as const
           ).map(([period, label, target]) => (
-            <form
+            <SingleFlightForm
               action={savePersonalStudyGoal}
               className="rounded-xl border bg-card p-5 sm:p-6"
               key={period}
@@ -108,15 +111,15 @@ const TasksPage = async ({ searchParams }: TasksPageProperties) => {
                   type="number"
                 />
               </label>
-              <Button
+              <SingleFlightSubmit
                 className="mt-4"
+                pendingLabel="Salvando meta…"
                 size="sm"
-                type="submit"
                 variant="outline"
               >
                 Salvar meta
-              </Button>
-            </form>
+              </SingleFlightSubmit>
+            </SingleFlightForm>
           ))}
         </div>
         {dashboard.campaign && (
@@ -203,20 +206,24 @@ const TasksPage = async ({ searchParams }: TasksPageProperties) => {
                 </div>
                 <div className="flex shrink-0 flex-wrap gap-2 sm:justify-end">
                   {!task.isCompleted && (
-                    <form action={completeLearningTaskOccurrence}>
+                    <SingleFlightForm action={completeLearningTaskOccurrence}>
                       <input name="taskId" type="hidden" value={task.id} />
-                      <Button size="sm" type="submit">
+                      <SingleFlightSubmit pendingLabel="Registrando…" size="sm">
                         Concluir
-                      </Button>
-                    </form>
+                      </SingleFlightSubmit>
+                    </SingleFlightForm>
                   )}
                   {task.createdByMemberId === memberId && (
-                    <form action={archivePersonalLearningTask}>
+                    <SingleFlightForm action={archivePersonalLearningTask}>
                       <input name="taskId" type="hidden" value={task.id} />
-                      <Button size="sm" type="submit" variant="ghost">
+                      <SingleFlightSubmit
+                        pendingLabel="Arquivando…"
+                        size="sm"
+                        variant="ghost"
+                      >
                         Arquivar
-                      </Button>
-                    </form>
+                      </SingleFlightSubmit>
+                    </SingleFlightForm>
                   )}
                 </div>
               </article>
@@ -238,7 +245,10 @@ const TasksPage = async ({ searchParams }: TasksPageProperties) => {
         <h2 className="mt-2 font-display text-2xl" id="create-task-heading">
           Criar uma tarefa
         </h2>
-        <form action={createPersonalLearningTask} className="mt-5 grid gap-4">
+        <SingleFlightForm
+          action={createPersonalLearningTask}
+          className="mt-5 grid gap-4"
+        >
           <label className="grid gap-2" htmlFor="personal-task-title">
             <span className="font-medium text-sm">Título</span>
             <Input
@@ -276,10 +286,10 @@ const TasksPage = async ({ searchParams }: TasksPageProperties) => {
               <Input id="personal-task-due" name="dueAt" type="date" />
             </label>
           </div>
-          <Button className="w-fit" type="submit">
+          <SingleFlightSubmit className="w-fit" pendingLabel="Criando tarefa…">
             Salvar tarefa
-          </Button>
-        </form>
+          </SingleFlightSubmit>
+        </SingleFlightForm>
       </section>
 
       <section aria-labelledby="task-history-heading" className="mt-14">

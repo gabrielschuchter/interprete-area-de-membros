@@ -43,6 +43,20 @@ const getInternalDestination = (target: EventTarget | null) => {
   return destination;
 };
 
+const isUnmodifiedActivation = (event: Event) => {
+  if (!(event instanceof MouseEvent)) {
+    return true;
+  }
+
+  return (
+    event.button === 0 &&
+    !event.metaKey &&
+    !event.ctrlKey &&
+    !event.shiftKey &&
+    !event.altKey
+  );
+};
+
 /**
  * Gives every client-side route transition an immediate, non-layout-shifting
  * acknowledgement. Route-specific loading.tsx files remain the real
@@ -71,7 +85,9 @@ export const NavigationFeedback = () => {
 
   useEffect(() => {
     const begin = (event: Event) => {
-      if (!getInternalDestination(event.target)) {
+      if (
+        !(isUnmodifiedActivation(event) && getInternalDestination(event.target))
+      ) {
         return;
       }
 
@@ -86,6 +102,8 @@ export const NavigationFeedback = () => {
     };
 
     document.addEventListener("pointerdown", begin, true);
+    // Capture before Next.js prevents the browser's default navigation for
+    // client-side routing. The route-key effect clears this after navigation.
     document.addEventListener("click", begin, true);
 
     return () => {

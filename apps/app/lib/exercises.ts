@@ -221,7 +221,7 @@ export const getMemberExerciseHistory = async (memberId: string) =>
       list: { is: publishedListWhere },
     },
     orderBy: { updatedAt: "desc" },
-    take: 30,
+    take: 6,
     select: {
       id: true,
       status: true,

@@ -1058,3 +1058,146 @@ Uma chave secreta Clerk Production apareceu em saída de ferramenta anterior e
 é considerada comprometida. É necessária rotação manual no Dashboard da
 instância Production e atualização do segredo no gerenciador de ambiente de
 deploy; nenhum valor foi repetido nem alterado durante a auditoria.
+
+### Iniciativa permanente de performance — 06/10/2026
+
+Performance passa a ser um gate contínuo de arquitetura, desenvolvimento,
+design e UX, detalhado em `docs/architecture/performance.md`,
+`packages/design-system/PERFORMANCE.md` e no `AGENTS.md`.
+Cada mudança declara caminho crítico, orçamento, dados mínimos, paginação,
+cache/invalidação, feedback imediato, fronteira de persistência, autorização e
+evidência mobile. A fase 10 continua `IN PROGRESS`; esta diretriz não conclui
+nenhuma outra fase.
+
+Os objetivos de aceite são: feedback visual em até 100 ms; conteúdo de seção
+antecipada em p95 ≤ 300 ms e primeira visita em p95 ≤ 1 s; mutação pequena
+persistida em p95 ≤ 500 ms; área autenticada após sessão estabelecida em até
+1 s; LCP ≤ 2,5 s, INP ≤ 200 ms e CLS ≤ 0,1 no p75. Skeleton visível não conta
+como conteúdo utilizável. A prova deve separar papéis, rota, cache frio/aquecido,
+prefetch, desktop e Android intermediário em 4G.
+
+O baseline disponível encontrou execução efetiva do app em `iad1` e GREEN/API
+em `gru1`; a configuração versionada do app pede `gru1`. Dois app Previews
+retornaram HTTP 200 em `/health`, com banco disponível: o deployment explícito
+com `--regions gru1` respondeu `X-Vercel-Id: gru1::gru1`; o deployment a partir
+da raiz do repositório, sem a flag, respondeu `gru1::iad1` (região da requisição
+e execução da função, respectivamente). O default remoto do projeto ainda é
+`iad1`, portanto a configuração versionada não está comprovada no caminho de
+deploy sem a flag. A tentativa de alterar o default foi bloqueada pela política
+automática da ferramenta; Production não foi alterada. Cinco trocas
+autenticadas variaram de 1,43 s a 3,82 s com overhead de automação/DOM; não são
+INP nem percentis de produção. SQL simples mediu 13–15 ms no sample disponível;
+nenhum episódio de dez segundos foi reproduzido e não há percentis históricos
+da Vercel nesta evidência.
+
+O código local consolidou o snapshot do membro para onboarding/papel, retirou a
+chamada Clerk `currentUser()` de perfis provisionados, substituiu a árvore do
+menu Aprender por consulta de existência condicionada ao acesso, carregou na
+Home somente blocos habilitados, reduziu a busca de retomada de gravações para
+até seis resultados filtrados no banco, limitou prefetch, fez o histórico de
+Exercícios buscar no banco as seis sessões que a tela exibe e removeu a animação
+que ocultava o conteúdo resolvido. Respostas de Exercícios agora devolvem à
+tela um DTO de correção somente depois do commit, sem exigir redirect e nova
+leitura integral. O budget inicial de JavaScript por rota está ativo em 225 KiB
+gzip; os cinco percursos mediram 188,8–192,7 KiB nos Previews. Isso comprova o
+limite do artefato analisado, não o desempenho de runtime. Percentis, hidratação
+mobile, worker durável e jornadas autenticadas permanecem gates de
+homologação; notificações continuam no despacho atual até a recuperação
+durável estar comprovada. Uma Preview exploratória criada por engano no projeto
+da API foi removida; nenhum deployment de produção ou alias foi afetado.
+
+### Continuação: streaming, feedback e região efetiva — 06/10/2026
+
+O trabalho continuou depois da primeira tranche. Aprender agora inicia a busca
+de progresso assim que cursos/trilhas identificam os IDs necessários, em
+paralelo às atribuições e aos dados de retomada. Comunidade separa feed,
+compositor e coluna lateral em boundaries de streaming; Biblioteca exibe
+estrutura e filtros sem esperar a lista completa; Gestão separa o shell do
+resumo carregado. Filtros, formulários de tarefas e abertura de materiais
+mostram estado pendente durante a espera. A capa de gravação já atualizava o
+preview local com o resultado persistido da API, portanto removi a releitura
+integral da página administrativa. A busca continua com onze projeções
+autorizadas; sem SQL real, `EXPLAIN` e amostra representativa, não adicionei
+índices nem consolidei esses filtros heterogêneos às cegas.
+
+A região foi confirmada no Preview final
+`dpl_8HoLnYVJyujisiYhUG7KrvFR7yuj`: o CLI lista as funções Next em `gru1` e
+`/health` retorna `200`, `X-Vercel-Id: gru1::gru1`. A publicação reproduzível
+é `vercel deploy --local-config apps/app/vercel.json --yes`, sem flag regional;
+a configuração local define `gru1`. O default remoto do projeto continua
+`iad1`; uma publicação por outro caminho continua sujeita à configuração
+remota. A alteração direta do default remoto foi bloqueada pela política
+automática da ferramenta. A máquina de build continua em `iad1`, distinta da
+região de runtime.
+
+O Preview atual mediu 188,8–192,7 KiB gzip nos cinco percursos do budget de
+225 KiB; o build local mediu 186,5–190,2 KiB. Os gates locais passaram após as
+mudanças, incluindo build completo; o Preview repetiu os 250 testes da app e
+compilou as 24 rotas. Esses números verificam artefato e compilação, não
+velocidade real. A amostra autenticada disponível (1,43–3,82 s com overhead de
+automação/DOM) é da Production anterior a estas mudanças. O Preview usa Clerk
+Development; sem uma sessão QA nele, não foi possível medir navegações
+autenticadas, persistência, papéis, rollback, mobile/4G ou percentis antes e
+depois. O health check confirma conectividade básica ao banco, mas a consulta
+read-only de planos SQL segue bloqueada por divergência do projeto local e pela
+limitação de acesso Vercel aos segredos. Sentry não criou release nem enviou
+sourcemaps por falta de `SENTRY_AUTH_TOKEN`.
+
+A fase 10 e a iniciativa de performance continuam `IN PROGRESS`. A próxima
+prova necessária é executar o Preview com contas QA autenticadas `MEMBER`,
+`TEACHER` e `ADMIN`, coletar clique → feedback/estrutura/conteúdo utilizável e
+submits → persistência, e então comparar com as rotas Production medidas antes
+da mudança. Nenhum alias ou deployment Production foi alterado.
+
+Na preparação da medição, a Busca global passou a emitir spans sanitizadas por
+cada uma das onze projeções, aninhadas à span total de fan-out. O Preview tem
+`NEXT_PUBLIC_SENTRY_DSN` configurada, mas a ingestão ainda depende de executar
+uma busca autenticada e consultar a trace. Os nomes são fixos e não incluem
+membro, termo ou conteúdo; filtros, autorização, resultados e limites não
+mudaram. Isso permite localizar o ramo lento antes de consolidar SQL ou criar
+índices.
+
+### Continuação: região Production e comparação autenticada — 06/10/2026
+
+O usuário alterou manualmente no dashboard da Vercel o default de Functions do
+app para `gru1`. Um `vercel redeploy` da implantação anterior manteve as
+funções em `iad1`; um build Production novo, do mesmo commit `523ff17` e de um
+worktree limpo, aplicou o manifesto `apps/app/vercel.json` e criou
+`dpl_H3q2X7appwqC3iiczKRrzxu85nAZ`. O inspect lista as funções de página e API
+em `gru1`. A implantação inicialmente atualizou o alias automático
+`interprete-area-de-membros-app.vercel.app`, mas o middleware o redireciona ao
+host canônico `interprete-area-de-membros.vercel.app`, que ainda apontava para
+o deployment antigo. O alias canônico foi então atribuído ao deployment novo.
+`/health` no deployment e no host canônico respondeu 200 com
+`X-Vercel-Id: gru1::gru1`, confirmando a região efetiva da função ao vivo.
+
+Na mesma sessão autenticada `TEACHER`, host canônico e rotina de DOM, o baseline
+disponível tinha uma amostra por fluxo; foram coletadas cinco amostras pós-
+região por fluxo. As medianas pós-região (faixas) de conteúdo utilizável foram:
+Comunidade 705 ms (553–992), Biblioteca 711 ms (666–944), Gestão 639 ms
+(556–1.401) e Busca por “causalidade” 534 ms (397–624), com um resultado em
+todas as buscas. Frente ao baseline único de 3.730 ms, 3.805 ms, 2.131 ms e
+3.005 ms, respectivamente, as reduções direcionais são de 70% a 82%. O input
+de busca respondeu em mediana de 18 ms (17–42). Também foram medidos Início em
+867 ms, Exercícios em 802 ms e Aprender em 573 ms após visita anterior. Em
+viewport responsivo 390 × 844, Comunidade, Biblioteca e Início chegaram a
+conteúdo utilizável em 1.048 ms, 647 ms e 703 ms, sem largura de documento
+acima do viewport. Isso é emulação no Edge desktop, sem throttling de rede e
+sem aparelho Android físico. O submenu do professor quebra em várias linhas
+nessa largura; uma navegação móvel mais compacta merece validação de usabilidade
+separada. `/health` respondeu `gru1::gru1` em sete chamadas; a primeira levou
+393 ms e as
+seis aquecidas 117–127 ms, mediana 121 ms, contra 312 ms da amostra aquecida
+anterior. Os tempos incluem overhead de automação/DOM e não são INP nem
+percentis; n=5 após a mudança não permite comparar distribuições completas
+com o baseline n=1.
+
+O workspace corrigiu o indicador de navegação para iniciar durante a captura,
+antes de o roteador Next chamar `preventDefault` no link interno, e adicionou
+testes de regressão; todos os cinco gates obrigatórios passaram. A medição
+aquecida nem sempre observou a região `aria-live` no retorno da automação; o
+budget de 100 ms ainda não está demonstrado. Não houve habilitação ou compra do
+Observability Plus. Percentis Production, sessão `MEMBER` e `ADMIN`, Android
+físico/4G, hidratação/INP, persistência de mutações, worker durável e as
+alterações locais de performance seguem pendentes. Fase 10 e iniciativa
+permanecem `IN PROGRESS`; a troca regional não conclui os gates.

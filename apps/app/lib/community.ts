@@ -6,6 +6,7 @@ import {
   MemberRole,
   type Prisma,
 } from "@repo/database";
+import { tracePerformance } from "@repo/observability/performance";
 import { getMemberRole } from "@/lib/authorization";
 import {
   extractCommunityMedia,
@@ -65,48 +66,52 @@ const enrichAuthors = async <T extends { authorId: string }>(
 
 export const getCommunitySpaces = async (memberId: string) => {
   const role = await getMemberRole(memberId);
-  return database.communitySpace.findMany({
-    where: {
-      status: ContentStatus.PUBLISHED,
-      ...communitySpaceAudienceWhere(
-        memberId,
-        role === MemberRole.ADMIN || role === MemberRole.TEACHER
-      ),
-    },
-    orderBy: [{ position: "asc" }, { title: "asc" }],
-    select: {
-      id: true,
-      title: true,
-      slug: true,
-      description: true,
-      icon: true,
-      coverUrl: true,
-      visibility: true,
-      commentsClosed: true,
-      ownerId: true,
-      _count: {
-        select: {
-          posts: {
-            where: { status: ContentStatus.PUBLISHED, deletedAt: null },
+  return tracePerformance("member.community.spaces", () =>
+    database.communitySpace.findMany({
+      where: {
+        status: ContentStatus.PUBLISHED,
+        ...communitySpaceAudienceWhere(
+          memberId,
+          role === MemberRole.ADMIN || role === MemberRole.TEACHER
+        ),
+      },
+      orderBy: [{ position: "asc" }, { title: "asc" }],
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        description: true,
+        icon: true,
+        coverUrl: true,
+        visibility: true,
+        commentsClosed: true,
+        ownerId: true,
+        _count: {
+          select: {
+            posts: {
+              where: { status: ContentStatus.PUBLISHED, deletedAt: null },
+            },
           },
         },
+        members: {
+          where: { memberId },
+          select: { id: true },
+          take: 1,
+        },
       },
-      members: {
-        where: { memberId },
-        select: { id: true },
-        take: 1,
-      },
-    },
-  });
+    })
+  );
 };
 
 export const getCommunityPresenceProfiles = (memberId: string) =>
-  database.profile.findMany({
-    where: { clerkUserId: { not: memberId } },
-    orderBy: [{ updatedAt: "desc" }, { displayName: "asc" }],
-    take: 7,
-    select: { avatarUrl: true, displayName: true, username: true },
-  });
+  tracePerformance("member.community.presence-profiles", () =>
+    database.profile.findMany({
+      where: { clerkUserId: { not: memberId } },
+      orderBy: [{ updatedAt: "desc" }, { displayName: "asc" }],
+      take: 7,
+      select: { avatarUrl: true, displayName: true, username: true },
+    })
+  );
 
 export const getLatestCommunityPost = async () =>
   database.communityPost.findFirst({
@@ -361,10 +366,14 @@ export const getCommunityFeed = async (
   const page = normalizeCommunityPage(options.page);
   const query = options.query?.trim().slice(0, 100) ?? "";
   const sort = normalizeCommunitySort(options.sort);
-  const [authorIds, role] = await Promise.all([
-    findMatchingCommunityAuthorIds(query),
-    getMemberRole(memberId),
-  ]);
+  const [authorIds, role] = await tracePerformance(
+    "member.community.search-and-role",
+    () =>
+      Promise.all([
+        findMatchingCommunityAuthorIds(query),
+        getMemberRole(memberId),
+      ])
+  );
   const where = communityFeedWhere({
     authorIds,
     canModeratePrivateGroups:
@@ -374,12 +383,16 @@ export const getCommunityFeed = async (
     sort,
     spaceSlug: options.spaceSlug,
   });
-  const feed =
+  const feed = await tracePerformance("member.community.feed-query", () =>
     sort === "popular"
-      ? await getPopularCommunityPosts(memberId, page, where)
-      : await getChronologicalCommunityPosts(memberId, page, where);
+      ? getPopularCommunityPosts(memberId, page, where)
+      : getChronologicalCommunityPosts(memberId, page, where)
+  );
 
-  const enrichedPosts = await enrichAuthors(feed.visiblePosts);
+  const enrichedPosts = await tracePerformance(
+    "member.community.author-enrichment",
+    () => enrichAuthors(feed.visiblePosts)
+  );
 
   return {
     posts: enrichedPosts.map((post) => ({

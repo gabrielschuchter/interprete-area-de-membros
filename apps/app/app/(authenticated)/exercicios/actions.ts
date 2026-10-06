@@ -10,8 +10,10 @@ import {
   LearningAssignmentTargetType,
   type Prisma,
 } from "@repo/database";
+import { tracePerformance } from "@repo/observability/performance";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import type { ExerciseAnswerActionState } from "@/components/exercises/exercise-answer-state";
 import { requireStaff } from "@/lib/authorization";
 import { evaluateMemberBadges } from "@/lib/badges";
 import {
@@ -116,48 +118,114 @@ const isPrismaCode = (error: unknown, code: string) =>
 
 const saveAnswer = async (
   memberId: string,
+  sessionId: string,
   sessionQuestionId: string,
   selectedOptionIds: string[]
 ) => {
-  const target = await database.exerciseSessionQuestion.findFirst({
-    where: {
-      id: sessionQuestionId,
-      session: {
-        memberId,
-        status: ExerciseSessionStatus.IN_PROGRESS,
-        list: {
-          is: {
-            status: ContentStatus.PUBLISHED,
-            bank: { is: { status: ContentStatus.PUBLISHED } },
+  const findTarget = () =>
+    database.exerciseSessionQuestion.findFirst({
+      where: {
+        id: sessionQuestionId,
+        sessionId,
+        session: {
+          memberId,
+          status: {
+            in: [
+              ExerciseSessionStatus.IN_PROGRESS,
+              ExerciseSessionStatus.COMPLETED,
+            ],
+          },
+          list: {
+            is: {
+              status: ContentStatus.PUBLISHED,
+              bank: { is: { status: ContentStatus.PUBLISHED } },
+            },
           },
         },
       },
-    },
-    select: {
-      id: true,
-      position: true,
-      answer: { select: { id: true } },
-      session: {
-        select: {
-          id: true,
-          listId: true,
-          questions: { select: { id: true } },
+      select: {
+        id: true,
+        position: true,
+        answer: {
+          select: {
+            id: true,
+            selectedOptionIds: true,
+            isCorrect: true,
+          },
+        },
+        session: {
+          select: {
+            id: true,
+            listId: true,
+            status: true,
+            questions: {
+              select: {
+                id: true,
+                answer: { select: { id: true } },
+              },
+            },
+          },
+        },
+        questionVersion: {
+          select: {
+            id: true,
+            type: true,
+            explanation: true,
+            options: {
+              select: {
+                id: true,
+                label: true,
+                content: true,
+                isCorrect: true,
+              },
+            },
+          },
         },
       },
-      questionVersion: {
-        select: {
-          id: true,
-          type: true,
-          options: { select: { id: true, content: true, isCorrect: true } },
-        },
-      },
-    },
-  });
+    });
+  const target = await findTarget();
   if (!target) {
     return { ok: false as const, reason: "session" };
   }
+
+  const feedbackFor = (
+    answer: { readonly isCorrect: boolean },
+    answeredCount: number
+  ) => {
+    const sessionPath = `/exercicios/sessoes/${encodeURIComponent(target.session.id)}`;
+    const isSessionComplete =
+      target.session.status === ExerciseSessionStatus.COMPLETED ||
+      answeredCount >= target.session.questions.length;
+
+    return {
+      correctOptionLabels: target.questionVersion.options
+        .filter((option) => option.isCorrect)
+        .map((option) => option.label),
+      explanation: target.questionVersion.explanation,
+      isCorrect: answer.isCorrect,
+      isSessionComplete,
+      nextHref: isSessionComplete
+        ? null
+        : `${sessionPath}?proxima=${encodeURIComponent(sessionQuestionId)}`,
+      resultHref: `${sessionPath}?resultado=final`,
+    };
+  };
+
   if (target.answer) {
-    return { ok: true as const, alreadyAnswered: true };
+    const answeredCount = await database.exerciseAnswer.count({
+      where: {
+        sessionQuestion: { is: { sessionId: target.session.id } },
+      },
+    });
+    return {
+      ok: true as const,
+      alreadyAnswered: true,
+      feedback: feedbackFor(target.answer, answeredCount),
+    };
+  }
+
+  if (target.session.status !== ExerciseSessionStatus.IN_PROGRESS) {
+    return { ok: false as const, reason: "session" };
   }
 
   const evaluated = evaluateExerciseAnswer(
@@ -173,95 +241,147 @@ const saveAnswer = async (
   }
 
   const persist = () =>
-    database.$transaction(
-      async (transaction) => {
-        const existing = await transaction.exerciseAnswer.findUnique({
-          where: { sessionQuestionId },
-          select: { id: true },
-        });
-        if (existing) {
-          return;
-        }
-        await transaction.exerciseAnswer.create({
-          data: {
-            sessionQuestionId,
-            selectedOptionIds: [...evaluated.selectedOptionIds],
-            isCorrect: evaluated.isCorrect,
-          },
-        });
-        const answered = await transaction.exerciseAnswer.count({
-          where: {
-            sessionQuestion: { is: { sessionId: target.session.id } },
-          },
-        });
-        const total = target.session.questions.length;
-        const completedAt = answered >= total ? new Date() : null;
-        await transaction.exerciseSession.update({
-          where: { id: target.session.id },
-          data: {
-            currentPosition: Math.min(target.position + 1, total),
-            ...(completedAt
-              ? {
-                  status: ExerciseSessionStatus.COMPLETED,
-                  completedAt,
-                }
-              : {}),
-          },
-        });
-        if (completedAt) {
-          await markLearningAssignmentCompleted(
-            memberId,
-            LearningAssignmentTargetType.EXERCISE_LIST,
-            target.session.listId,
-            completedAt,
-            transaction
+    tracePerformance("member.exercise.answer.commit", () =>
+      database.$transaction(
+        async (transaction) => {
+          const existing = await transaction.exerciseAnswer.findUnique({
+            where: { sessionQuestionId },
+            select: { id: true },
+          });
+          if (existing) {
+            return null;
+          }
+          await transaction.exerciseAnswer.create({
+            data: {
+              sessionQuestionId,
+              selectedOptionIds: [...evaluated.selectedOptionIds],
+              isCorrect: evaluated.isCorrect,
+            },
+          });
+          const answered = await transaction.exerciseAnswer.count({
+            where: {
+              sessionQuestion: { is: { sessionId: target.session.id } },
+            },
+          });
+          const total = target.session.questions.length;
+          const completedAt = answered >= total ? new Date() : null;
+          await transaction.exerciseSession.update({
+            where: { id: target.session.id },
+            data: {
+              currentPosition: Math.min(target.position + 1, total),
+              ...(completedAt
+                ? {
+                    status: ExerciseSessionStatus.COMPLETED,
+                    completedAt,
+                  }
+                : {}),
+            },
+          });
+          if (completedAt) {
+            await markLearningAssignmentCompleted(
+              memberId,
+              LearningAssignmentTargetType.EXERCISE_LIST,
+              target.session.listId,
+              completedAt,
+              transaction
+            );
+          }
+          await tracePerformance("member.exercise.badge-update", () =>
+            evaluateMemberBadges(
+              transaction,
+              memberId,
+              completedAt ?? new Date(),
+              {
+                criteria: [BadgeCriterion.EXERCISE_ANSWERS],
+                force: true,
+              }
+            )
           );
-        }
-        await evaluateMemberBadges(transaction, memberId, new Date(), {
-          criteria: [BadgeCriterion.EXERCISE_ANSWERS],
-          force: true,
-        });
-      },
-      { isolationLevel: "Serializable" }
+          return {
+            answeredCount: answered,
+            isSessionComplete: Boolean(completedAt),
+          };
+        },
+        { isolationLevel: "Serializable" }
+      )
     );
 
+  let persisted: Awaited<ReturnType<typeof persist>> | null = null;
   try {
-    await persist();
+    persisted = await persist();
   } catch (error) {
     if (isPrismaCode(error, "P2034")) {
-      await persist();
-    } else if (!isPrismaCode(error, "P2002")) {
+      persisted = await persist();
+    } else if (isPrismaCode(error, "P2002")) {
+      persisted = null;
+    } else {
       throw error;
     }
   }
-  return { ok: true as const, alreadyAnswered: false };
+
+  if (!persisted) {
+    const latestTarget = await findTarget();
+    if (!latestTarget?.answer) {
+      throw new Error("The exercise answer was not available after save.");
+    }
+    const latestCount = await database.exerciseAnswer.count({
+      where: {
+        sessionQuestion: { is: { sessionId: latestTarget.session.id } },
+      },
+    });
+    return {
+      ok: true as const,
+      alreadyAnswered: true,
+      feedback: feedbackFor(latestTarget.answer, latestCount),
+    };
+  }
+
+  return {
+    ok: true as const,
+    alreadyAnswered: false,
+    feedback: feedbackFor(
+      { isCorrect: evaluated.isCorrect },
+      persisted.answeredCount
+    ),
+  };
 };
 
-export const submitExerciseAnswer = async (formData: FormData) => {
+export const submitExerciseAnswer = async (
+  _previousState: ExerciseAnswerActionState,
+  formData: FormData
+): Promise<ExerciseAnswerActionState> => {
   const memberId = await requireMemberId();
   const sessionId = value(formData, "sessionId");
   const sessionQuestionId = value(formData, "sessionQuestionId");
+  if (!(sessionId && sessionQuestionId)) {
+    return { status: "error", message: "Esta questão não está disponível." };
+  }
   const selectedOptionIds = formData
     .getAll("optionIds")
     .flatMap((option) => (typeof option === "string" ? [option] : []));
   const result = await saveAnswer(
     memberId,
+    sessionId,
     sessionQuestionId,
     selectedOptionIds
   );
   if (!result.ok) {
-    redirect(
-      `/exercicios/sessoes/${encodeURIComponent(sessionId)}?erro=${result.reason}`
-    );
+    return {
+      status: "error",
+      message:
+        result.reason === "answer"
+          ? "Selecione uma alternativa válida antes de confirmar."
+          : "Esta sessão não está mais disponível. Atualize a página para continuar.",
+    };
   }
   if (!result.alreadyAnswered) {
-    await dispatchPendingNotifications();
+    await tracePerformance("member.notification.dispatch", () =>
+      dispatchPendingNotifications()
+    );
   }
   revalidatePath("/exercicios");
   revalidatePath("/aprender");
-  redirect(
-    `/exercicios/sessoes/${encodeURIComponent(sessionId)}?respondida=${encodeURIComponent(sessionQuestionId)}`
-  );
+  return { status: "success", feedback: result.feedback };
 };
 
 export const toggleExerciseFavorite = async (formData: FormData) => {

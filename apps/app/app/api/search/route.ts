@@ -1,3 +1,4 @@
+import { tracePerformance } from "@repo/observability/performance";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { searchGlobal } from "@/lib/global-search";
@@ -19,10 +20,12 @@ export const GET = async (request: Request) => {
   }
 
   try {
-    await consumeMutationRateLimit({
-      action: "member.search",
-      memberId: userId,
-    });
+    await tracePerformance("member.search.rate-limit", () =>
+      consumeMutationRateLimit({
+        action: "member.search",
+        memberId: userId,
+      })
+    );
   } catch (error) {
     if (isMutationRateLimitError(error)) {
       return NextResponse.json(

@@ -14,9 +14,28 @@ vi.mock("@repo/database", () => ({
 }));
 vi.mock("./authorization", () => ({ getMemberRole: vi.fn() }));
 
-import { canReadRecordingGroup } from "./recordings";
+import {
+  buildContinueWatchingWhere,
+  canReadRecordingGroup,
+} from "./recordings";
 
 describe("imported recording authorization", () => {
+  test("filters resumable playback in SQL by the member's current recording scope", () => {
+    const recordingWhere = {
+      OR: [
+        { group: { memberId: "member-a" } },
+        { legacyLessonId: "lesson-granted" },
+      ],
+    };
+
+    expect(buildContinueWatchingWhere("member-a", recordingWhere)).toEqual({
+      memberId: "member-a",
+      positionSeconds: { gt: 0 },
+      completedPlaybackAt: null,
+      asset: { is: { importedRecording: { is: recordingWhere } } },
+    });
+  });
+
   test("an unlinked group is not readable by a member", () => {
     expect(
       canReadRecordingGroup(null, { fullAccess: false, memberId: "member-a" })

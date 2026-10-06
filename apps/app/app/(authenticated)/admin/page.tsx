@@ -9,6 +9,7 @@ import {
   UsersIcon,
 } from "lucide-react";
 import Link from "next/link";
+import { Suspense } from "react";
 import { Stagger } from "@/components/motion/motion";
 import { getAdminOverview } from "@/lib/admin-overview";
 import { communityPostHref } from "@/lib/community";
@@ -47,24 +48,12 @@ const summaryCards: Array<{
   { label: "Próximos encontros", Icon: CalendarDaysIcon },
 ];
 
-const AdminPage = async () => {
+const AdminOverviewContent = async () => {
   const overview = await getAdminOverview();
   const nextMeeting = overview.upcomingMeetings[0];
 
   return (
-    <main className="mx-auto w-full max-w-[1280px] px-5 py-10 sm:px-8 lg:px-12 lg:py-14">
-      <header className="max-w-3xl">
-        <p className="brand-eyebrow">Professor · visão geral</p>
-        <span aria-hidden="true" className="brand-rule mt-4" />
-        <h1 className="mt-6 font-display text-5xl leading-[1.02] tracking-tight sm:text-6xl">
-          O que merece sua atenção agora?
-        </h1>
-        <p className="mt-5 text-muted-foreground leading-7">
-          Um ponto de partida para acompanhar pessoas, conteúdo e conversas sem
-          precisar abrir cada área separadamente.
-        </p>
-      </header>
-
+    <div data-route-content-ready="admin">
       <Stagger
         aria-label="Resumo"
         className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
@@ -332,8 +321,57 @@ const AdminPage = async () => {
           </div>
         </section>
       </div>
-    </main>
+    </div>
   );
 };
+
+const AdminOverviewLoading = () => (
+  <div className="mt-10 space-y-10" data-route-loading>
+    <output
+      aria-label="Carregando resumo do painel"
+      className="block space-y-4"
+    >
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {["one", "two", "three", "four"].map((item) => (
+          <div
+            className="h-28 animate-pulse rounded-sm border bg-muted/30"
+            key={item}
+          />
+        ))}
+      </div>
+      <div className="grid gap-4 md:grid-cols-2">
+        {["left", "right"].map((item) => (
+          <div
+            className="h-36 animate-pulse rounded-sm border bg-muted/30"
+            key={item}
+          />
+        ))}
+      </div>
+    </output>
+  </div>
+);
+
+const AdminPage = () => (
+  <main
+    className="mx-auto w-full max-w-[1280px] px-5 py-10 sm:px-8 lg:px-12 lg:py-14"
+    data-route-structure-ready="admin"
+  >
+    <header className="max-w-3xl">
+      <p className="brand-eyebrow">Professor · visão geral</p>
+      <span aria-hidden="true" className="brand-rule mt-4" />
+      <h1 className="mt-6 font-display text-5xl leading-[1.02] tracking-tight sm:text-6xl">
+        O que merece sua atenção agora?
+      </h1>
+      <p className="mt-5 text-muted-foreground leading-7">
+        Um ponto de partida para acompanhar pessoas, conteúdo e conversas sem
+        precisar abrir cada área separadamente.
+      </p>
+    </header>
+
+    <Suspense fallback={<AdminOverviewLoading />}>
+      <AdminOverviewContent />
+    </Suspense>
+  </main>
+);
 
 export default AdminPage;

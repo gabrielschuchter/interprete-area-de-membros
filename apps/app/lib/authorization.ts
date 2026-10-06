@@ -1,9 +1,9 @@
 import "server-only";
 
-import { database, MemberRole } from "@repo/database";
+import { MemberRole } from "@repo/database";
 import { redirect } from "next/navigation";
 import { cache } from "react";
-import { getAuth } from "./auth";
+import { getAuth, getMemberIdentitySnapshot } from "./auth";
 
 export const requireSession = async () => {
   const { userId } = await getAuth();
@@ -16,10 +16,7 @@ export const requireSession = async () => {
 };
 
 export const getMemberRole = cache(async (userId: string) => {
-  const member = await database.member.findUnique({
-    where: { id: userId },
-    select: { role: true, deactivatedAt: true },
-  });
+  const member = await getMemberIdentitySnapshot(userId);
 
   return member && !member.deactivatedAt ? member.role : MemberRole.MEMBER;
 });

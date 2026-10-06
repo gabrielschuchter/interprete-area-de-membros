@@ -2,6 +2,7 @@ import "server-only";
 
 import { database, type Prisma } from "@repo/database";
 import { withMemberIdentityLock } from "@repo/member-domain";
+import { tracePerformance } from "@repo/observability/performance";
 import { cache } from "react";
 import { env } from "@/env";
 import { getCurrentUser, getMemberIdentitySnapshot } from "./auth";
@@ -88,6 +89,9 @@ const createProfileInTransaction = async (
   });
 };
 
+const getClerkIdentityForProvisioning = () =>
+  tracePerformance("member.profile.clerk-provision", () => getCurrentUser());
+
 const syncMemberIdentity = async (
   transaction: Prisma.TransactionClient,
   clerkUserId: string,
@@ -138,15 +142,48 @@ export const getOrCreateProfile = cache(
       return database.profile.findUnique({ where: { clerkUserId: userId } });
     }
 
+    let knownIdentity:
+      | {
+          existingProfile: Awaited<
+            ReturnType<typeof database.profile.findUnique>
+          >;
+          memberSnapshot: Awaited<ReturnType<typeof getMemberIdentitySnapshot>>;
+        }
+      | undefined;
+
+    if (userId) {
+      const [memberSnapshot, existingProfile] = await tracePerformance(
+        "member.profile.local-snapshot",
+        () =>
+          Promise.all([
+            getMemberIdentitySnapshot(userId),
+            database.profile.findUnique({ where: { clerkUserId: userId } }),
+          ])
+      );
+      knownIdentity = { existingProfile, memberSnapshot };
+
+      // Clerk webhooks keep the local identity projection current. Existing
+      // members therefore do not need a Backend API round trip on navigation.
+      if (memberSnapshot?.deactivatedAt) {
+        return existingProfile;
+      }
+      if (memberSnapshot && existingProfile) {
+        return existingProfile;
+      }
+      if (env.APP_WRITE_FREEZE === "true") {
+        return existingProfile;
+      }
+    }
+
     if (env.APP_WRITE_FREEZE === "true") {
-      const currentUser = await getCurrentUser();
+      const currentUser = await getClerkIdentityForProvisioning();
       const clerkUserId = userId ?? currentUser?.id;
       return clerkUserId
         ? database.profile.findUnique({ where: { clerkUserId } })
         : null;
     }
 
-    const user = await getCurrentUser();
+    const user = await getClerkIdentityForProvisioning();
     const clerkUserId = userId ?? user?.id;
 
     if (!(user && clerkUserId)) {
@@ -157,10 +194,13 @@ export const getOrCreateProfile = cache(
       user.fullName ??
       ([user.firstName, user.lastName].filter(Boolean).join(" ") || null);
     const email = user.primaryEmailAddress?.emailAddress ?? null;
-    const [memberSnapshot, existingProfile] = await Promise.all([
-      getMemberIdentitySnapshot(clerkUserId),
-      database.profile.findUnique({ where: { clerkUserId } }),
-    ]);
+    const [memberSnapshot, existingProfile] =
+      knownIdentity && clerkUserId === userId
+        ? [knownIdentity.memberSnapshot, knownIdentity.existingProfile]
+        : await Promise.all([
+            getMemberIdentitySnapshot(clerkUserId),
+            database.profile.findUnique({ where: { clerkUserId } }),
+          ]);
 
     if (memberSnapshot?.deactivatedAt) {
       return existingProfile;
@@ -179,48 +219,50 @@ export const getOrCreateProfile = cache(
     }
 
     const createOrSync = (useFallbackUsername: boolean) =>
-      database.$transaction((transaction) =>
-        withMemberIdentityLock(transaction, clerkUserId, async () => {
-          const member = await transaction.member.findUnique({
-            where: { id: clerkUserId },
-            select: {
-              deactivatedAt: true,
-              displayName: true,
-              email: true,
-              avatarUrl: true,
-            },
-          });
-          const existing = await transaction.profile.findUnique({
-            where: { clerkUserId },
-          });
+      tracePerformance("member.profile.identity-sync", () =>
+        database.$transaction((transaction) =>
+          withMemberIdentityLock(transaction, clerkUserId, async () => {
+            const member = await transaction.member.findUnique({
+              where: { id: clerkUserId },
+              select: {
+                deactivatedAt: true,
+                displayName: true,
+                email: true,
+                avatarUrl: true,
+              },
+            });
+            const existing = await transaction.profile.findUnique({
+              where: { clerkUserId },
+            });
 
-          const isActive = await syncMemberIdentity(
-            transaction,
-            clerkUserId,
-            member,
-            existing?.avatarUrl,
-            { displayName, email, avatarUrl: user.imageUrl ?? null }
-          );
-
-          if (!isActive) {
-            return existing;
-          }
-
-          if (existing) {
-            return existing;
-          }
-
-          return createProfileInTransaction(
-            transaction,
-            {
+            const isActive = await syncMemberIdentity(
+              transaction,
               clerkUserId,
-              username: usernameFromClerkUser(user),
-              displayName,
-              avatarUrl: user.imageUrl ?? null,
-            },
-            useFallbackUsername
-          );
-        })
+              member,
+              existing?.avatarUrl,
+              { displayName, email, avatarUrl: user.imageUrl ?? null }
+            );
+
+            if (!isActive) {
+              return existing;
+            }
+
+            if (existing) {
+              return existing;
+            }
+
+            return createProfileInTransaction(
+              transaction,
+              {
+                clerkUserId,
+                username: usernameFromClerkUser(user),
+                displayName,
+                avatarUrl: user.imageUrl ?? null,
+              },
+              useFallbackUsername
+            );
+          })
+        )
       );
 
     try {

@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "compression": "gzip",
+  "criticalRoutes": [
+    {
+      "route": "home",
+      "manifestSegments": ["(authenticated)"],
+      "entrySuffix": "apps/app/app/(authenticated)/page",
+      "maxGzipBytes": 230400
+    },
+    {
+      "route": "community",
+      "manifestSegments": ["(authenticated)", "comunidade"],
+      "entrySuffix": "apps/app/app/(authenticated)/comunidade/page",
+      "maxGzipBytes": 230400
+    },
+    {
+      "route": "learning",
+      "manifestSegments": ["(authenticated)", "aprender"],
+      "entrySuffix": "apps/app/app/(authenticated)/aprender/page",
+      "maxGzipBytes": 230400
+    },
+    {
+      "route": "library",
+      "manifestSegments": ["(authenticated)", "biblioteca"],
+      "entrySuffix": "apps/app/app/(authenticated)/biblioteca/page",
+      "maxGzipBytes": 230400
+    },
+    {
+      "route": "exercises",
+      "manifestSegments": ["(authenticated)", "exercicios"],
+      "entrySuffix": "apps/app/app/(authenticated)/exercicios/page",
+      "maxGzipBytes": 230400
+    }
+  ]
+}

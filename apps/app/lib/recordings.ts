@@ -27,6 +27,20 @@ export const canReadRecordingGroup = (
   context: RecordingAccessContext
 ) => context.fullAccess || groupMemberId === context.memberId;
 
+export const buildContinueWatchingWhere = (
+  memberId: string,
+  recordingWhere?: Prisma.ImportedRecordingWhereInput
+): Prisma.PlaybackProgressWhereInput => ({
+  memberId,
+  positionSeconds: { gt: 0 },
+  completedPlaybackAt: null,
+  asset: {
+    is: {
+      importedRecording: { is: recordingWhere ?? {} },
+    },
+  },
+});
+
 const getRecordingAccessContext = async (
   memberId: string
 ): Promise<
@@ -185,20 +199,8 @@ export const getAccessibleRecordingIds = async (
  */
 export const getMemberContinueWatching = async (memberId: string) => {
   const access = await getRecordingAccessContext(memberId);
-  const accessibleRecordings = await database.importedRecording.findMany({
-    where: access.recordingWhere,
-    orderBy: [{ meetingDate: "desc" }, { id: "desc" }],
-    take: 1000,
-    select: { assetId: true },
-  });
-  const accessibleAssetIds = accessibleRecordings.map(({ assetId }) => assetId);
   const progressRows = await database.playbackProgress.findMany({
-    where: {
-      memberId,
-      assetId: { in: accessibleAssetIds },
-      positionSeconds: { gt: 0 },
-      completedPlaybackAt: null,
-    },
+    where: buildContinueWatchingWhere(memberId, access.recordingWhere),
     orderBy: { lastViewedAt: "desc" },
     take: 6,
     select: {

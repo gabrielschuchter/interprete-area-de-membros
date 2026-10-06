@@ -7,6 +7,7 @@
 // biome-ignore lint/performance/noNamespaceImport: Sentry SDK convention
 import * as Sentry from "@sentry/nextjs";
 import { keys } from "./keys";
+import { sanitizeMemberTelemetryEvent } from "./privacy";
 
 export const initializeSentry = (): ReturnType<typeof Sentry.init> =>
   Sentry.init({
@@ -15,14 +16,16 @@ export const initializeSentry = (): ReturnType<typeof Sentry.init> =>
     // Enable logging
     enableLogs: true,
 
-    // Adjust this value in production, or use tracesSampler for greater control
-    tracesSampleRate: 1,
+    sendDefaultPii: false,
+    tracesSampleRate: 0.2,
+    beforeSend: sanitizeMemberTelemetryEvent,
+    beforeSendTransaction: sanitizeMemberTelemetryEvent,
 
     // Setting this option to true will print useful information to the console while you're setting up Sentry.
     debug: false,
 
     // Capture local variables in stack traces for better debugging
-    includeLocalVariables: true,
+    includeLocalVariables: false,
 
     // Integrations for console logging
     integrations: [

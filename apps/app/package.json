@@ -3,7 +3,8 @@
   "private": true,
   "scripts": {
     "dev": "node scripts/run-next-with-system-ca.mjs dev -p 3000",
-    "build": "bun --bun next build",
+    "build": "bun --bun next build && bun run check:performance",
+    "check:performance": "node ../../scripts/check-app-performance-budget.mjs",
     "start": "node scripts/run-next-with-system-ca.mjs start",
     "analyze": "ANALYZE=true npm run build",
     "test": "NODE_ENV=test vitest run",

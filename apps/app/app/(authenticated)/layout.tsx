@@ -1,11 +1,11 @@
 import { database } from "@repo/database";
 import { SidebarProvider } from "@repo/design-system/components/ui/sidebar";
+import { tracePerformance } from "@repo/observability/performance";
 import { secure } from "@repo/security";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { env } from "@/env";
-import { getAuth, getCurrentUser } from "@/lib/auth";
-import { getMemberRole } from "@/lib/authorization";
+import { getAuth } from "@/lib/auth";
 import { getMemberProductConfig } from "@/lib/product-config";
 import { getOrCreateProfile } from "@/lib/profile";
 import { MemberHeader } from "./components/member-header";
@@ -21,10 +21,13 @@ interface AppLayoutProperties {
 
 const AppLayout = async ({ children }: AppLayoutProperties) => {
   if (env.ARCJET_KEY) {
-    await secure(["CATEGORY:PREVIEW"]);
+    await tracePerformance("member.security.arcjet", () =>
+      secure(["CATEGORY:PREVIEW"])
+    );
   }
 
-  const { userId, memberDeactivated, redirectToSignIn } = await getAuth();
+  const { userId, memberDeactivated, memberSnapshot, redirectToSignIn } =
+    await getAuth();
 
   if (memberDeactivated) {
     redirect("/conta-desativada");
@@ -34,28 +37,55 @@ const AppLayout = async ({ children }: AppLayoutProperties) => {
     return redirectToSignIn();
   }
 
-  const profile = await getOrCreateProfile(userId);
-  const member = await database.member.findUnique({
-    where: { id: userId },
-    select: { onboardingStatus: true },
-  });
+  let member = memberSnapshot;
+  let profile: Awaited<ReturnType<typeof getOrCreateProfile>>;
+  let productConfig: Awaited<ReturnType<typeof getMemberProductConfig>>;
 
-  if (member?.onboardingStatus !== "COMPLETED") {
-    redirect("/onboarding");
+  if (memberSnapshot?.onboardingStatus === "COMPLETED") {
+    // The profile projection and navigation config are independent for an
+    // established member. Resolve them together instead of adding a database
+    // round trip to every authenticated route transition.
+    [profile, productConfig] = await Promise.all([
+      getOrCreateProfile(userId),
+      getMemberProductConfig(userId),
+    ]);
+  } else {
+    // First access may provision a missing member/profile; onboarding status
+    // must be re-read after that flow before exposing the member area.
+    profile = await getOrCreateProfile(userId);
+    member ??= await database.member.findUnique({
+      where: { id: userId },
+      select: {
+        deactivatedAt: true,
+        onboardingStatus: true,
+        role: true,
+        displayName: true,
+        email: true,
+        avatarUrl: true,
+      },
+    });
+
+    if (member?.deactivatedAt) {
+      redirect("/conta-desativada");
+    }
+
+    if (member?.onboardingStatus !== "COMPLETED") {
+      redirect("/onboarding");
+    }
+
+    productConfig = await getMemberProductConfig(userId);
   }
 
-  const [role, user, productConfig] = await Promise.all([
-    getMemberRole(userId),
-    getCurrentUser(),
-    getMemberProductConfig(userId),
-  ]);
+  if (!member) {
+    redirect("/onboarding");
+  }
 
   return (
     <SidebarProvider>
       <GlobalSidebar
-        avatarUrl={profile?.avatarUrl ?? user?.imageUrl ?? null}
-        canManageContent={role === "TEACHER" || role === "ADMIN"}
-        displayName={profile?.displayName ?? user?.firstName ?? "Membro"}
+        avatarUrl={profile?.avatarUrl ?? member?.avatarUrl ?? null}
+        canManageContent={member.role === "TEACHER" || member.role === "ADMIN"}
+        displayName={profile?.displayName ?? member.displayName ?? "Membro"}
         productConfig={productConfig}
       >
         <MemberHeader memberId={userId} />

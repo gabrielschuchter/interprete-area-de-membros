@@ -153,12 +153,12 @@ const LibraryItemPage = async ({ params }: LibraryItemPageProperties) => {
             </div>
           )}
           <div className="mt-10 border-border border-t pt-7">
-            <form action={openLibraryItem}>
+            <SingleFlightForm action={openLibraryItem}>
               <input name="itemId" type="hidden" value={item.id} />
-              <Button size="lg" type="submit">
+              <SingleFlightSubmit pendingLabel="Abrindo material…" size="lg">
                 Abrir material <ArrowUpRightIcon aria-hidden="true" />
-              </Button>
-            </form>
+              </SingleFlightSubmit>
+            </SingleFlightForm>
           </div>
         </article>
       </main>

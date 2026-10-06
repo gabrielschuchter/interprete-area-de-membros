@@ -2,7 +2,6 @@
 
 import { Button } from "@repo/design-system/components/ui/button";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 
 interface RecordingThumbnailUploaderProperties {
@@ -15,7 +14,6 @@ export const RecordingThumbnailUploader = ({
   thumbnailPath,
 }: RecordingThumbnailUploaderProperties) => {
   const inputRef = useRef<HTMLInputElement>(null);
-  const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [preview, setPreview] = useState(
@@ -50,7 +48,6 @@ export const RecordingThumbnailUploader = ({
         `${payload.url ?? `/api/learning/recordings/${recordingId}/thumbnail`}?v=${Date.now()}`
       );
       setMessage("Capa atualizada.");
-      router.refresh();
     } catch (error) {
       setMessage(
         error instanceof Error
@@ -79,7 +76,6 @@ export const RecordingThumbnailUploader = ({
       }
       setPreview(null);
       setMessage("Capa removida.");
-      router.refresh();
     } catch (error) {
       setMessage(
         error instanceof Error

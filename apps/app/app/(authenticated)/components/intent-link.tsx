@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import type { AnchorHTMLAttributes, PointerEvent, ReactNode } from "react";
-import { useCallback, useRef } from "react";
+import { useCallback } from "react";
+import { reserveNavigationPrefetch } from "./navigation-prefetch";
 
 type IntentLinkProperties = Omit<
   AnchorHTMLAttributes<HTMLAnchorElement>,
@@ -31,16 +32,15 @@ export const IntentLink = ({
   ...props
 }: IntentLinkProperties) => {
   const router = useRouter();
-  const hasPrefetched = useRef(false);
+  const pathname = usePathname();
 
   const prefetch = useCallback(() => {
-    if (hasPrefetched.current) {
+    if (!reserveNavigationPrefetch(pathname, href)) {
       return;
     }
 
-    hasPrefetched.current = true;
     router.prefetch(href);
-  }, [href, router]);
+  }, [href, pathname, router]);
 
   const startNavigation = useCallback(
     (event: PointerEvent<HTMLAnchorElement>) => {
@@ -68,7 +68,14 @@ export const IntentLink = ({
       href={href}
       onClick={(event) => {
         onClick?.(event);
-        if (event.defaultPrevented || event.metaKey || event.ctrlKey) {
+        if (
+          event.defaultPrevented ||
+          event.button !== 0 ||
+          event.metaKey ||
+          event.ctrlKey ||
+          event.shiftKey ||
+          event.altKey
+        ) {
           return;
         }
 

@@ -65,7 +65,7 @@ describe("member exercise session queries", () => {
             },
           },
         },
-        take: 30,
+        take: 6,
       })
     );
   });

@@ -3,6 +3,8 @@
  * validation out of the initial application bundle when no public DSN exists.
  */
 
+import { sanitizeMemberTelemetryEvent } from "./privacy";
+
 type SentryClient = typeof import("@sentry/nextjs");
 
 const loadSentry = (() => {
@@ -23,7 +25,10 @@ export const initializeSentry = (): Promise<void> | undefined => {
       Sentry.init({
         dsn,
         enableLogs: true,
-        tracesSampleRate: 1,
+        sendDefaultPii: false,
+        tracesSampleRate: 0.2,
+        beforeSend: sanitizeMemberTelemetryEvent,
+        beforeSendTransaction: sanitizeMemberTelemetryEvent,
         debug: false,
         replaysOnErrorSampleRate: 1,
         replaysSessionSampleRate: 0.1,

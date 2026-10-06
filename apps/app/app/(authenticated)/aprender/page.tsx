@@ -1,3 +1,4 @@
+import { tracePerformance } from "@repo/observability/performance";
 import {
   LearningContentRail,
   type LearningRailCard,
@@ -158,39 +159,49 @@ const toCollectionCard = (
 
 const LearnPage = async () => {
   const memberId = await requireMemberId();
-  const [paths, assignments, collections, continueData, bookmarkKeys] =
-    await Promise.all([
-      getPublishedLearningPaths(memberId),
-      getReceivedLearningAssignments(memberId),
-      getPublishedCollectionsForMember(memberId),
-      getMemberContinueWatching(memberId),
-      getMemberLearningBookmarkKeys(memberId),
-    ]);
+  const [learningData, assignments, continueData, bookmarkKeys] =
+    await tracePerformance("member.route.learn.primary-data", () => {
+      const pathsPromise = getPublishedLearningPaths(memberId);
+      const collectionsPromise = getPublishedCollectionsForMember(memberId);
+      const learningDataPromise = Promise.all([
+        pathsPromise,
+        collectionsPromise,
+      ]).then(async ([paths, collections]) => {
+        const courseProgressById = new Map(
+          paths.flatMap((path) =>
+            path.courses.map((course) => [course.id, course.progress] as const)
+          )
+        );
+        const collectionCourseIds = [
+          ...new Set(
+            collections.flatMap((collection) =>
+              collection.items.flatMap((item) =>
+                item.course ? [item.course.id] : []
+              )
+            )
+          ),
+        ];
+        const missingCourseIds = collectionCourseIds.filter(
+          (courseId) => !courseProgressById.has(courseId)
+        );
+        const additionalCourseProgress = await tracePerformance(
+          "member.route.learn.additional-progress",
+          () => getMemberCourseProgress(memberId, missingCourseIds)
+        );
+        for (const [courseId, progress] of additionalCourseProgress) {
+          courseProgressById.set(courseId, progress);
+        }
+        return { collections, courseProgressById, paths };
+      });
 
-  const courseProgressById = new Map(
-    paths.flatMap((path) =>
-      path.courses.map((course) => [course.id, course.progress] as const)
-    )
-  );
-  const collectionCourseIds = [
-    ...new Set(
-      collections.flatMap((collection) =>
-        collection.items.flatMap((item) =>
-          item.course ? [item.course.id] : []
-        )
-      )
-    ),
-  ];
-  const missingCourseIds = collectionCourseIds.filter(
-    (courseId) => !courseProgressById.has(courseId)
-  );
-  const additionalCourseProgress = await getMemberCourseProgress(
-    memberId,
-    missingCourseIds
-  );
-  for (const [courseId, progress] of additionalCourseProgress) {
-    courseProgressById.set(courseId, progress);
-  }
+      return Promise.all([
+        learningDataPromise,
+        getReceivedLearningAssignments(memberId),
+        getMemberContinueWatching(memberId),
+        getMemberLearningBookmarkKeys(memberId),
+      ]);
+    });
+  const { collections, courseProgressById, paths } = learningData;
 
   const assignmentCards = assignments.map((assignment) => {
     const isScheduled = Boolean(
@@ -305,7 +316,10 @@ const LearnPage = async () => {
       eyebrow="Sua área de aprendizagem"
       title="Aprender"
     >
-      <div className="space-y-10 sm:space-y-12">
+      <div
+        className="space-y-10 sm:space-y-12"
+        data-route-content-ready="learn"
+      >
         <LearningContentRail
           cards={assignmentCards}
           description="Conteúdos enviados pela equipe, com prazos e andamento acompanhados na sua conta."

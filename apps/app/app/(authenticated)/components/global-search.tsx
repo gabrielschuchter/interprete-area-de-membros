@@ -222,7 +222,21 @@ export const GlobalSearch = ({
             aria-label="Buscar no Interprete"
             autoComplete="off"
             className="h-12 border-0 bg-transparent px-0 text-base shadow-none focus-visible:ring-0 sm:text-lg"
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={(event) => {
+              const nextQuery = event.target.value;
+              setQuery(nextQuery);
+              setActiveIndex(-1);
+              setErrorMessage("");
+
+              if (nextQuery.trim().length < 2) {
+                setResults([]);
+                setState("idle");
+              } else {
+                // Acknowledge the input immediately; the network request is
+                // still debounced below to avoid flooding the search API.
+                setState("loading");
+              }
+            }}
             onKeyDown={handleInputKeyDown}
             placeholder="Buscar no Interprete..."
             ref={inputRef}
@@ -302,6 +316,7 @@ export const GlobalSearch = ({
             <div
               aria-label="Resultados da busca"
               className="motion-stagger space-y-1"
+              data-route-content-ready="search"
               id="global-search-results"
               role="listbox"
             >

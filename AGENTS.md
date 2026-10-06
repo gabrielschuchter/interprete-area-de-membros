@@ -36,6 +36,18 @@ Este repositório é o produto da área de membros do Interprete. A fundação n
 - Professor/admin é autorizado por `Member.role` (`TEACHER`/`ADMIN`) associado ao `userId` do Clerk; nunca por e-mail, metadata pública ou esconder links.
 - Todo domínio público mantém RLS habilitado no Supabase e nenhuma policy anon/authenticated permissiva enquanto o acesso for exclusivamente Prisma server-side.
 
+## Performance permanente
+
+- Performance é requisito de aceite de toda rota, componente e ação. Declare o caminho crítico, o orçamento, a projeção mínima, a paginação e a invalidação.
+- Responda visualmente a cada clique/toque/submit em até 100 ms. Sucesso só aparece após persistência; UI otimista exige reconciliação, rollback, prevenção de duplicidade e teste de concorrência.
+- Não bloqueie a navegação por Clerk Backend API ou por árvore/progresso completo quando `Member`/`Profile` e uma projeção `EXISTS` autorizada atendem o caso.
+- Mantenha autorização fresca. `React.cache` deduplica dentro da requisição; cache persistente compartilhado nunca contém papel, identidade, grant, revogação, grupo privado ou dado pessoal.
+- Paginação e projeções acontecem no banco. Índices e aumento do pool exigem plano SQL, dados representativos e ensaio de concorrência; mantenha Supavisor de transação e TLS validado.
+- Trabalho secundário usa o outbox transacional existente, consumidores idempotentes e worker de recuperação ativo. `after()` e promises soltas não substituem persistência ou retry durável.
+- Prefetch é intencional, limitado e sem mutações. Respeite rede restrita/economia de dados; conteúdo disponível não começa oculto por animação e movimento reduzido é respeitado.
+- Telemetria é amostrada e sanitizada; nunca envie IDs, títulos, conteúdo pessoal, corpo de requisição, cookies, tokens, cabeçalhos de autorização ou URLs assinadas.
+- Preserve e atualize `docs/architecture/performance.md` e `packages/design-system/PERFORMANCE.md`. A fase 10 continua aberta até evidência de autorização, responsividade, percentis, mobile, persistência, isolamento de cache e deployment.
+
 ## Checks obrigatórios
 
 Antes de entregar mudanças relevantes, rode:
@@ -46,6 +58,7 @@ bun run typecheck
 bun run boundaries
 bun run test
 bun run build
+bun run performance:check
 ```
 
 Se uma verificação precisar de credencial externa, registre claramente o bloqueio e valide tudo que for possível sem inventar valores.

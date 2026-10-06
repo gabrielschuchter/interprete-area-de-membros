@@ -8,6 +8,7 @@ import {
   LibraryItemKind,
   type Prisma,
 } from "@repo/database";
+import { tracePerformance } from "@repo/observability/performance";
 import {
   getLearningAccessScope,
   hasCourseAccess,
@@ -197,69 +198,73 @@ export const getLibraryItems = async ({
   const rowLimit: number =
     normalizedSort === "relevant" ? MAX_RELEVANCE_CANDIDATES : PAGE_SIZE + 1;
   const lessonAccessWhere = buildLessonAccessWhere(scope);
-  const rows = await database.libraryItem.findMany({
-    where: { AND: [where, lessonAccessWhere] },
-    orderBy:
-      normalizedSort === "relevant"
-        ? [
-            { views: { _count: "desc" } },
-            { bookmarks: { _count: "desc" } },
-            { createdAt: "desc" },
-          ]
-        : [{ createdAt: "desc" }, { id: "desc" }],
-    take: rowLimit,
-    ...(normalizedSort === "recent" ? { skip: pageOffset } : {}),
-    select: {
-      id: true,
-      title: true,
-      description: true,
-      coverUrl: true,
-      kind: true,
-      category: true,
-      tags: true,
-      url: true,
-      authors: true,
-      year: true,
-      language: true,
-      difficulty: true,
-      accessType: true,
-      accessNote: true,
-      version: true,
-      linkCheckedAt: true,
-      doi: true,
-      pmid: true,
-      storagePath: true,
-      mimeType: true,
-      createdAt: true,
-      lesson: {
-        select: {
-          id: true,
-          title: true,
-          status: true,
-          moduleId: true,
-          module: {
-            select: {
-              status: true,
-              courseId: true,
-              course: { select: { status: true } },
+  const rows = await tracePerformance("member.library.items-query", () =>
+    database.libraryItem.findMany({
+      where: { AND: [where, lessonAccessWhere] },
+      orderBy:
+        normalizedSort === "relevant"
+          ? [
+              { views: { _count: "desc" } },
+              { bookmarks: { _count: "desc" } },
+              { createdAt: "desc" },
+            ]
+          : [{ createdAt: "desc" }, { id: "desc" }],
+      take: rowLimit,
+      ...(normalizedSort === "recent" ? { skip: pageOffset } : {}),
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        coverUrl: true,
+        kind: true,
+        category: true,
+        tags: true,
+        url: true,
+        authors: true,
+        year: true,
+        language: true,
+        difficulty: true,
+        accessType: true,
+        accessNote: true,
+        version: true,
+        linkCheckedAt: true,
+        doi: true,
+        pmid: true,
+        storagePath: true,
+        mimeType: true,
+        createdAt: true,
+        lesson: {
+          select: {
+            id: true,
+            title: true,
+            status: true,
+            moduleId: true,
+            module: {
+              select: {
+                status: true,
+                courseId: true,
+                course: { select: { status: true } },
+              },
             },
           },
         },
+        _count: { select: { views: true, bookmarks: true } },
+        bookmarks: { where: { memberId }, select: { id: true } },
       },
-      _count: { select: { views: true, bookmarks: true } },
-      bookmarks: { where: { memberId }, select: { id: true } },
-    },
-  });
+    })
+  );
   const accessibleRows = rows.filter(
     (row) => !row.lesson || hasLinkedLessonAccess(row.lesson, scope)
   );
   const repeatViews =
     normalizedSort === "relevant" && accessibleRows.length > 0
-      ? await database.libraryItemView.groupBy({
-          by: ["itemId"],
-          where: { itemId: { in: accessibleRows.map(({ id }) => id) } },
-          _sum: { openCount: true },
-        })
+      ? await tracePerformance("member.library.repeat-view-counts", () =>
+          database.libraryItemView.groupBy({
+            by: ["itemId"],
+            where: { itemId: { in: accessibleRows.map(({ id }) => id) } },
+            _sum: { openCount: true },
+          })
+        )
       : [];
   const repeatViewCounts = new Map(
     repeatViews.map((view) => [view.itemId, view._sum.openCount ?? 0])
@@ -312,12 +317,14 @@ export const getLibraryItems = async ({
 };
 
 export const getLibraryCategories = async () => {
-  const rows = await database.libraryItem.findMany({
-    where: { status: ContentStatus.PUBLISHED, category: { not: null } },
-    distinct: ["category"],
-    orderBy: { category: "asc" },
-    select: { category: true },
-  });
+  const rows = await tracePerformance("member.library.categories", () =>
+    database.libraryItem.findMany({
+      where: { status: ContentStatus.PUBLISHED, category: { not: null } },
+      distinct: ["category"],
+      orderBy: { category: "asc" },
+      select: { category: true },
+    })
+  );
   return rows.flatMap((row) => (row.category ? [row.category] : []));
 };
 

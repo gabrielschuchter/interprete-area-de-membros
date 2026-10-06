@@ -31,7 +31,7 @@ const ExercisesPage = async ({ searchParams }: ExercisesPageProperties) => {
     getMemberInProgressExerciseSessions(memberId),
     getMemberExerciseHistory(memberId),
   ]);
-  const recentSessions = history.slice(0, 6);
+  const recentSessions = history;
 
   return (
     <main className="mx-auto w-full max-w-[1360px] px-5 py-10 sm:px-8 lg:px-12 lg:py-14">
