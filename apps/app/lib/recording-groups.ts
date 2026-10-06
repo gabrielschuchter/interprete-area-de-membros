@@ -10,6 +10,8 @@ export interface RecordingGroupAssignmentInput {
   readonly changedByMemberId: string;
   readonly confirmReassignment?: boolean;
   readonly groupId: string;
+  readonly identityConfirmed: boolean;
+  readonly identityEvidence: string;
   readonly memberId: string;
 }
 
@@ -31,13 +33,25 @@ export interface RecordingGroupMutationResult {
  * group and writing that trail happen in one transaction, and the conditional
  * update prevents two administrators from silently overwriting each other.
  */
-export const assignRecordingGroup = async ({
+export const assignRecordingGroup = ({
   changedByMemberId,
   confirmReassignment,
+  identityConfirmed,
+  identityEvidence,
   groupId,
   memberId,
-}: RecordingGroupAssignmentInput): Promise<RecordingGroupMutationResult> =>
-  database.$transaction(async (transaction) => {
+}: RecordingGroupAssignmentInput): Promise<RecordingGroupMutationResult> => {
+  const evidence = identityEvidence.trim();
+  if (!identityConfirmed) {
+    return Promise.reject(
+      new Error("recording_identity_confirmation_required")
+    );
+  }
+  if (evidence.length < 20 || evidence.length > 1000) {
+    return Promise.reject(new Error("recording_identity_evidence_invalid"));
+  }
+
+  return database.$transaction(async (transaction) => {
     const [group, member] = await Promise.all([
       transaction.importedRecordingGroup.findUnique({
         where: { id: groupId },
@@ -90,6 +104,7 @@ export const assignRecordingGroup = async ({
         memberId,
         changedByMemberId,
         action,
+        note: evidence,
       },
     });
 
@@ -100,6 +115,7 @@ export const assignRecordingGroup = async ({
       memberId,
     };
   });
+};
 
 export const revokeRecordingGroup = async ({
   changedByMemberId,

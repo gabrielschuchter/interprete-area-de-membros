@@ -4,10 +4,15 @@ import { ContentStatus, database, MemberRole } from "@repo/database";
 import { getMemberRole } from "./authorization";
 import {
   getLearningAccessScope,
-  hasCourseAccess,
   type LearningAccessScope,
 } from "./content-access";
+import {
+  canReadMeeting,
+  hasConfiguredExternalRecordingSource,
+  safeMeetingRecordingUrl,
+} from "./meeting-access";
 import { getProfilesByClerkIds } from "./profile";
+import { getAccessibleRecordingIds } from "./recordings";
 
 const meetingSelection = {
   id: true,
@@ -34,26 +39,6 @@ const memberMeetingSelection = (memberId: string) => ({
   },
   _count: { select: { participants: true } },
 });
-
-const canReadMeeting = (
-  meeting: {
-    readonly course: { readonly id: string } | null;
-    readonly participants: readonly { readonly memberId: string }[];
-    readonly _count: { readonly participants: number };
-  },
-  memberId: string,
-  scope: Awaited<ReturnType<typeof getLearningAccessScope>>
-) => {
-  if (scope.fullAccess) {
-    return true;
-  }
-  if (meeting._count.participants > 0) {
-    return meeting.participants.some(
-      (participant) => participant.memberId === memberId
-    );
-  }
-  return !meeting.course || hasCourseAccess(scope, meeting.course.id);
-};
 
 const attachAuthorizedRecordings = async <T extends { readonly id: string }>(
   meetings: readonly T[],
@@ -200,6 +185,104 @@ export const getUpcomingMeetings = async (
   return meetings
     .filter((meeting) => canReadMeeting(meeting, memberId, scope))
     .slice(0, 12);
+};
+
+/**
+ * Recording links on past published meetings belong in the member's recording
+ * archive as well as the calendar. Visibility follows the same participant
+ * and course rules used by meeting details.
+ */
+export const getMemberMeetingRecordings = async (memberId: string) => {
+  const scope = await getLearningAccessScope(memberId);
+  const now = new Date();
+  const visibleWhere = scope.fullAccess
+    ? {}
+    : {
+        OR: [
+          { participants: { some: { memberId } } },
+          {
+            participants: { none: {} },
+            OR: [
+              { courseId: null },
+              { courseId: { in: [...scope.courseIds] } },
+            ],
+          },
+        ],
+      };
+  const meetings = await database.meeting.findMany({
+    where: {
+      status: ContentStatus.PUBLISHED,
+      demoKey: null,
+      startsAt: { lt: now },
+      recordingUrl: { not: null },
+      ...visibleWhere,
+    },
+    orderBy: [{ startsAt: "desc" }, { position: "asc" }],
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      startsAt: true,
+      timezone: true,
+      recordingUrl: true,
+      course: { select: { id: true, title: true } },
+      participants: { where: { memberId }, select: { memberId: true } },
+      _count: { select: { participants: true } },
+    },
+  });
+  const visibleMeetings = meetings.filter((meeting) =>
+    canReadMeeting(meeting, memberId, scope)
+  );
+  const linkedRecordings = visibleMeetings.length
+    ? await database.importedRecording.findMany({
+        where: { meetingId: { in: visibleMeetings.map(({ id }) => id) } },
+        select: {
+          id: true,
+          meetingId: true,
+          asset: {
+            select: {
+              externalUrl: true,
+              kind: true,
+              mediaExternalId: true,
+              mediaProvider: true,
+            },
+          },
+        },
+      })
+    : [];
+  const accessibleIds = await getAccessibleRecordingIds(
+    memberId,
+    linkedRecordings.map(({ id }) => id)
+  );
+  const meetingsWithPlayableInternalRecording = new Set(
+    linkedRecordings
+      .filter(
+        (recording) =>
+          accessibleIds.has(recording.id) &&
+          hasConfiguredExternalRecordingSource(recording.asset)
+      )
+      .map((recording) => recording.meetingId)
+      .filter((meetingId): meetingId is string => meetingId !== null)
+  );
+
+  return visibleMeetings.flatMap((meeting) => {
+    const url = safeMeetingRecordingUrl(meeting.recordingUrl);
+    if (!url || meetingsWithPlayableInternalRecording.has(meeting.id)) {
+      return [];
+    }
+
+    return [
+      {
+        id: meeting.id,
+        title: meeting.title,
+        description: meeting.description,
+        startsAt: meeting.startsAt,
+        timezone: meeting.timezone,
+        recordingUrl: url,
+        courseTitle: meeting.course?.title ?? null,
+      },
+    ];
+  });
 };
 
 export const getStaffMeetings = async () =>

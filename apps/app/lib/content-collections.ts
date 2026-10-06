@@ -9,7 +9,11 @@ import {
   type Prisma,
 } from "@repo/database";
 import { getMemberRole } from "./authorization";
-import { getLearningAccessScope, hasLessonAccess } from "./content-access";
+import {
+  getLearningAccessScope,
+  hasCourseAccess,
+  hasLessonAccess,
+} from "./content-access";
 import { getAccessibleRecordingIds } from "./recordings";
 
 const collectionItemSelect = {
@@ -37,6 +41,7 @@ const collectionItemSelect = {
               coverUrl: true,
               status: true,
               experience: true,
+              learningPath: { select: { status: true } },
             },
           },
         },
@@ -66,6 +71,29 @@ const collectionItemSelect = {
         },
       },
       legacyLesson: { select: { id: true, title: true } },
+    },
+  },
+  course: {
+    select: {
+      id: true,
+      title: true,
+      slug: true,
+      description: true,
+      coverUrl: true,
+      status: true,
+      experience: true,
+      learningPath: { select: { status: true } },
+    },
+  },
+  exerciseList: {
+    select: {
+      id: true,
+      title: true,
+      slug: true,
+      description: true,
+      coverUrl: true,
+      status: true,
+      bank: { select: { status: true, title: true } },
     },
   },
   // `asset` is kept only for collection rows written before the explicit
@@ -152,6 +180,14 @@ export const getAdminCollections = async () =>
               },
             },
           },
+          course: { select: { id: true, title: true } },
+          exerciseList: {
+            select: {
+              id: true,
+              title: true,
+              bank: { select: { title: true } },
+            },
+          },
           asset: { select: { id: true, title: true, kind: true } },
           recording: {
             select: {
@@ -168,7 +204,14 @@ export const getAdminCollections = async () =>
   });
 
 export const getCollectionResources = async () => {
-  const [lessons, recordings, libraryItems, studyGroups] = await Promise.all([
+  const [
+    lessons,
+    courses,
+    exerciseLists,
+    recordings,
+    libraryItems,
+    studyGroups,
+  ] = await Promise.all([
     database.lesson.findMany({
       where: {
         module: { course: { experience: CourseExperience.ASYNC } },
@@ -181,6 +224,24 @@ export const getCollectionResources = async () => {
           select: { title: true, course: { select: { title: true } } },
         },
       },
+      take: 500,
+    }),
+    database.course.findMany({
+      where: {
+        experience: CourseExperience.ASYNC,
+        status: { not: ContentStatus.ARCHIVED },
+      },
+      orderBy: [{ title: "asc" }],
+      select: { id: true, title: true },
+      take: 500,
+    }),
+    database.exerciseList.findMany({
+      where: {
+        status: { not: ContentStatus.ARCHIVED },
+        bank: { is: { status: ContentStatus.PUBLISHED } },
+      },
+      orderBy: [{ title: "asc" }],
+      select: { id: true, title: true },
       take: 500,
     }),
     database.importedRecording.findMany({
@@ -210,12 +271,24 @@ export const getCollectionResources = async () => {
     }),
   ]);
 
-  return { lessons, libraryItems, recordings, studyGroups };
+  return {
+    courses,
+    exerciseLists,
+    lessons,
+    libraryItems,
+    recordings,
+    studyGroups,
+  };
 };
 
 export const collectionItemLabel = (item: {
   readonly asset: { readonly kind: string; readonly title: string } | null;
   readonly itemType: CollectionItemType;
+  readonly course: { readonly title: string } | null;
+  readonly exerciseList: {
+    readonly title: string;
+    readonly bank: { readonly title: string };
+  } | null;
   readonly lesson: {
     readonly title: string;
     readonly module: {
@@ -239,11 +312,17 @@ export const collectionItemLabel = (item: {
   if (item.lesson) {
     return `${item.lesson.module.course.title} · ${item.lesson.title}`;
   }
+  if (item.course) {
+    return `Curso · ${item.course.title}`;
+  }
+  if (item.exerciseList) {
+    return `${item.exerciseList.bank.title} · ${item.exerciseList.title}`;
+  }
   if (item.asset) {
     return `${item.asset.kind} · ${item.asset.title}`;
   }
   if (item.recording) {
-    return `${item.recording.group.legacyStudentName} · ${item.recording.originalTitle ?? item.recording.asset.title}`;
+    return `${item.recording.asset.kind} · ${item.recording.originalTitle ?? item.recording.asset.title}`;
   }
   if (item.libraryItem) {
     return `${item.libraryItem.kind} · ${item.libraryItem.title}`;
@@ -263,6 +342,14 @@ export const collectionItemHref = (
 ) => {
   if (item.lesson) {
     return `/aprender/cursos/${item.lesson.module.course.slug}/${item.lesson.slug}`;
+  }
+
+  if (item.course) {
+    return `/aprender/cursos/${item.course.slug}`;
+  }
+
+  if (item.exerciseList) {
+    return `/exercicios/listas/${item.exerciseList.slug}`;
   }
 
   if (item.recording) {
@@ -299,6 +386,25 @@ export const canReadCollectionItem = (
       lesson.module.status === ContentStatus.PUBLISHED &&
       lesson.status === ContentStatus.PUBLISHED &&
       hasLessonAccess(scope, course.id, lesson.module.id, lesson.id)
+    );
+  }
+
+  if (item.itemType === "COURSE") {
+    const course = item.course;
+    return Boolean(
+      course &&
+        course.status === ContentStatus.PUBLISHED &&
+        course.experience === CourseExperience.ASYNC &&
+        (!course.learningPath ||
+          course.learningPath.status === ContentStatus.PUBLISHED) &&
+        (fullAccess || hasCourseAccess(scope, course.id))
+    );
+  }
+
+  if (item.itemType === "EXERCISE_LIST") {
+    return Boolean(
+      item.exerciseList?.status === ContentStatus.PUBLISHED &&
+        item.exerciseList.bank.status === ContentStatus.PUBLISHED
     );
   }
 

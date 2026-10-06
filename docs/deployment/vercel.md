@@ -16,7 +16,12 @@
   - Node: `24.x`
 - Package manager: Bun via `bun.lock`
 - Build: Vercel/Turborepo detecta o pacote `api`
-- Região: `iad1`
+- Região efetiva das funções Production, conferida em 06/10/2026 pelo header
+  `x-vercel-id`: app `iad1`, API `gru1`. Como o Supabase GREEN está em
+  `sa-east-1`, `apps/app/vercel.json` agora fixa o app em `gru1`, mesma região
+  do banco e da API; o deployment publicado continua em `iad1` até a próxima
+  publicação. A mudança ainda precisa de verificação pelo header do alias após
+  o release.
 
 O deploy é acionado pelo branch `main`. O `.vercelignore` exclui estado local e artefatos gerados de deploys iniciados pela CLI.
 

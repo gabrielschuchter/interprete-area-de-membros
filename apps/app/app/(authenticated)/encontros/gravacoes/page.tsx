@@ -9,7 +9,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { LearningPageFrame } from "@/components/learning/learning-page-frame";
 import { LessonPlayer } from "@/components/learning/lesson-player";
+import { RecordingArchiveAction } from "@/components/learning/recording-archive-action";
 import { requireMemberId } from "@/lib/learning";
+import { getMemberMeetingRecordings } from "@/lib/meetings";
+import { recordingYearInTimezone } from "@/lib/recording-date";
+import {
+  recordingArchiveHref,
+  resolveRecordingPlaybackSelection,
+} from "@/lib/recording-navigation";
 import {
   getMemberContinueWatching,
   getMemberRecordingPage,
@@ -27,11 +34,14 @@ interface RecordingLibraryPageProperties {
 }
 
 const recordingHref = (assetId: string) =>
-  `/encontros/gravacoes?asset=${encodeURIComponent(assetId)}#asset-${assetId}`;
+  `${recordingArchiveHref({ asset: assetId })}#asset-${encodeURIComponent(assetId)}`;
 
-const formatDate = (value: Date | null) =>
+const formatDate = (value: Date | null, timezone = "America/Sao_Paulo") =>
   value
-    ? new Intl.DateTimeFormat("pt-BR", { dateStyle: "medium" }).format(value)
+    ? new Intl.DateTimeFormat("pt-BR", {
+        dateStyle: "medium",
+        timeZone: timezone,
+      }).format(value)
     : "Data do encontro não informada";
 
 const formatDuration = (seconds: number | null) => {
@@ -76,53 +86,82 @@ const RecordingLibraryPage = async ({
 }: RecordingLibraryPageProperties) => {
   const memberId = await requireMemberId();
   const params = await searchParams;
-  const [{ asset, q, year }, page, continueData] = await Promise.all([
-    Promise.resolve(params),
-    getMemberRecordingPage(memberId, {
-      cursor: params.cursor,
-      query: params.q,
-      requestedAssetId: params.asset,
-      year: params.year,
-    }),
-    getMemberContinueWatching(memberId),
-  ]);
+  const [{ asset, q, year }, page, continueData, meetingRecordings] =
+    await Promise.all([
+      Promise.resolve(params),
+      getMemberRecordingPage(memberId, {
+        cursor: params.cursor,
+        query: params.q,
+        requestedAssetId: params.asset,
+        year: params.year,
+      }),
+      getMemberContinueWatching(memberId),
+      getMemberMeetingRecordings(memberId),
+    ]);
 
-  const selectedRecording =
-    page.requestedRecording ??
-    continueData.continueWatching.find(
-      (recording) => recording.asset.id === asset
-    ) ??
-    continueData.continueWatching[0] ??
-    null;
+  const selectedRecording = resolveRecordingPlaybackSelection(
+    asset,
+    page.requestedRecording,
+    continueData.continueWatching
+  );
   const currentRows = page.recordings;
   const yearOptions = Array.from(
     new Set(
-      currentRows
-        .map((recording) => recording.meetingDate?.getFullYear())
-        .filter((value): value is number => Boolean(value))
+      [
+        ...currentRows.map((recording) =>
+          recording.meetingDate
+            ? Number(recordingYearInTimezone(recording.meetingDate))
+            : undefined
+        ),
+        ...meetingRecordings.map((recording) =>
+          Number(
+            recordingYearInTimezone(recording.startsAt, recording.timezone)
+          )
+        ),
+      ].filter((value): value is number => Boolean(value))
     )
   ).sort((left, right) => right - left);
   const groupedRows = currentRows.reduce<Map<string, typeof currentRows>>(
     (groups, recording) => {
       const key = recording.meetingDate
-        ? String(recording.meetingDate.getFullYear())
+        ? recordingYearInTimezone(recording.meetingDate)
         : "Data não informada";
       groups.set(key, [...(groups.get(key) ?? []), recording]);
       return groups;
     },
     new Map()
   );
+  const normalizedQuery = q?.trim().toLocaleLowerCase("pt-BR");
+  const visibleMeetingRecordings = meetingRecordings.filter((recording) => {
+    if (
+      year &&
+      recordingYearInTimezone(recording.startsAt, recording.timezone) !== year
+    ) {
+      return false;
+    }
+    if (!normalizedQuery) {
+      return true;
+    }
+    return [recording.title, recording.description, recording.courseTitle]
+      .filter((value): value is string => Boolean(value))
+      .some((value) =>
+        value.toLocaleLowerCase("pt-BR").includes(normalizedQuery)
+      );
+  });
+  const hasArchiveContent =
+    groupedRows.size > 0 || visibleMeetingRecordings.length > 0;
   const nextHref = page.nextCursor
-    ? `/encontros/gravacoes?${new URLSearchParams({
-        ...(q ? { q } : {}),
-        ...(year ? { year } : {}),
+    ? recordingArchiveHref({
+        asset,
         cursor: page.nextCursor,
-      }).toString()}`
+        query: q,
+        year,
+      })
     : null;
 
   return (
     <LearningPageFrame
-      description="Um arquivo dos encontros que já aconteceram. Aqui você retoma uma conversa, uma pergunta ou um ponto que merece outra passagem — sem transformar gravação em aula obrigatória."
+      description="Aulas e encontros gravados aos quais você tem acesso ficam reunidos aqui. Retome uma conversa, uma aula ou um ponto que merece outra passagem — sem transformar gravação em aula obrigatória."
       eyebrow="Aprender · arquivo pessoal"
       title="Minhas gravações."
     >
@@ -176,6 +215,16 @@ const RecordingLibraryPage = async ({
         )}
       </form>
 
+      {asset && !selectedRecording && (
+        <output
+          aria-live="polite"
+          className="mt-5 border-brand-action/30 border-l-2 bg-brand-action/5 px-4 py-3 text-muted-foreground text-sm leading-6"
+        >
+          Este conteúdo não está disponível na sua biblioteca. Se você acredita
+          que deveria estar aqui, fale com a equipe do Interprete.
+        </output>
+      )}
+
       {selectedRecording && selectedRecording.asset.kind === "VIDEO" && (
         <section aria-labelledby="player-heading" className="mt-10">
           <div className="border-b pb-4">
@@ -184,7 +233,7 @@ const RecordingLibraryPage = async ({
               {selectedRecording.asset.title}
             </h2>
             <p className="mt-2 text-muted-foreground text-sm">
-              {selectedRecording.group.legacyStudentName} ·{" "}
+              {selectedRecording.group.displayLabel} ·{" "}
               {selectedRecording.legacyLesson.title}
             </p>
           </div>
@@ -223,7 +272,7 @@ const RecordingLibraryPage = async ({
                 />
                 <div className="p-5">
                   <p className="brand-eyebrow">
-                    {recording.group.legacyStudentName}
+                    {recording.group.displayLabel}
                   </p>
                   <h3 className="mt-3 font-display text-2xl">
                     {recording.asset.title}
@@ -255,28 +304,76 @@ const RecordingLibraryPage = async ({
             </h2>
           </div>
           <p className="text-muted-foreground text-sm">
-            {currentRows.length} item{currentRows.length === 1 ? "" : "s"}
+            {currentRows.length + visibleMeetingRecordings.length} item
+            {currentRows.length + visibleMeetingRecordings.length === 1
+              ? ""
+              : "s"}
             {page.hasMore ? " nesta página" : ""}
           </p>
         </div>
 
-        {groupedRows.size === 0 ? (
-          <section className="paper-surface mt-6 border p-8 sm:p-12">
-            <VideoIcon
-              aria-hidden="true"
-              className="size-6 text-brand-action-text"
-            />
-            <p className="brand-eyebrow mt-8">Ainda não há um arquivo seu</p>
-            <h3 className="mt-3 font-display text-3xl">
-              As gravações aparecerão quando um grupo for liberado para você.
-            </h3>
-            <p className="mt-4 max-w-2xl text-muted-foreground leading-7">
-              O acesso é definido pela equipe do Interprete. Nenhuma gravação de
-              outra pessoa é descoberta ou exibida por esta página.
-            </p>
-          </section>
-        ) : (
+        {hasArchiveContent ? (
           <div className="mt-8 space-y-12">
+            {visibleMeetingRecordings.length > 0 && (
+              <section aria-labelledby="meeting-recordings-heading">
+                <div className="flex flex-col gap-2 border-b pb-3 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <p className="brand-eyebrow">Encontros</p>
+                    <h3
+                      className="mt-2 font-display text-2xl"
+                      id="meeting-recordings-heading"
+                    >
+                      Gravações de encontros
+                    </h3>
+                  </div>
+                  <span className="font-data text-muted-foreground text-xs">
+                    {visibleMeetingRecordings.length
+                      .toString()
+                      .padStart(2, "0")}
+                  </span>
+                </div>
+                <div className="mt-5 grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+                  {visibleMeetingRecordings.map((recording) => (
+                    <article
+                      className="paper-surface border p-5 sm:p-6"
+                      key={recording.id}
+                    >
+                      <p className="brand-eyebrow">
+                        {formatDate(recording.startsAt, recording.timezone)}
+                      </p>
+                      <h4 className="mt-3 font-display text-2xl leading-tight">
+                        {recording.title}
+                      </h4>
+                      {recording.courseTitle && (
+                        <p className="mt-2 text-muted-foreground text-sm">
+                          {recording.courseTitle}
+                        </p>
+                      )}
+                      {recording.description && (
+                        <p className="mt-3 line-clamp-3 text-muted-foreground text-sm leading-6">
+                          {recording.description}
+                        </p>
+                      )}
+                      <Button
+                        asChild
+                        className="mt-5"
+                        size="sm"
+                        variant="outline"
+                      >
+                        <a
+                          href={recording.recordingUrl}
+                          rel="noreferrer"
+                          target="_blank"
+                        >
+                          Assistir gravação{" "}
+                          <ArrowRightIcon aria-hidden="true" />
+                        </a>
+                      </Button>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            )}
             {Array.from(groupedRows.entries()).map(([groupLabel, rows]) => (
               <section key={groupLabel}>
                 <div className="flex items-end justify-between border-b pb-3">
@@ -319,35 +416,12 @@ const RecordingLibraryPage = async ({
                             </p>
                           </div>
                         </div>
-                        {recording.asset.kind === "VIDEO" ? (
-                          <Button
-                            asChild
-                            className="mt-6"
-                            size="sm"
-                            variant="outline"
-                          >
-                            <Link href={recordingHref(recording.asset.id)}>
-                              Abrir gravação{" "}
-                              <ArrowRightIcon aria-hidden="true" />
-                            </Link>
-                          </Button>
-                        ) : (
-                          <Button
-                            asChild
-                            className="mt-6"
-                            size="sm"
-                            variant="outline"
-                          >
-                            <a
-                              href={`/api/learning/assets/${recording.asset.id}`}
-                              rel="noreferrer"
-                              target="_blank"
-                            >
-                              Abrir material{" "}
-                              <ArrowRightIcon aria-hidden="true" />
-                            </a>
-                          </Button>
-                        )}
+                        <RecordingArchiveAction
+                          assetId={recording.asset.id}
+                          isVideo={recording.asset.kind === "VIDEO"}
+                          mediaExternalId={recording.asset.mediaExternalId}
+                          mediaProvider={recording.asset.mediaProvider}
+                        />
                       </div>
                     </article>
                   ))}
@@ -355,6 +429,22 @@ const RecordingLibraryPage = async ({
               </section>
             ))}
           </div>
+        ) : (
+          <section className="paper-surface mt-6 border p-8 sm:p-12">
+            <VideoIcon
+              aria-hidden="true"
+              className="size-6 text-brand-action-text"
+            />
+            <p className="brand-eyebrow mt-8">Ainda não há um arquivo seu</p>
+            <h3 className="mt-3 font-display text-3xl">
+              Gravações aparecerão quando um encontro, curso ou grupo for
+              liberado para você.
+            </h3>
+            <p className="mt-4 max-w-2xl text-muted-foreground leading-7">
+              O acesso é definido pela equipe do Interprete. Nenhuma gravação de
+              outra pessoa é descoberta ou exibida por esta página.
+            </p>
+          </section>
         )}
 
         {nextHref && (

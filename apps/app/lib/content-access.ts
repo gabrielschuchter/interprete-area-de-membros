@@ -9,10 +9,11 @@ import {
 import { cache } from "react";
 import { getMemberRole } from "./authorization";
 import { activeAssignmentStatuses } from "./learning-assignments";
+import { getAccessibleRecordingIds } from "./recordings";
 
-const activeGrant = {
-  OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
-};
+export const activeGrantFilter = (now: Date) => ({
+  OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+});
 
 export interface LearningAccessScope {
   readonly assetIds: ReadonlySet<string>;
@@ -21,6 +22,7 @@ export interface LearningAccessScope {
   readonly fullCourseIds: ReadonlySet<string>;
   readonly lessonIds: ReadonlySet<string>;
   readonly moduleIds: ReadonlySet<string>;
+  readonly recordingIds: ReadonlySet<string>;
 }
 
 const emptyScope = (): LearningAccessScope => ({
@@ -29,6 +31,7 @@ const emptyScope = (): LearningAccessScope => ({
   courseIds: new Set(),
   moduleIds: new Set(),
   lessonIds: new Set(),
+  recordingIds: new Set(),
   assetIds: new Set(),
 });
 
@@ -39,6 +42,7 @@ interface MutableAccessScope {
   fullCourseIds: Set<string>;
   lessonIds: Set<string>;
   moduleIds: Set<string>;
+  recordingIds: Set<string>;
 }
 
 const addResourceAccess = (
@@ -64,6 +68,9 @@ const addResourceAccess = (
     case LearningAssignmentTargetType.ASSET:
       scope.assetIds.add(resourceId);
       break;
+    case LearningAssignmentTargetType.RECORDING:
+      scope.recordingIds.add(resourceId);
+      break;
     default:
       return;
   }
@@ -85,6 +92,7 @@ const buildScopedResources = (
     courseIds: new Set(fullCourseIds),
     moduleIds: new Set(),
     lessonIds: new Set(),
+    recordingIds: new Set(),
     assetIds: new Set(),
   };
   for (const grant of grants) {
@@ -167,7 +175,7 @@ const getLearningAccessScopeUncached = async (
       select: { courseId: true },
     }),
     database.accessGrant.findMany({
-      where: { memberId, ...activeGrant },
+      where: { memberId, ...activeGrantFilter(now) },
       select: { resourceType: true, resourceId: true },
     }),
     database.activityAssignment.findMany({
@@ -194,6 +202,7 @@ const getLearningAccessScopeUncached = async (
     moduleIds: scope.moduleIds,
     lessonIds: scope.lessonIds,
     assetIds: scope.assetIds,
+    recordingIds: scope.recordingIds,
   };
 };
 
@@ -262,10 +271,7 @@ export const getAccessibleAsset = async (assetId: string, memberId: string) => {
       durationSeconds: true,
       ownerMemberId: true,
       importedRecording: {
-        select: {
-          id: true,
-          group: { select: { memberId: true } },
-        },
+        select: { id: true },
       },
       lesson: {
         select: {
@@ -281,6 +287,15 @@ export const getAccessibleAsset = async (assetId: string, memberId: string) => {
     return null;
   }
 
+  if (asset.importedRecording) {
+    const accessibleRecordingIds = await getAccessibleRecordingIds(memberId, [
+      asset.importedRecording.id,
+    ]);
+    return accessibleRecordingIds.has(asset.importedRecording.id)
+      ? asset
+      : null;
+  }
+
   const scope = await getLearningAccessScope(memberId);
   const canReadLesson = hasLessonAccess(
     scope,
@@ -288,14 +303,11 @@ export const getAccessibleAsset = async (assetId: string, memberId: string) => {
     asset.lesson.moduleId,
     asset.lesson.id
   );
-  const canReadAsset = asset.importedRecording
-    ? scope.fullAccess ||
-      asset.importedRecording.group.memberId === memberId ||
-      scope.assetIds.has(asset.id)
-    : scope.fullAccess ||
-      (asset.scope === "GENERAL" && canReadLesson) ||
-      asset.ownerMemberId === memberId ||
-      scope.assetIds.has(asset.id);
+  const canReadAsset =
+    scope.fullAccess ||
+    (asset.scope === "GENERAL" && canReadLesson) ||
+    asset.ownerMemberId === memberId ||
+    scope.assetIds.has(asset.id);
 
   return canReadAsset ? asset : null;
 };
@@ -325,26 +337,20 @@ export const canReadRecordingAsset = async (
   assetId: string,
   memberId: string
 ) => {
-  const [role, asset, scope] = await Promise.all([
-    getMemberRole(memberId),
-    database.lessonAsset.findUnique({
-      where: { id: assetId },
-      select: {
-        id: true,
-        importedRecording: {
-          select: { group: { select: { memberId: true } } },
-        },
-      },
-    }),
-    getLearningAccessScope(memberId),
-  ]);
-
-  if (role === MemberRole.ADMIN || role === MemberRole.TEACHER) {
-    return Boolean(asset?.importedRecording);
+  const asset = await database.lessonAsset.findUnique({
+    where: { id: assetId },
+    select: {
+      id: true,
+      importedRecording: { select: { id: true } },
+    },
+  });
+  const importedRecordingId = asset?.importedRecording?.id;
+  if (!importedRecordingId) {
+    return false;
   }
 
-  return (
-    asset?.importedRecording?.group.memberId === memberId ||
-    Boolean(asset?.importedRecording && scope.assetIds.has(asset.id))
-  );
+  const accessibleRecordingIds = await getAccessibleRecordingIds(memberId, [
+    importedRecordingId,
+  ]);
+  return accessibleRecordingIds.has(importedRecordingId);
 };

@@ -28,10 +28,24 @@ export const assignImportedRecordingGroup = async (formData: FormData) => {
   const { userId } = await requireAdmin();
   const groupId = value(formData.get("groupId"));
   const memberId = value(formData.get("memberId"));
+  const identityConfirmed = value(formData.get("identityConfirmed")) === "true";
+  const identityEvidence = value(formData.get("identityEvidence"));
   const confirmReassignment =
     value(formData.get("confirmReassignment")) === "true";
   if (!(groupId && memberId)) {
     finish("error", "Escolha um membro existente antes de confirmar.");
+  }
+  if (!identityConfirmed) {
+    finish(
+      "error",
+      "Confirme que verificou a identidade do titular antes de liberar o grupo."
+    );
+  }
+  if (identityEvidence.trim().length < 20 || identityEvidence.length > 1000) {
+    finish(
+      "error",
+      "Registre uma evidência de pelo menos 20 caracteres e no máximo 1.000."
+    );
   }
 
   await consumeMutationRateLimit({
@@ -44,6 +58,8 @@ export const assignImportedRecordingGroup = async (formData: FormData) => {
     await assignRecordingGroup({
       changedByMemberId: userId,
       groupId,
+      identityConfirmed,
+      identityEvidence,
       memberId,
       confirmReassignment,
     });
@@ -62,6 +78,24 @@ export const assignImportedRecordingGroup = async (formData: FormData) => {
   } catch (error) {
     if (isRedirectError(error)) {
       throw error;
+    }
+    if (
+      error instanceof Error &&
+      error.message === "recording_identity_confirmation_required"
+    ) {
+      finish(
+        "error",
+        "Confirme que verificou a identidade do titular antes de liberar o grupo."
+      );
+    }
+    if (
+      error instanceof Error &&
+      error.message === "recording_identity_evidence_invalid"
+    ) {
+      finish(
+        "error",
+        "Registre uma evidência de pelo menos 20 caracteres e no máximo 1.000."
+      );
     }
     mutationLog({
       action: "admin.recording-group.assign",

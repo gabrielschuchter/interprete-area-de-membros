@@ -43,7 +43,10 @@ export const AdminNav = ({ isAdmin }: { readonly isAdmin: boolean }) => {
   const pathname = usePathname();
 
   return (
-    <div className="mx-auto flex w-full max-w-[1280px] gap-5 overflow-x-auto px-5 py-3 sm:px-8 lg:px-12">
+    <nav
+      aria-label="Navegação administrativa"
+      className="mx-auto flex w-full max-w-[1280px] flex-wrap items-end gap-x-5 gap-y-3 px-5 py-3 sm:px-8 lg:px-12"
+    >
       <div className="hidden shrink-0 self-center pr-1 sm:block">
         <p className="brand-eyebrow">Painel do professor</p>
         <p className="mt-1 text-muted-foreground text-xs">Interprete</p>
@@ -52,9 +55,11 @@ export const AdminNav = ({ isAdmin }: { readonly isAdmin: boolean }) => {
         const items = group.items;
 
         return (
-          <div className="shrink-0" key={group.label}>
-            <p className="brand-eyebrow mb-1 px-2">{group.label}</p>
-            <div className="flex gap-1">
+          <div className="min-w-0" key={group.label}>
+            <p className="brand-eyebrow mb-1 whitespace-nowrap px-2">
+              {group.label}
+            </p>
+            <div className="flex flex-wrap gap-1">
               {items.map(([label, href]) => {
                 const active = isActive(pathname, href);
 
@@ -79,9 +84,9 @@ export const AdminNav = ({ isAdmin }: { readonly isAdmin: boolean }) => {
         );
       })}
       {isAdmin && (
-        <div className="shrink-0">
-          <p className="brand-eyebrow mb-1 px-2">Admin</p>
-          <div className="flex gap-1">
+        <div className="min-w-0">
+          <p className="brand-eyebrow mb-1 whitespace-nowrap px-2">Admin</p>
+          <div className="flex flex-wrap gap-1">
             {[
               ["Acessos", "/admin/acessos"],
               ["Personalização", "/admin/personalizacao"],
@@ -107,6 +112,6 @@ export const AdminNav = ({ isAdmin }: { readonly isAdmin: boolean }) => {
           </div>
         </div>
       )}
-    </div>
+    </nav>
   );
 };

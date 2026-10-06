@@ -38,6 +38,12 @@ const CollectionPage = async ({ params }: CollectionPageProperties) => {
     if (itemType === "LESSON") {
       return "Aprender";
     }
+    if (itemType === "COURSE") {
+      return "Curso";
+    }
+    if (itemType === "EXERCISE_LIST") {
+      return "Exercícios";
+    }
     if (itemType === "RECORDING") {
       return "Encontro gravado";
     }

@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@repo/design-system/components/ui/button";
+import { Textarea } from "@repo/design-system/components/ui/textarea";
 import { useRef, useState } from "react";
 import { RecordingMemberPicker } from "./recording-member-picker";
 
@@ -79,6 +80,39 @@ export const RecordingGroupAssignmentForm = ({
         Este vínculo libera {recordingCount} gravações e {attachmentCount}{" "}
         materiais somente para a conta escolhida.
       </p>
+      <div className="space-y-3 border bg-muted/20 p-4">
+        <label className="flex items-start gap-3 text-sm leading-6">
+          <input
+            className="mt-1 size-4 shrink-0 accent-brand-action"
+            name="identityConfirmed"
+            required
+            type="checkbox"
+            value="true"
+          />
+          <span>
+            Confirmei a identidade do titular com uma fonte confiável; o nome
+            histórico sozinho não foi usado para escolher a conta.
+          </span>
+        </label>
+        <label
+          className="font-data text-muted-foreground text-xs uppercase tracking-[0.12em]"
+          htmlFor={`recording-evidence-${groupId}`}
+        >
+          Evidência consultada
+        </label>
+        <Textarea
+          id={`recording-evidence-${groupId}`}
+          maxLength={1000}
+          minLength={20}
+          name="identityEvidence"
+          placeholder="Registre a fonte e o critério conferido. Não inclua senhas, tokens ou dados desnecessários."
+          required
+          rows={3}
+        />
+        <p className="text-muted-foreground text-xs leading-5">
+          Esse registro ficará no histórico administrativo do grupo.
+        </p>
+      </div>
       {confirming ? (
         <div className="border border-brand-action/40 bg-brand-action/5 p-4 text-sm leading-6">
           <p>

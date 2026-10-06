@@ -8,6 +8,7 @@ import {
   LearningAssignmentAudienceType,
   LearningAssignmentStatus,
   LearningAssignmentTargetType,
+  LessonAssetMediaProvider,
   MemberRole,
   type Prisma,
 } from "@repo/database";
@@ -87,6 +88,7 @@ export const resolveLearningAssignmentTargets = async (
     modules,
     lessons,
     assets,
+    recordings,
     libraryItems,
     exerciseLists,
   ] = await Promise.all([
@@ -191,6 +193,38 @@ export const resolveLearningAssignmentTargets = async (
           },
         })
       : [],
+    ids(LearningAssignmentTargetType.RECORDING).length
+      ? client.importedRecording.findMany({
+          where: {
+            id: { in: ids(LearningAssignmentTargetType.RECORDING) },
+            asset: {
+              is: {
+                mediaProvider: LessonAssetMediaProvider.YOUTUBE,
+                mediaExternalId: { not: null },
+              },
+            },
+            legacyLesson: {
+              is: {
+                module: {
+                  is: {
+                    course: {
+                      is: {
+                        status: ContentStatus.PUBLISHED,
+                        experience: CourseExperience.RECORDING_ARCHIVE,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          select: {
+            id: true,
+            originalTitle: true,
+            asset: { select: { id: true, title: true } },
+          },
+        })
+      : [],
     ids(LearningAssignmentTargetType.LIBRARY_ITEM).length
       ? client.libraryItem.findMany({
           where: {
@@ -256,6 +290,14 @@ export const resolveLearningAssignmentTargets = async (
       item.id,
       item.title,
       `/aprender/cursos/${item.lesson.module.course.slug}/${item.lesson.slug}#materiais`
+    );
+  }
+  for (const item of recordings) {
+    add(
+      LearningAssignmentTargetType.RECORDING,
+      item.id,
+      item.originalTitle ?? item.asset.title,
+      `/encontros/gravacoes?asset=${encodeURIComponent(item.asset.id)}`
     );
   }
   for (const item of libraryItems) {
@@ -681,11 +723,12 @@ export const markLearningAssignmentStarted = async (
   memberId: string,
   targetType: LearningAssignmentTargetType,
   targetId: string,
-  at = new Date()
+  at = new Date(),
+  client: AssignmentClient = database
 ) =>
   isAppWriteFreezeEnabled()
     ? { count: 0 }
-    : database.activityAssignment.updateMany({
+    : client.activityAssignment.updateMany({
         where: {
           memberId,
           targetType,

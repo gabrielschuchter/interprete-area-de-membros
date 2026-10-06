@@ -149,6 +149,56 @@ export const getPublishedLearningPaths = async (
     .filter((path) => path.courses.length > 0);
 };
 
+export const getMemberCourseProgress = async (
+  memberId: string,
+  courseIds: readonly string[]
+): Promise<
+  ReadonlyMap<string, ReturnType<typeof calculateLearningProgress>>
+> => {
+  const uniqueCourseIds = [...new Set(courseIds)];
+  if (uniqueCourseIds.length === 0) {
+    return new Map();
+  }
+
+  const [scope, courses] = await Promise.all([
+    getLearningAccessScope(memberId),
+    database.course.findMany({
+      where: { id: { in: uniqueCourseIds }, ...publishedCourse },
+      select: {
+        id: true,
+        modules: {
+          where: published,
+          select: {
+            id: true,
+            lessons: {
+              where: published,
+              select: {
+                id: true,
+                progress: {
+                  where: { memberId },
+                  select: { status: true },
+                },
+              },
+            },
+          },
+        },
+      },
+    }),
+  ]);
+
+  return new Map(
+    courses.flatMap((course) => {
+      if (!hasCourseAccess(scope, course.id)) {
+        return [];
+      }
+
+      const visibleCourse = filterCourse(course, scope);
+      const lessons = visibleCourse.modules.flatMap((module) => module.lessons);
+      return [[course.id, calculateLearningProgress(lessons)] as const];
+    })
+  );
+};
+
 export const getHomeLearningSummary = async (
   memberId: string,
   accessScope?: LearningAccessScope | Promise<LearningAccessScope>

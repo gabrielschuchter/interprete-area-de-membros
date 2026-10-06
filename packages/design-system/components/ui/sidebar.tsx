@@ -304,9 +304,15 @@ function SidebarRail({ className, ...props }: React.ComponentProps<"button">) {
   )
 }
 
-function SidebarInset({ className, ...props }: React.ComponentProps<"main">) {
+function SidebarInset({
+  asChild = false,
+  className,
+  ...props
+}: React.ComponentProps<"main"> & { asChild?: boolean }) {
+  const Comp = asChild ? SlotPrimitive.Slot : "main"
+
   return (
-    <main
+    <Comp
       data-slot="sidebar-inset"
       className={cn(
         "bg-background relative flex w-full flex-1 flex-col",

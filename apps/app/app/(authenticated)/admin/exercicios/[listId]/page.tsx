@@ -5,6 +5,10 @@ import { Input } from "@repo/design-system/components/ui/input";
 import { Textarea } from "@repo/design-system/components/ui/textarea";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import {
+  SingleFlightForm,
+  SingleFlightSubmit,
+} from "@/components/mutations/single-flight-form";
 import { requireStaff } from "@/lib/authorization";
 import {
   saveExerciseQuestion,
@@ -52,7 +56,6 @@ const AdminExerciseListPage = async ({
           question: {
             select: {
               id: true,
-              type: true,
               status: true,
               tags: true,
               category: { select: { title: true } },
@@ -60,6 +63,7 @@ const AdminExerciseListPage = async ({
           },
           questionVersion: {
             select: {
+              type: true,
               version: true,
               statement: true,
               explanation: true,
@@ -86,7 +90,11 @@ const AdminExerciseListPage = async ({
     result =
       "A questão foi salva como uma nova versão; sessões anteriores continuam preservadas.";
   } else if (query.resultado === "invalid") {
-    result = "Revise as alternativas e o gabarito antes de salvar.";
+    result =
+      "Revise as alternativas: escolha única exige uma correta; múltipla escolha exige pelo menos duas corretas e uma incorreta.";
+  } else if (query.resultado === "referencias-invalidas") {
+    result =
+      "A explicação menciona letras sem alternativa preenchida. Confira as referências às opções antes de salvar.";
   }
 
   return (
@@ -173,7 +181,10 @@ const AdminExerciseListPage = async ({
                   {item.question.category?.title || "Sem categoria"}
                 </span>
               </div>
-              <form action={saveExerciseQuestion} className="grid gap-4">
+              <SingleFlightForm
+                action={saveExerciseQuestion}
+                className="grid gap-4"
+              >
                 <input name="listId" type="hidden" value={exerciseList.id} />
                 <input
                   name="questionId"
@@ -203,7 +214,7 @@ const AdminExerciseListPage = async ({
                     <span className="font-medium">Formato</span>
                     <select
                       className="h-10 rounded-md border bg-background px-3"
-                      defaultValue={item.question.type}
+                      defaultValue={item.questionVersion.type}
                       id={`question-type-${item.question.id}`}
                       name="questionType"
                     >
@@ -284,10 +295,14 @@ const AdminExerciseListPage = async ({
                     rows={3}
                   />
                 </label>
-                <Button className="w-fit" type="submit" variant="outline">
+                <SingleFlightSubmit
+                  className="w-fit"
+                  pendingLabel="Salvando…"
+                  variant="outline"
+                >
                   Salvar nova versão
-                </Button>
-              </form>
+                </SingleFlightSubmit>
+              </SingleFlightForm>
             </article>
           ))}
         </div>
@@ -300,7 +315,10 @@ const AdminExerciseListPage = async ({
         <h2 className="font-display text-3xl" id="append-question-title">
           Adicionar questão
         </h2>
-        <form action={saveExerciseQuestion} className="mt-5 grid gap-4">
+        <SingleFlightForm
+          action={saveExerciseQuestion}
+          className="mt-5 grid gap-4"
+        >
           <input name="listId" type="hidden" value={exerciseList.id} />
           <label
             className="grid gap-2 text-sm"
@@ -386,10 +404,10 @@ const AdminExerciseListPage = async ({
               rows={3}
             />
           </label>
-          <Button className="w-fit" type="submit">
+          <SingleFlightSubmit className="w-fit" pendingLabel="Adicionando…">
             Adicionar à lista
-          </Button>
-        </form>
+          </SingleFlightSubmit>
+        </SingleFlightForm>
       </section>
     </main>
   );

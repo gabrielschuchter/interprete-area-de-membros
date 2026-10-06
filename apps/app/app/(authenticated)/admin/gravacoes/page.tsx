@@ -37,8 +37,10 @@ const RecordingsAdminPage = async ({
           Gravações importadas.
         </h1>
         <p className="mt-5 text-muted-foreground leading-7">
-          Vincule grupos legados a membros existentes somente depois de conferir
-          o escopo. O nome vindo da Kiwify é origem histórica, não autorização.
+          Um grupo histórico libera todas as gravações e anexos daquela pessoa.
+          Só vincule a conta depois de verificar a identidade por uma fonte
+          confiável; o nome vindo da Kiwify, sozinho, não autoriza o acesso.
+          Cada decisão fica registrada no histórico administrativo.
         </p>
       </header>
 
@@ -158,11 +160,18 @@ const RecordingsAdminPage = async ({
                         <p className="brand-eyebrow">Histórico recente</p>
                         <ul className="mt-2 space-y-1 text-muted-foreground text-xs">
                           {group.assignments.slice(0, 3).map((assignment) => (
-                            <li
-                              key={`${assignment.action}-${assignment.createdAt.toISOString()}`}
-                            >
-                              {assignment.action.toLowerCase()} ·{" "}
-                              {assignment.createdAt.toLocaleDateString("pt-BR")}
+                            <li key={assignment.id}>
+                              <p>
+                                {assignment.action.toLowerCase()} ·{" "}
+                                {assignment.createdAt.toLocaleDateString(
+                                  "pt-BR"
+                                )}
+                              </p>
+                              {assignment.note ? (
+                                <p className="mt-1 max-w-prose leading-5">
+                                  Evidência: {assignment.note}
+                                </p>
+                              ) : null}
                             </li>
                           ))}
                         </ul>

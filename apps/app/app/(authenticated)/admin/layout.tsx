@@ -7,12 +7,9 @@ const AdminLayout = async ({ children }: { readonly children: ReactNode }) => {
 
   return (
     <div className="min-h-svh bg-background">
-      <nav
-        aria-label="Navegação administrativa"
-        className="border-border border-b bg-muted/20"
-      >
+      <div className="border-border border-b bg-muted/20">
         <AdminNav isAdmin={role === "ADMIN"} />
-      </nav>
+      </div>
       {children}
     </div>
   );

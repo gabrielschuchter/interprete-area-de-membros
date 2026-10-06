@@ -7,6 +7,7 @@ import {
   database,
   ExerciseQuestionType,
   ExerciseSessionStatus,
+  LearningAssignmentTargetType,
   type Prisma,
 } from "@repo/database";
 import { revalidatePath } from "next/cache";
@@ -16,9 +17,14 @@ import { evaluateMemberBadges } from "@/lib/badges";
 import {
   type ExerciseChoiceDraft,
   evaluateExerciseAnswer,
+  findMissingExerciseExplanationOptionReferences,
   validateExerciseDraft,
 } from "@/lib/exercise-engine";
 import { requireMemberId } from "@/lib/learning";
+import {
+  markLearningAssignmentCompleted,
+  markLearningAssignmentStarted,
+} from "@/lib/learning-assignments";
 import { dispatchPendingNotifications } from "@/lib/notification-outbox-dispatch";
 
 const value = (formData: FormData, name: string) => {
@@ -88,9 +94,17 @@ export const startExerciseSession = async (formData: FormData) => {
         position,
       })),
     });
+    await markLearningAssignmentStarted(
+      memberId,
+      LearningAssignmentTargetType.EXERCISE_LIST,
+      list.id,
+      new Date(),
+      transaction
+    );
     return session.id;
   });
   revalidatePath("/exercicios");
+  revalidatePath("/aprender");
   redirect(`/exercicios/sessoes/${sessionId}`);
 };
 
@@ -126,13 +140,14 @@ const saveAnswer = async (
       session: {
         select: {
           id: true,
+          listId: true,
           questions: { select: { id: true } },
         },
       },
       questionVersion: {
         select: {
           id: true,
-          question: { select: { type: true } },
+          type: true,
           options: { select: { id: true, content: true, isCorrect: true } },
         },
       },
@@ -146,7 +161,7 @@ const saveAnswer = async (
   }
 
   const evaluated = evaluateExerciseAnswer(
-    target.questionVersion.question.type,
+    target.questionVersion.type,
     target.questionVersion.options.map((option) => ({
       ...option,
       correct: option.isCorrect,
@@ -180,18 +195,28 @@ const saveAnswer = async (
           },
         });
         const total = target.session.questions.length;
+        const completedAt = answered >= total ? new Date() : null;
         await transaction.exerciseSession.update({
           where: { id: target.session.id },
           data: {
             currentPosition: Math.min(target.position + 1, total),
-            ...(answered >= total
+            ...(completedAt
               ? {
                   status: ExerciseSessionStatus.COMPLETED,
-                  completedAt: new Date(),
+                  completedAt,
                 }
               : {}),
           },
         });
+        if (completedAt) {
+          await markLearningAssignmentCompleted(
+            memberId,
+            LearningAssignmentTargetType.EXERCISE_LIST,
+            target.session.listId,
+            completedAt,
+            transaction
+          );
+        }
         await evaluateMemberBadges(transaction, memberId, new Date(), {
           criteria: [BadgeCriterion.EXERCISE_ANSWERS],
           force: true,
@@ -233,6 +258,7 @@ export const submitExerciseAnswer = async (formData: FormData) => {
     await dispatchPendingNotifications();
   }
   revalidatePath("/exercicios");
+  revalidatePath("/aprender");
   redirect(
     `/exercicios/sessoes/${encodeURIComponent(sessionId)}?respondida=${encodeURIComponent(sessionQuestionId)}`
   );
@@ -293,6 +319,7 @@ export const toggleExerciseFavorite = async (formData: FormData) => {
     });
   }
   revalidatePath("/exercicios/favoritas");
+  revalidatePath("/comunidade/salvos");
   if (sessionId) {
     revalidatePath(`/exercicios/sessoes/${sessionId}`);
   }
@@ -365,6 +392,7 @@ const createQuestionVersion = (
     data: {
       questionId,
       version,
+      type: draft.kind,
       statement: draft.statement,
       explanation: draft.explanation || null,
       options: {
@@ -478,6 +506,14 @@ export const createExercisePack = async (formData: FormData) => {
     redirect("/admin/exercicios?resultado=invalid");
   }
   const validDraft = draft;
+  if (
+    findMissingExerciseExplanationOptionReferences(
+      validDraft.explanation,
+      validDraft.options
+    ).length > 0
+  ) {
+    redirect("/admin/exercicios?resultado=referencias-invalidas");
+  }
   const validation = validateExerciseDraft(
     validDraft.kind,
     validDraft.statement,
@@ -525,6 +561,7 @@ export const createExercisePack = async (formData: FormData) => {
       data: {
         questionId: question.id,
         version: 1,
+        type: validDraft.kind,
         statement: validDraft.statement,
         explanation: validDraft.explanation || null,
         options: {
@@ -574,8 +611,23 @@ export const saveExerciseQuestion = async (formData: FormData) => {
   const validation = draft
     ? validateExerciseDraft(draft.kind, draft.statement, draft.options)
     : null;
-  if (!(listId && draft && validation?.valid)) {
+  if (!listId) {
     redirect("/admin/exercicios?resultado=invalid");
+  }
+  if (!(draft && validation?.valid)) {
+    redirect(
+      `/admin/exercicios/${encodeURIComponent(listId)}?resultado=invalid`
+    );
+  }
+  if (
+    findMissingExerciseExplanationOptionReferences(
+      draft.explanation,
+      draft.options
+    ).length > 0
+  ) {
+    redirect(
+      `/admin/exercicios/${encodeURIComponent(listId)}?resultado=referencias-invalidas`
+    );
   }
   const validDraft = draft;
   await database.$transaction(

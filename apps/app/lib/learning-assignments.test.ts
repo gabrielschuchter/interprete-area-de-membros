@@ -1,13 +1,16 @@
 import { beforeEach, expect, test, vi } from "vitest";
 
-const { enqueueNotificationBatchMock } = vi.hoisted(() => ({
-  enqueueNotificationBatchMock: vi.fn(),
-}));
+const { databaseAssignmentUpdateManyMock, enqueueNotificationBatchMock } =
+  vi.hoisted(() => ({
+    databaseAssignmentUpdateManyMock: vi.fn(),
+    enqueueNotificationBatchMock: vi.fn(),
+  }));
 
 vi.mock("server-only", () => ({}));
 vi.mock("@repo/database", () => ({
   ContentStatus: { PUBLISHED: "PUBLISHED" },
-  CourseExperience: { ASYNC: "ASYNC" },
+  CourseExperience: { ASYNC: "ASYNC", RECORDING_ARCHIVE: "RECORDING_ARCHIVE" },
+  LessonAssetMediaProvider: { YOUTUBE: "YOUTUBE" },
   LearningAssignmentAudienceType: {
     INDIVIDUAL: "INDIVIDUAL",
     SELECTED_MEMBERS: "SELECTED_MEMBERS",
@@ -27,11 +30,17 @@ vi.mock("@repo/database", () => ({
     MODULE: "MODULE",
     LESSON: "LESSON",
     ASSET: "ASSET",
+    RECORDING: "RECORDING",
     LIBRARY_ITEM: "LIBRARY_ITEM",
     EXERCISE_LIST: "EXERCISE_LIST",
   },
   MemberRole: { MEMBER: "MEMBER" },
-  database: {},
+  database: {
+    activityAssignment: { updateMany: databaseAssignmentUpdateManyMock },
+  },
+}));
+vi.mock("@repo/security/write-freeze", () => ({
+  isAppWriteFreezeEnabled: () => false,
 }));
 vi.mock("@repo/member-domain", () => ({
   enqueueNotificationBatch: enqueueNotificationBatchMock,
@@ -47,6 +56,7 @@ import {
 } from "@repo/database";
 import {
   createLearningAssignmentBatch,
+  markLearningAssignmentStarted,
   resolveLearningAssignmentTarget,
   shouldMarkAssignmentViewed,
 } from "./learning-assignments";
@@ -103,6 +113,15 @@ const makeTransaction = () => {
         },
       ]),
     },
+    importedRecording: {
+      findMany: vi.fn().mockResolvedValue([
+        {
+          id: "recording_1",
+          originalTitle: "Aula gravada",
+          asset: { id: "asset_1", title: "Aula gravada" },
+        },
+      ]),
+    },
     activityAssignment: { createMany },
     learningAssignmentBatch: {
       create: createBatch,
@@ -119,6 +138,36 @@ const makeTransaction = () => {
 
 beforeEach(() => {
   enqueueNotificationBatchMock.mockReset().mockResolvedValue([]);
+  databaseAssignmentUpdateManyMock.mockReset().mockResolvedValue({ count: 1 });
+});
+
+test("marks an assigned exercise list as started through the caller transaction", async () => {
+  const transactionUpdateMany = vi.fn().mockResolvedValue({ count: 1 });
+  const transaction = {
+    activityAssignment: { updateMany: transactionUpdateMany },
+  } as unknown as Prisma.TransactionClient;
+  const at = new Date("2026-10-06T12:00:00.000Z");
+
+  await markLearningAssignmentStarted(
+    "student_1",
+    LearningAssignmentTargetType.EXERCISE_LIST,
+    "exercise_list_1",
+    at,
+    transaction
+  );
+
+  expect(transactionUpdateMany).toHaveBeenCalledWith({
+    where: expect.objectContaining({
+      memberId: "student_1",
+      targetId: "exercise_list_1",
+      targetType: LearningAssignmentTargetType.EXERCISE_LIST,
+    }),
+    data: {
+      status: LearningAssignmentStatus.STARTED,
+      startedAt: at,
+    },
+  });
+  expect(databaseAssignmentUpdateManyMock).not.toHaveBeenCalled();
 });
 
 test("creates an idempotent target-specific batch and durable notices together", async () => {
@@ -218,6 +267,35 @@ test("exercise-list assignments resolve only to published exercise lists", async
         id: { in: ["exercise_list_1"] },
         status: "PUBLISHED",
         bank: { is: { status: "PUBLISHED" } },
+      }),
+    })
+  );
+});
+
+test("recording assignments resolve to one playable recording asset", async () => {
+  const { tx } = makeTransaction();
+  const resolved = await resolveLearningAssignmentTarget(
+    tx,
+    LearningAssignmentTargetType.RECORDING,
+    "recording_1"
+  );
+
+  expect(resolved).toEqual({
+    href: "/encontros/gravacoes?asset=asset_1",
+    id: "recording_1",
+    title: "Aula gravada",
+    type: "RECORDING",
+  });
+  expect(tx.importedRecording.findMany).toHaveBeenCalledWith(
+    expect.objectContaining({
+      where: expect.objectContaining({
+        id: { in: ["recording_1"] },
+        asset: {
+          is: {
+            mediaProvider: "YOUTUBE",
+            mediaExternalId: { not: null },
+          },
+        },
       }),
     })
   );

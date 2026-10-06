@@ -8,7 +8,11 @@ import {
   collectionItemLabel,
   getPublishedCollectionsForMember,
 } from "@/lib/content-collections";
-import { getPublishedLearningPaths, requireMemberId } from "@/lib/learning";
+import {
+  getMemberCourseProgress,
+  getPublishedLearningPaths,
+  requireMemberId,
+} from "@/lib/learning";
 import { getReceivedLearningAssignments } from "@/lib/learning-assignments";
 import { getMemberLearningBookmarkKeys } from "@/lib/library";
 import { getMemberContinueWatching } from "@/lib/recordings";
@@ -19,6 +23,7 @@ const formatDate = (value: Date | null) =>
   value
     ? new Intl.DateTimeFormat("pt-BR", {
         dateStyle: "medium",
+        timeStyle: "short",
         timeZone: "America/Sao_Paulo",
       }).format(value)
     : null;
@@ -31,12 +36,41 @@ const assignmentState = {
   REVOKED: "Revogado",
 } as const;
 
+const assignmentTargetLabel: Record<string, string> = {
+  ACTIVITY: "Atividade",
+  COURSE: "Curso",
+  MODULE: "Módulo",
+  LESSON: "Aula",
+  ASSET: "Material de aula",
+  RECORDING: "Gravação",
+  LIBRARY_ITEM: "Biblioteca",
+  EXERCISE_LIST: "Exercícios",
+};
+
+const assignmentActionLabel = (status: string) => {
+  if (status === "COMPLETED") {
+    return "Revisar";
+  }
+  if (status === "STARTED") {
+    return "Continuar";
+  }
+  return "Começar";
+};
+
 type LearningCollection = Awaited<
   ReturnType<typeof getPublishedCollectionsForMember>
 >[number];
 type LearningCollectionItem = LearningCollection["items"][number];
+interface LearningCourseProgress {
+  readonly completedLessons: number;
+  readonly percentage: number;
+  readonly totalLessons: number;
+}
 
 const collectionBookmarkTarget = (item: LearningCollectionItem) => {
+  if (item.course) {
+    return { targetId: item.course.id, targetType: "COURSE" as const };
+  }
   if (item.lesson) {
     return { targetId: item.lesson.id, targetType: "LESSON" as const };
   }
@@ -56,7 +90,8 @@ const collectionBookmarkTarget = (item: LearningCollectionItem) => {
 const toCollectionCard = (
   collection: LearningCollection,
   item: LearningCollectionItem,
-  bookmarkKeys: ReadonlySet<string>
+  bookmarkKeys: ReadonlySet<string>,
+  courseProgressById: ReadonlyMap<string, LearningCourseProgress>
 ): LearningRailCard | null => {
   const href = collectionItemHref(item);
   if (!href) {
@@ -69,15 +104,26 @@ const toCollectionCard = (
   let label = "Biblioteca";
   if (item.lesson) {
     label = "Aula";
+  } else if (item.course) {
+    label = "Curso";
+  } else if (item.exerciseList) {
+    label = "Exercícios";
   } else if (recording) {
     label = "Gravação";
   }
   const meta =
     item.lesson?.module.course.title ??
+    item.exerciseList?.bank.title ??
     (recording
       ? (formatDate(recording.meetingDate) ?? "Gravação preservada")
       : (item.libraryItem?.kind ?? null));
   const bookmark = collectionBookmarkTarget(item);
+  const courseProgress = item.course
+    ? courseProgressById.get(item.course.id)
+    : undefined;
+  const showCourseProgress = Boolean(
+    courseProgress && courseProgress.totalLessons > 0
+  );
 
   return {
     bookmark: bookmark
@@ -90,15 +136,22 @@ const toCollectionCard = (
       : undefined,
     coverUrl:
       item.lesson?.module.course.coverUrl ??
+      item.course?.coverUrl ??
+      item.exerciseList?.coverUrl ??
       recordingThumbnail ??
       collection.coverUrl,
     description:
       item.lesson?.description ??
+      item.course?.description ??
+      item.exerciseList?.description ??
       item.libraryItem?.description ??
       collection.description,
     href,
     label,
-    meta,
+    meta: showCourseProgress
+      ? `${courseProgress?.completedLessons}/${courseProgress?.totalLessons} aulas · ${courseProgress?.percentage}%`
+      : meta,
+    progress: showCourseProgress ? courseProgress?.percentage : undefined,
     title: collectionItemLabel(item),
   };
 };
@@ -114,7 +167,35 @@ const LearnPage = async () => {
       getMemberLearningBookmarkKeys(memberId),
     ]);
 
+  const courseProgressById = new Map(
+    paths.flatMap((path) =>
+      path.courses.map((course) => [course.id, course.progress] as const)
+    )
+  );
+  const collectionCourseIds = [
+    ...new Set(
+      collections.flatMap((collection) =>
+        collection.items.flatMap((item) =>
+          item.course ? [item.course.id] : []
+        )
+      )
+    ),
+  ];
+  const missingCourseIds = collectionCourseIds.filter(
+    (courseId) => !courseProgressById.has(courseId)
+  );
+  const additionalCourseProgress = await getMemberCourseProgress(
+    memberId,
+    missingCourseIds
+  );
+  for (const [courseId, progress] of additionalCourseProgress) {
+    courseProgressById.set(courseId, progress);
+  }
+
   const assignmentCards = assignments.map((assignment) => {
+    const isScheduled = Boolean(
+      assignment.availableAt && assignment.availableAt.getTime() > Date.now()
+    );
     const availability = assignment.availableAt
       ? `Disponível em ${formatDate(assignment.availableAt)}`
       : null;
@@ -122,32 +203,34 @@ const LearnPage = async () => {
       ? `Prazo ${formatDate(assignment.dueAt)}`
       : null;
     return {
+      actionLabel: isScheduled
+        ? "Aguarde a liberação"
+        : assignmentActionLabel(assignment.status),
       description: assignment.message,
-      bookmark: [
-        "COURSE",
-        "MODULE",
-        "LESSON",
-        "ASSET",
-        "LIBRARY_ITEM",
-      ].includes(assignment.target.type)
-        ? {
-            targetId: assignment.target.id,
-            targetType: assignment.target.type as
-              | "COURSE"
-              | "MODULE"
-              | "LESSON"
-              | "ASSET"
-              | "LIBRARY_ITEM",
-            saved: bookmarkKeys.has(
-              `${assignment.target.type}:${assignment.target.id}`
-            ),
-          }
-        : undefined,
+      disabled: isScheduled,
+      bookmark:
+        !isScheduled &&
+        ["COURSE", "MODULE", "LESSON", "ASSET", "LIBRARY_ITEM"].includes(
+          assignment.target.type
+        )
+          ? {
+              targetId: assignment.target.id,
+              targetType: assignment.target.type as
+                | "COURSE"
+                | "MODULE"
+                | "LESSON"
+                | "ASSET"
+                | "LIBRARY_ITEM",
+              saved: bookmarkKeys.has(
+                `${assignment.target.type}:${assignment.target.id}`
+              ),
+            }
+          : undefined,
       href: `/aprender/atribuicoes/${assignment.id}`,
       label: assignmentState[assignment.status],
       meta:
         [availability, due].filter(Boolean).join(" · ") ||
-        assignment.target.type,
+        (assignmentTargetLabel[assignment.target.type] ?? "Conteúdo"),
       title: assignment.target.title,
     };
   });
@@ -197,7 +280,12 @@ const LearnPage = async () => {
 
   const collectionRails = collections.map((collection) => ({
     cards: collection.items.flatMap((item) => {
-      const card = toCollectionCard(collection, item, bookmarkKeys);
+      const card = toCollectionCard(
+        collection,
+        item,
+        bookmarkKeys,
+        courseProgressById
+      );
       return card ? [card] : [];
     }),
     description: collection.description,

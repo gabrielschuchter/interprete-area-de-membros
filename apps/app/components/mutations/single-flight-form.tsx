@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@repo/design-system/components/ui/button";
-import { useEffect, useRef } from "react";
+import { useCallback, useRef } from "react";
 import { useFormStatus } from "react-dom";
 
 type ServerFormAction =
@@ -14,20 +14,6 @@ interface SingleFlightFormProperties
   readonly onSettled?: () => void;
 }
 
-const FormStatusBridge = ({
-  onSettled,
-}: {
-  readonly onSettled: () => void;
-}) => {
-  const { pending } = useFormStatus();
-  useEffect(() => {
-    if (!pending) {
-      onSettled();
-    }
-  }, [onSettled, pending]);
-  return null;
-};
-
 export const SingleFlightForm = ({
   action,
   children,
@@ -35,11 +21,22 @@ export const SingleFlightForm = ({
   ...props
 }: SingleFlightFormProperties) => {
   const lockedRef = useRef(false);
+  const runAction = useCallback(
+    async (formData: FormData) => {
+      try {
+        await action(formData);
+      } finally {
+        lockedRef.current = false;
+        onSettled?.();
+      }
+    },
+    [action, onSettled]
+  );
 
   return (
     <form
       {...props}
-      action={action as (formData: FormData) => void | Promise<void>}
+      action={runAction}
       onSubmit={(event) => {
         if (lockedRef.current) {
           event.preventDefault();
@@ -48,12 +45,6 @@ export const SingleFlightForm = ({
         lockedRef.current = true;
       }}
     >
-      <FormStatusBridge
-        onSettled={() => {
-          lockedRef.current = false;
-          onSettled?.();
-        }}
-      />
       {children}
     </form>
   );

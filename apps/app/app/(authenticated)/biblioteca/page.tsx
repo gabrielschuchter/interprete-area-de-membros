@@ -129,99 +129,134 @@ const LibraryPage = async ({ searchParams }: LibraryPageProperties) => {
           </Button>
         </div>
         <form
-          className="mt-12 grid gap-3 border-border border-y py-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-[minmax(12rem,1.5fr)_8rem_8rem_8rem_minmax(10rem,1fr)_8rem_auto]"
+          className="mt-12 grid min-w-0 gap-3 border-border border-y py-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-12"
           method="get"
         >
-          <label className="sr-only" htmlFor="library-search">
-            Buscar materiais
-          </label>
-          <div className="relative">
-            <SearchIcon
-              aria-hidden="true"
-              className="absolute top-3 left-3 size-4 text-muted-foreground"
-            />
-            <Input
-              className="pl-9"
-              defaultValue={filters.q}
-              id="library-search"
-              name="q"
-              placeholder="Buscar por título, tema ou palavra…"
-              type="search"
-            />
+          <div className="grid min-w-0 gap-1.5 sm:col-span-2 lg:col-span-3 xl:col-span-4">
+            <label
+              className="font-medium text-muted-foreground text-xs"
+              htmlFor="library-search"
+            >
+              Buscar materiais
+            </label>
+            <span className="relative block min-w-0">
+              <SearchIcon
+                aria-hidden="true"
+                className="absolute top-3 left-3 size-4 text-muted-foreground"
+              />
+              <Input
+                className="pl-9"
+                defaultValue={filters.q}
+                id="library-search"
+                name="q"
+                placeholder="Buscar por título, tema ou palavra…"
+                type="search"
+              />
+            </span>
           </div>
-          <label className="sr-only" htmlFor="library-kind">
-            Tipo
-          </label>
-          <select
-            className="h-11 rounded-sm border bg-transparent px-3 text-sm"
-            defaultValue={filters.kind ?? ""}
-            id="library-kind"
-            name="kind"
+          <div className="grid min-w-0 gap-1.5 sm:col-span-2 lg:col-span-3 xl:col-span-4">
+            <label
+              className="font-medium text-muted-foreground text-xs"
+              htmlFor="library-category"
+            >
+              Categoria
+            </label>
+            <select
+              className="h-11 w-full min-w-0 rounded-sm border bg-transparent px-3 text-sm"
+              defaultValue={filters.category ?? ""}
+              id="library-category"
+              name="category"
+            >
+              <option value="">Todas as categorias</option>
+              {categories.map((category) => (
+                <option key={category} value={category}>
+                  {category}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="grid min-w-0 gap-1.5 xl:col-span-2">
+            <label
+              className="font-medium text-muted-foreground text-xs"
+              htmlFor="library-sort"
+            >
+              Ordenação
+            </label>
+            <select
+              className="h-11 w-full min-w-0 rounded-sm border bg-transparent px-3 text-sm"
+              defaultValue={filters.sort ?? "recent"}
+              id="library-sort"
+              name="sort"
+            >
+              <option value="recent">Mais recentes</option>
+              <option value="relevant">Mais relevantes</option>
+            </select>
+          </div>
+          <Button
+            className="h-11 w-full self-end sm:col-span-2 lg:col-span-1 xl:col-span-2"
+            type="submit"
           >
-            <option value="">Todos os tipos</option>
-            <option value="ARTICLE">Artigos</option>
-            <option value="PDF">PDFs</option>
-            <option value="GUIDE">Guias</option>
-            <option value="LINK">Links</option>
-            <option value="VIDEO">Vídeos</option>
-          </select>
-          <label className="sr-only" htmlFor="library-language">
-            Idioma
-          </label>
-          <select
-            className="h-11 rounded-sm border bg-transparent px-3 text-sm"
-            defaultValue={filters.language ?? ""}
-            id="library-language"
-            name="language"
-          >
-            <option value="">Todos os idiomas</option>
-            <option value="pt">Português</option>
-            <option value="en">English</option>
-            <option value="es">Español</option>
-          </select>
-          <label className="sr-only" htmlFor="library-difficulty">
-            Nível
-          </label>
-          <select
-            className="h-11 rounded-sm border bg-transparent px-3 text-sm"
-            defaultValue={filters.difficulty ?? ""}
-            id="library-difficulty"
-            name="difficulty"
-          >
-            <option value="">Todos os níveis</option>
-            <option value="INTRODUCTORY">Introdutório</option>
-            <option value="INTERMEDIATE">Intermediário</option>
-            <option value="ADVANCED">Avançado</option>
-          </select>
-          <label className="sr-only" htmlFor="library-category">
-            Categoria
-          </label>
-          <select
-            className="h-11 rounded-sm border bg-transparent px-3 text-sm"
-            defaultValue={filters.category ?? ""}
-            id="library-category"
-            name="category"
-          >
-            <option value="">Todas as categorias</option>
-            {categories.map((category) => (
-              <option key={category} value={category}>
-                {category}
-              </option>
-            ))}
-          </select>
-          <label className="sr-only" htmlFor="library-sort">
-            Ordenação
-          </label>
-          <select
-            className="h-11 rounded-sm border bg-transparent px-3 text-sm"
-            defaultValue={filters.sort ?? "recent"}
-            id="library-sort"
-            name="sort"
-          >
-            <option value="recent">Mais recentes</option>
-            <option value="relevant">Mais relevantes</option>
-          </select>
-          <Button type="submit">Filtrar</Button>
+            Filtrar
+          </Button>
+          <div className="grid min-w-0 gap-1.5 xl:col-span-4">
+            <label
+              className="font-medium text-muted-foreground text-xs"
+              htmlFor="library-kind"
+            >
+              Tipo
+            </label>
+            <select
+              className="h-11 w-full min-w-0 rounded-sm border bg-transparent px-3 text-sm"
+              defaultValue={filters.kind ?? ""}
+              id="library-kind"
+              name="kind"
+            >
+              <option value="">Todos os tipos</option>
+              <option value="ARTICLE">Artigos</option>
+              <option value="PDF">PDFs</option>
+              <option value="GUIDE">Guias</option>
+              <option value="LINK">Links</option>
+              <option value="VIDEO">Vídeos</option>
+            </select>
+          </div>
+          <div className="grid min-w-0 gap-1.5 xl:col-span-4">
+            <label
+              className="font-medium text-muted-foreground text-xs"
+              htmlFor="library-language"
+            >
+              Idioma
+            </label>
+            <select
+              className="h-11 w-full min-w-0 rounded-sm border bg-transparent px-3 text-sm"
+              defaultValue={filters.language ?? ""}
+              id="library-language"
+              name="language"
+            >
+              <option value="">Todos os idiomas</option>
+              <option value="pt">Português</option>
+              <option value="en">English</option>
+              <option value="es">Español</option>
+            </select>
+          </div>
+          <div className="grid min-w-0 gap-1.5 xl:col-span-4">
+            <label
+              className="font-medium text-muted-foreground text-xs"
+              htmlFor="library-difficulty"
+            >
+              Nível
+            </label>
+            <select
+              className="h-11 w-full min-w-0 rounded-sm border bg-transparent px-3 text-sm"
+              defaultValue={filters.difficulty ?? ""}
+              id="library-difficulty"
+              name="difficulty"
+            >
+              <option value="">Todos os níveis</option>
+              <option value="INTRODUCTORY">Introdutório</option>
+              <option value="INTERMEDIATE">Intermediário</option>
+              <option value="ADVANCED">Avançado</option>
+            </select>
+          </div>
         </form>
         <section aria-labelledby="library-heading" className="mt-12">
           <div className="flex items-end justify-between border-border border-b pb-3">

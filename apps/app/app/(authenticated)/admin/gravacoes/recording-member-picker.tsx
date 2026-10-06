@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 
 interface MemberOption {
   readonly displayName: string | null;
@@ -28,6 +28,7 @@ export const RecordingMemberPicker = ({
   members,
   defaultValue,
 }: RecordingMemberPickerProperties) => {
+  const searchId = useId();
   const [query, setQuery] = useState("");
   const filteredMembers = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase();
@@ -47,13 +48,13 @@ export const RecordingMemberPicker = ({
     <div className="space-y-2">
       <label
         className="font-data text-muted-foreground text-xs uppercase tracking-[0.12em]"
-        htmlFor="recording-member-search"
+        htmlFor={searchId}
       >
         Buscar membro
       </label>
       <input
         className="flex h-10 w-full border bg-background px-3 text-sm outline-none ring-offset-background placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
-        id="recording-member-search"
+        id={searchId}
         onChange={(event) => setQuery(event.target.value)}
         placeholder="Nome, username ou e-mail"
         type="search"

@@ -140,9 +140,10 @@ export const getMemberExerciseSession = async (
           questionVersion: {
             select: {
               id: true,
+              type: true,
               statement: true,
               explanation: true,
-              question: { select: { id: true, type: true } },
+              question: { select: { id: true } },
               options: {
                 orderBy: { position: "asc" },
                 select: { id: true, label: true, content: true },
@@ -195,10 +196,28 @@ export const getMemberExerciseSession = async (
   };
 };
 
+export const getMemberInProgressExerciseSessions = async (memberId: string) =>
+  database.exerciseSession.findMany({
+    where: {
+      memberId,
+      status: ExerciseSessionStatus.IN_PROGRESS,
+      list: { is: publishedListWhere },
+    },
+    orderBy: { updatedAt: "desc" },
+    select: {
+      id: true,
+      list: { select: { title: true, slug: true } },
+      questions: {
+        select: { answer: { select: { isCorrect: true } } },
+      },
+    },
+  });
+
 export const getMemberExerciseHistory = async (memberId: string) =>
   database.exerciseSession.findMany({
     where: {
       memberId,
+      status: ExerciseSessionStatus.COMPLETED,
       list: { is: publishedListWhere },
     },
     orderBy: { updatedAt: "desc" },
@@ -252,6 +271,10 @@ export const getMemberExerciseFavorites = async (memberId: string) =>
       },
     },
   });
+
+export type MemberExerciseFavorite = Awaited<
+  ReturnType<typeof getMemberExerciseFavorites>
+>[number];
 
 export const memberCanReadExerciseList = async (
   memberId: string,

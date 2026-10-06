@@ -5,12 +5,14 @@ import {
   ContentStatus,
   CourseExperience,
   database,
+  type Prisma,
 } from "@repo/database";
 import { revalidatePath } from "next/cache";
 import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireStaff } from "@/lib/authorization";
+import { isAllowedCollectionCoverUrl } from "@/lib/collection-covers";
 import {
   consumeMutationRateLimit,
   mutationLog,
@@ -22,17 +24,6 @@ const text = (value: FormDataEntryValue | null) =>
 const parseCollectionDate = (value: string) =>
   value ? new Date(`${value}:00-03:00`) : null;
 
-const isHttpsUrl = (value: string) => {
-  if (!value) {
-    return true;
-  }
-  try {
-    return new URL(value).protocol === "https:";
-  } catch {
-    return false;
-  }
-};
-
 const collectionFields = z
   .object({
     audienceSpaceId: z.string().max(128),
@@ -42,7 +33,7 @@ const collectionFields = z
       .refine(
         (value) => !value || Boolean(parseCollectionDate(value)?.getTime())
       ),
-    coverUrl: z.string().max(2000).refine(isHttpsUrl),
+    coverUrl: z.string().max(2000).refine(isAllowedCollectionCoverUrl),
     description: z.string().max(500),
     expiresAt: z
       .string()
@@ -236,6 +227,176 @@ const addItemInput = z.object({
   resourceId: z.string().min(1),
 });
 
+type CollectionItemInput = z.infer<typeof addItemInput>;
+type CollectionItemTransaction = Prisma.TransactionClient;
+
+const getNextCollectionPosition = async (
+  transaction: CollectionItemTransaction,
+  collectionId: string
+) => {
+  const collection = await transaction.contentCollection.findUnique({
+    where: { id: collectionId },
+    select: { id: true },
+  });
+  if (!collection) {
+    throw new Error("collection_not_found");
+  }
+
+  const result = await transaction.contentCollectionItem.aggregate({
+    where: { collectionId: collection.id },
+    _max: { position: true },
+  });
+  return (result._max.position ?? -1) + 1;
+};
+
+const addLessonCollectionItem = async (
+  transaction: CollectionItemTransaction,
+  input: CollectionItemInput,
+  position: number
+) => {
+  const lesson = await transaction.lesson.findFirst({
+    where: {
+      id: input.resourceId,
+      module: { course: { experience: CourseExperience.ASYNC } },
+    },
+    select: { id: true },
+  });
+  if (!lesson) {
+    throw new Error("lesson_not_found");
+  }
+  await transaction.contentCollectionItem.create({
+    data: {
+      collectionId: input.collectionId,
+      itemType: CollectionItemType.LESSON,
+      lessonId: lesson.id,
+      position,
+    },
+  });
+};
+
+const addCourseCollectionItem = async (
+  transaction: CollectionItemTransaction,
+  input: CollectionItemInput,
+  position: number
+) => {
+  const course = await transaction.course.findFirst({
+    where: {
+      id: input.resourceId,
+      experience: CourseExperience.ASYNC,
+      status: { not: ContentStatus.ARCHIVED },
+    },
+    select: { id: true },
+  });
+  if (!course) {
+    throw new Error("course_not_found");
+  }
+  await transaction.contentCollectionItem.create({
+    data: {
+      collectionId: input.collectionId,
+      itemType: CollectionItemType.COURSE,
+      courseId: course.id,
+      position,
+    },
+  });
+};
+
+const addExerciseListCollectionItem = async (
+  transaction: CollectionItemTransaction,
+  input: CollectionItemInput,
+  position: number
+) => {
+  const list = await transaction.exerciseList.findFirst({
+    where: {
+      id: input.resourceId,
+      status: { not: ContentStatus.ARCHIVED },
+      bank: { is: { status: ContentStatus.PUBLISHED } },
+    },
+    select: { id: true },
+  });
+  if (!list) {
+    throw new Error("exercise_list_not_found");
+  }
+  await transaction.contentCollectionItem.create({
+    data: {
+      collectionId: input.collectionId,
+      itemType: CollectionItemType.EXERCISE_LIST,
+      exerciseListId: list.id,
+      position,
+    },
+  });
+};
+
+const addRecordingCollectionItem = async (
+  transaction: CollectionItemTransaction,
+  input: CollectionItemInput,
+  position: number
+) => {
+  const recording = await transaction.importedRecording.findFirst({
+    where: { id: input.resourceId },
+    select: { id: true },
+  });
+  if (!recording) {
+    throw new Error("recording_not_found");
+  }
+  await transaction.contentCollectionItem.create({
+    data: {
+      collectionId: input.collectionId,
+      itemType: CollectionItemType.RECORDING,
+      recordingId: recording.id,
+      position,
+    },
+  });
+};
+
+const addLibraryItemCollectionItem = async (
+  transaction: CollectionItemTransaction,
+  input: CollectionItemInput,
+  position: number
+) => {
+  const libraryItem = await transaction.libraryItem.findFirst({
+    where: {
+      id: input.resourceId,
+      status: { not: ContentStatus.ARCHIVED },
+    },
+    select: { id: true },
+  });
+  if (!libraryItem) {
+    throw new Error("library_item_not_found");
+  }
+  await transaction.contentCollectionItem.create({
+    data: {
+      collectionId: input.collectionId,
+      itemType: CollectionItemType.LIBRARY_ITEM,
+      libraryItemId: libraryItem.id,
+      position,
+    },
+  });
+};
+
+const addCollectionItemInTransaction = async (
+  transaction: CollectionItemTransaction,
+  input: CollectionItemInput
+) => {
+  const position = await getNextCollectionPosition(
+    transaction,
+    input.collectionId
+  );
+  switch (input.itemType) {
+    case CollectionItemType.LESSON:
+      return addLessonCollectionItem(transaction, input, position);
+    case CollectionItemType.COURSE:
+      return addCourseCollectionItem(transaction, input, position);
+    case CollectionItemType.EXERCISE_LIST:
+      return addExerciseListCollectionItem(transaction, input, position);
+    case CollectionItemType.RECORDING:
+      return addRecordingCollectionItem(transaction, input, position);
+    case CollectionItemType.LIBRARY_ITEM:
+      return addLibraryItemCollectionItem(transaction, input, position);
+    default:
+      throw new Error("unsupported_collection_item_type");
+  }
+};
+
 export const addCollectionItem = async (formData: FormData) => {
   const { userId } = await requireStaff();
   await consumeMutationRateLimit({
@@ -252,84 +413,9 @@ export const addCollectionItem = async (formData: FormData) => {
   }
 
   try {
-    await database.$transaction(async (transaction) => {
-      const collection = await transaction.contentCollection.findUnique({
-        where: { id: parsed.data.collectionId },
-        select: { id: true },
-      });
-      if (!collection) {
-        throw new Error("collection_not_found");
-      }
-
-      const positionResult = await transaction.contentCollectionItem.aggregate({
-        where: { collectionId: collection.id },
-        _max: { position: true },
-      });
-      const position = (positionResult._max.position ?? -1) + 1;
-      const common = {
-        collectionId: collection.id,
-        position,
-      };
-
-      if (parsed.data.itemType === CollectionItemType.LESSON) {
-        const lesson = await transaction.lesson.findFirst({
-          where: {
-            id: parsed.data.resourceId,
-            module: { course: { experience: CourseExperience.ASYNC } },
-          },
-          select: { id: true },
-        });
-        if (!lesson) {
-          throw new Error("lesson_not_found");
-        }
-        await transaction.contentCollectionItem.create({
-          data: {
-            ...common,
-            itemType: parsed.data.itemType,
-            lessonId: lesson.id,
-          },
-        });
-      }
-
-      if (parsed.data.itemType === CollectionItemType.RECORDING) {
-        const recording = await transaction.importedRecording.findFirst({
-          where: {
-            id: parsed.data.resourceId,
-          },
-          select: { id: true },
-        });
-        if (!recording) {
-          throw new Error("recording_not_found");
-        }
-        await transaction.contentCollectionItem.create({
-          data: {
-            ...common,
-            itemType: parsed.data.itemType,
-            recordingId: recording.id,
-          },
-        });
-      }
-
-      if (parsed.data.itemType === CollectionItemType.LIBRARY_ITEM) {
-        const libraryItem = await transaction.libraryItem.findFirst({
-          where: {
-            id: parsed.data.resourceId,
-            status: { not: ContentStatus.ARCHIVED },
-          },
-          select: { id: true },
-        });
-        if (!libraryItem) {
-          throw new Error("library_item_not_found");
-        }
-        await transaction.contentCollectionItem.create({
-          data: {
-            ...common,
-            itemType: parsed.data.itemType,
-            libraryItemId: libraryItem.id,
-          },
-        });
-      }
-    });
+    await database.$transaction((transaction) =>
+      addCollectionItemInTransaction(transaction, parsed.data)
+    );
     mutationLog({
       action: "admin.collection-item.create",
       memberId: userId,

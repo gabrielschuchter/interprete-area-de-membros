@@ -1,9 +1,9 @@
 import { database } from "@repo/database";
 import { Badge } from "@repo/design-system/components/ui/badge";
 import { Button } from "@repo/design-system/components/ui/button";
-import { CheckCircle2Icon, XCircleIcon } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ExerciseAnswerFeedback } from "@/components/exercises/exercise-answer-feedback";
 import { StudyHeartbeat } from "@/components/learning/study-heartbeat";
 import { scoreExerciseSession } from "@/lib/exercise-engine";
 import { getMemberExerciseSession } from "@/lib/exercises";
@@ -114,54 +114,6 @@ const ExerciseResultPanel = ({
   </section>
 );
 
-const AnswerFeedback = ({
-  question,
-  session,
-}: {
-  readonly question: SessionQuestion;
-  readonly session: MemberSession;
-}) => {
-  const correct = question.answer?.isCorrect === true;
-  const correctLabels = question.questionVersion.correctOptionIds
-    .map(
-      (id) =>
-        question.questionVersion.options.find((option) => option.id === id)
-          ?.label
-    )
-    .filter(Boolean)
-    .join(", ");
-  return (
-    <output
-      aria-live="polite"
-      className={`mt-7 block rounded-lg border p-5 ${correct ? "border-primary/40 bg-primary/5" : "border-destructive/40 bg-destructive/5"}`}
-    >
-      <span className="flex items-center gap-2 font-medium">
-        {correct ? (
-          <CheckCircle2Icon aria-hidden="true" className="size-5" />
-        ) : (
-          <XCircleIcon aria-hidden="true" className="size-5" />
-        )}
-        {correct ? "Resposta correta" : "Resposta incorreta"}
-      </span>
-      <span className="mt-3 block text-muted-foreground text-sm">
-        Resposta(s) correta(s): {correctLabels}
-      </span>
-      {question.questionVersion.explanation && (
-        <span className="mt-4 block whitespace-pre-wrap text-sm leading-6">
-          {question.questionVersion.explanation}
-        </span>
-      )}
-      {question.position + 1 < session.questions.length && (
-        <Button asChild className="mt-5">
-          <Link href={`/exercicios/sessoes/${session.id}`}>
-            Ir para próxima questão
-          </Link>
-        </Button>
-      )}
-    </output>
-  );
-};
-
 const ExerciseAnswerForm = ({
   question,
   session,
@@ -169,8 +121,7 @@ const ExerciseAnswerForm = ({
   readonly question: SessionQuestion;
   readonly session: MemberSession;
 }) => {
-  const multipleChoice =
-    question.questionVersion.question.type === "MULTIPLE_CHOICE";
+  const multipleChoice = question.questionVersion.type === "MULTIPLE_CHOICE";
   return (
     <form action={submitExerciseAnswer} className="mt-7">
       <input name="sessionId" type="hidden" value={session.id} />
@@ -249,7 +200,25 @@ const ExerciseQuestionPanel = ({
       {question.questionVersion.statement}
     </h2>
     {question.answer ? (
-      <AnswerFeedback question={question} session={session} />
+      <ExerciseAnswerFeedback
+        correctOptionLabels={question.questionVersion.correctOptionIds
+          .map(
+            (id) =>
+              question.questionVersion.options.find(
+                (option) => option.id === id
+              )?.label
+          )
+          .filter((label): label is string => Boolean(label))}
+        explanation={question.questionVersion.explanation}
+        isCorrect={question.answer.isCorrect}
+        isSessionComplete={session.status === "COMPLETED"}
+        nextHref={
+          question.position + 1 < session.questions.length
+            ? `/exercicios/sessoes/${session.id}`
+            : null
+        }
+        resultHref={`/exercicios/sessoes/${session.id}`}
+      />
     ) : (
       <ExerciseAnswerForm question={question} session={session} />
     )}

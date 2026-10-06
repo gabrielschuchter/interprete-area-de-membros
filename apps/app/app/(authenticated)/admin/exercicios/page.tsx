@@ -53,7 +53,11 @@ const AdminExercisesPage = async ({
   if (query.resultado === "created") {
     resultMessage = "Banco, lista e primeira questão salvos.";
   } else if (query.resultado === "invalid") {
-    resultMessage = "Revise os campos e marque as respostas corretas.";
+    resultMessage =
+      "Revise enunciado, alternativas e gabarito. Em escolha única, marque exatamente uma correta; em múltipla, marque pelo menos duas corretas e deixe uma incorreta.";
+  } else if (query.resultado === "referencias-invalidas") {
+    resultMessage =
+      "A explicação menciona letras sem alternativa preenchida. Confira as referências às opções antes de salvar.";
   }
 
   return (

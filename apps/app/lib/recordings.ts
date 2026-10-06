@@ -9,6 +9,11 @@ import {
 } from "@repo/database";
 import { getMemberRole } from "./authorization";
 import { activeAssignmentStatuses } from "./learning-assignments";
+import { recordingYearRange } from "./recording-date";
+import {
+  recordingGroupNameSearchWhere,
+  recordingOwnerDisplayLabel,
+} from "./recording-identity";
 
 const yearPattern = /^\d{4}$/;
 
@@ -81,6 +86,9 @@ const getRecordingAccessContext = async (
       case AccessResourceType.ASSET:
       case LearningAssignmentTargetType.ASSET:
         filters.push({ assetId: targetId });
+        break;
+      case LearningAssignmentTargetType.RECORDING:
+        filters.push({ id: targetId });
         break;
       default:
         break;
@@ -213,6 +221,7 @@ export const getMemberContinueWatching = async (memberId: string) => {
               group: {
                 select: {
                   id: true,
+                  memberId: true,
                   legacyStudentName: true,
                   legacyModule: {
                     select: {
@@ -252,7 +261,12 @@ export const getMemberContinueWatching = async (memberId: string) => {
           },
           group: {
             id: importedRecording.group.id,
-            legacyStudentName: importedRecording.group.legacyStudentName,
+            displayLabel: recordingOwnerDisplayLabel(
+              importedRecording.group.memberId,
+              memberId,
+              access.fullAccess,
+              importedRecording.group.legacyStudentName
+            ),
             courseTitle: importedRecording.group.legacyModule.course.title,
             moduleTitle: importedRecording.group.legacyModule.title,
           },
@@ -334,6 +348,7 @@ const recordingPageSelection = (memberId: string) => ({
   group: {
     select: {
       id: true,
+      memberId: true,
       legacyStudentName: true,
       legacyModule: {
         select: {
@@ -379,6 +394,7 @@ export const getMemberRecordingPage = async (
   const take = Math.min(Math.max(options.take ?? 18, 6), 36);
   const query = options.query?.trim();
   const year = options.year?.match(yearPattern)?.[0];
+  const yearRange = year ? recordingYearRange(year) : null;
   const where: Prisma.ImportedRecordingWhereInput = {
     AND: [
       ...(access.recordingWhere ? [access.recordingWhere] : []),
@@ -398,24 +414,20 @@ export const getMemberRecordingPage = async (
                   },
                 },
                 {
-                  group: {
-                    legacyStudentName: {
-                      contains: query,
-                      mode: "insensitive" as const,
-                    },
-                  },
+                  group: recordingGroupNameSearchWhere(
+                    memberId,
+                    access.fullAccess,
+                    query
+                  ),
                 },
               ],
             },
           ]
         : []),
-      ...(year
+      ...(yearRange
         ? [
             {
-              meetingDate: {
-                gte: new Date(`${year}-01-01T00:00:00.000Z`),
-                lt: new Date(`${Number(year) + 1}-01-01T00:00:00.000Z`),
-              },
+              meetingDate: yearRange,
             },
           ]
         : []),
@@ -445,6 +457,15 @@ export const getMemberRecordingPage = async (
   const visibleRows = hasMore ? rows.slice(0, take) : rows;
   const mapRow = (recording: (typeof visibleRows)[number]) => ({
     ...recording,
+    group: {
+      ...recording.group,
+      displayLabel: recordingOwnerDisplayLabel(
+        recording.group.memberId,
+        memberId,
+        access.fullAccess,
+        recording.group.legacyStudentName
+      ),
+    },
     thumbnailUrl: recording.thumbnailPath
       ? `/api/learning/recordings/${recording.id}/thumbnail`
       : null,
@@ -500,7 +521,9 @@ export const getAdminRecordingGroups = async () =>
         orderBy: { createdAt: "desc" },
         take: 8,
         select: {
+          id: true,
           action: true,
+          note: true,
           previousMemberId: true,
           memberId: true,
           changedByMemberId: true,

@@ -108,7 +108,9 @@ const buildLessonAccessWhere = (
     },
   };
   if (scope.fullAccess) {
-    return { lesson: { is: publishedLesson } };
+    return {
+      OR: [{ lessonId: null }, { lesson: { is: publishedLesson } }],
+    };
   }
 
   const accessibleLessons: Prisma.LibraryItemWhereInput[] = [
@@ -565,7 +567,7 @@ type PersonalLibraryBookmark = Awaited<
   ReturnType<typeof fetchPersonalLibraryBookmarks>
 >[number];
 
-interface PersonalLibraryCard {
+export interface PersonalLibraryCard {
   coverUrl: string | null;
   description: string | null;
   href: string;

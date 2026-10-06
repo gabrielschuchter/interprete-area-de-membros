@@ -1,8 +1,12 @@
-import { database } from "@repo/database";
+import { database, LearningAssignmentTargetType } from "@repo/database";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { getAccessibleRecording } from "@/lib/content-access";
+import {
+  markLearningAssignmentCompleted,
+  markLearningAssignmentStarted,
+} from "@/lib/learning-assignments";
 import {
   consumeMutationRateLimit,
   isMutationRateLimitError,
@@ -117,6 +121,25 @@ export const PUT = async (
         completedPlaybackAt: true,
       },
     });
+
+    const recordingId = asset.importedRecording?.id;
+    if (recordingId) {
+      const at = new Date();
+      await markLearningAssignmentStarted(
+        userId,
+        LearningAssignmentTargetType.RECORDING,
+        recordingId,
+        at
+      );
+      if (completed) {
+        await markLearningAssignmentCompleted(
+          userId,
+          LearningAssignmentTargetType.RECORDING,
+          recordingId,
+          at
+        );
+      }
+    }
 
     mutationLog({
       action: "learning.playback",

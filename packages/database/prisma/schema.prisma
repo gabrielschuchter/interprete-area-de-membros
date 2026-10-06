@@ -98,6 +98,7 @@ enum LearningAssignmentTargetType {
   MODULE
   LESSON
   ASSET
+  RECORDING
   LIBRARY_ITEM
   EXERCISE_LIST
 }
@@ -282,6 +283,8 @@ enum ImportedRecordingGroupAssignmentAction {
 
 enum CollectionItemType {
   LESSON
+  COURSE
+  EXERCISE_LIST
   RECORDING
   LIBRARY_ITEM
 }
@@ -409,33 +412,34 @@ model LearningPath {
 }
 
 model Course {
-  id               String            @id @default(cuid())
+  id               String                  @id @default(cuid())
   title            String
-  subtitle         String?           @db.Text
-  slug             String            @unique
-  description      String?           @db.Text
+  subtitle         String?                 @db.Text
+  slug             String                  @unique
+  description      String?                 @db.Text
   coverUrl         String?
   format           String?
   category         String?
   level            String?
   durationMinutes  Int?
-  tags             String[]          @default([])
-  experience       CourseExperience  @default(ASYNC)
+  tags             String[]                @default([])
+  experience       CourseExperience        @default(ASYNC)
   teacherId        String?
-  status           ContentStatus     @default(DRAFT)
-  position         Int               @default(0)
+  status           ContentStatus           @default(DRAFT)
+  position         Int                     @default(0)
   publishedAt      DateTime?
   createdBy        String?
   updatedBy        String?
   learningPathId   String?
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
-  learningPath     LearningPath?     @relation(fields: [learningPathId], references: [id], onDelete: SetNull)
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+  learningPath     LearningPath?           @relation(fields: [learningPathId], references: [id], onDelete: SetNull)
   modules          Module[]
   enrollments      Enrollment[]
   activities       Activity[]
   meetings         Meeting[]
   libraryBookmarks LibraryBookmark[]
+  collectionItems  ContentCollectionItem[]
 
   @@unique([learningPathId, position])
   @@index([status, position])
@@ -1300,28 +1304,36 @@ model ContentCollection {
 }
 
 model ContentCollectionItem {
-  id            String             @id @default(cuid())
-  collectionId  String
-  itemType      CollectionItemType
-  lessonId      String?
-  assetId       String?
-  recordingId   String?
-  libraryItemId String?
-  position      Int                @default(0)
-  createdAt     DateTime           @default(now())
-  updatedAt     DateTime           @updatedAt
-  collection    ContentCollection  @relation(fields: [collectionId], references: [id], onDelete: Cascade)
-  lesson        Lesson?            @relation(fields: [lessonId], references: [id], onDelete: SetNull)
-  asset         LessonAsset?       @relation(fields: [assetId], references: [id], onDelete: SetNull)
-  recording     ImportedRecording? @relation(fields: [recordingId], references: [id], onDelete: SetNull)
-  libraryItem   LibraryItem?       @relation(fields: [libraryItemId], references: [id], onDelete: SetNull)
+  id             String             @id @default(cuid())
+  collectionId   String
+  itemType       CollectionItemType
+  lessonId       String?
+  courseId       String?
+  exerciseListId String?
+  assetId        String?
+  recordingId    String?
+  libraryItemId  String?
+  position       Int                @default(0)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  collection     ContentCollection  @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  lesson         Lesson?            @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+  course         Course?            @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  exerciseList   ExerciseList?      @relation(fields: [exerciseListId], references: [id], onDelete: SetNull)
+  asset          LessonAsset?       @relation(fields: [assetId], references: [id], onDelete: SetNull)
+  recording      ImportedRecording? @relation(fields: [recordingId], references: [id], onDelete: SetNull)
+  libraryItem    LibraryItem?       @relation(fields: [libraryItemId], references: [id], onDelete: SetNull)
 
   @@unique([collectionId, position])
   @@unique([collectionId, itemType, lessonId])
+  @@unique([collectionId, itemType, courseId])
+  @@unique([collectionId, itemType, exerciseListId])
   @@unique([collectionId, itemType, assetId])
   @@unique([collectionId, itemType, recordingId])
   @@unique([collectionId, itemType, libraryItemId])
   @@index([itemType, lessonId])
+  @@index([itemType, courseId])
+  @@index([itemType, exerciseListId])
   @@index([itemType, assetId])
   @@index([itemType, recordingId])
   @@index([recordingId])
@@ -1454,6 +1466,7 @@ model ExerciseQuestionVersion {
   id           String                    @id @default(cuid())
   questionId   String
   version      Int
+  type         ExerciseQuestionType
   statement    String                    @db.Text
   explanation  String?                   @db.Text
   createdAt    DateTime                  @default(now())
@@ -1481,22 +1494,23 @@ model ExerciseOption {
 }
 
 model ExerciseList {
-  id                String             @id @default(cuid())
+  id                String                  @id @default(cuid())
   bankId            String
   title             String
-  slug              String             @unique
-  description       String?            @db.Text
-  coverUrl          String?            @db.Text
-  status            ContentStatus      @default(DRAFT)
-  position          Int                @default(0)
+  slug              String                  @unique
+  description       String?                 @db.Text
+  coverUrl          String?                 @db.Text
+  status            ContentStatus           @default(DRAFT)
+  position          Int                     @default(0)
   createdByMemberId String?
   publishedAt       DateTime?
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
-  bank              ExerciseBank       @relation(fields: [bankId], references: [id], onDelete: Restrict)
-  createdBy         Member?            @relation("ExerciseListCreator", fields: [createdByMemberId], references: [id], onDelete: SetNull)
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+  bank              ExerciseBank            @relation(fields: [bankId], references: [id], onDelete: Restrict)
+  createdBy         Member?                 @relation("ExerciseListCreator", fields: [createdByMemberId], references: [id], onDelete: SetNull)
   items             ExerciseListItem[]
   sessions          ExerciseSession[]
+  collectionItems   ContentCollectionItem[]
 
   @@index([status, position, publishedAt])
   @@index([bankId, status, position])

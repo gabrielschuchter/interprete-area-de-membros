@@ -6,6 +6,32 @@ export interface ExerciseChoiceDraft {
 
 export type ExerciseChoiceKind = "SINGLE_CHOICE" | "MULTIPLE_CHOICE";
 
+const optionReferencePattern =
+  /(?<![\p{L}\p{N}_])(?:alternativas?|opção|opções)\s+((?:[A-Z](?:\s*(?:,|e|ou|\/|&)\s*[A-Z])*)+)/giu;
+const optionReferenceSeparatorPattern = /\s*(?:,|e|ou|\/|&)\s*/u;
+const singleOptionLabelPattern = /^[A-Z]$/iu;
+
+export const findMissingExerciseExplanationOptionReferences = (
+  explanation: string,
+  options: readonly ExerciseChoiceDraft[]
+) => {
+  const availableLabels = new Set(
+    options.map(({ id }) => id.trim().toUpperCase())
+  );
+  const mentionedLabels = new Set<string>();
+
+  for (const match of explanation.matchAll(optionReferencePattern)) {
+    for (const candidate of match[1]?.split(optionReferenceSeparatorPattern) ??
+      []) {
+      if (singleOptionLabelPattern.test(candidate)) {
+        mentionedLabels.add(candidate.toUpperCase());
+      }
+    }
+  }
+
+  return [...mentionedLabels].filter((label) => !availableLabels.has(label));
+};
+
 export interface ExerciseAnswerEvaluation {
   readonly correctOptionIds: readonly string[];
   readonly isCorrect: boolean;
@@ -34,13 +60,18 @@ export const validateExerciseDraft = (
     } as const;
   }
   const correctCount = options.filter(({ correct }) => correct).length;
-  if (correctCount === 0 || (kind === "SINGLE_CHOICE" && correctCount !== 1)) {
+  if (
+    correctCount === 0 ||
+    (kind === "SINGLE_CHOICE" && correctCount !== 1) ||
+    (kind === "MULTIPLE_CHOICE" &&
+      (correctCount < 2 || correctCount >= options.length))
+  ) {
     return {
       valid: false,
       reason:
         kind === "SINGLE_CHOICE"
           ? "Marque exatamente uma alternativa correta."
-          : "Marque pelo menos uma alternativa correta.",
+          : "Marque pelo menos duas alternativas corretas e deixe uma alternativa incorreta.",
     } as const;
   }
   return { valid: true, reason: null } as const;

@@ -224,7 +224,7 @@ const HomePage = async () => {
                       className="size-5 text-brand-action-text"
                     />
                     <p className="brand-eyebrow mt-6">
-                      {recording.group.legacyStudentName}
+                      {recording.group.displayLabel}
                     </p>
                     <h3 className="mt-2 font-display text-2xl">
                       {recording.asset.title}

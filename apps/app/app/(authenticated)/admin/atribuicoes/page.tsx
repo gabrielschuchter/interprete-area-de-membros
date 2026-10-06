@@ -4,6 +4,7 @@ import {
   CourseExperience,
   database,
   LearningAssignmentTargetType,
+  LessonAssetMediaProvider,
 } from "@repo/database";
 import { Badge } from "@repo/design-system/components/ui/badge";
 import { Button } from "@repo/design-system/components/ui/button";
@@ -32,6 +33,7 @@ const targetLabel: Record<LearningAssignmentTargetType, string> = {
   MODULE: "Módulo",
   LESSON: "Aula",
   ASSET: "Material de aula",
+  RECORDING: "Gravação individual",
   LIBRARY_ITEM: "Material da biblioteca",
   EXERCISE_LIST: "Lista de exercícios",
 };
@@ -56,6 +58,7 @@ const AdminAssignmentsPage = async ({
     modules,
     lessons,
     assets,
+    recordings,
     libraryItems,
     exerciseLists,
     groups,
@@ -125,6 +128,37 @@ const AdminAssignmentsPage = async ({
       },
       orderBy: { title: "asc" },
       select: { id: true, title: true },
+      take: 1000,
+    }),
+    database.importedRecording.findMany({
+      where: {
+        asset: {
+          is: {
+            mediaProvider: LessonAssetMediaProvider.YOUTUBE,
+            mediaExternalId: { not: null },
+          },
+        },
+        legacyLesson: {
+          is: {
+            module: {
+              is: {
+                course: {
+                  is: {
+                    status: ContentStatus.PUBLISHED,
+                    experience: CourseExperience.RECORDING_ARCHIVE,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      orderBy: [{ originalTitle: "asc" }, { id: "asc" }],
+      select: {
+        id: true,
+        originalTitle: true,
+        asset: { select: { id: true, title: true } },
+      },
       take: 1000,
     }),
     database.libraryItem.findMany({
@@ -222,6 +256,14 @@ const AdminAssignmentsPage = async ({
       label: "Materiais de aula",
       type: LearningAssignmentTargetType.ASSET,
       items: assets.map((item) => ({ id: item.id, label: item.title })),
+    },
+    {
+      label: "Gravações individuais",
+      type: LearningAssignmentTargetType.RECORDING,
+      items: recordings.map((item) => ({
+        id: item.id,
+        label: item.originalTitle ?? item.asset.title,
+      })),
     },
     {
       label: "Biblioteca",

@@ -5,6 +5,7 @@ import { Input } from "@repo/design-system/components/ui/input";
 import { Textarea } from "@repo/design-system/components/ui/textarea";
 import Link from "next/link";
 import { requireStaff } from "@/lib/authorization";
+import { collectionCoverPresets } from "@/lib/collection-covers";
 import {
   collectionItemLabel,
   getAdminCollections,
@@ -77,6 +78,11 @@ const CollectionsPage = async ({ searchParams }: CollectionsPageProperties) => {
 
   return (
     <main className="mx-auto w-full max-w-[1280px] px-5 py-10 sm:px-8 lg:px-12 lg:py-14">
+      <datalist id="collection-cover-presets">
+        {collectionCoverPresets.map((cover) => (
+          <option key={cover.value} label={cover.label} value={cover.value} />
+        ))}
+      </datalist>
       <Link
         className="text-muted-foreground text-sm underline underline-offset-4"
         href="/admin"
@@ -91,7 +97,8 @@ const CollectionsPage = async ({ searchParams }: CollectionsPageProperties) => {
         </h1>
         <p className="mt-5 text-muted-foreground leading-7">
           Coleções são listas editoriais reais para organizar aulas, referências
-          e gravações preservadas. O recurso continua pertencendo à sua origem.
+          cursos, exercícios, referências e gravações preservadas. O recurso
+          continua pertencendo à sua origem.
         </p>
       </header>
 
@@ -272,6 +279,10 @@ const CollectionsPage = async ({ searchParams }: CollectionsPageProperties) => {
                       name="itemType"
                     >
                       <option value={CollectionItemType.LESSON}>Aula</option>
+                      <option value={CollectionItemType.COURSE}>Curso</option>
+                      <option value={CollectionItemType.EXERCISE_LIST}>
+                        Lista de exercícios
+                      </option>
                       <option value={CollectionItemType.RECORDING}>
                         Gravação
                       </option>
@@ -289,6 +300,20 @@ const CollectionsPage = async ({ searchParams }: CollectionsPageProperties) => {
                         {resources.lessons.map((lesson) => (
                           <option key={lesson.id} value={lesson.id}>
                             {lesson.module.course.title} · {lesson.title}
+                          </option>
+                        ))}
+                      </optgroup>
+                      <optgroup label="Cursos assíncronos">
+                        {resources.courses.map((course) => (
+                          <option key={course.id} value={course.id}>
+                            {course.title}
+                          </option>
+                        ))}
+                      </optgroup>
+                      <optgroup label="Listas de exercícios">
+                        {resources.exerciseLists.map((list) => (
+                          <option key={list.id} value={list.id}>
+                            {list.title}
                           </option>
                         ))}
                       </optgroup>
@@ -335,9 +360,10 @@ const CollectionsPage = async ({ searchParams }: CollectionsPageProperties) => {
                       />
                       <Input
                         defaultValue={collection.coverUrl ?? ""}
+                        list="collection-cover-presets"
                         name="coverUrl"
-                        placeholder="URL HTTPS da capa"
-                        type="url"
+                        placeholder="Escolha uma capa ou cole URL HTTPS"
+                        type="text"
                       />
                       <Textarea
                         defaultValue={collection.description ?? ""}
@@ -406,7 +432,12 @@ const CollectionsPage = async ({ searchParams }: CollectionsPageProperties) => {
             />
             <Input name="slug" placeholder="para-a-proxima-conversa" required />
             <Input defaultValue={0} name="position" type="number" />
-            <Input name="coverUrl" placeholder="URL HTTPS da capa" type="url" />
+            <Input
+              list="collection-cover-presets"
+              name="coverUrl"
+              placeholder="Escolha uma capa ou cole URL HTTPS"
+              type="text"
+            />
             <Textarea
               name="description"
               placeholder="O fio que conecta estes materiais"

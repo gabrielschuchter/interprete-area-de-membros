@@ -40,6 +40,10 @@ import {
 } from "react";
 import { BrandWordmark } from "@/components/brand/brand-mark";
 import { IntentLink } from "./intent-link";
+import {
+  isSidebarPathActive,
+  personalContentNavigation,
+} from "./member-section";
 
 const whitespacePattern = /\s+/;
 
@@ -57,12 +61,6 @@ const baseNavigation = [
   { href: "/", label: "Início", icon: HouseIcon },
   { href: "/tarefas", label: "Metas e tarefas", icon: TargetIcon },
   { href: "/encontros", label: "Encontros", icon: CalendarDaysIcon },
-  {
-    href: "/encontros/gravacoes",
-    label: "Minhas gravações",
-    icon: VideoIcon,
-  },
-  { href: "/comunidade/salvos", label: "Salvos", icon: BookmarkIcon },
   { href: "/atividades", label: "Atividades", icon: CheckSquareIcon },
   { href: "/exercicios", label: "Exercícios", icon: ListChecksIcon },
   {
@@ -95,24 +93,16 @@ export const GlobalSidebar = ({
     ...baseNavigation.slice(1),
   ];
   const activePath = pendingHref ?? pathname;
-  const isActivePath = (href: string) => {
-    const knownHrefs = [
-      ...navigation.map((item) => item.href),
-      "/comunidade/meus-topicos",
-      "/configuracoes",
-      "/perfil",
-      ...(canManageContent ? ["/admin"] : []),
-    ];
-    const mostSpecificHref = knownHrefs
-      .filter(
-        (candidate) =>
-          activePath === candidate ||
-          (candidate !== "/" && activePath.startsWith(`${candidate}/`))
-      )
-      .sort((left, right) => right.length - left.length)[0];
-
-    return href === "/" ? activePath === "/" : mostSpecificHref === href;
-  };
+  const knownHrefs = [
+    ...navigation.map((item) => item.href),
+    ...personalContentNavigation.map((item) => item.href),
+    "/comunidade/meus-topicos",
+    "/configuracoes",
+    "/perfil",
+    ...(canManageContent ? ["/admin"] : []),
+  ];
+  const isActivePath = (href: string) =>
+    isSidebarPathActive(activePath, href, knownHrefs);
   const handleNavigationStart = useCallback(
     (href: string) => {
       if (href !== pathname) {
@@ -133,6 +123,12 @@ export const GlobalSidebar = ({
 
   return (
     <>
+      <a
+        className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:rounded-md focus:border focus:bg-background focus:px-4 focus:py-3 focus:text-foreground focus:shadow-lg focus-visible:ring-2 focus-visible:ring-brand-action focus-visible:ring-offset-2"
+        href="#member-main-content"
+      >
+        Pular para o conteúdo principal
+      </a>
       <Sidebar collapsible="icon" variant="sidebar">
         <SidebarHeader className="border-sidebar-border border-b px-4 py-5 group-data-[collapsible=icon]:px-2">
           <SidebarMenu>
@@ -155,9 +151,44 @@ export const GlobalSidebar = ({
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
+          <SidebarGroup
+            aria-label="Conteúdo pessoal"
+            className="px-2 pt-0 pb-3"
+            role="group"
+          >
+            <SidebarMenu>
+              {personalContentNavigation.map((item) => (
+                <SidebarMenuItem key={item.href}>
+                  <SidebarMenuButton
+                    asChild
+                    className="rounded-sm py-2.5 data-[active=true]:border-sidebar-primary data-[active=true]:border-l-2 data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground"
+                    isActive={isActivePath(item.href)}
+                    tooltip={item.label}
+                  >
+                    <IntentLink
+                      aria-current={
+                        isActivePath(item.href) ? "page" : undefined
+                      }
+                      href={item.href}
+                      onNavigationStart={handleNavigationStart}
+                    >
+                      {item.icon === "recordings" ? (
+                        <VideoIcon />
+                      ) : (
+                        <BookmarkIcon />
+                      )}
+                      <span className="group-data-[collapsible=icon]:hidden">
+                        {item.label}
+                      </span>
+                    </IntentLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroup>
         </SidebarHeader>
         <SidebarContent>
-          <SidebarGroup>
+          <SidebarGroup className="pt-0">
             <SidebarGroupLabel className="brand-eyebrow text-sidebar-foreground/60">
               Área de membros
             </SidebarGroupLabel>
@@ -171,6 +202,9 @@ export const GlobalSidebar = ({
                     tooltip={item.label}
                   >
                     <IntentLink
+                      aria-current={
+                        isActivePath(item.href) ? "page" : undefined
+                      }
                       href={item.href}
                       onNavigationStart={handleNavigationStart}
                     >
@@ -191,6 +225,7 @@ export const GlobalSidebar = ({
                     tooltip="Professor"
                   >
                     <IntentLink
+                      aria-current={isActivePath("/admin") ? "page" : undefined}
                       href="/admin"
                       onNavigationStart={handleNavigationStart}
                     >
@@ -215,6 +250,11 @@ export const GlobalSidebar = ({
                 tooltip="Meus tópicos"
               >
                 <IntentLink
+                  aria-current={
+                    isActivePath("/comunidade/meus-topicos")
+                      ? "page"
+                      : undefined
+                  }
                   href="/comunidade/meus-topicos"
                   onNavigationStart={handleNavigationStart}
                 >
@@ -233,6 +273,9 @@ export const GlobalSidebar = ({
                 tooltip="Configurações"
               >
                 <IntentLink
+                  aria-current={
+                    isActivePath("/configuracoes") ? "page" : undefined
+                  }
                   href="/configuracoes"
                   onNavigationStart={handleNavigationStart}
                 >
@@ -251,6 +294,7 @@ export const GlobalSidebar = ({
                 tooltip="Perfil"
               >
                 <IntentLink
+                  aria-current={isActivePath("/perfil") ? "page" : undefined}
                   aria-label="Abrir meu perfil"
                   href="/perfil"
                   onNavigationStart={handleNavigationStart}
@@ -276,7 +320,9 @@ export const GlobalSidebar = ({
           </SidebarMenu>
         </SidebarFooter>
       </Sidebar>
-      <SidebarInset>{children}</SidebarInset>
+      <SidebarInset asChild>
+        <div>{children}</div>
+      </SidebarInset>
     </>
   );
 };
