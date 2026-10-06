@@ -28,7 +28,7 @@ import {
   XIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   type KeyboardEvent,
   type RefObject,
@@ -37,6 +37,7 @@ import {
   useState,
 } from "react";
 import type { GlobalSearchResult } from "@/lib/global-search";
+import { reserveNavigationPrefetch } from "./navigation-prefetch";
 
 interface GlobalSearchProperties {
   readonly onOpenChange: (open: boolean) => void;
@@ -73,6 +74,12 @@ export const GlobalSearch = ({
   onOpenChange,
 }: GlobalSearchProperties) => {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const serializedSearchParams = searchParams.toString();
+  const sourceRoute = serializedSearchParams
+    ? `${pathname}?${serializedSearchParams}`
+    : pathname;
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<GlobalSearchResult[]>([]);
@@ -80,6 +87,7 @@ export const GlobalSearch = ({
   const [state, setState] = useState<SearchState>("idle");
   const [errorMessage, setErrorMessage] = useState("");
   const [retryToken, setRetryToken] = useState(0);
+  const activeResultHref = results[activeIndex]?.href;
 
   useEffect(() => {
     if (!open) {
@@ -153,6 +161,16 @@ export const GlobalSearch = ({
       window.clearTimeout(timer);
     };
   }, [open, query, retryToken]);
+
+  useEffect(() => {
+    if (!open || state !== "ready" || !activeResultHref) {
+      return;
+    }
+
+    if (reserveNavigationPrefetch(sourceRoute, activeResultHref)) {
+      router.prefetch(activeResultHref);
+    }
+  }, [activeResultHref, open, router, sourceRoute, state]);
 
   const selectResult = (searchResult: GlobalSearchResult) => {
     onOpenChange(false);
@@ -337,7 +355,9 @@ export const GlobalSearch = ({
                     id={`global-search-result-${searchResult.id}`}
                     key={`${searchResult.type}-${searchResult.id}`}
                     onClick={() => onOpenChange(false)}
+                    onFocus={() => setActiveIndex(index)}
                     onMouseEnter={() => setActiveIndex(index)}
+                    prefetch={false}
                     role="option"
                   >
                     <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-md border border-border/70 bg-background/70 text-brand-dark-amaranth">

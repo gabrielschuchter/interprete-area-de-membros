@@ -71,6 +71,10 @@ and enforced by the design system's reduced-motion stylesheet.
   fan-out. Keep speculative requests bounded, stop speculation under data-saver
   or constrained-network preferences, and ensure prefetch never performs a
   mutation or weakens server authorization.
+- Search and autocomplete result lists must not viewport-prefetch every
+  dynamic destination. Prefetch only the active/intent-selected result through
+  the shared per-route budget; stop under data-saver or constrained-network
+  preferences.
 - Navigation feedback begins on primary activation and clears when the route
   changes, the activation is cancelled, or an explicit error is returned. A
   timeout is a final stale-state guard, not a completion signal.
@@ -375,3 +379,28 @@ full list before returning its header; no loading fallback was observed. This
 sample missed the 300-ms intent-warmed route target and motivated SQL-backed
 pagination plus a route-specific loading shell. No Production mutation was
 submitted.
+
+### Global Search prefetch fan-out — 06/10/2026
+
+In the authenticated TEACHER Production session on deployment
+`dpl_BzJ9PgULRXLwicTrdrqzEtUeEsiG`, the query `epidemiologia` returned eight
+visible results. The same read-only search produced `GET /api/search` 200 and
+Vercel request logs for all eight matching `/biblioteca/<id>` detail routes in
+the following second. The search rendered ordinary Next `<Link>` components
+without a `prefetch` limit. Next's documented default prefetches links as they
+enter the viewport, while `prefetch={false}` disables viewport and hover work
+([Next.js Link API](https://nextjs.org/docs/app/api-reference/components/link)).
+The IDs in the route logs matched the visible results, confirming unnecessary
+detail-page work concurrent with the search for destinations the member had
+not selected. Vercel's free request logs expose paths/status but no duration.
+
+The local follow-up disables automatic prefetch on the result list and
+prefetches only the active result through the same two-destination-per-source-
+route budget used by navigation. Keyboard selection moves that intent to the
+next active result. The budget also respects data-saver and slow-network
+preferences. A focused test confirms inactive results stay unprefetched and the
+third active destination exceeds the budget. The change is not yet deployed;
+repeat the same authenticated query and inspect request paths after release
+before claiming that route fan-out is reduced in Production. Production RUM
+percentiles remain unavailable without an available sample; Observability Plus
+is not enabled or required for this change.

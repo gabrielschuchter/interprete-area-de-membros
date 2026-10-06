@@ -22,6 +22,9 @@ on a server request.
 - A loading placeholder matches the final content's dimensions and is marked
   busy at the containing region. Replace it as soon as data is ready; do not
   hold ready content for an animation or minimum spinner duration.
+- Dynamic links inside search or autocomplete results disable viewport
+  prefetch. Only the active result selected by pointer or keyboard may prefetch,
+  through the shared per-route request budget and network-preference checks.
 
 ## Motion
 
