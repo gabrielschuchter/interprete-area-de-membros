@@ -3,7 +3,7 @@ import {
   AvatarFallback,
   AvatarImage,
 } from "@repo/design-system/components/ui/avatar";
-import Link from "next/link";
+import { IntentLink } from "@/app/(authenticated)/components/intent-link";
 
 const whitespacePattern = /\s+/;
 
@@ -78,11 +78,11 @@ export const MemberIdentity = ({
   }
 
   return (
-    <Link
+    <IntentLink
       className="group flex min-w-0 items-center gap-3"
       href={`/membros/${profile.username}`}
     >
       {content}
-    </Link>
+    </IntentLink>
   );
 };

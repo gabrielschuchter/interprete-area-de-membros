@@ -1,7 +1,31 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import type { ComponentProps } from "react";
 import { describe, expect, test, vi } from "vitest";
 
 const scheduledCourseLinkName = /Curso programado/;
+const firstLessonName = /Atividade um/;
+const secondLessonName = /Atividade dois/;
+const thirdLessonName = /Atividade três/;
+const navigationState = vi.hoisted(() => ({ pathname: "/aprender" }));
+
+vi.mock("next/navigation", () => ({
+  usePathname: () => navigationState.pathname,
+  useSearchParams: () => ({ toString: () => "" }),
+}));
+
+vi.mock("next/link", () => ({
+  default: ({
+    href,
+    prefetch,
+    ...properties
+  }: ComponentProps<"a"> & { readonly prefetch?: boolean }) => (
+    <a
+      data-prefetch={prefetch === true ? "enabled" : "disabled"}
+      href={href}
+      {...properties}
+    />
+  ),
+}));
 
 vi.mock("@/app/(authenticated)/biblioteca/actions", () => ({
   toggleLearningBookmark: vi.fn(),
@@ -179,5 +203,35 @@ describe("LearningContentRail", () => {
     expect(
       screen.queryByRole("button", { name: "Salvar na biblioteca pessoal" })
     ).toBeNull();
+  });
+
+  test("prefetches only learning destinations reached by pointer or keyboard intent", () => {
+    render(
+      <LearningContentRail
+        cards={[
+          { href: "/aprender/atribuicoes/one", title: "Atividade um" },
+          { href: "/aprender/atribuicoes/two", title: "Atividade dois" },
+          { href: "/aprender/atribuicoes/three", title: "Atividade três" },
+        ]}
+        headingId="rail-prefetch-title"
+        title="Retomar"
+      />
+    );
+
+    const first = screen.getByRole("link", { name: firstLessonName });
+    const second = screen.getByRole("link", { name: secondLessonName });
+    const third = screen.getByRole("link", { name: thirdLessonName });
+
+    expect(first.getAttribute("data-prefetch")).toBe("disabled");
+    expect(second.getAttribute("data-prefetch")).toBe("disabled");
+    expect(third.getAttribute("data-prefetch")).toBe("disabled");
+
+    fireEvent.pointerEnter(first);
+    fireEvent.focus(second);
+    fireEvent.focus(third);
+
+    expect(first.getAttribute("data-prefetch")).toBe("enabled");
+    expect(second.getAttribute("data-prefetch")).toBe("enabled");
+    expect(third.getAttribute("data-prefetch")).toBe("disabled");
   });
 });

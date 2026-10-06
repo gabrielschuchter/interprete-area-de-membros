@@ -10,10 +10,21 @@ vi.mock("next/link", () => ({
   default: ({
     children,
     href,
+    prefetch,
   }: {
     readonly children: ReactNode;
     readonly href: string;
-  }) => <a href={href}>{children}</a>,
+    readonly prefetch?: boolean;
+  }) => (
+    <a data-prefetch={prefetch === true ? "enabled" : "disabled"} href={href}>
+      {children}
+    </a>
+  ),
+}));
+
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/comunidade",
+  useSearchParams: () => ({ toString: () => "" }),
 }));
 
 vi.mock("./community-presence", () => ({

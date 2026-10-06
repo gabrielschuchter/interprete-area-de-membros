@@ -14,6 +14,15 @@ test("limits speculative route loads and does not prefetch one destination twice
   expect(reserveNavigationPrefetch("/", "/biblioteca")).toBe(false);
 });
 
+test("treats fragment links as the same destination for the route budget", () => {
+  expect(
+    reserveNavigationPrefetch("/comunidade", "/comunidade/post-1#comments")
+  ).toBe(true);
+  expect(reserveNavigationPrefetch("/comunidade", "/comunidade/post-1")).toBe(
+    false
+  );
+});
+
 test("starts a fresh intent budget after the route changes", () => {
   reserveNavigationPrefetch("/", "/aprender");
   reserveNavigationPrefetch("/", "/comunidade");

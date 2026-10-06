@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
+import { IntentLink } from "@/app/(authenticated)/components/intent-link";
 import { Stagger } from "@/components/motion/motion";
 import {
   SingleFlightForm,
@@ -230,12 +231,12 @@ const LibraryItemsSection = async ({
                   )}
                 </div>
                 <h3 className="mt-5 break-words font-display text-2xl leading-tight">
-                  <Link
+                  <IntentLink
                     className="hover:text-brand-structural"
                     href={`/biblioteca/${item.id}`}
                   >
                     {item.title}
-                  </Link>
+                  </IntentLink>
                 </h3>
                 {item.description && (
                   <p className="mt-3 line-clamp-3 text-muted-foreground text-sm leading-6">

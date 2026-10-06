@@ -6,8 +6,8 @@ import {
   AvatarImage,
 } from "@repo/design-system/components/ui/avatar";
 import type { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { IntentLink } from "@/app/(authenticated)/components/intent-link";
 import {
   getAuthenticatedRealtimeClient,
   refreshRealtimeAuth,
@@ -348,7 +348,7 @@ export const CommunityPresence = ({
             </span>
           ) : null}
           {visibleMembers.map((member) => (
-            <Link
+            <IntentLink
               aria-label={["Abrir perfil de", member.displayName].join(" ")}
               className="community-presence__avatar"
               href={"/membros/".concat(encodeURIComponent(member.username))}
@@ -366,7 +366,7 @@ export const CommunityPresence = ({
               <span className="community-presence__tooltip" role="tooltip">
                 {member.displayName}
               </span>
-            </Link>
+            </IntentLink>
           ))}
           {remainingCount > 0 ? (
             <span

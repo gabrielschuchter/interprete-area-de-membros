@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { IntentLink } from "@/app/(authenticated)/components/intent-link";
 import {
   COMMUNITY_SORT_OPTIONS,
   type CommunitySort,
@@ -30,7 +30,7 @@ export const CommunityNavigation = ({
     </div>
     <div className="community-section-nav__links">
       {primaryLinks.map((link) => (
-        <Link
+        <IntentLink
           aria-current={link.value === active ? "page" : undefined}
           className={
             link.value === active
@@ -41,7 +41,7 @@ export const CommunityNavigation = ({
           key={link.value}
         >
           {link.label}
-        </Link>
+        </IntentLink>
       ))}
     </div>
   </nav>
@@ -63,7 +63,7 @@ export const CommunityFeedNavigation = ({
       <span className="community-filter-label">Ordenar por</span>
       <div className="community-feed-nav__sort-links">
         {COMMUNITY_SORT_OPTIONS.map((option) => (
-          <Link
+          <IntentLink
             aria-current={option.value === sort ? "page" : undefined}
             className={
               option.value === sort
@@ -74,7 +74,7 @@ export const CommunityFeedNavigation = ({
             key={option.value}
           >
             {option.label}
-          </Link>
+          </IntentLink>
         ))}
       </div>
     </div>

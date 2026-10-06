@@ -1,5 +1,5 @@
 import { ArrowUpRightIcon, MessageCircleIcon, PinIcon } from "lucide-react";
-import Link from "next/link";
+import { IntentLink } from "@/app/(authenticated)/components/intent-link";
 import { communityPostHref } from "@/lib/community";
 import {
   type CommunityMediaItem,
@@ -90,12 +90,12 @@ export function CommunityFeedCard({
             <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
               <span aria-hidden="true">·</span>
               {post.space ? (
-                <Link
+                <IntentLink
                   className="truncate font-medium hover:text-brand-structural"
                   href={`/comunidade/${post.space.slug}`}
                 >
                   {post.space.title}
-                </Link>
+                </IntentLink>
               ) : (
                 <span>Feed geral</span>
               )}
@@ -109,13 +109,13 @@ export function CommunityFeedCard({
             <span className="block">{post.readingMinutes} min de leitura</span>
           </div>
         </div>
-        <Link
+        <IntentLink
           aria-label={`Abrir publicação: ${post.title}`}
           className="community-post-card__open shrink-0 rounded-sm p-2 text-muted-foreground hover:bg-accent hover:text-brand-structural focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/35"
           href={href}
         >
           <ArrowUpRightIcon aria-hidden="true" className="size-4" />
-        </Link>
+        </IntentLink>
       </header>
 
       <div className="mt-5">
@@ -125,12 +125,12 @@ export function CommunityFeedCard({
           )}
         </div>
         <h3 className="mt-3 break-words font-display text-2xl leading-[1.08] tracking-tight sm:text-3xl">
-          <Link
+          <IntentLink
             className="after:absolute after:inset-0 after:z-0 hover:text-brand-structural focus-visible:outline-none focus-visible:after:rounded-sm focus-visible:after:ring-[3px] focus-visible:after:ring-ring/50"
             href={href}
           >
             {post.title}
-          </Link>
+          </IntentLink>
         </h3>
         {summary && (
           <p className="mt-3 line-clamp-4 max-w-[68ch] text-muted-foreground leading-7">
@@ -171,14 +171,14 @@ export function CommunityFeedCard({
       )}
 
       <div className="community-post-card__actions relative z-10 mt-5 flex flex-wrap items-center gap-2 border-border border-t pt-4">
-        <Link
+        <IntentLink
           className="inline-flex min-h-10 items-center gap-1.5 rounded-sm px-3 text-muted-foreground text-sm hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/35"
           href={`${href}#comments-heading`}
         >
           <MessageCircleIcon aria-hidden="true" className="size-4" />
           <span>{post._count.comments}</span>
           <span>respostas</span>
-        </Link>
+        </IntentLink>
         <CommunityPostActions
           initialBookmarked={isSaved}
           initialVoted={isVoted}

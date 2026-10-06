@@ -10,15 +10,26 @@ vi.mock("next/link", () => ({
   default: ({
     children,
     href,
+    prefetch,
     ...props
   }: AnchorHTMLAttributes<HTMLAnchorElement> & {
     readonly children: ReactNode;
     readonly href: string;
+    readonly prefetch?: boolean;
   }) => (
-    <a {...props} href={href}>
+    <a
+      data-prefetch={prefetch === true ? "enabled" : "disabled"}
+      {...props}
+      href={href}
+    >
       {children}
     </a>
   ),
+}));
+
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/comunidade",
+  useSearchParams: () => ({ toString: () => "" }),
 }));
 
 describe("CommunityNavigation", () => {

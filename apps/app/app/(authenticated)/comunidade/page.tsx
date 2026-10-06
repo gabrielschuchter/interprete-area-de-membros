@@ -6,8 +6,8 @@ import {
 import { Button } from "@repo/design-system/components/ui/button";
 import { tracePerformance } from "@repo/observability/performance";
 import { ArrowRightIcon, SearchIcon } from "lucide-react";
-import Link from "next/link";
 import { cache, Suspense } from "react";
+import { IntentLink } from "@/app/(authenticated)/components/intent-link";
 import { CommunityEmptyState } from "@/components/community/community-empty-state";
 import { CommunityFeedCard } from "@/components/community/community-feed-card";
 import { CommunityHero } from "@/components/community/community-hero";
@@ -132,7 +132,7 @@ const CommunityComposer = async ({
             comunidade.
           </p>
         </div>
-        <Link
+        <IntentLink
           aria-label="Escreva uma publicação"
           className="community-composer__prompt group -m-2 flex min-w-0 items-center gap-3 rounded-sm p-2 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/35"
           href="/comunidade/novo"
@@ -152,7 +152,7 @@ const CommunityComposer = async ({
             aria-hidden="true"
             className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-brand-structural"
           />
-        </Link>
+        </IntentLink>
       </div>
     </section>
   );
@@ -205,16 +205,18 @@ const CommunityFeedContent = async ({
         >
           {feed.page > 1 ? (
             <Button asChild variant="outline">
-              <Link href={queryString(feed.page - 1)}>Anterior</Link>
+              <IntentLink href={queryString(feed.page - 1)}>
+                Anterior
+              </IntentLink>
             </Button>
           ) : (
             <span />
           )}
           {feed.hasMore && (
             <Button asChild variant="outline">
-              <Link href={queryString(feed.page + 1)}>
+              <IntentLink href={queryString(feed.page + 1)}>
                 Mais conteúdo <ArrowRightIcon aria-hidden="true" />
-              </Link>
+              </IntentLink>
             </Button>
           )}
         </nav>

@@ -47,6 +47,16 @@ describe("IntentLink", () => {
     expect(screen.getByRole("link").getAttribute("data-prefetch")).toBe("full");
   });
 
+  test("does not prefetch the current route for fragment navigation", () => {
+    render(<IntentLink href="/origem#comments">Ir para respostas</IntentLink>);
+
+    fireEvent.focus(screen.getByRole("link", { name: "Ir para respostas" }));
+
+    expect(screen.getByRole("link").getAttribute("data-prefetch")).toBe(
+      "disabled"
+    );
+  });
+
   test("enables full prefetch for keyboard focus and bounds destinations per route", () => {
     render(
       <>

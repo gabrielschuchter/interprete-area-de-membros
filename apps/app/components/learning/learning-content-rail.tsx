@@ -12,7 +12,6 @@ import {
   PlayIcon,
 } from "lucide-react";
 import Image from "next/image";
-import Link from "next/link";
 import {
   type ReactNode,
   useCallback,
@@ -21,6 +20,7 @@ import {
   useState,
 } from "react";
 import { toggleLearningBookmark } from "@/app/(authenticated)/biblioteca/actions";
+import { IntentLink } from "@/app/(authenticated)/components/intent-link";
 
 export interface LearningRailCard {
   readonly actionLabel?: string | null;
@@ -96,13 +96,13 @@ const LearningRailCardTarget = ({
       {children}
     </div>
   ) : (
-    <Link
+    <IntentLink
       aria-label={ariaLabel}
       className="relative block overflow-hidden rounded-sm border bg-brand-depth text-primary-foreground shadow-[var(--shadow-paper)] outline-none transition-transform duration-300 hover:-translate-y-1 focus-visible:ring-2 focus-visible:ring-brand-action focus-visible:ring-offset-2 motion-reduce:transition-none"
       href={href}
     >
       {children}
-    </Link>
+    </IntentLink>
   );
 
 const OverlayDescription = ({

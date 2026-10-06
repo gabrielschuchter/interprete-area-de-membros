@@ -1,6 +1,6 @@
 import { Button } from "@repo/design-system/components/ui/button";
 import { ArrowRightIcon, PlusIcon } from "lucide-react";
-import Link from "next/link";
+import { IntentLink } from "@/app/(authenticated)/components/intent-link";
 import {
   CommunityPresence,
   type CommunityPresenceProfile,
@@ -115,7 +115,7 @@ export const CommunityRightRail = ({
       ) : (
         <div className="mt-2 divide-y border-border border-y">
           {spaces.map((space) => (
-            <Link
+            <IntentLink
               className="community-rail__space group"
               href={"/comunidade/".concat(space.slug)}
               key={space.id}
@@ -135,14 +135,14 @@ export const CommunityRightRail = ({
                   className="size-3.5 transition-transform group-hover:translate-x-1"
                 />
               </span>
-            </Link>
+            </IntentLink>
           ))}
         </div>
       )}
       <Button asChild className="mt-4 w-full" size="sm" variant="outline">
-        <Link href="/comunidade/grupos/novo">
+        <IntentLink href="/comunidade/grupos/novo">
           <PlusIcon aria-hidden="true" /> Criar grupo de estudo
-        </Link>
+        </IntentLink>
       </Button>
     </section>
 
@@ -165,13 +165,13 @@ export const CommunityRightRail = ({
 
             if (announcement.href && isInternalHref(announcement.href)) {
               return (
-                <Link
+                <IntentLink
                   className={className}
                   href={announcement.href}
                   key={announcement.groupKey ?? announcement.id}
                 >
                   {content}
-                </Link>
+                </IntentLink>
               );
             }
 

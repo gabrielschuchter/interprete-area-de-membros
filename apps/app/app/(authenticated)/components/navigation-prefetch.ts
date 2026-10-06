@@ -39,14 +39,16 @@ export const reserveNavigationPrefetch = (
     prefetchedDestinations = new Set();
   }
 
+  const destinationKey = destination.split("#", 1)[0] ?? destination;
+
   if (
-    prefetchedDestinations.has(destination) ||
+    prefetchedDestinations.has(destinationKey) ||
     prefetchedDestinations.size >= MAX_INTENT_PREFETCHES_PER_ROUTE
   ) {
     return false;
   }
 
-  prefetchedDestinations.add(destination);
+  prefetchedDestinations.add(destinationKey);
   return true;
 };
 

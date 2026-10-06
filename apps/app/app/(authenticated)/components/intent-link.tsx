@@ -53,6 +53,11 @@ export const IntentLink = ({
   }, [routeKey, prefetchIntent?.sourceRoute]);
 
   const prefetch = useCallback(() => {
+    const destinationWithoutHash = href.split("#", 1)[0] ?? href;
+    if (destinationWithoutHash === routeKey) {
+      return;
+    }
+
     if (!reserveNavigationPrefetch(routeKey, href)) {
       return;
     }

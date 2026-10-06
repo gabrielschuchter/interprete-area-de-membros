@@ -1,5 +1,13 @@
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
+import type { ComponentProps } from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
+import { resetNavigationPrefetchBudget } from "../../app/(authenticated)/components/navigation-prefetch";
 import { NotificationRealtime } from "../../app/(authenticated)/components/notification-realtime";
 import { getAuthenticatedRealtimeClient } from "../../lib/realtime-client";
 import { CommunityPresence } from "./community-presence";
@@ -8,6 +16,25 @@ const presenceHarness = vi.hoisted(() => ({
   createdClients: 0,
   state: {} as Record<string, Record<string, unknown>[]>,
   sync: null as null | (() => void),
+}));
+
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/comunidade",
+  useSearchParams: () => ({ toString: () => "" }),
+}));
+
+vi.mock("next/link", () => ({
+  default: ({
+    href,
+    prefetch,
+    ...properties
+  }: ComponentProps<"a"> & { readonly prefetch?: boolean }) => (
+    <a
+      data-prefetch={prefetch === true ? "enabled" : "disabled"}
+      href={href}
+      {...properties}
+    />
+  ),
 }));
 
 vi.mock("@supabase/supabase-js", () => {
@@ -52,6 +79,7 @@ describe("CommunityPresence UI", () => {
     presenceHarness.createdClients = 0;
     presenceHarness.state = {};
     presenceHarness.sync = null;
+    resetNavigationPrefetchBudget();
   });
 
   test("shows the live count and links an active member to the internal profile", async () => {
@@ -100,12 +128,16 @@ describe("CommunityPresence UI", () => {
     await waitFor(() =>
       expect(screen.getByText("1 membro online")).toBeTruthy()
     );
-    expect(
-      screen
-        .getByRole("link", { name: "Abrir perfil de Ana" })
-        .getAttribute("href")
-    ).toBe("/membros/ana");
-    expect(screen.getByRole("link").getAttribute("title")).toBe("Ana");
+    const profileLink = screen.getByRole("link", {
+      name: "Abrir perfil de Ana",
+    });
+    expect(profileLink.getAttribute("href")).toBe("/membros/ana");
+    expect(profileLink.getAttribute("data-prefetch")).toBe("disabled");
+    fireEvent.pointerEnter(profileLink);
+    await waitFor(() =>
+      expect(profileLink.getAttribute("data-prefetch")).toBe("enabled")
+    );
+    expect(profileLink.getAttribute("title")).toBe("Ana");
     expect(presenceHarness.createdClients).toBe(1);
     await expect(
       getAuthenticatedRealtimeClient("outro-membro")

@@ -45,7 +45,7 @@ Este repositório é o produto da área de membros do Interprete. A fundação n
 - Paginação e projeções acontecem no banco. Índices e aumento do pool exigem plano SQL, dados representativos e ensaio de concorrência; mantenha Supavisor de transação e TLS validado.
 - Trabalho secundário usa o outbox transacional existente, consumidores idempotentes e worker de recuperação ativo. `after()` e promises soltas não substituem persistência ou retry durável.
 - Prefetch é intencional, limitado e sem mutações. Respeite rede restrita/economia de dados; conteúdo disponível não começa oculto por animação e movimento reduzido é respeitado.
-- Listas de busca/autocomplete não fazem prefetch automático de cada destino dinâmico visível; antecipe somente o resultado ativo por intenção de ponteiro/teclado, usando o orçamento compartilhado por rota.
+- Busca, autocomplete, feeds, trilhos de aprendizagem e listas grandes de cards dinâmicos não fazem prefetch automático de cada destino visível; antecipe somente destinos alcançados por intenção de ponteiro/teclado, usando o orçamento compartilhado por rota.
 - Telemetria é amostrada e sanitizada; nunca envie IDs, títulos, conteúdo pessoal, corpo de requisição, cookies, tokens, cabeçalhos de autorização ou URLs assinadas.
 - Preserve e atualize `docs/architecture/performance.md` e `packages/design-system/PERFORMANCE.md`. A fase 10 continua aberta até evidência de autorização, responsividade, percentis, mobile, persistência, isolamento de cache e deployment.
 

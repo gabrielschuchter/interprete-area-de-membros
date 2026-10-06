@@ -71,10 +71,11 @@ and enforced by the design system's reduced-motion stylesheet.
   fan-out. Keep speculative requests bounded, stop speculation under data-saver
   or constrained-network preferences, and ensure prefetch never performs a
   mutation or weakens server authorization.
-- Search and autocomplete result lists must not viewport-prefetch every
-  dynamic destination. Prefetch only the active/intent-selected result through
-  the shared per-route budget; stop under data-saver or constrained-network
-  preferences.
+- Search, autocomplete, feeds, learning rails, and large dynamic card lists
+  must not viewport-prefetch every destination. Prefetch only destinations
+  reached by pointer or keyboard intent through the shared per-route budget;
+  treat fragment links as their underlying route and skip prefetch for the
+  current route. Stop under data-saver or constrained-network preferences.
 - Navigation feedback begins on primary activation and clears when the route
   changes, the activation is cancelled, or an explicit error is returned. A
   timeout is a final stale-state guard, not a completion signal.
@@ -394,13 +395,12 @@ The IDs in the route logs matched the visible results, confirming unnecessary
 detail-page work concurrent with the search for destinations the member had
 not selected. Vercel's free request logs expose paths/status but no duration.
 
-The local follow-up disables automatic prefetch on the result list and
-prefetches only the active result through the same two-destination-per-source-
-route budget used by navigation. Keyboard selection moves that intent to the
-next active result. The budget also respects data-saver and slow-network
-preferences. A focused test confirms inactive results stay unprefetched and the
-third active destination exceeds the budget. The change is not yet deployed;
-repeat the same authenticated query and inspect request paths after release
-before claiming that route fan-out is reduced in Production. Production RUM
-percentiles remain unavailable without an available sample; Observability Plus
-is not enabled or required for this change.
+Commit `1712599` deployed as `dpl_Fkk4434chk7btKDA1iy3zSeQRSMG`. Repeating the
+same read-only query with the same authenticated TEACHER session returned eight
+results and `GET /api/search` 200, while only the active first result's unique
+detail route appeared in the Vercel request logs. That route returned 200 and
+opened the matching item. The two observed samples therefore show eight to one
+unique destination paths (87.5% fewer); they do not establish a latency gain or
+a production percentile. Vercel's free request logs expose paths/status but
+not function duration, and paid Observability Plus is unavailable and will not
+be enabled for this initiative.
