@@ -80,7 +80,9 @@ const PublicProfilePage = async ({ params }: PublicProfilePageProperties) => {
       select: {
         id: true,
         awardedAt: true,
-        definitionRevision: { select: { title: true, description: true } },
+        definitionRevision: {
+          select: { title: true, description: true, criterion: true },
+        },
       },
     }),
   ]);
@@ -203,6 +205,7 @@ const PublicProfilePage = async ({ params }: PublicProfilePageProperties) => {
           badges={earnedBadges.map((award) => ({
             id: award.id,
             awardedAt: award.awardedAt,
+            criterion: award.definitionRevision.criterion,
             title: award.definitionRevision.title,
             description: award.definitionRevision.description,
           }))}

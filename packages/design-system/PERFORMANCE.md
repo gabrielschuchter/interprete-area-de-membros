@@ -27,6 +27,15 @@ on a server request.
   keyboard intent may prefetch, through the shared per-route request budget and
   network-preference checks.
 
+## Profile badge artwork
+
+- Show the local criterion artwork in a reserved 56 px box with `next/image`,
+  `sizes="56px"`, and lazy loading. The adjacent medal title makes the image
+  decorative, so its alt text stays empty.
+- Use the bounded set of ten transparent 320 px WebP files (271,496 bytes
+  total) rather than a request per award. Keep the criterion-to-image mapping
+  local so repeated awards share browser and optimizer cache entries.
+
 ## Motion
 
 - Keep motion short and use the shared `--motion-duration-fast`,

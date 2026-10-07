@@ -1,8 +1,11 @@
+import type { BadgeCriterion } from "@repo/database";
 import { Badge } from "@repo/design-system/components/ui/badge";
-import { AwardIcon } from "lucide-react";
+import Image from "next/image";
+import { badgeArtworkByCriterion } from "@/lib/badge-artwork";
 
 interface ProfileBadgeItem {
   readonly awardedAt: Date;
+  readonly criterion: BadgeCriterion;
   readonly description: string;
   readonly id: string;
   readonly title: string;
@@ -33,8 +36,19 @@ export const ProfileBadges = ({
       <ul className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {badges.map((badge) => (
           <li className="paper-surface flex gap-3 border p-4" key={badge.id}>
-            <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-brand-action/10 text-brand-action-text">
-              <AwardIcon aria-hidden="true" className="size-5" />
+            <span
+              aria-hidden="true"
+              className="flex size-14 shrink-0 items-center justify-center"
+            >
+              <Image
+                alt=""
+                className="size-full object-contain"
+                height={56}
+                loading="lazy"
+                sizes="56px"
+                src={badgeArtworkByCriterion[badge.criterion]}
+                width={56}
+              />
             </span>
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">

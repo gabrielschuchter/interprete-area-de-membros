@@ -51,6 +51,17 @@ sample as a pass.
   need explicit invalidation on publish, edit, and archive, plus a fresh access
   check before delivery.
 
+### Profile badge artwork
+
+The private and public profile routes reuse their existing member-scoped award
+query, capped at 100 rows. Its projection adds only the versioned criterion
+needed to select a local image; there is no per-award lookup or persistent
+personal-data cache. Each criterion maps to one of ten transparent 320 px WebP
+assets, totaling 271,496 bytes on disk. The 56 px `next/image` renders load
+lazily, so badge art stays outside navigation and initial JavaScript budgets.
+The award query stays fresh per authorized profile request; existing badge
+admin actions continue to revalidate profile paths when definitions change.
+
 ## Interaction and navigation
 
 Shared control and motion behavior is specified in
