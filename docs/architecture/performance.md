@@ -53,14 +53,16 @@ sample as a pass.
 
 ### Profile badge artwork
 
-The private and public profile routes reuse their existing member-scoped award
-query, capped at 100 rows. Its projection adds only the versioned criterion
-needed to select a local image; there is no per-award lookup or persistent
-personal-data cache. Each criterion maps to one of ten transparent 320 px WebP
-assets, totaling 271,496 bytes on disk. The 56 px `next/image` renders load
-lazily, so badge art stays outside navigation and initial JavaScript budgets.
-The award query stays fresh per authorized profile request; existing badge
-admin actions continue to revalidate profile paths when definitions change.
+The private and public profile routes query at most 100 member-scoped awards and
+200 published definitions in parallel with their existing page reads. The
+projections select only the card fields and award timestamp; awarded definition
+IDs split the published catalog into earned and available items, with no
+per-card lookup or persistent personal-data cache. Each criterion maps to one of
+ten transparent 320 px WebP assets, totaling 271,496 bytes on disk. The 56 px
+`next/image` renders load lazily, so badge art stays outside navigation and
+initial JavaScript budgets. Both queries stay fresh per profile request, and
+badge admin actions continue to revalidate profile paths when definitions
+change.
 
 ## Interaction and navigation
 

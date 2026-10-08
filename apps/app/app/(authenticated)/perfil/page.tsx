@@ -23,6 +23,7 @@ import { ProfileBadges } from "@/components/profile/profile-badges";
 import { getCurrentUser } from "@/lib/auth";
 import { getMemberRole } from "@/lib/authorization";
 import { getOrCreateProfile } from "@/lib/profile";
+import { splitProfileBadges } from "@/lib/profile-badge-catalog";
 import { respondToStudyGroupInvitation, updateProfile } from "./actions";
 
 const whitespacePattern = /\s+/;
@@ -81,6 +82,7 @@ const ProfilePage = async ({ searchParams }: ProfilePageProperties) => {
     topicCount,
     pendingInvitations,
     earnedBadges,
+    publishedBadgeDefinitions,
   ] = await Promise.all([
     getOrCreateProfile(memberId),
     getMemberRole(memberId),
@@ -128,11 +130,18 @@ const ProfilePage = async ({ searchParams }: ProfilePageProperties) => {
       take: 100,
       select: {
         id: true,
+        badgeId: true,
         awardedAt: true,
         definitionRevision: {
           select: { title: true, description: true, criterion: true },
         },
       },
+    }),
+    database.badgeDefinition.findMany({
+      where: { status: "PUBLISHED" },
+      orderBy: [{ criterion: "asc" }, { threshold: "asc" }],
+      take: 200,
+      select: { id: true, title: true, description: true, criterion: true },
     }),
   ]);
 
@@ -140,6 +149,10 @@ const ProfilePage = async ({ searchParams }: ProfilePageProperties) => {
     return null;
   }
 
+  const badgeCollections = splitProfileBadges(
+    earnedBadges,
+    publishedBadgeDefinitions
+  );
   const name = profile.displayName ?? "Estudante";
   const email = user.primaryEmailAddress?.emailAddress ?? "";
   const location = [profile.city, profile.state, profile.country]
@@ -260,13 +273,8 @@ const ProfilePage = async ({ searchParams }: ProfilePageProperties) => {
         </section>
 
         <ProfileBadges
-          badges={earnedBadges.map((award) => ({
-            id: award.id,
-            awardedAt: award.awardedAt,
-            criterion: award.definitionRevision.criterion,
-            title: award.definitionRevision.title,
-            description: award.definitionRevision.description,
-          }))}
+          availableBadges={badgeCollections.available}
+          earnedBadges={badgeCollections.earned}
         />
 
         <div className="mt-12 grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
