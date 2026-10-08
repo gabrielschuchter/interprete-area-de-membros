@@ -6,7 +6,7 @@ O Clerk identifica a sessão. `Member.id` continua sendo o Clerk user ID e `Memb
 
 O perfil é criado sob demanda no layout autenticado. O primeiro username é derivado de dados do Clerk, normalizado e tornado único. Depois disso, os campos editoriais do perfil não são sobrescritos pela sincronização automática.
 
-`/membros` é o diretório público autenticado da escola, com busca por nome, username, headline ou interesse. `/membros/[username]` é a página pública interna do membro e exibe apenas campos editoriais, papel e atividade publicada. O admin pode ajustar `Member.role` em `/admin/membros`; a tela não expõe essa informação como autorização implícita e a mutation exige `requireAdmin`.
+`/membros` é o diretório público autenticado da escola, com busca por nome, username, headline ou interesse. `Profile.showInDirectory` controla a presença nesse diretório e em resultados globais de pessoas; perfis existentes começam com `true` para preservar a visibilidade atual. `/membros/[username]` continua sendo a página pública interna do membro quando acessada pelo endereço, e exibe apenas campos editoriais, papel e atividade publicada. O admin pode ajustar `Member.role` em `/admin/membros`; a tela não expõe essa informação como autorização implícita e a mutation exige `requireAdmin`.
 
 ## Tópicos
 

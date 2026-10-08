@@ -15,9 +15,13 @@ interface MemberHeaderProperties {
 export const MemberHeader = ({ memberId, section }: MemberHeaderProperties) => {
   const pathname = usePathname();
   const resolvedSection = section ?? memberSectionForPathname(pathname);
+  const isProfileSubpage =
+    pathname === "/perfil/editar" || pathname === "/perfil/conquistas";
 
   return (
-    <header className="sticky top-0 z-20 flex min-h-16 shrink-0 items-center gap-3 border-border/80 border-b bg-background/95 px-4 backdrop-blur-sm md:px-8">
+    <header
+      className={`${isProfileSubpage ? "hidden md:flex" : "flex"} sticky top-0 z-20 min-h-16 shrink-0 items-center gap-3 border-border/80 border-b bg-background/95 px-4 backdrop-blur-sm md:px-8`}
+    >
       <SidebarTrigger className="-ml-2" />
       <Separator className="mr-1 h-4" orientation="vertical" />
       <BrandWordmark className="w-24 md:hidden" />

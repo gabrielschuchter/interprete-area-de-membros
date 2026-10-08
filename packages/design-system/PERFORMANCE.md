@@ -19,6 +19,10 @@ on a server request.
   reserved for reversible local changes and include authoritative
   reconciliation, rollback, idempotency, and protection from out-of-order
   responses.
+- The profile editor validates on the server, keeps entered values after a
+  validation response, and returns to the overview only after the profile
+  transaction commits. Avatar upload has an independent pending state and
+  blocks saving while the image is still transferring.
 - A loading placeholder matches the final content's dimensions and is marked
   busy at the containing region. Replace it as soon as data is ready; do not
   hold ready content for an animation or minimum spinner duration.
@@ -26,6 +30,15 @@ on a server request.
   card lists disable viewport prefetch. Only destinations reached by pointer or
   keyboard intent may prefetch, through the shared per-route request budget and
   network-preference checks.
+
+## Profile badge artwork
+
+- Show the local criterion artwork in a reserved 56 px box with `next/image`,
+  `sizes="56px"`, and lazy loading. The adjacent medal title makes the image
+  decorative, so its alt text stays empty.
+- Use the bounded set of ten transparent 320 px WebP files (271,496 bytes
+  total) rather than a request per award. Keep the criterion-to-image mapping
+  local so repeated awards share browser and optimizer cache entries.
 
 ## Motion
 

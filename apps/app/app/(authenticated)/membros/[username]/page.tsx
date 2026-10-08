@@ -20,6 +20,7 @@ import { communityPostHref } from "@/lib/community";
 import { communityPostAudienceWhere } from "@/lib/community-space-rules";
 import { requireMemberId } from "@/lib/learning";
 import { getPublicProfile } from "@/lib/profile";
+import { splitProfileBadges } from "@/lib/profile-badge-catalog";
 
 interface PublicProfilePageProperties {
   readonly params: Promise<{ username: string }>;
@@ -67,23 +68,37 @@ const PublicProfilePage = async ({ params }: PublicProfilePageProperties) => {
   }
 
   const viewerId = await requireMemberId();
-  const [role, viewerRole, earnedBadges] = await Promise.all([
-    getMemberRole(profile.clerkUserId),
-    getMemberRole(viewerId),
-    database.badgeAward.findMany({
-      where: {
-        memberId: profile.clerkUserId,
-        badge: { is: { status: { in: ["PUBLISHED", "ARCHIVED"] } } },
-      },
-      orderBy: { awardedAt: "desc" },
-      take: 100,
-      select: {
-        id: true,
-        awardedAt: true,
-        definitionRevision: { select: { title: true, description: true } },
-      },
-    }),
-  ]);
+  const [role, viewerRole, earnedBadges, publishedBadgeDefinitions] =
+    await Promise.all([
+      getMemberRole(profile.clerkUserId),
+      getMemberRole(viewerId),
+      database.badgeAward.findMany({
+        where: {
+          memberId: profile.clerkUserId,
+          badge: { is: { status: { in: ["PUBLISHED", "ARCHIVED"] } } },
+        },
+        orderBy: { awardedAt: "desc" },
+        take: 100,
+        select: {
+          id: true,
+          badgeId: true,
+          awardedAt: true,
+          definitionRevision: {
+            select: { title: true, description: true, criterion: true },
+          },
+        },
+      }),
+      database.badgeDefinition.findMany({
+        where: { status: "PUBLISHED" },
+        orderBy: [{ criterion: "asc" }, { threshold: "asc" }],
+        take: 200,
+        select: { id: true, title: true, description: true, criterion: true },
+      }),
+    ]);
+  const badgeCollections = splitProfileBadges(
+    earnedBadges,
+    publishedBadgeDefinitions
+  );
   const topics = await database.communityPost.findMany({
     where: {
       authorId: profile.clerkUserId,
@@ -200,12 +215,8 @@ const PublicProfilePage = async ({ params }: PublicProfilePageProperties) => {
         </section>
 
         <ProfileBadges
-          badges={earnedBadges.map((award) => ({
-            id: award.id,
-            awardedAt: award.awardedAt,
-            title: award.definitionRevision.title,
-            description: award.definitionRevision.description,
-          }))}
+          availableBadges={badgeCollections.available}
+          earnedBadges={badgeCollections.earned}
         />
 
         <section aria-labelledby="member-topics" className="mt-12">

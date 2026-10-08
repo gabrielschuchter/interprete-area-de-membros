@@ -70,8 +70,8 @@ const profileSchema = z.object({
   username: z.string().trim().toLowerCase().max(30),
   avatarUrl: optionalAvatar,
   displayName: optionalText(80),
-  headline: optionalText(120),
-  bio: optionalText(1200),
+  headline: optionalText(60),
+  bio: optionalText(280),
   occupation: optionalText(120),
   institution: optionalText(160),
   city: optionalText(80),
@@ -81,14 +81,24 @@ const profileSchema = z.object({
   instagram: optionalUrl(300),
   linkedin: optionalUrl(300),
   interests: z.string().trim().max(500),
+  showInDirectory: z.boolean(),
 });
+
+export interface ProfileUpdateState {
+  readonly fieldErrors?: Partial<Record<string, string>>;
+  readonly message?: string;
+  readonly status: "idle" | "error" | "success";
+}
 
 const value = (formData: FormData, name: string) => {
   const entry = formData.get(name);
   return typeof entry === "string" ? entry : "";
 };
 
-export const updateProfile = async (formData: FormData) => {
+export const updateProfile = async (
+  _previousState: ProfileUpdateState,
+  formData: FormData
+): Promise<ProfileUpdateState> => {
   const { userId } = await auth();
 
   if (!userId) {
@@ -115,10 +125,24 @@ export const updateProfile = async (formData: FormData) => {
     instagram: value(formData, "instagram"),
     linkedin: value(formData, "linkedin"),
     interests: value(formData, "interests"),
+    showInDirectory: value(formData, "showInDirectory") === "true",
   });
 
   if (!(parsed.success && isValidUsername(parsed.data.username))) {
-    redirect("/perfil?error=username");
+    return {
+      fieldErrors: parsed.success
+        ? { username: "Use de 3 a 30 caracteres: letras, números e hífens." }
+        : Object.fromEntries(
+            Object.entries(parsed.error.flatten().fieldErrors).map(
+              ([field, messages]) => [
+                field,
+                messages?.[0] ?? "Confira este campo.",
+              ]
+            )
+          ),
+      message: "Revise os campos destacados.",
+      status: "error",
+    };
   }
 
   const existing = await getOrCreateProfile(userId);
@@ -129,7 +153,11 @@ export const updateProfile = async (formData: FormData) => {
 
   const nextAvatarPath = memberAssetPathFromUrl(parsed.data.avatarUrl);
   if (nextAvatarPath && !isOwnedMemberAssetPath(nextAvatarPath, userId)) {
-    redirect("/perfil?error=avatar");
+    return {
+      fieldErrors: { avatarUrl: "A foto enviada não pertence a este perfil." },
+      message: "Escolha outra foto para continuar.",
+      status: "error",
+    };
   }
 
   const interests = parsed.data.interests
@@ -144,6 +172,7 @@ export const updateProfile = async (formData: FormData) => {
         where: { clerkUserId: userId },
         data: {
           username: parsed.data.username,
+          showInDirectory: parsed.data.showInDirectory,
           avatarUrl: parsed.data.avatarUrl,
           displayName: parsed.data.displayName,
           headline: parsed.data.headline,
@@ -164,16 +193,36 @@ export const updateProfile = async (formData: FormData) => {
         data: { avatarUrl: parsed.data.avatarUrl },
       }),
     ]);
-
-    const previousAvatarPath = memberAssetPathFromUrl(existing.avatarUrl);
-    if (previousAvatarPath && previousAvatarPath !== nextAvatarPath) {
-      await deleteMemberAsset(previousAvatarPath);
+  } catch (error) {
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      error.code === "P2002"
+    ) {
+      return {
+        fieldErrors: { username: "Este username já está em uso." },
+        message: "Escolha outro endereço para seu perfil.",
+        status: "error",
+      };
     }
-  } catch {
-    redirect("/perfil?error=username");
+    throw error;
   }
 
-  redirect("/perfil?saved=1");
+  const previousAvatarPath = memberAssetPathFromUrl(existing.avatarUrl);
+  if (previousAvatarPath && previousAvatarPath !== nextAvatarPath) {
+    try {
+      await deleteMemberAsset(previousAvatarPath);
+    } catch {
+      // A cleanup error must not report a failed profile save after commit.
+    }
+  }
+
+  revalidatePath("/perfil");
+  revalidatePath("/membros");
+  revalidatePath(`/membros/${existing.username}`);
+  revalidatePath(`/membros/${parsed.data.username}`);
+  return { message: "Perfil atualizado.", status: "success" };
 };
 
 export const respondToStudyGroupInvitation = async (formData: FormData) => {
