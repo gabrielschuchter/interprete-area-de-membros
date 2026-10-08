@@ -8,8 +8,8 @@ import {
   type LucideIcon,
   UsersIcon,
 } from "lucide-react";
-import Link from "next/link";
 import { Suspense } from "react";
+import { IntentLink } from "@/app/(authenticated)/components/intent-link";
 import { Stagger } from "@/components/motion/motion";
 import { getAdminOverview } from "@/lib/admin-overview";
 import { communityPostHref } from "@/lib/community";
@@ -99,13 +99,13 @@ const AdminOverviewContent = async () => {
                 ? "Nenhuma entrega pendente."
                 : `${overview.counts.pendingFeedback} entrega${overview.counts.pendingFeedback === 1 ? "" : "s"} para ler.`}
             </h3>
-            <Link
+            <IntentLink
               className="mt-5 inline-flex items-center gap-2 text-primary text-sm underline underline-offset-4"
               href="/admin/activities"
             >
               Abrir atividades
               <ArrowRightIcon aria-hidden="true" className="size-4" />
-            </Link>
+            </IntentLink>
           </article>
           <article className="motion-card paper-surface border p-5">
             <p className="brand-eyebrow">Próximo encontro</p>
@@ -117,13 +117,13 @@ const AdminOverviewContent = async () => {
                 {formatDate(nextMeeting.startsAt, nextMeeting.timezone)}
               </p>
             )}
-            <Link
+            <IntentLink
               className="mt-5 inline-flex items-center gap-2 text-primary text-sm underline underline-offset-4"
               href="/admin/meetings"
             >
               Abrir agenda
               <ArrowRightIcon aria-hidden="true" className="size-4" />
-            </Link>
+            </IntentLink>
           </article>
           <article className="motion-card paper-surface border p-5">
             <p className="brand-eyebrow">Conteúdo</p>
@@ -132,13 +132,13 @@ const AdminOverviewContent = async () => {
                 ? "Nenhum rascunho pendente."
                 : `${overview.counts.drafts} item${overview.counts.drafts === 1 ? "" : "s"} em rascunho.`}
             </h3>
-            <Link
+            <IntentLink
               className="mt-5 inline-flex items-center gap-2 text-primary text-sm underline underline-offset-4"
               href="/admin/learning"
             >
               Organizar conteúdo
               <ArrowRightIcon aria-hidden="true" className="size-4" />
-            </Link>
+            </IntentLink>
           </article>
           <article className="motion-card paper-surface border p-5">
             <p className="brand-eyebrow">Prazo</p>
@@ -147,13 +147,13 @@ const AdminOverviewContent = async () => {
                 ? "Nenhuma entrega atrasada."
                 : `${overview.counts.overdue} entrega${overview.counts.overdue === 1 ? "" : "s"} atrasada${overview.counts.overdue === 1 ? "" : "s"}.`}
             </h3>
-            <Link
+            <IntentLink
               className="mt-5 inline-flex items-center gap-2 text-primary text-sm underline underline-offset-4"
               href="/admin/activities"
             >
               Ver pendências
               <ArrowRightIcon aria-hidden="true" className="size-4" />
-            </Link>
+            </IntentLink>
           </article>
         </Stagger>
       </section>
@@ -164,12 +164,12 @@ const AdminOverviewContent = async () => {
             <h2 className="font-display text-3xl" id="meetings-heading">
               Próximos encontros
             </h2>
-            <Link
+            <IntentLink
               className="text-muted-foreground text-sm underline underline-offset-4"
               href="/admin/meetings"
             >
               Ver todos
-            </Link>
+            </IntentLink>
           </div>
           <div className="mt-5 divide-y border-border border-y">
             {overview.upcomingMeetings.length === 0 ? (
@@ -197,7 +197,9 @@ const AdminOverviewContent = async () => {
                     </p>
                   </div>
                   <Button asChild size="sm" variant="outline">
-                    <Link href={`/encontros/${meeting.id}`}>Abrir</Link>
+                    <IntentLink href={`/encontros/${meeting.id}`}>
+                      Abrir
+                    </IntentLink>
                   </Button>
                 </article>
               ))
@@ -216,7 +218,7 @@ const AdminOverviewContent = async () => {
               <p className="py-5 text-muted-foreground">Tudo em dia.</p>
             ) : (
               overview.pendingFeedback.slice(0, 4).map((submission) => (
-                <Link
+                <IntentLink
                   className="block py-5 transition-colors hover:text-brand-structural"
                   href={`/admin/activities#${submission.id}`}
                   key={submission.id}
@@ -231,7 +233,7 @@ const AdminOverviewContent = async () => {
                     Enviado em{" "}
                     {formatDate(submission.submittedAt ?? submission.updatedAt)}
                   </p>
-                </Link>
+                </IntentLink>
               ))
             )}
           </div>
@@ -244,12 +246,12 @@ const AdminOverviewContent = async () => {
             <h2 className="font-display text-3xl" id="content-heading">
               Conteúdo recente
             </h2>
-            <Link
+            <IntentLink
               className="text-muted-foreground text-sm underline underline-offset-4"
               href="/admin/learning"
             >
               Gerenciar
-            </Link>
+            </IntentLink>
           </div>
           <div className="mt-5 divide-y border-border border-y">
             {overview.recentLessons.length === 0 ? (
@@ -286,12 +288,12 @@ const AdminOverviewContent = async () => {
             <h2 className="font-display text-3xl" id="community-heading">
               Comunidade recente
             </h2>
-            <Link
+            <IntentLink
               className="text-muted-foreground text-sm underline underline-offset-4"
               href="/admin/community"
             >
               Moderar
-            </Link>
+            </IntentLink>
           </div>
           <div className="mt-5 divide-y border-border border-y">
             {overview.recentPosts.length === 0 ? (
@@ -300,7 +302,7 @@ const AdminOverviewContent = async () => {
               </p>
             ) : (
               overview.recentPosts.map((post) => (
-                <Link
+                <IntentLink
                   className="block py-4 transition-colors hover:text-brand-structural"
                   href={communityPostHref(post)}
                   key={post.id}
@@ -315,7 +317,7 @@ const AdminOverviewContent = async () => {
                       "Membro"}{" "}
                     · {formatDate(post.publishedAt ?? post.updatedAt)}
                   </p>
-                </Link>
+                </IntentLink>
               ))
             )}
           </div>

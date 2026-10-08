@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { existsSync } from "node:fs";
 import path from "node:path";
 import test from "node:test";
 
@@ -16,14 +17,22 @@ const RETIRED_HARNESSES = [
       /Retired: this verifier writes study intervals to Production GREEN using a Clerk Development identity/,
   },
 ];
-test("retired GREEN QA harnesses exit before loading database or browser clients", () => {
+const EXISTING_RETIRED_HARNESSES = RETIRED_HARNESSES.filter(({ file }) =>
+  existsSync(path.join(root, file))
+);
+test("retired GREEN QA harnesses exit before loading database or browser clients", {
+  skip:
+    EXISTING_RETIRED_HARNESSES.length === 0
+      ? "Retired worktree-local QA scripts are not part of this checkout."
+      : false,
+}, () => {
   const environment = Object.fromEntries(
     ["PATH", "SystemRoot", "WINDIR", "TEMP", "TMP", "TMPDIR"]
       .map((name) => [name, process.env[name]])
       .filter(([, value]) => typeof value === "string")
   );
 
-  for (const { file, expectedMessage } of RETIRED_HARNESSES) {
+  for (const { file, expectedMessage } of EXISTING_RETIRED_HARNESSES) {
     const result = spawnSync(process.execPath, [path.join(root, file)], {
       cwd: root,
       encoding: "utf8",

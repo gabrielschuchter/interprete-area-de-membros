@@ -9,7 +9,6 @@ import {
   LinkIcon,
   SearchIcon,
 } from "lucide-react";
-import Link from "next/link";
 import { Suspense } from "react";
 import { IntentLink } from "@/app/(authenticated)/components/intent-link";
 import { Stagger } from "@/components/motion/motion";
@@ -160,7 +159,7 @@ const LibraryItemsSection = async ({
             completo.
           </p>
           <Button asChild className="mt-5" variant="outline">
-            <Link href="/biblioteca">Limpar busca</Link>
+            <IntentLink href="/biblioteca">Limpar busca</IntentLink>
           </Button>
         </div>
       ) : (
@@ -282,14 +281,14 @@ const LibraryItemsSection = async ({
         >
           {page > 1 ? (
             <Button asChild variant="outline">
-              <Link href={pageHref(page - 1)}>Página anterior</Link>
+              <IntentLink href={pageHref(page - 1)}>Página anterior</IntentLink>
             </Button>
           ) : (
             <span />
           )}
           {hasMore && (
             <Button asChild variant="outline">
-              <Link href={pageHref(page + 1)}>Próxima página</Link>
+              <IntentLink href={pageHref(page + 1)}>Próxima página</IntentLink>
             </Button>
           )}
         </nav>
@@ -375,7 +374,9 @@ const LibraryPage = async ({ searchParams }: LibraryPageProperties) => {
         </header>
         <div className="mt-7">
           <Button asChild variant="outline">
-            <Link href="/biblioteca/pessoal">Minha biblioteca pessoal</Link>
+            <IntentLink href="/biblioteca/pessoal">
+              Minha biblioteca pessoal
+            </IntentLink>
           </Button>
         </div>
         <FilterForm
