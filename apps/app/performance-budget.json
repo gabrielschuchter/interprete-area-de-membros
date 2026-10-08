@@ -31,6 +31,24 @@
       "manifestSegments": ["(authenticated)", "exercicios"],
       "entrySuffix": "apps/app/app/(authenticated)/exercicios/page",
       "maxGzipBytes": 230400
+    },
+    {
+      "route": "profile-overview",
+      "manifestSegments": ["(authenticated)", "perfil"],
+      "entrySuffix": "apps/app/app/(authenticated)/perfil/page",
+      "maxGzipBytes": 230400
+    },
+    {
+      "route": "profile-achievements",
+      "manifestSegments": ["(authenticated)", "perfil", "conquistas"],
+      "entrySuffix": "apps/app/app/(authenticated)/perfil/conquistas/page",
+      "maxGzipBytes": 230400
+    },
+    {
+      "route": "profile-edit",
+      "manifestSegments": ["(authenticated)", "perfil", "editar"],
+      "entrySuffix": "apps/app/app/(authenticated)/perfil/editar/page",
+      "maxGzipBytes": 230400
     }
   ]
 }

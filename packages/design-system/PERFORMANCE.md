@@ -19,6 +19,10 @@ on a server request.
   reserved for reversible local changes and include authoritative
   reconciliation, rollback, idempotency, and protection from out-of-order
   responses.
+- The profile editor validates on the server, keeps entered values after a
+  validation response, and returns to the overview only after the profile
+  transaction commits. Avatar upload has an independent pending state and
+  blocks saving while the image is still transferring.
 - A loading placeholder matches the final content's dimensions and is marked
   busy at the containing region. Replace it as soon as data is ready; do not
   hold ready content for an animation or minimum spinner duration.

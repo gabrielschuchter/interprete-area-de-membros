@@ -125,7 +125,7 @@ export const AvatarUploader = ({
       </div>
       <div className="min-w-52 space-y-2">
         <input name="avatarUrl" type="hidden" value={url} />
-        <label className="inline-flex cursor-pointer items-center gap-2 text-sm underline underline-offset-4">
+        <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 text-sm underline underline-offset-4 focus-within:rounded-sm focus-within:ring-2 focus-within:ring-brand-action">
           <ImagePlusIcon aria-hidden="true" className="size-4" />
           {isUploading ? "Enviando…" : "Escolher foto"}
           <input
@@ -144,7 +144,7 @@ export const AvatarUploader = ({
         </label>
         {url || previewUrl ? (
           <button
-            className="flex items-center gap-1 text-muted-foreground text-xs underline underline-offset-4"
+            className="flex min-h-11 items-center gap-1 text-muted-foreground text-xs underline underline-offset-4"
             onClick={() => {
               const currentUrl = uploadedUrlRef.current ?? url;
               removeTemporaryUpload(currentUrl).catch(() => undefined);

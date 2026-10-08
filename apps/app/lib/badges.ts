@@ -316,6 +316,28 @@ const readBadgeMetric = async (
   }
 };
 
+export const getMemberBadgeProgress = (
+  memberId: string,
+  criteria: readonly BadgeCriterion[],
+  now = new Date()
+) => {
+  const distinctCriteria = [...new Set(criteria)];
+  return database.$transaction(async (transaction) => {
+    const entries = await Promise.all(
+      distinctCriteria.map(
+        async (criterion) =>
+          [
+            criterion,
+            await readBadgeMetric(transaction, memberId, criterion, now),
+          ] as const
+      )
+    );
+    return Object.fromEntries(entries) as Partial<
+      Record<BadgeCriterion, number>
+    >;
+  });
+};
+
 export const evaluateMemberBadges = async (
   transaction: PrismaTypes.TransactionClient,
   memberId: string,

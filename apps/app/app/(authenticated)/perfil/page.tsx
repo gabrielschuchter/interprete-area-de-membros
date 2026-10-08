@@ -1,101 +1,42 @@
 import { database } from "@repo/database";
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@repo/design-system/components/ui/avatar";
 import { Button } from "@repo/design-system/components/ui/button";
-import { Input } from "@repo/design-system/components/ui/input";
-import { Textarea } from "@repo/design-system/components/ui/textarea";
-import {
-  CheckCircle2Icon,
-  ExternalLinkIcon,
-  MailIcon,
-  XIcon,
-} from "lucide-react";
-import Link from "next/link";
+import { BadgeCheckIcon, ChevronRightIcon, XIcon } from "lucide-react";
+import Image from "next/image";
 import {
   SingleFlightForm,
   SingleFlightSubmit,
 } from "@/components/mutations/single-flight-form";
-import { AvatarUploader } from "@/components/profile/avatar-uploader";
-import { ProfileBadges } from "@/components/profile/profile-badges";
-import { getCurrentUser } from "@/lib/auth";
-import { getMemberRole } from "@/lib/authorization";
-import { getOrCreateProfile } from "@/lib/profile";
+import { getAuth } from "@/lib/auth";
+import { badgeArtworkByCriterion } from "@/lib/badge-artwork";
+import { getOrCreateProfile, getProfileSummaryStats } from "@/lib/profile";
 import { splitProfileBadges } from "@/lib/profile-badge-catalog";
-import { respondToStudyGroupInvitation, updateProfile } from "./actions";
-
-const whitespacePattern = /\s+/;
-
-const roleLabel = (role: string) => {
-  if (role === "TEACHER") {
-    return "Professor";
-  }
-  if (role === "ADMIN") {
-    return "Admin";
-  }
-  return "Membro";
-};
-
-const contextLabels = {
-  occupation: "Profissão",
-  institution: "Instituição",
-  city: "Cidade",
-  state: "Estado",
-  country: "País",
-} as const;
-
-const linkLabels = {
-  website: "Site",
-  instagram: "Instagram",
-  linkedin: "LinkedIn",
-} as const;
-
-const initials = (value: string) =>
-  value
-    .split(whitespacePattern)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0])
-    .join("")
-    .toUpperCase() || "M";
+import { profileCompletionItems } from "@/lib/profile-completion";
+import { IntentLink as Link } from "../components/intent-link";
+import { respondToStudyGroupInvitation } from "./actions";
+import { ProfileLinkButton } from "./profile-link-button";
 
 interface ProfilePageProperties {
-  readonly searchParams: Promise<{ error?: string; saved?: string }>;
+  readonly searchParams: Promise<{ saved?: string }>;
 }
 
 const ProfilePage = async ({ searchParams }: ProfilePageProperties) => {
-  const filters = await searchParams;
-  const user = await getCurrentUser();
-  const memberId = user?.id;
-
-  if (!memberId) {
+  const [{ userId }, filters] = await Promise.all([getAuth(), searchParams]);
+  if (!userId) {
     return null;
   }
 
   const [
     profile,
-    role,
-    completedLessons,
-    enrollments,
-    topicCount,
+    stats,
     pendingInvitations,
     earnedBadges,
     publishedBadgeDefinitions,
   ] = await Promise.all([
-    getOrCreateProfile(memberId),
-    getMemberRole(memberId),
-    database.lessonProgress.count({
-      where: { memberId, status: "COMPLETED" },
-    }),
-    database.enrollment.count({ where: { memberId } }),
-    database.communityPost.count({
-      where: { authorId: memberId, deletedAt: null },
-    }),
+    getOrCreateProfile(userId),
+    getProfileSummaryStats(userId),
     database.communitySpaceInvitation.findMany({
       where: {
-        inviteeId: memberId,
+        inviteeId: userId,
         status: "PENDING",
         space: { is: { status: "PUBLISHED" } },
       },
@@ -103,27 +44,18 @@ const ProfilePage = async ({ searchParams }: ProfilePageProperties) => {
       take: 50,
       select: {
         id: true,
-        createdAt: true,
-        message: true,
         inviter: {
           select: {
             displayName: true,
             profile: { select: { displayName: true, username: true } },
           },
         },
-        space: {
-          select: {
-            title: true,
-            slug: true,
-            description: true,
-            visibility: true,
-          },
-        },
+        space: { select: { title: true, slug: true, description: true } },
       },
     }),
     database.badgeAward.findMany({
       where: {
-        memberId,
+        memberId: userId,
         badge: { is: { status: { in: ["PUBLISHED", "ARCHIVED"] } } },
       },
       orderBy: { awardedAt: "desc" },
@@ -149,345 +81,298 @@ const ProfilePage = async ({ searchParams }: ProfilePageProperties) => {
     return null;
   }
 
+  const completion = profileCompletionItems(profile);
+  const missing = completion.items.filter(({ complete }) => !complete);
   const badgeCollections = splitProfileBadges(
     earnedBadges,
     publishedBadgeDefinitions
   );
-  const name = profile.displayName ?? "Estudante";
-  const email = user.primaryEmailAddress?.emailAddress ?? "";
-  const location = [profile.city, profile.state, profile.country]
-    .filter(Boolean)
-    .join(", ");
+  const earnedBadgesForStrip = badgeCollections.earned.slice(0, 10);
 
   return (
-    <div className="min-h-svh bg-background">
-      <main className="mx-auto w-full max-w-[1120px] px-5 py-10 sm:px-8 lg:px-12 lg:py-16">
-        <header className="max-w-3xl">
-          <p className="brand-eyebrow">Caderno do estudante · identidade</p>
-          <span aria-hidden="true" className="brand-rule mt-4" />
-          <h1 className="mt-6 font-display text-5xl leading-none sm:text-6xl">
-            Seu lugar no percurso.
-          </h1>
-          <p className="mt-5 max-w-2xl text-muted-foreground leading-7">
-            Um perfil simples para que suas perguntas e contribuições tenham
-            rosto, contexto e continuidade dentro da comunidade.
-          </p>
-        </header>
-
-        {filters.saved === "1" && (
-          <p className="mt-6 border-brand-action border-l-2 bg-brand-action/10 px-4 py-3 text-sm">
-            Perfil atualizado.
-          </p>
-        )}
-        {filters.error === "username" && (
-          <p className="mt-6 border-destructive border-l-2 bg-destructive/10 px-4 py-3 text-sm">
-            Escolha um username único com 3 a 30 caracteres. Use apenas letras,
-            números e hífens.
-          </p>
-        )}
-        {filters.error === "avatar" && (
-          <p className="mt-6 border-destructive border-l-2 bg-destructive/10 px-4 py-3 text-sm">
-            A foto enviada não pertence a este perfil.
-          </p>
-        )}
-
-        <section
-          aria-labelledby="pending-group-invitations-heading"
-          className="paper-surface mt-8 border p-5 sm:p-7"
-          id="convites"
+    <div className="space-y-8">
+      {filters.saved === "1" ? (
+        <p
+          aria-live="polite"
+          className="border-brand-action border-l-2 bg-brand-action/10 px-4 py-3 text-sm"
         >
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <p className="brand-eyebrow">Sua comunidade</p>
-              <h2
-                className="mt-2 font-display text-3xl"
-                id="pending-group-invitations-heading"
-              >
-                Convites pendentes
-              </h2>
-            </div>
-            <span className="font-data text-muted-foreground text-sm">
-              {pendingInvitations.length}
-            </span>
+          Perfil atualizado.
+        </p>
+      ) : null}
+
+      <section aria-labelledby="profile-completion-heading">
+        <div className="flex items-end justify-between gap-4">
+          <div>
+            <p className="brand-eyebrow">Seu perfil</p>
+            <h2
+              className="mt-1 font-display text-3xl"
+              id="profile-completion-heading"
+            >
+              Complete seu perfil
+            </h2>
           </div>
-          {pendingInvitations.length === 0 ? (
-            <p className="mt-4 text-muted-foreground text-sm leading-6">
-              Quando alguém convidar você para um grupo de estudo, o convite
-              aparecerá aqui.
-            </p>
-          ) : (
-            <ul className="mt-5 divide-y border-y">
-              {pendingInvitations.map((invitation) => (
-                <li
-                  className="flex flex-col gap-4 py-5 sm:flex-row sm:items-center sm:justify-between"
-                  key={invitation.id}
-                >
-                  <div className="min-w-0">
-                    <Link
-                      className="font-display text-2xl hover:underline"
-                      href={`/comunidade/${invitation.space.slug}`}
-                    >
-                      {invitation.space.title}
-                    </Link>
-                    {invitation.space.description ? (
-                      <p className="mt-1 max-w-2xl text-muted-foreground text-sm leading-6">
-                        {invitation.space.description}
-                      </p>
-                    ) : null}
-                    <p className="mt-2 text-muted-foreground text-xs">
-                      Convite de{" "}
-                      {invitation.inviter?.profile?.displayName ??
-                        invitation.inviter?.displayName ??
-                        invitation.inviter?.profile?.username ??
-                        "membro"}
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 flex-wrap gap-2">
-                    <SingleFlightForm action={respondToStudyGroupInvitation}>
-                      <input
-                        name="invitationId"
-                        type="hidden"
-                        value={invitation.id}
-                      />
-                      <input name="response" type="hidden" value="ACCEPTED" />
-                      <SingleFlightSubmit size="sm">
-                        Aceitar convite
-                      </SingleFlightSubmit>
-                    </SingleFlightForm>
-                    <SingleFlightForm action={respondToStudyGroupInvitation}>
-                      <input
-                        name="invitationId"
-                        type="hidden"
-                        value={invitation.id}
-                      />
-                      <input name="response" type="hidden" value="DECLINED" />
-                      <SingleFlightSubmit size="sm" variant="outline">
-                        <XIcon aria-hidden="true" /> Recusar
-                      </SingleFlightSubmit>
-                    </SingleFlightForm>
-                  </div>
+          <p className="shrink-0 font-data text-muted-foreground text-sm">
+            {completion.completedCount} <span aria-hidden="true">/</span>{" "}
+            {completion.total}
+            <span className="sr-only">
+              {" "}
+              itens completos de {completion.total}
+            </span>
+          </p>
+        </div>
+        <div
+          aria-label={`Perfil ${completion.percentage}% completo`}
+          aria-valuemax={100}
+          aria-valuemin={0}
+          aria-valuenow={completion.percentage}
+          className="mt-4 h-2 w-full bg-brand-pink-essence"
+          role="progressbar"
+        >
+          <span
+            className="block h-full bg-brand-dark-amaranth transition-[width] duration-200"
+            style={{ width: `${completion.percentage}%` }}
+          />
+        </div>
+        {missing.length > 0 ? (
+          <p className="mt-3 text-muted-foreground text-sm">
+            Faltam {missing.length} {missing.length === 1 ? "passo" : "passos"}{" "}
+            para deixar seu perfil completo.
+          </p>
+        ) : (
+          <p className="mt-3 text-muted-foreground text-sm">
+            Seu perfil está completo.
+          </p>
+        )}
+
+        <ul className="mt-5 hidden grid-cols-2 gap-x-8 md:grid">
+          {completion.items.map((item) => (
+            <li className="border-border border-b" key={item.field}>
+              <Link
+                className="flex min-h-[60px] items-center justify-between gap-3 text-sm hover:text-brand-dark-amaranth"
+                href={`/perfil/editar#profile-${item.field}`}
+              >
+                <span>{item.label}</span>
+                {item.complete ? (
+                  <BadgeCheckIcon
+                    aria-label="Completo"
+                    className="size-4 shrink-0 text-brand-dark-amaranth"
+                  />
+                ) : (
+                  <ChevronRightIcon
+                    aria-label="Adicionar"
+                    className="size-4 shrink-0 text-muted-foreground"
+                  />
+                )}
+              </Link>
+            </li>
+          ))}
+        </ul>
+
+        <div className="mt-5 md:hidden">
+          {missing.length > 0 ? (
+            <ul className="divide-y border-y">
+              {missing.map((item) => (
+                <li key={item.field}>
+                  <Link
+                    className="flex min-h-[60px] items-center justify-between gap-3 text-sm"
+                    href={`/perfil/editar#profile-${item.field}`}
+                  >
+                    {item.label}
+                    <ChevronRightIcon
+                      aria-hidden="true"
+                      className="size-4 text-muted-foreground"
+                    />
+                  </Link>
                 </li>
               ))}
             </ul>
+          ) : (
+            <p className="border-y py-4 text-sm">
+              Os oito itens do seu perfil estão completos.
+            </p>
           )}
-        </section>
-
-        <ProfileBadges
-          availableBadges={badgeCollections.available}
-          earnedBadges={badgeCollections.earned}
-        />
-
-        <div className="mt-12 grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
-          <section className="paper-surface border p-6 sm:p-10">
-            <div className="flex flex-wrap items-start justify-between gap-5">
-              <div className="flex min-w-0 items-center gap-4">
-                <Avatar className="size-16 shrink-0">
-                  {(profile.avatarUrl ?? user.imageUrl) ? (
-                    <AvatarImage
-                      alt=""
-                      src={profile.avatarUrl ?? user.imageUrl ?? undefined}
-                    />
-                  ) : null}
-                  <AvatarFallback className="bg-brand-structural text-primary-foreground">
-                    {initials(name)}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="min-w-0">
-                  <p className="brand-eyebrow">{roleLabel(role)}</p>
-                  <h2 className="mt-1 truncate font-display text-3xl">
-                    {name}
-                  </h2>
-                  <p className="mt-1 truncate text-muted-foreground text-sm">
-                    @{profile.username}
-                  </p>
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Button asChild size="sm" variant="outline">
-                  <Link href={`/membros/${profile.username}`}>
-                    Ver perfil público
-                  </Link>
-                </Button>
-                <Button asChild size="sm" variant="ghost">
-                  <Link href="/membros">Explorar membros</Link>
-                </Button>
-              </div>
-            </div>
-
-            <div className="mt-8 flex flex-wrap gap-x-5 gap-y-2 text-muted-foreground text-sm">
-              {profile.headline && <span>{profile.headline}</span>}
-              {location && <span>{location}</span>}
-              <span className="inline-flex items-center gap-1.5">
-                <MailIcon aria-hidden="true" className="size-3.5" /> {email}
-              </span>
-            </div>
-
-            <SingleFlightForm
-              action={updateProfile}
-              className="mt-10 space-y-7 border-border border-t pt-8"
-            >
-              <div>
-                <p className="brand-eyebrow">Como você aparece</p>
-                <div className="mt-4 grid gap-5 sm:grid-cols-2">
-                  <label className="block" htmlFor="profile-display-name">
-                    <span className="text-sm">Nome de exibição</span>
-                    <Input
-                      className="mt-2"
-                      defaultValue={profile.displayName ?? ""}
-                      id="profile-display-name"
-                      name="displayName"
-                    />
-                  </label>
-                  <label className="block" htmlFor="profile-username">
-                    <span className="text-sm">Username</span>
-                    <Input
-                      className="mt-2"
-                      defaultValue={profile.username}
-                      id="profile-username"
-                      name="username"
-                      required
-                    />
-                    <span className="mt-1 block text-muted-foreground text-xs">
-                      Seu endereço: /membros/{profile.username}
-                    </span>
-                  </label>
-                </div>
-                <div>
-                  <span className="text-sm">Foto de perfil</span>
-                  <AvatarUploader
-                    initials={initials(name)}
-                    initialUrl={profile.avatarUrl}
-                  />
-                </div>
-                <label className="mt-5 block" htmlFor="profile-headline">
-                  <span className="text-sm">Identificação curta</span>
-                  <Input
-                    className="mt-2"
-                    defaultValue={profile.headline ?? ""}
-                    id="profile-headline"
-                    name="headline"
-                    placeholder="Nutricionista · Interprete"
-                  />
-                </label>
-              </div>
-
-              <div>
-                <p className="brand-eyebrow">Seu contexto</p>
-                <div className="mt-4 grid gap-5 sm:grid-cols-2">
-                  {(
-                    [
-                      "occupation",
-                      "institution",
-                      "city",
-                      "state",
-                      "country",
-                    ] as const
-                  ).map((field) => (
-                    <label
-                      className="block"
-                      htmlFor={`profile-${field}`}
-                      key={field}
-                    >
-                      <span className="text-sm">{contextLabels[field]}</span>
-                      <Input
-                        className="mt-2"
-                        defaultValue={profile[field] ?? ""}
-                        id={`profile-${field}`}
-                        name={field}
-                      />
-                    </label>
-                  ))}
-                </div>
-                <label className="mt-5 block" htmlFor="profile-bio">
-                  <span className="text-sm">Bio</span>
-                  <Textarea
-                    className="mt-2 min-h-32"
-                    defaultValue={profile.bio ?? ""}
-                    id="profile-bio"
-                    name="bio"
-                    placeholder="O que você estuda, pratica ou quer investigar?"
-                  />
-                </label>
-                <label className="mt-5 block" htmlFor="profile-interests">
-                  <span className="text-sm">Interesses</span>
-                  <Input
-                    className="mt-2"
-                    defaultValue={profile.interests.join(", ")}
-                    id="profile-interests"
-                    name="interests"
-                    placeholder="PBE, epidemiologia, leitura crítica"
-                  />
-                </label>
-              </div>
-
-              <div>
-                <p className="brand-eyebrow">Links</p>
-                <div className="mt-4 grid gap-5 sm:grid-cols-3">
-                  {(["website", "instagram", "linkedin"] as const).map(
-                    (field) => (
-                      <label
-                        className="block"
-                        htmlFor={`profile-${field}`}
-                        key={field}
-                      >
-                        <span className="text-sm">{linkLabels[field]}</span>
-                        <Input
-                          className="mt-2"
-                          defaultValue={profile[field] ?? ""}
-                          id={`profile-${field}`}
-                          name={field}
-                          placeholder="https://"
-                        />
-                      </label>
-                    )
-                  )}
-                </div>
-              </div>
-
-              <div className="flex justify-end border-border border-t pt-6">
-                <SingleFlightSubmit pendingLabel="Salvando…">
-                  Salvar perfil
-                </SingleFlightSubmit>
-              </div>
-            </SingleFlightForm>
-          </section>
-
-          <aside className="grid h-fit gap-4 sm:grid-cols-3 lg:grid-cols-1">
-            <div className="paper-surface border p-6">
-              <CheckCircle2Icon
-                aria-hidden="true"
-                className="size-5 text-brand-action-text"
-              />
-              <p className="mt-5 font-data text-3xl text-brand-structural">
-                {completedLessons}
-              </p>
-              <p className="mt-2 text-muted-foreground text-sm">
-                aulas concluídas
-              </p>
-            </div>
-            <div className="paper-surface border p-6">
-              <p className="brand-eyebrow">Percurso</p>
-              <p className="mt-3 font-display text-2xl">{enrollments} cursos</p>
-              <p className="mt-2 text-muted-foreground text-sm leading-6">
-                Seu ponto de partida e o que já começou a ganhar forma.
-              </p>
-            </div>
-            <div className="paper-surface border p-6">
-              <p className="brand-eyebrow">Comunidade</p>
-              <p className="mt-3 font-display text-2xl">{topicCount} tópicos</p>
-              <p className="mt-2 text-muted-foreground text-sm leading-6">
-                {profile.headline ??
-                  "Compartilhe uma pergunta quando fizer sentido."}
-              </p>
-              <Button asChild className="mt-4" size="sm" variant="ghost">
-                <Link href="/comunidade/meus-topicos">
-                  Ver meus tópicos <ExternalLinkIcon aria-hidden="true" />
-                </Link>
-              </Button>
-            </div>
-          </aside>
         </div>
-      </main>
+      </section>
+
+      <section
+        aria-labelledby="overview-achievements-heading"
+        className="border-border border-y py-5"
+      >
+        <div className="flex items-end justify-between gap-4">
+          <div>
+            <p className="brand-eyebrow">Reconhecimento</p>
+            <h2
+              className="mt-1 font-display text-2xl"
+              id="overview-achievements-heading"
+            >
+              Conquistas
+            </h2>
+          </div>
+          <Button
+            asChild
+            className="-mr-3 shadow-none"
+            size="sm"
+            variant="ghost"
+          >
+            <Link href="/perfil/conquistas">
+              Ver todas <ChevronRightIcon aria-hidden="true" />
+            </Link>
+          </Button>
+        </div>
+        {earnedBadgesForStrip.length > 0 ? (
+          <ul
+            aria-label="Medalhas conquistadas"
+            className="mt-4 flex flex-wrap gap-3"
+          >
+            {earnedBadgesForStrip.map((badge) => (
+              <li key={badge.id} title={badge.title}>
+                <Image
+                  alt={badge.title}
+                  height={52}
+                  loading="lazy"
+                  src={badgeArtworkByCriterion[badge.criterion]}
+                  width={52}
+                />
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-3 text-muted-foreground text-sm">
+            As conquistas aparecem aqui conforme você avança no percurso.
+          </p>
+        )}
+      </section>
+
+      <section aria-labelledby="profile-community-heading">
+        <p className="brand-eyebrow">Comunidade</p>
+        <h2
+          className="mt-1 font-display text-2xl"
+          id="profile-community-heading"
+        >
+          Seu espaço por aqui
+        </h2>
+        <ul className="mt-3 divide-y border-y">
+          <li>
+            <Link
+              className="flex min-h-[60px] items-center justify-between gap-3 text-sm"
+              href="/comunidade/meus-topicos"
+            >
+              <span>Meus tópicos</span>
+              <span className="flex items-center gap-2 text-muted-foreground">
+                {stats.topicCount}
+                <ChevronRightIcon aria-hidden="true" className="size-4" />
+              </span>
+            </Link>
+          </li>
+          <li>
+            <details className="group">
+              <summary className="flex min-h-[60px] cursor-pointer list-none items-center justify-between gap-3 text-sm [&::-webkit-details-marker]:hidden">
+                <span>Convites para grupos</span>
+                <span className="flex items-center gap-2 text-muted-foreground">
+                  {pendingInvitations.length} pendentes
+                  <ChevronRightIcon
+                    aria-hidden="true"
+                    className="size-4 transition-transform group-open:rotate-90"
+                  />
+                </span>
+              </summary>
+              {pendingInvitations.length > 0 ? (
+                <ul className="divide-y border-t">
+                  {pendingInvitations.map((invitation) => (
+                    <li className="py-4" key={invitation.id}>
+                      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+                        <div className="min-w-0">
+                          <Link
+                            className="font-medium hover:underline"
+                            href={`/comunidade/${invitation.space.slug}`}
+                          >
+                            {invitation.space.title}
+                          </Link>
+                          <p className="mt-1 text-muted-foreground text-xs">
+                            Convite de{" "}
+                            {invitation.inviter?.profile?.displayName ??
+                              invitation.inviter?.displayName ??
+                              invitation.inviter?.profile?.username ??
+                              "membro"}
+                          </p>
+                          {invitation.space.description ? (
+                            <p className="mt-2 text-muted-foreground text-sm">
+                              {invitation.space.description}
+                            </p>
+                          ) : null}
+                        </div>
+                        <div className="flex shrink-0 gap-2">
+                          <SingleFlightForm
+                            action={respondToStudyGroupInvitation}
+                          >
+                            <input
+                              name="invitationId"
+                              type="hidden"
+                              value={invitation.id}
+                            />
+                            <input
+                              name="response"
+                              type="hidden"
+                              value="ACCEPTED"
+                            />
+                            <SingleFlightSubmit>Aceitar</SingleFlightSubmit>
+                          </SingleFlightForm>
+                          <SingleFlightForm
+                            action={respondToStudyGroupInvitation}
+                          >
+                            <input
+                              name="invitationId"
+                              type="hidden"
+                              value={invitation.id}
+                            />
+                            <input
+                              name="response"
+                              type="hidden"
+                              value="DECLINED"
+                            />
+                            <SingleFlightSubmit variant="outline">
+                              <XIcon aria-hidden="true" /> Recusar
+                            </SingleFlightSubmit>
+                          </SingleFlightForm>
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="border-t py-4 text-muted-foreground text-sm">
+                  Você não tem convites pendentes.
+                </p>
+              )}
+            </details>
+          </li>
+          <li>
+            <Link
+              className="flex min-h-[60px] items-center justify-between gap-3 text-sm"
+              href="/membros"
+            >
+              <span>Explorar membros</span>
+              <ChevronRightIcon
+                aria-hidden="true"
+                className="size-4 text-muted-foreground"
+              />
+            </Link>
+          </li>
+          <li className="flex min-h-[60px] items-center justify-between gap-3 text-sm">
+            <Link
+              className="flex min-h-[60px] flex-1 items-center justify-between"
+              href={`/membros/${profile.username}`}
+            >
+              <span>Perfil público</span>
+              <ChevronRightIcon
+                aria-hidden="true"
+                className="mr-2 size-4 text-muted-foreground"
+              />
+            </Link>
+            <ProfileLinkButton compact username={profile.username} />
+          </li>
+        </ul>
+      </section>
     </div>
   );
 };

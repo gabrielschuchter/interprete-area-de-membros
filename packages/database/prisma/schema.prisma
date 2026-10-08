@@ -372,25 +372,26 @@ model Member {
 }
 
 model Profile {
-  id          String   @id @default(cuid())
-  clerkUserId String   @unique
-  username    String   @unique
-  displayName String?
-  avatarUrl   String?
-  headline    String?
-  bio         String?  @db.Text
-  occupation  String?
-  institution String?
-  city        String?
-  state       String?
-  country     String?
-  website     String?
-  instagram   String?
-  linkedin    String?
-  interests   String[] @default([])
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  member      Member   @relation(fields: [clerkUserId], references: [id], onDelete: Cascade)
+  id              String   @id @default(cuid())
+  clerkUserId     String   @unique
+  username        String   @unique
+  showInDirectory Boolean  @default(true)
+  displayName     String?
+  avatarUrl       String?
+  headline        String?
+  bio             String?  @db.Text
+  occupation      String?
+  institution     String?
+  city            String?
+  state           String?
+  country         String?
+  website         String?
+  instagram       String?
+  linkedin        String?
+  interests       String[] @default([])
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  member          Member   @relation(fields: [clerkUserId], references: [id], onDelete: Cascade)
 
   @@index([displayName])
 }

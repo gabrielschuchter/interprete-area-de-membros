@@ -333,12 +333,24 @@ export const getPublicProfile = async (username: string) =>
     },
   });
 
+export const getProfileSummaryStats = cache(async (memberId: string) => {
+  const [completedLessons, enrollments, topicCount] = await Promise.all([
+    database.lessonProgress.count({ where: { memberId, status: "COMPLETED" } }),
+    database.enrollment.count({ where: { memberId } }),
+    database.communityPost.count({
+      where: { authorId: memberId, deletedAt: null },
+    }),
+  ]);
+  return { completedLessons, enrollments, topicCount };
+});
+
 export const getMemberDirectory = (query = "") => {
   const normalizedQuery = query.trim().slice(0, 80);
 
   return database.profile.findMany({
     where: normalizedQuery
       ? {
+          showInDirectory: true,
           OR: [
             {
               username: {
@@ -361,7 +373,7 @@ export const getMemberDirectory = (query = "") => {
             { interests: { has: normalizedQuery.toLowerCase() } },
           ],
         }
-      : undefined,
+      : { showInDirectory: true },
     orderBy: [{ displayName: "asc" }, { username: "asc" }],
     take: 48,
     select: {

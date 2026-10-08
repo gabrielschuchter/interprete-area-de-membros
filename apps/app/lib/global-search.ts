@@ -367,6 +367,7 @@ export const searchGlobal = async (memberId: string, rawQuery: string) => {
       tracePerformance("member.search.profiles", () =>
         database.profile.findMany({
           where: {
+            showInDirectory: true,
             OR: [
               { username: contains(query.toLowerCase()) },
               { displayName: contains(query) },

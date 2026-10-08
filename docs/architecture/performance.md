@@ -64,6 +64,33 @@ initial JavaScript budgets. Both queries stay fresh per profile request, and
 badge admin actions continue to revalidate profile paths when definitions
 change.
 
+### Profile overview and editing
+
+`/perfil` is split into the overview, achievements, and edit routes. The shared
+profile shell reads the authenticated `Member` snapshot and local `Profile`
+projection; the three header counts are request-cached by member and queried
+in parallel. Established members do not call Clerk Backend API on this path.
+The overview selects at most 50 pending invitations, 100 member-scoped awards,
+and 200 published badge definitions. The achievements route reads the same
+bounded catalog and award projection, then calculates real criterion progress
+for only the criteria represented in that catalog. No progress or awards are
+cached across requests.
+
+The edit action validates the profile on the server and commits the editorial
+profile plus member avatar projection in one Prisma transaction. Username
+uniqueness remains database-enforced. `showInDirectory` is a default-true
+profile preference filtered in SQL by the member directory, its search API,
+and global people results; direct profile URLs remain addressable. Inputs retain local values on a
+validation response, and success is reported only after the transaction
+commits. Profile links and the three profile tabs prefetch on deliberate
+pointer or keyboard intent. The overview links at most 50 invitations, each
+with one bounded page destination.
+
+The route target remains first visit p95 <= 1 s and small persisted mutations
+p95 <= 500 ms from the budgets above. These are targets; authenticated desktop
+and mobile production measurements are still required before claiming they
+pass. Avatar transfer is measured separately from the profile save.
+
 ## Interaction and navigation
 
 Shared control and motion behavior is specified in
