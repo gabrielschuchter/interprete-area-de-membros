@@ -52,6 +52,16 @@ const tabs = [
   { href: "/perfil/editar", label: "Editar perfil" },
 ] as const;
 
+const profileMainSpacing = (pathname: string) => {
+  if (pathname === "/perfil/editar") {
+    return "pt-2 md:pt-0";
+  }
+  if (pathname === "/perfil/conquistas") {
+    return "pt-6 md:pt-10";
+  }
+  return "pt-5 md:pt-10";
+};
+
 const ProfileShell = ({
   avatarUrl,
   children,
@@ -73,7 +83,7 @@ const ProfileShell = ({
   return (
     <div className="min-h-full bg-background">
       <div
-        className={`mx-auto w-full max-w-[760px] px-5 pb-16 sm:px-8 md:px-12 md:pt-[52px] ${isDetail ? "pt-0" : "pt-4"}`}
+        className={`mx-auto w-full max-w-[760px] px-5 sm:px-8 md:px-12 md:pt-12 md:pb-[120px] ${isDetail ? "pt-0" : "pt-6"} ${isEditing ? "pb-14" : "pb-12"}`}
       >
         {isDetail ? (
           <div className="profile-mobile-back md:hidden">
@@ -237,7 +247,7 @@ const ProfileShell = ({
                 <li key={tab.href}>
                   <IntentLink
                     aria-current={active ? "page" : undefined}
-                    className={`flex min-h-12 items-center border-b-2 px-1 text-sm transition-colors ${active ? "border-brand-structural font-medium text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+                    className={`flex min-h-12 items-center border-b-2 text-sm transition-colors ${active ? "border-brand-structural font-semibold text-brand-dark-amaranth" : "border-transparent font-medium text-muted-foreground hover:text-foreground"}`}
                     href={tab.href}
                   >
                     {tab.label}
@@ -248,9 +258,7 @@ const ProfileShell = ({
           </ul>
         </nav>
 
-        <main className={isDetail ? "pt-9 md:pt-10" : "pt-5 md:pt-10"}>
-          {children}
-        </main>
+        <main className={profileMainSpacing(pathname)}>{children}</main>
       </div>
     </div>
   );

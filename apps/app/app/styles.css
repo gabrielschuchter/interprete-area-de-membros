@@ -2342,22 +2342,20 @@
 
 @layer components {
   .profile-mobile-back {
-    position: sticky;
-    top: 0;
-    z-index: 50;
     display: flex;
-    gap: 8px;
+    gap: 4px;
     align-items: center;
-    min-height: 48px;
-    padding-inline: 16px;
+    height: 56px;
+    min-height: 56px;
+    padding-inline: 8px;
     margin-inline: -20px;
     background: #f1ebe8;
     border-bottom: 1px solid #e2d6d1;
   }
 
   .profile-mobile-back__button {
-    width: 28px;
-    min-width: 28px;
+    width: 44px;
+    min-width: 44px;
     height: 44px;
     min-height: 44px;
     padding: 0;
@@ -2365,15 +2363,15 @@
   }
 
   .profile-mobile-back__button svg {
-    width: 18px;
-    height: 18px;
+    width: 22px;
+    height: 22px;
   }
 
   .profile-mobile-back__title {
     font-family: var(--font-display-family);
-    font-size: 16px;
+    font-size: 18px;
     font-weight: 600;
-    line-height: 1.2;
+    line-height: 1;
     color: #40222f;
   }
 }

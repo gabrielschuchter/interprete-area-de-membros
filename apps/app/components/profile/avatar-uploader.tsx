@@ -11,6 +11,15 @@ interface AvatarUploaderProperties {
   readonly variant?: "default" | "profile-editor";
 }
 
+const AvatarRemoveIcon = ({
+  variant,
+}: {
+  readonly variant: AvatarUploaderProperties["variant"];
+}) =>
+  variant === "profile-editor" ? null : (
+    <XIcon aria-hidden="true" className="size-3" />
+  );
+
 export const AvatarUploader = ({
   initialUrl,
   initials,
@@ -112,7 +121,7 @@ export const AvatarUploader = ({
     <div
       className={
         isProfileEditor
-          ? "mt-5 grid grid-cols-[72px_minmax(0,1fr)] items-center gap-x-4"
+          ? "grid grid-cols-[72px_minmax(0,1fr)] items-center gap-x-5"
           : "mt-5 flex flex-wrap items-center gap-4"
       }
     >
@@ -137,13 +146,13 @@ export const AvatarUploader = ({
       <div
         className={
           isProfileEditor
-            ? "flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1"
+            ? "flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1"
             : "flex flex-wrap items-center gap-x-3 gap-y-1"
         }
       >
         <input name="avatarUrl" type="hidden" value={url} />
         <label
-          className={`inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-sm font-semibold text-brand-dark-amaranth text-sm focus-within:outline-none focus-within:ring-2 focus-within:ring-brand-dark-amaranth hover:bg-brand-pink-essence ${isProfileEditor ? "border-2 border-brand-dark-amaranth px-5" : "border border-brand-dark-amaranth px-3"}`}
+          className={`inline-flex min-h-11 cursor-pointer items-center gap-2 font-semibold text-brand-dark-amaranth text-sm focus-within:outline-none focus-within:ring-2 focus-within:ring-brand-dark-amaranth hover:bg-brand-pink-essence ${isProfileEditor ? "rounded-[6px] border-2 border-brand-dark-amaranth px-5" : "rounded-sm border border-brand-dark-amaranth px-3"}`}
         >
           <CameraIcon aria-hidden="true" className="size-4" />
           {isUploading ? "Enviando…" : "Trocar foto"}
@@ -163,7 +172,7 @@ export const AvatarUploader = ({
         </label>
         {url || previewUrl ? (
           <button
-            className={`flex min-h-11 items-center gap-1 text-muted-foreground underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${isProfileEditor ? "px-3 font-medium text-sm" : "text-xs"}`}
+            className={`flex min-h-11 items-center text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${isProfileEditor ? "px-3 font-medium text-sm" : "gap-1 text-xs underline underline-offset-4"}`}
             onClick={() => {
               const currentUrl = uploadedUrlRef.current ?? url;
               removeTemporaryUpload(currentUrl).catch(() => undefined);
@@ -174,11 +183,12 @@ export const AvatarUploader = ({
             }}
             type="button"
           >
-            <XIcon aria-hidden="true" className="size-3" /> Remover
+            <AvatarRemoveIcon variant={variant} />
+            Remover
           </button>
         ) : null}
         <p
-          className={`basis-full text-muted-foreground ${isProfileEditor ? "text-[13px]" : "text-xs"}`}
+          className={`basis-full text-muted-foreground ${isProfileEditor ? "text-[13px] leading-[1.4]" : "text-xs"}`}
         >
           JPG, PNG ou WebP · até 5 MB{isProfileEditor ? "" : "."}
         </p>

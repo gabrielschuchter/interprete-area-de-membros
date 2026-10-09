@@ -151,14 +151,17 @@ const ProfileEditor = ({
 
   return (
     <>
-      <section aria-label="Completude do perfil" className="mb-6">
-        <div className="flex items-start justify-between gap-4">
-          <p className="text-muted-foreground text-sm leading-6">
+      <section
+        aria-label="Completude do perfil"
+        className="mt-8 flex flex-col gap-3"
+      >
+        <div className="flex items-baseline justify-between gap-3">
+          <p className="text-muted-foreground text-sm leading-[1.4]">
             {missingLabels.length > 0
               ? `Faltam ${missingSummary}.`
               : "Seu perfil está completo."}
           </p>
-          <p className="shrink-0 font-data text-[0.68rem] text-muted-foreground uppercase tracking-[0.12em]">
+          <p className="shrink-0 font-data text-muted-foreground text-xs uppercase tracking-[0.08em]">
             {completion.completedCount} DE {completion.total}
           </p>
         </div>
@@ -167,7 +170,7 @@ const ProfileEditor = ({
           aria-valuemax={completion.total}
           aria-valuemin={0}
           aria-valuenow={completion.completedCount}
-          className="mt-3 grid gap-1.5"
+          className="grid gap-1"
           role="progressbar"
           style={{
             gridTemplateColumns: `repeat(${completion.total}, minmax(0, 1fr))`,
@@ -185,7 +188,6 @@ const ProfileEditor = ({
 
       <form
         action={formAction}
-        className="mt-4"
         onSubmit={(event) => {
           if (lockRef.current || pending || isUploading) {
             event.preventDefault();
@@ -236,7 +238,7 @@ const ProfileEditor = ({
           </p>
         ) : null}
 
-        <div className="profile-editor-footer flex flex-col gap-3 border-border border-t py-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="profile-editor-footer mt-12 flex flex-col gap-2 border-border border-t pt-5 sm:flex-row sm:items-center sm:justify-between">
           <p
             aria-live="polite"
             className={`sr-only flex items-center gap-2 text-xs sm:not-sr-only ${statusTone.text}`}
