@@ -19,7 +19,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { toggleLearningBookmark } from "@/app/(authenticated)/biblioteca/actions";
+import { submitLearningBookmark } from "@/app/(authenticated)/biblioteca/actions";
 import { IntentLink } from "@/app/(authenticated)/components/intent-link";
 
 export interface LearningRailCard {
@@ -244,7 +244,7 @@ const LearningRailCardView = ({
         </LearningRailCardTarget>
         {card.bookmark && !card.disabled && (
           <form
-            action={toggleLearningBookmark}
+            action={submitLearningBookmark}
             className="absolute top-3 right-3 z-20"
           >
             <input

@@ -10,10 +10,7 @@ import {
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { StudyHeartbeat } from "@/components/learning/study-heartbeat";
-import {
-  SingleFlightForm,
-  SingleFlightSubmit,
-} from "@/components/mutations/single-flight-form";
+import { LibraryBookmarkButton } from "@/components/library/library-bookmark-button";
 import { requireMemberId } from "@/lib/learning";
 import { getPublishedLibraryItem } from "@/lib/library";
 import {
@@ -21,7 +18,6 @@ import {
   libraryDifficultyLabel,
   libraryLanguageLabel,
 } from "@/lib/library-presentation";
-import { openLibraryItem, toggleLibraryBookmark } from "../actions";
 
 interface LibraryItemPageProperties {
   readonly params: Promise<{ id: string }>;
@@ -117,17 +113,11 @@ const LibraryItemPage = async ({ params }: LibraryItemPageProperties) => {
             {item.version ? <span>{item.version}</span> : null}
             {item.doi ? <span>DOI: {item.doi}</span> : null}
             {item.pmid ? <span>PMID: {item.pmid}</span> : null}
-            <SingleFlightForm action={toggleLibraryBookmark}>
-              <input name="itemId" type="hidden" value={item.id} />
-              <input
-                name="desired"
-                type="hidden"
-                value={item.bookmarks.length > 0 ? "off" : "on"}
-              />
-              <SingleFlightSubmit size="sm" variant="outline">
-                {item.bookmarks.length > 0 ? "Remover dos salvos" : "Salvar"}
-              </SingleFlightSubmit>
-            </SingleFlightForm>
+            <LibraryBookmarkButton
+              initialSaved={item.bookmarks.length > 0}
+              targetId={item.id}
+              targetType="LIBRARY_ITEM"
+            />
           </div>
           {item.accessNote && (
             <p className="mt-5 max-w-2xl border-brand-action/50 border-l-2 pl-4 text-muted-foreground text-sm leading-6">
@@ -153,12 +143,16 @@ const LibraryItemPage = async ({ params }: LibraryItemPageProperties) => {
             </div>
           )}
           <div className="mt-10 border-border border-t pt-7">
-            <SingleFlightForm action={openLibraryItem}>
-              <input name="itemId" type="hidden" value={item.id} />
-              <SingleFlightSubmit pendingLabel="Abrindo material…" size="lg">
-                Abrir material <ArrowUpRightIcon aria-hidden="true" />
-              </SingleFlightSubmit>
-            </SingleFlightForm>
+            <a
+              aria-label={`Abrir material: ${item.title}, em nova aba`}
+              className="inline-flex h-12 items-center justify-center gap-2 rounded-md border-2 border-[#8C1535] bg-[#8C1535] px-6 font-semibold text-sm text-white transition-colors hover:bg-[#6f102b] focus-visible:outline-2 focus-visible:outline-[#8C1535] focus-visible:outline-offset-2"
+              href={`/biblioteca/abrir/${item.id}`}
+              rel="noopener noreferrer"
+              target="_blank"
+              title="Abre em nova aba"
+            >
+              Abrir material <ArrowUpRightIcon aria-hidden="true" />
+            </a>
           </div>
         </article>
       </main>

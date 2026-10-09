@@ -28,6 +28,7 @@ vi.mock("next/link", () => ({
 }));
 
 vi.mock("@/app/(authenticated)/biblioteca/actions", () => ({
+  submitLearningBookmark: vi.fn(),
   toggleLearningBookmark: vi.fn(),
 }));
 

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="92" height="124" viewBox="0 0 92 124" role="img" aria-label="Capa do material: Revisões sistemáticas e meta-análises">
+  <defs>
+    <linearGradient id="reviews-cover-bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#410230"/><stop offset="1" stop-color="#7A1230"/></linearGradient>
+    <radialGradient id="reviews-cover-light" cx=".78" cy=".12" r=".8"><stop offset="0" stop-color="#FFD596" stop-opacity=".34"/><stop offset="1" stop-color="#FFBE78" stop-opacity="0"/></radialGradient>
+    <clipPath id="reviews-cover-clip"><rect width="92" height="124" rx="2"/></clipPath>
+  </defs>
+  <g clip-path="url(#reviews-cover-clip)">
+    <rect width="92" height="124" fill="url(#reviews-cover-bg)"/><rect width="92" height="124" fill="url(#reviews-cover-light)"/>
+    <rect width="9" height="124" fill="#000" opacity=".28"/><path d="M0 12h9M0 108h9" stroke="#E9C48E" stroke-opacity=".62" stroke-width="1.5"/><path d="M10 0v124" stroke="#fff" stroke-opacity=".13"/>
+    <g fill="none" stroke="#F1EBE8" stroke-linecap="round" stroke-width="1.4" opacity=".9">
+      <path d="M24 43h45M24 55h45M24 67h45M24 79h45"/><path d="M31 43v0M58 55v0M39 67v0M64 79v0" stroke-width="5"/>
+    </g>
+    <path d="m51 49 6 6-6 6-6-6z" fill="#E9C48E" stroke="#F1EBE8" stroke-width="1"/>
+    <path d="M24 104h56" stroke="#E9C48E" stroke-opacity=".5" stroke-width=".8"/><path d="m52 101.5 2.2 2.5-2.2 2.5-2.2-2.5z" fill="#E9C48E" opacity=".7"/>
+  </g>
+</svg>

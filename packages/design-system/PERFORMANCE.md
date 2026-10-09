@@ -31,6 +31,20 @@ on a server request.
   keyboard intent may prefetch, through the shared per-route request budget and
   network-preference checks.
 
+## Library bookmark feedback
+
+- `toast.library` is opt-in and leaves the existing toast API, placement, and
+  timing unchanged for every other route. Its Library variant provides
+  post-commit save/removal feedback, undo and saved-list actions, and a retry
+  action for failed writes.
+- The Library timer is five seconds and pauses independently while the notice
+  contains keyboard focus or the pointer. Keep every action target at least
+  44 px high; place the notice at the lower left on desktop and above the safe
+  area on mobile.
+- The bookmark control may show a reversible pending state while the server
+  action runs. A failed or rejected mutation restores the previous state and
+  exposes retry; a success toast follows the authorized, idempotent write.
+
 ## Profile badge artwork
 
 - Show the local criterion artwork in a reserved 56 px box with `next/image`,

@@ -56,6 +56,10 @@ const safeCoverUrl = (entry: string) => {
   return url?.startsWith("https://") ? url : null;
 };
 
+export type BookmarkMutationResult =
+  | { readonly ok: true; readonly saved: boolean }
+  | { readonly ok: false };
+
 const libraryLanguage = (entry: string) => {
   const languages = entry
     .split(LANGUAGE_SEPARATOR_PATTERN)
@@ -500,7 +504,9 @@ export const importCuratedLibraryCatalog = async () => {
   redirect("/admin/library?catalog=imported");
 };
 
-export const toggleLibraryBookmark = async (formData: FormData) => {
+export const toggleLibraryBookmark = async (
+  formData: FormData
+): Promise<BookmarkMutationResult> => {
   const memberId = await requireMemberId();
   const itemId = formData.get("itemId");
   const desired = formData.get("desired");
@@ -510,7 +516,7 @@ export const toggleLibraryBookmark = async (formData: FormData) => {
     !itemId ||
     (desired !== "on" && desired !== "off")
   ) {
-    return;
+    return { ok: false };
   }
 
   await consumeMutationRateLimit({
@@ -518,13 +524,14 @@ export const toggleLibraryBookmark = async (formData: FormData) => {
     memberId,
   });
 
-  const item = await database.libraryItem.findFirst({
-    where: { id: itemId, status: ContentStatus.PUBLISHED },
-    select: { id: true },
-  });
-
-  if (!item) {
-    return;
+  if (
+    !(await bookmarkTargetIsAvailable(
+      LibraryBookmarkTargetType.LIBRARY_ITEM,
+      itemId,
+      memberId
+    ))
+  ) {
+    return { ok: false };
   }
 
   if (desired === "on") {
@@ -538,7 +545,10 @@ export const toggleLibraryBookmark = async (formData: FormData) => {
   }
 
   revalidatePath("/biblioteca");
+  revalidatePath("/biblioteca/pessoal");
+  revalidatePath("/comunidade/salvos");
   revalidatePath(`/biblioteca/${itemId}`);
+  return { ok: true, saved: desired === "on" };
 };
 
 const bookmarkTargetIsAvailable = async (
@@ -709,7 +719,9 @@ const bookmarkCreateData = (
     : {}),
 });
 
-export const toggleLearningBookmark = async (formData: FormData) => {
+export const toggleLearningBookmark = async (
+  formData: FormData
+): Promise<BookmarkMutationResult> => {
   const memberId = await requireMemberId();
   const targetTypeValue = value(formData.get("targetType"));
   const targetId = value(formData.get("targetId"));
@@ -721,7 +733,7 @@ export const toggleLearningBookmark = async (formData: FormData) => {
       targetTypeValue as LibraryBookmarkTargetType
     )
   ) {
-    return;
+    return { ok: false };
   }
   const targetType = targetTypeValue as LibraryBookmarkTargetType;
   await consumeMutationRateLimit({
@@ -729,7 +741,7 @@ export const toggleLearningBookmark = async (formData: FormData) => {
     memberId,
   });
   if (!(await bookmarkTargetIsAvailable(targetType, targetId, memberId))) {
-    return;
+    return { ok: false };
   }
   const where = bookmarkWhereForTarget(targetType, targetId, memberId);
   if (desired === "on") {
@@ -744,6 +756,13 @@ export const toggleLearningBookmark = async (formData: FormData) => {
   revalidatePath("/biblioteca");
   revalidatePath("/biblioteca/pessoal");
   revalidatePath("/comunidade/salvos");
+  return { ok: true, saved: desired === "on" };
+};
+
+export const submitLearningBookmark = async (
+  formData: FormData
+): Promise<void> => {
+  await toggleLearningBookmark(formData);
 };
 
 export const openLibraryItem = async (formData: FormData) => {

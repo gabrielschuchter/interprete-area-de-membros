@@ -51,6 +51,32 @@ sample as a pass.
   need explicit invalidation on publish, edit, and archive, plus a fresh access
   check before delivery.
 
+### Library browse and bookmark path
+
+`/biblioteca` resolves the member and category list in parallel, then streams
+the result section behind a stable shell. The material page query and filtered
+count run together with the same publication, search, filter, and linked-lesson
+access predicates. Recent ordering reads 24 rows plus one look-ahead row in
+PostgreSQL; relevance keeps the existing 500-candidate ceiling and 24-row
+pages. The count describes the complete authorized filter result, even when a
+relevance page uses that bounded candidate set.
+
+Card titles open the internal detail route with viewport prefetch disabled.
+The external open action is a native new-tab link to an authenticated GET
+handler, so speculative navigation cannot increment views. The handler checks
+current publication and lesson access, records the member view, then redirects
+to the published URL or authorized asset. Personal bookmarks remain a
+member-scoped projection across all five target types, filtered with current
+publication and access rules; no personal result is cached across requests.
+
+Bookmark writes are desired-state upserts/deletes behind the existing server
+authorization and rate limit. The local toggle is reversible while the request
+is pending, blocks duplicate submits, rolls back on failure, and reports a
+successful toast only after the action commits. Undo is another desired-state
+write, and all feedback actions revalidate the library, personal list, and
+existing saved surfaces. The opt-in Library toast pauses its five-second timer
+while focused or hovered; other toast variants retain their shared behavior.
+
 ### Profile badge artwork
 
 The private and public profile routes query at most 100 member-scoped awards and
