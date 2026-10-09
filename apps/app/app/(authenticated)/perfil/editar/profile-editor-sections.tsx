@@ -128,7 +128,7 @@ export const ProfileIdentitySection = ({
       <label className="block" htmlFor="profile-username">
         <span className={profileLabelClass}>Username</span>
         <div className="mt-2 flex h-12 items-center overflow-hidden rounded-[4px] border border-input bg-white focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/35">
-          <span className="flex h-full shrink-0 items-center gap-2 border-input border-r bg-brand-pink-essence px-3 font-data text-[13px] text-muted-foreground">
+          <span className="flex h-full shrink-0 items-center gap-2 border-input border-r bg-background px-3 font-data text-[13px] text-muted-foreground">
             /membros/
           </span>
           <Input
@@ -281,7 +281,7 @@ export const ProfileAboutSection = ({
       </div>
       <Textarea
         aria-invalid={Boolean(fieldError("bio"))}
-        className="min-h-[120px] resize-y rounded-[4px] bg-white px-[14px] py-3 text-[15px] leading-[1.55] focus-visible:border-2 focus-visible:border-brand-dark-amaranth focus-visible:shadow-[0_0_0_3px_rgba(140,21,53,0.14)] focus-visible:ring-0 md:text-[15px]"
+        className="min-h-[120px] resize-y rounded-[4px] bg-white px-[14px] py-3 text-[15px] leading-[1.55] focus-visible:border-2 focus-visible:border-brand-structural focus-visible:shadow-[0_0_0_3px_rgba(140,21,53,0.14)] focus-visible:ring-0 md:text-[15px]"
         id="profile-bio"
         maxLength={280}
         name="bio"
@@ -351,7 +351,7 @@ const InterestsField = ({
             .filter((previous) => previous === interest).length;
           return (
             <span
-              className="inline-flex min-h-8 items-center gap-0.5 rounded-[4px] bg-brand-pink-essence pr-1 pl-3 font-data text-foreground text-xs"
+              className="inline-flex min-h-8 items-center gap-0.5 rounded-[4px] bg-background pr-1 pl-3 font-data text-foreground text-xs"
               key={`${interest}-${occurrence}`}
             >
               {interest}
@@ -481,7 +481,7 @@ export const ProfileLinksSection = ({
             return (
               <div className="mt-2 flex h-12 items-center overflow-hidden rounded-[4px] border border-input bg-white focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/35">
                 <input name={id} type="hidden" value={currentValue} />
-                <span className="flex h-full shrink-0 items-center gap-2 border-input border-r bg-brand-pink-essence px-3 font-data text-[13px] text-muted-foreground">
+                <span className="flex h-full shrink-0 items-center gap-2 border-input border-r bg-background px-3 font-data text-[13px] text-muted-foreground">
                   <Icon aria-hidden="true" className="size-4" />
                   {currentPrefix}
                 </span>

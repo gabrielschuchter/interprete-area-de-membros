@@ -247,7 +247,7 @@ const ProfileShell = ({
                 <li key={tab.href}>
                   <IntentLink
                     aria-current={active ? "page" : undefined}
-                    className={`flex min-h-12 items-center border-b-2 text-sm transition-colors ${active ? "border-brand-structural font-semibold text-brand-dark-amaranth" : "border-transparent font-medium text-muted-foreground hover:text-foreground"}`}
+                    className={`flex min-h-12 items-center border-b-2 text-sm transition-colors ${active ? "border-brand-structural font-semibold text-brand-structural" : "border-transparent font-medium text-muted-foreground hover:text-foreground"}`}
                     href={tab.href}
                   >
                     {tab.label}

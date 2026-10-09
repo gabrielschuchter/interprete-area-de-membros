@@ -828,7 +828,7 @@
 
   .community-hero {
     position: relative;
-    min-height: clamp(17rem, 28vw, 28rem);
+    min-height: 18.5rem;
     overflow: hidden;
     color: #f7eee8;
     background:
@@ -926,8 +926,8 @@
     z-index: 4;
     display: flex;
     align-items: flex-end;
-    min-height: clamp(17rem, 28vw, 28rem);
-    padding: clamp(2rem, 5.2vw, 5.5rem);
+    min-height: 18.5rem;
+    padding: clamp(2rem, 4.2vw, 4rem);
   }
 
   .community-hero__title {
@@ -935,7 +935,7 @@
     max-width: 11ch;
     margin: 0;
     font-family: var(--font-display-family);
-    font-size: clamp(4rem, 8.5vw, 9rem);
+    font-size: clamp(4rem, 6.67vw, 6rem);
     font-weight: 600;
     line-height: 0.84;
     color: #f7eee8;
@@ -1979,11 +1979,11 @@
 
   @media (min-width: 1081px) {
     .community-hero {
-      min-height: clamp(17rem, 28vw, 28rem);
+      min-height: 18.5rem;
     }
 
     .community-hero__copy {
-      min-height: clamp(17rem, 28vw, 28rem);
+      min-height: 18.5rem;
     }
   }
 
@@ -2034,17 +2034,17 @@
     }
 
     .community-hero {
-      min-height: 10rem;
+      min-height: 7rem;
       border-radius: 8px;
     }
 
     .community-hero__copy {
-      min-height: 10rem;
+      min-height: 7rem;
       padding: 1rem 1.25rem;
     }
 
     .community-hero__title {
-      font-size: clamp(2.25rem, 12vw, 3.25rem);
+      font-size: clamp(2rem, 9vw, 2.25rem);
     }
 
     .community-content-grid {
@@ -3282,7 +3282,7 @@
     color: #40222f;
   }
 
-  .community-topic-editor .ProseMirror p.is-editor-empty:first-child::before {
+  .community-topic-editor--empty .ProseMirror p:first-child::before {
     color: #7a5a69;
     content: "Escreva aqui…";
     opacity: 0.78;

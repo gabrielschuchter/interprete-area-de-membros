@@ -41,7 +41,7 @@ export const ProfileBadgeIcon = ({
   return (
     <span
       aria-hidden="true"
-      className={`inline-flex ${dimension} shrink-0 items-center justify-center rounded-full border border-dashed ${earned ? "border-brand-dark-amaranth/65 text-brand-dark-amaranth" : "border-[var(--line-soft)] text-muted-foreground"}`}
+      className={`inline-flex ${dimension} shrink-0 items-center justify-center rounded-full border border-dashed ${earned ? "border-brand-structural/65 text-brand-structural" : "border-border text-muted-foreground"}`}
     >
       <Icon aria-hidden="true" className={iconDimension} strokeWidth={1.5} />
     </span>
