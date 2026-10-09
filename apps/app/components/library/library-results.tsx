@@ -108,7 +108,7 @@ const LibraryMaterialCard = ({
             <div className="mt-2 flex flex-wrap gap-1.5">
               {item.tags.slice(0, 3).map((tag) => (
                 <Badge
-                  className="h-6 rounded-sm border-0 bg-[#F1EBE8] px-2 font-data font-normal text-[#40222F] text-[10px]"
+                  className="h-auto min-h-6 min-w-0 max-w-full shrink whitespace-normal break-words rounded-sm border-0 bg-[#F1EBE8] px-2 font-data font-normal text-[#40222F] text-[10px]"
                   key={tag}
                 >
                   {tag}
