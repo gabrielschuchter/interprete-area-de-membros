@@ -753,16 +753,29 @@ export const getMyCommunityPosts = async (memberId: string) => {
       excerpt: true,
       status: true,
       tags: true,
+      authorId: true,
+      coverUrl: true,
       isPinned: true,
+      isFeatured: true,
       createdAt: true,
+      publishedAt: true,
       updatedAt: true,
       space: { select: { title: true, slug: true } },
       _count: {
         select: { comments: { where: { deletedAt: null } }, votes: true },
       },
+      votes: { where: { memberId }, select: { id: true } },
+      bookmarks: { where: { memberId }, select: { id: true } },
     },
   });
-  return posts.map((post) => ({ ...post, excerpt: post.excerpt ?? "" }));
+  return enrichAuthors(
+    posts.map((post) => ({
+      ...post,
+      coverUrl: normalizeCommunityCoverUrl(post.coverUrl),
+      excerpt: post.excerpt ?? "",
+      readingMinutes: readingMinutes(post.excerpt ?? ""),
+    }))
+  );
 };
 
 export const getSavedCommunityPosts = async (memberId: string) => {

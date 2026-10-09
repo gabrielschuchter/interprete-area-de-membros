@@ -66,4 +66,29 @@ describe("CommunityPostMenu", () => {
       screen.getByRole("menuitem", { name: "Retirar destaque" })
     ).toBeTruthy();
   });
+
+  test("requires confirmation before deleting a draft without published actions", () => {
+    render(
+      <CommunityPostMenu
+        canModerate
+        isFeatured={false}
+        isPinned={false}
+        postId="draft-1"
+        spaceSlug=""
+        status="DRAFT"
+      />
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Ações da publicação" })
+    );
+    expect(screen.getByRole("menuitem", { name: "Editar" })).toBeTruthy();
+    expect(screen.getByRole("menuitem", { name: "Excluir" })).toBeTruthy();
+    expect(screen.queryByRole("menuitem", { name: "Arquivar" })).toBeNull();
+    expect(screen.queryByRole("menuitem", { name: "Fixar" })).toBeNull();
+    expect(screen.queryByRole("menuitem", { name: "Destacar" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("menuitem", { name: "Excluir" }));
+    expect(screen.getByText("Excluir publicação?")).toBeTruthy();
+  });
 });

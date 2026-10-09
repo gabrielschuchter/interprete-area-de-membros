@@ -27,6 +27,7 @@ interface CommunityPostMenuProperties {
   readonly isPinned: boolean;
   readonly postId: string;
   readonly spaceSlug: string;
+  readonly status?: "DRAFT" | "PUBLISHED";
 }
 
 export function CommunityPostMenu({
@@ -34,6 +35,7 @@ export function CommunityPostMenu({
   isFeatured,
   isPinned,
   postId,
+  status = "PUBLISHED",
   spaceSlug,
 }: CommunityPostMenuProperties) {
   const [open, setOpen] = useState(false);
@@ -172,7 +174,7 @@ export function CommunityPostMenu({
               >
                 Editar
               </Link>
-              {canModerate && (
+              {canModerate && status === "PUBLISHED" && (
                 <>
                   <SingleFlightForm
                     action={togglePostPin}
@@ -220,27 +222,31 @@ export function CommunityPostMenu({
                   </SingleFlightForm>
                 </>
               )}
-              <SingleFlightForm
-                action={setPostStatus}
-                className="community-post-menu__form"
-                onSettled={() => close()}
-              >
-                <input name="postId" type="hidden" value={postId} />
-                <input name="spaceSlug" type="hidden" value={spaceSlug} />
-                <input name="status" type="hidden" value="ARCHIVED" />
-                <SingleFlightSubmit
-                  className="community-post-menu__item"
-                  pendingLabel="Salvando…"
-                  role="menuitem"
-                  variant="ghost"
-                >
-                  <ArchiveIcon aria-hidden="true" /> Arquivar
-                </SingleFlightSubmit>
-              </SingleFlightForm>
-              <div
-                aria-hidden="true"
-                className="community-post-menu__separator"
-              />
+              {status === "PUBLISHED" ? (
+                <>
+                  <SingleFlightForm
+                    action={setPostStatus}
+                    className="community-post-menu__form"
+                    onSettled={() => close()}
+                  >
+                    <input name="postId" type="hidden" value={postId} />
+                    <input name="spaceSlug" type="hidden" value={spaceSlug} />
+                    <input name="status" type="hidden" value="ARCHIVED" />
+                    <SingleFlightSubmit
+                      className="community-post-menu__item"
+                      pendingLabel="Salvando…"
+                      role="menuitem"
+                      variant="ghost"
+                    >
+                      <ArchiveIcon aria-hidden="true" /> Arquivar
+                    </SingleFlightSubmit>
+                  </SingleFlightForm>
+                  <div
+                    aria-hidden="true"
+                    className="community-post-menu__separator"
+                  />
+                </>
+              ) : null}
               <Button
                 className="community-post-menu__item community-post-menu__item--danger"
                 onClick={() => setDeleteConfirm(true)}

@@ -1,17 +1,22 @@
 import { Badge } from "@repo/design-system/components/ui/badge";
-import { Button } from "@repo/design-system/components/ui/button";
-import { FileTextIcon, PlusIcon } from "lucide-react";
+import { FileTextIcon } from "lucide-react";
 import Link from "next/link";
-import { CommunityDraftStarter } from "@/components/community/community-draft-starter";
+import { CommunityComposerPrompt } from "@/components/community/community-composer-prompt";
+import { CommunityFeedCard } from "@/components/community/community-feed-card";
+import { CommunityHero } from "@/components/community/community-hero";
 import { CommunityNavigation } from "@/components/community/community-navigation";
+import { CommunityPostMenu } from "@/components/community/community-post-menu";
 import { CommunityPublishDraftButton } from "@/components/community/community-publish-draft-button";
+import { CommunityRightRail } from "@/components/community/community-right-rail";
+import { getMemberRole } from "@/lib/authorization";
 import {
-  SingleFlightForm,
-  SingleFlightSubmit,
-} from "@/components/mutations/single-flight-form";
-import { communityPostHref, getMyCommunityPosts } from "@/lib/community";
+  getCommunityPresenceProfiles,
+  getCommunitySpaces,
+  getMyCommunityPosts,
+} from "@/lib/community";
 import { requireMemberId } from "@/lib/learning";
-import { setPostStatus, softDeletePost } from "../actions";
+import { getRecentCommunityAnnouncements } from "@/lib/notifications";
+import { getOrCreateProfile } from "@/lib/profile";
 
 const statusLabel = (status: string) => {
   if (status === "DRAFT") {
@@ -23,133 +28,163 @@ const statusLabel = (status: string) => {
   return "Publicado";
 };
 
+const formatDate = (date: Date) =>
+  date.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
+
 const MyCommunityPage = async () => {
   const memberId = await requireMemberId();
-  const posts = await getMyCommunityPosts(memberId);
+  const [posts, spaces, profile, announcements, presenceProfiles, role] =
+    await Promise.all([
+      getMyCommunityPosts(memberId),
+      getCommunitySpaces(memberId),
+      getOrCreateProfile(memberId),
+      getRecentCommunityAnnouncements(memberId),
+      getCommunityPresenceProfiles(memberId),
+      getMemberRole(memberId),
+    ]);
+  const canModerate = role === "ADMIN" || role === "TEACHER";
 
   return (
-    <div className="min-h-svh bg-background">
-      <main className="mx-auto w-full max-w-[1120px] px-5 py-8 sm:px-8 lg:px-12 lg:py-14">
-        <CommunityNavigation active="mine" />
-        <div className="mt-4 flex justify-end">
-          <CommunityDraftStarter>
-            <PlusIcon aria-hidden="true" /> Criar conteúdo
-          </CommunityDraftStarter>
-        </div>
-        <header className="mt-8 max-w-3xl">
-          <p className="brand-eyebrow">Caderno de escrita</p>
-          <span aria-hidden="true" className="brand-rule mt-4" />
-          <h1 className="mt-6 font-display text-5xl leading-none sm:text-6xl">
-            Minhas publicações.
-          </h1>
-          <p className="mt-5 text-muted-foreground leading-7">
-            Rascunhos, textos publicados e discussões que você decidiu construir
-            aqui.
-          </p>
-        </header>
-        {posts.length === 0 ? (
-          <div className="paper-surface mt-10 border p-8 sm:p-12">
-            <FileTextIcon
-              aria-hidden="true"
-              className="size-6 text-brand-action-text"
-            />
-            <h2 className="mt-5 font-display text-3xl">
-              Você ainda não publicou nada.
-            </h2>
-            <p className="mt-3 max-w-xl text-muted-foreground leading-7">
-              Comece por uma pergunta curta ou escreva uma publicação mais
-              elaborada.
-            </p>
-            <div className="mt-6">
-              <CommunityDraftStarter>
-                <PlusIcon aria-hidden="true" /> Criar sua primeira publicação
-              </CommunityDraftStarter>
-            </div>
+    <div className="community-page min-h-svh bg-background">
+      <main
+        className="community-shell mx-auto w-full"
+        data-route-structure-ready="community"
+      >
+        <CommunityHero />
+        <div className="community-content-grid">
+          <div className="community-discovery-toolbar">
+            <CommunityNavigation active="mine" />
           </div>
-        ) : (
-          <div className="mt-10 divide-y border-border border-y">
-            {posts.map((post) => {
-              const editHref = `/comunidade/editor/${post.id}`;
-              return (
-                <article className="py-6" key={post.id}>
-                  <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
+          <CommunityRightRail
+            announcements={announcements}
+            memberId={memberId}
+            presenceProfiles={presenceProfiles}
+            profile={profile}
+            spaces={spaces}
+          />
+          <CommunityComposerPrompt memberId={memberId} />
+          <section
+            aria-labelledby="my-community-posts-heading"
+            className="community-feed-area min-w-0"
+            data-route-content-ready="community"
+          >
+            <h2 className="sr-only" id="my-community-posts-heading">
+              Minhas publicações
+            </h2>
+            {posts.length === 0 ? (
+              <div className="community-my-posts-empty">
+                <FileTextIcon
+                  aria-hidden="true"
+                  className="size-6 text-brand-action-text"
+                />
+                <h3 className="mt-5 font-display text-3xl">
+                  Você ainda não publicou nada.
+                </h3>
+                <p className="mt-3 max-w-xl text-muted-foreground leading-7">
+                  Comece por uma pergunta curta ou escreva uma publicação mais
+                  elaborada.
+                </p>
+              </div>
+            ) : (
+              <div className="community-feed-list">
+                {posts.map((post) => {
+                  const editHref = `/comunidade/editor/${post.id}`;
+                  const postMenu = (
+                    <CommunityPostMenu
+                      canModerate={canModerate}
+                      isFeatured={post.isFeatured}
+                      isPinned={post.isPinned}
+                      postId={post.id}
+                      spaceSlug={post.space?.slug ?? ""}
+                      status={post.status === "DRAFT" ? "DRAFT" : "PUBLISHED"}
+                    />
+                  );
+
+                  if (post.status === "PUBLISHED") {
+                    return (
+                      <CommunityFeedCard
+                        key={post.id}
+                        managementActions={postMenu}
+                        post={post}
+                      />
+                    );
+                  }
+
+                  return (
+                    <article
+                      className="community-post-card community-my-post-card"
+                      key={post.id}
+                    >
+                      <header className="community-post-card__meta">
                         <Badge
                           variant={
-                            post.status === "PUBLISHED" ? "default" : "outline"
+                            post.status === "DRAFT" ? "outline" : "default"
                           }
                         >
                           {statusLabel(post.status)}
                         </Badge>
-                        <span className="text-muted-foreground text-xs">
+                        <span
+                          aria-hidden="true"
+                          className="text-muted-foreground"
+                        >
+                          ·
+                        </span>
+                        <span className="community-post-card__space">
                           {post.space?.title ?? "Feed geral"}
                         </span>
-                        <span className="text-muted-foreground text-xs">
-                          · {post._count.comments} respostas
-                        </span>
-                      </div>
-                      <h2 className="mt-3 font-display text-2xl">
-                        <Link
-                          className="hover:text-brand-structural"
-                          href={
-                            post.status === "PUBLISHED"
-                              ? communityPostHref(post)
-                              : editHref
-                          }
+                        <span
+                          aria-hidden="true"
+                          className="text-muted-foreground"
                         >
-                          {post.title}
-                        </Link>
-                      </h2>
-                      <p className="mt-2 line-clamp-2 text-muted-foreground leading-7">
-                        {post.subtitle ?? post.excerpt}
-                      </p>
-                    </div>
-                    <div className="flex shrink-0 flex-wrap gap-2">
-                      <Button asChild size="sm" variant="outline">
-                        <Link href={editHref}>Editar</Link>
-                      </Button>
-                      {post.status === "DRAFT" && (
-                        <CommunityPublishDraftButton
-                          editHref={editHref}
-                          postId={post.id}
-                          spaceSlug={post.space?.slug ?? ""}
-                        />
-                      )}
-                      {post.status === "PUBLISHED" && (
-                        <SingleFlightForm action={setPostStatus}>
-                          <input name="postId" type="hidden" value={post.id} />
-                          <input
-                            name="spaceSlug"
-                            type="hidden"
-                            value={post.space?.slug ?? ""}
-                          />
-                          <input name="status" type="hidden" value="ARCHIVED" />
-                          <SingleFlightSubmit size="sm" variant="ghost">
-                            Arquivar
-                          </SingleFlightSubmit>
-                        </SingleFlightForm>
-                      )}
-                      {post.status !== "ARCHIVED" && (
-                        <SingleFlightForm action={softDeletePost}>
-                          <input name="postId" type="hidden" value={post.id} />
-                          <input
-                            name="spaceSlug"
-                            type="hidden"
-                            value={post.space?.slug ?? ""}
-                          />
-                          <SingleFlightSubmit size="sm" variant="ghost">
-                            Excluir
-                          </SingleFlightSubmit>
-                        </SingleFlightForm>
-                      )}
-                    </div>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-        )}
+                          ·
+                        </span>
+                        <time dateTime={post.updatedAt.toISOString()}>
+                          {formatDate(post.updatedAt)}
+                        </time>
+                      </header>
+                      <div className="community-post-card__content">
+                        <div className="community-post-card__copy">
+                          <h3 className="community-post-card__title">
+                            <Link
+                              className="focus-visible:underline focus-visible:outline-none"
+                              href={editHref}
+                            >
+                              {post.title}
+                            </Link>
+                          </h3>
+                          {post.subtitle || post.excerpt ? (
+                            <p className="community-post-card__excerpt">
+                              {post.subtitle || post.excerpt}
+                            </p>
+                          ) : null}
+                        </div>
+                      </div>
+                      <div className="community-post-card__actions">
+                        {post.status === "DRAFT" ? (
+                          <>
+                            {postMenu}
+                            <CommunityPublishDraftButton
+                              editHref={editHref}
+                              postId={post.id}
+                              spaceSlug={post.space?.slug ?? ""}
+                            />
+                          </>
+                        ) : (
+                          <Link
+                            className="community-post-card__replies"
+                            href={editHref}
+                          >
+                            Editar
+                          </Link>
+                        )}
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        </div>
       </main>
     </div>
   );
