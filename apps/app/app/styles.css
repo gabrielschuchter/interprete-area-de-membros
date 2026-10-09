@@ -1947,6 +1947,14 @@
     align-items: center;
   }
 
+  .community-post-card__management {
+    margin-left: auto;
+  }
+
+  .community-my-posts-empty {
+    padding: 2rem 0;
+  }
+
   .community-post-card__actions button {
     min-height: 44px;
   }

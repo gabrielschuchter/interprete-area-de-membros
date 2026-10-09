@@ -1,4 +1,5 @@
 import { MessageCircleIcon, PinIcon } from "lucide-react";
+import type { ReactNode } from "react";
 import { IntentLink } from "@/app/(authenticated)/components/intent-link";
 import { communityPostHref } from "@/lib/community";
 import {
@@ -42,6 +43,7 @@ export interface CommunityFeedCardPost {
 }
 
 interface CommunityFeedCardProperties {
+  readonly managementActions?: ReactNode;
   readonly post: CommunityFeedCardPost;
   readonly spaceSlug?: string;
 }
@@ -50,6 +52,7 @@ const formatDate = (date: Date) =>
   date.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
 
 export function CommunityFeedCard({
+  managementActions,
   post,
   spaceSlug,
 }: CommunityFeedCardProperties) {
@@ -166,6 +169,11 @@ export function CommunityFeedCard({
           spaceSlug={actionSpaceSlug}
           voteCount={post._count.votes}
         />
+        {managementActions ? (
+          <div className="community-post-card__management">
+            {managementActions}
+          </div>
+        ) : null}
       </div>
     </article>
   );
