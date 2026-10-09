@@ -13,7 +13,10 @@ import {
 import { ProfileBadgeIcon } from "@/components/profile/profile-badge-icon";
 import { getAuth } from "@/lib/auth";
 import { getOrCreateProfile, getProfileSummaryStats } from "@/lib/profile";
-import { splitProfileBadges } from "@/lib/profile-badge-catalog";
+import {
+  orderProfileBadges,
+  splitProfileBadges,
+} from "@/lib/profile-badge-catalog";
 import { profileCompletionItems } from "@/lib/profile-completion";
 import { IntentLink as Link } from "../components/intent-link";
 import { respondToStudyGroupInvitation } from "./actions";
@@ -90,16 +93,13 @@ const ProfilePage = async ({ searchParams }: ProfilePageProperties) => {
     earnedBadges,
     publishedBadgeDefinitions
   );
-  const overviewBadges = [
-    ...badgeCollections.earned,
-    ...badgeCollections.available,
-  ]
-    .filter(
+  const overviewBadges = orderProfileBadges(
+    [...badgeCollections.earned, ...badgeCollections.available].filter(
       (badge, index, badges) =>
         badges.findIndex(({ criterion }) => criterion === badge.criterion) ===
         index
     )
-    .slice(0, 10);
+  ).slice(0, 10);
   const earnedBadgeCriteria = new Set(
     badgeCollections.earned.map(({ criterion }) => criterion)
   );
