@@ -252,6 +252,7 @@ export function TopicEditor({
       pendingPreviewUrls.current.clear();
     },
   });
+  const editorReady = editor !== null;
 
   useEffect(() => {
     if (!mentionState) {
@@ -286,6 +287,9 @@ export function TopicEditor({
   }, [mentionState]);
 
   useEffect(() => {
+    if (!editorReady) {
+      return;
+    }
     const sentinel = toolbarSentinelRef.current;
     if (!sentinel) {
       return;
@@ -308,9 +312,12 @@ export function TopicEditor({
       media.removeEventListener("change", onBreakpointChange);
       observer.disconnect();
     };
-  }, []);
+  }, [editorReady]);
 
   useEffect(() => {
+    if (!editorReady) {
+      return;
+    }
     const root = editorRootRef.current;
     if (!root) {
       return;
@@ -337,7 +344,7 @@ export function TopicEditor({
       );
       window.removeEventListener("resize", updateViewportHeight);
     };
-  }, []);
+  }, [editorReady]);
 
   const mentionSummary = groupMentionSummary(value);
 
