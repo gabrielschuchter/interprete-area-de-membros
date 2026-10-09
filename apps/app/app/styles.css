@@ -1295,9 +1295,31 @@
   }
 
   .community-presence__stack {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(7, 32px);
+    gap: 0.5rem;
     align-items: center;
-    min-width: 2.25rem;
+    min-width: 0;
+  }
+
+  .community-presence__layout {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: flex-start;
+  }
+
+  .community-presence__count {
+    display: inline-flex;
+    gap: 0.15rem;
+    align-items: center;
+    min-width: 0;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+  }
+
+  .community-presence__count-mobile {
+    display: none;
   }
 
   .community-presence__signal {
@@ -1306,16 +1328,15 @@
     height: 0.42rem;
     margin-right: 0.35rem;
     vertical-align: 0.06em;
-    background: #3f9a68;
+    background: var(--brand-dark-amaranth);
     border-radius: 9999px;
-    box-shadow: 0 0 0 0.2rem rgb(63 154 104 / 12%);
   }
 
   .community-presence__avatar {
     position: relative;
     z-index: 1;
     display: block;
-    margin-left: -0.55rem;
+    margin-left: 0;
     outline: none;
     border-radius: 9999px;
   }
@@ -1370,9 +1391,9 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 2.25rem;
-    height: 2.25rem;
-    padding: 0 0.45rem;
+    min-width: 32px;
+    height: 32px;
+    padding: 0 0.25rem;
     font-family: var(--font-data-family);
     font-size: 0.68rem;
     color: var(--muted-foreground);
@@ -2099,8 +2120,42 @@
       margin: 0;
     }
 
-    .community-presence__stack {
+    .community-presence__layout {
+      flex-direction: row;
+      gap: 0.75rem;
+      align-items: center;
       min-width: 0;
+    }
+
+    .community-presence__stack {
+      display: flex;
+      flex-wrap: nowrap;
+      gap: 0;
+      min-width: 0;
+    }
+
+    .community-presence__avatar {
+      margin-left: -0.45rem;
+    }
+
+    .community-presence__avatar:first-child {
+      margin-left: 0;
+    }
+
+    .community-presence__more {
+      display: none;
+    }
+
+    .community-presence__count {
+      white-space: nowrap;
+    }
+
+    .community-presence__count-desktop {
+      display: none;
+    }
+
+    .community-presence__count-mobile {
+      display: inline;
     }
 
     .community-presence__avatar-image {

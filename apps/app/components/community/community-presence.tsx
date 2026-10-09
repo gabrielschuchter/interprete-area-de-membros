@@ -16,6 +16,7 @@ import {
 const PRESENCE_CHANNEL = "community-presence";
 const HEARTBEAT_INTERVAL_MS = 45_000;
 const TOKEN_REFRESH_INTERVAL_MS = 240_000;
+const ROTATION_INTERVAL_MS = 30_000;
 const MAX_VISIBLE_MEMBERS = 7;
 const usernamePattern = /^[a-z0-9](?:[a-z0-9-]{1,28}[a-z0-9])?$/;
 const safeAvatarPattern = /^(?:https?:\/\/|\/(?!\/))/i;
@@ -90,6 +91,35 @@ const initialFor = (member: OnlineCommunityMember) =>
     .join("")
     .toUpperCase() || "M";
 
+export const mergeCommunityPresenceMembers = (
+  liveMembers: readonly OnlineCommunityMember[],
+  fallbackMembers: readonly OnlineCommunityMember[]
+) => {
+  const seen = new Set<string>();
+  return [...liveMembers, ...fallbackMembers].filter((member) => {
+    if (seen.has(member.username)) {
+      return false;
+    }
+    seen.add(member.username);
+    return true;
+  });
+};
+
+export const rotateCommunityPresenceMembers = (
+  members: readonly OnlineCommunityMember[],
+  offset: number
+) => {
+  if (members.length <= MAX_VISIBLE_MEMBERS) {
+    return [...members];
+  }
+
+  const start = ((offset % members.length) + members.length) % members.length;
+  return Array.from(
+    { length: MAX_VISIBLE_MEMBERS },
+    (_, index) => members[(start + index) % members.length]
+  ).filter((member): member is OnlineCommunityMember => member !== undefined);
+};
+
 interface CommunityPresenceProperties {
   readonly fallbackProfiles?: readonly CommunityPresenceProfile[];
   readonly memberId: string;
@@ -108,6 +138,7 @@ export const CommunityPresence = ({
 }: CommunityPresenceProperties) => {
   const [members, setMembers] = useState<OnlineCommunityMember[]>([]);
   const [status, setStatus] = useState<PresenceStatus>("connecting");
+  const [rotationOffset, setRotationOffset] = useState(0);
   const fallbackMembers = useMemo<OnlineCommunityMember[]>(() => {
     const seen = new Set<string>();
     return [profile, ...(fallbackProfiles ?? [])].flatMap((candidate) => {
@@ -311,18 +342,31 @@ export const CommunityPresence = ({
   }, [memberId, presencePayload, profile]);
 
   const liveMembers = status === "online" ? members : [];
-  const displayedMembers =
-    liveMembers.length > 0 ? liveMembers : fallbackMembers;
-  const visibleMembers = displayedMembers.slice(0, MAX_VISIBLE_MEMBERS);
-  const remainingCount = Math.max(
-    0,
-    displayedMembers.length - visibleMembers.length
+  const memberPool = useMemo(
+    () => mergeCommunityPresenceMembers(liveMembers, fallbackMembers),
+    [fallbackMembers, liveMembers]
   );
+  useEffect(() => {
+    setRotationOffset(0);
+    if (memberPool.length <= MAX_VISIBLE_MEMBERS) {
+      return;
+    }
+
+    const timer = window.setInterval(
+      () => setRotationOffset((current) => current + 1),
+      ROTATION_INTERVAL_MS
+    );
+    return () => window.clearInterval(timer);
+  }, [memberPool.length]);
+
+  const visibleMembers = rotateCommunityPresenceMembers(
+    memberPool,
+    rotationOffset
+  );
+  const remainingCount = Math.max(0, memberPool.length - visibleMembers.length);
   let countLabel = "Presença indisponível";
-  if (liveMembers.length > 0) {
-    countLabel = formatOnlineCount(liveMembers.length);
-  } else if (fallbackMembers.length > 0) {
-    countLabel = formatOnlineCount(fallbackMembers.length);
+  if (memberPool.length > 0) {
+    countLabel = formatOnlineCount(memberPool.length);
   } else if (status === "connecting") {
     countLabel = "Conectando…";
   }
@@ -330,13 +374,11 @@ export const CommunityPresence = ({
   return (
     <div
       className="mt-3"
-      data-online-count={
-        liveMembers.length > 0 ? liveMembers.length : undefined
-      }
+      data-online-count={memberPool.length > 0 ? memberPool.length : undefined}
       data-presence-status={status}
       data-testid="community-presence"
     >
-      <div className="flex min-w-0 items-center gap-3">
+      <div className="community-presence__layout">
         <div className="community-presence__stack">
           {visibleMembers.length === 0 ? (
             <span aria-hidden="true" className="community-presence__empty">
@@ -373,14 +415,18 @@ export const CommunityPresence = ({
             </span>
           ) : null}
         </div>
-        <span
-          aria-live="polite"
-          className="min-w-0 text-muted-foreground text-xs"
-        >
-          {displayedMembers.length > 0 ? (
+        <span aria-live="polite" className="community-presence__count">
+          {memberPool.length > 0 ? (
             <span aria-hidden="true" className="community-presence__signal" />
           ) : null}
-          {countLabel}
+          <span className="community-presence__count-desktop">
+            {countLabel}
+          </span>
+          <span className="community-presence__count-mobile">
+            {memberPool.length > 0
+              ? [String(memberPool.length), "online agora"].join(" ")
+              : countLabel}
+          </span>
         </span>
       </div>
     </div>

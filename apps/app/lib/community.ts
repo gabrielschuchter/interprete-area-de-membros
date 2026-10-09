@@ -108,7 +108,7 @@ export const getCommunityPresenceProfiles = (memberId: string) =>
     database.profile.findMany({
       where: { clerkUserId: { not: memberId } },
       orderBy: [{ updatedAt: "desc" }, { displayName: "asc" }],
-      take: 7,
+      take: 24,
       select: { avatarUrl: true, displayName: true, username: true },
     })
   );
