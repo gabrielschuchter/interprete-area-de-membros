@@ -572,6 +572,7 @@ export function TopicEditor({
     <div
       className={[
         "community-topic-editor",
+        editor?.isEmpty && "community-topic-editor--empty",
         mobileToolbarActive && "community-topic-editor--rail-active",
       ]
         .filter(Boolean)

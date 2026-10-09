@@ -178,7 +178,7 @@ const ProfilePage = async ({ searchParams }: ProfilePageProperties) => {
           {completion.items.map((item) => (
             <span
               aria-hidden="true"
-              className={`h-[6px] rounded-full ${item.complete ? "bg-brand-dark-amaranth" : "bg-[var(--line-soft)]"}`}
+              className={`h-[6px] rounded-full ${item.complete ? "bg-brand-structural" : "bg-border"}`}
               key={item.field}
             />
           ))}
@@ -191,7 +191,7 @@ const ProfilePage = async ({ searchParams }: ProfilePageProperties) => {
           {completion.items.map((item) => (
             <li className="border-border border-b" key={item.field}>
               <Link
-                className="flex min-h-11 items-center justify-between gap-3 text-[15px] hover:text-brand-dark-amaranth focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="flex min-h-11 items-center justify-between gap-3 text-[15px] hover:text-brand-structural focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 href={`/perfil/editar#profile-${item.field}`}
               >
                 <span className={item.complete ? "text-muted-foreground" : ""}>
@@ -200,12 +200,12 @@ const ProfilePage = async ({ searchParams }: ProfilePageProperties) => {
                 {item.complete ? (
                   <BadgeCheckIcon
                     aria-label="Completo"
-                    className="size-4 shrink-0 fill-brand-dark-amaranth text-white"
+                    className="size-4 shrink-0 fill-brand-structural text-white"
                   />
                 ) : (
                   <PlusIcon
                     aria-label="Adicionar"
-                    className="size-4 shrink-0 text-brand-dark-amaranth"
+                    className="size-4 shrink-0 text-brand-structural"
                   />
                 )}
               </Link>
@@ -231,15 +231,11 @@ const ProfilePage = async ({ searchParams }: ProfilePageProperties) => {
                 </li>
               ))}
             </ul>
-          ) : (
-            <p className="border-y py-4 text-sm">
-              Os oito itens do seu perfil estão completos.
-            </p>
-          )}
+          ) : null}
           <p className="mt-4 flex items-start gap-2 border-border border-t pt-4 text-muted-foreground text-xs leading-5">
             <BadgeCheckIcon
               aria-hidden="true"
-              className="mt-0.5 size-4 shrink-0 fill-brand-dark-amaranth text-white"
+              className="mt-0.5 size-4 shrink-0 fill-brand-structural text-white"
             />
             <span>
               Concluídos:{" "}

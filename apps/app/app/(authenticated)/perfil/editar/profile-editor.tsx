@@ -69,7 +69,7 @@ const getEditorStatusTone = (
     return { dot: "bg-destructive", text: "text-destructive" };
   }
   if (hasUnsavedChanges || isUploading || pending) {
-    return { dot: "bg-brand-dark-amaranth", text: "text-muted-foreground" };
+    return { dot: "bg-brand-structural", text: "text-muted-foreground" };
   }
   return { dot: "bg-muted-foreground", text: "text-muted-foreground" };
 };
@@ -179,7 +179,7 @@ const ProfileEditor = ({
           {completion.items.map((item) => (
             <span
               aria-hidden="true"
-              className={`h-[6px] rounded-full ${item.complete ? "bg-brand-dark-amaranth" : "bg-[var(--line-soft)]"}`}
+              className={`h-[6px] rounded-full ${item.complete ? "bg-brand-structural" : "bg-border"}`}
               key={item.field}
             />
           ))}

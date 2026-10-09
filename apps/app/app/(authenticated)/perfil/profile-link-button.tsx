@@ -25,13 +25,13 @@ export const ProfileLinkButton = ({
   return (
     <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
       <IntentLink
-        className="inline-flex min-h-11 items-center font-semibold text-brand-dark-amaranth underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="inline-flex min-h-11 items-center font-semibold text-brand-structural underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         href={`/membros/${username}`}
       >
         Ver perfil público
       </IntentLink>
       <button
-        className="inline-flex min-h-11 items-center gap-1.5 font-semibold text-brand-dark-amaranth underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="inline-flex min-h-11 items-center gap-1.5 font-semibold text-brand-structural underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         onClick={copy}
         type="button"
       >

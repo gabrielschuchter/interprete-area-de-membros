@@ -22,6 +22,18 @@ const categoryForCriterion: Record<
 };
 
 const categories = ["Estudo", "Prática", "Comunidade"] as const;
+const criterionOrder = [
+  BadgeCriterion.STUDY_MINUTES,
+  BadgeCriterion.STUDY_STREAK_DAYS,
+  BadgeCriterion.LESSONS_COMPLETED,
+  BadgeCriterion.LEARNING_PATHS_COMPLETED,
+  BadgeCriterion.EXERCISE_ANSWERS,
+  BadgeCriterion.ACTIVITIES_COMPLETED,
+  BadgeCriterion.TASKS_COMPLETED,
+  BadgeCriterion.STUDY_GOALS_MET,
+  BadgeCriterion.COMMUNITY_PUBLICATIONS,
+  BadgeCriterion.MEETINGS_ATTENDED,
+] satisfies readonly BadgeCriterion[];
 
 const formatProgress = (
   criterion: BadgeCriterion,
@@ -113,11 +125,11 @@ const AchievementsPage = async () => {
           aria-valuemax={definitions.length || 1}
           aria-valuemin={0}
           aria-valuenow={earnedCount}
-          className="mt-4 h-[5px] rounded-full bg-[var(--line-soft)]"
+          className="mt-4 h-[5px] rounded-full bg-border"
           role="progressbar"
         >
           <span
-            className="block h-full rounded-full bg-brand-dark-amaranth transition-[width] duration-200"
+            className="block h-full rounded-full bg-brand-structural transition-[width] duration-200"
             style={{
               width: `${definitions.length ? (earnedCount / definitions.length) * 100 : 0}%`,
             }}
@@ -131,9 +143,15 @@ const AchievementsPage = async () => {
         </p>
       ) : (
         categories.map((category) => {
-          const categoryBadges = definitions.filter(
-            ({ criterion }) => categoryForCriterion[criterion] === category
-          );
+          const categoryBadges = definitions
+            .filter(
+              ({ criterion }) => categoryForCriterion[criterion] === category
+            )
+            .sort(
+              (left, right) =>
+                criterionOrder.indexOf(left.criterion) -
+                criterionOrder.indexOf(right.criterion)
+            );
           if (categoryBadges.length === 0) {
             return null;
           }
@@ -171,7 +189,7 @@ const AchievementsPage = async () => {
                         </div>
                         <div className="mt-2 shrink-0 font-data text-[0.68rem] sm:mt-0 sm:text-right">
                           {reached ? (
-                            <p className="inline-flex items-center gap-1.5 font-sans font-semibold text-brand-dark-amaranth text-xs">
+                            <p className="inline-flex items-center gap-1.5 font-sans font-semibold text-brand-structural text-xs">
                               <BadgeCheckIcon
                                 aria-hidden="true"
                                 className="size-4"

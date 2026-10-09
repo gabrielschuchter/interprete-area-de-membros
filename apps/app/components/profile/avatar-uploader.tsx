@@ -126,7 +126,7 @@ export const AvatarUploader = ({
       }
     >
       <div
-        className={`relative flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--line-soft)] text-brand-dark-amaranth ${isProfileEditor ? "size-[72px] border border-[#D4C4BE] font-display text-[26px]" : "size-14 text-lg"}`}
+        className={`relative flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--line-soft)] text-brand-structural ${isProfileEditor ? "size-[72px] border border-[#D4C4BE] font-display text-[26px]" : "size-14 text-lg"}`}
       >
         {(previewUrl ?? url) ? (
           // The source is either an authenticated member-asset route or a legacy
@@ -152,7 +152,7 @@ export const AvatarUploader = ({
       >
         <input name="avatarUrl" type="hidden" value={url} />
         <label
-          className={`inline-flex min-h-11 cursor-pointer items-center gap-2 font-semibold text-brand-dark-amaranth text-sm focus-within:outline-none focus-within:ring-2 focus-within:ring-brand-dark-amaranth hover:bg-brand-pink-essence ${isProfileEditor ? "rounded-[6px] border-2 border-brand-dark-amaranth px-5" : "rounded-sm border border-brand-dark-amaranth px-3"}`}
+          className={`inline-flex min-h-11 cursor-pointer items-center gap-2 font-semibold text-brand-structural text-sm focus-within:outline-none focus-within:ring-2 focus-within:ring-brand-structural hover:bg-background ${isProfileEditor ? "rounded-[6px] border-2 border-brand-structural px-5" : "rounded-sm border border-brand-structural px-3"}`}
         >
           <CameraIcon aria-hidden="true" className="size-4" />
           {isUploading ? "Enviando…" : "Trocar foto"}
