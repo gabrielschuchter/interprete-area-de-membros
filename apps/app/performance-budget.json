@@ -41,7 +41,7 @@
     {
       "route": "profile-achievements",
       "manifestSegments": ["(authenticated)", "perfil", "conquistas"],
-      "entrySuffix": "apps/app/app/(authenticated)/perfil/conquistas/page",
+      "entrySuffix": "apps/app/app/(authenticated)/perfil/layout",
       "maxGzipBytes": 230400
     },
     {

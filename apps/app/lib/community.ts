@@ -108,7 +108,7 @@ export const getCommunityPresenceProfiles = (memberId: string) =>
     database.profile.findMany({
       where: { clerkUserId: { not: memberId } },
       orderBy: [{ updatedAt: "desc" }, { displayName: "asc" }],
-      take: 7,
+      take: 24,
       select: { avatarUrl: true, displayName: true, username: true },
     })
   );
@@ -711,8 +711,17 @@ export const getCommunityEditorPost = async (
   postId: string,
   memberId: string
 ) => {
+  const role = await getMemberRole(memberId);
+  const canModerate = role === MemberRole.TEACHER || role === MemberRole.ADMIN;
   const post = await database.communityPost.findFirst({
-    where: { id: postId, authorId: memberId, deletedAt: null },
+    where: {
+      id: postId,
+      deletedAt: null,
+      OR: [
+        { authorId: memberId },
+        ...(canModerate ? [{ status: ContentStatus.PUBLISHED }] : []),
+      ],
+    },
     select: {
       ...communityPostSelect,
       status: true,

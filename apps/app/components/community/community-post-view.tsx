@@ -1,21 +1,15 @@
-import { Badge } from "@repo/design-system/components/ui/badge";
 import { Button } from "@repo/design-system/components/ui/button";
 import {
   ArrowLeftIcon,
+  Edit2Icon,
   MessageCircleIcon,
-  PinIcon,
   ThumbsUpIcon,
+  Trash2Icon,
 } from "lucide-react";
 import Link from "next/link";
 import {
-  setPostStatus,
   softDeleteComment,
-  softDeletePost,
   toggleCommentVote,
-  togglePostFeatured,
-  togglePostPin,
-  toggleTopicFollow,
-  toggleTopicMute,
   updateComment,
 } from "@/app/(authenticated)/comunidade/actions";
 import {
@@ -28,7 +22,10 @@ import {
   SingleFlightSubmit,
 } from "../mutations/single-flight-form";
 import { CommentComposer } from "./comment-composer";
+import { CommunityCoverImage } from "./community-cover-image";
+import { CommunityDiscussionFollow } from "./community-discussion-follow";
 import { CommunityPostActions } from "./community-post-actions";
+import { CommunityPostMenu } from "./community-post-menu";
 import { MemberIdentity } from "./member-identity";
 import { MentionTextarea } from "./mention-textarea";
 
@@ -49,13 +46,15 @@ const CommentContent = ({
   }
   if (comment.contentJson) {
     return (
-      <div className="mt-2">
+      <div className="community-comment__content">
         <RichDocument currentMemberId={memberId} value={comment.contentJson} />
       </div>
     );
   }
   return (
-    <p className="mt-2 whitespace-pre-wrap leading-7">{comment.content}</p>
+    <p className="community-comment__content whitespace-pre-wrap">
+      {comment.content}
+    </p>
   );
 };
 
@@ -69,19 +68,21 @@ interface CommentThreadProperties {
 }
 
 const CommentControls = ({
+  allowReply,
   comment,
   memberId,
   post,
   replies,
   role,
 }: Omit<CommentThreadProperties, "depth" | "repliesByParent"> & {
+  readonly allowReply: boolean;
   readonly replies: readonly CommunityComment[];
 }) => {
   const canDelete =
     !comment.deletedAt &&
     (comment.authorId === memberId || role === "TEACHER" || role === "ADMIN");
   return (
-    <div className="mt-3 flex flex-wrap items-center gap-3">
+    <div className="community-comment__controls">
       <SingleFlightForm action={toggleCommentVote}>
         <input name="commentId" type="hidden" value={comment.id} />
         <input name="postId" type="hidden" value={post.id} />
@@ -92,20 +93,25 @@ const CommentControls = ({
           value={comment.votes.length > 0 ? "off" : "on"}
         />
         <SingleFlightSubmit
+          aria-label={
+            comment.votes.length > 0 ? "Remover apoio" : "Apoiar comentário"
+          }
+          className="community-comment__vote"
           pendingLabel="Salvando…"
           size="sm"
           variant={comment.votes.length > 0 ? "default" : "ghost"}
         >
-          <ThumbsUpIcon aria-hidden="true" />{" "}
-          {comment.votes.length > 0 ? "Apoiado" : "Apoiar"}
+          <ThumbsUpIcon aria-hidden="true" />
+          {comment.votes.length > 0 ? "Apoiado" : "Apoiar"} ·{" "}
+          {comment._count.votes}
         </SingleFlightSubmit>
       </SingleFlightForm>
-      <span className="text-muted-foreground text-xs">
+      <span className="community-comment__reply-count">
         {replies.length} respostas
       </span>
-      {!(comment.deletedAt || post.space?.commentsClosed) && (
+      {allowReply && !(comment.deletedAt || post.space?.commentsClosed) && (
         <details>
-          <summary className="cursor-pointer text-muted-foreground text-xs underline underline-offset-4">
+          <summary className="community-comment__reply-toggle">
             Responder
           </summary>
           <CommentComposer
@@ -120,8 +126,11 @@ const CommentControls = ({
       )}
       {!comment.deletedAt && comment.authorId === memberId && (
         <details>
-          <summary className="cursor-pointer text-muted-foreground text-xs underline underline-offset-4">
-            Editar
+          <summary
+            aria-label="Editar comentário"
+            className="community-comment__edit-toggle"
+          >
+            <Edit2Icon aria-hidden="true" /> <span>Editar</span>
           </summary>
           <SingleFlightForm action={updateComment} className="mt-3 grid gap-3">
             <input name="commentId" type="hidden" value={comment.id} />
@@ -158,12 +167,13 @@ const CommentControls = ({
             value={post.space?.slug ?? ""}
           />
           <SingleFlightSubmit
-            className="text-muted-foreground"
+            aria-label="Apagar comentário"
+            className="community-comment__delete"
             pendingLabel="Apagando…"
             size="sm"
             variant="ghost"
           >
-            Apagar
+            <Trash2Icon aria-hidden="true" /> <span>Apagar</span>
           </SingleFlightSubmit>
         </SingleFlightForm>
       )}
@@ -182,10 +192,10 @@ const CommentThread = ({
   const replies = repliesByParent.get(comment.id) ?? [];
   return (
     <div
-      className={`${depth === 0 ? "border-border border-l-2 pl-4 sm:pl-6" : "border-border border-t pt-5 pl-4 sm:pl-6"} community-comment scroll-mt-24`}
+      className={`${depth === 0 ? "community-comment--top-level" : "community-comment--reply"} community-comment scroll-mt-24`}
       id={`comment-${comment.id}`}
     >
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="community-comment__meta">
         {comment.deletedAt ? (
           <span className="text-muted-foreground text-sm italic">
             Comentário removido
@@ -195,10 +205,21 @@ const CommentThread = ({
             authorId={comment.authorId}
             compact
             profile={comment.profile ?? undefined}
+            replyAvatar={depth > 0}
             showHeadline={false}
           />
         )}
-        {depth > 0 && <span className="brand-eyebrow">Resposta</span>}
+        {!comment.deletedAt && (
+          <time
+            className="community-comment__date"
+            dateTime={comment.createdAt.toISOString()}
+          >
+            {comment.createdAt.toLocaleDateString("pt-BR", {
+              day: "2-digit",
+              month: "short",
+            })}
+          </time>
+        )}
         {!comment.deletedAt && (
           <>
             {comment.editedAt && (
@@ -213,6 +234,7 @@ const CommentThread = ({
       <CommentContent comment={comment} memberId={memberId} />
       {!comment.deletedAt && (
         <CommentControls
+          allowReply={depth === 0}
           comment={comment}
           memberId={memberId}
           post={post}
@@ -268,11 +290,18 @@ export function CommunityPostView({
   }
   const canStaffManage = role === "TEACHER" || role === "ADMIN";
   const edited = Boolean(post.editedAt);
+  const authorRole = post.profile?.member?.role;
+  let authorRoleLabel: string | null = null;
+  if (authorRole === "ADMIN") {
+    authorRoleLabel = "Admin";
+  } else if (authorRole === "TEACHER") {
+    authorRoleLabel = "Professor";
+  }
 
   return (
     <div className="min-h-svh bg-background">
-      <main className="mx-auto w-full max-w-[960px] px-5 py-8 sm:px-8 lg:py-14">
-        <Button asChild className="-ml-3" variant="ghost">
+      <main className="community-post-shell mx-auto w-full">
+        <Button asChild className="community-post-back" variant="ghost">
           <Link
             href={
               backHref ??
@@ -283,239 +312,138 @@ export function CommunityPostView({
             {backLabel ?? post.space?.title ?? "Comunidade"}
           </Link>
         </Button>
-        <article className="mt-8 border-border border-b pb-10">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant={post.votes.length > 0 ? "default" : "outline"}>
-              <ThumbsUpIcon aria-hidden="true" /> {post._count.votes} apoios
-            </Badge>
-            <span className="text-muted-foreground text-xs">
-              {post._count.comments} respostas
-            </span>
-            {post.isPinned && (
-              <Badge variant="secondary">
-                <PinIcon aria-hidden="true" /> Fixado
-              </Badge>
+        <article className="community-post-article">
+          <div className="community-post-meta-row">
+            <div className="community-post-meta">
+              {post.space && (
+                <Link
+                  className="community-post-group"
+                  href={`/comunidade/${post.space.slug}`}
+                >
+                  {post.space.title}
+                </Link>
+              )}
+              <time
+                dateTime={(post.publishedAt ?? post.createdAt).toISOString()}
+              >
+                {(post.publishedAt ?? post.createdAt).toLocaleDateString(
+                  "pt-BR"
+                )}
+              </time>
+              {edited && <span>· Editado</span>}
+            </div>
+            {(post.authorId === memberId || canStaffManage) && (
+              <CommunityPostMenu
+                canModerate={canStaffManage}
+                isFeatured={post.isFeatured}
+                isPinned={post.isPinned}
+                postId={post.id}
+                spaceSlug={post.space?.slug ?? ""}
+              />
             )}
-            {post.isFeatured && <Badge>Em destaque</Badge>}
           </div>
-          <div className="mt-5">
+          <h1 className="community-post-title">{post.title}</h1>
+          {post.subtitle && (
+            <p className="community-post-subtitle">{post.subtitle}</p>
+          )}
+          <div className="community-post-author">
             <MemberIdentity
               authorId={post.authorId}
+              compact
               profile={post.profile ?? undefined}
+              showHeadline={false}
             />
+            {authorRoleLabel && (
+              <span className="community-post-author__role">
+                {authorRoleLabel}
+              </span>
+            )}
           </div>
-          <h1 className="mt-5 max-w-4xl font-display text-5xl leading-[1.02] sm:text-7xl">
-            {post.title}
-          </h1>
-          {post.subtitle && (
-            <p className="mt-5 max-w-3xl text-muted-foreground text-xl leading-8 sm:text-2xl">
-              {post.subtitle}
-            </p>
-          )}
           {post.coverUrl && (
-            // biome-ignore lint/performance/noImgElement: cover URLs are sanitized user content and may come from hosts not configured for next/image.
-            <img
+            <CommunityCoverImage
               alt={`Capa: ${post.title}`}
-              className="mt-8 max-h-[34rem] w-full rounded-sm border object-cover"
+              className="community-post-cover"
               height={630}
               loading="lazy"
               src={post.coverUrl}
               width={1200}
             />
           )}
-          <div className="mt-7 flex flex-wrap items-center gap-3 text-muted-foreground text-xs">
-            <time dateTime={(post.publishedAt ?? post.createdAt).toISOString()}>
-              {(post.publishedAt ?? post.createdAt).toLocaleDateString("pt-BR")}
-            </time>
-            {edited && <span>· Editado</span>}
-            <span>· {post.readingMinutes} min de leitura</span>
-          </div>
-          <div className="lesson-document mt-8 max-w-3xl text-lg">
+          <div className="lesson-document community-post-body">
             {post.contentJson ? (
               <RichDocument
                 currentMemberId={memberId}
                 value={post.contentJson}
               />
             ) : (
-              <p className="whitespace-pre-wrap text-muted-foreground leading-8">
-                {post.content}
-              </p>
+              <p className="whitespace-pre-wrap">{post.content}</p>
             )}
           </div>
-          <div className="mt-7 flex flex-wrap items-center gap-3">
+          {post.tags.length > 0 && (
+            <ul
+              aria-label="Etiquetas da publicação"
+              className="community-post-tags"
+            >
+              {post.tags.map((tag) => (
+                <li key={tag}>#{tag}</li>
+              ))}
+            </ul>
+          )}
+          <div className="community-post-actions-bar">
             <CommunityPostActions
+              className="community-post-action-buttons"
+              detailed
               initialBookmarked={post.bookmarks.length > 0}
               initialVoted={post.votes.length > 0}
               postId={post.id}
               spaceSlug={post.space?.slug ?? ""}
               voteCount={post._count.votes}
             />
-            <SingleFlightForm action={toggleTopicFollow}>
-              <input name="postId" type="hidden" value={post.id} />
-              <input
-                name="spaceSlug"
-                type="hidden"
-                value={post.space?.slug ?? ""}
-              />
-              <input
-                name="desired"
-                type="hidden"
-                value={post.followers.length > 0 ? "off" : "on"}
-              />
-              <SingleFlightSubmit
-                pendingLabel="Salvando…"
-                size="sm"
-                variant="ghost"
-              >
-                {post.followers.length > 0
-                  ? "Seguindo discussão"
-                  : "Seguir discussão"}
-              </SingleFlightSubmit>
-            </SingleFlightForm>
-            {post.followers.length > 0 && (
-              <SingleFlightForm action={toggleTopicMute}>
-                <input name="postId" type="hidden" value={post.id} />
-                <input
-                  name="spaceSlug"
-                  type="hidden"
-                  value={post.space?.slug ?? ""}
-                />
-                <input
-                  name="desired"
-                  type="hidden"
-                  value={post.followers[0]?.mutedAt ? "off" : "on"}
-                />
-                <SingleFlightSubmit
-                  pendingLabel="Salvando…"
-                  size="sm"
-                  variant="ghost"
-                >
-                  {post.followers[0]?.mutedAt
-                    ? "Ativar atualizações"
-                    : "Silenciar discussão"}
-                </SingleFlightSubmit>
-              </SingleFlightForm>
-            )}
+            <CommunityDiscussionFollow
+              isFollowing={post.followers.length > 0}
+              isMuted={Boolean(post.followers[0]?.mutedAt)}
+              postId={post.id}
+              spaceSlug={post.space?.slug ?? ""}
+            />
+            <Link
+              className="community-post-responses-link"
+              href="#comments-heading"
+            >
+              <MessageCircleIcon aria-hidden="true" />
+              <span>{post._count.comments} respostas</span>
+            </Link>
           </div>
-          <div className="mt-4 flex flex-wrap gap-2">
-            {post.tags.map((tag) => (
-              <span className="text-muted-foreground text-xs" key={tag}>
-                #{tag}
-              </span>
-            ))}
-          </div>
-          {(post.authorId === memberId || canStaffManage) && (
-            <div className="mt-5 flex flex-wrap gap-3 border-border border-t pt-5">
-              {post.authorId === memberId && (
-                <Button asChild size="sm" variant="outline">
-                  <Link href={`/comunidade/editor/${post.id}`}>Editar</Link>
-                </Button>
-              )}
-              {canStaffManage && (
-                <SingleFlightForm action={togglePostPin}>
-                  <input name="postId" type="hidden" value={post.id} />
-                  <input
-                    name="spaceSlug"
-                    type="hidden"
-                    value={post.space?.slug ?? ""}
-                  />
-                  <input
-                    name="desired"
-                    type="hidden"
-                    value={post.isPinned ? "off" : "on"}
-                  />
-                  <SingleFlightSubmit
-                    pendingLabel="Salvando…"
-                    size="sm"
-                    variant="ghost"
-                  >
-                    {post.isPinned ? "Desfixar" : "Fixar"}
-                  </SingleFlightSubmit>
-                </SingleFlightForm>
-              )}
-              {canStaffManage && (
-                <SingleFlightForm action={togglePostFeatured}>
-                  <input name="postId" type="hidden" value={post.id} />
-                  <input
-                    name="spaceSlug"
-                    type="hidden"
-                    value={post.space?.slug ?? ""}
-                  />
-                  <input
-                    name="desired"
-                    type="hidden"
-                    value={post.isFeatured ? "off" : "on"}
-                  />
-                  <SingleFlightSubmit
-                    pendingLabel="Salvando…"
-                    size="sm"
-                    variant="ghost"
-                  >
-                    {post.isFeatured ? "Retirar destaque" : "Destacar"}
-                  </SingleFlightSubmit>
-                </SingleFlightForm>
-              )}
-              <SingleFlightForm action={softDeletePost}>
-                <input name="postId" type="hidden" value={post.id} />
-                <input
-                  name="spaceSlug"
-                  type="hidden"
-                  value={post.space?.slug ?? ""}
-                />
-                <SingleFlightSubmit
-                  pendingLabel="Apagando…"
-                  size="sm"
-                  variant="ghost"
-                >
-                  {canStaffManage && post.authorId !== memberId
-                    ? "Remover conteúdo"
-                    : "Excluir"}
-                </SingleFlightSubmit>
-              </SingleFlightForm>
-              {post.authorId === memberId && (
-                <SingleFlightForm action={setPostStatus}>
-                  <input name="postId" type="hidden" value={post.id} />
-                  <input
-                    name="spaceSlug"
-                    type="hidden"
-                    value={post.space?.slug ?? ""}
-                  />
-                  <input name="status" type="hidden" value="ARCHIVED" />
-                  <SingleFlightSubmit
-                    pendingLabel="Salvando…"
-                    size="sm"
-                    variant="ghost"
-                  >
-                    Arquivar
-                  </SingleFlightSubmit>
-                </SingleFlightForm>
-              )}
-            </div>
-          )}
         </article>
 
-        <section aria-labelledby="comments-heading" className="mt-10">
-          <div className="flex items-center justify-between border-border border-b pb-3">
-            <h2 className="font-display text-3xl" id="comments-heading">
+        <section
+          aria-labelledby="comments-heading"
+          className="community-discussion"
+        >
+          <div className="community-discussion__heading">
+            <h2 className="font-display" id="comments-heading">
               Discussão
             </h2>
-            <span className="flex items-center gap-2 text-muted-foreground text-xs">
+            <span className="community-discussion__count">
               <MessageCircleIcon aria-hidden="true" /> {post._count.comments}
             </span>
           </div>
           {post.space?.commentsClosed ? (
-            <p className="paper-surface mt-5 border p-5 text-muted-foreground sm:p-6">
+            <p className="community-comment-closed">
               Os comentários deste grupo estão fechados pela equipe.
             </p>
           ) : (
-            <div className="paper-surface mt-5 border p-5 sm:p-6">
+            <div className="community-comment-composer-wrap">
               <CommentComposer
+                ariaLabel="Comentário"
+                className="community-comment-composer"
+                helperText="Use @nome para mencionar alguém."
+                placeholder="Acrescente uma leitura, uma pergunta ou uma referência…"
                 postId={post.id}
                 spaceSlug={post.space?.slug ?? ""}
               />
             </div>
           )}
-          <div className="mt-8 space-y-5">
+          <div className="community-comment-list">
             {topLevel.length === 0 ? (
               <p className="text-muted-foreground">
                 Ainda não há respostas. A conversa pode começar com você.

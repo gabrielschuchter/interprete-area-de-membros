@@ -10,7 +10,12 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 import { resetNavigationPrefetchBudget } from "../../app/(authenticated)/components/navigation-prefetch";
 import { NotificationRealtime } from "../../app/(authenticated)/components/notification-realtime";
 import { getAuthenticatedRealtimeClient } from "../../lib/realtime-client";
-import { CommunityPresence } from "./community-presence";
+import {
+  CommunityPresence,
+  mergeCommunityPresenceMembers,
+  type OnlineCommunityMember,
+  rotateCommunityPresenceMembers,
+} from "./community-presence";
 
 const presenceHarness = vi.hoisted(() => ({
   createdClients: 0,
@@ -82,7 +87,7 @@ describe("CommunityPresence UI", () => {
     resetNavigationPrefetchBudget();
   });
 
-  test("shows the live count and links an active member to the internal profile", async () => {
+  test("combines live and saved profiles and links members to their profiles", async () => {
     presenceHarness.state = {
       ana: [{ displayName: "Ana", avatarUrl: null }],
     };
@@ -113,6 +118,13 @@ describe("CommunityPresence UI", () => {
     render(
       <>
         <CommunityPresence
+          fallbackProfiles={[
+            {
+              avatarUrl: null,
+              displayName: "Bruna",
+              username: "bruna",
+            },
+          ]}
           memberId="eu"
           profile={{ avatarUrl: null, displayName: "Eu", username: "eu" }}
         />
@@ -126,7 +138,7 @@ describe("CommunityPresence UI", () => {
     );
 
     await waitFor(() =>
-      expect(screen.getByText("1 membro online")).toBeTruthy()
+      expect(screen.getByText("3 membros online")).toBeTruthy()
     );
     const profileLink = screen.getByRole("link", {
       name: "Abrir perfil de Ana",
@@ -138,9 +150,45 @@ describe("CommunityPresence UI", () => {
       expect(profileLink.getAttribute("data-prefetch")).toBe("enabled")
     );
     expect(profileLink.getAttribute("title")).toBe("Ana");
+    expect(
+      screen
+        .getByRole("link", { name: "Abrir perfil de Bruna" })
+        .getAttribute("href")
+    ).toBe("/membros/bruna");
     expect(presenceHarness.createdClients).toBe(1);
     await expect(
       getAuthenticatedRealtimeClient("outro-membro")
     ).rejects.toThrow("Realtime não emitiu um token válido.");
+  });
+
+  test("deduplicates real profiles and rotates a seven-profile window", () => {
+    const members: OnlineCommunityMember[] = Array.from(
+      { length: 9 },
+      (_, index) => ({
+        avatarUrl: null,
+        displayName: `Pessoa ${index + 1}`,
+        username: `pessoa-${index + 1}`,
+      })
+    );
+
+    const merged = mergeCommunityPresenceMembers(
+      members.slice(0, 2),
+      members.slice(1)
+    );
+
+    expect(merged).toHaveLength(9);
+    const firstWindow = rotateCommunityPresenceMembers(merged, 0);
+    const secondWindow = rotateCommunityPresenceMembers(merged, 1);
+    const wrappedWindow = rotateCommunityPresenceMembers(merged, 8);
+    expect(firstWindow.map(({ username }) => username)).toEqual(
+      members.slice(0, 7).map(({ username }) => username)
+    );
+    expect(secondWindow.map(({ username }) => username)).toEqual(
+      members.slice(1, 8).map(({ username }) => username)
+    );
+    expect(wrappedWindow.map(({ username }) => username)).toEqual([
+      "pessoa-9",
+      ...members.slice(0, 6).map(({ username }) => username),
+    ]);
   });
 });

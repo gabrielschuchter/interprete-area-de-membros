@@ -1,15 +1,12 @@
 "use client";
 
-import { Button } from "@repo/design-system/components/ui/button";
-import { CheckIcon, CopyIcon, ExternalLinkIcon } from "lucide-react";
+import { CheckIcon } from "lucide-react";
 import { useState } from "react";
 import { IntentLink } from "../components/intent-link";
 
 export const ProfileLinkButton = ({
-  compact = false,
   username,
 }: {
-  readonly compact?: boolean;
   readonly username: string;
 }) => {
   const [status, setStatus] = useState("");
@@ -26,28 +23,23 @@ export const ProfileLinkButton = ({
   };
 
   return (
-    <div className="flex flex-wrap gap-2">
-      {compact ? null : (
-        <Button asChild className="shadow-none" size="sm" variant="outline">
-          <IntentLink href={`/membros/${username}`}>
-            Perfil público <ExternalLinkIcon aria-hidden="true" />
-          </IntentLink>
-        </Button>
-      )}
-      <Button
-        className="shadow-none"
+    <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
+      <IntentLink
+        className="inline-flex min-h-11 items-center font-semibold text-brand-dark-amaranth underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        href={`/membros/${username}`}
+      >
+        Ver perfil público
+      </IntentLink>
+      <button
+        className="inline-flex min-h-11 items-center gap-1.5 font-semibold text-brand-dark-amaranth underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         onClick={copy}
-        size={compact ? "default" : "sm"}
         type="button"
-        variant={compact ? "ghost" : "outline"}
       >
         {status === "Link copiado." ? (
-          <CheckIcon aria-hidden="true" />
-        ) : (
-          <CopyIcon aria-hidden="true" />
-        )}
-        {compact ? "Copiar" : "Copiar link"}
-      </Button>
+          <CheckIcon aria-hidden="true" className="size-4" />
+        ) : null}
+        {status === "Link copiado." ? "Link copiado" : "Copiar link"}
+      </button>
       <span aria-live="polite" className="sr-only">
         {status}
       </span>

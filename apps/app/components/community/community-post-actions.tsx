@@ -13,6 +13,7 @@ type PostAction = "bookmark" | "vote";
 
 interface CommunityPostActionsProperties {
   readonly className?: string;
+  readonly detailed?: boolean;
   readonly initialBookmarked: boolean;
   readonly initialVoted: boolean;
   readonly postId: string;
@@ -43,6 +44,7 @@ const ensureActionSucceeded = (result: unknown) => {
 
 export const CommunityPostActions = ({
   className = "inline-flex flex-wrap items-center gap-2",
+  detailed = false,
   initialBookmarked,
   initialVoted,
   postId,
@@ -116,6 +118,7 @@ export const CommunityPostActions = ({
       <Button
         aria-label={state.voted ? "Remover apoio" : "Apoiar conteúdo"}
         aria-pressed={state.voted}
+        className="min-h-11"
         disabled={isPending || pendingAction !== null}
         onClick={() => toggle("vote")}
         size="sm"
@@ -123,7 +126,11 @@ export const CommunityPostActions = ({
         variant={state.voted ? "secondary" : "ghost"}
       >
         <ThumbsUpIcon aria-hidden="true" className="size-4" />
-        <span>{state.voteCount}</span>
+        {detailed ? (
+          <span>{`Apoiar · ${state.voteCount}`}</span>
+        ) : (
+          <span>{state.voteCount}</span>
+        )}
         <span className="sr-only">apoios</span>
       </Button>
       <Button
@@ -131,7 +138,7 @@ export const CommunityPostActions = ({
           state.bookmarked ? "Remover dos salvos" : "Salvar publicação"
         }
         aria-pressed={state.bookmarked}
-        className="gap-1.5 text-sm"
+        className="min-h-11 gap-1.5 text-sm"
         disabled={isPending || pendingAction !== null}
         onClick={() => toggle("bookmark")}
         size="sm"
