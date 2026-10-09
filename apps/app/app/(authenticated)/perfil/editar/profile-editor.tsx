@@ -176,7 +176,7 @@ const ProfileEditor = ({
           {completion.items.map((item) => (
             <span
               aria-hidden="true"
-              className={`h-[5px] rounded-full ${item.complete ? "bg-brand-dark-amaranth" : "bg-[var(--line-soft)]"}`}
+              className={`h-[6px] rounded-full ${item.complete ? "bg-brand-dark-amaranth" : "bg-[var(--line-soft)]"}`}
               key={item.field}
             />
           ))}
@@ -239,7 +239,7 @@ const ProfileEditor = ({
         <div className="profile-editor-footer flex flex-col gap-3 border-border border-t py-5 sm:flex-row sm:items-center sm:justify-between">
           <p
             aria-live="polite"
-            className={`flex items-center gap-2 text-xs ${statusTone.text}`}
+            className={`sr-only flex items-center gap-2 text-xs sm:not-sr-only ${statusTone.text}`}
           >
             <span
               aria-hidden="true"
@@ -247,26 +247,9 @@ const ProfileEditor = ({
             />
             {statusLabel}
           </p>
-          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center">
-            <Button
-              asChild
-              className="shadow-none"
-              size="default"
-              variant="ghost"
-            >
-              <IntentLink href="/perfil">Descartar</IntentLink>
-            </Button>
-            <Button
-              className="shadow-none"
-              onClick={() => setPreviewOpen(true)}
-              size="default"
-              type="button"
-              variant="ghost"
-            >
-              <EyeIcon aria-hidden="true" /> Pré-visualizar
-            </Button>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <SingleFlightSubmit
-              className="shadow-none"
+              className="w-full shadow-none sm:order-last sm:w-auto"
               disabled={isUploading}
               pendingLabel="Salvando…"
             >
@@ -278,6 +261,25 @@ const ProfileEditor = ({
                 </>
               )}
             </SingleFlightSubmit>
+            <div className="flex justify-center gap-2 sm:order-first">
+              <Button
+                className="order-first shadow-none sm:order-last"
+                onClick={() => setPreviewOpen(true)}
+                size="default"
+                type="button"
+                variant="ghost"
+              >
+                <EyeIcon aria-hidden="true" /> Pré-visualizar
+              </Button>
+              <Button
+                asChild
+                className="order-last shadow-none sm:order-first"
+                size="default"
+                variant="ghost"
+              >
+                <IntentLink href="/perfil">Descartar</IntentLink>
+              </Button>
+            </div>
           </div>
         </div>
       </form>

@@ -7,7 +7,6 @@ import {
   InstagramIcon,
   LinkedinIcon,
   LockKeyholeIcon,
-  PlusIcon,
   XIcon,
 } from "lucide-react";
 import { useState } from "react";
@@ -53,6 +52,9 @@ const SectionHeading = ({
   </h2>
 );
 
+const profileInputClass =
+  "mt-2 min-h-12 rounded-sm bg-white text-[15px] md:text-[15px]";
+
 export const ProfilePhotoSection = ({
   fieldError,
   initialUrl,
@@ -82,6 +84,7 @@ export const ProfilePhotoSection = ({
       initialUrl={initialUrl}
       onUploadingChange={onUploadingChange}
       onValueChange={onValueChange}
+      variant="profile-editor"
     />
     {fieldError("avatarUrl") ? (
       <p className="mt-2 text-destructive text-xs">{fieldError("avatarUrl")}</p>
@@ -103,12 +106,12 @@ export const ProfileIdentitySection = ({
     className="border-border border-b py-6"
   >
     <SectionHeading heading="Identidade" id="edit-identity-heading" />
-    <div className="mt-5 grid gap-y-4">
+    <div className="mt-5 grid gap-y-5">
       <label className="block" htmlFor="profile-displayName">
         <span className="text-sm">Nome de exibição</span>
         <Input
           aria-invalid={Boolean(fieldError("displayName"))}
-          className="mt-2 min-h-11 rounded-sm bg-white"
+          className={profileInputClass}
           id="profile-displayName"
           maxLength={80}
           name="displayName"
@@ -123,13 +126,13 @@ export const ProfileIdentitySection = ({
       </label>
       <label className="block" htmlFor="profile-username">
         <span className="text-sm">Username</span>
-        <div className="mt-2 flex min-h-11 items-center rounded-sm border border-input bg-white focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/35">
-          <span className="flex h-10 shrink-0 items-center border-input border-r px-3 font-data text-muted-foreground text-xs">
+        <div className="mt-2 flex h-12 items-center rounded-sm border border-input bg-white focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/35">
+          <span className="flex h-full shrink-0 items-center border-input border-r px-3 font-data text-[13px] text-muted-foreground">
             /membros/
           </span>
           <Input
             aria-invalid={Boolean(fieldError("username"))}
-            className="min-h-10 rounded-none border-0 bg-transparent shadow-none focus-visible:ring-0"
+            className="h-full min-h-12 rounded-none border-0 bg-transparent text-[15px] shadow-none focus-visible:ring-0 md:text-[15px]"
             id="profile-username"
             maxLength={30}
             name="username"
@@ -149,7 +152,7 @@ export const ProfileIdentitySection = ({
         )}
       </label>
     </div>
-    <label className="mt-4 block" htmlFor="profile-headline">
+    <label className="mt-5 block" htmlFor="profile-headline">
       <span className="flex items-center justify-between gap-3 text-sm">
         Identificação curta
         <span className="font-data text-muted-foreground text-xs">
@@ -158,7 +161,7 @@ export const ProfileIdentitySection = ({
       </span>
       <Input
         aria-invalid={Boolean(fieldError("headline"))}
-        className="mt-2 min-h-11 rounded-sm bg-white"
+        className={profileInputClass}
         id="profile-headline"
         maxLength={60}
         name="headline"
@@ -200,13 +203,13 @@ export const ProfileContextSection = ({
     className="border-border border-b py-6"
   >
     <SectionHeading heading="Contexto" id="edit-context-heading" />
-    <div className="mt-5 grid gap-y-4">
+    <div className="mt-5 grid gap-y-5">
       {contextFields.map(({ id, label, maxLength }) => (
         <label className="block" htmlFor={`profile-${id}`} key={id}>
           <span className="text-sm">{label}</span>
           <Input
             aria-invalid={Boolean(fieldError(id))}
-            className="mt-2 min-h-11 rounded-sm bg-white"
+            className={profileInputClass}
             id={`profile-${id}`}
             maxLength={maxLength}
             name={id}
@@ -221,13 +224,19 @@ export const ProfileContextSection = ({
         </label>
       ))}
     </div>
-    <div className="mt-4 grid gap-x-4 gap-y-4 sm:grid-cols-[1.4fr_0.75fr_1.35fr]">
+    <div className="mt-5 grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-x-5 gap-y-5 sm:grid-cols-[1.4fr_0.75fr_1.35fr]">
       {locationFields.map(({ id, label, maxLength, ...attributes }) => (
-        <label className="block" htmlFor={`profile-${id}`} key={id}>
+        <label
+          className={
+            id === "country" ? "col-span-full block sm:col-span-1" : "block"
+          }
+          htmlFor={`profile-${id}`}
+          key={id}
+        >
           <span className="text-sm">{label}</span>
           <Input
             aria-invalid={Boolean(fieldError(id))}
-            className="mt-2 min-h-11 rounded-sm bg-white"
+            className={profileInputClass}
             id={`profile-${id}`}
             maxLength={maxLength}
             name={id}
@@ -264,7 +273,7 @@ export const ProfileAboutSection = ({
       <span className="text-sm">Bio</span>
       <Textarea
         aria-invalid={Boolean(fieldError("bio"))}
-        className="mt-2 min-h-24 resize-y rounded-sm bg-white"
+        className="mt-2 min-h-[120px] resize-y rounded-sm bg-white text-[15px] md:text-[15px]"
         id="profile-bio"
         maxLength={280}
         name="bio"
@@ -328,7 +337,7 @@ const InterestsField = ({
       <input name="interests" type="hidden" value={value} />
       <div
         aria-invalid={Boolean(fieldError("interests"))}
-        className="mt-2 flex min-h-11 flex-wrap items-center gap-1.5 rounded-sm border border-input bg-white px-2 py-1 focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/35"
+        className="mt-2 flex min-h-12 flex-wrap items-center gap-2 rounded-sm border border-input bg-white px-2 py-1 focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/35"
       >
         {interests.map((interest, index) => {
           const occurrence = interests
@@ -336,7 +345,7 @@ const InterestsField = ({
             .filter((previous) => previous === interest).length;
           return (
             <span
-              className="inline-flex min-h-8 items-center gap-1 rounded-sm bg-brand-pink-essence px-2 font-data text-[0.68rem] text-foreground"
+              className="inline-flex min-h-8 items-center gap-0.5 rounded-sm bg-brand-pink-essence pr-1 pl-3 font-data text-foreground text-xs"
               key={`${interest}-${occurrence}`}
             >
               {interest}
@@ -361,7 +370,7 @@ const InterestsField = ({
         <Input
           aria-invalid={Boolean(fieldError("interests"))}
           aria-label="Adicionar interesse"
-          className="h-9 min-w-32 flex-1 rounded-none border-0 bg-transparent px-2 shadow-none focus-visible:ring-0"
+          className="h-8 min-w-32 flex-1 rounded-none border-0 bg-transparent px-2 text-sm shadow-none focus-visible:ring-0"
           id="profile-interests-input"
           maxLength={80}
           onChange={(event) => setDraft(event.target.value)}
@@ -374,13 +383,6 @@ const InterestsField = ({
           placeholder="Adicionar interesse"
           value={draft}
         />
-        <button
-          className="inline-flex min-h-9 items-center gap-1 px-2 text-muted-foreground text-xs hover:text-brand-dark-amaranth focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          onClick={addInterest}
-          type="button"
-        >
-          <PlusIcon aria-hidden="true" className="size-3.5" /> Adicionar
-        </button>
       </div>
       {fieldError("interests") ? (
         <span className="mt-1 block text-destructive text-xs">
@@ -463,7 +465,7 @@ export const ProfileLinksSection = ({
     className="border-border border-b py-6"
   >
     <SectionHeading heading="Links" id="edit-links-heading" />
-    <div className="mt-5 grid gap-4">
+    <div className="mt-5 grid gap-5">
       {profileLinks.map(({ id, label, prefix, icon: Icon }) => (
         <label className="block" htmlFor={`profile-${id}`} key={id}>
           <span className="text-sm">{label}</span>
@@ -471,15 +473,15 @@ export const ProfileLinksSection = ({
             const currentValue = values[id];
             const currentPrefix = linkInputPrefix(currentValue, prefix);
             return (
-              <div className="mt-2 flex min-h-11 items-center rounded-sm border border-input bg-white focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/35">
+              <div className="mt-2 flex h-12 items-center rounded-sm border border-input bg-white focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/35">
                 <input name={id} type="hidden" value={currentValue} />
-                <span className="flex h-10 shrink-0 items-center gap-1.5 border-input border-r px-3 font-data text-muted-foreground text-xs">
+                <span className="flex h-full shrink-0 items-center gap-1.5 border-input border-r px-3 font-data text-[13px] text-muted-foreground">
                   <Icon aria-hidden="true" className="size-3.5" />
                   {currentPrefix}
                 </span>
                 <Input
                   aria-invalid={Boolean(fieldError(id))}
-                  className="min-h-10 rounded-none border-0 bg-transparent shadow-none focus-visible:ring-0"
+                  className="h-full min-h-12 rounded-none border-0 bg-transparent text-[15px] shadow-none focus-visible:ring-0 md:text-[15px]"
                   id={`profile-${id}`}
                   maxLength={300}
                   onChange={(event) => {
@@ -527,12 +529,12 @@ export const ProfileAccountSection = ({
     <SectionHeading heading="Conta" id="edit-account-heading" />
     <label className="mt-5 block" htmlFor="profile-email">
       <span className="text-sm">E-mail da conta</span>
-      <div className="mt-2 flex min-h-11 items-center rounded-sm border border-input bg-[#F7F3F1]">
-        <span className="flex h-10 shrink-0 items-center border-input border-r px-3 text-muted-foreground">
+      <div className="mt-2 flex h-12 items-center rounded-sm border border-input bg-[#F7F3F1]">
+        <span className="flex h-full shrink-0 items-center border-input border-r px-3 text-muted-foreground">
           <LockKeyholeIcon aria-hidden="true" className="size-3.5" />
         </span>
         <Input
-          className="min-h-10 rounded-none border-0 bg-transparent text-muted-foreground shadow-none focus-visible:ring-0"
+          className="h-full min-h-12 rounded-none border-0 bg-transparent text-[15px] text-muted-foreground shadow-none focus-visible:ring-0 md:text-[15px]"
           id="profile-email"
           readOnly
           value={email}
@@ -548,7 +550,7 @@ export const ProfileAccountSection = ({
     >
       <input
         checked={values.showInDirectory}
-        className="size-4 accent-brand-dark-amaranth"
+        className="size-5 accent-primary"
         id="profile-showInDirectory"
         onChange={(event) => update("showInDirectory", event.target.checked)}
         type="checkbox"

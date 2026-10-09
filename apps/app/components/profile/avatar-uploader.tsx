@@ -8,6 +8,7 @@ interface AvatarUploaderProperties {
   readonly initialUrl: string | null;
   readonly onUploadingChange?: (isUploading: boolean) => void;
   readonly onValueChange?: (value: string) => void;
+  readonly variant?: "default" | "profile-editor";
 }
 
 export const AvatarUploader = ({
@@ -15,7 +16,9 @@ export const AvatarUploader = ({
   initials,
   onUploadingChange,
   onValueChange,
+  variant = "default",
 }: AvatarUploaderProperties) => {
+  const isProfileEditor = variant === "profile-editor";
   const [url, setUrl] = useState(initialUrl ?? "");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -106,8 +109,16 @@ export const AvatarUploader = ({
   };
 
   return (
-    <div className="mt-5 flex flex-wrap items-center gap-4">
-      <div className="relative flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--line-soft)] text-brand-dark-amaranth text-lg">
+    <div
+      className={
+        isProfileEditor
+          ? "mt-5 grid grid-cols-[72px_minmax(0,1fr)] items-center gap-x-4"
+          : "mt-5 flex flex-wrap items-center gap-4"
+      }
+    >
+      <div
+        className={`relative flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--line-soft)] text-brand-dark-amaranth ${isProfileEditor ? "size-[72px] border border-[#D4C4BE] font-display text-[26px]" : "size-14 text-lg"}`}
+      >
         {(previewUrl ?? url) ? (
           // The source is either an authenticated member-asset route or a legacy
           // external URL already stored for this profile.
@@ -115,17 +126,25 @@ export const AvatarUploader = ({
           <img
             alt="Prévia do avatar"
             className="motion-reveal-fast size-full object-cover"
-            height={56}
+            height={isProfileEditor ? 72 : 56}
             src={previewUrl ?? url}
-            width={56}
+            width={isProfileEditor ? 72 : 56}
           />
         ) : (
           initials
         )}
       </div>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+      <div
+        className={
+          isProfileEditor
+            ? "flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1"
+            : "flex flex-wrap items-center gap-x-3 gap-y-1"
+        }
+      >
         <input name="avatarUrl" type="hidden" value={url} />
-        <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-sm border border-brand-dark-amaranth px-3 font-semibold text-brand-dark-amaranth text-sm focus-within:outline-none focus-within:ring-2 focus-within:ring-brand-dark-amaranth hover:bg-brand-pink-essence">
+        <label
+          className={`inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-sm font-semibold text-brand-dark-amaranth text-sm focus-within:outline-none focus-within:ring-2 focus-within:ring-brand-dark-amaranth hover:bg-brand-pink-essence ${isProfileEditor ? "border-2 border-brand-dark-amaranth px-5" : "border border-brand-dark-amaranth px-3"}`}
+        >
           <CameraIcon aria-hidden="true" className="size-4" />
           {isUploading ? "Enviando…" : "Trocar foto"}
           <input
@@ -144,7 +163,7 @@ export const AvatarUploader = ({
         </label>
         {url || previewUrl ? (
           <button
-            className="flex min-h-11 items-center gap-1 text-muted-foreground text-xs underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className={`flex min-h-11 items-center gap-1 text-muted-foreground underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${isProfileEditor ? "px-3 font-medium text-sm" : "text-xs"}`}
             onClick={() => {
               const currentUrl = uploadedUrlRef.current ?? url;
               removeTemporaryUpload(currentUrl).catch(() => undefined);
@@ -158,8 +177,10 @@ export const AvatarUploader = ({
             <XIcon aria-hidden="true" className="size-3" /> Remover
           </button>
         ) : null}
-        <p className="basis-full text-muted-foreground text-xs">
-          JPG, PNG ou WebP · até 5 MB.
+        <p
+          className={`basis-full text-muted-foreground ${isProfileEditor ? "text-[13px]" : "text-xs"}`}
+        >
+          JPG, PNG ou WebP · até 5 MB{isProfileEditor ? "" : "."}
         </p>
         {error ? <p className="text-destructive text-xs">{error}</p> : null}
       </div>
