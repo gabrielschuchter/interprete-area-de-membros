@@ -1,19 +1,22 @@
 import { database } from "@repo/database";
 import { Button } from "@repo/design-system/components/ui/button";
-import { BadgeCheckIcon, ChevronRightIcon, XIcon } from "lucide-react";
-import Image from "next/image";
+import {
+  BadgeCheckIcon,
+  ChevronRightIcon,
+  PlusIcon,
+  XIcon,
+} from "lucide-react";
 import {
   SingleFlightForm,
   SingleFlightSubmit,
 } from "@/components/mutations/single-flight-form";
+import { ProfileBadgeIcon } from "@/components/profile/profile-badge-icon";
 import { getAuth } from "@/lib/auth";
-import { badgeArtworkByCriterion } from "@/lib/badge-artwork";
 import { getOrCreateProfile, getProfileSummaryStats } from "@/lib/profile";
 import { splitProfileBadges } from "@/lib/profile-badge-catalog";
 import { profileCompletionItems } from "@/lib/profile-completion";
 import { IntentLink as Link } from "../components/intent-link";
 import { respondToStudyGroupInvitation } from "./actions";
-import { ProfileLinkButton } from "./profile-link-button";
 
 interface ProfilePageProperties {
   readonly searchParams: Promise<{ saved?: string }>;
@@ -87,10 +90,30 @@ const ProfilePage = async ({ searchParams }: ProfilePageProperties) => {
     earnedBadges,
     publishedBadgeDefinitions
   );
-  const earnedBadgesForStrip = badgeCollections.earned.slice(0, 10);
+  const overviewBadges = [
+    ...badgeCollections.earned,
+    ...badgeCollections.available,
+  ]
+    .filter(
+      (badge, index, badges) =>
+        badges.findIndex(({ criterion }) => criterion === badge.criterion) ===
+        index
+    )
+    .slice(0, 10);
+  const earnedBadgeCriteria = new Set(
+    badgeCollections.earned.map(({ criterion }) => criterion)
+  );
+  const earnedCriteriaCount = earnedBadgeCriteria.size;
+  let pendingInvitationsLabel = `${pendingInvitations.length} pendentes`;
+  if (pendingInvitations.length === 1) {
+    pendingInvitationsLabel = "1 pendente";
+  }
+  const completedLabels = completion.items
+    .filter(({ complete }) => complete)
+    .map(({ label }) => label.toLocaleLowerCase("pt-BR"));
 
   return (
-    <div className="space-y-8">
+    <div className="profile-overview-content">
       {filters.saved === "1" ? (
         <p
           aria-live="polite"
@@ -100,20 +123,44 @@ const ProfilePage = async ({ searchParams }: ProfilePageProperties) => {
         </p>
       ) : null}
 
-      <section aria-labelledby="profile-completion-heading">
+      <section
+        aria-labelledby="profile-completion-heading"
+        className="profile-completion-card rounded-lg border border-border bg-white p-5 sm:p-6 md:p-8"
+      >
         <div className="flex items-end justify-between gap-4">
-          <div>
-            <p className="brand-eyebrow">Seu perfil</p>
-            <h2
-              className="mt-1 font-display text-3xl"
-              id="profile-completion-heading"
-            >
-              Complete seu perfil
-            </h2>
-          </div>
-          <p className="shrink-0 font-data text-muted-foreground text-sm">
-            {completion.completedCount} <span aria-hidden="true">/</span>{" "}
-            {completion.total}
+          <h2
+            className="font-display text-xl leading-tight md:text-2xl"
+            id="profile-completion-heading"
+          >
+            {missing.length > 0 ? (
+              <>
+                Faltam{" "}
+                <span className="profile-completion-underline">
+                  {missing.length} {missing.length === 1 ? "passo" : "passos"}
+                  <svg
+                    aria-hidden="true"
+                    fill="none"
+                    height="8"
+                    preserveAspectRatio="none"
+                    viewBox="0 0 86 8"
+                    width="110"
+                  >
+                    <path
+                      d="M2 5.2C14 2.4 26 6 40 3.9C54 1.9 68 5.6 84 2.8"
+                      stroke="#D62839"
+                      strokeLinecap="round"
+                      strokeWidth="2"
+                    />
+                  </svg>
+                </span>
+                .
+              </>
+            ) : (
+              "Perfil completo."
+            )}
+          </h2>
+          <p className="shrink-0 font-data text-[0.68rem] text-muted-foreground uppercase tracking-[0.12em]">
+            {completion.completedCount} DE {completion.total}
             <span className="sr-only">
               {" "}
               itens completos de {completion.total}
@@ -121,46 +168,44 @@ const ProfilePage = async ({ searchParams }: ProfilePageProperties) => {
           </p>
         </div>
         <div
-          aria-label={`Perfil ${completion.percentage}% completo`}
-          aria-valuemax={100}
+          aria-label={`${completion.completedCount} de ${completion.total} itens do perfil completos`}
+          aria-valuemax={completion.total}
           aria-valuemin={0}
-          aria-valuenow={completion.percentage}
-          className="mt-4 h-2 w-full bg-brand-pink-essence"
+          aria-valuenow={completion.completedCount}
+          className="mt-4 grid grid-cols-8 gap-1"
           role="progressbar"
         >
-          <span
-            className="block h-full bg-brand-dark-amaranth transition-[width] duration-200"
-            style={{ width: `${completion.percentage}%` }}
-          />
+          {completion.items.map((item) => (
+            <span
+              aria-hidden="true"
+              className={`h-[6px] rounded-full ${item.complete ? "bg-brand-dark-amaranth" : "bg-[var(--line-soft)]"}`}
+              key={item.field}
+            />
+          ))}
         </div>
-        {missing.length > 0 ? (
-          <p className="mt-3 text-muted-foreground text-sm">
-            Faltam {missing.length} {missing.length === 1 ? "passo" : "passos"}{" "}
-            para deixar seu perfil completo.
-          </p>
-        ) : (
-          <p className="mt-3 text-muted-foreground text-sm">
-            Seu perfil está completo.
-          </p>
-        )}
+        <p className="mt-4 text-[15px] text-muted-foreground leading-6">
+          Um perfil completo ajuda colegas e professores a reconhecer você.
+        </p>
 
-        <ul className="mt-5 hidden grid-cols-2 gap-x-8 md:grid">
+        <ul className="profile-completion-items mt-5 hidden grid-cols-2 gap-x-8 md:grid">
           {completion.items.map((item) => (
             <li className="border-border border-b" key={item.field}>
               <Link
-                className="flex min-h-[60px] items-center justify-between gap-3 text-sm hover:text-brand-dark-amaranth"
+                className="flex min-h-11 items-center justify-between gap-3 text-[15px] hover:text-brand-dark-amaranth focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 href={`/perfil/editar#profile-${item.field}`}
               >
-                <span>{item.label}</span>
+                <span className={item.complete ? "text-muted-foreground" : ""}>
+                  {item.label}
+                </span>
                 {item.complete ? (
                   <BadgeCheckIcon
                     aria-label="Completo"
-                    className="size-4 shrink-0 text-brand-dark-amaranth"
+                    className="size-4 shrink-0 fill-brand-dark-amaranth text-white"
                   />
                 ) : (
-                  <ChevronRightIcon
+                  <PlusIcon
                     aria-label="Adicionar"
-                    className="size-4 shrink-0 text-muted-foreground"
+                    className="size-4 shrink-0 text-brand-dark-amaranth"
                   />
                 )}
               </Link>
@@ -170,11 +215,11 @@ const ProfilePage = async ({ searchParams }: ProfilePageProperties) => {
 
         <div className="mt-5 md:hidden">
           {missing.length > 0 ? (
-            <ul className="divide-y border-y">
+            <ul className="profile-completion-items divide-y border-t">
               {missing.map((item) => (
                 <li key={item.field}>
                   <Link
-                    className="flex min-h-[60px] items-center justify-between gap-3 text-sm"
+                    className="flex min-h-11 items-center justify-between gap-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     href={`/perfil/editar#profile-${item.field}`}
                   >
                     {item.label}
@@ -191,67 +236,98 @@ const ProfilePage = async ({ searchParams }: ProfilePageProperties) => {
               Os oito itens do seu perfil estão completos.
             </p>
           )}
+          <p className="mt-4 flex items-start gap-2 border-border border-t pt-4 text-muted-foreground text-xs leading-5">
+            <BadgeCheckIcon
+              aria-hidden="true"
+              className="mt-0.5 size-4 shrink-0 fill-brand-dark-amaranth text-white"
+            />
+            <span>
+              Concluídos:{" "}
+              {completedLabels.length > 0
+                ? completedLabels.join(", ")
+                : "nenhum item"}
+            </span>
+          </p>
         </div>
       </section>
 
       <section
         aria-labelledby="overview-achievements-heading"
-        className="border-border border-y py-5"
+        className="profile-overview-achievements"
       >
         <div className="flex items-end justify-between gap-4">
-          <div>
-            <p className="brand-eyebrow">Reconhecimento</p>
-            <h2
-              className="mt-1 font-display text-2xl"
-              id="overview-achievements-heading"
+          <h2
+            className="profile-overview-achievements__title font-display"
+            id="overview-achievements-heading"
+          >
+            Conquistas
+          </h2>
+          <div className="flex items-center gap-3">
+            <span className="profile-overview-achievements__count font-data text-[0.68rem] text-muted-foreground uppercase tracking-[0.12em]">
+              {earnedCriteriaCount} DE {overviewBadges.length}
+            </span>
+            <Button
+              asChild
+              className="-mr-3 shadow-none"
+              size="sm"
+              variant="ghost"
             >
-              Conquistas
-            </h2>
+              <Link
+                className="profile-overview-achievements__link"
+                href="/perfil/conquistas"
+              >
+                <span className="profile-overview-achievements__link-label">
+                  Ver todas
+                </span>
+                <ChevronRightIcon aria-hidden="true" />
+              </Link>
+            </Button>
           </div>
-          <Button
-            asChild
-            className="-mr-3 shadow-none"
-            size="sm"
-            variant="ghost"
-          >
-            <Link href="/perfil/conquistas">
-              Ver todas <ChevronRightIcon aria-hidden="true" />
-            </Link>
-          </Button>
         </div>
-        {earnedBadgesForStrip.length > 0 ? (
+        {overviewBadges.length > 0 ? (
           <ul
-            aria-label="Medalhas conquistadas"
-            className="mt-4 flex flex-wrap gap-3"
+            aria-label="Conquistas e progresso"
+            className="mt-5 hidden flex-wrap gap-2.5 md:flex"
           >
-            {earnedBadgesForStrip.map((badge) => (
-              <li key={badge.id} title={badge.title}>
-                <Image
-                  alt={badge.title}
-                  height={52}
-                  loading="lazy"
-                  src={badgeArtworkByCriterion[badge.criterion]}
-                  width={52}
-                />
-              </li>
-            ))}
+            {overviewBadges.map((badge) => {
+              const earned = badgeCollections.earned.some(
+                ({ criterion }) => criterion === badge.criterion
+              );
+              return (
+                <li
+                  key={badge.criterion}
+                  title={`${badge.title}${earned ? " · conquistada" : " · em aberto"}`}
+                >
+                  <ProfileBadgeIcon
+                    criterion={badge.criterion}
+                    earned={earned}
+                    size="small"
+                  />
+                  <span className="sr-only">
+                    {badge.title} · {earned ? "conquistada" : "em aberto"}
+                  </span>
+                </li>
+              );
+            })}
           </ul>
         ) : (
           <p className="mt-3 text-muted-foreground text-sm">
-            As conquistas aparecem aqui conforme você avança no percurso.
+            Nenhuma conquista publicada ainda.
           </p>
         )}
       </section>
 
-      <section aria-labelledby="profile-community-heading">
-        <p className="brand-eyebrow">Comunidade</p>
+      <section
+        aria-labelledby="profile-community-heading"
+        className="profile-community-section"
+      >
         <h2
-          className="mt-1 font-display text-2xl"
+          className="profile-community-section__title font-display"
           id="profile-community-heading"
         >
-          Seu espaço por aqui
+          Comunidade
         </h2>
-        <ul className="mt-3 divide-y border-y">
+        <ul className="profile-community-section__list mt-3 divide-y border-y">
           <li>
             <Link
               className="flex min-h-[60px] items-center justify-between gap-3 text-sm"
@@ -267,9 +343,19 @@ const ProfilePage = async ({ searchParams }: ProfilePageProperties) => {
           <li>
             <details className="group">
               <summary className="flex min-h-[60px] cursor-pointer list-none items-center justify-between gap-3 text-sm [&::-webkit-details-marker]:hidden">
-                <span>Convites para grupos</span>
+                <span>
+                  Convites para grupos
+                  <span className="hidden md:inline"> de estudo</span>
+                </span>
                 <span className="flex items-center gap-2 text-muted-foreground">
-                  {pendingInvitations.length} pendentes
+                  {pendingInvitations.length === 0 ? (
+                    <>
+                      <span className="hidden md:inline">Nenhum pendente</span>
+                      <span className="md:hidden">Nenhum</span>
+                    </>
+                  ) : (
+                    pendingInvitationsLabel
+                  )}
                   <ChevronRightIcon
                     aria-hidden="true"
                     className="size-4 transition-transform group-open:rotate-90"
@@ -358,7 +444,7 @@ const ProfilePage = async ({ searchParams }: ProfilePageProperties) => {
               />
             </Link>
           </li>
-          <li className="flex min-h-[60px] items-center justify-between gap-3 text-sm">
+          <li className="flex min-h-[60px] items-center justify-between gap-3 text-sm md:hidden">
             <Link
               className="flex min-h-[60px] flex-1 items-center justify-between"
               href={`/membros/${profile.username}`}
@@ -369,7 +455,6 @@ const ProfilePage = async ({ searchParams }: ProfilePageProperties) => {
                 className="mr-2 size-4 text-muted-foreground"
               />
             </Link>
-            <ProfileLinkButton compact username={profile.username} />
           </li>
         </ul>
       </section>

@@ -2,6 +2,7 @@ import { Badge } from "@repo/design-system/components/ui/badge";
 import { Button } from "@repo/design-system/components/ui/button";
 import { FileTextIcon, PlusIcon } from "lucide-react";
 import Link from "next/link";
+import { CommunityDraftStarter } from "@/components/community/community-draft-starter";
 import { CommunityNavigation } from "@/components/community/community-navigation";
 import { CommunityPublishDraftButton } from "@/components/community/community-publish-draft-button";
 import {
@@ -31,11 +32,9 @@ const MyCommunityPage = async () => {
       <main className="mx-auto w-full max-w-[1120px] px-5 py-8 sm:px-8 lg:px-12 lg:py-14">
         <CommunityNavigation active="mine" />
         <div className="mt-4 flex justify-end">
-          <Button asChild>
-            <Link href="/comunidade/novo">
-              <PlusIcon aria-hidden="true" /> Criar conteúdo
-            </Link>
-          </Button>
+          <CommunityDraftStarter>
+            <PlusIcon aria-hidden="true" /> Criar conteúdo
+          </CommunityDraftStarter>
         </div>
         <header className="mt-8 max-w-3xl">
           <p className="brand-eyebrow">Caderno de escrita</p>
@@ -61,11 +60,11 @@ const MyCommunityPage = async () => {
               Comece por uma pergunta curta ou escreva uma publicação mais
               elaborada.
             </p>
-            <Button asChild className="mt-6">
-              <Link href="/comunidade/novo">
+            <div className="mt-6">
+              <CommunityDraftStarter>
                 <PlusIcon aria-hidden="true" /> Criar sua primeira publicação
-              </Link>
-            </Button>
+              </CommunityDraftStarter>
+            </div>
           </div>
         ) : (
           <div className="mt-10 divide-y border-border border-y">

@@ -16,7 +16,7 @@ import {
 const PRESENCE_CHANNEL = "community-presence";
 const HEARTBEAT_INTERVAL_MS = 45_000;
 const TOKEN_REFRESH_INTERVAL_MS = 240_000;
-const MAX_VISIBLE_MEMBERS = 5;
+const MAX_VISIBLE_MEMBERS = 7;
 const usernamePattern = /^[a-z0-9](?:[a-z0-9-]{1,28}[a-z0-9])?$/;
 const safeAvatarPattern = /^(?:https?:\/\/|\/(?!\/))/i;
 const whitespacePattern = /\s+/;
@@ -322,11 +322,7 @@ export const CommunityPresence = ({
   if (liveMembers.length > 0) {
     countLabel = formatOnlineCount(liveMembers.length);
   } else if (fallbackMembers.length > 0) {
-    countLabel = [
-      String(fallbackMembers.length),
-      fallbackMembers.length === 1 ? "membro" : "membros",
-      "por aqui",
-    ].join(" ");
+    countLabel = formatOnlineCount(fallbackMembers.length);
   } else if (status === "connecting") {
     countLabel = "Conectando…";
   }
@@ -355,7 +351,7 @@ export const CommunityPresence = ({
               key={member.username}
               title={member.displayName}
             >
-              <Avatar className="size-9 border-2 border-background">
+              <Avatar className="community-presence__avatar-image border-2 border-background">
                 {member.avatarUrl ? (
                   <AvatarImage alt="" loading="lazy" src={member.avatarUrl} />
                 ) : null}

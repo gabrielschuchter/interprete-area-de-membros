@@ -10,6 +10,7 @@ const whitespacePattern = /\s+/;
 interface MemberIdentityProperties {
   readonly authorId: string;
   readonly compact?: boolean;
+  readonly feedAvatar?: boolean;
   readonly profile?: {
     avatarUrl: string | null;
     displayName: string | null;
@@ -17,6 +18,7 @@ interface MemberIdentityProperties {
     username: string;
     member?: { role: "MEMBER" | "TEACHER" | "ADMIN" };
   };
+  readonly replyAvatar?: boolean;
   readonly showHeadline?: boolean;
 }
 
@@ -44,10 +46,17 @@ export const MemberIdentity = ({
   profile,
   showHeadline = true,
   compact = false,
+  feedAvatar = false,
+  replyAvatar = false,
 }: MemberIdentityProperties) => {
   const username = profile?.username ?? authorId;
   const displayName = profile?.displayName ?? "Membro";
-  const size = compact ? "size-8" : "size-10";
+  let size = compact ? "size-8" : "size-10";
+  if (feedAvatar) {
+    size = "size-7 md:size-6";
+  } else if (replyAvatar) {
+    size = "size-6";
+  }
   const content = (
     <>
       <Avatar className={size}>

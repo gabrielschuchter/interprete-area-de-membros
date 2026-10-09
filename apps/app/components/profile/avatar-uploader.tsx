@@ -1,6 +1,6 @@
 "use client";
 
-import { ImagePlusIcon, XIcon } from "lucide-react";
+import { CameraIcon, XIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 interface AvatarUploaderProperties {
@@ -107,7 +107,7 @@ export const AvatarUploader = ({
 
   return (
     <div className="mt-5 flex flex-wrap items-center gap-4">
-      <div className="relative flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand-structural text-2xl text-primary-foreground">
+      <div className="relative flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--line-soft)] text-brand-dark-amaranth text-lg">
         {(previewUrl ?? url) ? (
           // The source is either an authenticated member-asset route or a legacy
           // external URL already stored for this profile.
@@ -115,19 +115,19 @@ export const AvatarUploader = ({
           <img
             alt="Prévia do avatar"
             className="motion-reveal-fast size-full object-cover"
-            height={80}
+            height={56}
             src={previewUrl ?? url}
-            width={80}
+            width={56}
           />
         ) : (
           initials
         )}
       </div>
-      <div className="min-w-52 space-y-2">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         <input name="avatarUrl" type="hidden" value={url} />
-        <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 text-sm underline underline-offset-4 focus-within:rounded-sm focus-within:ring-2 focus-within:ring-brand-action">
-          <ImagePlusIcon aria-hidden="true" className="size-4" />
-          {isUploading ? "Enviando…" : "Escolher foto"}
+        <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-sm border border-brand-dark-amaranth px-3 font-semibold text-brand-dark-amaranth text-sm focus-within:outline-none focus-within:ring-2 focus-within:ring-brand-dark-amaranth hover:bg-brand-pink-essence">
+          <CameraIcon aria-hidden="true" className="size-4" />
+          {isUploading ? "Enviando…" : "Trocar foto"}
           <input
             accept="image/jpeg,image/png,image/webp"
             className="sr-only"
@@ -144,7 +144,7 @@ export const AvatarUploader = ({
         </label>
         {url || previewUrl ? (
           <button
-            className="flex min-h-11 items-center gap-1 text-muted-foreground text-xs underline underline-offset-4"
+            className="flex min-h-11 items-center gap-1 text-muted-foreground text-xs underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             onClick={() => {
               const currentUrl = uploadedUrlRef.current ?? url;
               removeTemporaryUpload(currentUrl).catch(() => undefined);
@@ -155,10 +155,10 @@ export const AvatarUploader = ({
             }}
             type="button"
           >
-            <XIcon aria-hidden="true" className="size-3" /> Remover foto
+            <XIcon aria-hidden="true" className="size-3" /> Remover
           </button>
         ) : null}
-        <p className="text-muted-foreground text-xs">
+        <p className="basis-full text-muted-foreground text-xs">
           JPG, PNG ou WebP · até 5 MB.
         </p>
         {error ? <p className="text-destructive text-xs">{error}</p> : null}

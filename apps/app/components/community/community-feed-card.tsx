@@ -1,4 +1,4 @@
-import { ArrowUpRightIcon, MessageCircleIcon, PinIcon } from "lucide-react";
+import { MessageCircleIcon, PinIcon } from "lucide-react";
 import { IntentLink } from "@/app/(authenticated)/components/intent-link";
 import { communityPostHref } from "@/lib/community";
 import {
@@ -46,11 +46,7 @@ interface CommunityFeedCardProperties {
 }
 
 const formatDate = (date: Date) =>
-  date.toLocaleDateString("pt-BR", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
+  date.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
 
 export function CommunityFeedCard({
   post,
@@ -61,125 +57,112 @@ export function CommunityFeedCard({
   const isVoted = post.votes.length > 0;
   const isSaved = post.bookmarks.length > 0;
   const summary = post.subtitle || post.excerpt;
-  const media = post.media ?? [];
   const coverUrl = normalizeCommunityCoverUrl(post.coverUrl);
-  // Images embedded in the rich document belong to the post body. Only the
-  // explicitly stored cover can appear as a visual lead in the feed.
+  const media = post.media ?? [];
+  // Inline images belong to the rich document; only the explicit cover is a
+  // thumbnail. Other existing media remains available through its attachment.
   const feedMedia = media.filter((item) => item.kind !== "image");
+  const commentCount = post._count.comments;
 
   return (
     <article
       className={`community-post-card relative ${post.isPinned ? "community-post-card--pinned" : ""}`}
     >
-      {post.isPinned && (
-        <div className="community-post-card__pin mb-5 flex items-center gap-2">
+      {post.isPinned ? (
+        <div className="community-post-card__pin">
           <PinIcon aria-hidden="true" className="size-3.5" />
-          <span>Fixado pela equipe</span>
+          <span>Fixado</span>
         </div>
-      )}
+      ) : null}
 
-      <header className="relative z-10 flex min-w-0 items-start justify-between gap-4">
-        <div className="flex min-w-0 items-center gap-3">
-          <MemberIdentity
-            authorId={post.authorId}
-            compact
-            profile={post.profile ?? undefined}
-            showHeadline={false}
-          />
-          <div className="min-w-0 text-muted-foreground text-xs leading-5">
-            <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
-              <span aria-hidden="true">·</span>
-              {post.space ? (
-                <IntentLink
-                  className="truncate font-medium hover:text-brand-structural"
-                  href={`/comunidade/${post.space.slug}`}
-                >
-                  {post.space.title}
-                </IntentLink>
-              ) : (
-                <span>Feed geral</span>
-              )}
-              <span aria-hidden="true">·</span>
-              <time
-                dateTime={(post.publishedAt ?? post.createdAt).toISOString()}
-              >
-                {formatDate(post.publishedAt ?? post.createdAt)}
-              </time>
-            </div>
-            <span className="block">{post.readingMinutes} min de leitura</span>
-          </div>
-        </div>
-        <IntentLink
-          aria-label={`Abrir publicação: ${post.title}`}
-          className="community-post-card__open shrink-0 rounded-sm p-2 text-muted-foreground hover:bg-accent hover:text-brand-structural focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/35"
-          href={href}
+      <header className="community-post-card__meta relative z-10">
+        <MemberIdentity
+          authorId={post.authorId}
+          compact
+          feedAvatar
+          profile={post.profile ?? undefined}
+          showHeadline={false}
+        />
+        <span aria-hidden="true" className="text-muted-foreground">
+          ·
+        </span>
+        {post.space ? (
+          <IntentLink
+            className="community-post-card__space"
+            href={`/comunidade/${post.space.slug}`}
+          >
+            {post.space.title}
+          </IntentLink>
+        ) : (
+          <span className="community-post-card__space">Feed geral</span>
+        )}
+        <span aria-hidden="true" className="text-muted-foreground">
+          ·
+        </span>
+        <time
+          className="text-muted-foreground"
+          dateTime={(post.publishedAt ?? post.createdAt).toISOString()}
         >
-          <ArrowUpRightIcon aria-hidden="true" className="size-4" />
-        </IntentLink>
+          {formatDate(post.publishedAt ?? post.createdAt)}
+        </time>
       </header>
 
-      <div className="mt-5">
-        <div className="flex flex-wrap items-center gap-2">
-          {post.isFeatured && (
-            <span className="brand-eyebrow">Em destaque</span>
-          )}
+      <div className="community-post-card__content">
+        <div className="community-post-card__copy">
+          <h2 className="community-post-card__title">
+            <IntentLink
+              className="after:absolute after:inset-0 after:z-0 focus-visible:outline-none focus-visible:after:rounded-md focus-visible:after:ring-2 focus-visible:after:ring-ring"
+              href={href}
+            >
+              {post.title}
+            </IntentLink>
+          </h2>
+          {summary ? (
+            <p className="community-post-card__excerpt">{summary}</p>
+          ) : null}
         </div>
-        <h3 className="mt-3 break-words font-display text-2xl leading-[1.08] tracking-tight sm:text-3xl">
-          <IntentLink
-            className="after:absolute after:inset-0 after:z-0 hover:text-brand-structural focus-visible:outline-none focus-visible:after:rounded-sm focus-visible:after:ring-[3px] focus-visible:after:ring-ring/50"
-            href={href}
-          >
-            {post.title}
-          </IntentLink>
-        </h3>
-        {summary && (
-          <p className="mt-3 line-clamp-4 max-w-[68ch] text-muted-foreground leading-7">
-            {summary}
-          </p>
-        )}
+        {coverUrl ? (
+          // Community URLs are sanitized and may use hosts not configured for next/image.
+          // biome-ignore lint/performance/noImgElement: community cover URLs are user-provided assets.
+          <img
+            alt={`Capa: ${post.title}`}
+            className="community-post-card__media relative z-10"
+            decoding="async"
+            height={100}
+            loading="lazy"
+            referrerPolicy="no-referrer"
+            src={communityMediaImageUrl(coverUrl, "thumb")}
+            width={148}
+          />
+        ) : null}
       </div>
 
-      {coverUrl && (
-        // Cover URLs are authorized community assets or sanitized HTTPS URLs.
-        // biome-ignore lint/performance/noImgElement: user-provided media may come from hosts not configured for next/image.
-        <img
-          alt={`Capa: ${post.title}`}
-          className="community-post-card__media relative z-10 mt-5 aspect-[16/7] w-full rounded-sm object-cover"
-          decoding="async"
-          height={420}
-          loading="lazy"
-          referrerPolicy="no-referrer"
-          src={communityMediaImageUrl(coverUrl, "thumb")}
-          width={960}
-        />
-      )}
-
-      {feedMedia.length > 0 && (
-        <div className="relative z-10">
-          <CommunityMediaGallery items={feedMedia} thumbnail />
-        </div>
-      )}
-
-      {post.tags.length > 0 && (
-        <ul className="mt-4 flex flex-wrap gap-x-3 gap-y-1.5">
+      {post.tags.length > 0 ? (
+        <ul className="community-post-card__tags relative z-10">
           {post.tags.map((tag) => (
-            <li className="text-muted-foreground text-xs" key={tag}>
-              #{tag}
-            </li>
+            <li key={tag}>#{tag}</li>
           ))}
         </ul>
-      )}
+      ) : null}
 
-      <div className="community-post-card__actions relative z-10 mt-5 flex flex-wrap items-center gap-2 border-border border-t pt-4">
+      {feedMedia.length > 0 ? (
+        <div className="community-post-card__attachments relative z-10">
+          <CommunityMediaGallery items={feedMedia} thumbnail />
+        </div>
+      ) : null}
+
+      <div className="community-post-card__actions relative z-10">
         <IntentLink
-          className="inline-flex min-h-10 items-center gap-1.5 rounded-sm px-3 text-muted-foreground text-sm hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/35"
+          className="community-post-card__replies"
           href={`${href}#comments-heading`}
         >
           <MessageCircleIcon aria-hidden="true" className="size-4" />
-          <span>{post._count.comments}</span>
-          <span>respostas</span>
+          <span>
+            {commentCount} {commentCount === 1 ? "resposta" : "respostas"}
+          </span>
         </IntentLink>
         <CommunityPostActions
+          className="community-post-card__member-actions"
           initialBookmarked={isSaved}
           initialVoted={isVoted}
           postId={post.id}

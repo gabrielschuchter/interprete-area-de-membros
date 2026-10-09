@@ -830,10 +830,12 @@ export const updatePost = async (formData: FormData) => {
   if (!parsed.success) {
     return;
   }
+  const role = await getMemberRole(userId);
   const post = await database.communityPost.findFirst({
-    where: { id: postId, authorId: userId, deletedAt: null },
+    where: { id: postId, deletedAt: null },
     select: {
       id: true,
+      authorId: true,
       slug: true,
       status: true,
       coverUrl: true,
@@ -841,7 +843,11 @@ export const updatePost = async (formData: FormData) => {
       space: { select: { slug: true } },
     },
   });
-  if (!post) {
+  if (
+    !post ||
+    (post.authorId !== userId &&
+      !(post.status === ContentStatus.PUBLISHED && canModerate(role)))
+  ) {
     return;
   }
   const persistedDocument = await enrichCommunityArticleMetadata(document);

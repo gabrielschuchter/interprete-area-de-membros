@@ -40,7 +40,10 @@ const roleLabel = (role: string) => {
   if (role === "TEACHER") {
     return "Professor";
   }
-  return "Membro";
+  if (role === "ADMIN") {
+    return "Admin";
+  }
+  return null;
 };
 
 const tabs = [
@@ -69,23 +72,25 @@ const ProfileShell = ({
 
   return (
     <div className="min-h-full bg-background">
-      <div className="mx-auto w-full max-w-[856px] px-5 pt-5 pb-16 sm:px-8 md:px-12 md:pt-10">
+      <div
+        className={`mx-auto w-full max-w-[760px] px-5 pb-16 sm:px-8 md:px-12 md:pt-[52px] ${isDetail ? "pt-0" : "pt-4"}`}
+      >
         {isDetail ? (
-          <div className="mb-7 flex min-h-11 items-center gap-4 md:hidden">
+          <div className="profile-mobile-back md:hidden">
             <Button
               asChild
-              className="-ml-3 shadow-none"
+              className="profile-mobile-back__button shadow-none"
               size="default"
               variant="ghost"
             >
               <IntentLink href="/perfil">
-                <ArrowLeftIcon aria-hidden="true" /> Voltar
+                <ArrowLeftIcon aria-hidden="true" />
+                <span className="sr-only">Voltar para o perfil</span>
               </IntentLink>
             </Button>
-            <span aria-hidden="true" className="h-5 w-px bg-border" />
-            <span className="font-medium">
+            <h1 className="profile-mobile-back__title">
               {isAchievements ? "Conquistas" : "Editar perfil"}
-            </span>
+            </h1>
           </div>
         ) : (
           <section aria-label="Seu perfil" className="mb-6 md:hidden">
@@ -97,7 +102,6 @@ const ProfileShell = ({
                 </AvatarFallback>
               </Avatar>
               <div className="min-w-0">
-                <p className="brand-eyebrow">{roleLabel(role)}</p>
                 <h1 className="truncate font-display text-3xl leading-tight">
                   {name}
                 </h1>
@@ -106,10 +110,37 @@ const ProfileShell = ({
                 </p>
               </div>
             </div>
-            {headline ? (
-              <p className="mt-4 text-sm leading-6">{headline}</p>
+            <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+              {headline ? (
+                <p className="text-muted-foreground">{headline}</p>
+              ) : null}
+              {roleLabel(role) ? (
+                <Badge
+                  className="rounded-sm uppercase tracking-[0.1em]"
+                  variant="outline"
+                >
+                  {roleLabel(role)}
+                </Badge>
+              ) : null}
+            </div>
+            {interests.length > 0 ? (
+              <p className="mt-3 text-sm leading-6">{interests.join(" · ")}</p>
             ) : null}
-            <Button asChild className="mt-4 w-full shadow-none" size="default">
+            <dl className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm">
+              <div className="flex items-baseline gap-1">
+                <dd className="font-semibold">{completedLessons}</dd>
+                <dt className="text-muted-foreground">aulas concluídas</dt>
+              </div>
+              <div className="flex items-baseline gap-1">
+                <dd className="font-semibold">{enrollments}</dd>
+                <dt className="text-muted-foreground">cursos</dt>
+              </div>
+              <div className="flex items-baseline gap-1">
+                <dd className="font-semibold">{topicCount}</dd>
+                <dt className="text-muted-foreground">tópicos</dt>
+              </div>
+            </dl>
+            <Button asChild className="mt-5 w-full shadow-none" size="default">
               <IntentLink href="/perfil/editar">
                 <PencilIcon aria-hidden="true" /> Editar perfil
               </IntentLink>
@@ -117,10 +148,7 @@ const ProfileShell = ({
           </section>
         )}
 
-        <section
-          aria-label="Identidade do perfil"
-          className="hidden border-border border-b pb-6 md:block"
-        >
+        <section aria-label="Identidade do perfil" className="hidden md:block">
           <div className="flex items-start justify-between gap-5">
             <div className="flex min-w-0 items-center gap-5">
               <Avatar className="size-20 shrink-0">
@@ -130,62 +158,77 @@ const ProfileShell = ({
                 </AvatarFallback>
               </Avatar>
               <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="brand-eyebrow">{roleLabel(role)}</p>
-                  {role === "ADMIN" ? (
-                    <Badge variant="outline">Admin</Badge>
-                  ) : null}
-                </div>
-                <h1 className="mt-1 truncate font-display text-4xl leading-tight">
+                <h1 className="truncate font-display text-[2rem] leading-tight">
                   {name}
                 </h1>
-                <p className="mt-1 text-muted-foreground text-sm">
-                  @{username}
-                </p>
-                {headline ? (
-                  <p className="mt-2 max-w-md text-sm">{headline}</p>
+                <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+                  <span className="font-data text-muted-foreground text-xs">
+                    @{username}
+                  </span>
+                  {headline ? (
+                    <>
+                      <span
+                        aria-hidden="true"
+                        className="text-muted-foreground"
+                      >
+                        ·
+                      </span>
+                      <span className="text-muted-foreground">{headline}</span>
+                    </>
+                  ) : null}
+                  {roleLabel(role) ? (
+                    <>
+                      <span
+                        aria-hidden="true"
+                        className="text-muted-foreground"
+                      >
+                        ·
+                      </span>
+                      <Badge
+                        className="rounded-sm font-data text-[0.65rem] uppercase tracking-[0.1em]"
+                        variant="outline"
+                      >
+                        {roleLabel(role)}
+                      </Badge>
+                    </>
+                  ) : null}
+                </div>
+                {interests.length > 0 ? (
+                  <p className="mt-2 max-w-md text-sm leading-6">
+                    {interests.join(" · ")}
+                  </p>
                 ) : null}
               </div>
             </div>
-            <ProfileLinkButton username={username} />
+            <Button asChild className="shrink-0 shadow-none" size="default">
+              <IntentLink href="/perfil/editar">
+                <PencilIcon aria-hidden="true" /> Editar perfil
+              </IntentLink>
+            </Button>
           </div>
 
-          {interests.length > 0 ? (
-            <ul aria-label="Interesses" className="mt-5 flex flex-wrap gap-2">
-              {interests.map((interest) => (
-                <li key={interest}>
-                  <Badge
-                    className="rounded-none font-normal"
-                    variant="secondary"
-                  >
-                    {interest}
-                  </Badge>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-
-          <dl className="mt-6 flex flex-wrap gap-x-9 gap-y-3 border-border border-t pt-4">
-            <div className="flex items-baseline gap-2">
-              <dd className="font-data text-xl">{completedLessons}</dd>
-              <dt className="text-muted-foreground text-sm">
-                aulas concluídas
-              </dt>
-            </div>
-            <div className="flex items-baseline gap-2">
-              <dd className="font-data text-xl">{enrollments}</dd>
-              <dt className="text-muted-foreground text-sm">cursos</dt>
-            </div>
-            <div className="flex items-baseline gap-2">
-              <dd className="font-data text-xl">{topicCount}</dd>
-              <dt className="text-muted-foreground text-sm">tópicos</dt>
-            </div>
-          </dl>
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+            <dl className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
+              <div className="flex items-baseline gap-1.5">
+                <dd className="font-semibold">{completedLessons}</dd>
+                <dt className="text-muted-foreground">aulas concluídas</dt>
+              </div>
+              <div className="flex items-baseline gap-1.5">
+                <dd className="font-semibold">{enrollments}</dd>
+                <dt className="text-muted-foreground">cursos</dt>
+              </div>
+              <div className="flex items-baseline gap-1.5">
+                <dd className="font-semibold">{topicCount}</dd>
+                <dt className="text-muted-foreground">tópicos</dt>
+              </div>
+            </dl>
+            <ProfileLinkButton username={username} />
+          </div>
         </section>
 
         <nav
           aria-label="Seções do perfil"
-          className="hidden border-border border-b md:block"
+          className="mt-7 hidden border-border border-b md:block"
         >
           <ul className="flex gap-7">
             {tabs.map((tab) => {
@@ -205,7 +248,9 @@ const ProfileShell = ({
           </ul>
         </nav>
 
-        <main className="pt-5 md:pt-7">{children}</main>
+        <main className={isDetail ? "pt-9 md:pt-10" : "pt-5 md:pt-10"}>
+          {children}
+        </main>
       </div>
     </div>
   );

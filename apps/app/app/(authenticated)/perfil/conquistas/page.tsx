@@ -1,9 +1,8 @@
 import { BadgeCriterion, database } from "@repo/database";
 import { BadgeCheckIcon } from "lucide-react";
-import Image from "next/image";
 import { redirect } from "next/navigation";
+import { ProfileBadgeIcon } from "@/components/profile/profile-badge-icon";
 import { getAuth } from "@/lib/auth";
-import { badgeArtworkByCriterion } from "@/lib/badge-artwork";
 import { getMemberBadgeProgress } from "@/lib/badges";
 
 const categoryForCriterion: Record<
@@ -31,15 +30,32 @@ const formatProgress = (
 ) => {
   if (criterion === BadgeCriterion.STUDY_MINUTES) {
     const formatMinutes = (minutes: number) =>
-      minutes >= 60
+      minutes >= 60 || minutes === 0
         ? `${Math.floor(minutes / 60)} h${minutes % 60 ? ` ${minutes % 60} min` : ""}`
         : `${minutes} min`;
-    return `${formatMinutes(value)} de ${formatMinutes(threshold)}`;
+    return `${formatMinutes(value)} de ${formatMinutes(threshold)}`.toLocaleUpperCase(
+      "pt-BR"
+    );
   }
   if (criterion === BadgeCriterion.STUDY_STREAK_DAYS) {
-    return `${value} de ${threshold} ${threshold === 1 ? "dia" : "dias"}`;
+    return `${value} de ${threshold} ${threshold === 1 ? "dia" : "dias"}`.toLocaleUpperCase(
+      "pt-BR"
+    );
   }
-  return `${value} de ${threshold}`;
+  const units: Partial<Record<BadgeCriterion, readonly [string, string]>> = {
+    [BadgeCriterion.ACTIVITIES_COMPLETED]: ["atividade", "atividades"],
+    [BadgeCriterion.COMMUNITY_PUBLICATIONS]: ["contribuição", "contribuições"],
+    [BadgeCriterion.EXERCISE_ANSWERS]: ["questão", "questões"],
+    [BadgeCriterion.LEARNING_PATHS_COMPLETED]: ["trilha", "trilhas"],
+    [BadgeCriterion.LESSONS_COMPLETED]: ["aula", "aulas"],
+    [BadgeCriterion.MEETINGS_ATTENDED]: ["encontro", "encontros"],
+    [BadgeCriterion.STUDY_GOALS_MET]: ["meta", "metas"],
+    [BadgeCriterion.TASKS_COMPLETED]: ["tarefa", "tarefas"],
+  };
+  const [singular, plural] = units[criterion] ?? ["", ""];
+  return `${value} de ${threshold}${singular ? ` ${threshold === 1 ? singular : plural}` : ""}`.toLocaleUpperCase(
+    "pt-BR"
+  );
 };
 
 const AchievementsPage = async () => {
@@ -84,11 +100,12 @@ const AchievementsPage = async () => {
   return (
     <div>
       <header>
-        <p className="brand-eyebrow">Seu percurso</p>
         <div className="mt-1 flex flex-wrap items-end justify-between gap-3">
-          <h2 className="font-display text-3xl md:text-4xl">Conquistas</h2>
-          <p className="font-data text-muted-foreground text-sm">
-            {earnedCount} de {definitions.length}
+          <h2 className="font-display text-2xl md:text-3xl">
+            {earnedCount} de {definitions.length} conquistas
+          </h2>
+          <p className="sr-only">
+            {earnedCount} de {definitions.length} conquistas recebidas
           </p>
         </div>
         <div
@@ -96,20 +113,16 @@ const AchievementsPage = async () => {
           aria-valuemax={definitions.length || 1}
           aria-valuemin={0}
           aria-valuenow={earnedCount}
-          className="mt-4 h-2 bg-brand-pink-essence"
+          className="mt-4 h-[5px] rounded-full bg-[var(--line-soft)]"
           role="progressbar"
         >
           <span
-            className="block h-full bg-brand-dark-amaranth transition-[width] duration-200"
+            className="block h-full rounded-full bg-brand-dark-amaranth transition-[width] duration-200"
             style={{
               width: `${definitions.length ? (earnedCount / definitions.length) * 100 : 0}%`,
             }}
           />
         </div>
-        <p className="mt-3 text-muted-foreground text-sm">
-          Medalhas conquistadas acompanham atividades registradas no seu
-          percurso.
-        </p>
       </header>
 
       {definitions.length === 0 ? (
@@ -132,14 +145,11 @@ const AchievementsPage = async () => {
             >
               <div className="flex items-baseline justify-between border-border border-b pb-2">
                 <h3
-                  className="font-display text-2xl"
+                  className="font-semibold text-[0.82rem] text-muted-foreground"
                   id={`category-${category}`}
                 >
                   {category}
                 </h3>
-                <span className="font-data text-muted-foreground text-xs">
-                  {categoryBadges.length}
-                </span>
               </div>
               <ul className="divide-y">
                 {categoryBadges.map((badge) => {
@@ -148,23 +158,10 @@ const AchievementsPage = async () => {
                   const reached = Boolean(award);
                   return (
                     <li className="flex gap-4 py-4 sm:gap-5" key={badge.id}>
-                      <span
-                        aria-hidden="true"
-                        className="flex size-14 shrink-0 items-center justify-center"
-                      >
-                        <Image
-                          alt=""
-                          className={
-                            reached
-                              ? "size-full object-contain"
-                              : "size-full object-contain grayscale"
-                          }
-                          height={56}
-                          loading="lazy"
-                          src={badgeArtworkByCriterion[badge.criterion]}
-                          width={56}
-                        />
-                      </span>
+                      <ProfileBadgeIcon
+                        criterion={badge.criterion}
+                        earned={reached}
+                      />
                       <div className="min-w-0 flex-1 sm:flex sm:items-center sm:justify-between sm:gap-5">
                         <div className="min-w-0">
                           <h4 className="font-medium text-sm">{badge.title}</h4>
@@ -172,9 +169,9 @@ const AchievementsPage = async () => {
                             {badge.description}
                           </p>
                         </div>
-                        <div className="mt-2 shrink-0 text-xs sm:mt-0 sm:text-right">
+                        <div className="mt-2 shrink-0 font-data text-[0.68rem] sm:mt-0 sm:text-right">
                           {reached ? (
-                            <p className="inline-flex items-center gap-1.5 text-brand-dark-amaranth">
+                            <p className="inline-flex items-center gap-1.5 font-sans font-semibold text-brand-dark-amaranth text-xs">
                               <BadgeCheckIcon
                                 aria-hidden="true"
                                 className="size-4"
@@ -182,7 +179,7 @@ const AchievementsPage = async () => {
                               Conquistada
                             </p>
                           ) : (
-                            <p className="text-muted-foreground">
+                            <p className="text-muted-foreground uppercase tracking-[0.08em]">
                               {formatProgress(
                                 badge.criterion,
                                 current,

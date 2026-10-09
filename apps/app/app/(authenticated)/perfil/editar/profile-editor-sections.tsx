@@ -2,6 +2,15 @@
 
 import { Input } from "@repo/design-system/components/ui/input";
 import { Textarea } from "@repo/design-system/components/ui/textarea";
+import {
+  Globe2Icon,
+  InstagramIcon,
+  LinkedinIcon,
+  LockKeyholeIcon,
+  PlusIcon,
+  XIcon,
+} from "lucide-react";
+import { useState } from "react";
 import { AvatarUploader } from "@/components/profile/avatar-uploader";
 
 export interface ProfileFormValues {
@@ -30,22 +39,18 @@ export type ProfileUpdate = <Field extends ProfileField>(
 export type ProfileFieldError = (field: string) => string | undefined;
 
 const whitespacePattern = /\s+/;
+const protocolPattern = /^https?:\/\//i;
 
 const SectionHeading = ({
-  eyebrow,
   heading,
   id,
 }: {
-  readonly eyebrow: string;
   readonly heading: string;
   readonly id: string;
 }) => (
-  <>
-    <p className="brand-eyebrow">{eyebrow}</p>
-    <h2 className="mt-1 font-display text-2xl" id={id}>
-      {heading}
-    </h2>
-  </>
+  <h2 className="font-display text-xl leading-tight" id={id}>
+    {heading}
+  </h2>
 );
 
 export const ProfilePhotoSection = ({
@@ -66,11 +71,7 @@ export const ProfilePhotoSection = ({
     className="border-border border-b py-6"
     id="profile-avatar"
   >
-    <SectionHeading
-      eyebrow="Foto"
-      heading="Uma imagem para reconhecer você"
-      id="edit-photo-heading"
-    />
+    <SectionHeading heading="Foto" id="edit-photo-heading" />
     <AvatarUploader
       initials={(values.displayName || values.username)
         .split(whitespacePattern)
@@ -101,17 +102,13 @@ export const ProfileIdentitySection = ({
     aria-labelledby="edit-identity-heading"
     className="border-border border-b py-6"
   >
-    <SectionHeading
-      eyebrow="Identidade"
-      heading="Como você aparece"
-      id="edit-identity-heading"
-    />
-    <div className="mt-5 grid gap-x-5 gap-y-4 sm:grid-cols-2">
+    <SectionHeading heading="Identidade" id="edit-identity-heading" />
+    <div className="mt-5 grid gap-y-4">
       <label className="block" htmlFor="profile-displayName">
         <span className="text-sm">Nome de exibição</span>
         <Input
           aria-invalid={Boolean(fieldError("displayName"))}
-          className="mt-2 min-h-11"
+          className="mt-2 min-h-11 rounded-sm bg-white"
           id="profile-displayName"
           maxLength={80}
           name="displayName"
@@ -126,32 +123,42 @@ export const ProfileIdentitySection = ({
       </label>
       <label className="block" htmlFor="profile-username">
         <span className="text-sm">Username</span>
-        <Input
-          aria-invalid={Boolean(fieldError("username"))}
-          className="mt-2 min-h-11"
-          id="profile-username"
-          maxLength={30}
-          name="username"
-          onChange={(event) => update("username", event.target.value)}
-          required
-          value={values.username}
-        />
+        <div className="mt-2 flex min-h-11 items-center rounded-sm border border-input bg-white focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/35">
+          <span className="flex h-10 shrink-0 items-center border-input border-r px-3 font-data text-muted-foreground text-xs">
+            /membros/
+          </span>
+          <Input
+            aria-invalid={Boolean(fieldError("username"))}
+            className="min-h-10 rounded-none border-0 bg-transparent shadow-none focus-visible:ring-0"
+            id="profile-username"
+            maxLength={30}
+            name="username"
+            onChange={(event) => update("username", event.target.value)}
+            required
+            value={values.username}
+          />
+        </div>
         {fieldError("username") ? (
           <span className="mt-1 block text-destructive text-xs">
             {fieldError("username")}
           </span>
         ) : (
           <span className="mt-1 block text-muted-foreground text-xs">
-            Seu endereço: /membros/{values.username || "username"}
+            Seu endereço público.
           </span>
         )}
       </label>
     </div>
     <label className="mt-4 block" htmlFor="profile-headline">
-      <span className="text-sm">Identificação curta</span>
+      <span className="flex items-center justify-between gap-3 text-sm">
+        Identificação curta
+        <span className="font-data text-muted-foreground text-xs">
+          {values.headline.length} / 60
+        </span>
+      </span>
       <Input
         aria-invalid={Boolean(fieldError("headline"))}
-        className="mt-2 min-h-11"
+        className="mt-2 min-h-11 rounded-sm bg-white"
         id="profile-headline"
         maxLength={60}
         name="headline"
@@ -159,47 +166,23 @@ export const ProfileIdentitySection = ({
         placeholder="Nutricionista · Interprete"
         value={values.headline}
       />
-      <span className="mt-1 block text-right text-muted-foreground text-xs">
-        {values.headline.length}/60
-      </span>
       {fieldError("headline") ? (
         <span className="mt-1 block text-destructive text-xs">
           {fieldError("headline")}
         </span>
       ) : null}
     </label>
-    <label
-      className="mt-5 flex min-h-11 cursor-pointer items-start gap-3 text-sm"
-      htmlFor="profile-showInDirectory"
-    >
-      <input
-        checked={values.showInDirectory}
-        className="mt-1 size-4 accent-brand-dark-amaranth"
-        id="profile-showInDirectory"
-        onChange={(event) => update("showInDirectory", event.target.checked)}
-        type="checkbox"
-      />
-      <span>
-        Aparecer em Explorar membros
-        <span className="mt-1 block text-muted-foreground text-xs leading-5">
-          Quando desativado, seu perfil deixa de aparecer nas buscas do
-          diretório.
-        </span>
-      </span>
-    </label>
-    <input
-      name="showInDirectory"
-      type="hidden"
-      value={values.showInDirectory ? "true" : "false"}
-    />
   </section>
 );
 
 const contextFields = [
   { id: "occupation", label: "Profissão", maxLength: 120 },
   { id: "institution", label: "Instituição", maxLength: 160 },
+] as const;
+
+const locationFields = [
   { id: "city", label: "Cidade", maxLength: 80 },
-  { id: "state", label: "Estado", maxLength: 80 },
+  { id: "state", label: "Estado", maxLength: 80, placeholder: "UF" },
   { id: "country", label: "País", maxLength: 80 },
 ] as const;
 
@@ -216,23 +199,41 @@ export const ProfileContextSection = ({
     aria-labelledby="edit-context-heading"
     className="border-border border-b py-6"
   >
-    <SectionHeading
-      eyebrow="Contexto"
-      heading="Seu caminho de estudo e trabalho"
-      id="edit-context-heading"
-    />
-    <div className="mt-5 grid gap-x-5 gap-y-4 sm:grid-cols-2">
+    <SectionHeading heading="Contexto" id="edit-context-heading" />
+    <div className="mt-5 grid gap-y-4">
       {contextFields.map(({ id, label, maxLength }) => (
         <label className="block" htmlFor={`profile-${id}`} key={id}>
           <span className="text-sm">{label}</span>
           <Input
             aria-invalid={Boolean(fieldError(id))}
-            className="mt-2 min-h-11"
+            className="mt-2 min-h-11 rounded-sm bg-white"
             id={`profile-${id}`}
             maxLength={maxLength}
             name={id}
             onChange={(event) => update(id, event.target.value)}
             value={values[id]}
+          />
+          {fieldError(id) ? (
+            <span className="mt-1 block text-destructive text-xs">
+              {fieldError(id)}
+            </span>
+          ) : null}
+        </label>
+      ))}
+    </div>
+    <div className="mt-4 grid gap-x-4 gap-y-4 sm:grid-cols-[1.4fr_0.75fr_1.35fr]">
+      {locationFields.map(({ id, label, maxLength, ...attributes }) => (
+        <label className="block" htmlFor={`profile-${id}`} key={id}>
+          <span className="text-sm">{label}</span>
+          <Input
+            aria-invalid={Boolean(fieldError(id))}
+            className="mt-2 min-h-11 rounded-sm bg-white"
+            id={`profile-${id}`}
+            maxLength={maxLength}
+            name={id}
+            onChange={(event) => update(id, event.target.value)}
+            value={values[id]}
+            {...attributes}
           />
           {fieldError(id) ? (
             <span className="mt-1 block text-destructive text-xs">
@@ -258,16 +259,12 @@ export const ProfileAboutSection = ({
     aria-labelledby="edit-about-heading"
     className="border-border border-b py-6"
   >
-    <SectionHeading
-      eyebrow="Sobre você"
-      heading="O que você quer compartilhar?"
-      id="edit-about-heading"
-    />
+    <SectionHeading heading="Sobre você" id="edit-about-heading" />
     <label className="mt-5 block" htmlFor="profile-bio">
       <span className="text-sm">Bio</span>
       <Textarea
         aria-invalid={Boolean(fieldError("bio"))}
-        className="mt-2 min-h-28"
+        className="mt-2 min-h-24 resize-y rounded-sm bg-white"
         id="profile-bio"
         maxLength={280}
         name="bio"
@@ -284,35 +281,173 @@ export const ProfileAboutSection = ({
         </span>
       ) : null}
     </label>
-    <label className="mt-5 block" htmlFor="profile-interests">
-      <span className="text-sm">Interesses</span>
-      <Input
+    <InterestsField
+      fieldError={fieldError}
+      update={update}
+      value={values.interests}
+    />
+  </section>
+);
+
+const InterestsField = ({
+  fieldError,
+  update,
+  value,
+}: {
+  readonly fieldError: ProfileFieldError;
+  readonly update: ProfileUpdate;
+  readonly value: string;
+}) => {
+  const [draft, setDraft] = useState("");
+  const interests = value
+    .split(",")
+    .map((interest) => interest.trim())
+    .filter(Boolean);
+
+  const addInterest = () => {
+    const nextInterest = draft.trim().replaceAll(",", "");
+    if (!nextInterest) {
+      return;
+    }
+    const duplicate = interests.some(
+      (interest) =>
+        interest.toLocaleLowerCase("pt-BR") ===
+        nextInterest.toLocaleLowerCase("pt-BR")
+    );
+    if (!duplicate) {
+      update("interests", [...interests, nextInterest].join(", "));
+    }
+    setDraft("");
+  };
+
+  return (
+    <div className="mt-5">
+      <label className="block text-sm" htmlFor="profile-interests-input">
+        Interesses
+      </label>
+      <input name="interests" type="hidden" value={value} />
+      <div
         aria-invalid={Boolean(fieldError("interests"))}
-        className="mt-2 min-h-11"
-        id="profile-interests"
-        maxLength={500}
-        name="interests"
-        onChange={(event) => update("interests", event.target.value)}
-        placeholder="PBE, epidemiologia, leitura crítica"
-        value={values.interests}
-      />
-      <span className="mt-1 block text-muted-foreground text-xs">
-        Separe cada interesse por vírgula.
-      </span>
+        className="mt-2 flex min-h-11 flex-wrap items-center gap-1.5 rounded-sm border border-input bg-white px-2 py-1 focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/35"
+      >
+        {interests.map((interest, index) => {
+          const occurrence = interests
+            .slice(0, index)
+            .filter((previous) => previous === interest).length;
+          return (
+            <span
+              className="inline-flex min-h-8 items-center gap-1 rounded-sm bg-brand-pink-essence px-2 font-data text-[0.68rem] text-foreground"
+              key={`${interest}-${occurrence}`}
+            >
+              {interest}
+              <button
+                aria-label={`Remover interesse ${interest}`}
+                className="inline-flex size-6 items-center justify-center rounded-sm text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                onClick={() =>
+                  update(
+                    "interests",
+                    interests
+                      .filter((_, currentIndex) => currentIndex !== index)
+                      .join(", ")
+                  )
+                }
+                type="button"
+              >
+                <XIcon aria-hidden="true" className="size-3" />
+              </button>
+            </span>
+          );
+        })}
+        <Input
+          aria-invalid={Boolean(fieldError("interests"))}
+          aria-label="Adicionar interesse"
+          className="h-9 min-w-32 flex-1 rounded-none border-0 bg-transparent px-2 shadow-none focus-visible:ring-0"
+          id="profile-interests-input"
+          maxLength={80}
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === ",") {
+              event.preventDefault();
+              addInterest();
+            }
+          }}
+          placeholder="Adicionar interesse"
+          value={draft}
+        />
+        <button
+          className="inline-flex min-h-9 items-center gap-1 px-2 text-muted-foreground text-xs hover:text-brand-dark-amaranth focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          onClick={addInterest}
+          type="button"
+        >
+          <PlusIcon aria-hidden="true" className="size-3.5" /> Adicionar
+        </button>
+      </div>
       {fieldError("interests") ? (
         <span className="mt-1 block text-destructive text-xs">
           {fieldError("interests")}
         </span>
       ) : null}
-    </label>
-  </section>
-);
+    </div>
+  );
+};
 
 const profileLinks = [
-  { id: "website", label: "Site" },
-  { id: "instagram", label: "Instagram" },
-  { id: "linkedin", label: "LinkedIn" },
+  { id: "website", label: "Site", prefix: "https://", icon: Globe2Icon },
+  {
+    id: "instagram",
+    label: "Instagram",
+    prefix: "instagram.com/",
+    icon: InstagramIcon,
+  },
+  {
+    id: "linkedin",
+    label: "LinkedIn",
+    prefix: "linkedin.com/in/",
+    icon: LinkedinIcon,
+  },
 ] as const;
+
+const stripProtocol = (value: string) => value.replace(protocolPattern, "");
+const linkInputPrefix = (value: string, preferred: string) => {
+  const withoutProtocol = stripProtocol(value);
+  const domain = preferred.replace(protocolPattern, "");
+  if (!value || withoutProtocol.toLocaleLowerCase("pt-BR").startsWith(domain)) {
+    return preferred;
+  }
+  if (value.startsWith("http://")) {
+    return "http://";
+  }
+  return "https://";
+};
+const linkInputValue = (value: string, prefix: string, preferred: string) => {
+  const withoutProtocol = stripProtocol(value);
+  const domain = preferred.replace(protocolPattern, "");
+  if (
+    !prefix.endsWith("://") &&
+    withoutProtocol.toLocaleLowerCase("pt-BR").startsWith(domain)
+  ) {
+    return withoutProtocol.slice(domain.length);
+  }
+  return withoutProtocol;
+};
+const buildLinkValue = (
+  next: string,
+  currentValue: string,
+  currentPrefix: string,
+  preferredPrefix: string
+) => {
+  if (!next) {
+    return "";
+  }
+  if (currentPrefix.endsWith("://")) {
+    const protocol = currentValue.startsWith("http://")
+      ? "http://"
+      : currentPrefix;
+    return `${protocol}${next}`;
+  }
+  const protocol = currentValue.startsWith("http://") ? "http://" : "https://";
+  return `${protocol}${preferredPrefix}${next}`;
+};
 
 export const ProfileLinksSection = ({
   fieldError,
@@ -327,25 +462,43 @@ export const ProfileLinksSection = ({
     aria-labelledby="edit-links-heading"
     className="border-border border-b py-6"
   >
-    <SectionHeading
-      eyebrow="Links"
-      heading="Onde encontrar você"
-      id="edit-links-heading"
-    />
+    <SectionHeading heading="Links" id="edit-links-heading" />
     <div className="mt-5 grid gap-4">
-      {profileLinks.map(({ id, label }) => (
+      {profileLinks.map(({ id, label, prefix, icon: Icon }) => (
         <label className="block" htmlFor={`profile-${id}`} key={id}>
           <span className="text-sm">{label}</span>
-          <Input
-            aria-invalid={Boolean(fieldError(id))}
-            className="mt-2 min-h-11"
-            id={`profile-${id}`}
-            maxLength={300}
-            name={id}
-            onChange={(event) => update(id, event.target.value)}
-            placeholder="https://"
-            value={values[id]}
-          />
+          {(() => {
+            const currentValue = values[id];
+            const currentPrefix = linkInputPrefix(currentValue, prefix);
+            return (
+              <div className="mt-2 flex min-h-11 items-center rounded-sm border border-input bg-white focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/35">
+                <input name={id} type="hidden" value={currentValue} />
+                <span className="flex h-10 shrink-0 items-center gap-1.5 border-input border-r px-3 font-data text-muted-foreground text-xs">
+                  <Icon aria-hidden="true" className="size-3.5" />
+                  {currentPrefix}
+                </span>
+                <Input
+                  aria-invalid={Boolean(fieldError(id))}
+                  className="min-h-10 rounded-none border-0 bg-transparent shadow-none focus-visible:ring-0"
+                  id={`profile-${id}`}
+                  maxLength={300}
+                  onChange={(event) => {
+                    const next = event.target.value.trimStart();
+                    update(
+                      id,
+                      buildLinkValue(next, currentValue, currentPrefix, prefix)
+                    );
+                  }}
+                  placeholder={
+                    currentPrefix.endsWith("://")
+                      ? "seusite.com.br"
+                      : "seuusuario"
+                  }
+                  value={linkInputValue(currentValue, currentPrefix, prefix)}
+                />
+              </div>
+            );
+          })()}
           {fieldError(id) ? (
             <span className="mt-1 block text-destructive text-xs">
               {fieldError(id)}
@@ -359,30 +512,53 @@ export const ProfileLinksSection = ({
 
 export const ProfileAccountSection = ({
   email,
+  update,
+  values,
 }: {
   readonly email: string;
+  readonly update: ProfileUpdate;
+  readonly values: ProfileFormValues;
 }) => (
   <section
     aria-labelledby="edit-account-heading"
     className="border-border border-b py-6"
     id="profile-account"
   >
-    <SectionHeading
-      eyebrow="Conta"
-      heading="Informações privadas"
-      id="edit-account-heading"
-    />
+    <SectionHeading heading="Conta" id="edit-account-heading" />
     <label className="mt-5 block" htmlFor="profile-email">
       <span className="text-sm">E-mail da conta</span>
-      <Input
-        className="mt-2 min-h-11 bg-muted/40"
-        id="profile-email"
-        readOnly
-        value={email}
-      />
+      <div className="mt-2 flex min-h-11 items-center rounded-sm border border-input bg-[#F7F3F1]">
+        <span className="flex h-10 shrink-0 items-center border-input border-r px-3 text-muted-foreground">
+          <LockKeyholeIcon aria-hidden="true" className="size-3.5" />
+        </span>
+        <Input
+          className="min-h-10 rounded-none border-0 bg-transparent text-muted-foreground shadow-none focus-visible:ring-0"
+          id="profile-email"
+          readOnly
+          value={email}
+        />
+      </div>
       <span className="mt-1 block text-muted-foreground text-xs">
-        Seu e-mail não aparece no perfil público.
+        Usado para entrar. Não aparece no perfil público.
       </span>
     </label>
+    <label
+      className="mt-5 flex min-h-11 cursor-pointer items-center gap-3 text-sm"
+      htmlFor="profile-showInDirectory"
+    >
+      <input
+        checked={values.showInDirectory}
+        className="size-4 accent-brand-dark-amaranth"
+        id="profile-showInDirectory"
+        onChange={(event) => update("showInDirectory", event.target.checked)}
+        type="checkbox"
+      />
+      <span>Aparecer em “Explorar membros”</span>
+    </label>
+    <input
+      name="showInDirectory"
+      type="hidden"
+      value={values.showInDirectory ? "true" : "false"}
+    />
   </section>
 );

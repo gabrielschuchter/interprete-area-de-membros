@@ -48,39 +48,55 @@ const CommunityEditorPage = async ({
   if (filters.preview === "1") {
     return (
       <div className="min-h-svh bg-background">
-        <main className="mx-auto w-full max-w-[960px] px-5 py-8 sm:px-8 lg:py-14">
-          <Button asChild className="-ml-3" variant="ghost">
+        <main className="community-post-shell mx-auto w-full">
+          <Button asChild className="community-post-back" variant="ghost">
             <Link href={`/comunidade/editor/${post.id}`}>
               <ArrowLeftIcon aria-hidden="true" /> Voltar para a edição
             </Link>
           </Button>
-          <article className="mx-auto mt-10 max-w-3xl">
-            <p className="brand-eyebrow">Pré-visualização · publicação</p>
-            <div className="mt-6">
+          <article className="community-post-article community-post-preview">
+            <div className="community-post-meta-row">
+              <div className="community-post-meta">
+                {post.space && (
+                  <span className="community-post-group">
+                    {post.space.title}
+                  </span>
+                )}
+                <time
+                  dateTime={(post.publishedAt ?? post.createdAt).toISOString()}
+                >
+                  {(post.publishedAt ?? post.createdAt).toLocaleDateString(
+                    "pt-BR"
+                  )}
+                </time>
+              </div>
+              <span className="community-post-preview-label">
+                Pré-visualização
+              </span>
+            </div>
+            <h1 className="community-post-title">{post.title}</h1>
+            {post.subtitle && (
+              <p className="community-post-subtitle">{post.subtitle}</p>
+            )}
+            <div className="community-post-author">
               <MemberIdentity
                 authorId={post.authorId}
+                compact
                 profile={post.profile ?? undefined}
+                showHeadline={false}
               />
             </div>
-            <h1 className="mt-6 font-display text-5xl leading-[1.02] sm:text-7xl">
-              {post.title}
-            </h1>
-            {post.subtitle && (
-              <p className="mt-5 text-muted-foreground text-xl leading-8 sm:text-2xl">
-                {post.subtitle}
-              </p>
-            )}
             {post.coverUrl && (
               // biome-ignore lint/performance/noImgElement: cover URLs are sanitized user content and may come from hosts not configured for next/image.
               <img
                 alt=""
-                className="mt-8 max-h-[30rem] w-full rounded-sm border object-cover"
+                className="community-post-cover"
                 height={630}
                 src={post.coverUrl}
                 width={1200}
               />
             )}
-            <div className="lesson-document mt-9 text-lg">
+            <div className="lesson-document community-post-body">
               <RichDocument value={document} />
             </div>
           </article>
@@ -91,30 +107,10 @@ const CommunityEditorPage = async ({
 
   return (
     <div className="min-h-svh bg-background">
-      <main className="mx-auto w-full max-w-[1120px] px-5 py-8 sm:px-8 lg:px-12 lg:py-14">
-        <Button asChild className="-ml-3" variant="ghost">
-          <Link href={backHref}>
-            <ArrowLeftIcon aria-hidden="true" /> Voltar
-          </Link>
-        </Button>
-        <header className="mt-8 max-w-3xl">
-          <p className="brand-eyebrow">
-            {post.status === "DRAFT" ? "Rascunho privado" : "Edição"} ·
-            publicação
-          </p>
-          <span aria-hidden="true" className="brand-rule mt-4" />
-          <h1 className="mt-6 font-display text-5xl leading-none sm:text-6xl">
-            {post.status === "DRAFT"
-              ? "Escreva com calma. A comunidade espera pela sua publicação."
-              : "Dê mais nitidez ao que você publicou."}
-          </h1>
-          <p className="mt-5 max-w-2xl text-muted-foreground leading-7">
-            {post.status === "DRAFT"
-              ? "Este rascunho só fica visível para você até o momento em que decidir publicar."
-              : "Alterações são salvas somente quando você confirmar. A publicação continua disponível no mesmo endereço."}
-          </p>
-        </header>
+      <main className="community-editor-shell mx-auto w-full">
+        <h1 className="sr-only">Escrever publicação</h1>
         <CommunityComposer
+          backHref={backHref}
           initialContent={document}
           initialCoverUrl={post.coverUrl}
           initialSpaceId={post.space?.id ?? null}

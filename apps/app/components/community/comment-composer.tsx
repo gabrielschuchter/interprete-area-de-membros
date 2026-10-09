@@ -8,6 +8,7 @@ import { MentionTextarea } from "./mention-textarea";
 interface CommentComposerProperties {
   readonly ariaLabel?: string;
   readonly className?: string;
+  readonly helperText?: string;
   readonly parentId?: string;
   readonly placeholder?: string;
   readonly postId: string;
@@ -100,6 +101,7 @@ const submitLabel = (pending: boolean, error: string) => {
 export const CommentComposer = ({
   ariaLabel = "Sua contribuição",
   className,
+  helperText,
   parentId,
   placeholder = "Acrescente uma leitura, uma pergunta ou uma referência... Use @nome para mencionar alguém.",
   postId,
@@ -163,7 +165,7 @@ export const CommentComposer = ({
         <span className="brand-eyebrow">{ariaLabel}</span>
         <MentionTextarea
           aria-label={ariaLabel}
-          className="mt-3 min-h-32 w-full rounded-sm border bg-background px-3 py-3 text-base leading-7 outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/35"
+          className="community-comment-textarea"
           disabled={pending}
           id={parentId ? `reply-${parentId}` : "comment-content"}
           key={composerVersion}
@@ -178,6 +180,9 @@ export const CommentComposer = ({
           required
         />
       </label>
+      {helperText ? (
+        <p className="community-comment-composer__hint">{helperText}</p>
+      ) : null}
       <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
         <span aria-live="polite" className="text-muted-foreground text-xs">
           {statusMessage(pending, error, success)}

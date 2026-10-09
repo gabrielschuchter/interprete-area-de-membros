@@ -10,6 +10,7 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { CommunityDraftStarter } from "@/components/community/community-draft-starter";
 import { CommunityFeedCard } from "@/components/community/community-feed-card";
 import { GroupMemberInvitePicker } from "@/components/community/group-member-invite-picker";
 import {
@@ -105,11 +106,9 @@ const CommunitySpacePage = async ({
               </SingleFlightForm>
             ) : null}
             {isMember || canManageGroup ? (
-              <Button asChild>
-                <Link href={`/comunidade/${space.slug}/novo`}>
-                  <PlusIcon aria-hidden="true" /> Criar aqui
-                </Link>
-              </Button>
+              <CommunityDraftStarter spaceId={space.id}>
+                <PlusIcon aria-hidden="true" /> Criar aqui
+              </CommunityDraftStarter>
             ) : null}
           </div>
         </header>
