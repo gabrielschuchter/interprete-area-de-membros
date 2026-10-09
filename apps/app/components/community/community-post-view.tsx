@@ -22,6 +22,7 @@ import {
   SingleFlightSubmit,
 } from "../mutations/single-flight-form";
 import { CommentComposer } from "./comment-composer";
+import { CommunityCoverImage } from "./community-cover-image";
 import { CommunityDiscussionFollow } from "./community-discussion-follow";
 import { CommunityPostActions } from "./community-post-actions";
 import { CommunityPostMenu } from "./community-post-menu";
@@ -359,8 +360,7 @@ export function CommunityPostView({
             )}
           </div>
           {post.coverUrl && (
-            // biome-ignore lint/performance/noImgElement: cover URLs are sanitized user content and may come from hosts not configured for next/image.
-            <img
+            <CommunityCoverImage
               alt={`Capa: ${post.title}`}
               className="community-post-cover"
               height={630}

@@ -6,6 +6,7 @@ import {
   communityMediaImageUrl,
   normalizeCommunityCoverUrl,
 } from "@/lib/community-media";
+import { CommunityCoverImage } from "./community-cover-image";
 import { CommunityMediaGallery } from "./community-media-card";
 import { CommunityPostActions } from "./community-post-actions";
 import { MemberIdentity } from "./member-identity";
@@ -122,15 +123,11 @@ export function CommunityFeedCard({
           ) : null}
         </div>
         {coverUrl ? (
-          // Community URLs are sanitized and may use hosts not configured for next/image.
-          // biome-ignore lint/performance/noImgElement: community cover URLs are user-provided assets.
-          <img
+          <CommunityCoverImage
             alt={`Capa: ${post.title}`}
             className="community-post-card__media relative z-10"
-            decoding="async"
             height={100}
             loading="lazy"
-            referrerPolicy="no-referrer"
             src={communityMediaImageUrl(coverUrl, "thumb")}
             width={148}
           />
