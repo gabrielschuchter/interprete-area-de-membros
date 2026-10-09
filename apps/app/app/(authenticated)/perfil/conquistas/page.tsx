@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { ProfileBadgeIcon } from "@/components/profile/profile-badge-icon";
 import { getAuth } from "@/lib/auth";
 import { getMemberBadgeProgress } from "@/lib/badges";
+import { orderProfileBadges } from "@/lib/profile-badge-catalog";
 
 const categoryForCriterion: Record<
   BadgeCriterion,
@@ -22,19 +23,6 @@ const categoryForCriterion: Record<
 };
 
 const categories = ["Estudo", "Prática", "Comunidade"] as const;
-const criterionOrder = [
-  BadgeCriterion.STUDY_MINUTES,
-  BadgeCriterion.STUDY_STREAK_DAYS,
-  BadgeCriterion.LESSONS_COMPLETED,
-  BadgeCriterion.LEARNING_PATHS_COMPLETED,
-  BadgeCriterion.EXERCISE_ANSWERS,
-  BadgeCriterion.ACTIVITIES_COMPLETED,
-  BadgeCriterion.TASKS_COMPLETED,
-  BadgeCriterion.STUDY_GOALS_MET,
-  BadgeCriterion.COMMUNITY_PUBLICATIONS,
-  BadgeCriterion.MEETINGS_ATTENDED,
-] satisfies readonly BadgeCriterion[];
-
 const formatProgress = (
   criterion: BadgeCriterion,
   value: number,
@@ -143,15 +131,11 @@ const AchievementsPage = async () => {
         </p>
       ) : (
         categories.map((category) => {
-          const categoryBadges = definitions
-            .filter(
+          const categoryBadges = orderProfileBadges(
+            definitions.filter(
               ({ criterion }) => categoryForCriterion[criterion] === category
             )
-            .sort(
-              (left, right) =>
-                criterionOrder.indexOf(left.criterion) -
-                criterionOrder.indexOf(right.criterion)
-            );
+          );
           if (categoryBadges.length === 0) {
             return null;
           }
