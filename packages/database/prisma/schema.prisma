@@ -121,6 +121,11 @@ enum ExerciseSessionStatus {
   ABANDONED
 }
 
+enum ExerciseSessionKind {
+  LIST
+  FAVORITE
+}
+
 enum StudyActivityKind {
   LESSON
   RECORDING
@@ -1537,6 +1542,7 @@ model ExerciseSession {
   id              String                    @id @default(cuid())
   memberId        String
   listId          String
+  kind            ExerciseSessionKind       @default(LIST)
   status          ExerciseSessionStatus     @default(IN_PROGRESS)
   currentPosition Int                       @default(0)
   startedAt       DateTime                  @default(now())

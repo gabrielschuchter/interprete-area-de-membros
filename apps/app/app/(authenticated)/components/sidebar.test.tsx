@@ -1,5 +1,15 @@
-import { SidebarProvider } from "@repo/design-system/components/ui/sidebar";
-import { cleanup, render, screen, within } from "@testing-library/react";
+import {
+  SidebarProvider,
+  SidebarTrigger,
+} from "@repo/design-system/components/ui/sidebar";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import type { AnchorHTMLAttributes } from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { GlobalSidebar } from "./sidebar";
@@ -30,38 +40,48 @@ vi.mock("next/link", () => ({
 
 const originalMatchMedia = window.matchMedia;
 
-const setMatchMedia = () => {
+const setMatchMedia = (exerciseTablet = false) => {
   Object.defineProperty(window, "matchMedia", {
     configurable: true,
-    value: vi.fn().mockImplementation((media: string) => ({
-      addEventListener: vi.fn(),
-      addListener: vi.fn(),
-      dispatchEvent: vi.fn(),
-      matches: false,
-      media,
-      onchange: null,
-      removeEventListener: vi.fn(),
-      removeListener: vi.fn(),
-    })),
+    value: vi.fn().mockImplementation((media: string) => {
+      const matches =
+        exerciseTablet &&
+        media === "(min-width: 48rem) and (max-width: 63.999rem)";
+      return {
+        addEventListener: vi.fn(),
+        addListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+        matches,
+        media,
+        onchange: null,
+        removeEventListener: vi.fn(),
+        removeListener: vi.fn(),
+      };
+    }),
   });
 };
 
-const renderSidebarAt = (pathname: string) => {
-  currentPath.value = pathname;
-  setMatchMedia();
+const sidebarContent = () => (
+  <SidebarProvider>
+    <GlobalSidebar
+      avatarUrl={null}
+      canManageContent={false}
+      displayName="Aluno QA"
+      productConfig={{ showLearnNavigation: true }}
+    >
+      <main>
+        <SidebarTrigger />
+        Conteúdo
+      </main>
+    </GlobalSidebar>
+  </SidebarProvider>
+);
 
-  return render(
-    <SidebarProvider>
-      <GlobalSidebar
-        avatarUrl={null}
-        canManageContent={false}
-        displayName="Aluno QA"
-        productConfig={{ showLearnNavigation: true }}
-      >
-        <main>Conteúdo</main>
-      </GlobalSidebar>
-    </SidebarProvider>
-  );
+const renderSidebarAt = (pathname: string, exerciseTablet = false) => {
+  currentPath.value = pathname;
+  setMatchMedia(exerciseTablet);
+
+  return render(sidebarContent());
 };
 
 const personalLinks = () => {
@@ -156,5 +176,45 @@ describe("GlobalSidebar personal content group", () => {
         .getAttribute("aria-current")
     ).toBe("page");
     expect(document.querySelectorAll('[aria-current="page"]')).toHaveLength(1);
+  });
+
+  test("uses the off-canvas shell at tablet widths on Exercises routes", async () => {
+    renderSidebarAt("/exercicios/sessoes/session-1", true);
+
+    const sidebar = document.querySelector('[data-slot="sidebar"]');
+    await waitFor(() => {
+      expect(sidebar?.getAttribute("data-collapsible")).toBe("offcanvas");
+      expect(sidebar?.getAttribute("data-state")).toBe("collapsed");
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Toggle Sidebar" }));
+    await waitFor(() =>
+      expect(sidebar?.getAttribute("data-state")).toBe("expanded")
+    );
+  });
+
+  test("restores the previous sidebar state when leaving tablet Exercises", async () => {
+    const view = renderSidebarAt("/");
+    const sidebar = document.querySelector('[data-slot="sidebar"]');
+
+    fireEvent.click(screen.getByRole("button", { name: "Toggle Sidebar" }));
+    await waitFor(() =>
+      expect(sidebar?.getAttribute("data-state")).toBe("collapsed")
+    );
+
+    currentPath.value = "/exercicios";
+    setMatchMedia(true);
+    view.rerender(sidebarContent());
+    await waitFor(() =>
+      expect(sidebar?.getAttribute("data-collapsible")).toBe("offcanvas")
+    );
+
+    currentPath.value = "/aprender";
+    setMatchMedia(false);
+    view.rerender(sidebarContent());
+    await waitFor(() => {
+      expect(sidebar?.getAttribute("data-collapsible")).toBe("icon");
+      expect(sidebar?.getAttribute("data-state")).toBe("collapsed");
+    });
   });
 });

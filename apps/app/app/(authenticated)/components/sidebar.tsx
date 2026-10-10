@@ -16,6 +16,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "@repo/design-system/components/ui/sidebar";
 import {
   BookmarkIcon,
@@ -86,7 +87,12 @@ export const GlobalSidebar = ({
 }: GlobalSidebarProperties) => {
   const pathname = usePathname();
   const [pendingHref, setPendingHref] = useState<string | null>(null);
+  const [exerciseTablet, setExerciseTablet] = useState(false);
+  const previousSidebarOpen = useRef<boolean | null>(null);
+  const { open: sidebarOpen, setOpen: setSidebarOpen } = useSidebar();
   const previousPathname = useRef(pathname);
+  const isExercisesRoute =
+    pathname === "/exercicios" || pathname.startsWith("/exercicios/");
   const navigation = [
     baseNavigation[0],
     ...(productConfig.showLearnNavigation ? [learnNavigation] : []),
@@ -121,6 +127,39 @@ export const GlobalSidebar = ({
     setPendingHref(null);
   }, [pathname]);
 
+  useEffect(() => {
+    const tabletViewport = window.matchMedia(
+      "(min-width: 48rem) and (max-width: 63.999rem)"
+    );
+    const syncExerciseSidebar = () => {
+      const shouldUseOffcanvas = isExercisesRoute && tabletViewport.matches;
+      setExerciseTablet(shouldUseOffcanvas);
+
+      if (shouldUseOffcanvas) {
+        if (previousSidebarOpen.current === null) {
+          previousSidebarOpen.current = sidebarOpen;
+          if (sidebarOpen) {
+            setSidebarOpen(false);
+          }
+        }
+        return;
+      }
+
+      if (previousSidebarOpen.current !== null) {
+        const previousOpen = previousSidebarOpen.current;
+        previousSidebarOpen.current = null;
+        if (sidebarOpen !== previousOpen) {
+          setSidebarOpen(previousOpen);
+        }
+      }
+    };
+
+    syncExerciseSidebar();
+    tabletViewport.addEventListener("change", syncExerciseSidebar);
+    return () =>
+      tabletViewport.removeEventListener("change", syncExerciseSidebar);
+  }, [isExercisesRoute, setSidebarOpen, sidebarOpen]);
+
   return (
     <>
       <a
@@ -129,7 +168,10 @@ export const GlobalSidebar = ({
       >
         Pular para o conteúdo principal
       </a>
-      <Sidebar collapsible="icon" variant="sidebar">
+      <Sidebar
+        collapsible={exerciseTablet ? "offcanvas" : "icon"}
+        variant="sidebar"
+      >
         <SidebarHeader className="border-sidebar-border border-b px-4 py-5 group-data-[collapsible=icon]:px-2">
           <SidebarMenu>
             <SidebarMenuItem>

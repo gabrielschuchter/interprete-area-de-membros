@@ -20,10 +20,12 @@ const SavedCommunityPage = async () => {
   const [posts, libraryItems, exerciseFavorites] = await Promise.all([
     getSavedCommunityPosts(memberId),
     getPersonalLibraryItems(memberId),
-    getMemberExerciseFavorites(memberId),
+    getMemberExerciseFavorites(memberId, undefined, "after", 6),
   ]);
   const hasSavedContent =
-    posts.length > 0 || libraryItems.length > 0 || exerciseFavorites.length > 0;
+    posts.length > 0 ||
+    libraryItems.length > 0 ||
+    exerciseFavorites.items.length > 0;
 
   return (
     <div className="min-h-svh bg-background">
@@ -64,7 +66,7 @@ const SavedCommunityPage = async () => {
               </section>
             )}
 
-            {exerciseFavorites.length > 0 && (
+            {exerciseFavorites.items.length > 0 && (
               <section aria-labelledby="saved-exercises-heading">
                 <div className="flex flex-col gap-2 border-b pb-4 sm:flex-row sm:items-end sm:justify-between">
                   <div>
@@ -77,11 +79,26 @@ const SavedCommunityPage = async () => {
                     </h2>
                   </div>
                   <span className="font-data text-muted-foreground text-xs">
-                    {exerciseFavorites.length}{" "}
-                    {exerciseFavorites.length === 1 ? "questão" : "questões"}
+                    {exerciseFavorites.totalCount}{" "}
+                    {exerciseFavorites.totalCount === 1
+                      ? "questão"
+                      : "questões"}
                   </span>
                 </div>
-                <ExerciseFavoritesGrid items={exerciseFavorites} />
+                <ExerciseFavoritesGrid
+                  items={exerciseFavorites.items}
+                  showHeader={false}
+                  totalCount={exerciseFavorites.totalCount}
+                />
+                {exerciseFavorites.hasNext && (
+                  <div className="mt-4">
+                    <Button asChild variant="outline">
+                      <Link href="/exercicios/favoritas">
+                        Ver todas as questões salvas
+                      </Link>
+                    </Button>
+                  </div>
+                )}
               </section>
             )}
 

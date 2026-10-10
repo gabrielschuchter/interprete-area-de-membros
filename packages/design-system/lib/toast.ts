@@ -10,7 +10,7 @@ export interface ToastRecord {
   readonly id: string;
   readonly message: string;
   readonly type: ToastType;
-  readonly variant?: "library";
+  readonly variant?: "exercise" | "library";
 }
 
 type ToastListener = () => void;
@@ -18,7 +18,7 @@ type ToastListener = () => void;
 const EMPTY_TOASTS: readonly ToastRecord[] = [];
 const listeners = new Set<ToastListener>();
 const timers = new Map<string, ReturnType<typeof setTimeout>>();
-const libraryTimers = new Map<
+const actionToastTimers = new Map<
   string,
   {
     handle: ReturnType<typeof setTimeout>;
@@ -52,17 +52,17 @@ const dismissToast = (id: string) => {
     timers.delete(id);
   }
 
-  const libraryTimer = libraryTimers.get(id);
-  if (libraryTimer) {
-    clearTimeout(libraryTimer.handle);
-    libraryTimers.delete(id);
+  const actionTimer = actionToastTimers.get(id);
+  if (actionTimer) {
+    clearTimeout(actionTimer.handle);
+    actionToastTimers.delete(id);
   }
 
   records = records.filter((record) => record.id !== id);
   emit();
 };
 
-const scheduleLibraryToast = (
+const scheduleActionToast = (
   id: string,
   remaining: number,
   pausedFor = new Set<"focus" | "pointer">()
@@ -73,11 +73,11 @@ const scheduleLibraryToast = (
     remaining,
     startedAt: Date.now(),
   };
-  libraryTimers.set(id, timer);
+  actionToastTimers.set(id, timer);
 };
 
-const pauseLibraryToast = (id: string, reason: "focus" | "pointer") => {
-  const timer = libraryTimers.get(id);
+const pauseActionToast = (id: string, reason: "focus" | "pointer") => {
+  const timer = actionToastTimers.get(id);
   if (!timer || timer.pausedFor.has(reason)) {
     return;
   }
@@ -88,12 +88,36 @@ const pauseLibraryToast = (id: string, reason: "focus" | "pointer") => {
   }
 };
 
-const resumeLibraryToast = (id: string, reason: "focus" | "pointer") => {
-  const timer = libraryTimers.get(id);
+const resumeActionToast = (id: string, reason: "focus" | "pointer") => {
+  const timer = actionToastTimers.get(id);
   if (!timer || !timer.pausedFor.delete(reason) || timer.pausedFor.size > 0) {
     return;
   }
-  scheduleLibraryToast(id, timer.remaining, timer.pausedFor);
+  scheduleActionToast(id, timer.remaining, timer.pausedFor);
+};
+
+const createActionToast = (
+  variant: "exercise" | "library",
+  message: string,
+  actions: readonly ToastAction[],
+  type: ToastType
+) => {
+  const id = "toast-" + nextId++;
+  records = [
+    ...records,
+    {
+      actions,
+      id,
+      message,
+      type,
+      variant,
+    },
+  ];
+  emit();
+  if (typeof window !== "undefined") {
+    scheduleActionToast(id, 5000);
+  }
+  return id;
 };
 
 const createToast = (
@@ -123,26 +147,14 @@ export const toast = {
     message: string,
     actions: readonly ToastAction[] = [],
     type: ToastType = "success"
-  ) => {
-    const id = "toast-" + nextId++;
-    records = [
-      ...records,
-      {
-        actions,
-        id,
-        message,
-        type,
-        variant: "library",
-      },
-    ];
-    emit();
-    if (typeof window !== "undefined") {
-      scheduleLibraryToast(id, 5000);
-    }
-    return id;
-  },
+  ) => createActionToast("library", message, actions, type),
+  exercise: (
+    message: string,
+    actions: readonly ToastAction[] = [],
+    type: ToastType = "success"
+  ) => createActionToast("exercise", message, actions, type),
   pause: (id: string, reason: "focus" | "pointer") =>
-    pauseLibraryToast(id, reason),
+    pauseActionToast(id, reason),
   resume: (id: string, reason: "focus" | "pointer") =>
-    resumeLibraryToast(id, reason),
+    resumeActionToast(id, reason),
 };

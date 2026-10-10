@@ -286,7 +286,9 @@ const AdminExerciseListPage = async ({
                   className="grid gap-2 text-sm"
                   htmlFor={`question-explanation-${item.question.id}`}
                 >
-                  <span className="font-medium">Explicação</span>
+                  <span className="font-medium">
+                    Explicação e referência(s) (opcional)
+                  </span>
                   <Textarea
                     defaultValue={item.questionVersion.explanation ?? ""}
                     id={`question-explanation-${item.question.id}`}
@@ -294,6 +296,10 @@ const AdminExerciseListPage = async ({
                     name="explanation"
                     rows={3}
                   />
+                  <span className="text-muted-foreground text-xs leading-5">
+                    Para destacar uma fonte ao aluno, acrescente no fim:
+                    Referência: Nome da obra — https://...
+                  </span>
                 </label>
                 <SingleFlightSubmit
                   className="w-fit"
@@ -396,13 +402,19 @@ const AdminExerciseListPage = async ({
             className="grid gap-2 text-sm"
             htmlFor="new-exercise-explanation"
           >
-            <span className="font-medium">Explicação</span>
+            <span className="font-medium">
+              Explicação e referência(s) (opcional)
+            </span>
             <Textarea
               id="new-exercise-explanation"
               maxLength={20_000}
               name="explanation"
               rows={3}
             />
+            <span className="text-muted-foreground text-xs leading-5">
+              Para destacar uma fonte ao aluno, acrescente no fim: Referência:
+              Nome da obra — https://...
+            </span>
           </label>
           <SingleFlightSubmit className="w-fit" pendingLabel="Adicionando…">
             Adicionar à lista

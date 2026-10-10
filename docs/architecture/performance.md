@@ -117,6 +117,59 @@ p95 <= 500 ms from the budgets above. These are targets; authenticated desktop
 and mobile production measurements are still required before claiming they
 pass. Avatar transfer is measured separately from the profile save.
 
+## Exercises
+
+Exercise pages keep member data request-fresh and use Prisma projections from
+`apps/app/lib/exercises.ts`; no persistent cache is allowed for answers,
+favorites, active attempts, or history. The general interaction target is
+feedback within 100 ms, first usable content p95 <= 1 s, warmed prefetched
+content p95 <= 300 ms, and small persisted mutations p95 <= 500 ms. These are
+acceptance targets, not measured Exercises percentiles.
+
+- `/exercicios` reads published lists and categories in bounded projections,
+  then reads resumable list attempts and the six most recent completed
+  sessions in parallel. Search/category predicates run in PostgreSQL; text
+  search also matches published question categories and normalized topic tags.
+  List/resume card links and the 20-item Favorites page use intent-only route
+  prefetch through the shared per-route budget, avoiding viewport fan-out.
+- `/exercicios/listas/[slug]` reads only a published list, its ordered question
+  versions/options, and the member's active attempt. Session creation uses a
+  PostgreSQL transaction-scoped advisory lock keyed by member/list, then reuses
+  the existing active attempt or snapshots the published version IDs once.
+- `/exercicios/sessoes/[sessionId]` scopes the attempt to `memberId` and reads
+  ordered session questions with their pinned version, options, and saved
+  answers. Draft selections live in `sessionStorage`, keyed by session and
+  question, and never count as answers or progress.
+- Answer submission verifies the member, session, question, and submitted
+  option IDs on the server. One Serializable transaction inserts the unique
+  answer, updates progress/completion, and applies the existing assignment and
+  badge updates. The compact feedback DTO carries `sessionQuestionId`; the
+  client renders it only while that exact question is active. Success follows
+  the commit, and a duplicate submission reads back the saved answer. The
+  transaction may be retried on serialization conflict.
+- `/exercicios/historico` uses member-scoped keyset pagination ordered by
+  `(completedAt, id)`, fetching seven rows for six visible results. The home
+  page projection remains capped at six.
+- `/exercicios/favoritas` uses member-scoped keyset pagination ordered by
+  `(createdAt, id)`, fetching one extra row for a 20-item page. The combined
+  saved-content page reads a six-item preview and links to the full collection.
+  A separate aggregate returns the published favorite count. Existing
+  `ExerciseQuestionBookmark` uniqueness and member/date index are reused; no
+  index or migration was added for pagination.
+- Favorite reads filter unpublished questions, banks, and lists in SQL. Toggle
+  and undo are server mutations with authoritative reconciliation, rollback on
+  failure, a five-second undo toast, and revalidation of Exercises, Favorites,
+  Community saved content, and the active session when relevant.
+
+Reads remain dynamic and member-scoped; answer, favorite, and editor actions
+revalidate their affected routes after a committed write. No SQL query plan or
+representative-data latency sample was available for the new favorite count and
+keyset query, so no index change or database latency claim is made. The latest
+local production build measures Exercises at 188.5 KiB gzip across 13 chunks,
+under its 225 KiB budget. This does not establish authenticated route latency,
+mobile performance, or production persistence. Those still require isolated QA
+accounts and a non-production database.
+
 ## Interaction and navigation
 
 Shared control and motion behavior is specified in

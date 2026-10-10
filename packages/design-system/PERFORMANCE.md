@@ -45,6 +45,27 @@ on a server request.
   action runs. A failed or rejected mutation restores the previous state and
   exposes retry; a success toast follows the authorized, idempotent write.
 
+## Exercise answer controls
+
+- Keep answer feedback tied to the immutable session-question ID. When a
+  response arrives after quick navigation, render it only on its matching
+  question; never let a stale form state expose another question's answer or
+  explanation.
+- Preserve unsubmitted selections per question in session storage so question
+  navigation and retry do not discard the draft. Clear a draft only after its
+  answer commits or the member confirms leaving the session.
+- Disable only the submitted fieldset while the answer is pending. Keep answer
+  success/error status announced and retain the selected options after a network
+  failure. Server correction remains authoritative for both single- and
+  multiple-choice questions.
+- On mobile, reserve space for the fixed bottom action and safe area, and use
+  `visualViewport` to keep the action above the virtual keyboard. Focus the new
+  question heading after navigation; desktop confirmation stays in document
+  flow.
+- Favorite toggles may respond optimistically because the state is reversible;
+  reconcile with the server and roll back on failure. Keep the shared toast's
+  undo action tied to the persisted mutation and expire it after five seconds.
+
 ## Profile badge artwork
 
 - Show the local criterion artwork in a reserved 56 px box with `next/image`,

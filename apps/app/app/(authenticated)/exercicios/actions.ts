@@ -6,6 +6,7 @@ import {
   ContentStatus,
   database,
   ExerciseQuestionType,
+  ExerciseSessionKind,
   ExerciseSessionStatus,
   LearningAssignmentTargetType,
   type Prisma,
@@ -65,28 +66,45 @@ const uniqueSlug = (text: string) =>
 export const startExerciseSession = async (formData: FormData) => {
   const memberId = await requireMemberId();
   const listId = value(formData, "listId");
-  const list = await database.exerciseList.findFirst({
-    where: {
-      id: listId,
-      status: ContentStatus.PUBLISHED,
-      bank: { is: { status: ContentStatus.PUBLISHED } },
-    },
-    select: {
-      id: true,
-      items: {
-        where: { question: { is: { status: ContentStatus.PUBLISHED } } },
-        orderBy: { position: "asc" },
-        select: { questionVersionId: true },
-      },
-    },
-  });
-  if (!list || list.items.length === 0) {
-    redirect("/exercicios?estado=lista-indisponivel");
-  }
-
   const sessionId = await database.$transaction(async (transaction) => {
+    // The transaction-scoped lock serializes starts for this member/list while
+    // keeping the invariant inside Postgres and compatible with transaction pooling.
+    await transaction.$queryRaw`
+      SELECT pg_advisory_xact_lock(hashtextextended(${`${memberId}:${listId}`}, 0))::text AS lock_acquired
+    `;
+    const list = await transaction.exerciseList.findFirst({
+      where: {
+        id: listId,
+        status: ContentStatus.PUBLISHED,
+        bank: { is: { status: ContentStatus.PUBLISHED } },
+      },
+      select: {
+        id: true,
+        items: {
+          where: { question: { is: { status: ContentStatus.PUBLISHED } } },
+          orderBy: { position: "asc" },
+          select: { questionVersionId: true },
+        },
+      },
+    });
+    if (!list || list.items.length === 0) {
+      redirect("/exercicios?estado=lista-indisponivel");
+    }
+    const activeSession = await transaction.exerciseSession.findFirst({
+      where: {
+        memberId,
+        listId,
+        kind: ExerciseSessionKind.LIST,
+        status: ExerciseSessionStatus.IN_PROGRESS,
+      },
+      orderBy: { updatedAt: "desc" },
+      select: { id: true },
+    });
+    if (activeSession) {
+      return activeSession.id;
+    }
     const session = await transaction.exerciseSession.create({
-      data: { memberId, listId: list.id },
+      data: { memberId, listId: list.id, kind: ExerciseSessionKind.LIST },
       select: { id: true },
     });
     await transaction.exerciseSessionQuestion.createMany({
@@ -108,6 +126,106 @@ export const startExerciseSession = async (formData: FormData) => {
   revalidatePath("/exercicios");
   revalidatePath("/aprender");
   redirect(`/exercicios/sessoes/${sessionId}`);
+};
+
+export const startExerciseFavoriteSession = async (formData: FormData) => {
+  const memberId = await requireMemberId();
+  const questionId = value(formData, "questionId");
+  const favorite = await database.exerciseQuestionBookmark.findFirst({
+    where: {
+      memberId,
+      questionId,
+      question: {
+        is: {
+          status: ContentStatus.PUBLISHED,
+          bank: { is: { status: ContentStatus.PUBLISHED } },
+          listItems: {
+            some: {
+              list: {
+                is: {
+                  status: ContentStatus.PUBLISHED,
+                  bank: { is: { status: ContentStatus.PUBLISHED } },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    select: {
+      question: {
+        select: {
+          versions: {
+            orderBy: { version: "desc" },
+            take: 1,
+            select: { id: true },
+          },
+          listItems: {
+            where: {
+              list: {
+                is: {
+                  status: ContentStatus.PUBLISHED,
+                  bank: { is: { status: ContentStatus.PUBLISHED } },
+                },
+              },
+            },
+            orderBy: { position: "asc" },
+            take: 1,
+            select: { list: { select: { id: true } } },
+          },
+        },
+      },
+    },
+  });
+  const version = favorite?.question.versions[0];
+  const listId = favorite?.question.listItems[0]?.list.id;
+  if (!(version && listId)) {
+    redirect("/exercicios/favoritas");
+  }
+
+  const sessionId = await database.$transaction(async (transaction) => {
+    await transaction.$queryRaw`
+      SELECT pg_advisory_xact_lock(hashtextextended(${`${memberId}:favorite:${questionId}`}, 0))::text AS lock_acquired
+    `;
+    const existing = await transaction.exerciseSession.findFirst({
+      where: {
+        memberId,
+        kind: ExerciseSessionKind.FAVORITE,
+        status: ExerciseSessionStatus.IN_PROGRESS,
+        questions: {
+          some: {
+            questionVersion: { is: { questionId } },
+          },
+        },
+      },
+      orderBy: { updatedAt: "desc" },
+      select: { id: true },
+    });
+    if (existing) {
+      return existing.id;
+    }
+
+    const session = await transaction.exerciseSession.create({
+      data: {
+        memberId,
+        listId,
+        kind: ExerciseSessionKind.FAVORITE,
+      },
+      select: { id: true },
+    });
+    await transaction.exerciseSessionQuestion.create({
+      data: {
+        sessionId: session.id,
+        questionVersionId: version.id,
+        position: 0,
+      },
+    });
+    return session.id;
+  });
+
+  redirect(
+    `/exercicios/favoritas/${encodeURIComponent(questionId)}?sessao=${encodeURIComponent(sessionId)}`
+  );
 };
 
 const isPrismaCode = (error: unknown, code: string) =>
@@ -157,10 +275,12 @@ const saveAnswer = async (
           select: {
             id: true,
             listId: true,
+            kind: true,
             status: true,
             questions: {
               select: {
                 id: true,
+                position: true,
                 answer: { select: { id: true } },
               },
             },
@@ -171,6 +291,7 @@ const saveAnswer = async (
             id: true,
             type: true,
             explanation: true,
+            question: { select: { id: true } },
             options: {
               select: {
                 id: true,
@@ -189,25 +310,50 @@ const saveAnswer = async (
   }
 
   const feedbackFor = (
-    answer: { readonly isCorrect: boolean },
+    answer: {
+      readonly isCorrect: boolean;
+      readonly selectedOptionIds: readonly string[];
+    },
     answeredCount: number
   ) => {
     const sessionPath = `/exercicios/sessoes/${encodeURIComponent(target.session.id)}`;
     const isSessionComplete =
       target.session.status === ExerciseSessionStatus.COMPLETED ||
       answeredCount >= target.session.questions.length;
-
+    const pendingAfterCurrent = target.session.questions
+      .filter(({ answer, id }) => !answer && id !== target.id)
+      .sort((left, right) => left.position - right.position);
+    const nextPendingQuestion =
+      pendingAfterCurrent.find(({ position }) => position > target.position) ??
+      pendingAfterCurrent[0];
+    let nextHref: string | null = null;
+    if (
+      !isSessionComplete &&
+      target.session.kind === ExerciseSessionKind.LIST &&
+      nextPendingQuestion
+    ) {
+      nextHref = `${sessionPath}?questao=${encodeURIComponent(nextPendingQuestion.id)}`;
+    }
     return {
+      correctOptionIds: target.questionVersion.options
+        .filter((option) => option.isCorrect)
+        .map((option) => option.id),
       correctOptionLabels: target.questionVersion.options
         .filter((option) => option.isCorrect)
         .map((option) => option.label),
       explanation: target.questionVersion.explanation,
       isCorrect: answer.isCorrect,
       isSessionComplete,
-      nextHref: isSessionComplete
-        ? null
-        : `${sessionPath}?proxima=${encodeURIComponent(sessionQuestionId)}`,
-      resultHref: `${sessionPath}?resultado=final`,
+      sessionQuestionId: target.id,
+      selectedOptionIds: answer.selectedOptionIds,
+      nextHref,
+      resultHref:
+        target.session.kind === ExerciseSessionKind.FAVORITE
+          ? "/exercicios/favoritas"
+          : `${sessionPath}/resultado`,
+      ...(target.session.kind === ExerciseSessionKind.FAVORITE
+        ? { resultLabel: "Voltar para questões salvas" }
+        : {}),
     };
   };
 
@@ -277,7 +423,7 @@ const saveAnswer = async (
                 : {}),
             },
           });
-          if (completedAt) {
+          if (completedAt && target.session.kind === ExerciseSessionKind.LIST) {
             await markLearningAssignmentCompleted(
               memberId,
               LearningAssignmentTargetType.EXERCISE_LIST,
@@ -340,7 +486,10 @@ const saveAnswer = async (
     ok: true as const,
     alreadyAnswered: false,
     feedback: feedbackFor(
-      { isCorrect: evaluated.isCorrect },
+      {
+        isCorrect: evaluated.isCorrect,
+        selectedOptionIds: evaluated.selectedOptionIds,
+      },
       persisted.answeredCount
     ),
   };
@@ -359,15 +508,27 @@ export const submitExerciseAnswer = async (
   const selectedOptionIds = formData
     .getAll("optionIds")
     .flatMap((option) => (typeof option === "string" ? [option] : []));
-  const result = await saveAnswer(
-    memberId,
-    sessionId,
-    sessionQuestionId,
-    selectedOptionIds
-  );
+  let result: Awaited<ReturnType<typeof saveAnswer>>;
+  try {
+    result = await saveAnswer(
+      memberId,
+      sessionId,
+      sessionQuestionId,
+      selectedOptionIds
+    );
+  } catch {
+    return {
+      status: "error",
+      sessionQuestionId,
+      retryable: true,
+      message:
+        "Não foi possível confirmar sua resposta. Sua seleção foi mantida. Verifique a conexão e tente novamente.",
+    };
+  }
   if (!result.ok) {
     return {
       status: "error",
+      sessionQuestionId,
       message:
         result.reason === "answer"
           ? "Selecione uma alternativa válida antes de confirmar."
@@ -379,23 +540,67 @@ export const submitExerciseAnswer = async (
       dispatchPendingNotifications()
     );
   }
-  revalidatePath("/exercicios");
-  revalidatePath("/aprender");
+  // Keep the answer in the active form state so feedback is shown on this
+  // question. These views query the database on navigation; invalidating sibling
+  // routes from this Server Action also refreshes the active RSC tree and can
+  // redirect the just-answered question into review before feedback is shown.
   return { status: "success", feedback: result.feedback };
 };
 
-export const toggleExerciseFavorite = async (formData: FormData) => {
+const revalidateExerciseFavoriteSurfaces = (sessionId?: string) => {
+  revalidatePath("/exercicios");
+  revalidatePath("/exercicios/favoritas");
+  revalidatePath("/comunidade/salvos");
+  if (sessionId) {
+    revalidatePath(`/exercicios/sessoes/${sessionId}`);
+  }
+};
+
+export const getExerciseFavoriteStatus = async (questionId: string) => {
   const memberId = await requireMemberId();
-  const questionId = value(formData, "questionId");
-  const sessionId = value(formData, "sessionId");
-  const requestedAction = value(formData, "action");
-  const accessible = sessionId
-    ? await database.exerciseSessionQuestion.findFirst({
+  const bookmark = await database.exerciseQuestionBookmark.findUnique({
+    where: {
+      memberId_questionId: { memberId, questionId },
+    },
+    select: { id: true },
+  });
+  return { bookmarked: Boolean(bookmark) };
+};
+
+const memberCanAccessExerciseFavorite = async (
+  memberId: string,
+  questionId: string,
+  sessionId?: string
+) => {
+  if (sessionId) {
+    return Boolean(
+      await database.exerciseSessionQuestion.findFirst({
         where: {
           sessionId,
           questionVersion: { is: { questionId } },
           session: {
             memberId,
+            status: {
+              in: [
+                ExerciseSessionStatus.IN_PROGRESS,
+                ExerciseSessionStatus.COMPLETED,
+              ],
+            },
+          },
+        },
+        select: { id: true },
+      })
+    );
+  }
+
+  return Boolean(
+    await database.exerciseQuestion.findFirst({
+      where: {
+        id: questionId,
+        status: ContentStatus.PUBLISHED,
+        bank: { is: { status: ContentStatus.PUBLISHED } },
+        listItems: {
+          some: {
             list: {
               is: {
                 status: ContentStatus.PUBLISHED,
@@ -404,45 +609,167 @@ export const toggleExerciseFavorite = async (formData: FormData) => {
             },
           },
         },
-        select: { sessionId: true },
-      })
-    : await database.exerciseQuestion.findFirst({
+      },
+      select: { id: true },
+    })
+  );
+};
+
+const exerciseBookmarkSelectKey = (memberId: string, questionId: string) => ({
+  memberId_questionId: { memberId, questionId },
+});
+
+const createExerciseFavorite = async (
+  memberId: string,
+  questionId: string,
+  sessionId?: string
+) => {
+  const key = exerciseBookmarkSelectKey(memberId, questionId);
+  let existing = await database.exerciseQuestionBookmark.findUnique({
+    where: key,
+    select: { createdAt: true },
+  });
+  let createdByThisAction = false;
+  if (!existing) {
+    try {
+      existing = await database.exerciseQuestionBookmark.create({
+        data: { memberId, questionId },
+        select: { createdAt: true },
+      });
+      createdByThisAction = true;
+    } catch (error) {
+      if (!isPrismaCode(error, "P2002")) {
+        throw error;
+      }
+      existing = await database.exerciseQuestionBookmark.findUnique({
+        where: key,
+        select: { createdAt: true },
+      });
+      if (!existing) {
+        throw error;
+      }
+    }
+  }
+  if (!existing) {
+    throw new Error("Favorite bookmark was not available after save.");
+  }
+  revalidateExerciseFavoriteSurfaces(sessionId);
+  return {
+    ok: true as const,
+    bookmarked: true as const,
+    operation: createdByThisAction ? ("saved" as const) : null,
+    createdAt: existing.createdAt.toISOString(),
+  };
+};
+
+const removeExerciseFavorite = async (
+  memberId: string,
+  questionId: string,
+  sessionId?: string
+) => {
+  const key = { memberId_questionId: { memberId, questionId } };
+  const existing = await database.exerciseQuestionBookmark.findUnique({
+    where: key,
+    select: { createdAt: true },
+  });
+  if (!existing) {
+    return { ok: true as const, bookmarked: false as const, operation: null };
+  }
+  await database.exerciseQuestionBookmark.deleteMany({
+    where: {
+      memberId,
+      questionId,
+      createdAt: existing.createdAt,
+    },
+  });
+  const remaining = await database.exerciseQuestionBookmark.findUnique({
+    where: key,
+    select: { createdAt: true },
+  });
+  revalidateExerciseFavoriteSurfaces(sessionId);
+  return {
+    ok: true as const,
+    bookmarked: Boolean(remaining),
+    operation: remaining ? null : ("removed" as const),
+    createdAt:
+      remaining?.createdAt.toISOString() ?? existing.createdAt.toISOString(),
+  };
+};
+
+export const updateExerciseFavorite = async (input: {
+  readonly desired: boolean;
+  readonly questionId: string;
+  readonly sessionId?: string;
+}) => {
+  const memberId = await requireMemberId();
+  if (!(input.questionId && input.questionId.length <= 128)) {
+    return { ok: false as const, bookmarked: false as const };
+  }
+  const canAccess = await memberCanAccessExerciseFavorite(
+    memberId,
+    input.questionId,
+    input.sessionId
+  );
+  if (!canAccess) {
+    return { ok: false as const, bookmarked: false as const };
+  }
+  return input.desired
+    ? createExerciseFavorite(memberId, input.questionId, input.sessionId)
+    : removeExerciseFavorite(memberId, input.questionId, input.sessionId);
+};
+
+export const undoExerciseFavorite = async (input: {
+  readonly createdAt: string;
+  readonly operation: "removed" | "saved";
+  readonly questionId: string;
+}) => {
+  const memberId = await requireMemberId();
+  const createdAt = new Date(input.createdAt);
+  if (
+    !input.questionId ||
+    Number.isNaN(createdAt.getTime()) ||
+    createdAt.toISOString() !== input.createdAt
+  ) {
+    return { ok: false as const, bookmarked: false };
+  }
+
+  if (input.operation === "saved") {
+    const result = await database.exerciseQuestionBookmark.deleteMany({
+      where: { memberId, questionId: input.questionId, createdAt },
+    });
+    if (result.count !== 1) {
+      const current = await database.exerciseQuestionBookmark.findUnique({
         where: {
-          id: questionId,
-          status: ContentStatus.PUBLISHED,
-          bank: { is: { status: ContentStatus.PUBLISHED } },
-          listItems: {
-            some: {
-              list: {
-                is: {
-                  status: ContentStatus.PUBLISHED,
-                  bank: { is: { status: ContentStatus.PUBLISHED } },
-                },
-              },
-            },
-          },
+          memberId_questionId: { memberId, questionId: input.questionId },
         },
         select: { id: true },
       });
-  if (!accessible) {
-    redirect("/exercicios");
-  }
-  if (requestedAction === "remove") {
-    await database.exerciseQuestionBookmark.deleteMany({
-      where: { memberId, questionId },
-    });
+      return { ok: false as const, bookmarked: Boolean(current) };
+    }
   } else {
-    await database.exerciseQuestionBookmark.upsert({
-      where: { memberId_questionId: { memberId, questionId } },
-      create: { memberId, questionId },
-      update: {},
-    });
+    try {
+      await database.exerciseQuestionBookmark.create({
+        data: { memberId, questionId: input.questionId, createdAt },
+      });
+    } catch (error) {
+      if (isPrismaCode(error, "P2002")) {
+        const current = await database.exerciseQuestionBookmark.findUnique({
+          where: {
+            memberId_questionId: { memberId, questionId: input.questionId },
+          },
+          select: { id: true },
+        });
+        return { ok: false as const, bookmarked: Boolean(current) };
+      }
+      throw error;
+    }
   }
-  revalidatePath("/exercicios/favoritas");
-  revalidatePath("/comunidade/salvos");
-  if (sessionId) {
-    revalidatePath(`/exercicios/sessoes/${sessionId}`);
-  }
+
+  revalidateExerciseFavoriteSurfaces();
+  return {
+    ok: true as const,
+    bookmarked: input.operation === "removed",
+  };
 };
 
 const validatedQuestionDraft = (formData: FormData) => {
