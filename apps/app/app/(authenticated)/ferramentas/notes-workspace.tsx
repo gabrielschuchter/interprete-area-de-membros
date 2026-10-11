@@ -50,6 +50,10 @@ import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { getPlannerNote, getPlannerNotes } from "@/lib/planner-notes";
 import {
+  formatNoteListDate as noteListDate,
+  formatStudyTimestamp as textDate,
+} from "@/lib/study-date";
+import {
   bulkUpdatePlannerNotesAction,
   createPlannerNoteAction,
   createPlannerNoteFolderAction,
@@ -192,50 +196,6 @@ const NoteConflictDialog = dynamic(
     ),
   { ssr: false, loading: () => null }
 );
-
-const textDate = (value: Date | string | null | undefined) => {
-  if (!value) {
-    return "";
-  }
-  const date = value instanceof Date ? value : new Date(value);
-  return Number.isNaN(date.getTime())
-    ? ""
-    : new Intl.DateTimeFormat("pt-BR", {
-        dateStyle: "medium",
-        timeStyle: "short",
-      }).format(date);
-};
-
-const noteListDate = (value: Date | string | null | undefined) => {
-  if (!value) {
-    return "";
-  }
-  const date = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return "";
-  }
-  const now = new Date();
-  const dateDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const dayDifference = Math.round(
-    (today.getTime() - dateDay.getTime()) / 86_400_000
-  );
-  if (dayDifference === 0) {
-    return `Hoje, ${new Intl.DateTimeFormat("pt-BR", {
-      hour: "2-digit",
-      minute: "2-digit",
-    }).format(date)}`;
-  }
-  if (dayDifference === 1) {
-    return "Ontem";
-  }
-  return new Intl.DateTimeFormat("pt-BR", {
-    day: "numeric",
-    month: "short",
-  })
-    .format(date)
-    .replace(" de ", " ");
-};
 
 const noteTitle = (note: NoteItem) => note.title.trim() || "Sem título";
 
@@ -1045,10 +1005,14 @@ function NoteListItem({
   isSelected,
   linkResources,
   note,
+  timezone,
+  referenceNow,
   onOpen,
   onSelectionChange,
   trash,
 }: {
+  readonly timezone: string;
+  readonly referenceNow: string;
   readonly isBulkSelected: boolean;
   readonly isSelected: boolean;
   readonly linkResources: readonly TimerLinkResource[];
@@ -1124,7 +1088,9 @@ function NoteListItem({
           {note.contentText || "Nota sem conteúdo"}
         </span>
         <span className="mt-1.5 flex min-w-0 items-center gap-2 truncate font-mono text-[#947A83] text-[10px] uppercase tracking-[0.06em]">
-          <span className="shrink-0">{noteListDate(note.updatedAt)}</span>
+          <span className="shrink-0">
+            {noteListDate(note.updatedAt, timezone, referenceNow)}
+          </span>
           {note.linkedResourceId ? (
             <span className="flex min-w-0 items-center gap-1 truncate normal-case tracking-normal">
               <Link2Icon aria-hidden="true" className="size-3 shrink-0" />
@@ -1138,7 +1104,9 @@ function NoteListItem({
             </span>
           )}
           {note.deletedAt ? (
-            <span className="sr-only">Removida {textDate(note.deletedAt)}</span>
+            <span className="sr-only">
+              Removida {textDate(note.deletedAt, timezone)}
+            </span>
           ) : null}
         </span>
       </button>
@@ -2320,6 +2288,8 @@ function NotesListPanel({
                       : current.filter((id) => id !== note.id)
                   )
                 }
+                referenceNow={data.referenceNow}
+                timezone={data.timezone}
                 trash={trash}
               />
             ))}

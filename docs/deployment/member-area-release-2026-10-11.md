@@ -15,3 +15,7 @@
 Referências: ZIP original preservado; HTML/PNG 20/21/24 e mobile 76/80/81, protótipo navegável. Alterações e gates constam na entrada datada do roadmap e performance. Artefatos locais sanitizados em output/playwright (ignorados pelo Git). Fixtures locais identificadas como QA, com seed explícito e guarda de alvo 127.0.0.1:55432/interprete_member_qa2; nenhuma fixture foi aplicada remotamente.
 
 Produção: timer privado controlado persistiu iniciar/reload/pausar/retomar/registrar. As visitas locais em 22 rotas não provam todos os controles nem autorização entre papéis. Upload real de arquivo e acessibilidade completa permanecem sem aceite. Correções do ciclo visual ainda exigem a publicação e repetição autenticada correspondente; não marcar fases 9/10 DONE.
+
+## Primeiro ciclo publicado
+
+Commit f1d8fb8; app dpl_JECLu4D6gzUsrF8ewfEUG1Np3KjY (READY), alias canônico atualizado explicitamente. A CLI perdeu a conexão durante a espera, mas inspect confirmou READY antes da troca do alias. QA autenticado confirmou composição/rotas e filtro. Captura de tela pela extensão Edge falhou por timeout; não considerar comparação visual de produção concluída. Uma nota privada de QA confirmou autosave e reload. Console encontrou hidratação de datas (React 418); correção de fuso em andamento com novo ciclo de gates.

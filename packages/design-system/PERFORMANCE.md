@@ -122,3 +122,5 @@ on a server request.
 - Sticky lesson/activity panels clear the full member header. Exercise subnavigation uses the same header height at all breakpoints.
 - Fullscreen timer focus uses the shared Dialog with explicit zero translation; exit confirmation must appear above it and remain keyboard reachable. Keep focus mode available during an active session.
 - Local viewport checks and bundle gates passed; device, full keyboard/screen-reader and percentile acceptance remain open.
+
+- Dates rendered on both server and client must use an explicit member timezone and the same reference instant for relative labels. Never rely on the machine timezone for initial note rows or timer history.

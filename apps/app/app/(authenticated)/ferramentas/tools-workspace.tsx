@@ -11,7 +11,6 @@ import {
 } from "@repo/design-system/components/ui/dialog";
 import { Input } from "@repo/design-system/components/ui/input";
 import { toast } from "@repo/design-system/lib/toast";
-
 import {
   Clock3Icon,
   DownloadIcon,
@@ -24,7 +23,6 @@ import {
   Trash2Icon,
 } from "lucide-react";
 import dynamic from "next/dynamic";
-
 import {
   type Dispatch,
   memo,
@@ -50,6 +48,7 @@ import {
 } from "@/components/navigation/member-view-switcher";
 import type { getFocusTimerState } from "@/lib/focus-timer";
 import type { getPlannerNotes } from "@/lib/planner-notes";
+import { formatStudyTimestamp as textDate } from "@/lib/study-date";
 
 type NotesData = Awaited<ReturnType<typeof getPlannerNotes>>;
 const NotesWorkspace = dynamic(
@@ -198,19 +197,6 @@ interface TimerClientState {
     }>;
   };
 }
-
-const textDate = (value: Date | string | null | undefined) => {
-  if (!value) {
-    return "";
-  }
-  const date = value instanceof Date ? value : new Date(value);
-  return Number.isNaN(date.getTime())
-    ? ""
-    : new Intl.DateTimeFormat("pt-BR", {
-        dateStyle: "medium",
-        timeStyle: "short",
-      }).format(date);
-};
 
 const formatDuration = (seconds: number) => {
   const safeSeconds = Math.max(0, Math.floor(seconds));
@@ -1239,6 +1225,8 @@ export const ToolsWorkspace = ({
                 notes: [],
                 tags: [],
                 trashRetentionDays: 30,
+                timezone: "America/Sao_Paulo",
+                referenceNow: "1970-01-01T00:00:00.000Z",
               }
             }
             initialNoteId={noteId}
@@ -1500,7 +1488,7 @@ const TimerSummarySidebar = memo(function TimerSummarySidebar({
                     {item.title || modeNames[item.mode]}
                   </p>
                   <p className="mt-0.5 text-[#7A5A69] text-xs">
-                    {textDate(item.endedAt)}
+                    {textDate(item.endedAt, state.settings.timezone)}
                     {item.linkedResourceId
                       ? ` · ${linkResources.find((resource) => resource.id === item.linkedResourceId)?.title ?? "Aula vinculada"}`
                       : ""}

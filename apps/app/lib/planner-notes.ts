@@ -153,7 +153,7 @@ export const getPlannerNotes = async (
   const limit = Number.isFinite(requestedLimit)
     ? Math.max(1, Math.min(Math.trunc(requestedLimit), 100))
     : 100;
-  const [folders, notes, tags] = await Promise.all([
+  const [folders, notes, tags, preferences] = await Promise.all([
     database.plannerNoteFolder.findMany({
       where: { memberId, deletedAt: null },
       orderBy: [{ parentId: "asc" }, { position: "asc" }, { name: "asc" }],
@@ -204,8 +204,14 @@ export const getPlannerNotes = async (
       orderBy: { name: "asc" },
       select: { id: true, name: true },
     }),
+    database.plannerPreferences.findUnique({
+      where: { memberId },
+      select: { timezone: true },
+    }),
   ]);
   return {
+    timezone: preferences?.timezone ?? "America/Sao_Paulo",
+    referenceNow: new Date().toISOString(),
     folders,
     notes,
     tags,
