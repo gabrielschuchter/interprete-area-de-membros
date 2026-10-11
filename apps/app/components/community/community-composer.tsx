@@ -238,6 +238,7 @@ export function CommunityComposer({
   };
 
   useEffect(() => {
+    disposedRef.current = false;
     return () => {
       disposedRef.current = true;
       if (timer.current) {

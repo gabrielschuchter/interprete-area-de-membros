@@ -130,3 +130,5 @@ on a server request.
 - Hidden sidebar tooltips must not mount dismissable layers in expanded/mobile menus: they can intercept Escape from the drawer. Mount tooltips only on collapsed desktop menus; regression covers focused link and a single Escape.
 
 - User-generated group headings must shrink inside flex layouts and wrap unbroken names/slugs at narrow widths. The 80-character boundary was verified in the isolated local database.
+
+- Lifecycle disposal guards must reset during effect setup so React effect replay cannot silently disable autosave/publish. The composer regression uses StrictMode and checks both server actions.
