@@ -51,6 +51,32 @@ sample as a pass.
   need explicit invalidation on publish, edit, and archive, plus a fresh access
   check before delivery.
 
+### Library browse and bookmark path
+
+`/biblioteca` resolves the member and category list in parallel, then streams
+the result section behind a stable shell. The material page query and filtered
+count run together with the same publication, search, filter, and linked-lesson
+access predicates. Recent ordering reads 24 rows plus one look-ahead row in
+PostgreSQL; relevance keeps the existing 500-candidate ceiling and 24-row
+pages. The count describes the complete authorized filter result, even when a
+relevance page uses that bounded candidate set.
+
+Card titles open the internal detail route with viewport prefetch disabled.
+The external open action is a native new-tab link to an authenticated GET
+handler, so speculative navigation cannot increment views. The handler checks
+current publication and lesson access, records the member view, then redirects
+to the published URL or authorized asset. Personal bookmarks remain a
+member-scoped projection across all five target types, filtered with current
+publication and access rules; no personal result is cached across requests.
+
+Bookmark writes are desired-state upserts/deletes behind the existing server
+authorization and rate limit. The local toggle is reversible while the request
+is pending, blocks duplicate submits, rolls back on failure, and reports a
+successful toast only after the action commits. Undo is another desired-state
+write, and all feedback actions revalidate the library, personal list, and
+existing saved surfaces. The opt-in Library toast pauses its five-second timer
+while focused or hovered; other toast variants retain their shared behavior.
+
 ### Profile badge artwork
 
 The private and public profile routes query at most 100 member-scoped awards and
@@ -532,3 +558,18 @@ Both routes have a 225 KiB gzip initial JavaScript budget. Local build and
 bundle results are recorded in the dated roadmap entry; authenticated route
 percentiles, mobile measurements, database concurrency, and cross-device
 reconciliation remain acceptance gates, not inferred passes.
+
+### First-access and runtime consolidation — 11/10/2026
+
+Planner/tools authorization reuses the request-cached identity snapshot and requires completed onboarding before domain reads. Dashboard reads never create preferences or columns: absent rows resolve to virtual defaults, and explicit edits persist them. Layout/page parallel rendering cannot trigger a preferences FK write during a read. Timer/feed API guards likewise reuse the fresh snapshot; capability-based calendar feeds check the current member status. Concurrent timer starts reconcile unique/serialization conflicts as HTTP 409, with one active session enforced in PostgreSQL.
+
+The authenticated local PostgreSQL/Chrome trial verified persisted planner edits, timer segments and notes after reload. Twelve viewport/route combinations (320/390/768/1440 px; Planner/Timer/Notes) had no horizontal overflow. These observations are functional/responsive evidence, not latency percentiles or physical-device proof. Windows prerender is capped at two workers to fit concurrent QA servers/Chrome; Linux deployment worker defaults remain unchanged. Tailwind uses explicit source lists rather than recursively scanning runtime clones and build caches.
+
+The final consolidation gates passed with 398 app tests. Initial JavaScript was
+220.8 KiB gzip for Planner and 219.8 KiB for Tools, each below 225 KiB. The local
+concurrent timer start returned 200/409 with one active session; confirmed search
+history survived reload and its explicit delete. Occurrence/series deletion and
+undo were exercised independently. A due reminder crossed the durable outbox
+and appeared in the existing notification panel. QA database SQL sessions were
+aligned to UTC, matching GREEN, while member-facing timezone remains editable.
+Production percentiles and physical-device acceptance remain open.

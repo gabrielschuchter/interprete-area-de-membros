@@ -57,19 +57,29 @@ const SavedPage = async ({ searchParams }: SavedPageProperties) => {
   const selected = savedFilter(query.tipo);
   const counts = {
     todos: libraryItems.length + favorites.totalCount,
-    aulas: libraryItems.filter((item) => item.category === "aulas").length,
-    materiais: libraryItems.filter((item) => item.category === "materiais")
-      .length,
+    aulas: libraryItems.filter(
+      (item) =>
+        item.targetType === "COURSE" ||
+        item.targetType === "MODULE" ||
+        item.targetType === "LESSON"
+    ).length,
+    materiais: libraryItems.filter(
+      (item) =>
+        item.targetType === "LIBRARY_ITEM" || item.targetType === "ASSET"
+    ).length,
     questoes: favorites.totalCount,
   } satisfies Record<SavedContentFilter, number>;
 
   const libraryRows: SavedRow[] = libraryItems.map((item) => ({
-    category: item.category,
+    category:
+      item.targetType === "LIBRARY_ITEM" || item.targetType === "ASSET"
+        ? "materiais"
+        : "aulas",
     href: item.href,
     id: `library:${item.id}`,
     label: item.label,
     savedAt: item.savedAt,
-    source: item.source,
+    source: `${item.targetType === "LIBRARY_ITEM" ? "Biblioteca" : "Aprender"} · ${item.category ?? item.label}`,
     targetId: item.targetId,
     targetType: item.targetType,
     title: item.title,

@@ -40,9 +40,15 @@ const protectedRoutePrefixes = [
   "/comunidade",
   "/configuracoes",
   "/encontros",
+  "/estudar",
+  "/exercicios",
+  "/ferramentas",
   "/membros",
   "/notificacoes",
   "/perfil",
+  "/planejamento",
+  "/salvos",
+  "/tarefas",
   "/search",
 ];
 

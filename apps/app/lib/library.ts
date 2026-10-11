@@ -198,61 +198,67 @@ export const getLibraryItems = async ({
   const rowLimit: number =
     normalizedSort === "relevant" ? MAX_RELEVANCE_CANDIDATES : PAGE_SIZE + 1;
   const lessonAccessWhere = buildLessonAccessWhere(scope);
-  const rows = await tracePerformance("member.library.items-query", () =>
-    database.libraryItem.findMany({
-      where: { AND: [where, lessonAccessWhere] },
-      orderBy:
-        normalizedSort === "relevant"
-          ? [
-              { views: { _count: "desc" } },
-              { bookmarks: { _count: "desc" } },
-              { createdAt: "desc" },
-            ]
-          : [{ createdAt: "desc" }, { id: "desc" }],
-      take: rowLimit,
-      ...(normalizedSort === "recent" ? { skip: pageOffset } : {}),
-      select: {
-        id: true,
-        title: true,
-        description: true,
-        coverUrl: true,
-        kind: true,
-        category: true,
-        tags: true,
-        url: true,
-        authors: true,
-        year: true,
-        language: true,
-        difficulty: true,
-        accessType: true,
-        accessNote: true,
-        version: true,
-        linkCheckedAt: true,
-        doi: true,
-        pmid: true,
-        storagePath: true,
-        mimeType: true,
-        createdAt: true,
-        lesson: {
-          select: {
-            id: true,
-            title: true,
-            status: true,
-            moduleId: true,
-            module: {
-              select: {
-                status: true,
-                courseId: true,
-                course: { select: { status: true } },
+  const filteredWhere = { AND: [where, lessonAccessWhere] };
+  const [rows, totalCount] = await Promise.all([
+    tracePerformance("member.library.items-query", () =>
+      database.libraryItem.findMany({
+        where: filteredWhere,
+        orderBy:
+          normalizedSort === "relevant"
+            ? [
+                { views: { _count: "desc" } },
+                { bookmarks: { _count: "desc" } },
+                { createdAt: "desc" },
+              ]
+            : [{ createdAt: "desc" }, { id: "desc" }],
+        take: rowLimit,
+        ...(normalizedSort === "recent" ? { skip: pageOffset } : {}),
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          coverUrl: true,
+          kind: true,
+          category: true,
+          tags: true,
+          url: true,
+          authors: true,
+          year: true,
+          language: true,
+          difficulty: true,
+          accessType: true,
+          accessNote: true,
+          version: true,
+          linkCheckedAt: true,
+          doi: true,
+          pmid: true,
+          storagePath: true,
+          mimeType: true,
+          createdAt: true,
+          lesson: {
+            select: {
+              id: true,
+              title: true,
+              status: true,
+              moduleId: true,
+              module: {
+                select: {
+                  status: true,
+                  courseId: true,
+                  course: { select: { status: true } },
+                },
               },
             },
           },
+          _count: { select: { views: true, bookmarks: true } },
+          bookmarks: { where: { memberId }, select: { id: true } },
         },
-        _count: { select: { views: true, bookmarks: true } },
-        bookmarks: { where: { memberId }, select: { id: true } },
-      },
-    })
-  );
+      })
+    ),
+    tracePerformance("member.library.items-count", () =>
+      database.libraryItem.count({ where: filteredWhere })
+    ),
+  ]);
   const accessibleRows = rows.filter(
     (row) => !row.lesson || hasLinkedLessonAccess(row.lesson, scope)
   );
@@ -313,6 +319,7 @@ export const getLibraryItems = async ({
     page: currentPage,
     hasMore,
     sort: normalizedSort,
+    totalCount,
   };
 };
 
@@ -576,14 +583,14 @@ type PersonalLibraryBookmark = Awaited<
 >[number];
 
 export interface PersonalLibraryCard {
-  category: "aulas" | "materiais";
+  category: string | null;
   coverUrl: string | null;
   description: string | null;
   href: string;
   id: string;
   label: string;
+  openHref: string;
   savedAt: Date;
-  source: string;
   targetId: string;
   targetType: LibraryBookmarkTargetType;
   title: string;
@@ -591,7 +598,6 @@ export interface PersonalLibraryCard {
 
 const bookmarkCard = (
   bookmark: PersonalLibraryBookmark,
-  targetId: string,
   values: Omit<
     PersonalLibraryCard,
     "id" | "savedAt" | "targetId" | "targetType"
@@ -599,7 +605,13 @@ const bookmarkCard = (
 ): PersonalLibraryCard => ({
   id: bookmark.id,
   savedAt: bookmark.createdAt,
-  targetId,
+  targetId:
+    bookmark.item?.id ??
+    bookmark.course?.id ??
+    bookmark.module?.id ??
+    bookmark.lesson?.id ??
+    bookmark.asset?.id ??
+    "",
   targetType: bookmark.targetType,
   ...values,
 });
@@ -627,14 +639,14 @@ const itemBookmarkCard = (
   ) {
     return null;
   }
-  return bookmarkCard(bookmark, item.id, {
-    category: "materiais",
+  return bookmarkCard(bookmark, {
     title: item.title,
     description: item.description,
     coverUrl: item.coverUrl,
+    category: item.category,
     href: `/biblioteca/${item.id}`,
+    openHref: `/biblioteca/abrir/${item.id}`,
     label: "Material",
-    source: `Biblioteca · ${item.category ?? "Material"}`,
   });
 };
 
@@ -650,14 +662,14 @@ const courseBookmarkCard = (
   ) {
     return null;
   }
-  return bookmarkCard(bookmark, course.id, {
-    category: "aulas",
+  return bookmarkCard(bookmark, {
     title: course.title,
     description: course.description,
     coverUrl: course.coverUrl,
+    category: null,
     href: `/aprender/cursos/${course.slug}`,
+    openHref: `/aprender/cursos/${course.slug}`,
     label: "Curso",
-    source: "Aprender · Curso",
   });
 };
 
@@ -674,14 +686,14 @@ const moduleBookmarkCard = (
   ) {
     return null;
   }
-  return bookmarkCard(bookmark, module.id, {
-    category: "aulas",
+  return bookmarkCard(bookmark, {
     title: module.title,
     description: module.course.title,
     coverUrl: module.course.coverUrl,
+    category: null,
     href: `/aprender/cursos/${module.course.slug}`,
+    openHref: `/aprender/cursos/${module.course.slug}`,
     label: "Módulo",
-    source: `Aprender · ${module.course.title}`,
   });
 };
 
@@ -699,14 +711,14 @@ const lessonBookmarkCard = (
   ) {
     return null;
   }
-  return bookmarkCard(bookmark, lesson.id, {
-    category: "aulas",
+  return bookmarkCard(bookmark, {
     title: lesson.title,
     description: lesson.description,
     coverUrl: lesson.module.course.coverUrl,
+    category: null,
     href: `/aprender/cursos/${lesson.module.course.slug}/${lesson.slug}`,
+    openHref: `/aprender/cursos/${lesson.module.course.slug}/${lesson.slug}`,
     label: "Aula",
-    source: `Aprender · ${lesson.module.course.title}`,
   });
 };
 
@@ -725,14 +737,14 @@ const assetBookmarkCard = (
   ) {
     return null;
   }
-  return bookmarkCard(bookmark, asset.id, {
-    category: "materiais",
+  return bookmarkCard(bookmark, {
     title: asset.title,
     description: lesson.title,
     coverUrl: lesson.module.course.coverUrl,
+    category: null,
     href: `/aprender/cursos/${lesson.module.course.slug}/${lesson.slug}`,
+    openHref: `/aprender/cursos/${lesson.module.course.slug}/${lesson.slug}`,
     label: "Material de aula",
-    source: `Aprender · ${lesson.title}`,
   });
 };
 

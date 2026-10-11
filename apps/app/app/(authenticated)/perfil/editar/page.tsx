@@ -15,25 +15,16 @@ const ProfileEditPage = async () => {
     redirect("/sign-in");
   }
 
-  const completionCount = profileCompletionItems(profile).completedCount;
+  const completion = profileCompletionItems(profile);
 
   return (
-    <div>
-      <header className="mb-2">
-        <p className="brand-eyebrow">Seu espaço na comunidade</p>
-        <h2 className="mt-1 font-display text-3xl md:text-4xl">
-          Editar perfil
-        </h2>
-        <p className="mt-2 max-w-2xl text-muted-foreground text-sm leading-6">
-          Escolha o que quer compartilhar com as pessoas da comunidade.
-        </p>
-      </header>
-      <ProfileEditor
-        completionCount={completionCount}
-        email={memberSnapshot.email ?? ""}
-        profile={profile}
-      />
-    </div>
+    <ProfileEditor
+      email={memberSnapshot.email ?? ""}
+      missingLabels={completion.items
+        .filter(({ complete }) => !complete)
+        .map(({ label }) => label)}
+      profile={profile}
+    />
   );
 };
 

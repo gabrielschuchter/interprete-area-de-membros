@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 
 const { database, getLearningAccessScope } = vi.hoisted(() => ({
   database: {
-    libraryItem: { findMany: vi.fn() },
+    libraryItem: { count: vi.fn(), findMany: vi.fn() },
     libraryItemView: { groupBy: vi.fn() },
   },
   getLearningAccessScope: vi.fn(),
@@ -34,6 +34,7 @@ import { getLibraryItems, getStaffLibraryItems } from "./library";
 describe("library lesson access", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    database.libraryItem.count.mockResolvedValue(1);
     getLearningAccessScope.mockResolvedValue({
       assetIds: new Set(),
       courseIds: new Set(),
@@ -77,7 +78,11 @@ describe("library lesson access", () => {
     const result = await getLibraryItems({ memberId: "staff-member" });
 
     expect(result.items.map(({ id }) => id)).toEqual(["curated-item"]);
+    expect(result.totalCount).toBe(1);
     const query = database.libraryItem.findMany.mock.calls[0]?.[0];
+    expect(database.libraryItem.count.mock.calls[0]?.[0].where).toEqual(
+      query.where
+    );
     expect(query.where.AND[1]).toMatchObject({
       OR: [
         { lessonId: null },

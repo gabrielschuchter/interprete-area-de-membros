@@ -3,7 +3,14 @@
 import { Button } from "@repo/design-system/components/ui/button";
 import { Input } from "@repo/design-system/components/ui/input";
 import type { JSONContent } from "@tiptap/core";
-import { EyeIcon, ImageIcon, SaveIcon, XIcon } from "lucide-react";
+import {
+  ArrowLeftIcon,
+  CheckIcon,
+  EyeIcon,
+  ImageIcon,
+  SaveIcon,
+  XIcon,
+} from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -23,6 +30,7 @@ interface ComposerSpace {
 }
 
 interface CommunityComposerProperties {
+  readonly backHref: string;
   readonly initialContent: JSONContent;
   readonly initialCoverUrl: string | null;
   readonly initialSpaceId: string | null;
@@ -46,16 +54,17 @@ const saveLabel = (state: SaveState) => {
     return "Salvando…";
   }
   if (state === "saved") {
-    return "Salvo";
+    return "Rascunho salvo · visível só para você";
   }
   if (state === "error") {
     return "Não foi possível salvar";
   }
-  return "Rascunho persistente";
+  return "Rascunho salvo · visível só para você";
 };
 
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: the editor coordinates autosave, preview, publish, and metadata controls as one deliberate workflow.
 export function CommunityComposer({
+  backHref,
   initialContent,
   initialCoverUrl,
   initialSpaceId,
@@ -82,6 +91,7 @@ export function CommunityComposer({
   const [isUploadingCover, setIsUploadingCover] = useState(false);
   const [isUploadingInlineImage, setIsUploadingInlineImage] = useState(false);
   const coverInputRef = useRef<HTMLInputElement>(null);
+  const actionsSentinelRef = useRef<HTMLDivElement>(null);
   const uploadedCoverUrlRef = useRef<string | null>(null);
   const coverUploadInFlight = useRef(false);
   const publishingRef = useRef(false);
@@ -90,6 +100,7 @@ export function CommunityComposer({
   const requestQueue = useRef(Promise.resolve());
   const requestVersion = useRef(0);
   const disposedRef = useRef(false);
+  const [actionsCompact, setActionsCompact] = useState(false);
   const snapshot = useRef({
     title: initialTitle,
     subtitle: initialSubtitle ?? "",
@@ -244,6 +255,19 @@ export function CommunityComposer({
     };
   }, [coverPreviewUrl]);
 
+  useEffect(() => {
+    const sentinel = actionsSentinelRef.current;
+    if (!sentinel) {
+      return;
+    }
+    const observer = new IntersectionObserver(
+      ([entry]) => setActionsCompact(!entry.isIntersecting),
+      { rootMargin: "-64px 0px 0px 0px", threshold: 0 }
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, []);
+
   const removeTemporaryCover = async () => {
     const value = uploadedCoverUrlRef.current;
     if (!value) {
@@ -291,35 +315,66 @@ export function CommunityComposer({
   };
 
   const editorAction = status === "PUBLISHED" ? updatePost : undefined;
+  let coverButtonLabel = coverUrl ? "Trocar capa" : "Adicionar capa";
+  if (isUploadingCover) {
+    coverButtonLabel = "Enviando…";
+  }
 
   return (
-    <div className="mt-10 pb-12">
-      <div className="sticky top-0 z-10 -mx-5 flex flex-wrap items-center justify-between gap-3 border-border border-b bg-background/95 px-5 py-4 backdrop-blur sm:-mx-8 sm:px-8 lg:-mx-12 lg:px-12">
-        <output
-          aria-live="polite"
-          className="inline-flex items-center gap-2 text-muted-foreground text-sm"
-        >
-          <SaveIcon aria-hidden="true" className="size-4" />
+    <div
+      className={["community-editor", "pb-12", actionsCompact && "is-scrolled"]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      <div
+        aria-hidden="true"
+        className="community-editor-sticky-sentinel"
+        ref={actionsSentinelRef}
+      />
+      <div className="community-editor-actions">
+        <Link className="community-editor-back" href={backHref}>
+          <ArrowLeftIcon aria-hidden="true" /> <span>Voltar</span>
+        </Link>
+        <span aria-hidden="true" className="community-editor-sticky-title">
+          {title || draftTitle}
+        </span>
+        <output aria-live="polite" className="community-editor-save-status">
+          {saveState === "error" ? (
+            <SaveIcon aria-hidden="true" />
+          ) : (
+            <CheckIcon aria-hidden="true" />
+          )}
           {status === "PUBLISHED" ? "Edição publicada" : saveLabel(saveState)}
         </output>
-        <div className="flex flex-wrap gap-2">
-          <Button asChild size="sm" variant="outline">
-            <Link href={`/comunidade/editor/${postId}?preview=1`}>
-              <EyeIcon aria-hidden="true" /> Pré-visualizar
+        <div className="community-editor-action-buttons">
+          <Button
+            asChild
+            className="community-editor-preview"
+            variant="outline"
+          >
+            <Link
+              aria-label="Pré-visualizar publicação"
+              href={`/comunidade/editor/${postId}?preview=1`}
+            >
+              <EyeIcon aria-hidden="true" /> <span>Pré-visualizar</span>
             </Link>
           </Button>
           {status === "DRAFT" ? (
             <Button
+              className="community-editor-publish"
               disabled={
                 publishing || isUploadingCover || isUploadingInlineImage
               }
               onClick={handlePublish}
-              size="sm"
             >
               {publishing ? "Publicando…" : "Publicar"}
             </Button>
           ) : (
-            <Button form="community-editor-form" size="sm" type="submit">
+            <Button
+              className="community-editor-publish"
+              form="community-editor-form"
+              type="submit"
+            >
               <SaveIcon aria-hidden="true" /> Salvar alterações
             </Button>
           )}
@@ -337,21 +392,21 @@ export function CommunityComposer({
 
       <form
         action={editorAction}
-        className="mx-auto mt-8 max-w-4xl space-y-8"
+        className="community-editor-form"
         id="community-editor-form"
       >
         <input name="postId" type="hidden" value={postId} />
-        <div className="space-y-4">
-          <div className="flex flex-wrap items-center gap-3 text-muted-foreground text-xs">
+        <div className="community-editor-fields">
+          <div className="community-editor-publish-target">
             <label
-              className="text-muted-foreground text-xs"
+              className="community-editor-publish-label"
               htmlFor="community-post-space"
             >
               Publicar em
             </label>
             <select
               aria-label="Publicar em feed ou grupo de estudo"
-              className="h-9 max-w-full rounded-sm border bg-background px-3 text-foreground text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/35"
+              className="community-editor-publish-select"
               id="community-post-space"
               name="spaceId"
               onChange={(event) => {
@@ -379,7 +434,7 @@ export function CommunityComposer({
 
           <Input
             aria-label="Título"
-            className="h-auto rounded-none border-0 border-b px-0 py-3 font-display text-4xl shadow-none focus-visible:ring-0 sm:text-6xl"
+            className="community-editor-title"
             name="title"
             onBlur={() => flushSave().catch(() => undefined)}
             onChange={(event) => {
@@ -387,14 +442,14 @@ export function CommunityComposer({
               setTitle(nextTitle);
               updateSnapshot({ title: nextTitle });
             }}
-            placeholder="Dê um título à sua publicação"
+            placeholder="Título da publicação"
             required={status === "PUBLISHED"}
             value={title === draftTitle ? "" : title}
           />
 
           <Input
             aria-label="Subtítulo opcional"
-            className="h-auto rounded-none border-0 px-0 py-2 text-xl shadow-none focus-visible:ring-0 sm:text-2xl"
+            className="community-editor-subtitle"
             name="subtitle"
             onBlur={() => flushSave().catch(() => undefined)}
             onChange={(event) => {
@@ -406,19 +461,16 @@ export function CommunityComposer({
             value={subtitle}
           />
 
-          <div className="border-border border-y py-4">
-            <div className="flex flex-wrap items-center gap-3">
-              <ImageIcon aria-hidden="true" className="size-4" />
-              <span className="text-muted-foreground text-sm">
-                Capa ou imagem da publicação
-              </span>
+          <div className="community-editor-cover-row">
+            <div className="community-editor-cover-controls">
               <Button
+                className="community-editor-cover-button"
                 onClick={() => coverInputRef.current?.click()}
-                size="sm"
                 type="button"
                 variant="outline"
               >
-                {isUploadingCover ? "Enviando…" : "Escolher imagem"}
+                <ImageIcon aria-hidden="true" />
+                {coverButtonLabel}
               </Button>
               {coverUrl || coverPreviewUrl ? (
                 <Button
@@ -429,7 +481,6 @@ export function CommunityComposer({
                     setCoverUrl("");
                     updateSnapshot({ coverUrl: "" });
                   }}
-                  size="icon"
                   type="button"
                   variant="ghost"
                 >
@@ -455,19 +506,19 @@ export function CommunityComposer({
               // biome-ignore lint/performance/noImgElement: this is a small upload preview.
               <img
                 alt="Prévia da capa"
-                className="motion-reveal-fast mt-4 max-h-56 w-full rounded-sm border object-cover"
+                className="community-editor-cover-preview"
                 height={224}
                 src={coverPreviewUrl ?? coverUrl}
                 width={900}
               />
             ) : null}
-            <p className="mt-2 text-muted-foreground text-xs">
+            <p className="community-editor-cover-note">
               JPG, PNG ou WebP · até 5 MB. O upload é salvo junto do rascunho.
             </p>
           </div>
         </div>
 
-        <div>
+        <div className="community-editor-body">
           <TopicEditor
             ariaLabel="Conteúdo da publicação"
             defaultValue={content}

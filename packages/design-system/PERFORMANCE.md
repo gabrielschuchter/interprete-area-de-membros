@@ -31,6 +31,20 @@ on a server request.
   keyboard intent may prefetch, through the shared per-route request budget and
   network-preference checks.
 
+## Library bookmark feedback
+
+- `toast.library` is opt-in and leaves the existing toast API, placement, and
+  timing unchanged for every other route. Its Library variant provides
+  post-commit save/removal feedback, undo and saved-list actions, and a retry
+  action for failed writes.
+- The Library timer is five seconds and pauses independently while the notice
+  contains keyboard focus or the pointer. Keep every action target at least
+  44 px high; place the notice at the lower left on desktop and above the safe
+  area on mobile.
+- The bookmark control may show a reversible pending state while the server
+  action runs. A failed or rejected mutation restores the previous state and
+  exposes retry; a success toast follows the authorized, idempotent write.
+
 ## Exercise answer controls
 
 - Keep answer feedback tied to the immutable session-question ID. When a
@@ -92,3 +106,11 @@ on a server request.
   projection and must reconcile when another tab or device changes the session.
 - Route calendar, notes, and timer transitions through the existing motion
   tokens; essential content stays visible without waiting for animation.
+
+## Member shell and explicit stylesheet sources — 11/10/2026
+
+- Keep the shell in a horizontal flex row with `min-w-0`; its desktop sidebar is sticky and viewport-height so content and the footer remain reachable.
+- Both Tailwind entrypoints disable implicit recursive source discovery and retain explicit app/design-system sources. Local QA clones and build caches must not become CSS candidates.
+- Portal transition hiding applies only to internal route containers. The portal itself remains visible while chrome is hidden. Keep the approved corridor timings and route-focus behavior.
+- Notes and Community share TipTap state, serialization, links and media primitives while retaining their separate approved toolbars. Note-only extensions load on demand; TableKit supplies the complete table schema.
+- The direct product decision removes reduced-motion branches; do not reintroduce them through upstream merges.

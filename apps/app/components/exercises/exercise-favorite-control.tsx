@@ -55,9 +55,10 @@ export const ExerciseFavoriteControl = ({
       try {
         await operation();
       } catch {
-        toast.error(
+        toast.exercise(
           "Não foi possível atualizar seus favoritos. Tente novamente.",
-          { appearance: "exercise" }
+          [],
+          "error"
         );
       } finally {
         queuedOperations.current -= 1;
@@ -95,33 +96,43 @@ export const ExerciseFavoriteControl = ({
         });
         commitBookmarked(result.bookmarked);
         if (result.ok) {
-          toast.info(
+          toast.exercise(
             wasSaved
               ? "Questão removida dos favoritos."
               : "Questão salva novamente.",
-            { appearance: "exercise" }
+            [],
+            "info"
           );
         } else {
-          toast.error("Não foi possível desfazer esta alteração.", {
-            appearance: "exercise",
-          });
+          toast.exercise(
+            "Não foi possível desfazer esta alteração.",
+            [],
+            "error"
+          );
         }
       } catch {
         await reconcile(optimistic ? stateBeforeUndo : previous);
-        toast.error("Não foi possível desfazer esta alteração.", {
-          appearance: "exercise",
-        });
+        toast.exercise(
+          "Não foi possível desfazer esta alteração.",
+          [],
+          "error"
+        );
       }
       router.refresh();
     });
   };
 
   const notifyRetryableError = (message: string) =>
-    toast.error(message, {
-      duration: 5000,
-      action: { label: "Tentar de novo", onClick: toggle },
-      appearance: "exercise",
-    });
+    toast.exercise(
+      message,
+      [
+        {
+          label: "Tentar de novo",
+          onSelect: toggle,
+        },
+      ],
+      "error"
+    );
 
   const notifyFavoriteResult = (
     operation: FavoriteOperation | null | undefined,
@@ -129,26 +140,28 @@ export const ExerciseFavoriteControl = ({
     desired: boolean
   ) => {
     if (!(operation && createdAt)) {
-      toast.success(
-        desired
-          ? "Questão já estava salva."
-          : "Questão removida dos favoritos.",
-        { appearance: "exercise" }
+      toast.exercise(
+        desired ? "Questão já estava salva." : "Questão removida dos favoritos."
       );
       return;
     }
     const wasSaved = operation === "saved";
-    toast.success(
+    toast.exercise(
       wasSaved ? "Questão salva." : "Questão removida dos favoritos.",
-      {
-        duration: 5000,
-        appearance: "exercise",
-        ...(wasSaved ? { link: { href: "/salvos", label: "Ver salvos" } } : {}),
-        action: {
+      [
+        ...(wasSaved
+          ? [
+              {
+                label: "Ver salvas",
+                onSelect: () => router.push("/exercicios/favoritas"),
+              },
+            ]
+          : []),
+        {
           label: "Desfazer",
-          onClick: () => undoFavorite(operation, createdAt),
+          onSelect: () => undoFavorite(operation, createdAt),
         },
-      }
+      ]
     );
   };
 

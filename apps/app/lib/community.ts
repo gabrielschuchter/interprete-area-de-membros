@@ -108,7 +108,7 @@ export const getCommunityPresenceProfiles = (memberId: string) =>
     database.profile.findMany({
       where: { clerkUserId: { not: memberId } },
       orderBy: [{ updatedAt: "desc" }, { displayName: "asc" }],
-      take: 7,
+      take: 24,
       select: { avatarUrl: true, displayName: true, username: true },
     })
   );
@@ -711,8 +711,17 @@ export const getCommunityEditorPost = async (
   postId: string,
   memberId: string
 ) => {
+  const role = await getMemberRole(memberId);
+  const canModerate = role === MemberRole.TEACHER || role === MemberRole.ADMIN;
   const post = await database.communityPost.findFirst({
-    where: { id: postId, authorId: memberId, deletedAt: null },
+    where: {
+      id: postId,
+      deletedAt: null,
+      OR: [
+        { authorId: memberId },
+        ...(canModerate ? [{ status: ContentStatus.PUBLISHED }] : []),
+      ],
+    },
     select: {
       ...communityPostSelect,
       status: true,
@@ -744,16 +753,29 @@ export const getMyCommunityPosts = async (memberId: string) => {
       excerpt: true,
       status: true,
       tags: true,
+      authorId: true,
+      coverUrl: true,
       isPinned: true,
+      isFeatured: true,
       createdAt: true,
+      publishedAt: true,
       updatedAt: true,
       space: { select: { title: true, slug: true } },
       _count: {
         select: { comments: { where: { deletedAt: null } }, votes: true },
       },
+      votes: { where: { memberId }, select: { id: true } },
+      bookmarks: { where: { memberId }, select: { id: true } },
     },
   });
-  return posts.map((post) => ({ ...post, excerpt: post.excerpt ?? "" }));
+  return enrichAuthors(
+    posts.map((post) => ({
+      ...post,
+      coverUrl: normalizeCommunityCoverUrl(post.coverUrl),
+      excerpt: post.excerpt ?? "",
+      readingMinutes: readingMinutes(post.excerpt ?? ""),
+    }))
+  );
 };
 
 export const getSavedCommunityPosts = async (memberId: string) => {

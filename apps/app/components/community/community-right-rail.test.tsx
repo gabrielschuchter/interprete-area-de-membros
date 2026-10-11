@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { CommunityRightRail } from "./community-right-rail";
@@ -24,6 +24,7 @@ vi.mock("next/link", () => ({
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/comunidade",
+  useRouter: () => ({ push: () => undefined }),
   useSearchParams: () => ({ toString: () => "" }),
 }));
 
@@ -101,6 +102,28 @@ describe("CommunityRightRail", () => {
 
     expect(screen.getByText("Nenhum aviso recente.")).toBeTruthy();
     expect(screen.getByText("Nenhum grupo publicado ainda.")).toBeTruthy();
+  });
+
+  test("keeps mobile context disclosures independent and accessible", () => {
+    render(
+      <CommunityRightRail
+        announcements={[]}
+        memberId="ana-id"
+        profile={null}
+        spaces={[]}
+      />
+    );
+
+    const aboutDisclosure = screen.getByRole("button", {
+      name: "Sobre a comunidade",
+    });
+    const noticesDisclosure = screen.getByRole("button", { name: "Avisos" });
+
+    expect(aboutDisclosure.getAttribute("aria-expanded")).toBe("false");
+    expect(noticesDisclosure.getAttribute("aria-expanded")).toBe("false");
+    fireEvent.click(aboutDisclosure);
+    expect(aboutDisclosure.getAttribute("aria-expanded")).toBe("true");
+    expect(noticesDisclosure.getAttribute("aria-expanded")).toBe("false");
   });
 
   test("does not turn an unsafe notice URL into a navigable link", () => {

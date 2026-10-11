@@ -2,6 +2,7 @@ import { Button } from "@repo/design-system/components/ui/button";
 import { PlusIcon } from "lucide-react";
 import Link from "next/link";
 import { type CommunitySort, communityHref } from "@/lib/community-query";
+import { CommunityDraftStarter } from "./community-draft-starter";
 
 interface CommunityEmptyStateProperties {
   readonly hasFilters: boolean;
@@ -38,11 +39,9 @@ export const CommunityEmptyState = ({
             <Link href={communityHref()}>Limpar filtros</Link>
           </Button>
         )}
-        <Button asChild>
-          <Link href="/comunidade/novo">
-            <PlusIcon aria-hidden="true" /> Criar conteúdo
-          </Link>
-        </Button>
+        <CommunityDraftStarter>
+          <PlusIcon aria-hidden="true" /> Criar conteúdo
+        </CommunityDraftStarter>
       </div>
     </div>
   );

@@ -265,6 +265,9 @@ function TopicEditorCore({
   const [groupMentionConfirmed, setGroupMentionConfirmed] = useState(false);
   const [slashState, setSlashState] = useState<NoteSlashState | null>(null);
   const [selectedSlashIndex, setSelectedSlashIndex] = useState(0);
+  const [mobileToolbarActive, setMobileToolbarActive] = useState(false);
+  const toolbarSentinelRef = useRef<HTMLDivElement>(null);
+  const editorRootRef = useRef<HTMLDivElement>(null);
   const mentionStateRef = useRef<MentionState | null>(null);
   const slashStateRef = useRef<NoteSlashState | null>(null);
   const mentionCandidatesRef = useRef<MentionCandidate[]>([]);
@@ -507,6 +510,67 @@ function TopicEditorCore({
     return () => controller.abort();
   }, [mentionState]);
 
+  const editorReady = editor !== null;
+  useEffect(() => {
+    if (!editorReady || noteMode) {
+      return;
+    }
+    const sentinel = toolbarSentinelRef.current;
+    if (!sentinel) {
+      return;
+    }
+    const media = window.matchMedia("(max-width: 767px)");
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setMobileToolbarActive(media.matches && !entry.isIntersecting);
+      },
+      { rootMargin: "-64px 0px 0px 0px", threshold: 0 }
+    );
+    const onBreakpointChange = () => {
+      if (!media.matches) {
+        setMobileToolbarActive(false);
+      }
+    };
+    media.addEventListener("change", onBreakpointChange);
+    observer.observe(sentinel);
+    return () => {
+      media.removeEventListener("change", onBreakpointChange);
+      observer.disconnect();
+    };
+  }, [editorReady, noteMode]);
+
+  useEffect(() => {
+    if (!editorReady || noteMode) {
+      return;
+    }
+    const root = editorRootRef.current;
+    if (!root) {
+      return;
+    }
+    const updateViewportHeight = () => {
+      const height = window.visualViewport?.height ?? window.innerHeight;
+      root.style.setProperty(
+        "--community-visual-viewport-height",
+        `${height}px`
+      );
+    };
+    updateViewportHeight();
+    window.visualViewport?.addEventListener("resize", updateViewportHeight);
+    window.visualViewport?.addEventListener("scroll", updateViewportHeight);
+    window.addEventListener("resize", updateViewportHeight);
+    return () => {
+      window.visualViewport?.removeEventListener(
+        "resize",
+        updateViewportHeight
+      );
+      window.visualViewport?.removeEventListener(
+        "scroll",
+        updateViewportHeight
+      );
+      window.removeEventListener("resize", updateViewportHeight);
+    };
+  }, [editorReady, noteMode]);
+
   const mentionSummary = groupMentionSummary(value);
 
   useEffect(() => {
@@ -544,6 +608,44 @@ function TopicEditorCore({
     command.run(editor);
     slashStateRef.current = null;
     setSlashState(null);
+  };
+
+  const applyLink = () => {
+    const value = linkUrl.trim();
+    if (!value) {
+      return;
+    }
+    const video = enableCommunityMedia ? videoEmbedFromUrl(value) : null;
+    const directVideo = enableCommunityMedia ? directVideoUrl(value) : null;
+    if (video || directVideo) {
+      editor
+        .chain()
+        .insertContent({
+          attrs: {
+            provider: video?.provider ?? "youtube",
+            src: video?.src ?? directVideo,
+            title: "Vídeo incorporado",
+          },
+          type: "communityVideo",
+        })
+        .run();
+    } else if (enableCommunityMedia && isScientificArticleReference(value)) {
+      const articleUrl = articleUrlFrom(value);
+      if (articleUrl) {
+        editor
+          .chain()
+          .insertContent({
+            attrs: { doi: extractDoi(value), url: articleUrl },
+            type: "communityArticle",
+          })
+          .run();
+      }
+    } else {
+      editor.chain().setLink({ href: value }).run();
+    }
+    editor.commands.focus();
+    setLinkUrl("");
+    setShowLinkField(false);
   };
 
   const removePreviewNode = (previewUrl: string) => {
@@ -752,7 +854,17 @@ function TopicEditorCore({
   return (
     // biome-ignore lint/a11y/noNoninteractiveElementInteractions: the editor surface accepts intentional drag-and-drop and clipboard paste events for image uploads.
     <div
-      className={`relative rounded-sm border ${noteMode ? "overflow-visible border-[#E2D6D1] bg-[#FBF8F5]" : "overflow-hidden bg-background"}`}
+      className={
+        noteMode
+          ? "relative overflow-visible rounded-sm border border-[#E2D6D1] bg-[#FBF8F5]"
+          : [
+              "community-topic-editor",
+              editor?.isEmpty && "community-topic-editor--empty",
+              mobileToolbarActive && "community-topic-editor--rail-active",
+            ]
+              .filter(Boolean)
+              .join(" ")
+      }
       onDragOver={(event) => event.preventDefault()}
       onDrop={(event) => {
         event.preventDefault();
@@ -782,377 +894,579 @@ function TopicEditorCore({
           startUpload(file);
         }
       }}
+      ref={editorRootRef}
       role="application"
     >
-      <div
-        aria-label={noteMode ? "Formatação" : "Ferramentas de formatação"}
-        className={
-          noteMode
-            ? "fixed top-[220px] right-[10px] z-[25] flex max-h-[calc(100dvh-230px)] w-[58px] flex-col flex-nowrap gap-[2px] overflow-y-auto rounded-[8px] border border-[#E2D6D1] bg-white p-[6px] shadow-[0_6px_18px_rgba(64,34,47,0.12)] md:sticky md:top-28 md:z-[5] md:max-h-none md:w-full md:flex-row md:flex-wrap md:items-center md:gap-[2px] md:overflow-visible md:rounded-[8px] md:p-[6px] md:shadow-none md:[&>button]:size-10"
-            : "flex flex-wrap gap-1 border-border border-b bg-muted/40 p-2"
-        }
-        role="toolbar"
-      >
-        <Button
-          aria-label="Negrito"
-          onClick={() => action(() => editor.chain().toggleBold().run())}
-          size="icon"
-          type="button"
-          variant={editor.isActive("bold") ? "default" : "ghost"}
-        >
-          <BoldIcon aria-hidden="true" />
-        </Button>
-        <Button
-          aria-label="Itálico"
-          onClick={() => action(() => editor.chain().toggleItalic().run())}
-          size="icon"
-          type="button"
-          variant={editor.isActive("italic") ? "default" : "ghost"}
-        >
-          <ItalicIcon aria-hidden="true" />
-        </Button>
-        <Button
-          aria-label="Título"
-          onClick={() =>
-            action(() => editor.chain().toggleHeading({ level: 2 }).run())
+      {noteMode ? (
+        <div
+          aria-label={noteMode ? "Formatação" : "Ferramentas de formatação"}
+          className={
+            noteMode
+              ? "fixed top-[220px] right-[10px] z-[25] flex max-h-[calc(100dvh-230px)] w-[58px] flex-col flex-nowrap gap-[2px] overflow-y-auto rounded-[8px] border border-[#E2D6D1] bg-white p-[6px] shadow-[0_6px_18px_rgba(64,34,47,0.12)] md:sticky md:top-28 md:z-[5] md:max-h-none md:w-full md:flex-row md:flex-wrap md:items-center md:gap-[2px] md:overflow-visible md:rounded-[8px] md:p-[6px] md:shadow-none md:[&>button]:size-10"
+              : "flex flex-wrap gap-1 border-border border-b bg-muted/40 p-2"
           }
-          size="icon"
-          type="button"
-          variant={
-            editor.isActive("heading", { level: 2 }) ? "default" : "ghost"
-          }
+          role="toolbar"
         >
-          <Heading2Icon aria-hidden="true" />
-        </Button>
-        <Button
-          aria-label="Lista"
-          onClick={() => action(() => editor.chain().toggleBulletList().run())}
-          size="icon"
-          type="button"
-          variant={editor.isActive("bulletList") ? "default" : "ghost"}
-        >
-          <ListIcon aria-hidden="true" />
-        </Button>
-        <Button
-          aria-label="Lista numerada"
-          onClick={() => action(() => editor.chain().toggleOrderedList().run())}
-          size="icon"
-          type="button"
-          variant={editor.isActive("orderedList") ? "default" : "ghost"}
-        >
-          <ListOrderedIcon aria-hidden="true" />
-        </Button>
-        {noteMode ? (
           <Button
-            aria-label="Lista de tarefas"
-            onClick={() => action(() => editor.chain().toggleTaskList().run())}
+            aria-label="Negrito"
+            onClick={() => action(() => editor.chain().toggleBold().run())}
             size="icon"
             type="button"
-            variant={editor.isActive("taskList") ? "default" : "ghost"}
+            variant={editor.isActive("bold") ? "default" : "ghost"}
           >
-            <ListChecksIcon aria-hidden="true" />
+            <BoldIcon aria-hidden="true" />
           </Button>
-        ) : null}
-        <Button
-          aria-label="Citação"
-          onClick={() => action(() => editor.chain().toggleBlockquote().run())}
-          size="icon"
-          type="button"
-          variant={editor.isActive("blockquote") ? "default" : "ghost"}
-        >
-          <QuoteIcon aria-hidden="true" />
-        </Button>
-        <Button
-          aria-label="Código"
-          onClick={() => action(() => editor.chain().toggleCodeBlock().run())}
-          size="icon"
-          type="button"
-          variant={editor.isActive("codeBlock") ? "default" : "ghost"}
-        >
-          <Code2Icon aria-hidden="true" />
-        </Button>
-        <Button
-          aria-label="Adicionar link"
-          onClick={() => setShowLinkField((visible) => !visible)}
-          size="icon"
-          type="button"
-          variant="ghost"
-        >
-          <LinkIcon aria-hidden="true" />
-        </Button>
-        {showLinkField && (
-          <div className="motion-reveal-fast flex min-w-60 flex-1 gap-2">
-            <Input
-              aria-label="Endereço do link ou embed"
-              autoFocus
-              className="h-9"
-              onChange={(event) => setLinkUrl(event.target.value)}
-              placeholder="https://… ou DOI"
-              value={linkUrl}
-            />
+          <Button
+            aria-label="Itálico"
+            onClick={() => action(() => editor.chain().toggleItalic().run())}
+            size="icon"
+            type="button"
+            variant={editor.isActive("italic") ? "default" : "ghost"}
+          >
+            <ItalicIcon aria-hidden="true" />
+          </Button>
+          <Button
+            aria-label="Título"
+            onClick={() =>
+              action(() => editor.chain().toggleHeading({ level: 2 }).run())
+            }
+            size="icon"
+            type="button"
+            variant={
+              editor.isActive("heading", { level: 2 }) ? "default" : "ghost"
+            }
+          >
+            <Heading2Icon aria-hidden="true" />
+          </Button>
+          <Button
+            aria-label="Lista"
+            onClick={() =>
+              action(() => editor.chain().toggleBulletList().run())
+            }
+            size="icon"
+            type="button"
+            variant={editor.isActive("bulletList") ? "default" : "ghost"}
+          >
+            <ListIcon aria-hidden="true" />
+          </Button>
+          <Button
+            aria-label="Lista numerada"
+            onClick={() =>
+              action(() => editor.chain().toggleOrderedList().run())
+            }
+            size="icon"
+            type="button"
+            variant={editor.isActive("orderedList") ? "default" : "ghost"}
+          >
+            <ListOrderedIcon aria-hidden="true" />
+          </Button>
+          {noteMode ? (
             <Button
-              onClick={() => {
-                const value = linkUrl.trim();
-                if (!value) {
-                  return;
-                }
-                const video = enableCommunityMedia
-                  ? videoEmbedFromUrl(value)
-                  : null;
-                const directVideo = enableCommunityMedia
-                  ? directVideoUrl(value)
-                  : null;
-                if (video || directVideo) {
-                  action(() =>
-                    editor
-                      .chain()
-                      .insertContent({
-                        attrs: {
-                          provider: video?.provider ?? "youtube",
-                          src: video?.src ?? directVideo,
-                          title: "Vídeo incorporado",
-                        },
-                        type: "communityVideo",
-                      })
-                      .run()
-                  );
-                } else if (
-                  enableCommunityMedia &&
-                  isScientificArticleReference(value)
-                ) {
-                  const articleUrl = articleUrlFrom(value);
-                  if (articleUrl) {
+              aria-label="Lista de tarefas"
+              onClick={() =>
+                action(() => editor.chain().toggleTaskList().run())
+              }
+              size="icon"
+              type="button"
+              variant={editor.isActive("taskList") ? "default" : "ghost"}
+            >
+              <ListChecksIcon aria-hidden="true" />
+            </Button>
+          ) : null}
+          <Button
+            aria-label="Citação"
+            onClick={() =>
+              action(() => editor.chain().toggleBlockquote().run())
+            }
+            size="icon"
+            type="button"
+            variant={editor.isActive("blockquote") ? "default" : "ghost"}
+          >
+            <QuoteIcon aria-hidden="true" />
+          </Button>
+          <Button
+            aria-label="Código"
+            onClick={() => action(() => editor.chain().toggleCodeBlock().run())}
+            size="icon"
+            type="button"
+            variant={editor.isActive("codeBlock") ? "default" : "ghost"}
+          >
+            <Code2Icon aria-hidden="true" />
+          </Button>
+          <Button
+            aria-label="Adicionar link"
+            onClick={() => setShowLinkField((visible) => !visible)}
+            size="icon"
+            type="button"
+            variant="ghost"
+          >
+            <LinkIcon aria-hidden="true" />
+          </Button>
+          {showLinkField && (
+            <div className="motion-reveal-fast flex min-w-60 flex-1 gap-2">
+              <Input
+                aria-label="Endereço do link ou embed"
+                autoFocus
+                className="h-9"
+                onChange={(event) => setLinkUrl(event.target.value)}
+                placeholder="https://… ou DOI"
+                value={linkUrl}
+              />
+              <Button onClick={applyLink} size="sm" type="button">
+                Aplicar
+              </Button>
+            </div>
+          )}
+          {enableImages ? (
+            <>
+              <Button
+                aria-label="Adicionar imagem"
+                onClick={() => {
+                  if (allowImageUploads) {
+                    imageInputRef.current?.click();
+                  } else {
+                    setShowImageField((visible) => !visible);
+                  }
+                }}
+                size="icon"
+                type="button"
+                variant="ghost"
+              >
+                <ImageIcon aria-hidden="true" />
+              </Button>
+              {noteMode ? null : (
+                <Button
+                  onClick={() => setShowImageField((visible) => !visible)}
+                  size="sm"
+                  type="button"
+                  variant="ghost"
+                >
+                  URL
+                </Button>
+              )}
+              {allowImageUploads ? (
+                <input
+                  accept="image/jpeg,image/png,image/webp"
+                  className="sr-only"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (file) {
+                      startUpload(file);
+                    }
+                    event.currentTarget.value = "";
+                  }}
+                  ref={imageInputRef}
+                  type="file"
+                />
+              ) : null}
+            </>
+          ) : null}
+          {enableCommunityMedia && (
+            <>
+              <Button
+                aria-label="Adicionar PDF ou arquivo"
+                onClick={() => attachmentInputRef.current?.click()}
+                size="icon"
+                type="button"
+                variant="ghost"
+              >
+                <FileIcon aria-hidden="true" />
+              </Button>
+              <input
+                accept="application/pdf,text/plain,.pdf,.txt"
+                className="sr-only"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file) {
+                    startAttachmentUpload(file);
+                  }
+                  event.currentTarget.value = "";
+                }}
+                ref={attachmentInputRef}
+                type="file"
+              />
+            </>
+          )}
+          {isUploadingMedia ? (
+            <span className="self-center px-2 text-muted-foreground text-xs">
+              Enviando mídia…
+            </span>
+          ) : null}
+          {uploadError ? (
+            <span
+              className="basis-full px-2 text-destructive text-xs"
+              role="alert"
+            >
+              {uploadError}
+            </span>
+          ) : null}
+          {enableImages && showImageField && (
+            <div className="motion-reveal-fast flex min-w-60 flex-1 gap-2">
+              <Input
+                aria-label="Endereço da imagem"
+                autoFocus
+                className="h-9"
+                onChange={(event) => setImageUrl(event.target.value)}
+                placeholder="https://exemplo.com/imagem.jpg"
+                value={imageUrl}
+              />
+              <Button
+                onClick={() => {
+                  if (imageUrl.trim()) {
                     action(() =>
                       editor
                         .chain()
-                        .insertContent({
-                          attrs: {
-                            doi: extractDoi(value),
-                            url: articleUrl,
-                          },
-                          type: "communityArticle",
-                        })
+                        .setImage({ src: imageUrl.trim(), alt: "" })
                         .run()
                     );
+                    setImageUrl("");
+                    setShowImageField(false);
                   }
-                } else {
-                  action(() => editor.chain().setLink({ href: value }).run());
+                }}
+                size="sm"
+                type="button"
+              >
+                Inserir
+              </Button>
+            </div>
+          )}
+          <Button
+            aria-label="Adicionar divisor"
+            onClick={() =>
+              action(() => editor.chain().setHorizontalRule().run())
+            }
+            size="icon"
+            type="button"
+            variant="ghost"
+          >
+            <MinusIcon aria-hidden="true" />
+          </Button>
+          {noteMode ? (
+            <>
+              <Button
+                aria-label="Destacar texto"
+                onClick={() =>
+                  action(() => editor.chain().toggleHighlight().run())
                 }
-                setLinkUrl("");
-                setShowLinkField(false);
-              }}
-              size="sm"
+                size="icon"
+                type="button"
+                variant={editor.isActive("highlight") ? "default" : "ghost"}
+              >
+                <HighlighterIcon aria-hidden="true" />
+              </Button>
+              <Button
+                aria-label="Inserir tabela"
+                onClick={() =>
+                  action(() =>
+                    editor
+                      .chain()
+                      .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
+                      .run()
+                  )
+                }
+                size="icon"
+                type="button"
+                variant={editor.isActive("table") ? "default" : "ghost"}
+              >
+                <TableIcon aria-hidden="true" />
+              </Button>
+              {editor.isActive("table") ? (
+                <>
+                  <Button
+                    aria-label="Adicionar linha abaixo"
+                    onClick={() =>
+                      action(() => editor.chain().addRowAfter().run())
+                    }
+                    size="icon"
+                    title="Adicionar linha abaixo"
+                    type="button"
+                    variant="ghost"
+                  >
+                    <Rows3Icon aria-hidden="true" />
+                  </Button>
+                  <Button
+                    aria-label="Adicionar coluna à direita"
+                    onClick={() =>
+                      action(() => editor.chain().addColumnAfter().run())
+                    }
+                    size="icon"
+                    title="Adicionar coluna à direita"
+                    type="button"
+                    variant="ghost"
+                  >
+                    <Columns3Icon aria-hidden="true" />
+                  </Button>
+                  <Button
+                    aria-label="Excluir tabela"
+                    onClick={() =>
+                      action(() => editor.chain().deleteTable().run())
+                    }
+                    size="icon"
+                    title="Excluir tabela"
+                    type="button"
+                    variant="ghost"
+                  >
+                    <Trash2Icon aria-hidden="true" />
+                  </Button>
+                </>
+              ) : null}
+              <span aria-hidden="true" className="hidden md:block md:flex-1" />
+              <Button
+                aria-label="Desfazer"
+                className="hidden md:inline-flex"
+                onClick={() => action(() => editor.chain().undo().run())}
+                size="icon"
+                type="button"
+                variant="ghost"
+              >
+                <Undo2Icon aria-hidden="true" />
+              </Button>
+            </>
+          ) : null}
+        </div>
+      ) : (
+        <div className="community-editor-toolbar-slot">
+          <div
+            aria-hidden="true"
+            className="community-editor-toolbar-sentinel"
+            ref={toolbarSentinelRef}
+          />
+          <div
+            aria-label="Ferramentas de formatação"
+            aria-orientation={mobileToolbarActive ? "vertical" : "horizontal"}
+            className={[
+              "community-editor-toolbar",
+              mobileToolbarActive && "is-mobile-rail",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            role="toolbar"
+          >
+            <Button
+              aria-label="Negrito"
+              className="community-toolbar-button"
+              onClick={() => action(() => editor.chain().toggleBold().run())}
+              size="icon"
               type="button"
+              variant={editor.isActive("bold") ? "default" : "ghost"}
             >
-              Aplicar
+              <BoldIcon aria-hidden="true" />
             </Button>
-          </div>
-        )}
-        {enableImages ? (
-          <>
+            <Button
+              aria-label="Itálico"
+              className="community-toolbar-button"
+              onClick={() => action(() => editor.chain().toggleItalic().run())}
+              size="icon"
+              type="button"
+              variant={editor.isActive("italic") ? "default" : "ghost"}
+            >
+              <ItalicIcon aria-hidden="true" />
+            </Button>
+            <Button
+              aria-label="Título"
+              className="community-toolbar-button"
+              onClick={() =>
+                action(() => editor.chain().toggleHeading({ level: 2 }).run())
+              }
+              size="icon"
+              type="button"
+              variant={
+                editor.isActive("heading", { level: 2 }) ? "default" : "ghost"
+              }
+            >
+              <Heading2Icon aria-hidden="true" />
+            </Button>
+            <Button
+              aria-label="Lista"
+              className="community-toolbar-button"
+              onClick={() =>
+                action(() => editor.chain().toggleBulletList().run())
+              }
+              size="icon"
+              type="button"
+              variant={editor.isActive("bulletList") ? "default" : "ghost"}
+            >
+              <ListIcon aria-hidden="true" />
+            </Button>
+            <Button
+              aria-label="Lista numerada"
+              className="community-toolbar-button"
+              onClick={() =>
+                action(() => editor.chain().toggleOrderedList().run())
+              }
+              size="icon"
+              type="button"
+              variant={editor.isActive("orderedList") ? "default" : "ghost"}
+            >
+              <ListOrderedIcon aria-hidden="true" />
+            </Button>
+            <Button
+              aria-label="Citação"
+              className="community-toolbar-button"
+              onClick={() =>
+                action(() => editor.chain().toggleBlockquote().run())
+              }
+              size="icon"
+              type="button"
+              variant={editor.isActive("blockquote") ? "default" : "ghost"}
+            >
+              <QuoteIcon aria-hidden="true" />
+            </Button>
+            <Button
+              aria-label="Código"
+              className="community-toolbar-button"
+              onClick={() =>
+                action(() => editor.chain().toggleCodeBlock().run())
+              }
+              size="icon"
+              type="button"
+              variant={editor.isActive("codeBlock") ? "default" : "ghost"}
+            >
+              <Code2Icon aria-hidden="true" />
+            </Button>
+            <Button
+              aria-label="Adicionar link"
+              className="community-toolbar-button"
+              onClick={() => setShowLinkField((visible) => !visible)}
+              size="icon"
+              type="button"
+              variant="ghost"
+            >
+              <LinkIcon aria-hidden="true" />
+            </Button>
+            {showLinkField && (
+              <div className="motion-reveal-fast flex min-w-60 flex-1 gap-2">
+                <Input
+                  aria-label="Endereço do link ou embed"
+                  autoFocus
+                  className="h-9"
+                  onChange={(event) => setLinkUrl(event.target.value)}
+                  placeholder="https://… ou DOI"
+                  value={linkUrl}
+                />
+                <Button onClick={applyLink} size="sm" type="button">
+                  Aplicar
+                </Button>
+              </div>
+            )}
             <Button
               aria-label="Adicionar imagem"
-              onClick={() => {
-                if (allowImageUploads) {
-                  imageInputRef.current?.click();
-                } else {
-                  setShowImageField((visible) => !visible);
-                }
-              }}
+              className="community-toolbar-button"
+              onClick={() => imageInputRef.current?.click()}
               size="icon"
               type="button"
               variant="ghost"
             >
               <ImageIcon aria-hidden="true" />
             </Button>
-            {noteMode ? null : (
-              <Button
-                onClick={() => setShowImageField((visible) => !visible)}
-                size="sm"
-                type="button"
-                variant="ghost"
-              >
-                URL
-              </Button>
-            )}
-            {allowImageUploads ? (
-              <input
-                accept="image/jpeg,image/png,image/webp"
-                className="sr-only"
-                onChange={(event) => {
-                  const file = event.target.files?.[0];
-                  if (file) {
-                    startUpload(file);
-                  }
-                  event.currentTarget.value = "";
-                }}
-                ref={imageInputRef}
-                type="file"
-              />
-            ) : null}
-          </>
-        ) : null}
-        {enableCommunityMedia && (
-          <>
             <Button
-              aria-label="Adicionar PDF ou arquivo"
-              onClick={() => attachmentInputRef.current?.click()}
-              size="icon"
+              aria-label="Incorporar por URL"
+              className="community-toolbar-button"
+              onClick={() => setShowImageField((visible) => !visible)}
+              size="sm"
               type="button"
               variant="ghost"
             >
-              <FileIcon aria-hidden="true" />
+              URL
             </Button>
             <input
-              accept="application/pdf,text/plain,.pdf,.txt"
+              accept="image/jpeg,image/png,image/webp"
               className="sr-only"
               onChange={(event) => {
                 const file = event.target.files?.[0];
                 if (file) {
-                  startAttachmentUpload(file);
+                  startUpload(file);
                 }
                 event.currentTarget.value = "";
               }}
-              ref={attachmentInputRef}
+              ref={imageInputRef}
               type="file"
             />
-          </>
-        )}
-        {isUploadingMedia ? (
-          <span className="self-center px-2 text-muted-foreground text-xs">
-            Enviando mídia…
-          </span>
-        ) : null}
-        {uploadError ? (
-          <span
-            className="basis-full px-2 text-destructive text-xs"
-            role="alert"
-          >
-            {uploadError}
-          </span>
-        ) : null}
-        {enableImages && showImageField && (
-          <div className="motion-reveal-fast flex min-w-60 flex-1 gap-2">
-            <Input
-              aria-label="Endereço da imagem"
-              autoFocus
-              className="h-9"
-              onChange={(event) => setImageUrl(event.target.value)}
-              placeholder="https://exemplo.com/imagem.jpg"
-              value={imageUrl}
-            />
-            <Button
-              onClick={() => {
-                if (imageUrl.trim()) {
-                  action(() =>
-                    editor
-                      .chain()
-                      .setImage({ src: imageUrl.trim(), alt: "" })
-                      .run()
-                  );
-                  setImageUrl("");
-                  setShowImageField(false);
-                }
-              }}
-              size="sm"
-              type="button"
-            >
-              Inserir
-            </Button>
-          </div>
-        )}
-        <Button
-          aria-label="Adicionar divisor"
-          onClick={() => action(() => editor.chain().setHorizontalRule().run())}
-          size="icon"
-          type="button"
-          variant="ghost"
-        >
-          <MinusIcon aria-hidden="true" />
-        </Button>
-        {noteMode ? (
-          <>
-            <Button
-              aria-label="Destacar texto"
-              onClick={() =>
-                action(() => editor.chain().toggleHighlight().run())
-              }
-              size="icon"
-              type="button"
-              variant={editor.isActive("highlight") ? "default" : "ghost"}
-            >
-              <HighlighterIcon aria-hidden="true" />
-            </Button>
-            <Button
-              aria-label="Inserir tabela"
-              onClick={() =>
-                action(() =>
-                  editor
-                    .chain()
-                    .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
-                    .run()
-                )
-              }
-              size="icon"
-              type="button"
-              variant={editor.isActive("table") ? "default" : "ghost"}
-            >
-              <TableIcon aria-hidden="true" />
-            </Button>
-            {editor.isActive("table") ? (
+            {enableCommunityMedia && (
               <>
                 <Button
-                  aria-label="Adicionar linha abaixo"
-                  onClick={() =>
-                    action(() => editor.chain().addRowAfter().run())
-                  }
+                  aria-label="Adicionar PDF ou arquivo"
+                  className="community-toolbar-button"
+                  onClick={() => attachmentInputRef.current?.click()}
                   size="icon"
-                  title="Adicionar linha abaixo"
                   type="button"
                   variant="ghost"
                 >
-                  <Rows3Icon aria-hidden="true" />
+                  <FileIcon aria-hidden="true" />
                 </Button>
-                <Button
-                  aria-label="Adicionar coluna à direita"
-                  onClick={() =>
-                    action(() => editor.chain().addColumnAfter().run())
-                  }
-                  size="icon"
-                  title="Adicionar coluna à direita"
-                  type="button"
-                  variant="ghost"
-                >
-                  <Columns3Icon aria-hidden="true" />
-                </Button>
-                <Button
-                  aria-label="Excluir tabela"
-                  onClick={() =>
-                    action(() => editor.chain().deleteTable().run())
-                  }
-                  size="icon"
-                  title="Excluir tabela"
-                  type="button"
-                  variant="ghost"
-                >
-                  <Trash2Icon aria-hidden="true" />
-                </Button>
+                <input
+                  accept="application/pdf,text/plain,.pdf,.txt"
+                  className="sr-only"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (file) {
+                      startAttachmentUpload(file);
+                    }
+                    event.currentTarget.value = "";
+                  }}
+                  ref={attachmentInputRef}
+                  type="file"
+                />
               </>
+            )}
+            {isUploadingMedia ? (
+              <span className="self-center px-2 text-muted-foreground text-xs">
+                Enviando mídia…
+              </span>
             ) : null}
-            <span aria-hidden="true" className="hidden md:block md:flex-1" />
+            {uploadError ? (
+              <span
+                className="basis-full px-2 text-destructive text-xs"
+                role="alert"
+              >
+                {uploadError}
+              </span>
+            ) : null}
+            {showImageField && (
+              <div className="motion-reveal-fast flex min-w-60 flex-1 gap-2">
+                <Input
+                  aria-label="Endereço da imagem"
+                  autoFocus
+                  className="h-9"
+                  onChange={(event) => setImageUrl(event.target.value)}
+                  placeholder="https://exemplo.com/imagem.jpg"
+                  value={imageUrl}
+                />
+                <Button
+                  onClick={() => {
+                    if (imageUrl.trim()) {
+                      action(() =>
+                        editor
+                          .chain()
+                          .setImage({ src: imageUrl.trim(), alt: "" })
+                          .run()
+                      );
+                      setImageUrl("");
+                      setShowImageField(false);
+                    }
+                  }}
+                  size="sm"
+                  type="button"
+                >
+                  Inserir
+                </Button>
+              </div>
+            )}
             <Button
-              aria-label="Desfazer"
-              className="hidden md:inline-flex"
-              onClick={() => action(() => editor.chain().undo().run())}
+              aria-label="Adicionar divisor"
+              className="community-toolbar-button"
+              onClick={() =>
+                action(() => editor.chain().setHorizontalRule().run())
+              }
               size="icon"
               type="button"
               variant="ghost"
             >
-              <Undo2Icon aria-hidden="true" />
+              <MinusIcon aria-hidden="true" />
             </Button>
-          </>
-        ) : null}
-      </div>
+          </div>
+        </div>
+      )}
       {noteMode && slashState && filteredSlashCommands.length ? (
         <div
           aria-label="Comandos de blocos"

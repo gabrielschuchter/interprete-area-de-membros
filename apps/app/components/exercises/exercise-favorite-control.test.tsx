@@ -10,13 +10,14 @@ import { afterEach, expect, test, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   getExerciseFavoriteStatus: vi.fn(),
+  push: vi.fn(),
   refresh: vi.fn(),
   undoExerciseFavorite: vi.fn(),
   updateExerciseFavorite: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ refresh: mocks.refresh }),
+  useRouter: () => ({ push: mocks.push, refresh: mocks.refresh }),
 }));
 vi.mock("@/app/(authenticated)/exercicios/actions", () => ({
   getExerciseFavoriteStatus: mocks.getExerciseFavoriteStatus,
@@ -70,14 +71,15 @@ test("updates optimistically and undoes the persisted favorite", async () => {
   );
   const record = getToastSnapshot().at(-1);
   expect(record?.message).toBe("Questão salva.");
-  expect(record?.appearance).toBe("exercise");
-  expect(record?.link).toEqual({
-    href: "/salvos",
-    label: "Ver salvos",
-  });
-  expect(record?.action?.label).toBe("Desfazer");
+  expect(record?.variant).toBe("exercise");
+  expect(record?.actions?.map((action) => action.label)).toEqual([
+    "Ver salvas",
+    "Desfazer",
+  ]);
 
-  record?.action?.onClick();
+  record?.actions?.find((action) => action.label === "Ver salvas")?.onSelect();
+  expect(mocks.push).toHaveBeenCalledWith("/exercicios/favoritas");
+  record?.actions?.find((action) => action.label === "Desfazer")?.onSelect();
   await waitFor(() =>
     expect(mocks.undoExerciseFavorite).toHaveBeenCalledWith({
       createdAt,
@@ -121,12 +123,15 @@ test("restores the persisted state when undo is rejected", async () => {
       screen.getByRole("button", { name: "Remover dos favoritos" })
     ).toBeTruthy()
   );
-  const undoToast = getToastSnapshot().find(
-    (record) => record.action?.label === "Desfazer"
+  const undoToast = getToastSnapshot().find((record) =>
+    record.actions?.some((action) => action.label === "Desfazer")
   );
 
   await act(async () => {
-    await undoToast?.action?.onClick();
+    undoToast?.actions
+      ?.find((action) => action.label === "Desfazer")
+      ?.onSelect();
+    await Promise.resolve();
   });
 
   expect(
@@ -202,11 +207,11 @@ test("keeps toggles serialized while undo is still persisting", async () => {
   const record = getToastSnapshot().find(
     (candidate) =>
       candidate.message === "Questão salva." &&
-      candidate.action?.label === "Desfazer"
+      candidate.actions?.some((action) => action.label === "Desfazer")
   );
   expect(record).toBeTruthy();
   await act(async () => {
-    record?.action?.onClick();
+    record?.actions?.find((action) => action.label === "Desfazer")?.onSelect();
     await Promise.resolve();
   });
 
