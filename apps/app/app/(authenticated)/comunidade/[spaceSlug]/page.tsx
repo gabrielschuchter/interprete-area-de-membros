@@ -49,12 +49,12 @@ const CommunitySpacePage = async ({
     <div className="min-h-svh bg-background">
       <main className="mx-auto w-full max-w-[1120px] px-5 py-8 sm:px-8 lg:px-12 lg:py-14">
         <Button asChild className="-ml-3" variant="ghost">
-          <Link href="/comunidade">
+          <Link href="/comunidade/grupos">
             <ArrowLeftIcon aria-hidden="true" /> Todos os grupos
           </Link>
         </Button>
         <header className="mt-8 flex flex-col justify-between gap-6 border-border border-b pb-8 md:flex-row md:items-end">
-          <div>
+          <div className="min-w-0 flex-1 [overflow-wrap:anywhere]">
             <p className="brand-eyebrow">Grupo de estudo · /{space.slug}</p>
             {space.coverUrl ? (
               <div className="relative mt-5 aspect-[16/6] max-w-2xl overflow-hidden rounded-sm border">

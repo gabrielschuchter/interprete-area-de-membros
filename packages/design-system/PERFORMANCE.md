@@ -128,3 +128,5 @@ on a server request.
 - Drawer mode initialization must not undo user toggles. Save/restore the previous desktop preference on mode entry/exit, and test opening/reopening at portal and tablet breakpoints. Background browsers can pause CSS animation clocks; bring the QA browser to the foreground before measuring a settled frame instead of disabling motion.
 
 - Hidden sidebar tooltips must not mount dismissable layers in expanded/mobile menus: they can intercept Escape from the drawer. Mount tooltips only on collapsed desktop menus; regression covers focused link and a single Escape.
+
+- User-generated group headings must shrink inside flex layouts and wrap unbroken names/slugs at narrow widths. The 80-character boundary was verified in the isolated local database.

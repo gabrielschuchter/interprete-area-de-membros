@@ -27,3 +27,7 @@ Commit f83f521; app dpl_BvkxycmfzvTeXqqgqqRj43z4eUzX, READY, alias canônico atu
 ## Sidebar publicada
 
 Commit f3e219f; app dpl_6Dr5JS8dq11gTtK7o4R4Zy1jLWL9 READY; alias canônico atualizado explicitamente. A sessão staff publicada confirmou menu estável aberto e navegação até Minhas gravações. Ajuste adicional de tooltip/Escape mobile reproduzido e corrigido localmente; aguardando gates/publicação. A matriz integral permanece aberta.
+
+## Escape publicado e grupos preparados
+
+Commit a0f2d65: app dpl_3W1EtDkHbLiDMYLyA7SdsfEcTkRA READY e alias canônico atualizado. Na sessão publicada em 390 px, Escape fechou o drawer (data-state closed), sem tooltip montado. Menu da conta ativado pelo teclado navegou a /perfil. As nove visitas administrativas adicionais em mobile não substituem validação de gravação dos formulários. Grupos: correção local de nome longo e retorno à lista, com gates passados, preparada para integração na main.
