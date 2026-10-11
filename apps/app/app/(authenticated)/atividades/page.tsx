@@ -1,150 +1,145 @@
-import { Badge } from "@repo/design-system/components/ui/badge";
-import { Button } from "@repo/design-system/components/ui/button";
-import { ArrowRightIcon, CheckCircle2Icon, Clock3Icon } from "lucide-react";
-import Link from "next/link";
-import { Stagger } from "@/components/motion/motion";
+import { ClipboardListIcon } from "lucide-react";
+import { IntentLink } from "@/app/(authenticated)/components/intent-link";
+import { ActivityFilter } from "@/components/learning/activity-filter";
+import { LearningPageFrame } from "@/components/learning/learning-page-frame";
 import { getPublishedActivities } from "@/lib/activities";
-import { requireMemberId } from "@/lib/learning";
+import { requireOnboardedMemberId } from "@/lib/authorization";
 
-const formatDueDate = (value: Date | null) =>
-  value
-    ? new Intl.DateTimeFormat("pt-BR", {
-        dateStyle: "medium",
-        timeZone: "America/Sao_Paulo",
-      }).format(value)
-    : "Sem prazo definido";
-
-type PublishedActivity = Awaited<
-  ReturnType<typeof getPublishedActivities>
->[number];
-
-const ActivityRow = ({
-  activity,
-}: {
-  readonly activity: PublishedActivity;
-}) => {
+const date = (value: Date) =>
+  new Intl.DateTimeFormat("pt-BR", {
+    dateStyle: "medium",
+    timeZone: "America/Sao_Paulo",
+  }).format(value);
+type Activity = Awaited<ReturnType<typeof getPublishedActivities>>[number];
+const ActivityRow = ({ activity }: { readonly activity: Activity }) => {
   const submission = activity.submissions[0];
-  const dueAt = activity.assignments[0]?.dueAt ?? activity.dueAt;
+  const sent =
+    submission?.status === "SUBMITTED" || submission?.status === "REVIEWED";
   const reviewed = submission?.status === "REVIEWED";
-  const submitted = submission?.status === "SUBMITTED";
-  const overdue = Boolean(dueAt && dueAt < new Date() && !reviewed);
-  let statusLabel = "Pendente";
-  let actionLabel = "Abrir prática";
-  let badgeVariant: "default" | "destructive" | "outline" = "outline";
-
-  if (reviewed) {
-    statusLabel = "Feedback disponível";
-    actionLabel = "Ler feedback";
-    badgeVariant = "default";
-  } else if (submitted) {
-    statusLabel = "Enviada";
-    actionLabel = "Revisar envio";
-  } else if (overdue) {
-    statusLabel = "Atrasada";
-    badgeVariant = "destructive";
+  const due = activity.assignments[0]?.dueAt ?? activity.dueAt;
+  const overdue = !sent && due && due.getTime() < Date.now();
+  let label = "Pendente";
+  let action = "Enviar atividade";
+  let timing = due ? ` · entrega até ${date(due)}` : " · sem prazo definido";
+  if (overdue) {
+    label = "Atrasada";
   }
-
+  if (sent) {
+    label = "Enviada";
+    action = "Ver envio";
+  }
+  if (reviewed) {
+    label = "Feedback disponível";
+    action = "Ler feedback";
+  }
+  if (sent && submission?.submittedAt) {
+    timing = ` · enviada em ${date(submission.submittedAt)}`;
+  }
   return (
-    <article
-      className="motion-card paper-surface border p-6 hover:border-brand-action sm:p-8"
-      key={activity.id}
-    >
-      <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
-        <div className="max-w-3xl">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant={badgeVariant}>{statusLabel}</Badge>
-            <span className="inline-flex items-center gap-1.5 text-muted-foreground text-xs">
-              <Clock3Icon aria-hidden="true" className="size-3.5" />{" "}
-              {formatDueDate(dueAt)}
-            </span>
-          </div>
-          <h3 className="mt-4 font-display text-3xl leading-tight">
-            {activity.title}
-          </h3>
-          <p className="mt-3 text-muted-foreground leading-7">
-            {activity.prompt}
-          </p>
-          {activity.course && (
-            <p className="brand-eyebrow mt-4">{activity.course.title}</p>
-          )}
-        </div>
-        <Button asChild variant="outline">
-          <Link href={`/atividades/${activity.slug}`}>
-            {actionLabel}
-            {reviewed ? (
-              <CheckCircle2Icon aria-hidden="true" />
-            ) : (
-              <ArrowRightIcon aria-hidden="true" />
-            )}
-          </Link>
-        </Button>
+    <article className="activity-list-row">
+      <span aria-hidden="true" className="activity-list-icon">
+        <ClipboardListIcon className="size-4" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <h3>{activity.title}</h3>
+        <p>
+          {activity.course?.title ?? "Atividade"}
+          {timing}
+        </p>
       </div>
+      <span
+        className={`activity-list-status ${overdue ? "activity-list-status--overdue" : ""}`}
+      >
+        {label}
+      </span>
+      <IntentLink
+        className={`learning-catalog-action ${sent || overdue ? "" : "learning-catalog-action--primary"}`}
+        href={`/atividades/${activity.slug}`}
+      >
+        {action}
+      </IntentLink>
     </article>
   );
 };
-
-const ActivitiesPage = async () => {
-  const memberId = await requireMemberId();
-  const activities = await getPublishedActivities(memberId);
-
+const ActivitiesPage = async ({
+  searchParams,
+}: {
+  readonly searchParams: Promise<{ status?: string }>;
+}) => {
+  const memberId = await requireOnboardedMemberId();
+  const [activities, query] = await Promise.all([
+    getPublishedActivities(memberId),
+    searchParams,
+  ]);
+  const pending = activities.filter(
+    (item) => !item.submissions[0] || item.submissions[0].status === "DRAFT"
+  );
+  const sent = activities.filter(
+    (item) =>
+      item.submissions[0]?.status === "SUBMITTED" ||
+      item.submissions[0]?.status === "REVIEWED"
+  );
+  const allGroups: Record<string, readonly (readonly [string, Activity[]])[]> =
+    {
+      pending: [["Pendentes", pending]],
+      submitted: [["Enviadas", sent]],
+      reviewed: [
+        [
+          "Com feedback",
+          sent.filter((item) => item.submissions[0]?.status === "REVIEWED"),
+        ],
+      ],
+    };
+  const groups =
+    allGroups[query.status ?? ""] ??
+    ([
+      ["Pendentes", pending],
+      ["Enviadas", sent],
+    ] as const);
   return (
-    <div className="min-h-svh bg-background">
-      <main className="mx-auto w-full max-w-[1280px] px-5 py-10 sm:px-8 lg:px-12 lg:py-16">
-        <header className="max-w-3xl">
-          <p className="brand-eyebrow">Prática guiada · caderno de campo</p>
-          <span aria-hidden="true" className="brand-rule mt-4" />
-          <h1 className="mt-6 font-display text-5xl leading-[0.98] tracking-tight sm:text-7xl">
-            Pensar também é praticar.
-          </h1>
-          <p className="mt-6 max-w-2xl text-base text-muted-foreground leading-7 sm:text-lg">
-            Responda perguntas que aproximam o método da sua prática. O que você
-            escreve fica disponível para revisão e feedback.
+    <LearningPageFrame
+      description="Atividades atribuídas e enviadas, com os prazos de cada uma."
+      eyebrow="Estudar · Atividades"
+      title="Atividades"
+      variant="catalog"
+    >
+      <div className="activity-list" data-route-content-ready="activities">
+        <div className="activity-list-filter">
+          <ActivityFilter />
+          <p className="font-data text-muted-foreground text-xs">
+            {pending.length} pendentes · {sent.length} enviadas
           </p>
-        </header>
-
-        <section aria-labelledby="activities-heading" className="mt-14">
-          <div className="flex items-end justify-between gap-4 border-border border-b pb-4">
-            <div>
-              <p className="brand-eyebrow">Agora</p>
-              <h2
-                className="mt-2 font-display text-3xl"
-                id="activities-heading"
-              >
-                Seu caderno de prática
-              </h2>
-            </div>
-            <span className="font-data text-muted-foreground text-xs">
-              {activities.length.toString().padStart(2, "0")} práticas
-            </span>
-          </div>
-
-          {activities.length === 0 ? (
-            <div className="paper-surface mt-6 border p-8 sm:p-12">
-              <p className="brand-eyebrow">Sem atividade aberta</p>
-              <h3 className="mt-4 font-display text-3xl">
-                A próxima pergunta ainda está sendo preparada.
-              </h3>
-              <p className="mt-3 max-w-2xl text-muted-foreground leading-7">
-                Enquanto isso, continue uma aula em Aprender. A prática aparece
-                aqui quando houver uma atividade publicada para a sua turma.
-              </p>
-              <Button asChild className="mt-7" variant="outline">
-                <Link href="/aprender">
-                  Voltar para Aprender <ArrowRightIcon aria-hidden="true" />
-                </Link>
-              </Button>
-            </div>
-          ) : (
-            <Stagger className="mt-6 grid gap-4">
-              {activities.map((activity) => (
+        </div>
+        {groups.map(([title, items]) =>
+          items.length > 0 ? (
+            <section
+              aria-label={title}
+              className="activity-list-section"
+              key={title}
+            >
+              <h2>{title}</h2>
+              {items.map((activity) => (
                 <ActivityRow activity={activity} key={activity.id} />
               ))}
-            </Stagger>
-          )}
-        </section>
-      </main>
-    </div>
+            </section>
+          ) : null
+        )}
+        {groups.every(([, items]) => items.length === 0) && (
+          <section className="py-10">
+            <h2>Nenhuma atividade nesta lista.</h2>
+            <p className="mt-3 text-muted-foreground">
+              As atividades disponíveis para você aparecerão aqui.
+            </p>
+            <IntentLink
+              className="learning-catalog-action mt-6"
+              href="/aprender"
+            >
+              Continuar aprendendo
+            </IntentLink>
+          </section>
+        )}
+      </div>
+    </LearningPageFrame>
   );
 };
-
 export default ActivitiesPage;

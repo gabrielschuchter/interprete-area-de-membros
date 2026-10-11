@@ -3,15 +3,11 @@ import { Button } from "@repo/design-system/components/ui/button";
 import { ArrowLeftIcon, ExternalLinkIcon } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ActivitySubmissionForm } from "@/components/learning/activity-submission-form";
 import { StudyHeartbeat } from "@/components/learning/study-heartbeat";
-import {
-  SingleFlightForm,
-  SingleFlightSubmit,
-} from "@/components/mutations/single-flight-form";
 import { getPublishedActivity } from "@/lib/activities";
-import { requireMemberId } from "@/lib/learning";
+import { requireOnboardedMemberId } from "@/lib/authorization";
 import { memberAssetUrl } from "@/lib/member-storage";
-import { submitActivity } from "../actions";
 
 interface ActivityPageProperties {
   readonly params: Promise<{ slug: string }>;
@@ -27,12 +23,22 @@ const UploadPauseNotice = ({ visible }: { readonly visible: boolean }) =>
     </output>
   ) : null;
 
+const activitySubmissionLabel = (status: string | undefined) => {
+  if (status === "REVIEWED") {
+    return "Revisada";
+  }
+  if (status === "SUBMITTED") {
+    return "Enviada";
+  }
+  return "Rascunho";
+};
+
 const ActivityPage = async ({
   params,
   searchParams,
 }: ActivityPageProperties) => {
   const [{ slug }, query] = await Promise.all([params, searchParams]);
-  const memberId = await requireMemberId();
+  const memberId = await requireOnboardedMemberId();
   const activity = await getPublishedActivity(slug, memberId);
 
   if (!activity) {
@@ -48,15 +54,11 @@ const ActivityPage = async ({
     activity.deliveryKind === "FILE" ||
     activity.deliveryKind === "TEXT_AND_FILE";
   const isReviewed = submission?.status === "REVIEWED";
-  let submissionLabel = "Rascunho";
-
-  if (submission) {
-    submissionLabel = isReviewed ? "Revisada" : "Enviada";
-  }
+  const submissionLabel = activitySubmissionLabel(submission?.status);
 
   return (
     <div className="min-h-svh bg-background">
-      <main className="mx-auto w-full max-w-[1280px] px-5 py-8 sm:px-8 lg:px-12 lg:py-14">
+      <main className="mx-auto w-full max-w-[1080px] px-5 py-8 sm:px-8 lg:px-12 lg:py-14">
         <StudyHeartbeat activityKind="ACTIVITY" resourceId={activity.id} />
         <Button asChild className="mb-10 -ml-3" variant="ghost">
           <Link href="/atividades">
@@ -69,7 +71,7 @@ const ActivityPage = async ({
               Prática guiada · {activity.course?.title ?? "caderno de campo"}
             </p>
             <span aria-hidden="true" className="brand-rule mt-4" />
-            <h1 className="mt-6 font-display text-5xl leading-[1.02] tracking-tight sm:text-7xl">
+            <h1 className="mt-6 font-display text-3xl leading-[1.1] tracking-tight sm:text-5xl">
               {activity.title}
             </h1>
             <p className="mt-7 font-display text-2xl text-muted-foreground leading-snug">
@@ -104,7 +106,7 @@ const ActivityPage = async ({
             <UploadPauseNotice visible={query.uploadsPaused === "1"} />
           </article>
 
-          <aside className="paper-surface border p-6 shadow-[var(--shadow-paper)] sm:p-8 lg:sticky lg:top-24">
+          <aside className="paper-surface border p-6 shadow-[var(--shadow-paper)] sm:p-8 lg:sticky lg:top-32">
             <div className="flex items-center justify-between gap-3">
               <p className="brand-eyebrow">Sua resposta</p>
               <Badge variant={isReviewed ? "default" : "outline"}>
@@ -123,10 +125,7 @@ const ActivityPage = async ({
                 </p>
               </div>
             ) : null}
-            <SingleFlightForm
-              action={submitActivity}
-              className="mt-6 space-y-4"
-            >
+            <ActivitySubmissionForm>
               <input name="activityId" type="hidden" value={activity.id} />
               {requiresText && (
                 <label className="block" htmlFor="activity-response">
@@ -135,6 +134,7 @@ const ActivityPage = async ({
                     className="mt-3 min-h-64 w-full resize-y rounded-sm border bg-background px-4 py-3 text-base leading-7 outline-none transition-[border-color,box-shadow] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/35"
                     defaultValue={submission?.content ?? ""}
                     id="activity-response"
+                    maxLength={40_000}
                     name="content"
                     placeholder="Escreva seu raciocínio, uma dúvida ou uma hipótese..."
                     required
@@ -167,14 +167,7 @@ const ActivityPage = async ({
                   {submission.attachmentName ?? "Abrir arquivo enviado"}
                 </a>
               ) : null}
-              <SingleFlightSubmit className="w-full" pendingLabel="Enviando…">
-                Enviar resposta
-              </SingleFlightSubmit>
-              <p className="text-muted-foreground text-xs leading-5">
-                O envio substitui a versão anterior e fica visível apenas para
-                você e para a equipe docente.
-              </p>
-            </SingleFlightForm>
+            </ActivitySubmissionForm>
             {activity.course && (
               <Button asChild className="mt-6 w-full" variant="ghost">
                 <Link href={`/aprender/cursos/${activity.course.slug}`}>

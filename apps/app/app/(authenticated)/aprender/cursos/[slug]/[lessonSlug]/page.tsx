@@ -109,7 +109,7 @@ const LessonPage = async ({ params }: LessonPageProperties) => {
       </div>
 
       <div className="grid gap-10 lg:grid-cols-[minmax(12rem,0.25fr)_minmax(0,1fr)] lg:items-start lg:gap-14">
-        <aside className="order-2 lg:sticky lg:top-24 lg:order-1">
+        <aside className="order-2 lg:sticky lg:top-32 lg:order-1">
           <div className="border-y py-5 lg:border-t-0">
             <p className="brand-eyebrow">Neste curso</p>
             <nav aria-label="Aulas do curso" className="mt-4 space-y-6">

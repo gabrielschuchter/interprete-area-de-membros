@@ -1,26 +1,23 @@
 import { Skeleton } from "@repo/design-system/components/ui/skeleton";
+import { LearningPageFrame } from "@/components/learning/learning-page-frame";
 
 const ActivitiesLoading = () => (
-  <main
-    className="mx-auto w-full max-w-[1280px] px-5 py-10 sm:px-8 lg:px-12 lg:py-16"
-    data-route-loading
-  >
-    <div className="max-w-3xl">
-      <Skeleton className="h-3 w-56" />
-      <Skeleton className="mt-6 h-20 w-full max-w-2xl" />
-      <Skeleton className="mt-6 h-5 w-full max-w-xl" />
-    </div>
-    <section className="mt-14 space-y-4">
-      {["one", "two", "three"].map((item) => (
-        <div className="paper-surface space-y-4 border p-6 sm:p-8" key={item}>
-          <Skeleton className="h-4 w-32" />
-          <Skeleton className="h-8 w-2/3" />
-          <Skeleton className="h-4 w-full max-w-2xl" />
-          <Skeleton className="h-10 w-36" />
-        </div>
-      ))}
-    </section>
-  </main>
+  <div data-route-loading>
+    <LearningPageFrame title="Atividades" variant="catalog">
+      <div className="activity-list">
+        <Skeleton className="h-12 w-48" />
+        {["one", "two", "three"].map((id) => (
+          <div className="activity-list-row" key={id}>
+            <Skeleton className="size-10 shrink-0" />
+            <div className="flex-1 space-y-3">
+              <Skeleton className="h-5 w-2/3" />
+              <Skeleton className="h-4 w-full" />
+            </div>
+            <Skeleton className="h-11 w-32" />
+          </div>
+        ))}
+      </div>
+    </LearningPageFrame>
+  </div>
 );
-
 export default ActivitiesLoading;

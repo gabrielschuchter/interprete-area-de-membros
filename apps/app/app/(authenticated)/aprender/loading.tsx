@@ -3,7 +3,7 @@ import { LearningPageFrame } from "@/components/learning/learning-page-frame";
 
 const LearningLoading = () => (
   <div data-route-loading>
-    <LearningPageFrame title="Aprender">
+    <LearningPageFrame title="Aprender" variant="catalog">
       <div className="grid gap-4 md:grid-cols-2">
         {["one", "two", "three", "four"].map((item) => (
           <div className="paper-surface space-y-4 border p-6" key={item}>

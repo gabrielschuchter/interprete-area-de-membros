@@ -1941,168 +1941,179 @@ function TimerFocusOverlay({
   setFocusMode: (open: boolean) => void;
 }) {
   return focusMode ? (
-    <div
-      aria-label="Modo foco"
-      aria-modal="true"
-      className="fixed inset-0 z-[70] grid place-items-center overflow-y-auto bg-[radial-gradient(ellipse_at_50%_25%,#3A0F28_0%,#1E0318_55%,#0E0109_100%)] p-6 text-[#F1EBE8]"
-      role="dialog"
+    <Dialog
+      onOpenChange={(open) => {
+        if (!open) {
+          exitFocusMode();
+        }
+      }}
+      open
     >
-      <div className="absolute inset-x-0 top-0 flex items-center justify-between p-5 sm:p-8">
-        <span className="font-display text-lg">Interprete.</span>
-        <Button
-          className="border-white/40 bg-transparent text-white hover:bg-white/10"
-          onClick={exitFocusMode}
-          type="button"
-          variant="outline"
-        >
-          Sair do foco
-        </Button>
-      </div>
-      <div className="w-full max-w-xl text-center">
-        <p className="text-white/60 text-xs uppercase tracking-[.2em]">
-          {state.active ? modeNames[state.active.mode] : "Modo foco"}
-        </p>
-        <div
-          className="relative mx-auto mt-8 grid aspect-square w-full max-w-[360px] place-items-center rounded-full border-[7px] border-white/15"
-          style={{
-            background: `conic-gradient(#E9C48E ${progress * 360}deg, rgba(241,235,232,.10) 0)`,
-          }}
-        >
-          <div className="grid aspect-square w-[calc(100%-14px)] place-items-center rounded-full bg-[#1B0619]">
-            <div>
-              <p className="font-display text-6xl tabular-nums sm:text-7xl">
-                {formatDuration(shownSeconds)}
-              </p>
-              <p className="mt-3 text-sm text-white/70">
-                {state.active?.title ||
-                  (state.active?.linkedResourceId
-                    ? "Sessão vinculada"
-                    : "Sem vínculo")}
-              </p>
-            </div>
-          </div>
-        </div>
-        <div
-          aria-label="Ciclos Pomodoro"
-          className="mt-7 flex justify-center gap-2"
-          role="img"
-        >
-          {Array.from(
-            { length: settingsDraft.longBreakEvery },
-            (_, cycleIndex) => cycleIndex + 1
-          ).map((cycleNumber) => (
-            <span
-              aria-hidden="true"
-              className={`size-2.5 rounded-full ${cycleNumber <= focusCycleProgress ? "bg-[#E9C48E]" : "bg-white/25"}`}
-              key={`pomodoro-cycle-${cycleNumber}`}
-            />
-          ))}
-        </div>
-        {phasePrompt ? (
-          <div
-            aria-live="assertive"
-            className="mt-6 rounded-xl border border-white/20 bg-white/10 p-4"
-            role="alert"
-          >
-            <p className="font-medium">
-              Foco concluído. Hora da pausa de{" "}
-              {Math.round(phasePrompt.durationSeconds / 60)} minutos.
-            </p>
-            <div className="mt-3 flex flex-wrap justify-center gap-2">
-              <Button
-                disabled={pending}
-                onClick={() =>
-                  startPomodoroPhase(
-                    phasePrompt.mode,
-                    phasePrompt.durationSeconds
-                  )
-                }
-                type="button"
-              >
-                Começar a pausa
-              </Button>
-              <Button
-                className="border-white/50 bg-transparent text-white hover:bg-white/10"
-                disabled={pending}
-                onClick={() =>
-                  startPomodoroPhase("FOCUS", settingsDraft.focusMinutes * 60)
-                }
-                type="button"
-                variant="outline"
-              >
-                Pular
-              </Button>
-            </div>
-          </div>
-        ) : null}
-        {alarmActive ? (
+      <DialogContent
+        className="timer-focus-dialog grid translate-x-0 translate-y-0 place-items-center overflow-y-auto bg-[radial-gradient(ellipse_at_50%_25%,#3A0F28_0%,#1E0318_55%,#0E0109_100%)] p-6 text-[#F1EBE8]"
+        showCloseButton={false}
+      >
+        <DialogTitle className="sr-only">Modo foco</DialogTitle>
+        <DialogDescription className="sr-only">
+          Seu cronômetro em tela inteira. A sessão continua ao sair do foco.
+        </DialogDescription>
+        <div className="absolute inset-x-0 top-0 flex items-center justify-between p-5 sm:p-8">
+          <span className="font-display text-lg">Interprete.</span>
           <Button
-            className="mt-6 border-white/40 bg-transparent text-white hover:bg-white/10"
-            onClick={stopAlarm}
+            className="border-white/40 bg-transparent text-white hover:bg-white/10"
+            onClick={exitFocusMode}
             type="button"
             variant="outline"
           >
-            Parar alarme
+            Sair do foco
           </Button>
-        ) : null}
-        <div className="mt-7 flex flex-wrap justify-center gap-3">
-          {state.active ? (
-            <>
+        </div>
+        <div className="w-full max-w-xl text-center">
+          <p className="text-white/60 text-xs uppercase tracking-[.2em]">
+            {state.active ? modeNames[state.active.mode] : "Modo foco"}
+          </p>
+          <div
+            className="relative mx-auto mt-8 grid aspect-square w-full max-w-[360px] place-items-center rounded-full border-[7px] border-white/15"
+            style={{
+              background: `conic-gradient(#E9C48E ${progress * 360}deg, rgba(241,235,232,.10) 0)`,
+            }}
+          >
+            <div className="grid aspect-square w-[calc(100%-14px)] place-items-center rounded-full bg-[#1B0619]">
+              <div>
+                <p className="font-display text-6xl tabular-nums sm:text-7xl">
+                  {formatDuration(shownSeconds)}
+                </p>
+                <p className="mt-3 text-sm text-white/70">
+                  {state.active?.title ||
+                    (state.active?.linkedResourceId
+                      ? "Sessão vinculada"
+                      : "Sem vínculo")}
+                </p>
+              </div>
+            </div>
+          </div>
+          <div
+            aria-label="Ciclos Pomodoro"
+            className="mt-7 flex justify-center gap-2"
+            role="img"
+          >
+            {Array.from(
+              { length: settingsDraft.longBreakEvery },
+              (_, cycleIndex) => cycleIndex + 1
+            ).map((cycleNumber) => (
+              <span
+                aria-hidden="true"
+                className={`size-2.5 rounded-full ${cycleNumber <= focusCycleProgress ? "bg-[#E9C48E]" : "bg-white/25"}`}
+                key={`pomodoro-cycle-${cycleNumber}`}
+              />
+            ))}
+          </div>
+          {phasePrompt ? (
+            <div
+              aria-live="assertive"
+              className="mt-6 rounded-xl border border-white/20 bg-white/10 p-4"
+              role="alert"
+            >
+              <p className="font-medium">
+                Foco concluído. Hora da pausa de{" "}
+                {Math.round(phasePrompt.durationSeconds / 60)} minutos.
+              </p>
+              <div className="mt-3 flex flex-wrap justify-center gap-2">
+                <Button
+                  disabled={pending}
+                  onClick={() =>
+                    startPomodoroPhase(
+                      phasePrompt.mode,
+                      phasePrompt.durationSeconds
+                    )
+                  }
+                  type="button"
+                >
+                  Começar a pausa
+                </Button>
+                <Button
+                  className="border-white/50 bg-transparent text-white hover:bg-white/10"
+                  disabled={pending}
+                  onClick={() =>
+                    startPomodoroPhase("FOCUS", settingsDraft.focusMinutes * 60)
+                  }
+                  type="button"
+                  variant="outline"
+                >
+                  Pular
+                </Button>
+              </div>
+            </div>
+          ) : null}
+          {alarmActive ? (
+            <Button
+              className="mt-6 border-white/40 bg-transparent text-white hover:bg-white/10"
+              onClick={stopAlarm}
+              type="button"
+              variant="outline"
+            >
+              Parar alarme
+            </Button>
+          ) : null}
+          <div className="mt-7 flex flex-wrap justify-center gap-3">
+            {state.active ? (
+              <>
+                <Button
+                  className="min-w-36 bg-[#8C1535] text-white hover:bg-[#6D102A]"
+                  onClick={() =>
+                    sendAction({
+                      action: state.active?.pausedAt ? "resume" : "pause",
+                    })
+                  }
+                  type="button"
+                >
+                  {state.active.pausedAt ? (
+                    <PlayIcon
+                      aria-hidden="true"
+                      className="mr-2 size-4 fill-current"
+                    />
+                  ) : (
+                    <PauseIcon aria-hidden="true" className="mr-2 size-4" />
+                  )}
+                  {state.active.pausedAt ? "Retomar" : "Pausar"}
+                </Button>
+                <Button
+                  className="border-white/50 bg-transparent text-white hover:bg-white/10"
+                  onClick={() => sendAction({ action: "stop" })}
+                  type="button"
+                  variant="outline"
+                >
+                  <SquareIcon aria-hidden="true" className="mr-2 size-4" />
+                  Encerrar
+                </Button>
+              </>
+            ) : (
               <Button
                 className="min-w-36 bg-[#8C1535] text-white hover:bg-[#6D102A]"
-                onClick={() =>
-                  sendAction({
-                    action: state.active?.pausedAt ? "resume" : "pause",
-                  })
-                }
+                onClick={startTimer}
                 type="button"
               >
-                {state.active.pausedAt ? (
-                  <PlayIcon
-                    aria-hidden="true"
-                    className="mr-2 size-4 fill-current"
-                  />
-                ) : (
-                  <PauseIcon aria-hidden="true" className="mr-2 size-4" />
-                )}
-                {state.active.pausedAt ? "Retomar" : "Pausar"}
+                <PlayIcon
+                  aria-hidden="true"
+                  className="mr-2 size-4 fill-current"
+                />
+                Começar
               </Button>
-              <Button
-                className="border-white/50 bg-transparent text-white hover:bg-white/10"
-                onClick={() => sendAction({ action: "stop" })}
-                type="button"
-                variant="outline"
-              >
-                <SquareIcon aria-hidden="true" className="mr-2 size-4" />
-                Encerrar
-              </Button>
-            </>
-          ) : (
-            <Button
-              className="min-w-36 bg-[#8C1535] text-white hover:bg-[#6D102A]"
-              onClick={startTimer}
-              type="button"
-            >
-              <PlayIcon
-                aria-hidden="true"
-                className="mr-2 size-4 fill-current"
-              />
-              Começar
-            </Button>
-          )}
+            )}
+          </div>
+          <button
+            className="mt-6 text-[#E9C48E] text-sm underline-offset-4 hover:underline"
+            onClick={() => {
+              setSettingsOpen(true);
+              setFocusMode(false);
+            }}
+            type="button"
+          >
+            Sons e avisos
+          </button>
         </div>
-        <button
-          className="mt-6 text-[#E9C48E] text-sm underline-offset-4 hover:underline"
-          onClick={() => {
-            setSettingsOpen(true);
-            setFocusMode(false);
-          }}
-          type="button"
-        >
-          Sons e avisos
-        </button>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   ) : null;
 }
 function TimerDialogs({
@@ -2830,29 +2841,24 @@ function TimerMainCard({
             </Button>
           </>
         ) : (
-          <>
-            <Button
-              className="h-12 min-w-40 rounded-md bg-[#8C1535] px-7 text-white hover:bg-[#6D102A]"
-              disabled={pending || Boolean(sessionReview)}
-              onClick={startTimer}
-              type="button"
-            >
-              <PlayIcon
-                aria-hidden="true"
-                className="mr-2 size-4 fill-current"
-              />
-              Começar
-            </Button>
-            <Button
-              className="h-12 rounded-md border-[#8C1535] px-6 text-[#8C1535]"
-              onClick={() => setFocusMode(true)}
-              type="button"
-              variant="outline"
-            >
-              Modo foco
-            </Button>
-          </>
+          <Button
+            className="h-12 min-w-40 rounded-md bg-[#8C1535] px-7 text-white hover:bg-[#6D102A]"
+            disabled={pending || Boolean(sessionReview)}
+            onClick={startTimer}
+            type="button"
+          >
+            <PlayIcon aria-hidden="true" className="mr-2 size-4 fill-current" />
+            Começar
+          </Button>
         )}
+        <Button
+          className="h-12 rounded-md border-[#8C1535] px-6 text-[#8C1535]"
+          onClick={() => setFocusMode(true)}
+          type="button"
+          variant="outline"
+        >
+          Modo foco
+        </Button>
       </div>
 
       {settingsPanel}

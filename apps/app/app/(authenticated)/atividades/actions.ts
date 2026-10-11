@@ -13,8 +13,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { env } from "@/env";
 import { canAccessPublishedActivity } from "@/lib/activities";
-import { auth } from "@/lib/auth";
-import { requireStaff } from "@/lib/authorization";
+import { activitySubmissionInput } from "@/lib/activity-submission-input";
+import { requireOnboardedMemberId, requireStaff } from "@/lib/authorization";
 import { evaluateMemberBadges } from "@/lib/badges";
 import {
   enqueueLearningAssignmentNotifications,
@@ -78,13 +78,6 @@ const ensureActivityAssignments = async ({
   );
 };
 
-const allowedAttachmentTypes = new Set([
-  "application/pdf",
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "text/plain",
-]);
 const attachmentExtensions: Record<string, string> = {
   "application/pdf": "pdf",
   "image/jpeg": "jpg",
@@ -92,9 +85,6 @@ const attachmentExtensions: Record<string, string> = {
   "image/webp": "webp",
   "text/plain": "txt",
 };
-
-const getSubmissionAttachment = (entry: FormDataEntryValue | null) =>
-  entry instanceof File && entry.size > 0 ? entry : null;
 
 const uploadSubmissionAttachment = async ({
   activityId,
@@ -170,18 +160,24 @@ const validActivityRelations = async (
   return true;
 };
 
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: submission handling intentionally keeps validation, ownership, file checks, persistence, and cleanup in one server-side boundary.
-export const submitActivity = async (formData: FormData) => {
-  const { userId } = await auth();
+export interface ActivitySubmissionState {
+  readonly message?: string;
+  readonly ok: boolean;
+}
+export const submitActivity = async (
+  _previous: ActivitySubmissionState,
+  formData: FormData
+): Promise<ActivitySubmissionState> => {
+  const userId = await requireOnboardedMemberId();
   const activityId = formData.get("activityId");
   const content = formData.get("content");
 
-  if (
-    !userId ||
-    typeof activityId !== "string" ||
-    typeof content !== "string"
-  ) {
-    return;
+  if (typeof activityId !== "string") {
+    return {
+      ok: false,
+      message:
+        "Não foi possível enviar. Confira os campos e seu acesso à atividade.",
+    };
   }
 
   await consumeMutationRateLimit({
@@ -189,21 +185,19 @@ export const submitActivity = async (formData: FormData) => {
     memberId: userId,
   });
 
-  const normalizedContent = content.trim();
-  const validAttachment = getSubmissionAttachment(formData.get("attachment"));
-
-  if (
-    ((!normalizedContent || normalizedContent.length > 40_000) &&
-      !validAttachment) ||
-    (validAttachment &&
-      (!allowedAttachmentTypes.has(validAttachment.type) ||
-        validAttachment.size > 10 * 1024 * 1024))
-  ) {
-    return;
+  const input = activitySubmissionInput(content, formData.get("attachment"));
+  if (!input.ok) {
+    return input;
   }
+  const normalizedContent = input.text;
+  const validAttachment = input.file;
 
   if (!(await canAccessPublishedActivity(activityId, userId))) {
-    return;
+    return {
+      ok: false,
+      message:
+        "Não foi possível enviar. Confira os campos e seu acesso à atividade.",
+    };
   }
 
   const activity = await database.activity.findFirst({
@@ -241,7 +235,11 @@ export const submitActivity = async (formData: FormData) => {
   });
 
   if (!activity) {
-    return;
+    return {
+      ok: false,
+      message:
+        "Não foi possível enviar. Confira os campos e seu acesso à atividade.",
+    };
   }
   const requiresText =
     activity.deliveryKind === ActivityDeliveryKind.TEXT ||
@@ -253,7 +251,11 @@ export const submitActivity = async (formData: FormData) => {
     (requiresText && !normalizedContent) ||
     (requiresFile && !validAttachment)
   ) {
-    return;
+    return {
+      ok: false,
+      message:
+        "Não foi possível enviar. Confira os campos e seu acesso à atividade.",
+    };
   }
 
   if (
@@ -277,7 +279,11 @@ export const submitActivity = async (formData: FormData) => {
       })
     : null;
   if (validAttachment && !uploadedAttachment) {
-    return;
+    return {
+      ok: false,
+      message:
+        "Não foi possível enviar. Confira os campos e seu acesso à atividade.",
+    };
   }
   const attachmentPath =
     uploadedAttachment?.attachmentPath ?? previous?.attachmentPath ?? null;
@@ -324,6 +330,8 @@ export const submitActivity = async (formData: FormData) => {
 
   revalidatePath("/atividades");
   revalidatePath(`/atividades/${activity.slug}`);
+  revalidatePath("/estudar");
+  return { ok: true, message: "Resposta enviada e salva." };
 };
 
 export const saveFeedback = async (formData: FormData) => {

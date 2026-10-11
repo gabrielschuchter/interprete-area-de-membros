@@ -1,9 +1,8 @@
 import { tracePerformance } from "@repo/observability/performance";
-import {
-  LearningContentRail,
-  type LearningRailCard,
-} from "@/components/learning/learning-content-rail";
+import { LearningCatalog } from "@/components/learning/learning-catalog";
+import type { LearningRailCard } from "@/components/learning/learning-content-rail";
 import { LearningPageFrame } from "@/components/learning/learning-page-frame";
+import { requireOnboardedMemberId } from "@/lib/authorization";
 import {
   collectionItemHref,
   collectionItemLabel,
@@ -12,7 +11,6 @@ import {
 import {
   getMemberCourseProgress,
   getPublishedLearningPaths,
-  requireMemberId,
 } from "@/lib/learning";
 import { getReceivedLearningAssignments } from "@/lib/learning-assignments";
 import { getMemberLearningBookmarkKeys } from "@/lib/library";
@@ -158,7 +156,7 @@ const toCollectionCard = (
 };
 
 const LearnPage = async () => {
-  const memberId = await requireMemberId();
+  const memberId = await requireOnboardedMemberId();
   const [learningData, assignments, continueData, bookmarkKeys] =
     await tracePerformance("member.route.learn.primary-data", () => {
       const pathsPromise = getPublishedLearningPaths(memberId);
@@ -278,8 +276,11 @@ const LearnPage = async () => {
       },
       coverUrl: course.coverUrl ?? path.coverUrl,
       description: course.description ?? path.description,
-      href: `/aprender/cursos/${course.slug}`,
-      label: "Trilha",
+      href:
+        course.progress.percentage > 0 && course.progress.percentage < 100
+          ? `/aprender/cursos/${course.slug}/${course.modules.flatMap((module) => module.lessons).find((lesson) => !lesson.progress.some((progress) => progress.status === "COMPLETED"))?.slug ?? ""}`
+          : `/aprender/cursos/${course.slug}`,
+      label: "Curso",
       meta: `${course.progress.completedLessons}/${course.progress.totalLessons} aulas · ${course.progress.percentage}%`,
       progress: course.progress.percentage,
       title: course.title,
@@ -312,31 +313,48 @@ const LearnPage = async () => {
 
   return (
     <LearningPageFrame
-      description="Aulas, gravações e materiais organizados para você continuar de onde parou."
-      eyebrow="Sua área de aprendizagem"
+      description="Suas aulas, trilhas e gravações."
+      eyebrow="Estudar · Aprender"
       title="Aprender"
+      variant="catalog"
     >
       <div
         className="space-y-10 sm:space-y-12"
         data-route-content-ready="learn"
       >
-        <LearningContentRail
+        <LearningCatalog
           cards={assignmentCards}
-          description="Conteúdos enviados pela equipe, com prazos e andamento acompanhados na sua conta."
           headingId="assigned-learning-title"
           title="Enviados para você"
         />
-        <LearningContentRail
+        <LearningCatalog
           cards={resumeCards}
-          description="Retome uma aula ou encontro a partir do ponto salvo."
           headingId="resume-learning-title"
           title="Continue assistindo"
         />
-        {pathRails.map((rail) => (
-          <LearningContentRail key={rail.headingId} {...rail} />
-        ))}
+        <LearningCatalog
+          cards={pathRails
+            .flatMap((rail) => rail.cards)
+            .filter((card) => card.progress > 0 && card.progress < 100)}
+          headingId="learning-in-progress"
+          title="Em andamento"
+        />
+        <LearningCatalog
+          cards={pathRails
+            .flatMap((rail) => rail.cards)
+            .filter((card) => card.progress === 0)}
+          headingId="learning-available"
+          title="Disponíveis"
+        />
+        <LearningCatalog
+          cards={pathRails
+            .flatMap((rail) => rail.cards)
+            .filter((card) => card.progress === 100)}
+          headingId="learning-completed"
+          title="Concluídos"
+        />
         {collectionRails.map((rail) => (
-          <LearningContentRail key={rail.headingId} {...rail} />
+          <LearningCatalog key={rail.headingId} {...rail} />
         ))}
         {!hasContent && (
           <section

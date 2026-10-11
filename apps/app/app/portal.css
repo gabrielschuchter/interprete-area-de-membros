@@ -813,3 +813,15 @@ body:has(.portal) [data-slot="sheet-overlay"] {
     height: 44px;
   }
 }
+
+/* Full-screen focus uses the shared modal focus trap and scroll lock. */
+.timer-focus-dialog[data-slot="dialog-content"] {
+  inset: 0;
+  z-index: 50;
+  width: 100%;
+  max-width: none;
+  height: 100dvh;
+  border: 0;
+  border-radius: 0;
+  transform: none;
+}

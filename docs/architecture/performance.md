@@ -573,3 +573,9 @@ undo were exercised independently. A due reminder crossed the durable outbox
 and appeared in the existing notification panel. QA database SQL sessions were
 aligned to UTC, matching GREEN, while member-facing timezone remains editable.
 Production percentiles and physical-device acceptance remain open.
+
+### Visual QA cycle — 11/10/2026
+
+Estudar now reads the onboarded identity and bounded authorized learning/activity/resume projections in parallel; it no longer loads the metrics dashboard, provisions a profile or reads full progress trees. Aprender keeps its existing authorized catalog projection; activity filters use URL state and the existing member-scoped server query. Submission feedback acknowledges persistence only after the transaction; a client lock prevents duplicate submits. The timer focus dialog uses the shared modal primitives for focus trapping and Escape, with explicit viewport positioning and a confirmation above it. No shared identity cache or reduced-motion branch was added.
+
+All six root gates passed after these changes: 406 app tests, 17 domain, 9 API and 30 script tests. Gzip initial JS: learning 206.5 KiB, planner 220.9 KiB, tools 219.9 KiB, within 225 KiB. Build exited 0; the existing external-cache BUILD_ID warning remains. Local Chrome tested the three priority routes at six widths (320/390/768/820/1024/1440), plus 22 member routes at three widths: no horizontal overflow or JavaScript exceptions in those visits. Persisted lesson completion, course bookmark, activity text submission and filter reload were exercised. These visits are not an exhaustive interaction/role matrix, latency percentiles, physical-device evidence or pixel-perfect acceptance.

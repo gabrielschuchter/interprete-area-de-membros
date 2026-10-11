@@ -1,5 +1,6 @@
 @import "tailwindcss" source(none);
 @import "@repo/design-system/styles/globals.css";
+@import "./study.css";
 @source "../**/*.{ts,tsx}";
 
 @layer components {

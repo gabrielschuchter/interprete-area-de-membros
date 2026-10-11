@@ -7,7 +7,10 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { BrandWordmark } from "@/components/brand/brand-mark";
 import { MemberHeaderControls } from "./member-header-controls";
-import { memberBreadcrumbForPathname } from "./member-section";
+import {
+  memberBreadcrumbForPathname,
+  memberSectionForPathname,
+} from "./member-section";
 
 interface MemberHeaderProperties {
   readonly chromeVisible?: boolean;
@@ -16,6 +19,22 @@ interface MemberHeaderProperties {
   readonly transitionActive?: boolean;
   readonly transitionMode?: "corridor" | "direct";
 }
+
+const mobileTitleForPath = (pathname: string) => {
+  if (pathname === "/estudar") {
+    return "Estudar";
+  }
+  if (pathname === "/planejamento") {
+    return "Planejamento";
+  }
+  if (pathname === "/ferramentas") {
+    return "Ferramentas";
+  }
+  if (pathname.startsWith("/aprender") || pathname.startsWith("/atividades")) {
+    return memberSectionForPathname(pathname);
+  }
+  return null;
+};
 
 export const MemberHeader = ({
   chromeVisible = true,
@@ -58,7 +77,7 @@ export const MemberHeader = ({
     return null;
   })();
   const mobileShellHeaderHidden = isSessionRoute || isFavoriteAttempt;
-  const mobileShellTitle = pathname === "/ferramentas" ? "Ferramentas" : null;
+  const mobileShellTitle = mobileTitleForPath(pathname);
 
   if (pathname === "/" || !chromeVisible) {
     return null;
@@ -66,7 +85,7 @@ export const MemberHeader = ({
 
   return (
     <header
-      className={`${isProfileSubpage || mobileShellHeaderHidden ? "hidden md:flex" : "flex"} ${mobileNoteEditorHeader ? "member-note-editor-header" : ""} member-shell-header sticky top-0 z-20 ${mobileExerciseHeader ? "h-14 min-h-14 md:h-16 md:min-h-16" : "h-14 min-h-14"} shrink-0 items-center gap-3 border-border/80 border-b bg-background/95 px-4 backdrop-blur-sm md:px-8`}
+      className={`${isProfileSubpage || mobileShellHeaderHidden ? "hidden md:flex" : "flex"} ${mobileNoteEditorHeader ? "member-note-editor-header" : ""} member-shell-header sticky top-0 z-20 h-14 min-h-14 shrink-0 items-center gap-3 border-border/80 border-b bg-background/95 px-4 backdrop-blur-sm md:px-8`}
       data-chrome-visible={String(transitionActive && chromeVisible)}
       data-note-editor={String(mobileNoteEditorHeader)}
       data-transition-mode={transitionMode}

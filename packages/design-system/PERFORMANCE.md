@@ -114,3 +114,11 @@ on a server request.
 - Portal transition hiding applies only to internal route containers. The portal itself remains visible while chrome is hidden. Keep the approved corridor timings and route-focus behavior.
 - Notes and Community share TipTap state, serialization, links and media primitives while retaining their separate approved toolbars. Note-only extensions load on demand; TableKit supplies the complete table schema.
 - The direct product decision removes reduced-motion branches; do not reintroduce them through upstream merges.
+
+## Study composition and modal QA — 11/10/2026
+
+- Estudar follows the handoff's next-step composition rather than metric cards. Keep its content narrow, its corridor illustration static, and authorized content visible immediately.
+- Catalog and activity rows preserve database-driven availability, real progress and URL filters. Mobile catalog headings remain available to assistive technology.
+- Sticky lesson/activity panels clear the full member header. Exercise subnavigation uses the same header height at all breakpoints.
+- Fullscreen timer focus uses the shared Dialog with explicit zero translation; exit confirmation must appear above it and remain keyboard reachable. Keep focus mode available during an active session.
+- Local viewport checks and bundle gates passed; device, full keyboard/screen-reader and percentile acceptance remain open.
