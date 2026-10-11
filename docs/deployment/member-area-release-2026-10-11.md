@@ -19,3 +19,7 @@ Produção: timer privado controlado persistiu iniciar/reload/pausar/retomar/reg
 ## Primeiro ciclo publicado
 
 Commit f1d8fb8; app dpl_JECLu4D6gzUsrF8ewfEUG1Np3KjY (READY), alias canônico atualizado explicitamente. A CLI perdeu a conexão durante a espera, mas inspect confirmou READY antes da troca do alias. QA autenticado confirmou composição/rotas e filtro. Captura de tela pela extensão Edge falhou por timeout; não considerar comparação visual de produção concluída. Uma nota privada de QA confirmou autosave e reload. Console encontrou hidratação de datas (React 418); correção de fuso em andamento com novo ciclo de gates.
+
+## Correção de fuso publicada
+
+Commit f83f521; app dpl_BvkxycmfzvTeXqqgqqRj43z4eUzX, READY, alias canônico atualizado. Saúde app/API 200 em gru1, GREEN saudável, cron não autorizado 401. Reload autenticado de Notas preservou conteúdo e horário sem novo React 418 no intervalo observado. O ensaio privado de modo foco foi interrompido pela troca humana de conta; somente o timer identificado como QA desta execução foi encerrado/registrado pelo domínio com Prisma, sem exclusão. Não contar esse encerramento como prova de clique final no navegador. Sidebar publicada com defeito reproduzido; correção seguinte passou gates e aguarda deployment.

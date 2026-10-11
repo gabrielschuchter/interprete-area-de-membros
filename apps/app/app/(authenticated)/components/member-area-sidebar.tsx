@@ -161,10 +161,13 @@ export const MemberAreaSidebar = ({
       setTabletDrawer(isTablet);
 
       if (needsDrawer) {
-        previousSidebarOpen.current ??= sidebarOpen;
-        if (sidebarOpen) {
-          setSidebarOpen(false);
+        // Collapse only when entering drawer mode. Opening the menu changes
+        // sidebarOpen too and must not immediately close the user's menu.
+        if (previousSidebarOpen.current !== null) {
+          return;
         }
+        previousSidebarOpen.current = sidebarOpen;
+        setSidebarOpen(false);
         if (portalMode) {
           setOpenMobile(false);
         }

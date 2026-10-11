@@ -124,3 +124,5 @@ on a server request.
 - Local viewport checks and bundle gates passed; device, full keyboard/screen-reader and percentile acceptance remain open.
 
 - Dates rendered on both server and client must use an explicit member timezone and the same reference instant for relative labels. Never rely on the machine timezone for initial note rows or timer history.
+
+- Drawer mode initialization must not undo user toggles. Save/restore the previous desktop preference on mode entry/exit, and test opening/reopening at portal and tablet breakpoints. Background browsers can pause CSS animation clocks; bring the QA browser to the foreground before measuring a settled frame instead of disabling motion.
