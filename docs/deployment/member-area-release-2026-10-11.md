@@ -23,3 +23,7 @@ Commit f1d8fb8; app dpl_JECLu4D6gzUsrF8ewfEUG1Np3KjY (READY), alias canônico at
 ## Correção de fuso publicada
 
 Commit f83f521; app dpl_BvkxycmfzvTeXqqgqqRj43z4eUzX, READY, alias canônico atualizado. Saúde app/API 200 em gru1, GREEN saudável, cron não autorizado 401. Reload autenticado de Notas preservou conteúdo e horário sem novo React 418 no intervalo observado. O ensaio privado de modo foco foi interrompido pela troca humana de conta; somente o timer identificado como QA desta execução foi encerrado/registrado pelo domínio com Prisma, sem exclusão. Não contar esse encerramento como prova de clique final no navegador. Sidebar publicada com defeito reproduzido; correção seguinte passou gates e aguarda deployment.
+
+## Sidebar publicada
+
+Commit f3e219f; app dpl_6Dr5JS8dq11gTtK7o4R4Zy1jLWL9 READY; alias canônico atualizado explicitamente. A sessão staff publicada confirmou menu estável aberto e navegação até Minhas gravações. Ajuste adicional de tooltip/Escape mobile reproduzido e corrigido localmente; aguardando gates/publicação. A matriz integral permanece aberta.

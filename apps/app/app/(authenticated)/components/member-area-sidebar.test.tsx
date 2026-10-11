@@ -2,7 +2,14 @@ import {
   SidebarProvider,
   useSidebar,
 } from "@repo/design-system/components/ui/sidebar";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { MemberAreaSidebar } from "./member-area-sidebar";
 
@@ -21,10 +28,17 @@ vi.mock("./intent-link", () => ({
   IntentLink: ({
     children,
     href,
+    onNavigationStart: _onNavigationStart,
+    ...props
   }: {
     children: React.ReactNode;
     href: string;
-  }) => <a href={href}>{children}</a>,
+    onNavigationStart?: () => void;
+  }) => (
+    <a href={href} {...props}>
+      {children}
+    </a>
+  ),
 }));
 
 function Controls() {
@@ -67,6 +81,7 @@ const setup = () => {
 };
 afterEach(() => {
   cleanup();
+  vi.unstubAllGlobals();
   viewport.tablet = false;
   viewport.mobile = false;
   Object.defineProperty(window, "matchMedia", {
@@ -75,6 +90,30 @@ afterEach(() => {
   });
 });
 describe("member sidebar drawer entry", () => {
+  it("closes the mobile drawer with one Escape after focusing a menu link", async () => {
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        observe = vi.fn();
+        unobserve = vi.fn();
+        disconnect = vi.fn();
+      }
+    );
+    viewport.mobile = true;
+    viewport.tablet = true;
+    setup();
+    render(content(true));
+    fireEvent.click(screen.getByRole("button", { name: "Toggle QA" }));
+    const link = screen.getByRole("link", { name: "Estudar" });
+    await act(async () => {
+      link.focus();
+      await Promise.resolve();
+    });
+    fireEvent.keyDown(link, { key: "Escape" });
+    await waitFor(() =>
+      expect(screen.getByTestId("state").textContent).toBe("false")
+    );
+  });
   it("allows a desktop portal menu to stay open, close and reopen", () => {
     setup();
     render(content(true));
