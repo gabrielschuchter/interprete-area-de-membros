@@ -98,7 +98,7 @@ const LearningRailCardTarget = ({
   ) : (
     <IntentLink
       aria-label={ariaLabel}
-      className="relative block overflow-hidden rounded-sm border bg-brand-depth text-primary-foreground shadow-[var(--shadow-paper)] outline-none transition-transform duration-300 hover:-translate-y-1 focus-visible:ring-2 focus-visible:ring-brand-action focus-visible:ring-offset-2 motion-reduce:transition-none"
+      className="relative block overflow-hidden rounded-sm border bg-brand-depth text-primary-foreground shadow-[var(--shadow-paper)] outline-none transition-transform duration-300 hover:-translate-y-1 focus-visible:ring-2 focus-visible:ring-brand-action focus-visible:ring-offset-2"
       href={href}
     >
       {children}
@@ -114,7 +114,7 @@ const OverlayDescription = ({
 }) =>
   description ? (
     <p
-      className={`mt-2 line-clamp-3 hidden text-primary-foreground/90 text-sm leading-5 transition-[max-height,opacity] duration-300 motion-reduce:transition-none ${
+      className={`mt-2 line-clamp-3 hidden text-primary-foreground/90 text-sm leading-5 transition-[max-height,opacity] duration-300 ${
         revealOnDesktop
           ? "max-h-20 opacity-100 lg:block"
           : "max-h-0 opacity-0 group-focus-within:max-h-20 group-focus-within:opacity-100 group-hover:max-h-20 group-hover:opacity-100 lg:block"
@@ -165,7 +165,7 @@ const LearningRailCardView = ({
             {imageSource ? (
               <Image
                 alt=""
-                className="object-cover transition-transform duration-500 group-focus-within:scale-[1.04] group-hover:scale-[1.04] motion-reduce:transition-none"
+                className="object-cover transition-transform duration-500 group-focus-within:scale-[1.04] group-hover:scale-[1.04]"
                 fill
                 loading="lazy"
                 onError={() =>
@@ -180,7 +180,7 @@ const LearningRailCardView = ({
             ) : (
               <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_70%_20%,rgba(191,115,143,0.34),transparent_48%),linear-gradient(135deg,rgba(91,13,61,0.96),rgba(31,24,30,0.96))]" />
             )}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-black/10 opacity-90 transition-opacity duration-300 group-focus-within:opacity-100 group-hover:opacity-100 motion-reduce:transition-none" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-black/10 opacity-90 transition-opacity duration-300 group-focus-within:opacity-100 group-hover:opacity-100" />
             <div className="absolute top-4 left-4 z-0 text-white/25">
               {card.label === "Gravação" ? (
                 <PlayIcon aria-hidden="true" className="size-8" />
@@ -234,7 +234,7 @@ const LearningRailCardView = ({
                 ) : (
                   <ArrowRightIcon
                     aria-hidden="true"
-                    className="size-4 transition-transform group-focus-within:translate-x-1 group-hover:translate-x-1 motion-reduce:transition-none"
+                    className="size-4 transition-transform group-focus-within:translate-x-1 group-hover:translate-x-1"
                   />
                 )}
               </span>
@@ -320,10 +320,8 @@ export const LearningContentRail = ({
       return;
     }
 
-    const reduceMotion =
-      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
     viewport.scrollBy({
-      behavior: reduceMotion ? "auto" : "smooth",
+      behavior: "smooth",
       left: direction * viewport.clientWidth * 0.82,
     });
   }, []);
@@ -397,7 +395,7 @@ export const LearningContentRail = ({
           <Button
             aria-controls={`${headingId}-cards`}
             aria-label={`Mostrar conteúdos anteriores em ${title}`}
-            className="learning-rail-arrow absolute top-1/2 left-1 z-20 size-11 -translate-y-1/2 rounded-full border bg-background/95 shadow-lg backdrop-blur-sm transition-opacity motion-reduce:transition-none"
+            className="learning-rail-arrow absolute top-1/2 left-1 z-20 size-11 -translate-y-1/2 rounded-full border bg-background/95 shadow-lg backdrop-blur-sm transition-opacity"
             onClick={() => scroll(-1)}
             size="icon"
             type="button"
@@ -410,7 +408,7 @@ export const LearningContentRail = ({
           <Button
             aria-controls={`${headingId}-cards`}
             aria-label={`Mostrar próximos conteúdos em ${title}`}
-            className="learning-rail-arrow absolute top-1/2 right-1 z-20 size-11 -translate-y-1/2 rounded-full border bg-background/95 shadow-lg backdrop-blur-sm transition-opacity motion-reduce:transition-none"
+            className="learning-rail-arrow absolute top-1/2 right-1 z-20 size-11 -translate-y-1/2 rounded-full border bg-background/95 shadow-lg backdrop-blur-sm transition-opacity"
             onClick={() => scroll(1)}
             size="icon"
             type="button"

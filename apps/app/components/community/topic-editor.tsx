@@ -2,22 +2,29 @@
 
 import { Button } from "@repo/design-system/components/ui/button";
 import { Input } from "@repo/design-system/components/ui/input";
-import type { JSONContent } from "@tiptap/core";
+import type { Editor, Extensions, JSONContent } from "@tiptap/core";
 import Image from "@tiptap/extension-image";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import {
   BoldIcon,
   Code2Icon,
+  Columns3Icon,
   FileIcon,
   Heading2Icon,
+  HighlighterIcon,
   ImageIcon,
   ItalicIcon,
   LinkIcon,
+  ListChecksIcon,
   ListIcon,
   ListOrderedIcon,
   MinusIcon,
   QuoteIcon,
+  Rows3Icon,
+  TableIcon,
+  Trash2Icon,
+  Undo2Icon,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -35,6 +42,7 @@ import {
 import { MentionNode } from "./mention-extension";
 
 const mentionQueryPattern = /(?:^|\s)@([a-z0-9-]{0,30})$/i;
+const noteSlashQueryPattern = /(?:^|\s)\/([\p{L}\p{N} ]{0,28})$/u;
 
 const emptyDocument: JSONContent = {
   type: "doc",
@@ -73,10 +81,14 @@ const groupMentionSummary = (value: JSONContent) => {
 };
 
 interface TopicEditorProperties {
+  readonly allowImageUploads?: boolean;
   readonly ariaLabel?: string;
   readonly defaultValue?: JSONContent;
   readonly enableCommunityMedia?: boolean;
+  readonly enableImages?: boolean;
+  readonly enableMentions?: boolean;
   readonly name?: string;
+  readonly noteMode?: boolean;
   readonly onDocumentChange?: (value: JSONContent) => void;
   readonly onEditorBlur?: () => void;
   readonly onGroupMentionChange?: (
@@ -102,17 +114,140 @@ interface MentionState {
   readonly to: number;
 }
 
+interface NoteSlashState {
+  readonly from: number;
+  readonly query: string;
+  readonly to: number;
+}
+
+interface NoteBlockCommand {
+  readonly id: string;
+  readonly keywords: string;
+  readonly label: string;
+  readonly run: (editor: Editor) => void;
+}
+
+const noteBlockCommands: readonly NoteBlockCommand[] = [
+  {
+    id: "paragraph",
+    label: "Parágrafo",
+    keywords: "paragrafo texto normal",
+    run: (editor) => editor.chain().focus().setParagraph().run(),
+  },
+  {
+    id: "heading2",
+    label: "Título 2",
+    keywords: "titulo cabeçalho heading h2",
+    run: (editor) => editor.chain().focus().toggleHeading({ level: 2 }).run(),
+  },
+  {
+    id: "heading3",
+    label: "Título 3",
+    keywords: "subtitulo subtítulo heading h3",
+    run: (editor) => editor.chain().focus().toggleHeading({ level: 3 }).run(),
+  },
+  {
+    id: "bulletList",
+    label: "Lista com marcadores",
+    keywords: "lista marcadores bullets",
+    run: (editor) => editor.chain().focus().toggleBulletList().run(),
+  },
+  {
+    id: "orderedList",
+    label: "Lista numerada",
+    keywords: "lista numerada ordem",
+    run: (editor) => editor.chain().focus().toggleOrderedList().run(),
+  },
+  {
+    id: "taskList",
+    label: "Lista de tarefas",
+    keywords: "lista tarefas checklist checkbox",
+    run: (editor) => editor.chain().focus().toggleTaskList().run(),
+  },
+  {
+    id: "table",
+    label: "Tabela 3 por 3",
+    keywords: "tabela grade linhas colunas",
+    run: (editor) =>
+      editor
+        .chain()
+        .focus()
+        .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
+        .run(),
+  },
+  {
+    id: "blockquote",
+    label: "Citação",
+    keywords: "citacao quote",
+    run: (editor) => editor.chain().focus().toggleBlockquote().run(),
+  },
+  {
+    id: "codeBlock",
+    label: "Bloco de código",
+    keywords: "codigo code",
+    run: (editor) => editor.chain().focus().toggleCodeBlock().run(),
+  },
+  {
+    id: "divider",
+    label: "Divisor",
+    keywords: "linha horizontal separador",
+    run: (editor) => editor.chain().focus().setHorizontalRule().run(),
+  },
+];
+
+export function TopicEditor(properties: TopicEditorProperties) {
+  if (properties.noteMode) {
+    return <NoteModeTopicEditor {...properties} />;
+  }
+  return <TopicEditorCore {...properties} noteExtensions={[]} />;
+}
+
+function NoteModeTopicEditor(properties: TopicEditorProperties) {
+  const [noteExtensions, setNoteExtensions] = useState<Extensions | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    import("./note-editor-extensions").then(({ noteEditorExtensions }) => {
+      if (active) {
+        setNoteExtensions(noteEditorExtensions);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  if (!noteExtensions) {
+    return (
+      <div
+        aria-busy="true"
+        aria-live="polite"
+        className="grid min-h-64 place-items-center rounded-sm border border-[#E2D6D1] bg-[#FBF8F5] text-[#7A5A69] text-sm"
+      >
+        Carregando editor…
+      </div>
+    );
+  }
+
+  return <TopicEditorCore {...properties} noteExtensions={noteExtensions} />;
+}
+
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: the shared editor coordinates formatting, mentions, image uploads, and community-only media controls.
-export function TopicEditor({
+function TopicEditorCore({
   defaultValue,
   enableCommunityMedia = false,
+  enableImages = true,
+  enableMentions = true,
+  noteMode = false,
+  allowImageUploads = !noteMode,
+  noteExtensions,
   name = "contentJson",
   onDocumentChange,
   onEditorBlur,
   onGroupMentionChange,
   onUploadStateChange,
   ariaLabel = "Conteúdo do tópico",
-}: TopicEditorProperties) {
+}: TopicEditorProperties & { readonly noteExtensions: Extensions }) {
   const [value, setValue] = useState<JSONContent>(
     defaultValue ?? emptyDocument
   );
@@ -128,7 +263,10 @@ export function TopicEditor({
   >([]);
   const [selectedMentionIndex, setSelectedMentionIndex] = useState(0);
   const [groupMentionConfirmed, setGroupMentionConfirmed] = useState(false);
+  const [slashState, setSlashState] = useState<NoteSlashState | null>(null);
+  const [selectedSlashIndex, setSelectedSlashIndex] = useState(0);
   const mentionStateRef = useRef<MentionState | null>(null);
+  const slashStateRef = useRef<NoteSlashState | null>(null);
   const mentionCandidatesRef = useRef<MentionCandidate[]>([]);
   const groupMentionConfirmedRef = useRef(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -136,6 +274,111 @@ export function TopicEditor({
   const pendingPreviewUrls = useRef(new Set<string>());
   const pendingFileKeys = useRef(new Set<string>());
   const pendingUploads = useRef(0);
+  const handleSlashEditorKeyDown = (
+    view: Editor["view"],
+    event: KeyboardEvent,
+    currentEditor: Editor | null
+  ) => {
+    const currentSlashState = slashStateRef.current;
+    if (!(noteMode && currentSlashState)) {
+      return false;
+    }
+    const slashMatches = noteBlockCommands.filter((command) =>
+      `${command.label} ${command.keywords}`
+        .toLocaleLowerCase("pt-BR")
+        .includes(currentSlashState.query.toLocaleLowerCase("pt-BR"))
+    );
+    if (slashMatches.length === 0) {
+      return false;
+    }
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      setSelectedSlashIndex((current) => {
+        const offset = event.key === "ArrowDown" ? 1 : -1;
+        return (current + offset + slashMatches.length) % slashMatches.length;
+      });
+      return true;
+    }
+    if (event.key === "Escape") {
+      event.preventDefault();
+      slashStateRef.current = null;
+      setSlashState(null);
+      return true;
+    }
+    if (event.key !== "Enter" && event.key !== "Tab") {
+      return false;
+    }
+    event.preventDefault();
+    const command = slashMatches[selectedSlashIndex] ?? slashMatches[0];
+    if (!command) {
+      return false;
+    }
+    view.dispatch(
+      view.state.tr.delete(currentSlashState.from, currentSlashState.to)
+    );
+    currentEditor && command.run(currentEditor);
+    slashStateRef.current = null;
+    setSlashState(null);
+    return true;
+  };
+  const resetGroupMentionConfirmation = (candidate: MentionCandidate) => {
+    if (candidate.kind !== "GROUP") {
+      return;
+    }
+    groupMentionConfirmedRef.current = false;
+    setGroupMentionConfirmed(false);
+  };
+  const handleMentionEditorKeyDown = (
+    view: Editor["view"],
+    event: KeyboardEvent
+  ) => {
+    const currentState = mentionStateRef.current;
+    const candidates = mentionCandidatesRef.current;
+    if (!(currentState && candidates.length > 0)) {
+      return false;
+    }
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      setSelectedMentionIndex((current) => {
+        const offset = event.key === "ArrowDown" ? 1 : -1;
+        return (current + offset + candidates.length) % candidates.length;
+      });
+      return true;
+    }
+    if (event.key === "Escape") {
+      event.preventDefault();
+      mentionStateRef.current = null;
+      setMentionState(null);
+      return true;
+    }
+    if (event.key !== "Enter" && event.key !== "Tab") {
+      return false;
+    }
+    event.preventDefault();
+    const candidate = candidates[selectedMentionIndex] ?? candidates[0];
+    if (!candidate) {
+      return false;
+    }
+    const mention = view.state.schema.nodes.mention?.create({
+      id: candidate.id,
+      kind: candidate.kind === "GROUP" ? "GROUP" : "USER",
+      recipientCount: candidate.recipientCount,
+      username: candidate.username,
+      label: candidate.displayName ?? candidate.username,
+    });
+    if (!mention) {
+      return false;
+    }
+    resetGroupMentionConfirmation(candidate);
+    view.dispatch(
+      view.state.tr
+        .replaceWith(currentState.from, currentState.to, mention)
+        .insertText(" ")
+    );
+    mentionStateRef.current = null;
+    setMentionState(null);
+    return true;
+  };
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
@@ -143,11 +386,12 @@ export function TopicEditor({
         heading: { levels: [2, 3] },
         link: { openOnClick: false, autolink: true, linkOnPaste: true },
       }),
-      MentionNode,
-      Image.configure({ allowBase64: false }),
+      ...(enableMentions ? [MentionNode] : []),
+      ...(enableImages ? [Image.configure({ allowBase64: false })] : []),
       ...(enableCommunityMedia
         ? [CommunityArticleNode, CommunityFileNode, CommunityVideoNode]
         : []),
+      ...noteExtensions,
     ],
     content: defaultValue ?? emptyDocument,
     editorProps: {
@@ -162,58 +406,21 @@ export function TopicEditor({
         },
       },
       handleKeyDown: (view, event) => {
-        const currentState = mentionStateRef.current;
-        const candidates = mentionCandidatesRef.current;
-        if (!(currentState && candidates.length > 0)) {
-          return false;
-        }
-        if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-          event.preventDefault();
-          setSelectedMentionIndex((current) =>
-            event.key === "ArrowDown"
-              ? (current + 1) % candidates.length
-              : (current - 1 + candidates.length) % candidates.length
-          );
+        if (handleSlashEditorKeyDown(view, event, editor)) {
           return true;
         }
-        if (event.key === "Escape") {
-          event.preventDefault();
-          mentionStateRef.current = null;
-          setMentionState(null);
-          return true;
-        }
-        if (event.key !== "Enter" && event.key !== "Tab") {
+        if (!enableMentions) {
           return false;
         }
-        event.preventDefault();
-        const candidate = candidates[selectedMentionIndex] ?? candidates[0];
-        const mention = view.state.schema.nodes.mention?.create({
-          id: candidate.id,
-          kind: candidate.kind === "GROUP" ? "GROUP" : "USER",
-          recipientCount: candidate.recipientCount,
-          username: candidate.username,
-          label: candidate.displayName ?? candidate.username,
-        });
-        if (!mention) {
-          return false;
-        }
-        if (candidate.kind === "GROUP") {
-          groupMentionConfirmedRef.current = false;
-          setGroupMentionConfirmed(false);
-        }
-        const transaction = view.state.tr
-          .replaceWith(currentState.from, currentState.to, mention)
-          .insertText(" ");
-        view.dispatch(transaction);
-        mentionStateRef.current = null;
-        setMentionState(null);
-        return true;
+        return handleMentionEditorKeyDown(view, event);
       },
     },
     onUpdate: ({ editor: currentEditor }) => {
       const document = currentEditor.getJSON();
       setValue(document);
-      const summary = groupMentionSummary(document);
+      const summary = enableMentions
+        ? groupMentionSummary(document)
+        : { count: 0, hasGroup: false };
       if (!summary.hasGroup && groupMentionConfirmedRef.current) {
         groupMentionConfirmedRef.current = false;
         setGroupMentionConfirmed(false);
@@ -226,15 +433,33 @@ export function TopicEditor({
         ""
       );
       const match = textBefore.match(mentionQueryPattern);
-      const nextMentionState = match
-        ? {
-            from: cursor - match[1].length - 1,
-            query: match[1],
-            to: cursor,
-          }
-        : null;
+      const nextMentionState =
+        enableMentions && match
+          ? {
+              from: cursor - match[1].length - 1,
+              query: match[1],
+              to: cursor,
+            }
+          : null;
       mentionStateRef.current = nextMentionState;
       setMentionState(nextMentionState);
+      const slashMatch = noteMode
+        ? textBefore.match(noteSlashQueryPattern)
+        : null;
+      const slashIndex = slashMatch
+        ? (slashMatch.index ?? 0) + slashMatch[0].lastIndexOf("/")
+        : -1;
+      const nextSlashState =
+        slashMatch && slashIndex >= 0
+          ? {
+              from: cursor - textBefore.length + slashIndex,
+              query: slashMatch[1],
+              to: cursor,
+            }
+          : null;
+      slashStateRef.current = nextSlashState;
+      setSlashState(nextSlashState);
+      setSelectedSlashIndex(0);
       // Do not autosave a blob URL. The local image is intentionally visible
       // while the server processes it, then the persisted member-asset URL is
       // emitted once the node is replaced.
@@ -298,6 +523,27 @@ export function TopicEditor({
   const action = (callback: () => void) => {
     callback();
     editor.commands.focus();
+  };
+  const filteredSlashCommands = slashState
+    ? noteBlockCommands.filter((command) =>
+        `${command.label} ${command.keywords}`
+          .toLocaleLowerCase("pt-BR")
+          .includes(slashState.query.toLocaleLowerCase("pt-BR"))
+      )
+    : [];
+  const applySlashCommand = (command: NoteBlockCommand) => {
+    const current = slashStateRef.current;
+    if (!current) {
+      return;
+    }
+    editor
+      .chain()
+      .focus()
+      .deleteRange({ from: current.from, to: current.to })
+      .run();
+    command.run(editor);
+    slashStateRef.current = null;
+    setSlashState(null);
   };
 
   const removePreviewNode = (previewUrl: string) => {
@@ -506,10 +752,13 @@ export function TopicEditor({
   return (
     // biome-ignore lint/a11y/noNoninteractiveElementInteractions: the editor surface accepts intentional drag-and-drop and clipboard paste events for image uploads.
     <div
-      className="overflow-hidden rounded-sm border bg-background"
+      className={`relative rounded-sm border ${noteMode ? "overflow-visible border-[#E2D6D1] bg-[#FBF8F5]" : "overflow-hidden bg-background"}`}
       onDragOver={(event) => event.preventDefault()}
       onDrop={(event) => {
         event.preventDefault();
+        if (!(enableImages && allowImageUploads)) {
+          return;
+        }
         const file = event.dataTransfer.files[0];
         if (file) {
           if (file.type.startsWith("image/")) {
@@ -522,9 +771,12 @@ export function TopicEditor({
         }
       }}
       onPaste={(event) => {
-        const file = Array.from(event.clipboardData.files).find((item) =>
-          item.type.startsWith("image/")
-        );
+        const file =
+          enableImages && allowImageUploads
+            ? Array.from(event.clipboardData.files).find((item) =>
+                item.type.startsWith("image/")
+              )
+            : undefined;
         if (file) {
           event.preventDefault();
           startUpload(file);
@@ -533,8 +785,12 @@ export function TopicEditor({
       role="application"
     >
       <div
-        aria-label="Ferramentas de formatação"
-        className="flex flex-wrap gap-1 border-border border-b bg-muted/40 p-2"
+        aria-label={noteMode ? "Formatação" : "Ferramentas de formatação"}
+        className={
+          noteMode
+            ? "fixed top-[220px] right-[10px] z-[25] flex max-h-[calc(100dvh-230px)] w-[58px] flex-col flex-nowrap gap-[2px] overflow-y-auto rounded-[8px] border border-[#E2D6D1] bg-white p-[6px] shadow-[0_6px_18px_rgba(64,34,47,0.12)] md:sticky md:top-28 md:z-[5] md:max-h-none md:w-full md:flex-row md:flex-wrap md:items-center md:gap-[2px] md:overflow-visible md:rounded-[8px] md:p-[6px] md:shadow-none md:[&>button]:size-10"
+            : "flex flex-wrap gap-1 border-border border-b bg-muted/40 p-2"
+        }
         role="toolbar"
       >
         <Button
@@ -586,6 +842,17 @@ export function TopicEditor({
         >
           <ListOrderedIcon aria-hidden="true" />
         </Button>
+        {noteMode ? (
+          <Button
+            aria-label="Lista de tarefas"
+            onClick={() => action(() => editor.chain().toggleTaskList().run())}
+            size="icon"
+            type="button"
+            variant={editor.isActive("taskList") ? "default" : "ghost"}
+          >
+            <ListChecksIcon aria-hidden="true" />
+          </Button>
+        ) : null}
         <Button
           aria-label="Citação"
           onClick={() => action(() => editor.chain().toggleBlockquote().run())}
@@ -681,36 +948,50 @@ export function TopicEditor({
             </Button>
           </div>
         )}
-        <Button
-          aria-label="Adicionar imagem"
-          onClick={() => imageInputRef.current?.click()}
-          size="icon"
-          type="button"
-          variant="ghost"
-        >
-          <ImageIcon aria-hidden="true" />
-        </Button>
-        <Button
-          onClick={() => setShowImageField((visible) => !visible)}
-          size="sm"
-          type="button"
-          variant="ghost"
-        >
-          URL
-        </Button>
-        <input
-          accept="image/jpeg,image/png,image/webp"
-          className="sr-only"
-          onChange={(event) => {
-            const file = event.target.files?.[0];
-            if (file) {
-              startUpload(file);
-            }
-            event.currentTarget.value = "";
-          }}
-          ref={imageInputRef}
-          type="file"
-        />
+        {enableImages ? (
+          <>
+            <Button
+              aria-label="Adicionar imagem"
+              onClick={() => {
+                if (allowImageUploads) {
+                  imageInputRef.current?.click();
+                } else {
+                  setShowImageField((visible) => !visible);
+                }
+              }}
+              size="icon"
+              type="button"
+              variant="ghost"
+            >
+              <ImageIcon aria-hidden="true" />
+            </Button>
+            {noteMode ? null : (
+              <Button
+                onClick={() => setShowImageField((visible) => !visible)}
+                size="sm"
+                type="button"
+                variant="ghost"
+              >
+                URL
+              </Button>
+            )}
+            {allowImageUploads ? (
+              <input
+                accept="image/jpeg,image/png,image/webp"
+                className="sr-only"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file) {
+                    startUpload(file);
+                  }
+                  event.currentTarget.value = "";
+                }}
+                ref={imageInputRef}
+                type="file"
+              />
+            ) : null}
+          </>
+        ) : null}
         {enableCommunityMedia && (
           <>
             <Button
@@ -750,7 +1031,7 @@ export function TopicEditor({
             {uploadError}
           </span>
         ) : null}
-        {showImageField && (
+        {enableImages && showImageField && (
           <div className="motion-reveal-fast flex min-w-60 flex-1 gap-2">
             <Input
               aria-label="Endereço da imagem"
@@ -789,7 +1070,112 @@ export function TopicEditor({
         >
           <MinusIcon aria-hidden="true" />
         </Button>
+        {noteMode ? (
+          <>
+            <Button
+              aria-label="Destacar texto"
+              onClick={() =>
+                action(() => editor.chain().toggleHighlight().run())
+              }
+              size="icon"
+              type="button"
+              variant={editor.isActive("highlight") ? "default" : "ghost"}
+            >
+              <HighlighterIcon aria-hidden="true" />
+            </Button>
+            <Button
+              aria-label="Inserir tabela"
+              onClick={() =>
+                action(() =>
+                  editor
+                    .chain()
+                    .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
+                    .run()
+                )
+              }
+              size="icon"
+              type="button"
+              variant={editor.isActive("table") ? "default" : "ghost"}
+            >
+              <TableIcon aria-hidden="true" />
+            </Button>
+            {editor.isActive("table") ? (
+              <>
+                <Button
+                  aria-label="Adicionar linha abaixo"
+                  onClick={() =>
+                    action(() => editor.chain().addRowAfter().run())
+                  }
+                  size="icon"
+                  title="Adicionar linha abaixo"
+                  type="button"
+                  variant="ghost"
+                >
+                  <Rows3Icon aria-hidden="true" />
+                </Button>
+                <Button
+                  aria-label="Adicionar coluna à direita"
+                  onClick={() =>
+                    action(() => editor.chain().addColumnAfter().run())
+                  }
+                  size="icon"
+                  title="Adicionar coluna à direita"
+                  type="button"
+                  variant="ghost"
+                >
+                  <Columns3Icon aria-hidden="true" />
+                </Button>
+                <Button
+                  aria-label="Excluir tabela"
+                  onClick={() =>
+                    action(() => editor.chain().deleteTable().run())
+                  }
+                  size="icon"
+                  title="Excluir tabela"
+                  type="button"
+                  variant="ghost"
+                >
+                  <Trash2Icon aria-hidden="true" />
+                </Button>
+              </>
+            ) : null}
+            <span aria-hidden="true" className="hidden md:block md:flex-1" />
+            <Button
+              aria-label="Desfazer"
+              className="hidden md:inline-flex"
+              onClick={() => action(() => editor.chain().undo().run())}
+              size="icon"
+              type="button"
+              variant="ghost"
+            >
+              <Undo2Icon aria-hidden="true" />
+            </Button>
+          </>
+        ) : null}
       </div>
+      {noteMode && slashState && filteredSlashCommands.length ? (
+        <div
+          aria-label="Comandos de blocos"
+          className="absolute top-12 left-3 z-40 max-h-64 w-64 overflow-y-auto rounded-xl border border-[#E2D6D1] bg-white p-1 shadow-xl"
+          role="listbox"
+        >
+          {filteredSlashCommands.map((command, index) => (
+            <button
+              aria-selected={index === selectedSlashIndex}
+              className={`block min-h-10 w-full rounded-lg px-3 text-left text-[#40222F] text-sm ${index === selectedSlashIndex ? "bg-[#F8F4F1]" : "hover:bg-[#FBF8F5]"}`}
+              key={command.id}
+              onMouseDown={(event) => {
+                event.preventDefault();
+                applySlashCommand(command);
+              }}
+              role="option"
+              type="button"
+            >
+              {command.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
       <EditorContent editor={editor} />
       {mentionState && mentionCandidates.length > 0 && (
         <div

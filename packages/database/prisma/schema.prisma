@@ -121,6 +121,11 @@ enum ExerciseSessionStatus {
   ABANDONED
 }
 
+enum ExerciseSessionKind {
+  LIST
+  FAVORITE
+}
+
 enum StudyActivityKind {
   LESSON
   RECORDING
@@ -128,6 +133,7 @@ enum StudyActivityKind {
   ACTIVITY
   COMMUNITY
   LIBRARY_ITEM
+  PERSONAL_TIMER
 }
 
 enum StudyGoalPeriod {
@@ -140,6 +146,38 @@ enum LearningTaskRecurrence {
   DAILY
   WEEKLY
   MONTHLY
+}
+
+enum PlannerTaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+}
+
+enum PlannerPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum PlannerRecurrence {
+  NONE
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+enum PlannerEventKind {
+  PERSONAL
+  STUDY
+}
+
+enum FocusTimerMode {
+  STOPWATCH
+  FOCUS
+  SHORT_BREAK
+  LONG_BREAK
+  COUNTDOWN
 }
 
 enum BadgeCriterion {
@@ -366,6 +404,17 @@ model Member {
   studyGoalAchievements               StudyGoalAchievement[]
   badgeDefinitionsCreated             BadgeDefinition[]                  @relation("BadgeDefinitionCreator")
   badgeDefinitionRevisionsCreated     BadgeDefinitionRevision[]          @relation("BadgeRevisionCreator")
+  plannerPreferences                  PlannerPreferences?
+  plannerCalendarFeed                 PlannerCalendarFeed?
+  plannerColumns                      PlannerBoardColumn[]
+  plannerTasks                        PlannerTask[]
+  plannerEvents                       PlannerEvent[]
+  plannerReminders                    PlannerReminder[]
+  focusTimerSessions                  FocusTimerSession[]
+  plannerNoteFolders                  PlannerNoteFolder[]
+  plannerNotes                        PlannerNote[]
+  plannerNoteTags                     PlannerNoteTag[]
+  globalSearchHistory                 GlobalSearchHistory[]
 
   @@index([role])
   @@index([onboardingStatus], map: "Member_onboardingStatus_idx")
@@ -1364,17 +1413,18 @@ model HomeBlockConfiguration {
 }
 
 model DomainEvent {
-  id             String      @id @default(cuid())
-  eventType      String
-  schemaVersion  Int         @default(1)
-  actorId        String?
-  aggregateType  String
-  aggregateId    String
-  idempotencyKey String      @unique
-  payload        Json
-  occurredAt     DateTime
-  createdAt      DateTime    @default(now())
-  jobs           OutboxJob[]
+  id              String           @id @default(cuid())
+  eventType       String
+  schemaVersion   Int              @default(1)
+  actorId         String?
+  aggregateType   String
+  aggregateId     String
+  idempotencyKey  String           @unique
+  payload         Json
+  occurredAt      DateTime
+  createdAt       DateTime         @default(now())
+  jobs            OutboxJob[]
+  plannerReminder PlannerReminder?
 
   @@index([aggregateType, aggregateId, createdAt])
   @@index([eventType, createdAt])
@@ -1537,6 +1587,7 @@ model ExerciseSession {
   id              String                    @id @default(cuid())
   memberId        String
   listId          String
+  kind            ExerciseSessionKind       @default(LIST)
   status          ExerciseSessionStatus     @default(IN_PROGRESS)
   currentPosition Int                       @default(0)
   startedAt       DateTime                  @default(now())
@@ -1702,6 +1753,286 @@ model LearningTaskCompletion {
   @@unique([taskId, memberId, periodKey])
   @@index([memberId, completedAt])
   @@index([taskId, periodKey])
+}
+
+model PlannerPreferences {
+  id                         String   @id @default(cuid())
+  memberId                   String   @unique
+  timezone                   String   @default("America/Sao_Paulo")
+  focusMinutes               Int      @default(25)
+  shortBreakMinutes          Int      @default(5)
+  longBreakMinutes           Int      @default(15)
+  longBreakEvery             Int      @default(4)
+  timerSoundEnabled          Boolean  @default(true)
+  systemNotificationsEnabled Boolean  @default(false)
+  timerSoundType             String   @default("SOFT_BELL")
+  timerVolume                Int      @default(70)
+  timerTickEnabled           Boolean  @default(false)
+  timerVibrationEnabled      Boolean  @default(true)
+  timerAutoAdvance           Boolean  @default(false)
+  timerOpenFocusOnStart      Boolean  @default(false)
+  keepScreenAwake            Boolean  @default(true)
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
+  member                     Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([updatedAt])
+}
+
+model PlannerCalendarFeed {
+  id        String   @id @default(cuid())
+  memberId  String   @unique
+  tokenHash String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  member    Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([updatedAt])
+}
+
+model PlannerBoardColumn {
+  id        String            @id @default(cuid())
+  memberId  String
+  status    PlannerTaskStatus
+  label     String
+  color     String
+  position  Int               @default(0)
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  member    Member            @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([memberId, status])
+  @@index([memberId, position])
+}
+
+model PlannerTask {
+  id              String                  @id @default(cuid())
+  memberId        String
+  title           String
+  description     String?                 @db.Text
+  status          PlannerTaskStatus       @default(TODO)
+  priority        PlannerPriority         @default(MEDIUM)
+  category        String?
+  dueAt           DateTime?
+  recurrence      PlannerRecurrence       @default(NONE)
+  recurrenceUntil DateTime?
+  reminderMinutes Int?
+  sortOrder       Int                     @default(0)
+  parentTaskId    String?
+  deletedAt       DateTime?
+  completedAt     DateTime?
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+  member          Member                  @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  parent          PlannerTask?            @relation("PlannerTaskSubtasks", fields: [parentTaskId, memberId], references: [id, memberId], onDelete: Cascade)
+  subtasks        PlannerTask[]           @relation("PlannerTaskSubtasks")
+  occurrences     PlannerTaskOccurrence[]
+
+  @@unique([id, memberId])
+  @@index([memberId, deletedAt, dueAt, status])
+  @@index([memberId, status, sortOrder])
+  @@index([parentTaskId, deletedAt, sortOrder])
+}
+
+model PlannerTaskOccurrence {
+  id                  String             @id @default(cuid())
+  taskId              String
+  memberId            String
+  occurrenceAt        DateTime
+  dueAtOverride       DateTime?
+  titleOverride       String?
+  descriptionOverride String?            @db.Text
+  status              PlannerTaskStatus?
+  priority            PlannerPriority?
+  deletedAt           DateTime?
+  completedAt         DateTime?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  task                PlannerTask        @relation(fields: [taskId, memberId], references: [id, memberId], onDelete: Cascade)
+
+  @@unique([taskId, occurrenceAt])
+  @@index([memberId, occurrenceAt, deletedAt])
+}
+
+model PlannerEvent {
+  id              String                   @id @default(cuid())
+  memberId        String
+  title           String
+  description     String?                  @db.Text
+  kind            PlannerEventKind         @default(PERSONAL)
+  startsAt        DateTime
+  endsAt          DateTime
+  timezone        String                   @default("America/Sao_Paulo")
+  allDay          Boolean                  @default(false)
+  color           String                   @default("#7A5A69")
+  location        String?
+  recurrence      PlannerRecurrence        @default(NONE)
+  recurrenceUntil DateTime?
+  reminderMinutes Int?
+  deletedAt       DateTime?
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+  member          Member                   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  occurrences     PlannerEventOccurrence[]
+
+  @@unique([id, memberId])
+  @@index([memberId, deletedAt, startsAt, endsAt])
+}
+
+model PlannerEventOccurrence {
+  id                  String       @id @default(cuid())
+  eventId             String
+  memberId            String
+  occurrenceStartsAt  DateTime
+  startsAtOverride    DateTime?
+  endsAtOverride      DateTime?
+  titleOverride       String?
+  descriptionOverride String?      @db.Text
+  colorOverride       String?
+  deletedAt           DateTime?
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+  event               PlannerEvent @relation(fields: [eventId, memberId], references: [id, memberId], onDelete: Cascade)
+
+  @@unique([eventId, occurrenceStartsAt])
+  @@index([memberId, occurrenceStartsAt, deletedAt])
+}
+
+model PlannerReminder {
+  id            String      @id @default(cuid())
+  memberId      String
+  entityType    String
+  entityId      String
+  occurrenceAt  DateTime?
+  remindAt      DateTime
+  domainEventId String      @unique
+  cancelledAt   DateTime?
+  deliveredAt   DateTime?
+  createdAt     DateTime    @default(now())
+  member        Member      @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  domainEvent   DomainEvent @relation(fields: [domainEventId], references: [id], onDelete: Restrict)
+
+  @@index([memberId, remindAt, cancelledAt, deliveredAt])
+  @@index([entityType, entityId, occurrenceAt])
+}
+
+model FocusTimerSession {
+  id                 String                     @id @default(cuid())
+  memberId           String
+  clientId           String?
+  mode               FocusTimerMode
+  title              String?
+  durationSeconds    Int?
+  startedAt          DateTime                   @default(now())
+  runStartedAt       DateTime?
+  pausedAt           DateTime?
+  elapsedBeforePause Int                        @default(0)
+  endedAt            DateTime?
+  completedAt        DateTime?
+  linkedResourceType String?
+  linkedResourceId   String?
+  sessionNote        String?                     @db.Text
+  needsReview        Boolean                     @default(false)
+  manuallyEntered    Boolean                     @default(false)
+  studyLoggedAt      DateTime?
+  createdAt          DateTime                   @default(now())
+  updatedAt          DateTime                   @updatedAt
+  member             Member                     @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  segments           FocusTimerSessionSegment[]
+
+  @@unique([id, memberId])
+  @@index([memberId, startedAt])
+  @@index([memberId, endedAt, startedAt])
+}
+
+model FocusTimerSessionSegment {
+  id        String            @id @default(cuid())
+  sessionId String
+  memberId  String
+  startedAt DateTime
+  endedAt   DateTime?
+  session   FocusTimerSession @relation(fields: [sessionId, memberId], references: [id, memberId], onDelete: Cascade)
+
+  @@index([memberId, startedAt, endedAt])
+}
+
+model PlannerNoteFolder {
+  id        String        @id @default(cuid())
+  memberId  String
+  parentId  String?
+  name      String
+  icon      String        @default("folder")
+  position  Int           @default(0)
+  deletedAt DateTime?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  member    Member        @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  parent    PlannerNoteFolder? @relation("PlannerNoteFolderTree", fields: [parentId, memberId], references: [id, memberId], onDelete: Cascade)
+  children  PlannerNoteFolder[] @relation("PlannerNoteFolderTree")
+  notes     PlannerNote[]
+
+  @@unique([memberId, name])
+  @@unique([id, memberId])
+  @@index([memberId, parentId, deletedAt, position])
+}
+
+model PlannerNote {
+  id          String                     @id @default(cuid())
+  memberId    String
+  folderId    String?
+  title       String                     @default("Sem título")
+  contentJson Json
+  contentText String                     @default("") @db.Text
+  linkedResourceType String?
+  linkedResourceId   String?
+  pinnedAt    DateTime?
+  deletedAt   DateTime?
+  createdAt   DateTime                   @default(now())
+  updatedAt   DateTime                   @updatedAt
+  member      Member                     @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  folder      PlannerNoteFolder?         @relation(fields: [folderId, memberId], references: [id, memberId], onDelete: Restrict)
+  tags        PlannerNoteTagAssignment[]
+
+  @@unique([id, memberId])
+  @@index([memberId, deletedAt, pinnedAt, updatedAt])
+  @@index([folderId, deletedAt, updatedAt])
+}
+
+model PlannerNoteTag {
+  id        String                     @id @default(cuid())
+  memberId  String
+  name      String
+  createdAt DateTime                   @default(now())
+  member    Member                     @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  notes     PlannerNoteTagAssignment[]
+
+  @@unique([memberId, name])
+  @@unique([id, memberId])
+  @@index([memberId, name])
+}
+
+model PlannerNoteTagAssignment {
+  noteId   String
+  tagId    String
+  memberId String
+  note     PlannerNote    @relation(fields: [noteId, memberId], references: [id, memberId], onDelete: Cascade)
+  tag      PlannerNoteTag @relation(fields: [tagId, memberId], references: [id, memberId], onDelete: Cascade)
+
+  @@id([noteId, tagId])
+  @@index([memberId, noteId])
+  @@index([tagId, noteId])
+}
+
+model GlobalSearchHistory {
+  id              String   @id @default(cuid())
+  memberId        String
+  query           String
+  normalizedQuery String
+  createdAt       DateTime @default(now())
+  member          Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([memberId, normalizedQuery])
+  @@index([memberId, createdAt])
 }
 
 model StudyCampaign {

@@ -13,6 +13,7 @@ import { notFound, redirect } from "next/navigation";
 import { CompleteLessonButton } from "@/components/learning/complete-lesson-button";
 import { LearningPageFrame } from "@/components/learning/learning-page-frame";
 import { LessonPlayer } from "@/components/learning/lesson-player";
+import { LessonToolsDrawer } from "@/components/learning/lesson-tools-drawer";
 import { StudyHeartbeat } from "@/components/learning/study-heartbeat";
 
 const assetKindLabel = (kind: string) => {
@@ -85,6 +86,12 @@ const LessonPage = async ({ params }: LessonPageProperties) => {
       title={lesson.title}
     >
       <StudyHeartbeat activityKind="LESSON" resourceId={lesson.id} />
+      <LessonToolsDrawer
+        initialNotes={null}
+        lessonHref={`/aprender/cursos/${lesson.module.course.slug}/${lesson.slug}`}
+        lessonId={lesson.id}
+        lessonTitle={lesson.title}
+      />
       <div className="mb-2 flex flex-wrap items-center gap-3 border-b pb-5">
         <Link
           className="inline-flex min-h-11 items-center gap-2 text-muted-foreground text-sm transition-colors hover:text-brand-structural"

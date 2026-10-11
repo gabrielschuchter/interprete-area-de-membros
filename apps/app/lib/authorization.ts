@@ -15,6 +15,24 @@ export const requireSession = async () => {
   return userId;
 };
 
+// A page and its layout can render concurrently. Never assume the layout has
+// provisioned the member before a private page or action starts using its ID.
+export const requireOnboardedMemberId = async () => {
+  const { userId, memberDeactivated, memberSnapshot } = await getAuth();
+
+  if (memberDeactivated) {
+    redirect("/conta-desativada");
+  }
+  if (!userId) {
+    redirect("/sign-in");
+  }
+  if (memberSnapshot?.onboardingStatus !== "COMPLETED") {
+    redirect("/onboarding");
+  }
+
+  return userId;
+};
+
 export const getMemberRole = cache(async (userId: string) => {
   const member = await getMemberIdentitySnapshot(userId);
 

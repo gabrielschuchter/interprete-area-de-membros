@@ -14,8 +14,10 @@ import {
   ArrowDownIcon,
   ArrowUpIcon,
   BookOpenIcon,
+  CalendarDaysIcon,
   ClipboardCheckIcon,
   CornerDownLeftIcon,
+  HistoryIcon,
   Layers3Icon,
   LibraryIcon,
   MapPinIcon,
@@ -23,6 +25,9 @@ import {
   PlayCircleIcon,
   RefreshCwIcon,
   SearchIcon,
+  StickyNoteIcon,
+  TargetIcon,
+  Trash2Icon,
   UserRoundIcon,
   VideoIcon,
   XIcon,
@@ -37,6 +42,7 @@ import {
   useState,
 } from "react";
 import type { GlobalSearchResult } from "@/lib/global-search";
+import { useMemberNavigation } from "./member-navigation-context";
 import { reserveNavigationPrefetch } from "./navigation-prefetch";
 
 interface GlobalSearchProperties {
@@ -63,7 +69,17 @@ const resultIcons = {
   "community-space": MapPinIcon,
   library: LibraryIcon,
   profile: UserRoundIcon,
+  "planner-task": ClipboardCheckIcon,
+  "planner-event": CalendarDaysIcon,
+  "planner-goal": TargetIcon,
+  note: StickyNoteIcon,
 } as const;
+
+interface SearchHistoryEntry {
+  readonly createdAt: string;
+  readonly id: string;
+  readonly query: string;
+}
 
 const focusInput = (inputRef: RefObject<HTMLInputElement | null>) => {
   inputRef.current?.focus();
@@ -74,6 +90,7 @@ export const GlobalSearch = ({
   onOpenChange,
 }: GlobalSearchProperties) => {
   const router = useRouter();
+  const memberNavigation = useMemberNavigation();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const serializedSearchParams = searchParams.toString();
@@ -87,6 +104,8 @@ export const GlobalSearch = ({
   const [state, setState] = useState<SearchState>("idle");
   const [errorMessage, setErrorMessage] = useState("");
   const [retryToken, setRetryToken] = useState(0);
+  const [history, setHistory] = useState<SearchHistoryEntry[]>([]);
+  const [historyError, setHistoryError] = useState("");
   const activeResultHref = results[activeIndex]?.href;
 
   useEffect(() => {
@@ -99,9 +118,38 @@ export const GlobalSearch = ({
     setActiveIndex(-1);
     setState("idle");
     setErrorMessage("");
+    setHistoryError("");
 
     const focusTimer = window.setTimeout(() => focusInput(inputRef), 30);
     return () => window.clearTimeout(focusTimer);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    const controller = new AbortController();
+    fetch("/api/search/history", {
+      signal: controller.signal,
+      headers: { Accept: "application/json" },
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error("Não foi possível carregar o histórico.");
+        }
+        const payload = (await response.json()) as {
+          history?: SearchHistoryEntry[];
+        };
+        setHistory(payload.history ?? []);
+      })
+      .catch((error: unknown) => {
+        if (!controller.signal.aborted) {
+          setHistoryError(
+            error instanceof Error ? error.message : "Histórico indisponível."
+          );
+        }
+      });
+    return () => controller.abort();
   }, [open]);
 
   useEffect(() => {
@@ -172,8 +220,63 @@ export const GlobalSearch = ({
     }
   }, [activeResultHref, open, router, sourceRoute, state]);
 
+  const recordConfirmedSearch = async (searchQuery = query) => {
+    const normalizedQuery = searchQuery.trim().replace(/\s+/g, " ");
+    if (normalizedQuery.length < 2) {
+      return;
+    }
+    try {
+      const response = await fetch("/api/search/history", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ query: normalizedQuery }),
+      });
+      if (!response.ok) {
+        throw new Error("Histórico indisponível.");
+      }
+      const payload = (await response.json()) as {
+        history?: SearchHistoryEntry[];
+      };
+      setHistory(payload.history ?? []);
+      setHistoryError("");
+    } catch {
+      setHistoryError("Não foi possível guardar esta busca.");
+    }
+  };
+
+  const removeHistoryEntry = async (id?: string) => {
+    try {
+      const response = await fetch("/api/search/history", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(id ? { id } : {}),
+      });
+      if (!response.ok) {
+        throw new Error("Histórico indisponível.");
+      }
+      const payload = (await response.json()) as {
+        history?: SearchHistoryEntry[];
+      };
+      setHistory(payload.history ?? []);
+      setHistoryError("");
+    } catch {
+      setHistoryError("Não foi possível alterar o histórico.");
+    }
+  };
+
   const selectResult = (searchResult: GlobalSearchResult) => {
+    recordConfirmedSearch();
     onOpenChange(false);
+    if (memberNavigation) {
+      memberNavigation.navigate(searchResult.href);
+      return;
+    }
     router.push(searchResult.href);
   };
 
@@ -204,6 +307,12 @@ export const GlobalSearch = ({
       if (selected) {
         selectResult(selected);
       }
+      return;
+    }
+
+    if (event.key === "Enter" && query.trim().length >= 2) {
+      event.preventDefault();
+      recordConfirmedSearch();
     }
   };
 
@@ -283,8 +392,66 @@ export const GlobalSearch = ({
               <p className="mt-2 text-muted-foreground text-sm">
                 Digite para encontrar conteúdos, discussões e pessoas.
               </p>
+              {historyError ? (
+                <output
+                  aria-live="polite"
+                  className="mt-4 text-destructive text-xs"
+                >
+                  {historyError}
+                </output>
+              ) : null}
             </div>
           )}
+
+          {state === "idle" && history.length > 0 ? (
+            <section aria-label="Buscas recentes" className="px-2 pb-3">
+              <div className="mb-2 flex items-center justify-between px-1">
+                <h3 className="flex items-center gap-2 font-medium text-sm">
+                  <HistoryIcon
+                    aria-hidden="true"
+                    className="size-4 text-muted-foreground"
+                  />
+                  Recentes
+                </h3>
+                <Button
+                  className="h-8 px-2 text-muted-foreground text-xs"
+                  onClick={() => removeHistoryEntry()}
+                  size="sm"
+                  type="button"
+                  variant="ghost"
+                >
+                  Limpar
+                </Button>
+              </div>
+              <ul className="space-y-1">
+                {history.map((entry) => (
+                  <li className="flex items-center gap-1" key={entry.id}>
+                    <button
+                      className="flex min-h-10 min-w-0 flex-1 items-center gap-3 rounded-md px-3 text-left text-sm hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                      onClick={() => setQuery(entry.query)}
+                      type="button"
+                    >
+                      <HistoryIcon
+                        aria-hidden="true"
+                        className="size-4 shrink-0 text-muted-foreground"
+                      />
+                      <span className="truncate">{entry.query}</span>
+                    </button>
+                    <Button
+                      aria-label={`Remover busca ${entry.query} do histórico`}
+                      className="size-9 shrink-0 text-muted-foreground"
+                      onClick={() => removeHistoryEntry(entry.id)}
+                      size="icon-sm"
+                      type="button"
+                      variant="ghost"
+                    >
+                      <Trash2Icon aria-hidden="true" className="size-4" />
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
 
           {state === "loading" && (
             <div aria-live="polite" className="space-y-2">
@@ -354,7 +521,10 @@ export const GlobalSearch = ({
                     href={searchResult.href}
                     id={`global-search-result-${searchResult.id}`}
                     key={`${searchResult.type}-${searchResult.id}`}
-                    onClick={() => onOpenChange(false)}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      selectResult(searchResult);
+                    }}
                     onFocus={() => setActiveIndex(index)}
                     onMouseEnter={() => setActiveIndex(index)}
                     prefetch={false}
@@ -369,7 +539,9 @@ export const GlobalSearch = ({
                           {searchResult.title}
                         </span>
                         <span className="brand-eyebrow text-[0.62rem] text-muted-foreground">
-                          {searchResult.typeLabel}
+                          {searchResult.area && searchResult.section
+                            ? `${searchResult.area} · ${searchResult.section} · ${searchResult.typeLabel}`
+                            : searchResult.typeLabel}
                         </span>
                       </span>
                       {searchResult.context && (

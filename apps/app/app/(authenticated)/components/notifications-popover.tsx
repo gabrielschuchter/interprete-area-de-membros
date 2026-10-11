@@ -51,6 +51,7 @@ interface NotificationsResponse {
 }
 
 interface NotificationsPopoverProperties {
+  readonly noteEditorMode?: boolean;
   readonly onOpenChange: (open: boolean) => void;
   readonly onUnreadCountChange: (count: number) => void;
   readonly open: boolean;
@@ -146,6 +147,7 @@ export const NotificationsPopover = ({
   open,
   onOpenChange,
   onUnreadCountChange,
+  noteEditorMode = false,
   refreshSignal = 0,
   realtimeConnected,
 }: NotificationsPopoverProperties) => {
@@ -371,14 +373,14 @@ export const NotificationsPopover = ({
               ? `Notificações, ${unreadCount} não lidas`
               : "Notificações"
           }
-          className="relative size-10 rounded-full text-muted-foreground hover:bg-accent hover:text-foreground"
+          className={`relative ${noteEditorMode ? "size-11" : "size-10"} rounded-full text-muted-foreground hover:bg-accent hover:text-foreground`}
           size="icon-sm"
           type="button"
           variant="ghost"
         >
           <BellIcon aria-hidden="true" />
           {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-background bg-brand-classic-crimson px-1 font-bold text-[0.65rem] text-white leading-none shadow-[0_0_12px_rgba(175,34,56,0.7)] motion-safe:animate-pulse">
+            <span className="absolute -top-1 -right-1 flex h-5 min-w-5 animate-pulse items-center justify-center rounded-full border-2 border-background bg-brand-classic-crimson px-1 font-bold text-[0.65rem] text-white leading-none shadow-[0_0_12px_rgba(175,34,56,0.7)]">
               {badgeLabel}
             </span>
           )}

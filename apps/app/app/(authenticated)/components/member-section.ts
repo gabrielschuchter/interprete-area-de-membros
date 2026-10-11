@@ -4,10 +4,12 @@ export const personalContentNavigation = [
     icon: "recordings",
     label: "Minhas gravações",
   },
-  { href: "/comunidade/salvos", icon: "saved", label: "Salvos" },
 ] as const;
 
 export const memberSectionForPathname = (pathname: string) => {
+  if (pathname === "/salvos") {
+    return "Salvos";
+  }
   if (pathname.startsWith("/admin")) {
     return "Professor";
   }
@@ -27,7 +29,7 @@ export const memberSectionForPathname = (pathname: string) => {
     return "Meus tópicos";
   }
   if (pathname.startsWith("/comunidade/salvos")) {
-    return "Salvos";
+    return "Comunidade";
   }
   if (pathname.startsWith("/comunidade")) {
     return "Comunidade";
@@ -54,6 +56,54 @@ export const memberSectionForPathname = (pathname: string) => {
     return "Perfil";
   }
   return "Início";
+};
+
+export const memberBreadcrumbForPathname = (pathname: string) => {
+  if (pathname === "/salvos") {
+    return "Salvos";
+  }
+  if (pathname === "/estudar") {
+    return "Início › Estudar";
+  }
+  if (pathname.startsWith("/aprender")) {
+    return "Estudar · Aprender";
+  }
+  if (pathname.startsWith("/tarefas")) {
+    return "Planejamento · Tarefas";
+  }
+  if (pathname.startsWith("/planejamento")) {
+    const section = pathname.split("/").filter(Boolean)[1];
+    return section ? `Planejamento · ${section}` : "Estudar · Planejamento";
+  }
+  if (pathname.startsWith("/ferramentas")) {
+    const section = pathname.split("/").filter(Boolean)[1];
+    return section ? `Ferramentas · ${section}` : "Estudar · Ferramentas";
+  }
+  if (pathname.startsWith("/exercicios")) {
+    return "Estudar · Exercícios";
+  }
+  if (pathname.startsWith("/atividades")) {
+    return "Estudar · Atividades";
+  }
+  if (pathname.startsWith("/biblioteca")) {
+    return "Estudar · Biblioteca";
+  }
+  if (pathname.startsWith("/encontros/gravacoes")) {
+    return "Comunidade · Minhas gravações";
+  }
+  if (pathname === "/encontros" || pathname.startsWith("/encontros/")) {
+    return "Comunidade · Encontros";
+  }
+  if (pathname.startsWith("/comunidade/salvos")) {
+    return "Comunidade · Salvos";
+  }
+  if (pathname.startsWith("/comunidade/meus-topicos")) {
+    return "Perfil · Meus tópicos";
+  }
+  if (pathname === "/comunidade" || pathname.startsWith("/comunidade/")) {
+    return "Início › Comunidade";
+  }
+  return memberSectionForPathname(pathname);
 };
 
 export const isSidebarPathActive = (

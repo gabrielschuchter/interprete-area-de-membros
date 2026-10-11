@@ -6,6 +6,7 @@ import {
 } from "./notification-constants";
 import { parseNotificationOutboxPayload } from "./notifications";
 import type { OutboxConsumer } from "./outbox-worker";
+import { scheduleNextRecurringPlannerReminder } from "./planner-reminders";
 
 const preferenceSelect = {
   memberId: true,
@@ -597,6 +598,9 @@ const notificationBody = (
   request: NotificationRequest,
   lookups: NotificationBodyLookups
 ) => {
+  if (request.body !== undefined) {
+    return request.body || null;
+  }
   const directBody = directNotificationBody(request, lookups);
   if (directBody !== undefined) {
     return directBody;
@@ -648,9 +652,11 @@ const toNotificationRow = (
     notificationPriority[request.type as keyof typeof notificationPriority] ??
     0,
   title:
+    request.title ??
     notificationTitleForType[
       request.type as keyof typeof notificationTitleForType
-    ] ?? "Nova atualização",
+    ] ??
+    "Nova atualização",
   body: notificationBody(request, lookups),
   href: request.href ?? null,
 });
@@ -735,6 +741,35 @@ export const notificationOutboxConsumer: OutboxConsumer = {
         data: rows,
         skipDuplicates: true,
       });
+    }
+    if (event.aggregateType === "planner.reminder") {
+      const reminder = await transaction.plannerReminder.findUnique({
+        where: { domainEventId: event.id },
+        select: {
+          memberId: true,
+          entityType: true,
+          entityId: true,
+          occurrenceAt: true,
+          cancelledAt: true,
+          deliveredAt: true,
+        },
+      });
+      const updated = await transaction.plannerReminder.updateMany({
+        where: {
+          domainEventId: event.id,
+          cancelledAt: null,
+          deliveredAt: null,
+        },
+        data: { deliveredAt: new Date() },
+      });
+      if (
+        reminder &&
+        !reminder.cancelledAt &&
+        !reminder.deliveredAt &&
+        updated.count > 0
+      ) {
+        await scheduleNextRecurringPlannerReminder(transaction, reminder);
+      }
     }
   },
 };

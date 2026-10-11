@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import "tailwindcss" source(none);
 @import "@repo/design-system/styles/globals.css";
 @source "../**/*.{ts,tsx}";
 
@@ -30,12 +30,6 @@
     .learning-rail-arrow {
       pointer-events: auto;
       opacity: 1;
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .learning-rail-viewport {
-      scroll-behavior: auto;
     }
   }
 
@@ -337,12 +331,6 @@
     to {
       opacity: 1;
       transform: scale(1);
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .interprete-login__loading-dot {
-      animation: none;
     }
   }
 
@@ -801,6 +789,64 @@
   .prose-editor ul,
   .prose-editor ol {
     padding-left: 1.5rem;
+  }
+
+  .prose-editor ul[data-type="taskList"] {
+    padding-left: 0;
+    list-style: none;
+  }
+
+  .prose-editor li[data-type="taskItem"] {
+    display: flex;
+    gap: 0.625rem;
+    align-items: flex-start;
+    list-style: none;
+  }
+
+  .prose-editor li[data-type="taskItem"] > label {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    margin-top: 0.55rem;
+  }
+
+  .prose-editor :where(li[data-type="taskItem"] > label input) {
+    accent-color: var(--brand-classic-crimson);
+  }
+
+  .prose-editor li[data-type="taskItem"] > div {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .prose-editor .tableWrapper {
+    margin: 1rem 0;
+    overflow-x: auto;
+  }
+
+  .prose-editor table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+  }
+
+  .prose-editor th,
+  .prose-editor td {
+    min-width: 5rem;
+    padding: 0.5rem;
+    vertical-align: top;
+    border: 1px solid var(--line-soft);
+  }
+
+  .prose-editor th {
+    font-weight: 600;
+    background: var(--surface-muted);
+  }
+
+  .prose-editor mark {
+    padding: 0 0.125rem;
+    color: inherit;
+    background: #f4dfa0;
   }
 
   .prose-editor blockquote {

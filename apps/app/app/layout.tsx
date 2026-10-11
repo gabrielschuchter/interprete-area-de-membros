@@ -1,4 +1,5 @@
 import "./styles.css";
+import "./portal.css";
 import { DesignSystemProvider } from "@repo/design-system";
 import { fonts } from "@repo/design-system/lib/fonts";
 import { createMetadata } from "@repo/seo/metadata";

@@ -35,6 +35,7 @@ export const notificationTypes = {
   groupPost: "GROUP_POST",
   contentAssigned: "LEARNING_CONTENT_ASSIGNED",
   badgeAwarded: "BADGE_AWARDED",
+  plannerReminder: "PLANNER_REMINDER",
 } as const;
 
 export type NotificationType =

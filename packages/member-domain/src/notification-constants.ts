@@ -12,6 +12,7 @@ export const notificationPriority = {
   LESSON_AVAILABLE: 1,
   MENTION: 4,
   MODULE_AVAILABLE: 1,
+  PLANNER_REMINDER: 2,
   TOPIC_COMMENT: 2,
 } as const;
 
@@ -46,4 +47,5 @@ export const notificationTitleForType = {
   GROUP_INVITATION: "Convite para grupo de estudo",
   GROUP_POST: "Nova publicação em um grupo de estudo",
   LEARNING_CONTENT_ASSIGNED: "Novo conteúdo para você",
+  PLANNER_REMINDER: "Lembrete de planejamento",
 } as const;

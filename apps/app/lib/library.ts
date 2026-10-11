@@ -467,6 +467,7 @@ const personalBookmarkSelect = {
       title: true,
       description: true,
       coverUrl: true,
+      category: true,
       status: true,
       lesson: {
         select: {
@@ -575,21 +576,31 @@ type PersonalLibraryBookmark = Awaited<
 >[number];
 
 export interface PersonalLibraryCard {
+  category: "aulas" | "materiais";
   coverUrl: string | null;
   description: string | null;
   href: string;
   id: string;
   label: string;
   savedAt: Date;
+  source: string;
+  targetId: string;
+  targetType: LibraryBookmarkTargetType;
   title: string;
 }
 
 const bookmarkCard = (
   bookmark: PersonalLibraryBookmark,
-  values: Omit<PersonalLibraryCard, "id" | "savedAt">
+  targetId: string,
+  values: Omit<
+    PersonalLibraryCard,
+    "id" | "savedAt" | "targetId" | "targetType"
+  >
 ): PersonalLibraryCard => ({
   id: bookmark.id,
   savedAt: bookmark.createdAt,
+  targetId,
+  targetType: bookmark.targetType,
   ...values,
 });
 
@@ -616,12 +627,14 @@ const itemBookmarkCard = (
   ) {
     return null;
   }
-  return bookmarkCard(bookmark, {
+  return bookmarkCard(bookmark, item.id, {
+    category: "materiais",
     title: item.title,
     description: item.description,
     coverUrl: item.coverUrl,
     href: `/biblioteca/${item.id}`,
     label: "Material",
+    source: `Biblioteca · ${item.category ?? "Material"}`,
   });
 };
 
@@ -637,12 +650,14 @@ const courseBookmarkCard = (
   ) {
     return null;
   }
-  return bookmarkCard(bookmark, {
+  return bookmarkCard(bookmark, course.id, {
+    category: "aulas",
     title: course.title,
     description: course.description,
     coverUrl: course.coverUrl,
     href: `/aprender/cursos/${course.slug}`,
     label: "Curso",
+    source: "Aprender · Curso",
   });
 };
 
@@ -659,12 +674,14 @@ const moduleBookmarkCard = (
   ) {
     return null;
   }
-  return bookmarkCard(bookmark, {
+  return bookmarkCard(bookmark, module.id, {
+    category: "aulas",
     title: module.title,
     description: module.course.title,
     coverUrl: module.course.coverUrl,
     href: `/aprender/cursos/${module.course.slug}`,
     label: "Módulo",
+    source: `Aprender · ${module.course.title}`,
   });
 };
 
@@ -682,12 +699,14 @@ const lessonBookmarkCard = (
   ) {
     return null;
   }
-  return bookmarkCard(bookmark, {
+  return bookmarkCard(bookmark, lesson.id, {
+    category: "aulas",
     title: lesson.title,
     description: lesson.description,
     coverUrl: lesson.module.course.coverUrl,
     href: `/aprender/cursos/${lesson.module.course.slug}/${lesson.slug}`,
     label: "Aula",
+    source: `Aprender · ${lesson.module.course.title}`,
   });
 };
 
@@ -706,12 +725,14 @@ const assetBookmarkCard = (
   ) {
     return null;
   }
-  return bookmarkCard(bookmark, {
+  return bookmarkCard(bookmark, asset.id, {
+    category: "materiais",
     title: asset.title,
     description: lesson.title,
     coverUrl: lesson.module.course.coverUrl,
     href: `/aprender/cursos/${lesson.module.course.slug}/${lesson.slug}`,
     label: "Material de aula",
+    source: `Aprender · ${lesson.title}`,
   });
 };
 

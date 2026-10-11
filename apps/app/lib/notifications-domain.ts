@@ -35,7 +35,12 @@ export const mergeNotificationRecipients = (
 };
 
 export const notificationFilterTypes = {
-  ACTIVITIES: ["ACTIVITY_ASSIGNED", "FEEDBACK_RECEIVED", "ACTIVITY_DEADLINE"],
+  ACTIVITIES: [
+    "ACTIVITY_ASSIGNED",
+    "FEEDBACK_RECEIVED",
+    "ACTIVITY_DEADLINE",
+    "PLANNER_REMINDER",
+  ],
   COMMUNITY: [
     "COMMENT_REPLY",
     "TOPIC_COMMENT",

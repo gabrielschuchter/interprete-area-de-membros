@@ -207,13 +207,19 @@ const AdminExercisesPage = async ({
             ))}
           </fieldset>
           <label className="grid gap-2 text-sm" htmlFor="exercise-explanation">
-            <span className="font-medium">Explicação (opcional)</span>
+            <span className="font-medium">
+              Explicação e referência(s) (opcional)
+            </span>
             <Textarea
               id="exercise-explanation"
               maxLength={20_000}
               name="explanation"
               rows={4}
             />
+            <span className="text-muted-foreground text-xs leading-5">
+              Para destacar uma fonte ao aluno, acrescente no fim: Referência:
+              Nome da obra — https://...
+            </span>
           </label>
           <label className="flex items-start gap-3 rounded-md border p-4 text-sm leading-6">
             <input

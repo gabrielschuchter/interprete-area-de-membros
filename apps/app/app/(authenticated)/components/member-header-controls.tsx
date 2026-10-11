@@ -2,9 +2,11 @@
 
 import { Button } from "@repo/design-system/components/ui/button";
 import { toast } from "@repo/design-system/lib/toast";
-import { SearchIcon } from "lucide-react";
+import { BookmarkIcon, SearchIcon } from "lucide-react";
 import dynamic from "next/dynamic";
+import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { IntentLink } from "./intent-link";
 import { NotificationRealtime } from "./notification-realtime";
 import { NotificationsPopover } from "./notifications-popover";
 
@@ -73,11 +75,14 @@ const announceNewBadgeNotifications = (
 
 interface MemberHeaderControlsProperties {
   readonly memberId: string;
+  readonly noteEditorMode?: boolean;
 }
 
 export const MemberHeaderControls = ({
   memberId,
+  noteEditorMode = false,
 }: MemberHeaderControlsProperties) => {
+  const pathname = usePathname();
   const [activeOverlay, setActiveOverlay] = useState<ActiveOverlay>(null);
   const [unreadCount, setUnreadCount] = useState(0);
   const [refreshSignal, setRefreshSignal] = useState(0);
@@ -189,15 +194,34 @@ export const MemberHeaderControls = ({
   }, [activeOverlay]);
 
   return (
-    <div className="ml-auto flex items-center gap-1">
+    <div
+      className="member-header-controls ml-auto flex items-center gap-1"
+      data-note-editor-controls={String(noteEditorMode)}
+    >
+      <Button
+        aria-label="Abrir salvos"
+        asChild
+        className={`${noteEditorMode ? "size-11" : "size-10"} rounded-full text-muted-foreground hover:bg-accent hover:text-foreground ${pathname === "/salvos" ? "bg-accent text-brand-action-text" : ""}`}
+        size="icon-sm"
+        title="Salvos"
+        variant="ghost"
+      >
+        <IntentLink
+          aria-current={pathname === "/salvos" ? "page" : undefined}
+          href="/salvos"
+        >
+          <BookmarkIcon aria-hidden="true" />
+        </IntentLink>
+      </Button>
       <Button
         aria-expanded={activeOverlay === "search"}
         aria-haspopup="dialog"
         aria-keyshortcuts="Control+K Meta+K"
         aria-label="Buscar no Interprete"
-        className="size-10 rounded-full text-muted-foreground hover:bg-accent hover:text-foreground"
+        className={`${noteEditorMode ? "size-11" : "size-10"} rounded-full text-muted-foreground hover:bg-accent hover:text-foreground`}
         onClick={() => setActiveOverlay("search")}
         size="icon-sm"
+        title="Buscar"
         type="button"
         variant="ghost"
       >
@@ -205,6 +229,7 @@ export const MemberHeaderControls = ({
       </Button>
 
       <NotificationsPopover
+        noteEditorMode={noteEditorMode}
         onOpenChange={(open) => setActiveOverlay(open ? "notifications" : null)}
         onUnreadCountChange={handleUnreadCountChange}
         open={activeOverlay === "notifications"}

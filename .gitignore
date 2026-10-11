@@ -290,6 +290,7 @@ skills-lock.json
 
 # Local diagnostics and production-data migration checkpoints stay out of Git.
 .playwright-cli/
+/output/
 /migration-recordings-checkpoint.json
 /migration-recordings-delete-dry-run.json
 /migration-recordings-manifest.json

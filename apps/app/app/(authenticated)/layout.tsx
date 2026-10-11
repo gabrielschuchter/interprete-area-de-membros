@@ -1,5 +1,4 @@
 import { database } from "@repo/database";
-import { SidebarProvider } from "@repo/design-system/components/ui/sidebar";
 import { tracePerformance } from "@repo/observability/performance";
 import { secure } from "@repo/security";
 import { redirect } from "next/navigation";
@@ -8,10 +7,7 @@ import { env } from "@/env";
 import { getAuth } from "@/lib/auth";
 import { getMemberProductConfig } from "@/lib/product-config";
 import { getOrCreateProfile } from "@/lib/profile";
-import { MemberHeader } from "./components/member-header";
-import { NavigationFeedback } from "./components/navigation-feedback";
-import { RouteMotion } from "./components/route-motion";
-import { GlobalSidebar } from "./components/sidebar";
+import { MemberShellController } from "./components/member-shell-controller";
 
 export const dynamic = "force-dynamic";
 
@@ -81,18 +77,16 @@ const AppLayout = async ({ children }: AppLayoutProperties) => {
   }
 
   return (
-    <SidebarProvider>
-      <GlobalSidebar
-        avatarUrl={profile?.avatarUrl ?? member?.avatarUrl ?? null}
-        canManageContent={member.role === "TEACHER" || member.role === "ADMIN"}
-        displayName={profile?.displayName ?? member.displayName ?? "Membro"}
-        productConfig={productConfig}
-      >
-        <MemberHeader memberId={userId} />
-        <NavigationFeedback />
-        <RouteMotion>{children}</RouteMotion>
-      </GlobalSidebar>
-    </SidebarProvider>
+    <MemberShellController
+      avatarUrl={profile?.avatarUrl ?? member.avatarUrl ?? null}
+      canManageContent={member.role === "TEACHER" || member.role === "ADMIN"}
+      displayName={profile?.displayName ?? member.displayName ?? "Membro"}
+      email={member.email ?? ""}
+      memberId={userId}
+      productConfig={productConfig}
+    >
+      {children}
+    </MemberShellController>
   );
 };
 

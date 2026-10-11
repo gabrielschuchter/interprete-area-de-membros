@@ -14,7 +14,8 @@ describe("memberSectionForPathname", () => {
     ["/tarefas/historico", "Metas e tarefas"],
     ["/configuracoes", "Configurações"],
     ["/comunidade/meus-topicos", "Meus tópicos"],
-    ["/comunidade/salvos", "Salvos"],
+    ["/salvos", "Salvos"],
+    ["/comunidade/salvos", "Comunidade"],
     ["/encontros/gravacoes", "Minhas gravações"],
     ["/encontros", "Encontros"],
   ])("resolves %s to %s", (pathname, section) => {
@@ -28,7 +29,6 @@ describe("personal sidebar active states", () => {
     "/tarefas",
     "/encontros",
     "/encontros/gravacoes",
-    "/comunidade/salvos",
     "/comunidade",
   ];
 
@@ -45,27 +45,19 @@ describe("personal sidebar active states", () => {
     ).toBe(false);
   });
 
-  test("selects only saved content on the saved route", () => {
-    expect(
-      isSidebarPathActive(
-        "/comunidade/salvos",
-        "/comunidade/salvos",
-        knownHrefs
-      )
-    ).toBe(true);
+  test("keeps community saved posts inside the Community navigation", () => {
     expect(
       isSidebarPathActive("/comunidade/salvos", "/comunidade", knownHrefs)
-    ).toBe(false);
+    ).toBe(true);
   });
 
-  test("keeps recordings and saved content as separate ordered entries", () => {
+  test("keeps only recordings in the isolated personal navigation group", () => {
     expect(personalContentNavigation).toEqual([
       {
         href: "/encontros/gravacoes",
         icon: "recordings",
         label: "Minhas gravações",
       },
-      { href: "/comunidade/salvos", icon: "saved", label: "Salvos" },
     ]);
   });
 });

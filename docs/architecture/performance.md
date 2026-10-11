@@ -91,11 +91,64 @@ p95 <= 500 ms from the budgets above. These are targets; authenticated desktop
 and mobile production measurements are still required before claiming they
 pass. Avatar transfer is measured separately from the profile save.
 
+## Exercises
+
+Exercise pages keep member data request-fresh and use Prisma projections from
+`apps/app/lib/exercises.ts`; no persistent cache is allowed for answers,
+favorites, active attempts, or history. The general interaction target is
+feedback within 100 ms, first usable content p95 <= 1 s, warmed prefetched
+content p95 <= 300 ms, and small persisted mutations p95 <= 500 ms. These are
+acceptance targets, not measured Exercises percentiles.
+
+- `/exercicios` reads published lists and categories in bounded projections,
+  then reads resumable list attempts and the six most recent completed
+  sessions in parallel. Search/category predicates run in PostgreSQL; text
+  search also matches published question categories and normalized topic tags.
+  List/resume card links and the 20-item Favorites page use intent-only route
+  prefetch through the shared per-route budget, avoiding viewport fan-out.
+- `/exercicios/listas/[slug]` reads only a published list, its ordered question
+  versions/options, and the member's active attempt. Session creation uses a
+  PostgreSQL transaction-scoped advisory lock keyed by member/list, then reuses
+  the existing active attempt or snapshots the published version IDs once.
+- `/exercicios/sessoes/[sessionId]` scopes the attempt to `memberId` and reads
+  ordered session questions with their pinned version, options, and saved
+  answers. Draft selections live in `sessionStorage`, keyed by session and
+  question, and never count as answers or progress.
+- Answer submission verifies the member, session, question, and submitted
+  option IDs on the server. One Serializable transaction inserts the unique
+  answer, updates progress/completion, and applies the existing assignment and
+  badge updates. The compact feedback DTO carries `sessionQuestionId`; the
+  client renders it only while that exact question is active. Success follows
+  the commit, and a duplicate submission reads back the saved answer. The
+  transaction may be retried on serialization conflict.
+- `/exercicios/historico` uses member-scoped keyset pagination ordered by
+  `(completedAt, id)`, fetching seven rows for six visible results. The home
+  page projection remains capped at six.
+- `/exercicios/favoritas` uses member-scoped keyset pagination ordered by
+  `(createdAt, id)`, fetching one extra row for a 20-item page. The combined
+  saved-content page reads a six-item preview and links to the full collection.
+  A separate aggregate returns the published favorite count. Existing
+  `ExerciseQuestionBookmark` uniqueness and member/date index are reused; no
+  index or migration was added for pagination.
+- Favorite reads filter unpublished questions, banks, and lists in SQL. Toggle
+  and undo are server mutations with authoritative reconciliation, rollback on
+  failure, a five-second undo toast, and revalidation of Exercises, Favorites,
+  Community saved content, and the active session when relevant.
+
+Reads remain dynamic and member-scoped; answer, favorite, and editor actions
+revalidate their affected routes after a committed write. No SQL query plan or
+representative-data latency sample was available for the new favorite count and
+keyset query, so no index change or database latency claim is made. The latest
+local production build measures Exercises at 188.5 KiB gzip across 13 chunks,
+under its 225 KiB budget. This does not establish authenticated route latency,
+mobile performance, or production persistence. Those still require isolated QA
+accounts and a non-production database.
+
 ## Interaction and navigation
 
 Shared control and motion behavior is specified in
 [`packages/design-system/PERFORMANCE.md`](../../packages/design-system/PERFORMANCE.md)
-and enforced by the design system's reduced-motion stylesheet.
+and enforced by shared interaction tokens and component styles.
 
 - Every actionable control acknowledges input immediately with pending,
   selected, saved, or progress feedback. Keyboard activation and assistive
@@ -119,8 +172,10 @@ and enforced by the design system's reduced-motion stylesheet.
 - Navigation feedback begins on primary activation and clears when the route
   changes, the activation is cancelled, or an explicit error is returned. A
   timeout is a final stale-state guard, not a completion signal.
-- Keep transitions short and optional. Respect `prefers-reduced-motion`; never
-  delay content merely to make a transition visible.
+- Keep transitions short and active. Do not query animation preferences or
+  remove motion from interactions; never delay content merely to make a
+  transition visible. Only consider a device-specific simplification after
+  repeatable performance evidence identifies devices that cannot sustain it.
 
 ## Persistence and background work
 
@@ -444,3 +499,36 @@ unique destination paths (87.5% fewer); they do not establish a latency gain or
 a production percentile. Vercel's free request logs expose paths/status but
 not function duration, and paid Observability Plus is unavailable and will not
 be enabled for this initiative.
+
+## Planejamento and Ferramentas — local implementation
+
+`/planejamento` keeps its member-scoped Prisma reads request-fresh. The initial
+dashboard projects at most 200 top-level tasks, 500 personal events and 200
+published meetings; recurrence expansion uses the requested date range, which
+is capped at 400 days. The calendar asks for only the visible range, while
+weekly and monthly study totals use database aggregates. Activity assignments
+and study sessions are queried only for calendar requests, capped at 200 and
+300 rows; study durations are grouped by session in the database. Goal markers
+are derived from the existing weekly/monthly goal periods. No personal planner
+record is stored in a shared persistent cache.
+
+`/ferramentas` reads at most 30 timer-history rows alongside the active session
+and user settings. Timer timestamps and persisted segments are authoritative;
+the visible clock refreshes while open and refreshes immediately when the page
+becomes visible. The server enforces one open timer session per member. These
+polls do not establish real-time cross-device latency. Manual stops remain
+pending until the member adds an optional note and registers or discards the
+session; study intervals are written only after registration. Lesson links can
+be added or removed while a session is active.
+
+The Notes list runs title/content/tag search in PostgreSQL, scopes every query
+to the authenticated member, and returns at most 100 rows with a 320-character
+preview. The TipTap JSON is fetched through a separate member-scoped query only
+when a note is opened. The list never transfers the full document for every
+row. Writes revalidate `/ferramentas` and `/`; editor changes debounce for
+700 ms and show saved status only after the action returns successfully.
+
+Both routes have a 225 KiB gzip initial JavaScript budget. Local build and
+bundle results are recorded in the dated roadmap entry; authenticated route
+percentiles, mobile measurements, database concurrency, and cross-device
+reconciliation remain acceptance gates, not inferred passes.

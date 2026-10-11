@@ -1,0 +1,396 @@
+"use client";
+
+import { useClerk } from "@repo/auth/client";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@repo/design-system/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@repo/design-system/components/ui/dropdown-menu";
+import { Separator } from "@repo/design-system/components/ui/separator";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  useSidebar,
+} from "@repo/design-system/components/ui/sidebar";
+import { toast } from "@repo/design-system/lib/toast";
+import {
+  BookOpenIcon,
+  HouseIcon,
+  LogOutIcon,
+  MessageCircleIcon,
+  SettingsIcon,
+  UserRoundIcon,
+  VideoIcon,
+} from "lucide-react";
+import { usePathname } from "next/navigation";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import { BrandWordmark } from "@/components/brand/brand-mark";
+import { IntentLink } from "./intent-link";
+import { isSidebarPathActive } from "./member-section";
+
+interface MemberAreaSidebarProperties {
+  readonly avatarUrl: string | null;
+  readonly canManageContent: boolean;
+  readonly children: ReactNode;
+  readonly chromeVisible: boolean;
+  readonly displayName: string;
+  readonly email: string;
+  readonly portalMode: boolean;
+}
+
+const mainNavigation = [
+  { href: "/", icon: HouseIcon, label: "Início" },
+  { href: "/estudar", icon: BookOpenIcon, label: "Estudar" },
+  { href: "/comunidade", icon: MessageCircleIcon, label: "Comunidade" },
+] as const;
+
+const whitespacePattern = /\s+/;
+
+const initialsFor = (value: string) =>
+  value
+    .trim()
+    .split(whitespacePattern)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase() || "M";
+
+export const MemberAreaSidebar = ({
+  avatarUrl,
+  canManageContent,
+  children,
+  chromeVisible,
+  displayName,
+  email,
+  portalMode,
+}: MemberAreaSidebarProperties) => {
+  const pathname = usePathname();
+  const { signOut } = useClerk();
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
+  const [tabletDrawer, setTabletDrawer] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
+  const previousSidebarOpen = useRef<boolean | null>(null);
+  const previousPathname = useRef(pathname);
+  const {
+    isMobile,
+    open: sidebarOpen,
+    setOpen: setSidebarOpen,
+    setOpenMobile,
+  } = useSidebar();
+  const activePath = pendingHref ?? pathname;
+  const navigationHrefs = [
+    ...mainNavigation.map((item) => item.href),
+    "/admin",
+    "/perfil",
+    "/configuracoes",
+    "/comunidade/meus-topicos",
+    "/encontros/gravacoes",
+  ];
+  const isActivePath = (href: string) => {
+    if (href === "/estudar") {
+      return [
+        "/estudar",
+        "/aprender",
+        "/exercicios",
+        "/atividades",
+        "/biblioteca",
+        "/planejamento",
+        "/ferramentas",
+        "/tarefas",
+      ].some(
+        (area) => activePath === area || activePath.startsWith(`${area}/`)
+      );
+    }
+    if (
+      href === "/comunidade" &&
+      activePath.startsWith("/encontros") &&
+      !activePath.startsWith("/encontros/gravacoes")
+    ) {
+      return true;
+    }
+    return isSidebarPathActive(activePath, href, navigationHrefs);
+  };
+
+  const handleNavigationStart = useCallback(
+    (href: string) => {
+      if (href !== pathname) {
+        setPendingHref(href);
+      }
+    },
+    [pathname]
+  );
+
+  useEffect(() => {
+    if (previousPathname.current === pathname) {
+      return;
+    }
+
+    previousPathname.current = pathname;
+    setPendingHref(null);
+  }, [pathname]);
+
+  useEffect(() => {
+    const tabletViewport = window.matchMedia(
+      "(min-width: 48rem) and (max-width: 63.999rem)"
+    );
+    const syncSidebar = () => {
+      const isTablet = tabletViewport.matches;
+      const needsDrawer = isTablet || portalMode;
+      setTabletDrawer(isTablet);
+
+      if (needsDrawer) {
+        previousSidebarOpen.current ??= sidebarOpen;
+        if (sidebarOpen) {
+          setSidebarOpen(false);
+        }
+        if (portalMode) {
+          setOpenMobile(false);
+        }
+        return;
+      }
+
+      const previousOpen = previousSidebarOpen.current;
+      previousSidebarOpen.current = null;
+      if (previousOpen !== null && sidebarOpen !== previousOpen) {
+        setSidebarOpen(previousOpen);
+      }
+    };
+
+    syncSidebar();
+    tabletViewport.addEventListener("change", syncSidebar);
+    return () => tabletViewport.removeEventListener("change", syncSidebar);
+  }, [portalMode, setOpenMobile, setSidebarOpen, sidebarOpen]);
+
+  const handleSignOut = async () => {
+    setIsSigningOut(true);
+    try {
+      await signOut({ redirectUrl: "/sign-in" });
+    } catch {
+      toast.error("Não foi possível encerrar a sessão. Tente novamente.");
+      setIsSigningOut(false);
+    }
+  };
+
+  const collapsible =
+    portalMode || tabletDrawer || isMobile ? "offcanvas" : "none";
+  const sidebarIsOffCanvas = collapsible === "offcanvas";
+
+  return (
+    <>
+      <a
+        className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:rounded-md focus:border focus:bg-background focus:px-4 focus:py-3 focus:text-foreground focus:shadow-lg focus-visible:ring-2 focus-visible:ring-brand-action focus-visible:ring-offset-2"
+        href="#member-main-content"
+      >
+        Pular para o conteúdo principal
+      </a>
+      <Sidebar
+        aria-hidden={
+          sidebarIsOffCanvas && !sidebarOpen && !isMobile ? true : undefined
+        }
+        className={
+          sidebarIsOffCanvas
+            ? "member-area-sidebar"
+            : "member-area-sidebar sticky top-0 h-svh shrink-0"
+        }
+        collapsible={collapsible}
+        data-chrome-visible={chromeVisible}
+        data-portal-mode={String(portalMode)}
+        variant="sidebar"
+      >
+        <SidebarHeader className="border-sidebar-border border-b px-4 py-5">
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                className="h-11 rounded-sm px-2 hover:bg-sidebar-accent"
+                size="lg"
+                tooltip="Interprete."
+              >
+                <IntentLink href="/" onNavigationStart={handleNavigationStart}>
+                  <BrandWordmark className="w-[7.25rem]" tone="branco" />
+                </IntentLink>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+          <SidebarGroup
+            aria-label="Minhas gravações"
+            className="px-2 pt-1 pb-0"
+            role="group"
+          >
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  className="rounded-sm py-2.5 data-[active=true]:border-sidebar-primary data-[active=true]:border-l-2 data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground"
+                  isActive={isActivePath("/encontros/gravacoes")}
+                  tooltip="Minhas gravações"
+                >
+                  <IntentLink
+                    aria-current={
+                      isActivePath("/encontros/gravacoes") ? "page" : undefined
+                    }
+                    href="/encontros/gravacoes"
+                    onNavigationStart={handleNavigationStart}
+                  >
+                    <VideoIcon aria-hidden="true" />
+                    <span>Minhas gravações</span>
+                  </IntentLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroup>
+        </SidebarHeader>
+        <Separator className="mx-4 w-auto bg-sidebar-border" />
+        <SidebarContent>
+          <SidebarGroup className="pt-3">
+            <SidebarMenu>
+              {mainNavigation.map((item) => (
+                <SidebarMenuItem key={item.href}>
+                  <SidebarMenuButton
+                    asChild
+                    className="rounded-sm py-2.5 data-[active=true]:border-sidebar-primary data-[active=true]:border-l-2 data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground"
+                    isActive={isActivePath(item.href)}
+                    tooltip={item.label}
+                  >
+                    <IntentLink
+                      aria-current={
+                        isActivePath(item.href) ? "page" : undefined
+                      }
+                      href={item.href}
+                      onNavigationStart={handleNavigationStart}
+                    >
+                      <item.icon aria-hidden="true" />
+                      <span>{item.label}</span>
+                    </IntentLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+            {canManageContent ? (
+              <SidebarMenu className="mt-5 border-sidebar-border border-t pt-4">
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    className="rounded-sm py-2.5 data-[active=true]:border-sidebar-primary data-[active=true]:border-l-2 data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground"
+                    isActive={isActivePath("/admin")}
+                    tooltip="Professor"
+                  >
+                    <IntentLink
+                      aria-current={isActivePath("/admin") ? "page" : undefined}
+                      href="/admin"
+                      onNavigationStart={handleNavigationStart}
+                    >
+                      <BookOpenIcon aria-hidden="true" />
+                      <span>Professor</span>
+                    </IntentLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            ) : null}
+          </SidebarGroup>
+        </SidebarContent>
+        <SidebarFooter className="border-sidebar-border border-t p-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <SidebarMenuButton
+                aria-label={`Abrir menu da conta de ${displayName}`}
+                className="h-12 rounded-sm px-2"
+                isActive={
+                  isActivePath("/perfil") ||
+                  pathname.startsWith("/comunidade/meus-topicos")
+                }
+                tooltip={displayName}
+              >
+                <Avatar className="size-8 shrink-0">
+                  {avatarUrl ? <AvatarImage alt="" src={avatarUrl} /> : null}
+                  <AvatarFallback className="bg-brand-action text-primary-foreground text-xs">
+                    {initialsFor(displayName)}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="min-w-0 flex-1 truncate text-left text-sm">
+                  {displayName}
+                </span>
+              </SidebarMenuButton>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-64" side="top">
+              <DropdownMenuLabel className="font-normal">
+                <span className="block truncate font-medium">
+                  {displayName}
+                </span>
+                {email ? (
+                  <span className="block truncate text-muted-foreground text-xs">
+                    {email}
+                  </span>
+                ) : null}
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <IntentLink
+                  aria-current={isActivePath("/perfil") ? "page" : undefined}
+                  href="/perfil"
+                  onNavigationStart={handleNavigationStart}
+                >
+                  <UserRoundIcon aria-hidden="true" />
+                  Meu perfil
+                </IntentLink>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <IntentLink
+                  aria-current={
+                    isActivePath("/configuracoes") ? "page" : undefined
+                  }
+                  href="/configuracoes"
+                  onNavigationStart={handleNavigationStart}
+                >
+                  <SettingsIcon aria-hidden="true" />
+                  Configurações
+                </IntentLink>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                disabled={isSigningOut}
+                onSelect={handleSignOut}
+              >
+                <LogOutIcon aria-hidden="true" />
+                {isSigningOut ? "Saindo..." : "Sair da conta"}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </SidebarFooter>
+      </Sidebar>
+      {portalMode && sidebarOpen && !isMobile ? (
+        <button
+          aria-label="Fechar menu"
+          className="member-portal-menu-scrim"
+          onClick={() => setSidebarOpen(false)}
+          type="button"
+        />
+      ) : null}
+      <SidebarInset asChild>
+        <div className="flex min-h-svh min-w-0 flex-1 flex-col">{children}</div>
+      </SidebarInset>
+    </>
+  );
+};

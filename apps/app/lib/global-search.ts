@@ -31,12 +31,24 @@ export type GlobalSearchResultType =
   | "community-comment"
   | "community-space"
   | "library"
-  | "profile";
+  | "profile"
+  | "planner-task"
+  | "planner-event"
+  | "planner-goal"
+  | "note";
+
+export type GlobalSearchArea =
+  | "Estudar"
+  | "Comunidade"
+  | "Planejamento"
+  | "Ferramentas";
 
 export interface GlobalSearchResult {
+  readonly area?: GlobalSearchArea;
   readonly context: string | null;
   readonly href: string;
   readonly id: string;
+  readonly section?: string;
   readonly title: string;
   readonly type: GlobalSearchResultType;
   readonly typeLabel: string;
@@ -68,6 +80,27 @@ const preview = (value: string | null | undefined) => {
   return normalized.length > 120 ? `${normalized.slice(0, 117)}…` : normalized;
 };
 
+const resultArea: Record<
+  GlobalSearchResultType,
+  { area: GlobalSearchArea; section: string }
+> = {
+  path: { area: "Estudar", section: "Aprender" },
+  course: { area: "Estudar", section: "Aprender" },
+  module: { area: "Estudar", section: "Aprender" },
+  lesson: { area: "Estudar", section: "Aprender" },
+  activity: { area: "Estudar", section: "Atividades" },
+  recording: { area: "Comunidade", section: "Encontros" },
+  community: { area: "Comunidade", section: "Publicações" },
+  "community-comment": { area: "Comunidade", section: "Publicações" },
+  "community-space": { area: "Comunidade", section: "Grupos de estudo" },
+  library: { area: "Estudar", section: "Biblioteca" },
+  profile: { area: "Comunidade", section: "Pessoas" },
+  "planner-task": { area: "Planejamento", section: "Tarefas" },
+  "planner-event": { area: "Planejamento", section: "Calendário" },
+  "planner-goal": { area: "Planejamento", section: "Metas" },
+  note: { area: "Ferramentas", section: "Notas" },
+};
+
 const result = (
   id: string,
   title: string,
@@ -75,7 +108,15 @@ const result = (
   typeLabel: string,
   context: string | null,
   href: string
-): GlobalSearchResult => ({ id, title, type, typeLabel, context, href });
+): GlobalSearchResult => ({
+  id,
+  title,
+  type,
+  typeLabel,
+  context,
+  href,
+  ...resultArea[type],
+});
 
 export const searchGlobal = async (memberId: string, rawQuery: string) => {
   const query = normalizeSearchQuery(rawQuery);
@@ -386,6 +427,48 @@ export const searchGlobal = async (memberId: string, rawQuery: string) => {
       ),
     ])
   );
+  const personalResultsPromise = Promise.all([
+    database.plannerTask.findMany({
+      where: {
+        memberId,
+        parentTaskId: null,
+        deletedAt: null,
+        OR: [{ title: contains(query) }, { description: contains(query) }],
+      },
+      orderBy: [{ dueAt: "asc" }, { updatedAt: "desc" }],
+      take: MAX_RESULTS_PER_TYPE,
+      select: { id: true, title: true, description: true, dueAt: true },
+    }),
+    database.plannerEvent.findMany({
+      where: {
+        memberId,
+        deletedAt: null,
+        OR: [{ title: contains(query) }, { description: contains(query) }],
+      },
+      orderBy: [{ startsAt: "asc" }, { updatedAt: "desc" }],
+      take: MAX_RESULTS_PER_TYPE,
+      select: { id: true, title: true, description: true, startsAt: true },
+    }),
+    database.plannerNote.findMany({
+      where: {
+        memberId,
+        deletedAt: null,
+        OR: [{ title: contains(query) }, { contentText: contains(query) }],
+      },
+      orderBy: [{ pinnedAt: "desc" }, { updatedAt: "desc" }],
+      take: MAX_RESULTS_PER_TYPE,
+      select: { id: true, title: true, contentText: true },
+    }),
+    database.studyGoal.findMany({
+      where: { memberId },
+      select: { id: true, period: true, targetMinutes: true },
+      orderBy: { period: "asc" },
+    }),
+  ]);
+  const [resultGroups, personalResults] = await Promise.all([
+    resultsPromise,
+    personalResultsPromise,
+  ]);
   const [
     paths,
     courses,
@@ -398,7 +481,8 @@ export const searchGlobal = async (memberId: string, rawQuery: string) => {
     spaces,
     library,
     profiles,
-  ] = await resultsPromise;
+  ] = resultGroups;
+  const [plannerTasks, plannerEvents, notes, goals] = personalResults;
 
   const pathResults = paths
     .filter((path) =>
@@ -541,18 +625,78 @@ export const searchGlobal = async (memberId: string, rawQuery: string) => {
       `/membros/${profile.username}`
     )
   );
+  const plannerTaskResults = plannerTasks.map((task) =>
+    result(
+      task.id,
+      task.title,
+      "planner-task",
+      "Tarefa",
+      task.dueAt
+        ? `Prazo ${task.dueAt.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })} · ${preview(task.description) ?? "Tarefa pessoal"}`
+        : preview(task.description),
+      `/planejamento?view=tasks&task=${encodeURIComponent(task.id)}`
+    )
+  );
+  const plannerEventResults = plannerEvents.map((event) =>
+    result(
+      event.id,
+      event.title,
+      "planner-event",
+      "Evento",
+      `${event.startsAt.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })} · ${preview(event.description) ?? "Evento pessoal"}`,
+      `/planejamento?view=calendar&event=${encodeURIComponent(event.id)}`
+    )
+  );
+  const plannerGoalResults = query.toLocaleLowerCase("pt-BR").includes("meta")
+    ? goals.map((goal) =>
+        result(
+          goal.id,
+          goal.period === "WEEKLY" ? "Meta semanal" : "Meta mensal",
+          "planner-goal",
+          "Meta",
+          `${goal.targetMinutes} minutos de estudo`,
+          "/planejamento?view=goals"
+        )
+      )
+    : [];
+  const noteResults = notes.map((note) =>
+    result(
+      note.id,
+      note.title,
+      "note",
+      "Nota",
+      preview(note.contentText),
+      `/ferramentas?view=notes&note=${encodeURIComponent(note.id)}`
+    )
+  );
 
+  const byArea = {
+    Estudar: [
+      ...pathResults,
+      ...courseResults,
+      ...moduleResults,
+      ...lessonResults,
+      ...activityResults,
+      ...libraryResults,
+    ].slice(0, 12),
+    Comunidade: [
+      ...recordingResults,
+      ...communityResults,
+      ...communityCommentResults,
+      ...communitySpaceResults,
+      ...profileResults,
+    ].slice(0, 6),
+    Planejamento: [
+      ...plannerGoalResults,
+      ...plannerTaskResults,
+      ...plannerEventResults,
+    ].slice(0, 4),
+    Ferramentas: noteResults.slice(0, 2),
+  };
   return [
-    ...pathResults,
-    ...courseResults,
-    ...moduleResults,
-    ...lessonResults,
-    ...activityResults,
-    ...recordingResults,
-    ...communityResults,
-    ...communityCommentResults,
-    ...communitySpaceResults,
-    ...libraryResults,
-    ...profileResults,
+    ...byArea.Estudar,
+    ...byArea.Comunidade,
+    ...byArea.Planejamento,
+    ...byArea.Ferramentas,
   ].slice(0, MAX_RESULTS);
 };

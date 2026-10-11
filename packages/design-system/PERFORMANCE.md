@@ -31,6 +31,27 @@ on a server request.
   keyboard intent may prefetch, through the shared per-route request budget and
   network-preference checks.
 
+## Exercise answer controls
+
+- Keep answer feedback tied to the immutable session-question ID. When a
+  response arrives after quick navigation, render it only on its matching
+  question; never let a stale form state expose another question's answer or
+  explanation.
+- Preserve unsubmitted selections per question in session storage so question
+  navigation and retry do not discard the draft. Clear a draft only after its
+  answer commits or the member confirms leaving the session.
+- Disable only the submitted fieldset while the answer is pending. Keep answer
+  success/error status announced and retain the selected options after a network
+  failure. Server correction remains authoritative for both single- and
+  multiple-choice questions.
+- On mobile, reserve space for the fixed bottom action and safe area, and use
+  `visualViewport` to keep the action above the virtual keyboard. Focus the new
+  question heading after navigation; desktop confirmation stays in document
+  flow.
+- Favorite toggles may respond optimistically because the state is reversible;
+  reconcile with the server and roll back on failure. Keep the shared toast's
+  undo action tied to the persisted mutation and expire it after five seconds.
+
 ## Profile badge artwork
 
 - Show the local criterion artwork in a reserved 56 px box with `next/image`,
@@ -46,7 +67,28 @@ on a server request.
   `--motion-duration-normal`, and easing tokens for interaction feedback.
 - Do not start route content hidden, stagger essential information, or use an
   animation as a substitute for loading feedback.
-- Respect `prefers-reduced-motion`. The shared stylesheet disables animations,
-  transitions, smooth scrolling, and hover movement for that preference.
-- Check keyboard activation, screen-reader status, touch targets, and reduced
-  motion when changing a shared control or motion utility.
+- Keep the designed animations, transitions, smooth scrolling, and hover
+  movement active across devices by default. Do not query animation preferences
+  or add CSS/utility variants that disable motion. Consider a device-specific
+  simplification only after repeatable performance evidence identifies devices
+  that cannot sustain the animation.
+- Check keyboard activation, screen-reader status, touch targets, and motion
+  behavior when changing a shared control or motion utility.
+
+## Planner and study tools
+
+- Keep calendar data bounded to the visible date range. Read the authenticated
+  member's personal records separately from published meetings and assigned
+  learning content; external layers remain read-only and link to their source.
+- Use server projections and SQL pagination for notes. Return a short list
+  preview, and fetch one TipTap document only after the member opens that note.
+- Keep note edits local while typing, announce saving state, and report success
+  only after the member-scoped write commits. Preserve the local draft and offer
+  retry after a failed save.
+- Render timer feedback immediately, then reconcile with server timestamps and
+  session segments. Poll only while a timer is active and refresh on visibility
+  changes; never advance elapsed time by counting interval callbacks.
+- Keep one server-enforced active timer per member. A client timer is a display
+  projection and must reconcile when another tab or device changes the session.
+- Route calendar, notes, and timer transitions through the existing motion
+  tokens; essential content stays visible without waiting for animation.

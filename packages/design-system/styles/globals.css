@@ -3,7 +3,7 @@
 @import "@fontsource/inter/600.css";
 @import "@fontsource/source-serif-4/600.css";
 @import "@fontsource/ibm-plex-mono/400.css";
-@import "tailwindcss";
+@import "tailwindcss" source(none);
 @import "tw-animate-css";
 @source "../**/*.{ts,tsx}";
 
@@ -529,6 +529,35 @@
   }
 }
 
+@layer components {
+  .toast-item {
+    position: fixed;
+  }
+
+  .default-toast-position {
+    right: 1rem;
+    bottom: calc(1rem + var(--toast-stack-offset, 0rem));
+  }
+
+  .exercise-toast-position {
+    bottom: calc(
+      5rem +
+      env(safe-area-inset-bottom) +
+      var(--toast-stack-offset, 0rem)
+    );
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  @media (min-width: 48rem) {
+    .exercise-toast-position {
+      bottom: calc(1rem + var(--toast-stack-offset, 0rem));
+      left: 1rem;
+      transform: none;
+    }
+  }
+}
+
 /* Typography plugin */
 @utility prose {
   --tw-prose-body: var(--color-foreground);
@@ -563,18 +592,4 @@
   --tw-prose-invert-pre-bg: var(--color-background);
   --tw-prose-invert-th-borders: var(--color-border);
   --tw-prose-invert-td-borders: var(--color-border);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation: none !important;
-    scroll-behavior: auto !important;
-    transition: none !important;
-  }
-
-  .motion-card:hover {
-    transform: none !important;
-  }
 }

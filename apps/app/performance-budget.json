@@ -33,6 +33,18 @@
       "maxGzipBytes": 230400
     },
     {
+      "route": "planner",
+      "manifestSegments": ["(authenticated)", "planejamento"],
+      "entrySuffix": "apps/app/app/(authenticated)/planejamento/page",
+      "maxGzipBytes": 230400
+    },
+    {
+      "route": "tools",
+      "manifestSegments": ["(authenticated)", "ferramentas"],
+      "entrySuffix": "apps/app/app/(authenticated)/ferramentas/page",
+      "maxGzipBytes": 230400
+    },
+    {
       "route": "profile-overview",
       "manifestSegments": ["(authenticated)", "perfil"],
       "entrySuffix": "apps/app/app/(authenticated)/perfil/page",

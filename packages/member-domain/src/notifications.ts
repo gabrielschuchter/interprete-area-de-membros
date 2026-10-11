@@ -28,6 +28,8 @@ const notificationRequestSchema = z.object({
   type: z.string().trim().min(1).max(64),
   entityType: z.string().trim().min(1).max(64).nullable().optional(),
   entityId: z.string().trim().min(1).max(255).nullable().optional(),
+  title: z.string().trim().min(1).max(160).optional(),
+  body: z.string().trim().max(500).optional(),
   parentEntityType: z.string().trim().min(1).max(64).nullable().optional(),
   parentEntityId: z.string().trim().min(1).max(255).nullable().optional(),
   groupKey: z.string().trim().min(1).max(255).nullable().optional(),

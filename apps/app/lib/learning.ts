@@ -149,6 +149,60 @@ export const getPublishedLearningPaths = async (
     .filter((path) => path.courses.length > 0);
 };
 
+export const getMemberAccessibleLesson = async (
+  memberId: string,
+  lessonId: string
+) => {
+  const [scope, lesson] = await Promise.all([
+    getLearningAccessScope(memberId),
+    database.lesson.findFirst({
+      where: {
+        id: lessonId,
+        ...published,
+        module: {
+          is: {
+            ...published,
+            course: { is: publishedCourse },
+          },
+        },
+      },
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        module: {
+          select: {
+            id: true,
+            title: true,
+            course: { select: { id: true, slug: true } },
+          },
+        },
+      },
+    }),
+  ]);
+  if (!(lesson && hasCourseAccess(scope, lesson.module.course.id))) {
+    return null;
+  }
+  if (
+    !(
+      hasFullCourseAccess(scope, lesson.module.course.id) ||
+      hasModuleAccess(scope, lesson.module.course.id, lesson.module.id) ||
+      hasLessonAccess(
+        scope,
+        lesson.module.course.id,
+        lesson.module.id,
+        lesson.id
+      )
+    )
+  ) {
+    return null;
+  }
+  return {
+    ...lesson,
+    href: `/aprender/cursos/${lesson.module.course.slug}/${lesson.slug}`,
+  };
+};
+
 export const getMemberCourseProgress = async (
   memberId: string,
   courseIds: readonly string[]

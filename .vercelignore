@@ -1,4 +1,6 @@
 # Local and generated state should never be uploaded by a CLI deployment.
+.env*
+**/.env*
 node_modules
 **/node_modules
 .next
@@ -17,6 +19,7 @@ apps/*/out
 # Browser QA captures are local diagnostics, not deployable application source.
 .playwright-cli
 **/.playwright-cli
+/output
 
 # Kiwify migration media and checkpoints are local-only and can be very large.
 tmp

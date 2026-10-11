@@ -743,6 +743,7 @@ export const toggleLearningBookmark = async (formData: FormData) => {
   revalidatePath("/aprender");
   revalidatePath("/biblioteca");
   revalidatePath("/biblioteca/pessoal");
+  revalidatePath("/salvos");
   revalidatePath("/comunidade/salvos");
 };
 
