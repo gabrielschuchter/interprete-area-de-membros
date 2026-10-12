@@ -94,6 +94,11 @@ on a server request.
 - Keep calendar data bounded to the visible date range. Read the authenticated
   member's personal records separately from published meetings and assigned
   learning content; external layers remain read-only and link to their source.
+- Route activity deadlines through `resolveCalendar` and the request-fresh
+  learner-feed authorization, applying the selected range in SQL and honoring
+  `availableAt`. The current 200-row assignment/candidate caps have no
+  continuation UI; keep that acceptance gap visible. Tokenized `.ics` data must
+  not be shared-cached so membership or token revocation takes effect on fetch.
 - Use server projections and SQL pagination for notes. Return a short list
   preview, and fetch one TipTap document only after the member opens that note.
 - Keep note edits local while typing, announce saving state, and report success

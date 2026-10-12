@@ -532,11 +532,20 @@ be enabled for this initiative.
 dashboard projects at most 200 top-level tasks, 500 personal events and 200
 published meetings; recurrence expansion uses the requested date range, which
 is capped at 400 days. The calendar asks for only the visible range, while
-weekly and monthly study totals use database aggregates. Activity assignments
-and study sessions are queried only for calendar requests, capped at 200 and
-300 rows; study durations are grouped by session in the database. Goal markers
-are derived from the existing weekly/monthly goal periods. No personal planner
-record is stored in a shared persistent cache.
+weekly and monthly study totals use database aggregates. Calendar activity
+deadlines pass through `resolveCalendar` and the member's current
+`resolveStudentFeed` projection, including eligible individual assignments and
+dynamic cohort targets. Due-date predicates are applied in the database and
+future assignments remain hidden until `availableAt`; the read creates no
+progress. Assignment and activity candidate queries each cap at 200 rows today,
+so pagination/continuation is still required before the calendar is complete.
+Study sessions are capped at 300 rows; durations are grouped by session in the
+database. Goal markers are derived from the existing weekly/monthly goal
+periods. Personal planner records and resolved cohort identity are not stored
+in a shared persistent cache. The tokenized `.ics` response is private and
+`no-store` so current membership and token revocation are checked on fetch.
+Lesson releases and cohort events are not yet projected, and meeting access
+still follows the legacy participant query; database latency is unmeasured.
 
 `/ferramentas` reads at most 30 timer-history rows alongside the active session
 and user settings. Timer timestamps and persisted segments are authoritative;
