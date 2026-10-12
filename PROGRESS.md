@@ -4,8 +4,8 @@
 
 ## Estado geral
 - Branch: `gestao-v2`
-- Fase atual: 2 — Turmas e acesso (em andamento; validação de runtime local pendente)
-- Último commit verificado: `c151c9b` (fundação de turmas e acesso)
+- Fase atual: 3 — Ensino (catálogo de cursos e entrada para edição; demais módulos e aceite visual/runtime pendentes)
+- Último commit verificado: `9a5c3c6` (registro da Fase 2 e base da unidade atual)
 - Orçamento/contexto: (preencher se relevante)
 
 ## Fases
@@ -13,8 +13,8 @@
 |---|---|---|---|
 | 0 Auditoria | concluída | `docs/gestao-auditoria.md`; 101 pares HTML/PNG inventariados e revistos em pranchas; matriz 1:1 gerada; commit `ffbb93e`; nenhum código/migration alterado | releitura dos critérios e conferência solo; sem subagente por instrução direta para trabalhar sozinho |
 | 1 Shell, permissões, rotas, transição | IN PROGRESS — aceite visual/runtime pendente | Shell responsivo desktop/trilho/gaveta; flag `GESTAO_V2_ENABLED` false por padrão; mapa de ações por papel e retorno interno seguro; 20 testes focados e gates locais registrados no commit `1d04e5a` | Revisão solo dos critérios; comparações visuais e jornada autenticada ainda pendentes, portanto os quadros permanecem abertos |
-| 2 Turmas e resolvers | IN PROGRESS | Modelos e migration aditiva; autorização por papel/turma; CRUD de turmas, responsáveis, matrículas, convites, cursos e liberações; regras de acesso e 24 testes focados. `check`, `typecheck`, `boundaries`, `test` (449 app + API/domínio/scripts), `build`, `performance:check`, `git diff --check` passaram; `prisma validate` passou; commit `c151c9b`. Migration não aplicada: PostgreSQL local indisponível. `resolveStudentFeed` e `resolveCalendar` continuam pendentes | Revisão solo das regras; persistência local, fluxos autenticados e comparação visual pendentes |
-| 3 Ensino (YouTube, atividades, exercícios, biblioteca, coleções) | pendente | | |
+| 2 Turmas e resolvers | IN PROGRESS | Modelos e migration aditiva; autorização por papel/turma; CRUD de turmas, responsáveis, matrículas, convites, cursos e liberações; regras de acesso e 24 testes focados. `check`, `typecheck`, `boundaries`, `test`, `build`, `performance:check`, `git diff --check` e `prisma validate` passaram; commit de código `c151c9b`, registro atualizado em `9a5c3c6`. Migration não aplicada: PostgreSQL local indisponível. `resolveStudentFeed` e `resolveCalendar` continuam pendentes | Revisão solo das regras; persistência local, fluxos autenticados e comparação visual pendentes |
+| 3 Ensino (YouTube, atividades, exercícios, biblioteca, coleções) | IN PROGRESS — catálogo de cursos parcial | Novo catálogo DB-driven com busca, filtros, paginação e contagens; criação e edição de curso sob `/gestao/ensino/cursos`, reaproveitando o domínio e editor existentes; 4 testes focados. `check`, `typecheck`, `boundaries`, `test` (453 app, 9 API, 17 domínio), `build` com `SKIP_ENV_VALIDATION=true`, `performance:check` e `git diff --check` passaram nesta unidade | Rotas geradas no build; sem sessão local autenticada, persistência em banco, comparação dos quadros ou revisão independente; portanto nenhum quadro desta fase concluído |
 | 4 Envios, cronograma, calendário, Aprender, Personalização | pendente | | |
 | 5 Alunos e correções | pendente | | |
 | 6 Comunidade | pendente | | |
@@ -81,8 +81,8 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluído com evidência
 - [~] `GTurmaConfig` — Turma — configurações (regra de entrada, duplicar, arquivar)
 
 ### Ensino
-- [ ] `GCursos` — Ensino — cursos e percursos
-- [ ] `GCurso` — Ensino — curso: conteúdo, módulos e aulas
+- [~] `GCursos` — Ensino — cursos e percursos (catálogo e filtros implementados; comparação visual e fluxo autenticado pendentes)
+- [~] `GCurso` — Ensino — curso: conteúdo, módulos e aulas (rota reaproveita o editor existente; fidelidade visual e aceite dos fluxos pendentes)
 - [ ] `GCursoTurmas` — Ensino — curso: turmas e acesso
 - [ ] `GAula` — Ensino — editor de aula (vídeo do YouTube não listado ou arquivo)
 - [ ] `GAulaYT` — Vídeo do YouTube — estados da verificação
@@ -153,6 +153,7 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluído com evidência
 |---|---|---|
 | Runtime local e migration da Fase 2 | Serviço `com.docker.service` parado; iniciar o Docker Desktop não criou o pipe Linux; `127.0.0.1:5432` sem listener. Não usei banco remoto. | Disponibilizar Supabase/Postgres local, aplicar a migration aditiva, rodar fixtures explícitas e validar persistência/autorização com os papéis de QA. |
 | Visual e jornadas autenticadas | A aplicação local depende do banco; a única aba autenticada disponível aponta para Production e foi consultada somente para leitura. | Abrir o app local com contas de QA, comparar PNGs nos tamanhos do aceite e percorrer os fluxos reais. |
+| Integrações externas da Fase 3 | Nenhuma chave real do YouTube nem Storage local configurados; não criei credenciais fictícias. | Configurar serviços de QA para validar estados reais do YouTube, uploads e playback quando esses módulos forem implementados. |
 
 ## Controles removidos por não terem função
 Nenhum removido nesta unidade. A varredura integral de controles fica pendente para o aceite final.
@@ -161,4 +162,6 @@ Nenhum removido nesta unidade. A varredura integral de controles fica pendente p
 - Fase 1 permanece `IN PROGRESS` até QA autenticado e comparação visual; nenhuma referência foi marcada como concluída.
 - Fase 2 tem código local e migration versionada, mas a migration não foi aplicada a banco algum; não há evidência de persistência até a execução do QA local.
 - Fechar `resolveStudentFeed` e `resolveCalendar` e integrar os resolvers às telas do aluno/Planejamento na sequência prevista.
+- A unidade atual entrega somente o catálogo e a entrada para criação/edição de cursos. YouTube, editor de aula, percursos, exercícios, atividades, biblioteca, coleções e uploads continuam pendentes; redirecionamentos preservam os módulos existentes, sem afirmar equivalência visual.
+- As referências `GCursos` e `GCurso` seguem `[~]`: o checklist de oito critérios exige jornada autenticada, captura comparada e teste de fluxo persistido, ainda indisponíveis.
 - Sem alteração de Production, de Supabase remoto ou de notificações externas.

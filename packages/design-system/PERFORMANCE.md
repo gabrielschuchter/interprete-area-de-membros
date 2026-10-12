@@ -132,3 +132,23 @@ on a server request.
 - User-generated group headings must shrink inside flex layouts and wrap unbroken names/slugs at narrow widths. The 80-character boundary was verified in the isolated local database.
 
 - Lifecycle disposal guards must reset during effect setup so React effect replay cannot silently disable autosave/publish. The composer regression uses StrictMode and checks both server actions.
+
+
+## Gestão navigation and course surfaces
+
+- The Gestão shell keeps its 264 px sidebar on wide desktop, a 72 px rail at
+  intermediate desktop widths, and a mobile drawer. The active Ensino group
+  exposes its five destination links; the course catalog uses database
+  pagination and disables prefetch on each course editor destination.
+- Catalog filters stay in the URL and are applied in SQL. Keep the result DTO
+  limited to 25 courses, module/lesson counts, and three cohort labels at most.
+  Do not add viewport prefetch to course cards or result rows.
+- The new course form responds to validation locally, and its server action
+  returns only after the existing authorized database write commits. Continue
+  to measure first usable content, warmed navigation, and persisted mutation
+  percentiles against the shared budgets; local and authenticated mobile
+  measurements remain open.
+- The Gestão course editor currently reuses the established course editor
+  inside the new shell. Keep it behind the same server authorization and move
+  its editor-specific controls into Gestão components before claiming visual
+  acceptance.

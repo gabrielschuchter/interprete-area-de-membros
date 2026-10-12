@@ -459,6 +459,7 @@ export const createLearningPath = async (formData: FormData) => {
 
 export const createCourse = async (formData: FormData) => {
   const { userId } = await requireStaffMutation();
+  const gestaoReturn = asText(formData.get("gestaoReturn")) === "GESTAO";
   const title = asText(formData.get("title"));
   const subtitle = asText(formData.get("subtitle"));
   const slug = asText(formData.get("slug")).toLowerCase();
@@ -502,7 +503,13 @@ export const createCourse = async (formData: FormData) => {
   });
 
   revalidatePath("/admin/learning");
-  redirect(`/admin/learning/courses/${course.id}`);
+  revalidatePath("/gestao/ensino/cursos");
+  revalidatePath("/aprender");
+  redirect(
+    gestaoReturn
+      ? `/gestao/ensino/cursos/${course.id}`
+      : `/admin/learning/courses/${course.id}`
+  );
 };
 
 const copySlug = (slug: string) =>
@@ -510,6 +517,7 @@ const copySlug = (slug: string) =>
 
 export const duplicateCourse = async (formData: FormData) => {
   const { userId } = await requireStaffMutation();
+  const gestaoReturn = asText(formData.get("gestaoReturn")) === "GESTAO";
   const courseId = asText(formData.get("courseId"));
   if (!courseId) {
     return;
@@ -631,7 +639,12 @@ export const duplicateCourse = async (formData: FormData) => {
   });
 
   revalidatePath("/admin/learning");
-  redirect(`/admin/learning/courses/${copy.id}`);
+  revalidatePath("/gestao/ensino/cursos");
+  redirect(
+    gestaoReturn
+      ? `/gestao/ensino/cursos/${copy.id}`
+      : `/admin/learning/courses/${copy.id}`
+  );
 };
 
 export const createModule = async (formData: FormData) => {
@@ -671,6 +684,7 @@ export const createModule = async (formData: FormData) => {
 
 export const duplicateModule = async (formData: FormData) => {
   const { userId } = await requireStaffMutation();
+  const gestaoReturn = asText(formData.get("gestaoReturn")) === "GESTAO";
   const moduleId = asText(formData.get("moduleId"));
   if (!moduleId) {
     return;
@@ -751,7 +765,12 @@ export const duplicateModule = async (formData: FormData) => {
     return createdModule;
   });
   revalidatePath(`/admin/learning/courses/${source.courseId}`);
-  redirect(`/admin/learning/courses/${source.courseId}#module-${copy.id}`);
+  revalidatePath(`/gestao/ensino/cursos/${source.courseId}`);
+  redirect(
+    gestaoReturn
+      ? `/gestao/ensino/cursos/${source.courseId}#module-${copy.id}`
+      : `/admin/learning/courses/${source.courseId}#module-${copy.id}`
+  );
 };
 
 export const createLesson = async (formData: FormData) => {
@@ -802,6 +821,7 @@ export const createLesson = async (formData: FormData) => {
 
 export const duplicateLesson = async (formData: FormData) => {
   const { userId } = await requireStaffMutation();
+  const gestaoReturn = asText(formData.get("gestaoReturn")) === "GESTAO";
   const lessonId = asText(formData.get("lessonId"));
   if (!lessonId) {
     return;
@@ -860,8 +880,11 @@ export const duplicateLesson = async (formData: FormData) => {
     return createdLesson;
   });
   revalidatePath(`/admin/learning/courses/${source.module.courseId}`);
+  revalidatePath(`/gestao/ensino/cursos/${source.module.courseId}`);
   redirect(
-    `/admin/learning/courses/${source.module.courseId}#lesson-${copy.id}`
+    gestaoReturn
+      ? `/gestao/ensino/cursos/${source.module.courseId}#lesson-${copy.id}`
+      : `/admin/learning/courses/${source.module.courseId}#lesson-${copy.id}`
   );
 };
 

@@ -27,9 +27,11 @@ import { toast } from "@repo/design-system/lib/toast";
 import {
   ArrowLeftIcon,
   BookOpenIcon,
+  ChevronDownIcon,
   ChevronRightIcon,
   LayoutDashboardIcon,
   LockKeyholeIcon,
+  type LucideIcon,
   MenuIcon,
   MessageCircleIcon,
   PlusIcon,
@@ -58,14 +60,37 @@ interface GestaoShellProperties {
   readonly role: GestaoRole;
 }
 
-const navigation = [
+interface NavigationItem {
+  readonly admin: boolean;
+  readonly children?: readonly {
+    readonly href: string;
+    readonly label: string;
+  }[];
+  readonly href: string;
+  readonly icon: LucideIcon;
+  readonly label: string;
+}
+
+const navigation: readonly NavigationItem[] = [
   {
     href: "/gestao",
     icon: LayoutDashboardIcon,
     label: "Visão geral",
     admin: false,
   },
-  { href: "/gestao/ensino", icon: BookOpenIcon, label: "Ensino", admin: false },
+  {
+    href: "/gestao/ensino",
+    icon: BookOpenIcon,
+    label: "Ensino",
+    admin: false,
+    children: [
+      { href: "/gestao/ensino/cursos", label: "Cursos e percursos" },
+      { href: "/gestao/ensino/exercicios", label: "Exercícios" },
+      { href: "/gestao/ensino/atividades", label: "Atividades" },
+      { href: "/gestao/ensino/biblioteca", label: "Biblioteca" },
+      { href: "/gestao/ensino/colecoes", label: "Coleções" },
+    ],
+  },
   {
     href: "/gestao/alunos",
     icon: UsersRoundIcon,
@@ -110,6 +135,84 @@ const isActivePath = (pathname: string, href: string) =>
     ? pathname === href
     : pathname === href || pathname.startsWith(`${href}/`);
 
+interface GestaoNavigationEntryProperties {
+  readonly item: NavigationItem;
+  readonly onNavigate: () => void;
+  readonly pathname: string;
+  readonly returnTo: string;
+  readonly role: GestaoRole;
+}
+
+const GestaoNavigationEntry = ({
+  item,
+  onNavigate,
+  pathname,
+  returnTo,
+  role,
+}: GestaoNavigationEntryProperties) => {
+  const active = isActivePath(pathname, item.href);
+  const isLocked = item.admin && role !== "ADMIN";
+  let TrailingIcon: LucideIcon | null = null;
+
+  if (isLocked) {
+    TrailingIcon = LockKeyholeIcon;
+  } else if (item.children) {
+    if (active) {
+      TrailingIcon = ChevronDownIcon;
+    } else {
+      TrailingIcon = ChevronRightIcon;
+    }
+  } else if (item.href !== "/gestao") {
+    TrailingIcon = ChevronRightIcon;
+  }
+
+  return (
+    <div className="gestao-navigation-group">
+      <Link
+        aria-current={pathname === item.href ? "page" : undefined}
+        aria-label={isLocked ? `${item.label}, acesso restrito` : item.label}
+        className="gestao-navigation-link"
+        data-active={String(active)}
+        data-locked={String(isLocked)}
+        href={withGestaoReturnPath(item.href, returnTo)}
+        onClick={onNavigate}
+        title={item.label}
+      >
+        <item.icon aria-hidden="true" className="gestao-navigation-icon" />
+        <span className="gestao-navigation-label">{item.label}</span>
+        {TrailingIcon ? (
+          <TrailingIcon
+            aria-hidden="true"
+            className="gestao-navigation-trailing"
+          />
+        ) : null}
+      </Link>
+      {active && item.children ? (
+        <ul
+          aria-label={`Páginas de ${item.label}`}
+          className="gestao-navigation-children"
+        >
+          {item.children.map((child) => {
+            const childActive = isActivePath(pathname, child.href);
+            return (
+              <li key={child.href}>
+                <Link
+                  aria-current={childActive ? "page" : undefined}
+                  className="gestao-navigation-child"
+                  data-active={String(childActive)}
+                  href={withGestaoReturnPath(child.href, returnTo)}
+                  onClick={onNavigate}
+                >
+                  {child.label}
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
+    </div>
+  );
+};
 export const GestaoShell = ({
   avatarUrl,
   children,
@@ -276,38 +379,16 @@ export const GestaoShell = ({
           className="gestao-navigation"
           id="gestao-navigation"
         >
-          {navigation.map(({ admin, href, icon: Icon, label }) => {
-            const active = isActivePath(pathname, href);
-            const isLocked = admin && role !== "ADMIN";
-            return (
-              <Link
-                aria-current={active ? "page" : undefined}
-                aria-label={isLocked ? `${label}, acesso restrito` : label}
-                className="gestao-navigation-link"
-                data-active={String(active)}
-                data-locked={String(Boolean(isLocked))}
-                href={gestaoHref(href)}
-                key={href}
-                onClick={() => setMobileMenuOpen(false)}
-                title={label}
-              >
-                <Icon aria-hidden="true" className="gestao-navigation-icon" />
-                <span className="gestao-navigation-label">{label}</span>
-                {isLocked ? (
-                  <LockKeyholeIcon
-                    aria-hidden="true"
-                    className="gestao-navigation-trailing"
-                  />
-                ) : null}
-                {!isLocked && href !== "/gestao" ? (
-                  <ChevronRightIcon
-                    aria-hidden="true"
-                    className="gestao-navigation-trailing"
-                  />
-                ) : null}
-              </Link>
-            );
-          })}
+          {navigation.map((item) => (
+            <GestaoNavigationEntry
+              item={item}
+              key={item.href}
+              onNavigate={() => setMobileMenuOpen(false)}
+              pathname={pathname}
+              returnTo={returnTo}
+              role={role}
+            />
+          ))}
         </nav>
         <div className="gestao-sidebar-spacer" />
         <Link
@@ -377,7 +458,24 @@ export const GestaoShell = ({
             <MenuIcon aria-hidden="true" />
           </button>
           <div className="gestao-topbar-context">
-            <span className="gestao-topbar-section">{heading}</span>
+            {pathname.startsWith("/gestao/ensino/cursos") ? (
+              <nav
+                aria-label="Caminho da página"
+                className="gestao-topbar-breadcrumb"
+              >
+                <Link href="/gestao">Gestão</Link>
+                <span aria-hidden="true">›</span>
+                <Link href="/gestao/ensino/cursos">Ensino</Link>
+                {pathname === "/gestao/ensino/cursos" ? (
+                  <>
+                    <span aria-hidden="true">›</span>
+                    <span aria-current="page">Cursos e percursos</span>
+                  </>
+                ) : null}
+              </nav>
+            ) : (
+              <span className="gestao-topbar-section">{heading}</span>
+            )}
           </div>
           <div className="gestao-topbar-actions">
             <MemberHeaderControls memberId={memberId} showSaved={false} />
@@ -393,7 +491,9 @@ export const GestaoShell = ({
                 <DropdownMenuSeparator />
                 {createActions.map((item) => (
                   <DropdownMenuItem asChild key={item.href}>
-                    <Link href={gestaoHref(item.href)}>{item.label}</Link>
+                    <Link href={withGestaoReturnPath(item.href, returnTo)}>
+                      {item.label}
+                    </Link>
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>

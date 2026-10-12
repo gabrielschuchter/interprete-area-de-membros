@@ -607,3 +607,28 @@ Gates finais dos grupos: os seis checks obrigatórios e diff --check passaram (4
 No runtime local com StrictMode, o cleanup marcava disposedRef=true, mas o setup não restaurava false. Isso bloqueava scheduleSave/flushSave/handlePublish silenciosamente; o teste novo falhou com zero chamadas ao autosave antes da correção e passou depois. O setup agora reativa o componente. Após corrigir, Chrome local confirmou POST 200 de autosave, título e corpo persistidos no reload e prévia com conteúdo correto no grupo privado de QA. Não houve escrita pública em produção. Nenhuma query/cache/schema adicional; a fila e a prevenção de publicação duplicada permanecem. O cluster local existente foi reiniciado após interrupção e verify-local-tls confirmou interprete_member_qa2/TLS validado.
 
 Gates finais do editor: check/typecheck/boundaries/test/build/performance:check e diff --check passaram; 415 testes app em 106 arquivos, 17 domínio, 9 API, 30 scripts. Chrome local confirmou corpo e título após autosave/reload, prévia e publicação privada controlada com reload. Medição estabilizada em 390 px: scrollWidth 375, sem overflow. A medição imediata durante a transição não é usada como aceite. Nenhum conteúdo foi publicado remotamente nesse ensaio.
+
+
+### Gestão course catalog and editing path
+
+/gestao/ensino/cursos is a staff-only Server Component path. It resolves
+content.manage on each request and keeps search, state, learning-path filters,
+pagination, and totals in PostgreSQL. The catalog page size is 25; the search
+string is bounded to 120 characters, path IDs to 255 characters, and the course
+projection selects only title/state/timestamps, path label, module and lesson
+counts, and at most three authorized cohort labels plus active member counts.
+Cohort labels and counts are scoped to the current teacher's cohorts.
+
+The route currently performs independent status counts and path options in
+parallel with the page count, followed by the selected page query. Filters and
+ordering are database-side, with stable tie-breakers; viewport links from the
+course rows do not prefetch editor trees. No identity or permission result is
+persistently cached. Creating a course uses the existing authorized action,
+commits the course first, then invalidates the Gestão catalog and learner
+surface before redirecting to the editor.
+
+The editor is shared with the existing course domain and includes the existing
+nested course/module/lesson authoring fields. That editor projection, its
+mutation audit/outbox coverage, and the new route's authenticated latency have
+not yet passed the Gestão acceptance gate. Until local QA has a database and
+staff fixtures, the budgets above remain targets rather than measured results.
