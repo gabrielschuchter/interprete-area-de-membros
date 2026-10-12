@@ -273,6 +273,39 @@ enum LessonAssetMediaProvider {
   EXTERNAL_URL
 }
 
+enum CohortLateJoinPolicy {
+  ALL_ACTIVE
+  FROM_JOIN
+}
+
+
+enum CohortMemberSource {
+  MANUAL
+  CSV
+  INVITE
+  MOVE
+}
+
+
+enum CohortMemberStatus {
+  ACTIVE
+  REMOVED
+}
+
+
+enum CohortReleaseMode {
+  ALL_AT_ONCE
+  SCHEDULE
+}
+
+
+enum AccessGrantOrigin {
+  DIRECT
+  COHORT
+  ASSIGNMENT
+  HISTORICAL
+}
+
 enum AccessResourceType {
   COURSE
   MODULE
@@ -355,6 +388,16 @@ model Member {
   profile                             Profile?
   ownedAssets                         LessonAsset[]                      @relation("OwnedLessonAssets")
   accessGrants                        AccessGrant[]
+  cohortsCreated                      Cohort[]                           @relation("CohortCreator")
+  cohortTeaching                      CohortTeacher[]                    @relation("CohortTeacherMember")
+  cohortAssignments                   CohortTeacher[]                    @relation("CohortTeacherAssigner")
+  cohortMemberships                   CohortMembership[]
+  cohortInvitesCreated                CohortInvite[]                     @relation("CohortInviteCreator")
+  accessGrantSourcesAsMember          AccessGrantSource[]                @relation("AccessGrantSourceMember")
+  accessGrantSourcesAsCreator         AccessGrantSource[]                @relation("AccessGrantSourceCreator")
+  cohortCourseAccessesCreated         CohortCourseAccess[]               @relation("CohortCourseAccessCreator")
+  cohortLessonReleasesUpdated         CohortLessonRelease[]              @relation("CohortLessonReleaseUpdater")
+  cohortMembershipsCreated            CohortMembership[]                 @relation("CohortMembershipCreator")
   migrationStudents                   MigrationStudent[]                 @relation("MigrationStudentMember")
   notifications                       Notification[]                     @relation("NotificationRecipient")
   notificationsAsActor                Notification[]                     @relation("NotificationActor")
@@ -490,6 +533,7 @@ model Course {
   meetings         Meeting[]
   libraryBookmarks LibraryBookmark[]
   collectionItems  ContentCollectionItem[]
+  cohortCourseAccesses CohortCourseAccess[]
 
   @@unique([learningPathId, position])
   @@index([status, position])
@@ -542,6 +586,7 @@ model Lesson {
   importedRecordings ImportedRecording[]
   collectionItems    ContentCollectionItem[]
   libraryBookmarks   LibraryBookmark[]
+  cohortLessonReleases CohortLessonRelease[]
 
   @@unique([moduleId, slug])
   @@unique([moduleId, position])
@@ -628,6 +673,150 @@ model AccessGrant {
   @@index([memberId, expiresAt])
 }
 
+model Cohort {
+  id                 String                @id @default(cuid())
+  name               String
+  normalizedName     String                @unique
+  slug               String                @unique
+  startsAt           DateTime
+  endsAt             DateTime?
+  lateJoinPolicy     CohortLateJoinPolicy  @default(ALL_ACTIVE)
+  readAfterEndDays   Int                   @default(90)
+  notifyOnNews       Boolean               @default(true)
+  archivedAt         DateTime?
+  version            Int                   @default(1)
+  idempotencyKey     String?
+  createdByMemberId  String
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+  createdBy          Member                @relation("CohortCreator", fields: [createdByMemberId], references: [id], onDelete: Restrict)
+  teachers           CohortTeacher[]
+  memberships        CohortMembership[]
+  invites            CohortInvite[]
+  courseAccesses     CohortCourseAccess[]
+  lessonReleases     CohortLessonRelease[]
+  accessGrantSources AccessGrantSource[]
+
+  @@unique([createdByMemberId, idempotencyKey])
+  @@index([archivedAt, startsAt, endsAt])
+}
+
+model CohortTeacher {
+  cohortId           String
+  memberId           String
+  assignedByMemberId String
+  assignedAt         DateTime @default(now())
+  cohort             Cohort   @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+  member             Member   @relation("CohortTeacherMember", fields: [memberId], references: [id], onDelete: Cascade)
+  assignedBy         Member   @relation("CohortTeacherAssigner", fields: [assignedByMemberId], references: [id], onDelete: Restrict)
+
+  @@id([cohortId, memberId])
+  @@index([memberId, cohortId])
+}
+
+model CohortMembership {
+  id                  String             @id @default(cuid())
+  activeKey           String?            @unique
+  cohortId            String
+  memberId            String
+  status              CohortMemberStatus @default(ACTIVE)
+  source              CohortMemberSource @default(MANUAL)
+  joinedAt            DateTime           @default(now())
+  leftAt              DateTime?
+  movedFromCohortId   String?
+  includePastReadOnly Boolean            @default(false)
+  version             Int                @default(1)
+  createdByMemberId   String?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  cohort              Cohort             @relation(fields: [cohortId], references: [id], onDelete: Restrict)
+  member              Member             @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  createdBy           Member?            @relation("CohortMembershipCreator", fields: [createdByMemberId], references: [id], onDelete: SetNull)
+
+  @@index([cohortId, status, joinedAt])
+  @@index([memberId, status, leftAt])
+  @@index([movedFromCohortId])
+}
+
+model CohortInvite {
+  id                String    @id @default(cuid())
+  cohortId          String
+  tokenHash         String    @unique
+  email             String?
+  expiresAt         DateTime
+  maxUses           Int       @default(1)
+  usedCount         Int       @default(0)
+  revokedAt         DateTime?
+  createdByMemberId String
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  cohort            Cohort    @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+  createdBy         Member    @relation("CohortInviteCreator", fields: [createdByMemberId], references: [id], onDelete: Restrict)
+
+  @@index([cohortId, revokedAt, expiresAt])
+}
+
+model CohortCourseAccess {
+  id                String            @id @default(cuid())
+  activeKey         String?           @unique
+  cohortId          String
+  courseId          String
+  releaseMode       CohortReleaseMode @default(ALL_AT_ONCE)
+  startsAt          DateTime?
+  revokedAt         DateTime?
+  createdByMemberId String
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  cohort            Cohort            @relation(fields: [cohortId], references: [id], onDelete: Restrict)
+  course            Course            @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  createdBy         Member            @relation("CohortCourseAccessCreator", fields: [createdByMemberId], references: [id], onDelete: Restrict)
+
+  @@index([cohortId, revokedAt])
+  @@index([courseId, revokedAt])
+}
+
+model CohortLessonRelease {
+  id                String   @id @default(cuid())
+  cohortId          String
+  lessonId          String
+  releaseAt         DateTime
+  version           Int      @default(1)
+  updatedByMemberId String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  cohort            Cohort   @relation(fields: [cohortId], references: [id], onDelete: Restrict)
+  lesson            Lesson   @relation(fields: [lessonId], references: [id], onDelete: Restrict)
+  updatedBy         Member   @relation("CohortLessonReleaseUpdater", fields: [updatedByMemberId], references: [id], onDelete: Restrict)
+
+  @@unique([cohortId, lessonId])
+  @@index([cohortId, releaseAt])
+  @@index([lessonId, releaseAt])
+}
+
+model AccessGrantSource {
+  id                String             @id @default(cuid())
+  idempotencyKey    String?            @unique
+  origin            AccessGrantOrigin
+  originRefId       String?
+  subjectMemberId   String?
+  subjectCohortId   String?
+  resourceType      AccessResourceType
+  resourceId        String
+  permission        AccessPermission   @default(VIEW)
+  validFrom         DateTime           @default(now())
+  validUntil        DateTime?
+  revokedAt         DateTime?
+  createdByMemberId String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  subjectMember     Member?            @relation("AccessGrantSourceMember", fields: [subjectMemberId], references: [id], onDelete: Cascade)
+  subjectCohort     Cohort?            @relation(fields: [subjectCohortId], references: [id], onDelete: Cascade)
+  createdBy         Member?            @relation("AccessGrantSourceCreator", fields: [createdByMemberId], references: [id], onDelete: SetNull)
+
+  @@index([subjectMemberId, resourceType, resourceId, validUntil])
+  @@index([subjectCohortId, resourceType, resourceId, validUntil])
+  @@index([origin, originRefId])
+}
 model MigrationRecord {
   id             String              @id @default(cuid())
   sourcePlatform String

@@ -1,12 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+  cohortFindFirst: vi.fn(),
   env: { GESTAO_V2_ENABLED: "true" },
   member: vi.fn(),
   requireStaff: vi.fn(),
 }));
 
 vi.mock("server-only", () => ({}));
+vi.mock("@repo/database", () => ({
+  database: { cohort: { findFirst: mocks.cohortFindFirst } },
+}));
 vi.mock("@/env", () => ({ env: mocks.env }));
 vi.mock("./auth", () => ({
   getMemberIdentitySnapshot: mocks.member,
@@ -27,6 +31,7 @@ import {
   authorizeGestao,
   requireGestaoActor,
   requireGestaoAdmin,
+  requireGestaoCohortActor,
 } from "./gestao-authorization";
 
 describe("Gestão server authorization", () => {
@@ -43,6 +48,10 @@ describe("Gestão server authorization", () => {
     mocks.requireStaff.mockReset().mockResolvedValue({
       role: "TEACHER",
       userId: "teacher-qa",
+    });
+    mocks.cohortFindFirst.mockReset().mockResolvedValue({
+      id: "cohort-1",
+      version: 1,
     });
   });
 
@@ -76,6 +85,43 @@ describe("Gestão server authorization", () => {
     await expect(requireGestaoAdmin()).rejects.toThrow(
       "navigation:redirect:/gestao/administracao?restrito=1"
     );
+  });
+
+  it("limits a teacher to cohorts where their current responsibility exists", async () => {
+    await requireGestaoCohortActor("cohort-1");
+    expect(mocks.cohortFindFirst).toHaveBeenCalledWith({
+      where: {
+        id: "cohort-1",
+        teachers: { some: { memberId: "teacher-qa" } },
+      },
+      select: { id: true, version: true },
+    });
+
+    mocks.cohortFindFirst.mockResolvedValue(null);
+    await expect(requireGestaoCohortActor("cohort-private")).rejects.toThrow(
+      "navigation:not-found"
+    );
+  });
+
+  it("lets an administrator access any cohort without a teacher filter", async () => {
+    mocks.requireStaff.mockResolvedValue({
+      role: "ADMIN",
+      userId: "admin-qa",
+    });
+    mocks.member.mockResolvedValue({
+      avatarUrl: null,
+      deactivatedAt: null,
+      displayName: "Admin QA",
+      email: "admin@example.test",
+      onboardingStatus: "COMPLETED",
+      role: "ADMIN",
+    });
+
+    await requireGestaoCohortActor("cohort-1");
+    expect(mocks.cohortFindFirst).toHaveBeenCalledWith({
+      where: { id: "cohort-1" },
+      select: { id: true, version: true },
+    });
   });
 
   it("uses the latest staff role to authorize administration", async () => {

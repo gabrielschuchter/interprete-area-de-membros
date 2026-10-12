@@ -6,6 +6,7 @@ export const mutationLimits = {
   "community.group.join": { max: 20, windowMs: 60 * 60_000 },
   "community.group.invitation.respond": { max: 30, windowMs: 60 * 60_000 },
   "community.mutation": { max: 60, windowMs: 60_000 },
+  "cohort.mutation": { max: 60, windowMs: 60_000 },
   "community.vote": { max: 30, windowMs: 60_000 },
   "community.bookmark": { max: 30, windowMs: 60_000 },
   "community.follow": { max: 30, windowMs: 60_000 },

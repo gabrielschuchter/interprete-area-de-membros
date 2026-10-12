@@ -1,5 +1,6 @@
 import "server-only";
 
+import { database } from "@repo/database";
 import { notFound, redirect } from "next/navigation";
 import { env } from "@/env";
 import { getMemberIdentitySnapshot } from "./auth";
@@ -70,4 +71,20 @@ export const requireGestaoAction = async (
 export const requireGestaoAdmin = async () => {
   const { actor } = await requireGestaoAction("members.manage");
   return actor;
+};
+export const requireGestaoCohortActor = async (cohortId: string) => {
+  const actor = await requireGestaoAction("cohort.manage", { cohortId });
+  const cohort = await database.cohort.findFirst({
+    where: {
+      id: cohortId,
+      ...(actor.actor.role === "ADMIN"
+        ? {}
+        : { teachers: { some: { memberId: actor.actor.userId } } }),
+    },
+    select: { id: true, version: true },
+  });
+  if (!cohort) {
+    notFound();
+  }
+  return { actor: actor.actor, cohort };
 };
