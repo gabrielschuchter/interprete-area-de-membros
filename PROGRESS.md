@@ -5,7 +5,7 @@
 ## Estado geral
 - Branch: `gestao-v2`
 - Fase atual: 3 — Ensino (cursos, exercícios e atividades parciais; YouTube/aulas, biblioteca, coleções e aceite visual/runtime pendentes)
-- Último commit de implementação verificado: `9cfa4a6` (catálogo, editor e envio de atividades por turma)
+- Último commit de implementação verificado: `111e554` (fila de correções e feedback versionado)
 - Orçamento/contexto: (preencher se relevante)
 
 ## Fases
@@ -14,9 +14,9 @@
 | 0 Auditoria | concluída | `docs/gestao-auditoria.md`; 101 pares HTML/PNG inventariados e revistos em pranchas; matriz 1:1 gerada; commit `ffbb93e`; nenhum código/migration alterado | releitura dos critérios e conferência solo; sem subagente por instrução direta para trabalhar sozinho |
 | 1 Shell, permissões, rotas, transição | IN PROGRESS — aceite visual/runtime pendente | Shell responsivo desktop/trilho/gaveta; flag `GESTAO_V2_ENABLED` false por padrão; mapa de ações por papel e retorno interno seguro; 20 testes focados e gates locais registrados no commit `1d04e5a` | Revisão solo dos critérios; comparações visuais e jornada autenticada ainda pendentes, portanto os quadros permanecem abertos |
 | 2 Turmas e resolvers | IN PROGRESS | Modelos e migration aditiva; autorização por papel/turma; CRUD de turmas, responsáveis, matrículas, convites, cursos e liberações; regras de acesso e 24 testes focados. `check`, `typecheck`, `boundaries`, `test`, `build`, `performance:check`, `git diff --check` e `prisma validate` passaram; commit de código `c151c9b`, registro atualizado em `9a5c3c6`. Migration não aplicada: PostgreSQL local indisponível. `resolveStudentFeed` e `resolveCalendar` continuam pendentes | Revisão solo das regras; persistência local, fluxos autenticados e comparação visual pendentes |
-| 3 Ensino (YouTube, atividades, exercícios, biblioteca, coleções) | IN PROGRESS — cursos, exercícios e atividades parciais; módulos restantes e aceite final pendentes | Cursos (`343d5ad`) e exercícios (`fdac802`) seguem com os checkpoints já registrados. Atividades (`9cfa4a6`): catálogo SQL paginado, editor com rubrica versionada, prazo, alvos individuais/de turma, publicação, prévia sem escrita de progresso e outbox. `check` (777 arquivos), `typecheck` (16 tarefas), `boundaries` (724 arquivos), `test` (466 app, 17 domínio, 9 API; scripts 27 passaram, 1 harness aposentado ignorado), `build` (8 tarefas), `performance:check`, `prisma validate` e `git diff --check` passaram. Rota de atividades: 212,3 KiB gzip / 17 chunks, sob o limite de 225 KiB. Migration aditiva não aplicada; sem QA autenticado, persistência em PostgreSQL ou comparação visual, nenhum quadro desta fase concluído | Revisão solo; banco QA local indisponível e aceite runtime/visual continua aberto |
+| 3 Ensino (YouTube, atividades, exercícios, biblioteca, coleções) | IN PROGRESS — cursos, exercícios e atividades parciais; módulos restantes e aceite final pendentes | Cursos (`343d5ad`) e exercícios (`fdac802`) seguem com os checkpoints já registrados. Atividades (`9cfa4a6`): catálogo SQL paginado, editor com rubrica versionada, prazo, alvos individuais/de turma, publicação e prévia sem escrita de progresso. Correção das entregas (`111e554`) acrescenta fila por atividade e gravação de notas/feedback da rubrica. `check` (788 arquivos), `typecheck` (16 tarefas), `boundaries` (735 arquivos), `test` (473 app, 17 domínio, 9 API; scripts 27 passaram e 1 harness aposentado ignorado), `build` (8 tarefas), `performance:check`, `prisma validate` e `git diff --check` passaram. As rotas de atividades/correções medem 213,9 KiB gzip / 17 chunks, abaixo de 225 KiB. Migrations aditivas não aplicadas; QA autenticado, PostgreSQL e comparação visual seguem pendentes | Revisão solo; banco QA local indisponível e aceite runtime/visual continua aberto |
 | 4 Envios, cronograma, calendário, Aprender, Personalização | pendente | | |
-| 5 Alunos e correções | pendente | | |
+| 5 Alunos e correções | IN PROGRESS — fila e feedback parciais; acompanhamento, perfil e aceite pendentes | Fila paginada com escopo por papel/turma, rubrica ponderada 0–10, rascunho separado do feedback enviado, controle de versão da entrega e outbox de notificação na transação; código `111e554`. 473 testes do app, gates estáticos e build completo (8 tarefas) passaram | Revisão solo da regra; sem migração aplicada, jornada autenticada ou comparação visual |
 | 6 Comunidade | pendente | | |
 | 7 Administração e medalhas | pendente | | |
 | 8 Notificações, busca, prévia, interrupções | pendente | | |
@@ -92,8 +92,8 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluído com evidência
 - [~] `GLista` — Ensino — lista: questões (reutilizar, reordenar) (filtros, paginação, reuso e swap transacional implementados; comparação e persistência autenticada pendentes)
 - [~] `GQuestao` — Ensino — editor de questão (versões e referências) (edição cria versão nova e mantém snapshots; fidelidade visual e jornada persistida pendentes)
 - [~] `GAtividades` — Ensino — atividades (catálogo e filtros implementados; runtime e aceite visual pendentes)
-- [~] `GAtividade` — Ensino — editor de atividade (critérios versionados, prazo, destinatários de turma/individuais, publicação e prévia; fila de entregas e aceite pendentes)
-- [ ] `GAtividadeEntregas` — Ensino — atividade: entregas por turma
+- [~] `GAtividade` — Ensino — editor de atividade (critérios versionados, prazo, destinatários de turma/individuais, publicação e prévia; fluxo de entregas/revisão implementado, QA e fidelidade pendentes)
+- [~] `GAtividadeEntregas` — Ensino — atividade: entregas por turma (fila paginada e escopada; runtime autenticado e comparação pendentes)
 - [ ] `GBiblioteca` — Ensino — biblioteca (filtros, seleção e ações em lote)
 - [ ] `GBibliotecaGrade` — Ensino — biblioteca em grade
 - [ ] `GMaterial` — Ensino — novo material (upload e metadados avançados)
@@ -103,7 +103,7 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluído com evidência
 ### Alunos
 - [ ] `GAcompanhamento` — Alunos — acompanhamento
 - [ ] `GAluno` — Alunos — perfil pedagógico
-- [ ] `GCorrecoes` — Alunos — correções (fila, resposta e feedback)
+- [~] `GCorrecoes` — Alunos — correções (fila paginada, rubrica, rascunho, envio explícito e notificação; QA e comparação pendentes)
 - [ ] `GAtribuicoes` — Alunos — atribuições
 - [ ] `GEnviar` — Alunos — enviar ao aluno (destaque, pendência ou aviso, com prévia)
 - [ ] `GDestaques` — Alunos — destaques de Aprender (ordem, período e turma)
@@ -135,14 +135,14 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluído com evidência
 
 ### Tablet
 - [ ] `GTVisao` — Tablet — visão geral
-- [ ] `GTCorrecoes` — Tablet — correções (fila e correção lado a lado)
+- [~] `GTCorrecoes` — Tablet — correções (fila e correção lado a lado; composição responsiva codificada, comparação pendente)
 
 ### Mobile
 - [ ] `GMMenu` — Mobile — menu de Gestão (gaveta)
 - [ ] `GMVisao` — Mobile — visão geral
 - [ ] `GMCursos` — Mobile — cursos (cartões, filtros e novo curso)
-- [ ] `GMCorrecoes` — Mobile — correções (fila)
-- [ ] `GMCorrecao` — Mobile — correção (barra de ação fixa)
+- [~] `GMCorrecoes` — Mobile — correções (fila; validação em dispositivo pendente)
+- [~] `GMCorrecao` — Mobile — correção (barra de ação fixa; validação em dispositivo pendente)
 - [ ] `GMAviso` — Mobile — novo aviso (formulário com barra fixa)
 - [ ] `GMMembros` — Mobile — membros (cartões e folha de ações)
 - [ ] `GMTurmas` — Mobile — turmas
@@ -155,6 +155,7 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluído com evidência
 | Visual e jornadas autenticadas | A aplicação local depende do banco; a única aba autenticada disponível aponta para Production e foi consultada somente para leitura. | Abrir o app local com contas de QA, comparar PNGs nos tamanhos do aceite e percorrer os fluxos reais. |
 | Integrações externas da Fase 3 | Nenhuma chave real do YouTube nem Storage local configurados; não criei credenciais fictícias. | Configurar serviços de QA para validar estados reais do YouTube, uploads e playback quando esses módulos forem implementados. |
 | Atividades da Fase 3 | Não há PostgreSQL QA local ativo; migration `20261012100000_activity_cohort_targets_rubrics` não foi aplicada. | Aplicar somente em banco QA local, testar submissões, progresso, concorrência, notificações e jornadas autenticadas; comparar os quadros `GAtividades`/`GAtividade`. |
+| Revisão de atividades / Fase 5 | Migration `20261012120000_activity_review_drafts` ainda não aplicada; nenhum PostgreSQL QA local ativo. | Validar criação/edição concorrente de rascunhos, envio de rubrica, isolamento professor/turma, outbox e feedback no aluno após persistência; comparar os quadros desktop/tablet/mobile. |
 
 ## Controles removidos por não terem função
 Nenhum removido nesta unidade. A varredura integral de controles fica pendente para o aceite final.
@@ -165,6 +166,7 @@ Nenhum removido nesta unidade. A varredura integral de controles fica pendente p
 - Fechar `resolveStudentFeed` e `resolveCalendar` e integrar os resolvers às telas do aluno/Planejamento na sequência prevista.
 - A unidade de cursos entrega o catálogo e entrada para criação/edição. A unidade de exercícios acrescenta catálogo, bancos/listas, editor de questão, reutilização versionada e reordenação; não substitui ainda o aceite visual, autenticação em runtime ou persistência em QA.
 - Atividades (`9cfa4a6`): catálogo SQL paginado, editor com rubrica versionada, prazo, turmas/indivíduos e prévia sem escrita de progresso; alvos de turma mantêm acesso dinâmico com revogação por origem. `check` (777 arquivos), `typecheck` (16 tarefas), `boundaries` (724 arquivos), `test` (466 app, 17 domínio, 9 API; scripts 27 passaram e 1 harness aposentado foi ignorado), `build` (8 tarefas e novas rotas), `performance:check`, `prisma validate` e `git diff --check` passaram. A rota mede 212,3 KiB gzip em 17 chunks / limite 225 KiB. Ainda faltam migration aplicada em PostgreSQL QA, prova persistente/autenticada, comparação PNG, fila de entregas/correções, criação de progresso sob demanda e avisos a membros que entrarem depois em `ALL_ACTIVE`.
+- Correções (`111e554`): entregas por atividade com fila paginada, projeção mínima e escopo renovado no servidor; respostas com rubrica ponderada, rascunho independente, versão otimista e envio explícito. Entrega preserva a rubrica usada; comentário e todas as notas são obrigatórios no envio; média ponderada é informativa. Migration `20261012120000_activity_review_drafts` somente versionada; persistência real e notificações ainda precisam de QA local.
 - YouTube, editor de aula, percursos, biblioteca, coleções e uploads continuam pendentes; atividades agora têm catálogo, edição e publicação parciais. Os fluxos legados foram preservados, sem afirmar equivalência visual.
 - O catálogo de exercícios mantém a projeção inicial limitada (18 bancos, até 20 listas por banco, 200 bancos no seletor de nova lista e 100 categorias/questões reutilizáveis). A navegação completa em acervos maiores e os percursos de paginação desses seletores precisam ser ampliados antes do aceite integral.
 - As referências `GCursos` e `GCurso` seguem `[~]`: o checklist de oito critérios exige jornada autenticada, captura comparada e teste de fluxo persistido, ainda indisponíveis.
