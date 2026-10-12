@@ -304,3 +304,23 @@ on a server request.
   chunks, below the 225 KiB budget. The additive progress migration is
   versioned but unapplied; persisted playback, two-tab database behavior, and
   device/visual acceptance remain open.
+
+## Aprender activity feed: direct and cohort sources
+
+- Keep the server projection private to the current member. Resolve only
+  published activity cards reached by a current individual assignment or an
+  active cohort target; apply `ALL_ACTIVE`/`FROM_JOIN`, cohort dates, assignment
+  expiry, persisted submission status, deduplication, earliest deadline, and
+  latest individual note before rendering.
+- A page read must not create progress or mark an assignment complete. Feed
+  cards should not prefetch every destination on viewport. Future individual
+  assignments retain their disabled-until-available state.
+- The current first tranche reads at most 100 individual activity assignments
+  and 200 candidate activities. It has no visible continuation control, so
+  larger-feed pagination remains acceptance work. Do not treat this cap as
+  proof that every learner sees a complete feed.
+- The route measured 208.6 KiB gzip across 16 initial chunks, below 225 KiB.
+  Authenticated query latency and visual/mobile acceptance remain unmeasured;
+  retain the shared targets of ≤100 ms visible feedback, ≤1 s first usable
+  content p95, ≤500 ms committed small mutation p95, and ≤300 ms warmed
+  navigation p95.

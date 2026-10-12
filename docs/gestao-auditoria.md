@@ -225,3 +225,11 @@ A primeira tranche de upload do editor de aula foi implementada no commit `ac69a
 Gates locais aprovados: `check`, `typecheck`, `boundaries`, `test` (530 app, 17 domínio, 9 API; scripts 27 aprovados e 1 harness aposentado ignorado), `build`, `performance:check`, `git diff --check` e geração do Prisma Client. O editor ficou em 221,5 KiB gzip / 18 chunks, abaixo do limite de 225 KiB.
 
 A migration `20261012160000_gestao_lesson_asset_uploads` está versionada e **não aplicada**. O build usou apenas URL local e `SKIP_ENV_VALIDATION=true`; não houve conexão, escrita em Supabase, deploy ou entrega real ao Storage. A etapa permanece em andamento até QA local/autenticado, confirmação da capacidade de 500 MB no bucket/projeto, cron configurado e comparação visual dos quadros 49/responsivos.
+
+## Checkpoint · feed de atividades de turma no Aprender (12/10/2026)
+
+`de28514` implementa uma primeira parte de `resolveStudentFeed`: combina atribuições diretas com `ActivityCohortTarget` ativo, aplica `ALL_ACTIVE`/`FROM_JOIN` e deduplica por atividade. O prazo efetivo é o menor entre as origens, o recado vem da atribuição individual mais recente, e a submissão existente sinaliza conclusão. A rota `/aprender` lê esse resultado no servidor e mantém separado o restante das atribuições. A consulta não cria progresso.
+
+Seis testes focados e os gates locais passaram: `check` (847 arquivos), `typecheck` (16 tarefas), `boundaries` (794 arquivos), `test` (536 app, 17 domínio, 9 API; 27 scripts aprovados e 1 harness aposentado ignorado), `build`, `performance:check` e `git diff --check`. A rota `learning` mediu 208,6 KiB gzip / 16 chunks.
+
+O serviço cobre apenas atividades nesta tranche. Prévia compartilhada, destaques, todos os tipos de envio, calendário e paginador visível não foram concluídos. A migration dos alvos de turma permanece não aplicada; persistência/autorização em PostgreSQL local, jornadas autenticadas e comparação PNG seguem sem evidência.

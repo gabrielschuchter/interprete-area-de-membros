@@ -823,3 +823,23 @@ local PostgreSQL QA is unavailable. Migration
 `20261012143000_playback_watch_intervals` is additive and remains unapplied;
 runtime persistence, simultaneous-tab database races, real playback and the
 visual acceptance frames still need local QA.
+
+### Learner feed: direct and cohort activity delivery
+
+`/aprender` keeps identity request-scoped and reads its feed on every dynamic
+request. The activity projection reads the member's active cohort memberships
+and up to 100 direct activity assignments in parallel, then loads at most 200
+published candidate activities with only the due date, active cohort targets,
+and this member's submission status. SQL scopes candidates to the member's
+direct assignment IDs or current cohorts; domain resolution applies the exact
+join timestamp, cohort period, expiry, completion, deduplication, earliest due
+date, and latest individual note. Loading the page does not create progress.
+The first tranche has fixed result caps and no visible continuation control;
+complete feed pagination remains open.
+
+The route's existing client bundle measured 208.6 KiB gzip across 16 chunks,
+under 225 KiB. That is bundle evidence only. Authenticated query latency,
+database persistence, multi-user authorization, visual/mobile comparison, and
+the ≤1 s first-content p95 remain unverified because local PostgreSQL QA is
+unavailable. The shared ≤100 ms interaction-feedback, ≤500 ms committed small
+mutation, and ≤300 ms warmed navigation budgets remain in force.
