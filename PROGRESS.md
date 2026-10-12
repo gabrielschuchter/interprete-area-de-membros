@@ -4,8 +4,8 @@
 
 ## Estado geral
 - Branch: `gestao-v2`
-- Fase atual: 3 — Ensino (catálogo de cursos e exercícios; aulas, demais módulos e aceite visual/runtime pendentes)
-- Último commit de implementação verificado: `fdac802` (catálogo e gestão de bancos/listas de exercícios)
+- Fase atual: 3 — Ensino (cursos, exercícios e atividades parciais; YouTube/aulas, biblioteca, coleções e aceite visual/runtime pendentes)
+- Último commit de implementação verificado: `9cfa4a6` (catálogo, editor e envio de atividades por turma)
 - Orçamento/contexto: (preencher se relevante)
 
 ## Fases
@@ -14,7 +14,7 @@
 | 0 Auditoria | concluída | `docs/gestao-auditoria.md`; 101 pares HTML/PNG inventariados e revistos em pranchas; matriz 1:1 gerada; commit `ffbb93e`; nenhum código/migration alterado | releitura dos critérios e conferência solo; sem subagente por instrução direta para trabalhar sozinho |
 | 1 Shell, permissões, rotas, transição | IN PROGRESS — aceite visual/runtime pendente | Shell responsivo desktop/trilho/gaveta; flag `GESTAO_V2_ENABLED` false por padrão; mapa de ações por papel e retorno interno seguro; 20 testes focados e gates locais registrados no commit `1d04e5a` | Revisão solo dos critérios; comparações visuais e jornada autenticada ainda pendentes, portanto os quadros permanecem abertos |
 | 2 Turmas e resolvers | IN PROGRESS | Modelos e migration aditiva; autorização por papel/turma; CRUD de turmas, responsáveis, matrículas, convites, cursos e liberações; regras de acesso e 24 testes focados. `check`, `typecheck`, `boundaries`, `test`, `build`, `performance:check`, `git diff --check` e `prisma validate` passaram; commit de código `c151c9b`, registro atualizado em `9a5c3c6`. Migration não aplicada: PostgreSQL local indisponível. `resolveStudentFeed` e `resolveCalendar` continuam pendentes | Revisão solo das regras; persistência local, fluxos autenticados e comparação visual pendentes |
-| 3 Ensino (YouTube, atividades, exercícios, biblioteca, coleções) | IN PROGRESS — cursos e exercícios parciais | Cursos: catálogo DB-driven e rotas de edição compartilhadas, commit `343d5ad`. Exercícios: commit `fdac802`; catálogo DB paginado, criação/edição/publicação/arquivamento de bancos, listas e questões; filtros por banco/lista; nova versão imutável, reutilização no mesmo banco e reordenação adjacente serializável. `check` (766 arquivos), `typecheck` (16 tarefas), `boundaries` (713 arquivos), `test` (458 app, 17 domínio, 9 API; scripts 27 passaram e 1 harness aposentado foi ignorado), `build` (8 tarefas; rotas `/gestao/ensino/exercicios` e `/gestao/ensino/exercicios/[listId]` geradas), `performance:check` e `git diff --check` passaram. Nenhuma migration adicionada. O relatório de bundle atual cobre `/exercicios` do aluno; não mede separadamente o catálogo Gestão | Autorização no servidor validada por teste da action e rotas geradas no build. Execução sem banco local: persistência em runtime, papéis com sessão real, comparação dos quadros e revisão visual independente continuam pendentes; nenhum quadro desta fase concluído |
+| 3 Ensino (YouTube, atividades, exercícios, biblioteca, coleções) | IN PROGRESS — cursos, exercícios e atividades parciais; módulos restantes e aceite final pendentes | Cursos (`343d5ad`) e exercícios (`fdac802`) seguem com os checkpoints já registrados. Atividades (`9cfa4a6`): catálogo SQL paginado, editor com rubrica versionada, prazo, alvos individuais/de turma, publicação, prévia sem escrita de progresso e outbox. `check` (777 arquivos), `typecheck` (16 tarefas), `boundaries` (724 arquivos), `test` (466 app, 17 domínio, 9 API; scripts 27 passaram, 1 harness aposentado ignorado), `build` (8 tarefas), `performance:check`, `prisma validate` e `git diff --check` passaram. Rota de atividades: 212,3 KiB gzip / 17 chunks, sob o limite de 225 KiB. Migration aditiva não aplicada; sem QA autenticado, persistência em PostgreSQL ou comparação visual, nenhum quadro desta fase concluído | Revisão solo; banco QA local indisponível e aceite runtime/visual continua aberto |
 | 4 Envios, cronograma, calendário, Aprender, Personalização | pendente | | |
 | 5 Alunos e correções | pendente | | |
 | 6 Comunidade | pendente | | |
@@ -91,8 +91,8 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluído com evidência
 - [~] `GExercicios` — Ensino — exercícios: bancos e listas (catálogo, filtros e paginação implementados; aceite visual/runtime pendente)
 - [~] `GLista` — Ensino — lista: questões (reutilizar, reordenar) (filtros, paginação, reuso e swap transacional implementados; comparação e persistência autenticada pendentes)
 - [~] `GQuestao` — Ensino — editor de questão (versões e referências) (edição cria versão nova e mantém snapshots; fidelidade visual e jornada persistida pendentes)
-- [ ] `GAtividades` — Ensino — atividades
-- [ ] `GAtividade` — Ensino — editor de atividade (critérios, prazo, destinatários)
+- [~] `GAtividades` — Ensino — atividades (catálogo e filtros implementados; runtime e aceite visual pendentes)
+- [~] `GAtividade` — Ensino — editor de atividade (critérios versionados, prazo, destinatários de turma/individuais, publicação e prévia; fila de entregas e aceite pendentes)
 - [ ] `GAtividadeEntregas` — Ensino — atividade: entregas por turma
 - [ ] `GBiblioteca` — Ensino — biblioteca (filtros, seleção e ações em lote)
 - [ ] `GBibliotecaGrade` — Ensino — biblioteca em grade
@@ -154,6 +154,7 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluído com evidência
 | Runtime local e migration da Fase 2 | Serviço `com.docker.service` parado; iniciar o Docker Desktop não criou o pipe Linux; `127.0.0.1:5432` sem listener. Não usei banco remoto. | Disponibilizar Supabase/Postgres local, aplicar a migration aditiva, rodar fixtures explícitas e validar persistência/autorização com os papéis de QA. |
 | Visual e jornadas autenticadas | A aplicação local depende do banco; a única aba autenticada disponível aponta para Production e foi consultada somente para leitura. | Abrir o app local com contas de QA, comparar PNGs nos tamanhos do aceite e percorrer os fluxos reais. |
 | Integrações externas da Fase 3 | Nenhuma chave real do YouTube nem Storage local configurados; não criei credenciais fictícias. | Configurar serviços de QA para validar estados reais do YouTube, uploads e playback quando esses módulos forem implementados. |
+| Atividades da Fase 3 | Não há PostgreSQL QA local ativo; migration `20261012100000_activity_cohort_targets_rubrics` não foi aplicada. | Aplicar somente em banco QA local, testar submissões, progresso, concorrência, notificações e jornadas autenticadas; comparar os quadros `GAtividades`/`GAtividade`. |
 
 ## Controles removidos por não terem função
 Nenhum removido nesta unidade. A varredura integral de controles fica pendente para o aceite final.
@@ -163,7 +164,8 @@ Nenhum removido nesta unidade. A varredura integral de controles fica pendente p
 - Fase 2 tem código local e migration versionada, mas a migration não foi aplicada a banco algum; não há evidência de persistência até a execução do QA local.
 - Fechar `resolveStudentFeed` e `resolveCalendar` e integrar os resolvers às telas do aluno/Planejamento na sequência prevista.
 - A unidade de cursos entrega o catálogo e entrada para criação/edição. A unidade de exercícios acrescenta catálogo, bancos/listas, editor de questão, reutilização versionada e reordenação; não substitui ainda o aceite visual, autenticação em runtime ou persistência em QA.
-- YouTube, editor de aula, percursos, atividades, biblioteca, coleções e uploads continuam pendentes; redirecionamentos preservam os módulos existentes, sem afirmar equivalência visual.
+- Atividades (`9cfa4a6`): catálogo SQL paginado, editor com rubrica versionada, prazo, turmas/indivíduos e prévia sem escrita de progresso; alvos de turma mantêm acesso dinâmico com revogação por origem. `check` (777 arquivos), `typecheck` (16 tarefas), `boundaries` (724 arquivos), `test` (466 app, 17 domínio, 9 API; scripts 27 passaram e 1 harness aposentado foi ignorado), `build` (8 tarefas e novas rotas), `performance:check`, `prisma validate` e `git diff --check` passaram. A rota mede 212,3 KiB gzip em 17 chunks / limite 225 KiB. Ainda faltam migration aplicada em PostgreSQL QA, prova persistente/autenticada, comparação PNG, fila de entregas/correções, criação de progresso sob demanda e avisos a membros que entrarem depois em `ALL_ACTIVE`.
+- YouTube, editor de aula, percursos, biblioteca, coleções e uploads continuam pendentes; atividades agora têm catálogo, edição e publicação parciais. Os fluxos legados foram preservados, sem afirmar equivalência visual.
 - O catálogo de exercícios mantém a projeção inicial limitada (18 bancos, até 20 listas por banco, 200 bancos no seletor de nova lista e 100 categorias/questões reutilizáveis). A navegação completa em acervos maiores e os percursos de paginação desses seletores precisam ser ampliados antes do aceite integral.
 - As referências `GCursos` e `GCurso` seguem `[~]`: o checklist de oito critérios exige jornada autenticada, captura comparada e teste de fluxo persistido, ainda indisponíveis.
 - Sem alteração de Production, de Supabase remoto ou de notificações externas.
