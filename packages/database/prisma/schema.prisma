@@ -408,6 +408,10 @@ model Member {
   cohortCourseAccessesCreated         CohortCourseAccess[]               @relation("CohortCourseAccessCreator")
   cohortLessonReleasesUpdated         CohortLessonRelease[]              @relation("CohortLessonReleaseUpdater")
   cohortEventsCreated                  CohortEvent[]                      @relation("CohortEventCreator")
+  cohortEventOccurrenceExceptionsUpdated CohortEventOccurrenceException[]   @relation("CohortEventOccurrenceExceptionUpdater")
+  cohortCalendarFeeds                    CohortCalendarFeed[]
+  meetingCohortTargetsCreated            MeetingCohortTarget[]              @relation("MeetingCohortTargetCreator")
+  meetingOccurrenceExceptionsUpdated     MeetingOccurrenceException[]       @relation("MeetingOccurrenceExceptionUpdater")
   activityCohortTargetsCreated        ActivityCohortTarget[]             @relation("ActivityCohortTargetCreator")
   activityFeedbackDrafts              ActivityFeedbackDraft[]             @relation("ActivityFeedbackDraftReviewer")
   cohortMembershipsCreated            CohortMembership[]                 @relation("CohortMembershipCreator")
@@ -749,6 +753,8 @@ model Cohort {
   courseAccesses     CohortCourseAccess[]
   lessonReleases     CohortLessonRelease[]
   events             CohortEvent[]
+  meetingTargets     MeetingCohortTarget[]
+  calendarFeeds      CohortCalendarFeed[]
   accessGrantSources AccessGrantSource[]
   activityTargets    ActivityCohortTarget[]
 
@@ -858,6 +864,8 @@ model CohortEvent {
   endsAt            DateTime?
   allDay            Boolean       @default(false)
   color             String        @default("#6B5B64")
+  recurrence           PlannerRecurrence                @default(NONE)
+  recurrenceUntil      DateTime?
   status            ContentStatus @default(DRAFT)
   version           Int           @default(1)
   publishedAt       DateTime?
@@ -866,10 +874,48 @@ model CohortEvent {
   updatedAt         DateTime      @updatedAt
   cohort            Cohort        @relation(fields: [cohortId], references: [id], onDelete: Restrict)
   createdBy         Member        @relation("CohortEventCreator", fields: [createdByMemberId], references: [id], onDelete: Restrict)
+  occurrenceExceptions CohortEventOccurrenceException[]
 
   @@unique([createdByMemberId, idempotencyKey])
   @@index([cohortId, status, startsAt])
   @@index([cohortId, startsAt, endsAt])
+}
+
+model CohortEventOccurrenceException {
+  id                  String      @id @default(cuid())
+  eventId             String
+  occurrenceStartsAt  DateTime
+  startsAtOverride    DateTime?
+  endsAtOverride      DateTime?
+  titleOverride       String?
+  descriptionOverride String?     @db.Text
+  colorOverride       String?
+  cancelledAt         DateTime?
+  version             Int         @default(1)
+  updatedByMemberId   String
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+  event               CohortEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  updatedBy           Member      @relation("CohortEventOccurrenceExceptionUpdater", fields: [updatedByMemberId], references: [id], onDelete: Restrict)
+
+  @@unique([eventId, occurrenceStartsAt])
+  @@index([occurrenceStartsAt, cancelledAt])
+}
+
+model CohortCalendarFeed {
+  id        String    @id @default(cuid())
+  memberId  String
+  cohortId  String
+  tokenHash String    @unique
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  member    Member    @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  cohort    Cohort    @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+
+  @@unique([memberId, cohortId])
+  @@index([cohortId, revokedAt])
+  @@index([memberId, revokedAt])
 }
 
 model AccessGrantSource {
@@ -1509,6 +1555,7 @@ model Meeting {
   position             Int                  @default(0)
   kind                 MeetingKind          @default(OTHER)
   recurrenceRule       String?
+  recurrenceUntil      DateTime?
   demoKey              String?              @unique
   relatedActivityId    String?
   relatedLibraryItemId String?
@@ -1520,6 +1567,8 @@ model Meeting {
   participants         MeetingParticipant[]
   attendance           MeetingAttendance[]
   recordings           ImportedRecording[]
+  cohortTargets        MeetingCohortTarget[]
+  occurrenceExceptions MeetingOccurrenceException[]
 
   @@unique([teacherId, idempotencyKey])
   @@index([status, startsAt])
@@ -1527,6 +1576,44 @@ model Meeting {
   @@index([courseId, startsAt])
   @@index([relatedActivityId])
   @@index([relatedLibraryItemId])
+}
+
+model MeetingCohortTarget {
+  id                String    @id @default(cuid())
+  meetingId         String
+  cohortId          String
+  assignedAt        DateTime  @default(now())
+  revokedAt         DateTime?
+  createdByMemberId String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  meeting           Meeting   @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  cohort            Cohort    @relation(fields: [cohortId], references: [id], onDelete: Restrict)
+  createdBy         Member?   @relation("MeetingCohortTargetCreator", fields: [createdByMemberId], references: [id], onDelete: SetNull)
+
+  @@unique([meetingId, cohortId])
+  @@index([cohortId, revokedAt, assignedAt])
+  @@index([meetingId, revokedAt])
+}
+
+model MeetingOccurrenceException {
+  id                  String    @id @default(cuid())
+  meetingId           String
+  occurrenceStartsAt  DateTime
+  startsAtOverride    DateTime?
+  endsAtOverride      DateTime?
+  titleOverride       String?
+  descriptionOverride String?   @db.Text
+  cancelledAt         DateTime?
+  version             Int       @default(1)
+  updatedByMemberId   String
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  meeting             Meeting   @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  updatedBy           Member    @relation("MeetingOccurrenceExceptionUpdater", fields: [updatedByMemberId], references: [id], onDelete: Restrict)
+
+  @@unique([meetingId, occurrenceStartsAt])
+  @@index([occurrenceStartsAt, cancelledAt])
 }
 
 model MeetingParticipant {

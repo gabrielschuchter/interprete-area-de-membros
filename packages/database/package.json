@@ -8,6 +8,7 @@
     "build": "prisma generate --no-hints --schema=./prisma/schema.prisma",
     "clean": "git clean -xdf .cache .turbo dist node_modules",
     "seed": "bun run prisma/seed.ts",
+    "seed:gestao": "bun run prisma/gestao-seed.ts",
     "typecheck": "tsc --noEmit --emitDeclarationOnly false"
   },
   "dependencies": {
