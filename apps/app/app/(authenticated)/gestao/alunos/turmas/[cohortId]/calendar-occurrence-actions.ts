@@ -135,6 +135,7 @@ const parseInstant = (value: string, field: string) => {
 };
 
 const operationKeyFor = (
+  actorId: string,
   cohortId: string,
   sourceType: "event" | "meeting",
   sourceId: string,
@@ -144,7 +145,7 @@ const operationKeyFor = (
 ) =>
   `gestao:calendar-occurrence:${createHash("sha256")
     .update(
-      `${cohortId}:${sourceType}:${sourceId}:${occurrenceStartsAt.toISOString()}:${operation}:${key}`
+      `${actorId}:${cohortId}:${sourceType}:${sourceId}:${occurrenceStartsAt.toISOString()}:${operation}:${key}`
     )
     .digest("hex")}`;
 
@@ -182,7 +183,7 @@ const requireWritableCohort = async (
       "Turma não encontrada ou sem acesso."
     );
   }
-  return cohort;
+  return { ...cohort, actorRole: actor.role };
 };
 
 const bumpCohortVersion = async (
@@ -338,6 +339,7 @@ const saveMeetingOccurrence = async (
   tx: Prisma.TransactionClient,
   input: z.infer<typeof fields>,
   actorId: string,
+  actorRole: MemberRole,
   cohortId: string,
   occurrenceStartsAt: Date,
   now: Date
@@ -347,7 +349,17 @@ const saveMeetingOccurrence = async (
       id: input.sourceId,
       demoKey: null,
       status: { not: "ARCHIVED" },
-      cohortTargets: { some: { cohortId, revokedAt: null } },
+      cohortTargets: {
+        some: { cohortId, revokedAt: null },
+        ...(actorRole === MemberRole.ADMIN
+          ? {}
+          : {
+              none: {
+                revokedAt: null,
+                cohort: { teachers: { none: { memberId: actorId } } },
+              },
+            }),
+      },
     },
     select: {
       id: true,
@@ -475,6 +487,7 @@ export const setGestaoCohortCalendarOccurrence = async (
       memberId: actor.userId,
     });
     const operationKey = operationKeyFor(
+      actor.userId,
       cohortId,
       sourceType,
       sourceId,
@@ -484,6 +497,7 @@ export const setGestaoCohortCalendarOccurrence = async (
     );
     const savedSourceId = await database.$transaction(
       async (tx) => {
+        const cohort = await requireWritableCohort(tx, actor.userId, cohortId);
         const processed = await tx.domainEvent.findUnique({
           where: { idempotencyKey: operationKey },
           select: { id: true },
@@ -491,7 +505,6 @@ export const setGestaoCohortCalendarOccurrence = async (
         if (processed) {
           return sourceId;
         }
-        const cohort = await requireWritableCohort(tx, actor.userId, cohortId);
         if (cohort.archivedAt) {
           throw new OccurrenceMutationFailure(
             "conflict",
@@ -519,6 +532,7 @@ export const setGestaoCohortCalendarOccurrence = async (
                 tx,
                 value,
                 actor.userId,
+                cohort.actorRole,
                 cohortId,
                 occurrenceStartsAt,
                 new Date()
