@@ -9,6 +9,7 @@ interface YouTubePlayerInstance {
   getCurrentTime: () => number;
   getDuration: () => number;
   getIframe: () => HTMLIFrameElement;
+  getPlaybackRate: () => number;
 }
 
 interface YouTubeApi {
@@ -91,16 +92,24 @@ interface YouTubeLessonPlayerProperties {
 
 const writePlaybackProgress = async (
   assetId: string,
-  positionSeconds: number,
+  positionMs: number,
   durationSeconds: number | null,
-  completed: boolean
+  playbackRate: number,
+  sessionId: string,
+  checkpointOnly: boolean
 ) => {
   const response = await fetch(`/api/learning/assets/${assetId}/progress`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     credentials: "same-origin",
     keepalive: true,
-    body: JSON.stringify({ positionSeconds, durationSeconds, completed }),
+    body: JSON.stringify({
+      positionMs,
+      durationSeconds,
+      playbackRate,
+      sessionId,
+      checkpointOnly,
+    }),
   });
   return response.ok;
 };
@@ -108,7 +117,7 @@ const writePlaybackProgress = async (
 const readPlaybackPosition = (player: YouTubePlayerInstance) => {
   const rawDuration = player.getDuration();
   return {
-    positionSeconds: Math.max(0, Math.floor(player.getCurrentTime())),
+    positionMs: Math.max(0, Math.floor(player.getCurrentTime() * 1000)),
     durationSeconds:
       Number.isFinite(rawDuration) && rawDuration > 0
         ? Math.floor(rawDuration)
@@ -181,25 +190,37 @@ export const YouTubeLessonPlayer = ({
     let disposed = false;
     let player: YouTubePlayerInstance | null = null;
     let progressInterval: ReturnType<typeof setInterval> | null = null;
-    let saving = false;
+    let saveChain = Promise.resolve(true);
+    const sessionId = crypto.randomUUID();
 
-    const saveProgress = async (completed = false) => {
-      if (!(persistProgress && player) || saving) {
-        return;
+    const saveProgress = (checkpointOnly = false) => {
+      if (!(persistProgress && player)) {
+        return Promise.resolve(false);
       }
       const progress = readPlaybackPosition(player);
-      saving = true;
-      setStatus("Salvando posição");
-      const saved = await writePlaybackProgress(
-        assetId,
-        progress.positionSeconds,
-        progress.durationSeconds,
-        completed
-      ).catch(() => false);
+      const playbackRate = player.getPlaybackRate();
+      const pending = saveChain
+        .catch(() => false)
+        .then(() =>
+          writePlaybackProgress(
+            assetId,
+            progress.positionMs,
+            progress.durationSeconds,
+            playbackRate,
+            sessionId,
+            checkpointOnly
+          )
+        );
+      saveChain = pending;
       if (!disposed) {
-        setStatus(saved ? "Posição salva" : "Posição não salva");
+        setStatus("Salvando posição");
       }
-      saving = false;
+      return pending.then((saved) => {
+        if (!disposed) {
+          setStatus(saved ? "Posição salva" : "Posição não salva");
+        }
+        return saved;
+      });
     };
 
     const startProgressSync = () => {
@@ -223,14 +244,15 @@ export const YouTubeLessonPlayer = ({
       if (data === api.PlayerState.PLAYING) {
         setIsPlaying(true);
         setStatus("Reprodução em andamento");
+        saveProgress(true).catch(() => undefined);
         startProgressSync();
         return;
       }
       stopProgressSync();
       setIsPlaying(false);
       if (data === api.PlayerState.ENDED) {
-        setStatus("Gravação concluída");
-        saveProgress(true).catch(() => undefined);
+        setStatus("Reprodução encerrada");
+        saveProgress().catch(() => undefined);
       } else if (data === api.PlayerState.PAUSED) {
         setStatus("Reprodução pausada");
         saveProgress().catch(() => undefined);

@@ -27,6 +27,7 @@ const StoredLessonPlayer = ({
   studyResourceId,
 }: LessonPlayerProperties) => {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const playbackSessionIdRef = useRef<string | null>(null);
   const resumePositionRef = useRef<number | null>(null);
   const lastSavedPositionRef = useRef(0);
   const lastSavedAtRef = useRef(0);
@@ -138,7 +139,7 @@ const StoredLessonPlayer = ({
   }, [isHls, source]);
 
   const saveProgress = useCallback(
-    (force = false, completed = false) => {
+    (force = false, checkpointOnly = false) => {
       if (!persistProgress) {
         return Promise.resolve();
       }
@@ -149,13 +150,18 @@ const StoredLessonPlayer = ({
       }
 
       const positionSeconds = Math.max(0, Math.floor(video.currentTime));
+      const positionMs = Math.max(0, Math.floor(video.currentTime * 1000));
       const durationSeconds = Number.isFinite(video.duration)
         ? Math.max(0, Math.floor(video.duration))
         : null;
+      let sessionId = playbackSessionIdRef.current;
+      if (!sessionId) {
+        sessionId = crypto.randomUUID();
+        playbackSessionIdRef.current = sessionId;
+      }
       const now = Date.now();
       const shouldSave =
         force ||
-        completed ||
         positionSeconds - lastSavedPositionRef.current >= 10 ||
         now - lastSavedAtRef.current >= 15_000;
 
@@ -169,7 +175,13 @@ const StoredLessonPlayer = ({
         headers: { "Content-Type": "application/json" },
         credentials: "same-origin",
         keepalive: force,
-        body: JSON.stringify({ positionSeconds, durationSeconds, completed }),
+        body: JSON.stringify({
+          positionMs,
+          durationSeconds,
+          playbackRate: video.playbackRate,
+          sessionId,
+          checkpointOnly,
+        }),
       })
         .then((response) => {
           if (!response.ok) {
@@ -204,14 +216,26 @@ const StoredLessonPlayer = ({
     const handleTimeUpdate = () => {
       saveProgress().catch(() => undefined);
     };
+    const saveLatestSample = (force: boolean, checkpointOnly: boolean) => {
+      const inFlight = saveInFlightRef.current;
+      const save = () => saveProgress(force, checkpointOnly);
+      return inFlight ? inFlight.then(save) : save();
+    };
+    const handlePlay = () => {
+      saveLatestSample(true, true).catch(() => undefined);
+    };
+    const handleSeeked = () => {
+      saveLatestSample(true, true).catch(() => undefined);
+    };
     const handlePause = () => {
-      saveProgress(true).catch(() => undefined);
+      saveLatestSample(true, false).catch(() => undefined);
     };
-    const handleEnded = () => {
-      saveProgress(true, true).catch(() => undefined);
-    };
+    const handleEnded = () =>
+      saveLatestSample(true, false).catch(() => undefined);
     video.addEventListener("loadedmetadata", applyResume);
     video.addEventListener("durationchange", applyResume);
+    video.addEventListener("play", handlePlay);
+    video.addEventListener("seeked", handleSeeked);
     video.addEventListener("timeupdate", handleTimeUpdate);
     video.addEventListener("pause", handlePause);
     video.addEventListener("ended", handleEnded);
@@ -219,10 +243,12 @@ const StoredLessonPlayer = ({
     return () => {
       video.removeEventListener("loadedmetadata", applyResume);
       video.removeEventListener("durationchange", applyResume);
+      video.removeEventListener("play", handlePlay);
+      video.removeEventListener("seeked", handleSeeked);
       video.removeEventListener("timeupdate", handleTimeUpdate);
       video.removeEventListener("pause", handlePause);
       video.removeEventListener("ended", handleEnded);
-      saveProgress(true).catch(() => undefined);
+      saveLatestSample(true, false).catch(() => undefined);
     };
   }, [applyResume, persistProgress, saveProgress]);
 

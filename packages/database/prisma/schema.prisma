@@ -945,6 +945,8 @@ model PlaybackProgress {
   assetId             String
   positionSeconds     Int         @default(0)
   durationSeconds     Int?
+  watchedIntervals    Json        @default("[]") @db.JsonB
+  playbackSessions    Json        @default("{}") @db.JsonB
   lastViewedAt        DateTime    @default(now())
   completedPlaybackAt DateTime?
   createdAt           DateTime    @default(now())

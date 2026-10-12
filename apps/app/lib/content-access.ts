@@ -642,6 +642,8 @@ export const getAccessibleAsset = async (assetId: string, memberId: string) => {
       mediaExternalId: true,
       mimeType: true,
       durationSeconds: true,
+      youtubeStartAtSeconds: true,
+      youtubeEndAtSeconds: true,
       ownerMemberId: true,
       importedRecording: {
         select: { id: true },
@@ -685,17 +687,23 @@ export const getAccessibleAsset = async (assetId: string, memberId: string) => {
   return canReadAsset ? asset : null;
 };
 
-/**
- * Playback progress belongs to the historical-recording domain only. Keeping
- * this guard separate prevents an async LessonAsset from accidentally being
- * treated as a recording merely because it is video-shaped.
- */
+/** Historical recordings have an independent audience check from lesson assets. */
 export const getAccessibleRecording = async (
   assetId: string,
   memberId: string
 ) => {
   const asset = await getAccessibleAsset(assetId, memberId);
   return asset?.importedRecording ? asset : null;
+};
+
+export const getAccessiblePlaybackAsset = async (
+  assetId: string,
+  memberId: string
+) => {
+  const asset = await getAccessibleAsset(assetId, memberId);
+  return asset && (asset.kind === "VIDEO" || asset.importedRecording !== null)
+    ? asset
+    : null;
 };
 
 /**
