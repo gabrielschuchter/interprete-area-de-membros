@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { CourseSectionTabs } from "@/components/gestao/course-section-tabs";
 import { LazyTopicEditor } from "@/components/gestao/lazy-topic-editor";
 import { YouTubePlaylistImport } from "@/components/gestao/youtube-playlist-import";
 import { getAdminCourse } from "@/lib/admin-learning";
@@ -74,7 +75,13 @@ export const AdminCourseEditor = async ({
         </Link>
         <div className="flex flex-wrap gap-2">
           <Button asChild variant="outline">
-            <Link href={`/admin/learning/courses/${course.id}/preview`}>
+            <Link
+              href={
+                gestao
+                  ? `/gestao/ensino/cursos/${course.id}/preview`
+                  : `/admin/learning/courses/${course.id}/preview`
+              }
+            >
               <EyeIcon aria-hidden="true" /> Preview
             </Link>
           </Button>
@@ -113,7 +120,7 @@ export const AdminCourseEditor = async ({
             {course.description}
           </p>
         )}
-        <div className="mt-6 flex flex-wrap gap-2">
+        <div className="mt-6 flex flex-wrap gap-2" id="course-publishing">
           {gestao ? (
             <YouTubePlaylistImport
               courseId={course.id}
@@ -147,7 +154,10 @@ export const AdminCourseEditor = async ({
             </form>
           )}
         </div>
-        <details className="mt-6 max-w-2xl border-border border-t pt-5">
+        <details
+          className="mt-6 max-w-2xl border-border border-t pt-5"
+          id="course-settings"
+        >
           <summary className="cursor-pointer text-muted-foreground text-sm underline underline-offset-4">
             Editar curso
           </summary>
@@ -203,7 +213,14 @@ export const AdminCourseEditor = async ({
         </details>
       </header>
 
-      <div className="mt-10 grid gap-10 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
+      {gestao ? (
+        <CourseSectionTabs active="content" courseId={course.id} />
+      ) : null}
+
+      <div
+        className="mt-10 grid gap-10 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start"
+        id="course-content"
+      >
         <section aria-labelledby="modules-heading">
           <div className="flex items-end justify-between border-border border-b pb-3">
             <h2 className="font-display text-3xl" id="modules-heading">

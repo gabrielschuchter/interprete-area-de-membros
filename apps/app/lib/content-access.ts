@@ -1,6 +1,7 @@
 import "server-only";
 
 import {
+  AccessGrantOrigin,
   AccessResourceType,
   database,
   LearningAssignmentTargetType,
@@ -377,6 +378,12 @@ const getLearningAccessScopeUncached = async (
                     },
                   },
                 },
+                {
+                  origin: AccessGrantOrigin.OPEN_ACCESS,
+                  resourceType: AccessResourceType.COURSE,
+                  subjectMemberId: null,
+                  subjectCohortId: null,
+                },
               ],
             },
           ],
@@ -428,6 +435,14 @@ const getLearningAccessScopeUncached = async (
     if (grant.subjectMemberId === memberId) {
       return true;
     }
+    if (
+      grant.origin === AccessGrantOrigin.OPEN_ACCESS &&
+      grant.resourceType === AccessResourceType.COURSE &&
+      grant.subjectMemberId === null &&
+      grant.subjectCohortId === null
+    ) {
+      return true;
+    }
     if (!(grant.subjectCohortId && grant.subjectCohort)) {
       return false;
     }
@@ -439,7 +454,12 @@ const getLearningAccessScopeUncached = async (
     );
   });
   const directSources = effectiveSources.filter(
-    (grant) => grant.subjectMemberId === memberId
+    (grant) =>
+      grant.subjectMemberId === memberId ||
+      (grant.origin === AccessGrantOrigin.OPEN_ACCESS &&
+        grant.resourceType === AccessResourceType.COURSE &&
+        grant.subjectMemberId === null &&
+        grant.subjectCohortId === null)
   );
   const cohortSources = effectiveSources.filter(
     (grant) => grant.subjectCohortId !== null

@@ -23,6 +23,7 @@ vi.mock("@repo/database", () => ({
     LESSON: "LESSON",
     ASSET: "ASSET",
   },
+  AccessGrantOrigin: { OPEN_ACCESS: "OPEN_ACCESS" },
   LearningAssignmentTargetType: {
     COURSE: "COURSE",
     MODULE: "MODULE",
@@ -113,6 +114,37 @@ describe("cohort-backed learning access", () => {
     expect(scope.origins).toContainEqual({
       origin: "COHORT",
       originRefId: "cohort-a",
+      resourceId: "course-a",
+      resourceType: "COURSE",
+      validUntil: null,
+    });
+  });
+
+  it("grants course access to every member through an open source", async () => {
+    const now = new Date();
+    databaseMock.accessGrantSource.findMany.mockResolvedValue([
+      {
+        createdAt: now,
+        origin: "OPEN_ACCESS",
+        originRefId: "course-a",
+        resourceId: "course-a",
+        resourceType: "COURSE",
+        validFrom: new Date(now.getTime() - 1000),
+        validUntil: null,
+        revokedAt: null,
+        subjectMemberId: null,
+        subjectCohortId: null,
+        subjectCohort: null,
+      },
+    ]);
+
+    const scope = await getLearningAccessScope("member-a");
+
+    expect(hasCourseAccess(scope, "course-a")).toBe(true);
+    expect(hasFullCourseAccess(scope, "course-a")).toBe(true);
+    expect(scope.origins).toContainEqual({
+      origin: "OPEN_ACCESS",
+      originRefId: "course-a",
       resourceId: "course-a",
       resourceType: "COURSE",
       validUntil: null,

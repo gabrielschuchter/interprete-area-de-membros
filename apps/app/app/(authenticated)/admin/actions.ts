@@ -1304,6 +1304,8 @@ export const setContentStatus = async (formData: FormData) => {
     });
     revalidatePath("/admin/learning");
     revalidatePath(`/admin/learning/courses/${id}`);
+    revalidatePath(`/gestao/ensino/cursos/${id}`);
+    revalidatePath(`/gestao/ensino/cursos/${id}/turmas`);
     revalidatePath("/aprender");
     return;
   }

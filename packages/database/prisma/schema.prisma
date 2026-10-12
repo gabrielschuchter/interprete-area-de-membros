@@ -313,6 +313,7 @@ enum AccessGrantOrigin {
   COHORT
   ASSIGNMENT
   HISTORICAL
+  OPEN_ACCESS
 }
 
 enum AccessResourceType {
