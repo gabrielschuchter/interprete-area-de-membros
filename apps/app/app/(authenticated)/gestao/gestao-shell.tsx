@@ -504,6 +504,9 @@ const GestaoShellView = ({
             ) : (
               <span className="gestao-topbar-section">{heading}</span>
             )}
+            {pathname.startsWith("/gestao/ensino/cursos") ? (
+              <span className="gestao-topbar-mobile-section">{heading}</span>
+            ) : null}
           </div>
           <div className="gestao-topbar-actions">
             <MemberHeaderControls memberId={memberId} showSaved={false} />

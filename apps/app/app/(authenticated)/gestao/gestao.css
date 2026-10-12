@@ -272,6 +272,10 @@
   white-space: nowrap;
 }
 
+.gestao-topbar-mobile-section {
+  display: none;
+}
+
 .gestao-topbar-actions {
   display: flex;
   gap: 12px;
@@ -596,6 +600,16 @@
   .gestao-mobile-menu-button svg {
     width: 18px;
     height: 18px;
+  }
+
+  .gestao-topbar-mobile-section {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-family: var(--font-display-family);
+    font-size: 16px;
+    font-weight: 600;
+    white-space: nowrap;
   }
 
   .gestao-topbar-actions {
@@ -3484,6 +3498,12 @@
   text-overflow: ellipsis;
   font-weight: 600;
   color: var(--gestao-text);
+}
+
+@media (max-width: 63.999rem) {
+  .gestao-topbar-breadcrumb {
+    display: none;
+  }
 }
 
 @media (min-width: 64rem) and (max-width: 79.999rem) {
