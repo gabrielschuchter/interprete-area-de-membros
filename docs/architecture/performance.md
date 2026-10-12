@@ -785,3 +785,27 @@ instructor opens the preview. This is bundle evidence only: no authenticated
 runtime or PostgreSQL QA service is available here. API-key verification,
 Storage uploads, playback persistence, latency percentiles, and visual
 comparison remain unverified.
+
+### Learner playback progress
+
+`GET` and `PUT /api/learning/assets/[assetId]/progress` re-check current asset
+access on every request and return private, uncached progress. Both the stored
+video player and YouTube player send a stable per-tab session ID and sampled
+media position. The server timestamps samples, rejects implausible jumps,
+resets the checkpoint on play/seek, clamps coverage to the configured clip,
+and merges intervals as a union in a serializable transaction with up to three
+attempts. The browser's `completed` flag and absolute playback position alone
+cannot complete a lesson. The denominator prefers saved asset duration and clip
+metadata; player duration is a fallback where that metadata is absent. At 90%
+union coverage, the existing lesson-completion path and eligible asset or
+recording assignments are updated. Completion never creates access.
+
+The player writes a baseline on play, samples every 15 seconds, and flushes on
+pause/end; feedback is shown before the request and success only after the
+write. The `learning` route measured 208.6 KiB gzip across 16 initial chunks,
+below the 225 KiB budget. This does not establish latency: the ≤100 ms visible
+feedback target and ≤500 ms committed mutation p95 remain unmeasured because
+local PostgreSQL QA is unavailable. Migration
+`20261012143000_playback_watch_intervals` is additive and remains unapplied;
+runtime persistence, simultaneous-tab database races, real playback and the
+visual acceptance frames still need local QA.

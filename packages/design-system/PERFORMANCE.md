@@ -259,3 +259,26 @@ on a server request.
   latency or persistence.
 - Provide specific pending labels and an announced publication error so the
   action responds immediately while the remote verification and write finish.
+
+## Learner video playback progress
+
+- Keep `GET` and `PUT /api/learning/assets/[assetId]/progress` private and
+  uncached, with current asset authorization on every request. The database
+  projection is one member/asset progress row; persist only resume position,
+  merged watched intervals, per-tab checkpoints, duration, and timestamps.
+- Sample at player start, every 15 seconds, pause, and end. Use server receipt
+  time and the reported playback rate (capped at 2x), reset a tab checkpoint
+  after play/seek, reject jumps, and credit no more than the elapsed playback
+  interval. Merge overlaps transactionally so simultaneous tabs cannot
+  double-count. Never accept a client completion flag or position threshold.
+- Clamp the 90% coverage denominator to verified asset/clip metadata when
+  present. The player duration is currently the fallback when asset metadata
+  is absent; completion remains a progress event and never grants access.
+- Keep pending feedback immediate and report success only after the serializable
+  write commits. The shared targets remain ≤100 ms visible feedback and
+  ≤500 ms committed small-mutation p95. Neither authenticated latency nor
+  database concurrency has been measured without the local QA database.
+- The student `learning` route measured 208.6 KiB gzip across 16 initial
+  chunks, below the 225 KiB budget. The additive progress migration is
+  versioned but unapplied; persisted playback, two-tab database behavior, and
+  device/visual acceptance remain open.
