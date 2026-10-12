@@ -218,3 +218,10 @@ Cada fase será registrada em `PROGRESS.md`, commitada separadamente na branch `
 | `GMMembros` | `99-mobile-membros-cartoes-e-folha-de-acoes.html` + `99-mobile-membros-cartoes-e-folha-de-acoes.png` | `fluxo/contexto; sem rota de página` | `admin/membros; nova folha de ações mobile` | Base parcial; precisa integrar, proteger e redesenhar |
 | `GMTurmas` | `100-mobile-turmas.html` + `100-mobile-turmas.png` | `fluxo/contexto; sem rota de página` | `handoff docs 01-06; sem tela funcional` | Referência de arquitetura/produto; sem tela operacional |
 | `GMTurmaAlunos` | `101-mobile-alunos-da-turma-acoes-em-folha.html` + `101-mobile-alunos-da-turma-acoes-em-folha.png` | `fluxo/contexto; sem rota de página` | `handoff docs 01-06; sem tela funcional` | Referência de arquitetura/produto; sem tela operacional |
+## Checkpoint de implementação · upload próprio de vídeo (12/10/2026)
+
+A primeira tranche de upload do editor de aula foi implementada no commit `ac69ab5` da branch `gestao-v2`. O navegador envia MP4/WebM por TUS diretamente ao bucket privado com token assinado emitido pelo servidor; tamanho e assinatura do objeto são conferidos antes da sessão ficar pronta. O vídeo só substitui/cria o asset junto com o salvamento explícito da aula. Sessões usam idempotência, expiram em 24 horas e a limpeza horária retenta objetos órfãos sem apagar sessões concluídas.
+
+Gates locais aprovados: `check`, `typecheck`, `boundaries`, `test` (530 app, 17 domínio, 9 API; scripts 27 aprovados e 1 harness aposentado ignorado), `build`, `performance:check`, `git diff --check` e geração do Prisma Client. O editor ficou em 221,5 KiB gzip / 18 chunks, abaixo do limite de 225 KiB.
+
+A migration `20261012160000_gestao_lesson_asset_uploads` está versionada e **não aplicada**. O build usou apenas URL local e `SKIP_ENV_VALIDATION=true`; não houve conexão, escrita em Supabase, deploy ou entrega real ao Storage. A etapa permanece em andamento até QA local/autenticado, confirmação da capacidade de 500 MB no bucket/projeto, cron configurado e comparação visual dos quadros 49/responsivos.
