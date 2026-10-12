@@ -246,22 +246,33 @@ const RosterConfirmation = ({
 
 const AddablePanel = ({
   addable,
+  onlyUnassigned,
   selected,
   pending,
   onToggle,
   onSubmit,
 }: {
   readonly addable: readonly AddableStudent[];
+  readonly onlyUnassigned: boolean;
   readonly selected: readonly string[];
   readonly pending: boolean;
   readonly onToggle: (memberId: string, checked: boolean) => void;
   readonly onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }) => (
-  <section className="gt-panel">
+  <section
+    className="gt-panel"
+    id={onlyUnassigned ? "alunos-disponiveis" : undefined}
+  >
     <div className="gt-panel-heading">
       <div>
-        <h2>Adicionar membros existentes</h2>
-        <p>Alunos de outras turmas podem participar desta também.</p>
+        <h2>
+          {onlyUnassigned ? "Alunos sem turma" : "Adicionar membros existentes"}
+        </h2>
+        <p>
+          {onlyUnassigned
+            ? "Eles ainda não recebem cursos, atividades nem encontros por turma."
+            : "Alunos de outras turmas podem participar desta também."}
+        </p>
       </div>
     </div>
     {addable.length ? (
@@ -306,11 +317,13 @@ export const CohortRosterManager = ({
   students,
   addable,
   targets,
+  onlyUnassigned = false,
 }: {
   readonly cohortId: string;
   readonly students: readonly RosterStudent[];
   readonly addable: readonly AddableStudent[];
   readonly targets: readonly TargetCohort[];
+  readonly onlyUnassigned?: boolean;
 }) => {
   const router = useRouter();
   const [selected, setSelected] = useState<string[]>([]);
@@ -444,6 +457,7 @@ export const CohortRosterManager = ({
       </section>
       <AddablePanel
         addable={addable}
+        onlyUnassigned={onlyUnassigned}
         onSubmit={addSelected}
         onToggle={toggleAddable}
         pending={pending}

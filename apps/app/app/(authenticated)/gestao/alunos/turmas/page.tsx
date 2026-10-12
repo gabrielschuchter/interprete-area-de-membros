@@ -1,5 +1,10 @@
 import { Button } from "@repo/design-system/components/ui/button";
-import { CalendarDaysIcon, PlusIcon, UsersRoundIcon } from "lucide-react";
+import {
+  CalendarDaysIcon,
+  MoreHorizontalIcon,
+  PlusIcon,
+  UsersRoundIcon,
+} from "lucide-react";
 import Link from "next/link";
 import { requireGestaoActor } from "@/lib/gestao-authorization";
 import { type GestaoCohortTab, listGestaoCohorts } from "@/lib/gestao-cohorts";
@@ -67,9 +72,12 @@ const UnassignedNotice = ({ count }: { readonly count: number | null }) =>
       <UsersRoundIcon aria-hidden="true" />
       <div>
         <strong>{count} alunos ainda não estão em nenhuma turma.</strong>
-        <p>Eles continuam com o acesso que já tinham até serem vinculados.</p>
+        <p>
+          Eles não recebem cursos, atividades nem encontros até entrarem em uma
+          turma.
+        </p>
       </div>
-      <Link href="/gestao/alunos/turmas/nova">Criar uma turma</Link>
+      <Link href="/gestao/alunos/turmas/atribuir">Atribuir a uma turma</Link>
     </aside>
   ) : null;
 
@@ -152,8 +160,25 @@ const CohortCard = ({ cohort }: { readonly cohort: CohortListItem }) => (
           {cohort.courseCount === 1 ? "curso" : "cursos"}
         </span>
         <span>
-          <strong>{cohort.pendingInviteCount}</strong> convites
+          <strong>{cohort.meetingCount}</strong>{" "}
+          {cohort.meetingCount === 1 ? "encontro" : "encontros"}
         </span>
+      </div>
+      <div className="gt-cohort-progress">
+        <div className="gt-cohort-progress-label">
+          <span>Progresso médio</span>
+          <span>{cohort.averageProgress}%</span>
+        </div>
+        <div
+          aria-label={`Progresso médio da turma: ${cohort.averageProgress}%`}
+          aria-valuemax={100}
+          aria-valuemin={0}
+          aria-valuenow={cohort.averageProgress}
+          className="gt-cohort-progress-track"
+          role="progressbar"
+        >
+          <span style={{ width: `${cohort.averageProgress}%` }} />
+        </div>
       </div>
       <div className="gt-cohort-footer">
         <div
@@ -175,9 +200,21 @@ const CohortCard = ({ cohort }: { readonly cohort: CohortListItem }) => (
               : ""}
           </span>
         </div>
-        <Button asChild variant="outline">
-          <Link href={`/gestao/alunos/turmas/${cohort.id}`}>Abrir</Link>
-        </Button>
+        <div className="gt-cohort-card-actions">
+          <Button asChild variant="outline">
+            <Link href={`/gestao/alunos/turmas/${cohort.id}`}>Abrir</Link>
+          </Button>
+          <Button
+            aria-label={`Configurações de ${cohort.name}`}
+            asChild
+            size="icon"
+            variant="outline"
+          >
+            <Link href={`/gestao/alunos/turmas/${cohort.id}/configuracoes`}>
+              <MoreHorizontalIcon aria-hidden="true" />
+            </Link>
+          </Button>
+        </div>
       </div>
     </div>
   </article>

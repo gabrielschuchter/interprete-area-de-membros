@@ -5,7 +5,7 @@
 ## Estado geral
 - Branch: `gestao-v2`
 - Fase atual: Fase 2 — Turmas e resolvers. Fixtures persistentes, projeção das quatro fontes de agenda, exceções, assinatura revogável e atribuição de alunos estão em QA local. Fase 1 ainda não foi aceita; a Fase 3 tem implementação parcial. Nenhuma dessas fases recebeu aceite completo.
-- Último commit de implementação antes desta unidade: `9ee3053` (fixtures isoladas e schema aditivo do calendário); a consolidação de agenda e atribuição está em andamento.
+- Calendário unificado, recorrência, cópia e assinatura consolidados em `5581041`; a unidade seguinte consolida a entrada para atribuição de alunos sem turma.
 - Orçamento/contexto: (preencher se relevante)
 
 ## Fases
@@ -265,6 +265,10 @@ O cache gerado de desenvolvimento foi preservado em `%TEMP%/interprete-gestao-ne
 Após os ajustes finais de camadas/grade passaram os gates monorepo: `check` (896 arquivos), `typecheck` (16 tarefas), `boundaries` (841 arquivos), `test` (592 testes do app, 17 de domínio, 9 de API, 32 scripts aprovados e 1 ignorado), `build` (8/8), `performance:check` e `git diff --check`. Calendário mediu 220,9 KiB gzip/17 chunks e Planejamento 224,0 KiB/17 chunks, sob 225 KiB. O teste focado de domínio passou com 11 testes. A build usa `SKIP_ENV_VALIDATION=true` e URL local, sem conexão ao banco. O preview foi reaberto após a build.
 
 Próximas lacunas: menu do dia com criação real de encontro/prazo/liberação/evento; edição das fontes; matriz de autorização completa; fidelidade de shell/controles; demais larguras, movimento reduzido e teclado. Fase 2 e quadro 41 seguem IN PROGRESS. Nenhum quadro foi concluído nesta unidade.
+
+### Entrada de atribuição de alunos sem turma
+
+O aviso da lista de turmas aponta para `/gestao/alunos/turmas/atribuir`, restrita a admin no servidor. A seleção lista turmas ativas/futuras com busca e paginação SQL; o destino mantém `somenteSemTurma=1` na busca/paginação e reutiliza a mutação de matrícula existente, com seleção e confirmação. Os cartões mostram contagens reais de encontros e progresso agregado no PostgreSQL. O ciclo de atribuir/recarregar/remover/recarregar já foi verificado com o perfil funcional (registro acima). Os quatro arquivos de interface desta unidade estavam incluídos nos gates e na build de 592 testes registrada neste checkpoint; a mudança posterior foi apenas o tratamento de Esc no diálogo de cópia do calendário. A matriz completa de permissões e o aceite visual de 35/36/37 continuam abertos.
 
 ### Alteração da meta de publicação (12/10/2026)
 
