@@ -6,12 +6,25 @@ import Link from "next/link";
 import { requireGestaoAction } from "@/lib/gestao-authorization";
 import { createCourse } from "../../../../admin/actions";
 
-const GestaoNewCoursePage = async () => {
+const GestaoNewCoursePage = async ({
+  searchParams,
+}: {
+  readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) => {
   await requireGestaoAction("content.manage");
-  const paths = await database.learningPath.findMany({
-    orderBy: [{ position: "asc" }, { title: "asc" }],
-    select: { id: true, title: true },
-  });
+  const [paths, query] = await Promise.all([
+    database.learningPath.findMany({
+      orderBy: [{ position: "asc" }, { title: "asc" }],
+      select: { id: true, title: true },
+    }),
+    searchParams,
+  ]);
+  const requestedPathId = Array.isArray(query.percurso)
+    ? query.percurso[0]
+    : query.percurso;
+  const initialPathId = paths.some((path) => path.id === requestedPathId)
+    ? requestedPathId
+    : "";
 
   return (
     <section className="ge-course-create">
@@ -49,7 +62,11 @@ const GestaoNewCoursePage = async () => {
         </label>
         <label htmlFor="course-path">
           <span>Percurso</span>
-          <select defaultValue="" id="course-path" name="learningPathId">
+          <select
+            defaultValue={initialPathId}
+            id="course-path"
+            name="learningPathId"
+          >
             <option value="">Sem percurso por enquanto</option>
             {paths.map((path) => (
               <option key={path.id} value={path.id}>

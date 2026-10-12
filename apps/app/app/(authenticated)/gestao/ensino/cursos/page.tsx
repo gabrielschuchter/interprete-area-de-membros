@@ -79,7 +79,7 @@ const CourseStatus = ({ state }: { readonly state: keyof typeof labels }) => (
 
 type CourseCatalog = Awaited<ReturnType<typeof listGestaoCourses>>;
 type CourseItem = CourseCatalog["courses"][number];
-type LearningPath = Awaited<ReturnType<typeof listGestaoLearningPaths>>[number];
+type LearningPathCatalog = Awaited<ReturnType<typeof listGestaoLearningPaths>>;
 
 const CourseAccess = ({ course }: { readonly course: CourseItem }) => {
   if (!course.cohortCount) {
@@ -354,37 +354,140 @@ const CourseResults = ({ catalog }: { readonly catalog: CourseCatalog }) => {
   );
 };
 
-const PathsList = ({ paths }: { readonly paths: readonly LearningPath[] }) =>
-  paths.length ? (
-    <div className="ge-path-list">
-      {paths.map((path) => (
-        <article className="ge-path-card" key={path.id}>
-          <div>
-            <p className="ge-course-card-path">/{path.slug}</p>
-            <h2>{path.title}</h2>
-            <p>{path.description || "Sem descrição"}</p>
-          </div>
-          <div className="ge-path-card-meta">
-            <span>{path.courses.length} cursos</span>
-            <CourseStatus state={path.status} />
-            <Button asChild size="sm" variant="outline">
-              <Link href="/admin/learning">Editar percurso</Link>
-            </Button>
-          </div>
-        </article>
-      ))}
+const pathCatalogHref = (input: {
+  readonly query: string;
+  readonly status: string;
+  readonly page?: number;
+}) => {
+  const params = new URLSearchParams({ aba: "percursos" });
+  if (input.query) {
+    params.set("q", input.query);
+  }
+  if (input.status !== "ALL") {
+    params.set("estado", input.status);
+  }
+  if (input.page && input.page > 1) {
+    params.set("pagina", String(input.page));
+  }
+  return `/gestao/ensino/cursos?${params.toString()}`;
+};
+
+const PathsList = ({ catalog }: { readonly catalog: LearningPathCatalog }) => (
+  <>
+    <div className="ge-path-toolbar">
+      <form action="/gestao/ensino/cursos" method="get">
+        <input name="aba" type="hidden" value="percursos" />
+        <label className="ge-course-search">
+          <span aria-hidden="true">⌕</span>
+          <span className="sr-only">Buscar percursos</span>
+          <input
+            autoComplete="off"
+            defaultValue={catalog.query}
+            maxLength={120}
+            name="q"
+            placeholder="Buscar percursos"
+            type="search"
+          />
+        </label>
+        <label className="ge-course-select">
+          <span className="sr-only">Filtrar por estado</span>
+          <select defaultValue={catalog.status} name="estado">
+            <option value="ALL">Todos os estados</option>
+            <option value="PUBLISHED">Publicado</option>
+            <option value="DRAFT">Rascunho</option>
+            <option value="ARCHIVED">Arquivado</option>
+          </select>
+        </label>
+        <Button size="sm" type="submit" variant="outline">
+          Filtrar
+        </Button>
+      </form>
+      <span>
+        {catalog.totalCount}{" "}
+        {catalog.totalCount === 1 ? "percurso" : "percursos"}
+      </span>
     </div>
-  ) : (
-    <div className="ge-course-empty">
-      <h2>Nenhum percurso criado</h2>
-      <p>Um percurso organiza cursos em uma jornada de aprendizagem.</p>
-      <Button asChild>
-        <Link href="/admin/learning">
-          <PlusIcon aria-hidden="true" /> Criar percurso
-        </Link>
-      </Button>
-    </div>
-  );
+    {catalog.paths.length ? (
+      <div className="ge-path-list">
+        {catalog.paths.map((path) => (
+          <article className="ge-path-card" key={path.id}>
+            <div>
+              <p className="ge-course-card-path">/{path.slug}</p>
+              <h2>{path.title}</h2>
+              <p>{path.description || "Sem descrição"}</p>
+            </div>
+            <div className="ge-path-card-meta">
+              <span>{path._count.courses} cursos</span>
+              <CourseStatus state={path.status} />
+              <Button asChild size="sm" variant="outline">
+                <Link
+                  href={`/gestao/ensino/cursos/percursos/${path.id}`}
+                  prefetch={false}
+                >
+                  Editar percurso
+                </Link>
+              </Button>
+            </div>
+          </article>
+        ))}
+      </div>
+    ) : (
+      <div className="ge-course-empty">
+        <h2>
+          {catalog.query || catalog.status !== "ALL"
+            ? "Nenhum percurso encontrado"
+            : "Nenhum percurso criado"}
+        </h2>
+        <p>
+          {catalog.query || catalog.status !== "ALL"
+            ? "Altere os termos ou limpe os filtros para buscar novamente."
+            : "Um percurso organiza cursos em uma jornada de aprendizagem."}
+        </p>
+        <Button asChild>
+          <Link href="/gestao/ensino/cursos/percursos/novo">
+            <PlusIcon aria-hidden="true" /> Criar percurso
+          </Link>
+        </Button>
+      </div>
+    )}
+    {catalog.totalPages > 1 ? (
+      <nav
+        aria-label="Paginação dos percursos"
+        className="ge-course-pagination"
+      >
+        <span>
+          {(catalog.page - 1) * catalog.pageSize + 1}–
+          {Math.min(catalog.page * catalog.pageSize, catalog.totalCount)} de{" "}
+          {catalog.totalCount}
+        </span>
+        <div>
+          {catalog.page > 1 ? (
+            <Link
+              href={pathCatalogHref({
+                query: catalog.query,
+                status: catalog.status,
+                page: catalog.page - 1,
+              })}
+            >
+              Anterior
+            </Link>
+          ) : null}
+          {catalog.page < catalog.totalPages ? (
+            <Link
+              href={pathCatalogHref({
+                query: catalog.query,
+                status: catalog.status,
+                page: catalog.page + 1,
+              })}
+            >
+              Próxima
+            </Link>
+          ) : null}
+        </div>
+      </nav>
+    ) : null}
+  </>
+);
 
 const GestaoCoursesPage = async ({
   searchParams,
@@ -395,14 +498,24 @@ const GestaoCoursesPage = async ({
   const value = (item: string | string[] | undefined) =>
     Array.isArray(item) ? item[0] : item;
   const tab = value(query.aba) === "percursos" ? "percursos" : "cursos";
-  const catalog = await listGestaoCourses({
-    page: Number(value(query.pagina)) || 1,
-    query: value(query.q),
-    status: value(query.estado),
-    pathId: value(query.percurso),
-    view: value(query.visualizacao) === "grade" ? "GRID" : "LIST",
-  });
-  const paths = tab === "percursos" ? await listGestaoLearningPaths() : null;
+  const courseCatalog =
+    tab === "cursos"
+      ? await listGestaoCourses({
+          page: Number(value(query.pagina)) || 1,
+          query: value(query.q),
+          status: value(query.estado),
+          pathId: value(query.percurso),
+          view: value(query.visualizacao) === "grade" ? "GRID" : "LIST",
+        })
+      : null;
+  const pathCatalog =
+    tab === "percursos"
+      ? await listGestaoLearningPaths({
+          page: Number(value(query.pagina)) || 1,
+          query: value(query.q),
+          status: value(query.estado),
+        })
+      : null;
   const tabHref = (name: "cursos" | "percursos") => {
     const params = new URLSearchParams();
     if (name === "percursos") {
@@ -422,7 +535,9 @@ const GestaoCoursesPage = async ({
         </div>
         <div className="ge-courses-actions">
           <Button asChild variant="outline">
-            <Link href="/admin/learning">Novo percurso</Link>
+            <Link href="/gestao/ensino/cursos/percursos/novo">
+              Novo percurso
+            </Link>
           </Button>
           <Button asChild>
             <Link href="/gestao/ensino/cursos/novo">
@@ -438,30 +553,31 @@ const GestaoCoursesPage = async ({
           href={tabHref("cursos")}
         >
           Cursos{" "}
-          <span>
-            {catalog.statusCounts.PUBLISHED +
-              catalog.statusCounts.SCHEDULED +
-              catalog.statusCounts.DRAFT +
-              catalog.statusCounts.ARCHIVED}
-          </span>
+          {courseCatalog ? (
+            <span>
+              {courseCatalog.statusCounts.PUBLISHED +
+                courseCatalog.statusCounts.SCHEDULED +
+                courseCatalog.statusCounts.DRAFT +
+                courseCatalog.statusCounts.ARCHIVED}
+            </span>
+          ) : null}
         </Link>
         <Link
           aria-current={tab === "percursos" ? "page" : undefined}
           data-active={String(tab === "percursos")}
           href={tabHref("percursos")}
         >
-          Percursos
+          Percursos{pathCatalog ? <span>{pathCatalog.totalCount}</span> : null}
         </Link>
       </nav>
-      {tab === "cursos" ? (
+      {courseCatalog ? (
         <>
-          <CourseFilters catalog={catalog} />
-          <CourseResults catalog={catalog} />
-          <CoursePagination catalog={catalog} />
+          <CourseFilters catalog={courseCatalog} />
+          <CourseResults catalog={courseCatalog} />
+          <CoursePagination catalog={courseCatalog} />
         </>
-      ) : (
-        <PathsList paths={paths ?? []} />
-      )}
+      ) : null}
+      {pathCatalog ? <PathsList catalog={pathCatalog} /> : null}
     </section>
   );
 };

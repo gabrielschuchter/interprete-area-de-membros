@@ -354,3 +354,20 @@ on a server request.
   content p95, visual/mobile QA, and the shared ≤100 ms feedback, ≤500 ms
   committed mutation, and ≤300 ms warmed navigation budgets remain unverified
   without local PostgreSQL QA.
+
+## Gestão learning paths
+
+- Keep path editing inside `/gestao`; every read and write requires fresh
+  `content.manage` authorization. The catalog uses 24 SQL rows and an
+  aggregate course count; the detail page reads one path and one 25-course SQL
+  page with module/lesson counts, then queries only the adjacent course at a
+  page boundary.
+- Reorder adjacent courses with expected path/course versions, transactionally
+  verified adjacency, a temporary unique position, an actor-scoped idempotency
+  key, and an audit event in the same serializable transaction. Published path
+  metadata, order, and status changes require explicit confirmation.
+- The create and editor routes each have a 225 KiB gzip JavaScript budget.
+  The current production build measures the editor at 213.5 KiB and create at
+  213.4 KiB across 17 chunks each. Authenticated latency, persistence,
+  concurrency, and visual/mobile acceptance remain separate runtime gates
+  that still require the local PostgreSQL QA environment.

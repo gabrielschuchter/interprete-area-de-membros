@@ -884,3 +884,26 @@ first-content p95, visual comparison, and mobile acceptance remain unverified
 while local PostgreSQL QA is unavailable. Keep the shared ≤100 ms
 interaction-feedback, ≤500 ms committed small-mutation, and ≤300 ms warmed
 navigation budgets in force.
+
+### Gestão: learning-path editor
+
+`/gestao/ensino/cursos/percursos/[pathId]` rechecks `content.manage` on every
+request and projects the path plus one 25-course page with module/lesson counts.
+The path catalog uses a 24-row SQL page and an aggregate course count rather
+than loading every associated course. Course count and the detail page are read
+in SQL; adjacent courses at page boundaries are fetched by indexed position.
+Moving a course revalidates the path, both
+course versions, and adjacency inside one serializable transaction. The swap
+uses a temporary position that cannot collide with the path's current minimum.
+Writes use actor-scoped idempotency keys and record a `DomainEvent` in the same
+transaction. Publishing, archiving, unpublishing, editing published metadata,
+and reordering a published path require explicit confirmation in the UI and
+are rechecked server-side. No schema migration is needed; existing
+`LearningPath`, `Course.position`, and content authorization remain canonical.
+
+The create and edit routes each have an explicit 225 KiB initial-JavaScript
+budget. The local production build measures the editor at 213.5 KiB gzip and
+the create page at 213.4 KiB across 17 initial chunks each. Authenticated
+database latency, transaction concurrency, and visual/mobile comparison still
+require the isolated PostgreSQL QA environment; these bundle gates do not
+establish those acceptance criteria.

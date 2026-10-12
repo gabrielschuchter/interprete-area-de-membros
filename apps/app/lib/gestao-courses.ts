@@ -1,6 +1,7 @@
 import "server-only";
 
 import {
+  ContentStatus,
   CourseExperience,
   database,
   MemberRole,
@@ -153,10 +154,49 @@ export const listGestaoCourses = async (input: {
   };
 };
 
-export const listGestaoLearningPaths = async () => {
+const learningPathPageSize = 24;
+const learningPathStatuses = new Set<string>([
+  "ALL",
+  ContentStatus.DRAFT,
+  ContentStatus.PUBLISHED,
+  ContentStatus.ARCHIVED,
+]);
+
+export const listGestaoLearningPaths = async (input: {
+  readonly page?: number;
+  readonly query?: string;
+  readonly status?: string;
+}) => {
   await requireGestaoAction("content.manage");
-  return database.learningPath.findMany({
+  const query = (input.query ?? "").trim().slice(0, 120);
+  const status = learningPathStatuses.has(input.status ?? "")
+    ? (input.status ?? "ALL")
+    : "ALL";
+  const statusFilter =
+    status === "ALL" ? {} : { status: status as ContentStatus };
+  const where: Prisma.LearningPathWhereInput = {
+    ...statusFilter,
+    ...(query
+      ? {
+          OR: [
+            { title: { contains: query, mode: "insensitive" } },
+            { slug: { contains: query, mode: "insensitive" } },
+          ],
+        }
+      : {}),
+  };
+  const totalCount = await database.learningPath.count({ where });
+  const totalPages = Math.max(1, Math.ceil(totalCount / learningPathPageSize));
+  const requestedPage = Number(input.page);
+  const page =
+    Number.isSafeInteger(requestedPage) && requestedPage > 0
+      ? Math.min(requestedPage, totalPages)
+      : 1;
+  const paths = await database.learningPath.findMany({
+    where,
     orderBy: [{ position: "asc" }, { title: "asc" }, { id: "asc" }],
+    skip: (page - 1) * learningPathPageSize,
+    take: learningPathPageSize,
     select: {
       id: true,
       title: true,
@@ -164,19 +204,111 @@ export const listGestaoLearningPaths = async () => {
       description: true,
       status: true,
       updatedAt: true,
-      courses: {
-        where: { experience: CourseExperience.ASYNC },
-        orderBy: [{ position: "asc" }, { title: "asc" }, { id: "asc" }],
+      _count: {
         select: {
-          id: true,
-          title: true,
-          slug: true,
-          status: true,
-          modules: { select: { _count: { select: { lessons: true } } } },
+          courses: { where: { experience: CourseExperience.ASYNC } },
         },
       },
     },
   });
+  return {
+    page,
+    pageSize: learningPathPageSize,
+    query,
+    status,
+    totalCount,
+    totalPages,
+    paths,
+  };
+};
+
+export const gestaoLearningPathCoursePageSize = 25;
+
+export const getGestaoLearningPath = async (
+  pathId: string,
+  requestedPage?: string
+) => {
+  await requireGestaoAction("content.manage", { contentId: pathId });
+  const [path, totalCourses] = await Promise.all([
+    database.learningPath.findUnique({
+      where: { id: pathId },
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        description: true,
+        status: true,
+        updatedAt: true,
+      },
+    }),
+    database.course.count({
+      where: { learningPathId: pathId, experience: CourseExperience.ASYNC },
+    }),
+  ]);
+  if (!path) {
+    return null;
+  }
+  const totalPages = Math.max(
+    1,
+    Math.ceil(totalCourses / gestaoLearningPathCoursePageSize)
+  );
+  const requested = Number(requestedPage);
+  const page =
+    Number.isSafeInteger(requested) && requested > 0
+      ? Math.min(requested, totalPages)
+      : 1;
+  const courses = await database.course.findMany({
+    where: {
+      learningPathId: pathId,
+      experience: CourseExperience.ASYNC,
+    },
+    orderBy: [{ position: "asc" }, { title: "asc" }, { id: "asc" }],
+    skip: (page - 1) * gestaoLearningPathCoursePageSize,
+    take: gestaoLearningPathCoursePageSize,
+    select: {
+      id: true,
+      title: true,
+      slug: true,
+      status: true,
+      position: true,
+      updatedAt: true,
+      modules: { select: { _count: { select: { lessons: true } } } },
+    },
+  });
+  const [previousCourse, nextCourse] = await Promise.all([
+    page > 1 && courses[0]
+      ? database.course.findFirst({
+          where: {
+            learningPathId: pathId,
+            experience: CourseExperience.ASYNC,
+            position: { lt: courses[0].position },
+          },
+          orderBy: { position: "desc" },
+          select: { id: true, updatedAt: true },
+        })
+      : null,
+    page < totalPages && courses.at(-1)
+      ? database.course.findFirst({
+          where: {
+            learningPathId: pathId,
+            experience: CourseExperience.ASYNC,
+            position: { gt: courses.at(-1)?.position ?? 0 },
+          },
+          orderBy: { position: "asc" },
+          select: { id: true, updatedAt: true },
+        })
+      : null,
+  ]);
+  return {
+    ...path,
+    courses,
+    nextCourse,
+    page,
+    pageSize: gestaoLearningPathCoursePageSize,
+    previousCourse,
+    totalCourses,
+    totalPages,
+  };
 };
 
 export const gestaoCourseStateLabel: Record<
