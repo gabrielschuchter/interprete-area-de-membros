@@ -7,6 +7,8 @@ import {
   ContentStatus,
   database,
   LearningAssignmentTargetType,
+  MemberRole,
+  Prisma,
 } from "@repo/database";
 import { shouldPauseStorageUploadDuringRollback } from "@repo/security/write-freeze";
 import { revalidatePath } from "next/cache";
@@ -59,12 +61,14 @@ const ensureActivityAssignments = async ({
   activityId,
   dueAt,
   memberIds,
+  memberWhere,
   notify = false,
 }: {
   readonly assignedByMemberId: string;
   readonly activityId: string;
   readonly dueAt: Date | null;
   readonly memberIds: readonly string[];
+  readonly memberWhere?: Prisma.MemberWhereInput;
   readonly notify?: boolean;
 }) => {
   await database.$transaction((transaction) =>
@@ -74,8 +78,47 @@ const ensureActivityAssignments = async ({
       dueAt,
       memberIds,
       notify,
+      memberWhere,
     })
   );
+};
+
+const staffRecipientWhere = (userId: string, role: MemberRole) =>
+  role === MemberRole.ADMIN
+    ? undefined
+    : ({
+        role: MemberRole.MEMBER,
+        deactivatedAt: null,
+        cohortMemberships: {
+          some: {
+            status: "ACTIVE" as const,
+            leftAt: null,
+            cohort: {
+              is: {
+                archivedAt: null,
+                teachers: { some: { memberId: userId } },
+              },
+            },
+          },
+        },
+      } satisfies Prisma.MemberWhereInput);
+
+const areRecipientsInStaffScope = async (
+  memberIds: readonly string[],
+  userId: string,
+  role: MemberRole
+) => {
+  if (role === MemberRole.ADMIN || memberIds.length === 0) {
+    return true;
+  }
+  const members = await database.member.findMany({
+    where: {
+      id: { in: [...memberIds] },
+      ...staffRecipientWhere(userId, role),
+    },
+    select: { id: true },
+  });
+  return members.length === memberIds.length;
 };
 
 const attachmentExtensions: Record<string, string> = {
@@ -335,7 +378,7 @@ export const submitActivity = async (
 };
 
 export const saveFeedback = async (formData: FormData) => {
-  const { userId } = await requireStaff();
+  const { userId, role } = await requireStaff();
   await consumeMutationRateLimit({
     action: "activity.mutation",
     memberId: userId,
@@ -353,29 +396,40 @@ export const saveFeedback = async (formData: FormData) => {
     return;
   }
 
-  const submission = await database.activitySubmission.findUnique({
-    where: { id: submissionId },
-    select: {
-      memberId: true,
-      activity: { select: { id: true, slug: true, title: true } },
+  const recipientScope = staffRecipientWhere(userId, role);
+  const submission = await database.$transaction(
+    async (transaction) => {
+      const authorizedSubmission =
+        await transaction.activitySubmission.findFirst({
+          where: {
+            id: submissionId,
+            ...(recipientScope ? { member: { is: recipientScope } } : {}),
+          },
+          select: {
+            memberId: true,
+            activity: { select: { id: true, slug: true, title: true } },
+          },
+        });
+      if (!authorizedSubmission) {
+        return null;
+      }
+      await transaction.feedback.upsert({
+        where: { submissionId },
+        create: { submissionId, teacherId: userId, content: normalizedContent },
+        update: { teacherId: userId, content: normalizedContent },
+      });
+      await transaction.activitySubmission.update({
+        where: { id: submissionId },
+        data: { status: ActivitySubmissionStatus.REVIEWED },
+      });
+      return authorizedSubmission;
     },
-  });
+    { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+  );
 
   if (!submission) {
     return;
   }
-
-  await database.$transaction([
-    database.feedback.upsert({
-      where: { submissionId },
-      create: { submissionId, teacherId: userId, content: normalizedContent },
-      update: { teacherId: userId, content: normalizedContent },
-    }),
-    database.activitySubmission.update({
-      where: { id: submissionId },
-      data: { status: ActivitySubmissionStatus.REVIEWED },
-    }),
-  ]);
 
   if (submission.memberId !== userId) {
     await notifyFeedbackReceived({
@@ -392,7 +446,7 @@ export const saveFeedback = async (formData: FormData) => {
 };
 
 export const createActivity = async (formData: FormData) => {
-  const { userId } = await requireStaff();
+  const { userId, role } = await requireStaff();
   await consumeMutationRateLimit({
     action: "activity.mutation",
     memberId: userId,
@@ -408,11 +462,8 @@ export const createActivity = async (formData: FormData) => {
   const relatedLibraryItemId = value(formData, "relatedLibraryItemId");
   const idempotencyKey = readIdempotencyKey(formData.get("idempotencyKey"));
 
-  if (!idempotencyKey) {
-    return;
-  }
-
   if (
+    !idempotencyKey ||
     typeof title !== "string" ||
     typeof slug !== "string" ||
     typeof prompt !== "string" ||
@@ -436,6 +487,12 @@ export const createActivity = async (formData: FormData) => {
     return;
   }
 
+  const selectedMemberIds = assignmentIds(formData);
+  if (!(await areRecipientsInStaffScope(selectedMemberIds, userId, role))) {
+    return;
+  }
+  const memberWhere = staffRecipientWhere(userId, role);
+
   const existingActivity = await database.activity.findUnique({
     where: { createdBy_idempotencyKey: { createdBy: userId, idempotencyKey } },
     select: { id: true, status: true },
@@ -445,8 +502,9 @@ export const createActivity = async (formData: FormData) => {
       assignedByMemberId: userId,
       activityId: existingActivity.id,
       dueAt: dueDate,
-      memberIds: assignmentIds(formData),
+      memberIds: selectedMemberIds,
       notify: existingActivity.status === ContentStatus.PUBLISHED,
+      memberWhere,
     });
     revalidatePath("/admin/activities");
     return;
@@ -501,14 +559,15 @@ export const createActivity = async (formData: FormData) => {
     assignedByMemberId: userId,
     activityId: activity.id,
     dueAt: dueDate,
-    memberIds: assignmentIds(formData),
+    memberIds: selectedMemberIds,
+    memberWhere,
   });
 
   revalidatePath("/admin/activities");
 };
 
 export const updateActivity = async (formData: FormData) => {
-  const { userId } = await requireStaff();
+  const { userId, role } = await requireStaff();
   await consumeMutationRateLimit({
     action: "activity.mutation",
     memberId: userId,
@@ -539,6 +598,14 @@ export const updateActivity = async (formData: FormData) => {
   ) {
     return;
   }
+  const selectedMemberIds = assignmentIds(formData);
+  if (
+    formData.has("memberIds") &&
+    !(await areRecipientsInStaffScope(selectedMemberIds, userId, role))
+  ) {
+    return;
+  }
+  const memberWhere = staffRecipientWhere(userId, role);
 
   const existingActivity = await database.activity.findUnique({
     where: { id: activityId },
@@ -575,8 +642,9 @@ export const updateActivity = async (formData: FormData) => {
         activityId,
         assignedByMemberId: userId,
         dueAt: dueDate,
-        memberIds: assignmentIds(formData),
+        memberIds: selectedMemberIds,
         notify: existingActivity.status === ContentStatus.PUBLISHED,
+        memberWhere,
       });
     }
   });
@@ -586,7 +654,7 @@ export const updateActivity = async (formData: FormData) => {
 };
 
 export const setActivityStatus = async (formData: FormData) => {
-  const { userId } = await requireStaff();
+  const { userId, role } = await requireStaff();
   await consumeMutationRateLimit({
     action: "activity.mutation",
     memberId: userId,
@@ -616,6 +684,9 @@ export const setActivityStatus = async (formData: FormData) => {
         activityId: activity.id,
         revokedAt: null,
         status: { not: "REVOKED" },
+        ...(staffRecipientWhere(userId, role)
+          ? { member: { is: staffRecipientWhere(userId, role) } }
+          : {}),
       },
       select: { id: true, memberId: true, batchId: true },
     });

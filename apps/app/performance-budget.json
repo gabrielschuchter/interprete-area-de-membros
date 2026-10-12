@@ -33,6 +33,12 @@
       "maxGzipBytes": 230400
     },
     {
+      "route": "gestao-activities",
+      "manifestSegments": ["(authenticated)", "gestao", "ensino", "atividades"],
+      "entrySuffix": "apps/app/app/(authenticated)/gestao/ensino/atividades/page",
+      "maxGzipBytes": 230400
+    },
+    {
       "route": "planner",
       "manifestSegments": ["(authenticated)", "planejamento"],
       "entrySuffix": "apps/app/app/(authenticated)/planejamento/page",

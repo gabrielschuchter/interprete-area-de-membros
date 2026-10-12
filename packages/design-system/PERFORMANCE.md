@@ -169,3 +169,27 @@ on a server request.
   bindings and existing session snapshots stable. Adjacent reordering uses a
   serializable swap and a temporary unique position; verify concurrent edits
   and persisted results in the isolated local QA database.
+
+## Gestão activity catalog and editor
+
+- Keep the activity catalog on the server, with SQL filters and 20 rows per
+  page. Aggregate submission counts only for the current page and scope
+  teacher-visible member results to their active cohorts.
+- Bound course, cohort, and library options to 200. Search individual students
+  on demand with 20 results per page and a 250 ms debounce; do not prefetch
+  every visible activity row or member option.
+- Keep the rubric editor and member picker as the only interactive editor
+  islands. Preview reads persisted activity state without learner progress
+  writes. Show a successful save only after the serializable write and outbox
+  commit.
+- Cohort access is resolved at request time. Do not cache membership, role,
+  target, revocation, or end-of-cohort results across requests. Preserve direct
+  recipient grants separately from cohort targets.
+- `/gestao/ensino/atividades` measured 212.3 KiB gzip across 17 chunks in the
+  local production build, under its 225 KiB budget. Add entries for other
+  Gestión routes before treating their bundles as measured. Authenticated
+  latency, learner progress initialization for
+  dynamic cohort assignments, and notifications for later eligible joins
+  remain acceptance work. Use the shared budgets of ≤100 ms visible feedback,
+  ≤1 s first usable content p95, ≤500 ms committed small-mutation p95, and
+  ≤300 ms warmed navigation p95 until local measurements exist.

@@ -5,9 +5,14 @@ import {
   database,
   LearningAssignmentStatus,
   LearningAssignmentTargetType,
+  MemberRole,
   type Prisma,
 } from "@repo/database";
 import { markLearningAssignmentStarted } from "@/lib/learning-assignments";
+import {
+  type ActivityCohortTargetForMember,
+  hasActivityCohortAccess,
+} from "./activity-cohort-access";
 import {
   getLearningAccessScope,
   hasLessonAccess,
@@ -52,8 +57,40 @@ const currentMemberAssignmentWhere = (memberId: string, now = new Date()) => ({
   ],
 });
 
+const currentMemberCohortTargets = (memberId: string) => ({
+  where: {
+    activeKey: { not: null },
+    revokedAt: null,
+    cohort: {
+      is: {
+        memberships: {
+          some: { memberId, status: "ACTIVE" as const, leftAt: null },
+        },
+      },
+    },
+  },
+  select: {
+    assignedAt: true,
+    cohort: {
+      select: {
+        archivedAt: true,
+        endsAt: true,
+        lateJoinPolicy: true,
+        readAfterEndDays: true,
+        startsAt: true,
+        memberships: {
+          where: { memberId, status: "ACTIVE" as const, leftAt: null },
+          select: { joinedAt: true },
+          take: 1,
+        },
+      },
+    },
+  },
+});
+
 interface ActivityAccessContext {
   readonly assignments: readonly { readonly dueAt: Date | null }[];
+  readonly cohortTargets: readonly ActivityCohortTargetForMember[];
   readonly courseId: string | null;
   readonly lesson: {
     readonly id: string;
@@ -65,7 +102,11 @@ const canReadActivity = (
   activity: ActivityAccessContext,
   scope: Awaited<ReturnType<typeof getLearningAccessScope>>
 ) => {
-  if (scope.fullAccess || activity.assignments.length > 0) {
+  if (
+    scope.fullAccess ||
+    activity.assignments.length > 0 ||
+    hasActivityCohortAccess(activity.cohortTargets)
+  ) {
     return true;
   }
 
@@ -97,6 +138,7 @@ export const canAccessPublishedActivity = async (
           select: { dueAt: true },
           take: 1,
         },
+        cohortTargets: currentMemberCohortTargets(memberId),
         lesson: {
           select: {
             id: true,
@@ -139,6 +181,7 @@ export const getPublishedActivities = async (
         select: { dueAt: true },
         take: 1,
       },
+      cohortTargets: currentMemberCohortTargets(memberId),
       course: { select: { id: true, title: true, slug: true } },
       lesson: {
         select: {
@@ -189,6 +232,7 @@ export const getPublishedActivity = async (slug: string, memberId: string) => {
           select: { dueAt: true },
           take: 1,
         },
+        cohortTargets: currentMemberCohortTargets(memberId),
         course: { select: { id: true, title: true, slug: true } },
         lesson: {
           select: {
@@ -230,8 +274,41 @@ export const getPublishedActivity = async (slug: string, memberId: string) => {
   return activity;
 };
 
-export const getStaffActivities = async () =>
-  database.activity.findMany({
+export const getStaffActivities = async (input: {
+  readonly userId: string;
+  readonly role: MemberRole;
+}) => {
+  const cohortIds =
+    input.role === MemberRole.ADMIN
+      ? []
+      : (
+          await database.cohort.findMany({
+            where: {
+              archivedAt: null,
+              teachers: { some: { memberId: input.userId } },
+            },
+            select: { id: true },
+          })
+        ).map(({ id }) => id);
+  let memberScope: Prisma.MemberWhereInput;
+  if (input.role === MemberRole.ADMIN) {
+    memberScope = { deactivatedAt: null };
+  } else if (cohortIds.length) {
+    memberScope = {
+      deactivatedAt: null,
+      cohortMemberships: {
+        some: {
+          cohortId: { in: cohortIds },
+          status: "ACTIVE",
+          leftAt: null,
+        },
+      },
+    };
+  } else {
+    memberScope = { id: "__no_managed_cohorts__" };
+  }
+
+  return database.activity.findMany({
     orderBy: [{ status: "asc" }, { position: "asc" }, { title: "asc" }],
     select: {
       id: true,
@@ -243,6 +320,8 @@ export const getStaffActivities = async () =>
       status: true,
       dueAt: true,
       assignments: {
+        where: { member: { is: memberScope } },
+        take: 200,
         select: {
           memberId: true,
           dueAt: true,
@@ -253,7 +332,9 @@ export const getStaffActivities = async () =>
       lessonId: true,
       relatedLibraryItem: { select: { id: true, title: true } },
       submissions: {
+        where: { member: { is: memberScope } },
         orderBy: { updatedAt: "desc" },
+        take: 25,
         select: {
           id: true,
           memberId: true,
@@ -272,3 +353,4 @@ export const getStaffActivities = async () =>
       lesson: { select: { title: true, slug: true } },
     },
   });
+};

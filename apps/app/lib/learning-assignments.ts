@@ -596,6 +596,7 @@ export const reconcileActivityAssignments = async (
     readonly dueAt: Date | null;
     readonly memberIds: readonly string[];
     readonly notify: boolean;
+    readonly memberWhere?: Prisma.MemberWhereInput;
   }
 ) => {
   const selectedIds = [...new Set(input.memberIds)].slice(0, 200);
@@ -605,6 +606,7 @@ export const reconcileActivityAssignments = async (
           id: { in: selectedIds },
           role: MemberRole.MEMBER,
           deactivatedAt: null,
+          ...(input.memberWhere ?? {}),
         },
         select: { id: true },
       })
@@ -615,6 +617,7 @@ export const reconcileActivityAssignments = async (
       activityId: input.activityId,
       revokedAt: null,
       status: { not: LearningAssignmentStatus.REVOKED },
+      ...(input.memberWhere ? { member: { is: input.memberWhere } } : {}),
     },
     select: { id: true, memberId: true },
   });

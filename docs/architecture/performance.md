@@ -660,3 +660,38 @@ The current bundle-budget script reports the member-facing `/exercicios` route
 at 208.1 KiB gzip. It does not separately measure `/gestao/ensino/exercicios`;
 the Gestión route's initial JavaScript budget still needs an explicit entry
 and measurement before its performance gate can be accepted.
+
+### Gestão activity authoring and cohort delivery
+
+`/gestao/ensino/atividades` authorizes `content.manage` per request and pages
+the PostgreSQL catalog in groups of 20. Search, status, course, and due-date
+filters run in the database. Submission and direct-assignment counts are
+grouped only for the current page; teacher-visible rows are scoped to active
+members of the teacher's active cohorts. Cohort, course, and library selectors
+are capped at 200 options, and direct student search pages 20 results at a
+time. Activity details select at most 200 direct recipients and the current
+rubric version. The Gestão preview reads saved content without updating
+learner progress.
+
+Create and update mutations validate the actor's current cohort/member scope
+again inside the serializable transaction, use activity versions for conflict
+detection, and commit the content, audience targets, rubric version, and
+notification outbox together. The member picker is the only new audience
+search client path and requests its next page after a 250 ms debounce; catalog
+and editor destinations do not prefetch on viewport. No role, identity,
+recipient, or cohort result is persistently cached.
+
+Learner activity reads now include eligible active cohort targets. Eligibility
+is checked at request time against membership, cohort start/end, the 90-day
+read window, and `ALL_ACTIVE`/`FROM_JOIN`. Direct assignment access remains
+independent. Notification delivery is queued for currently eligible members
+when an activity is published or a published audience is expanded. Progress
+rows for dynamically eligible cohort members and notices on later `ALL_ACTIVE`
+joins remain part of the student-feed/outbox work; they have not passed the
+acceptance gate. The performance budget now has a dedicated entry for
+`/gestao/ensino/atividades`; its local production build measured 212.3 KiB gzip
+across 17 chunks, below the 225 KiB route limit. There is no authenticated
+local database measurement for this tranche. The targets remain first usable
+content p95 ≤1 s, small committed
+mutation p95 ≤500 ms, warmed navigation p95 ≤300 ms, and visible feedback ≤100
+ms; authenticated percentiles and client-bundle measurement remain open.

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { database } from "@repo/database";
+import { database, MemberRole } from "@repo/database";
 import { Badge } from "@repo/design-system/components/ui/badge";
 import { Button } from "@repo/design-system/components/ui/button";
 import { Input } from "@repo/design-system/components/ui/input";
@@ -11,6 +11,7 @@ import {
 } from "@/components/mutations/single-flight-form";
 import { getStaffActivities } from "@/lib/activities";
 import { getCourseOptions } from "@/lib/admin-learning";
+import { requireStaff } from "@/lib/authorization";
 
 const statusLabel = (status: string) => {
   if (status === "PUBLISHED") {
@@ -40,10 +41,32 @@ import {
 } from "../../atividades/actions";
 
 const AdminActivitiesPage = async () => {
+  const actor = await requireStaff();
+  const studentWhere = {
+    role: MemberRole.MEMBER,
+    deactivatedAt: null,
+    ...(actor.role === MemberRole.ADMIN
+      ? {}
+      : {
+          cohortMemberships: {
+            some: {
+              status: "ACTIVE" as const,
+              leftAt: null,
+              cohort: {
+                is: {
+                  archivedAt: null,
+                  teachers: { some: { memberId: actor.userId } },
+                },
+              },
+            },
+          },
+        }),
+  };
   const [activities, courses, members, libraryItems] = await Promise.all([
-    getStaffActivities(),
+    getStaffActivities(actor),
     getCourseOptions(),
     database.member.findMany({
+      where: studentWhere,
       orderBy: { displayName: "asc" },
       select: { id: true, displayName: true, email: true },
       take: 200,
