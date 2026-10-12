@@ -96,6 +96,10 @@ const navigation: readonly NavigationItem[] = [
     icon: UsersRoundIcon,
     label: "Alunos",
     admin: false,
+    children: [
+      { href: "/gestao/alunos/turmas", label: "Turmas" },
+      { href: "/gestao/alunos/correcoes", label: "Correções" },
+    ],
   },
   {
     href: "/gestao/comunidade",

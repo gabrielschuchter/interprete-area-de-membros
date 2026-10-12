@@ -193,3 +193,18 @@ on a server request.
   remain acceptance work. Use the shared budgets of ≤100 ms visible feedback,
   ≤1 s first usable content p95, ≤500 ms committed small-mutation p95, and
   ≤300 ms warmed navigation p95 until local measurements exist.
+
+## Gestão correction queue
+
+- `/gestao/alunos/correcoes` and the activity-specific delivery route authorize
+  each request and scope teacher-visible work to their current active cohorts.
+  Filters, counts, and 30-row pagination run in PostgreSQL; queue links do not
+  prefetch on viewport.
+- The review form submits submission timestamps plus draft/feedback versions.
+  Stale submissions or concurrent reviews return a conflict. Drafts persist
+  separately from learner-visible feedback; sending validates the comment and
+  rubric scores, updates review state, and adds the notification to the
+  transactional outbox before reporting success.
+- Both routes now have 225 KiB gzip budget entries. Authenticated route
+  percentiles, the measured bundle, and persisted concurrent-review behavior
+  remain open until local PostgreSQL QA is available.

@@ -695,3 +695,24 @@ local database measurement for this tranche. The targets remain first usable
 content p95 ≤1 s, small committed
 mutation p95 ≤500 ms, warmed navigation p95 ≤300 ms, and visible feedback ≤100
 ms; authenticated percentiles and client-bundle measurement remain open.
+
+### Gestão correction queue and feedback
+
+The `/gestao/alunos/correcoes` and activity-specific delivery routes authorize
+`assignments.manage` on each request and scope teacher rows through current,
+active students in their active cohorts. Counts and 30-row pages use the same
+SQL filters for status, cohort, and search. The selected delivery is fetched
+with its current versioned rubric, saved draft, and sent feedback; no member
+identity or correction result is cached across requests. Both queue destinations
+disable viewport prefetch.
+
+Saving a draft and sending feedback are separate serializable writes. The form
+carries the submission timestamps and feedback/draft versions so a stale tab
+returns a conflict instead of overwriting a newer submission or review. Sending
+requires a comment and all published criteria scores, marks the submission
+reviewed, replaces only the learner-visible feedback, removes the draft, and
+enqueues an idempotent notification in the same transaction. The notification
+dispatcher runs only after commit. These routes have explicit JavaScript budget
+entries at 225 KiB gzip each; bundle sizes, authenticated latency, concurrent
+review behavior, and persisted QA are still unmeasured until a local database
+and staff/student fixtures are available.

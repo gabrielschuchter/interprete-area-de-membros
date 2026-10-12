@@ -190,6 +190,14 @@ const ActivityCatalogRow = ({
             Abrir
           </Link>
         </Button>
+        <Button asChild size="sm" variant="ghost">
+          <Link
+            href={`/gestao/ensino/atividades/${activity.id}/entregas`}
+            prefetch={false}
+          >
+            Entregas
+          </Link>
+        </Button>
         <ActivityStatusAction activity={activity} />
       </div>
     </td>

@@ -39,6 +39,25 @@
       "maxGzipBytes": 230400
     },
     {
+      "route": "gestao-corrections",
+      "manifestSegments": ["(authenticated)", "gestao", "alunos", "correcoes"],
+      "entrySuffix": "apps/app/app/(authenticated)/gestao/alunos/correcoes/page",
+      "maxGzipBytes": 230400
+    },
+    {
+      "route": "gestao-activity-submissions",
+      "manifestSegments": [
+        "(authenticated)",
+        "gestao",
+        "ensino",
+        "atividades",
+        "[id]",
+        "entregas"
+      ],
+      "entrySuffix": "apps/app/app/(authenticated)/gestao/ensino/atividades/[id]/entregas/page",
+      "maxGzipBytes": 230400
+    },
+    {
       "route": "planner",
       "manifestSegments": ["(authenticated)", "planejamento"],
       "entrySuffix": "apps/app/app/(authenticated)/planejamento/page",

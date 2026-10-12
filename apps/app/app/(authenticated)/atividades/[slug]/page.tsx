@@ -33,6 +33,57 @@ const activitySubmissionLabel = (status: string | undefined) => {
   return "Rascunho";
 };
 
+type PublishedActivity = NonNullable<
+  Awaited<ReturnType<typeof getPublishedActivity>>
+>;
+type ActivityFeedback = NonNullable<
+  PublishedActivity["submissions"][number]["feedback"]
+>;
+
+const StudentFeedback = ({
+  feedback,
+  criteria,
+}: {
+  readonly feedback: ActivityFeedback;
+  readonly criteria: PublishedActivity["feedbackRubricCriteria"];
+}) => {
+  const rawScores = feedback.criteriaScores;
+  const scores =
+    rawScores && typeof rawScores === "object" && !Array.isArray(rawScores)
+      ? (rawScores as Record<string, unknown>)
+      : {};
+  const scoredCriteria = criteria.filter(
+    ({ id }) => typeof scores[id] === "number"
+  );
+
+  return (
+    <div className="mt-7 border-t pt-6">
+      <p className="brand-eyebrow">Nota do professor</p>
+      {scoredCriteria.length ? (
+        <dl className="mt-4 divide-y border-y">
+          {scoredCriteria.map((criterion) => (
+            <div
+              className="flex items-center justify-between gap-4 py-3 text-sm"
+              key={criterion.id}
+            >
+              <dt>{criterion.title}</dt>
+              <dd className="font-semibold tabular-nums">
+                {scores[criterion.id] as number} / 10
+              </dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
+      <p className="mt-3 whitespace-pre-wrap font-display text-xl leading-7">
+        {feedback.content}
+      </p>
+      <p className="mt-6 text-muted-foreground text-sm">
+        Você pode revisar o raciocínio e enviar uma nova versão quando quiser.
+      </p>
+    </div>
+  );
+};
+
 const ActivityPage = async ({
   params,
   searchParams,
@@ -114,16 +165,10 @@ const ActivityPage = async ({
               </Badge>
             </div>
             {isReviewed && submission?.feedback ? (
-              <div className="mt-7 border-t pt-6">
-                <p className="brand-eyebrow">Nota do professor</p>
-                <p className="mt-3 whitespace-pre-wrap font-display text-xl leading-7">
-                  {submission.feedback.content}
-                </p>
-                <p className="mt-6 text-muted-foreground text-sm">
-                  Você pode revisar o raciocínio e enviar uma nova versão quando
-                  quiser.
-                </p>
-              </div>
+              <StudentFeedback
+                criteria={activity.feedbackRubricCriteria}
+                feedback={submission.feedback}
+              />
             ) : null}
             <ActivitySubmissionForm>
               <input name="activityId" type="hidden" value={activity.id} />

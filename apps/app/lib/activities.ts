@@ -250,12 +250,19 @@ export const getPublishedActivity = async (slug: string, memberId: string) => {
             content: true,
             status: true,
             submittedAt: true,
+            rubricVersion: true,
             attachmentPath: true,
             attachmentName: true,
             attachmentMimeType: true,
             attachmentSizeBytes: true,
             feedback: {
-              select: { content: true, updatedAt: true, teacherId: true },
+              select: {
+                content: true,
+                updatedAt: true,
+                teacherId: true,
+                rubricVersion: true,
+                criteriaScores: true,
+              },
             },
           },
         },
@@ -271,7 +278,15 @@ export const getPublishedActivity = async (slug: string, memberId: string) => {
     LearningAssignmentTargetType.ACTIVITY,
     activity.id
   );
-  return activity;
+  const rubricVersion = activity.submissions[0]?.feedback?.rubricVersion ?? 0;
+  const feedbackRubricCriteria = rubricVersion
+    ? await database.activityRubricCriterion.findMany({
+        where: { activityId: activity.id, version: rubricVersion },
+        orderBy: { position: "asc" },
+        select: { id: true, title: true, weight: true, position: true },
+      })
+    : [];
+  return { ...activity, feedbackRubricCriteria };
 };
 
 export const getStaffActivities = async (input: {

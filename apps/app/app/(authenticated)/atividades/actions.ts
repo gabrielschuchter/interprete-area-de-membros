@@ -274,7 +274,7 @@ export const submitActivity = async (
         },
       ],
     },
-    select: { slug: true, deliveryKind: true },
+    select: { slug: true, deliveryKind: true, rubricVersion: true },
   });
 
   if (!activity) {
@@ -339,6 +339,7 @@ export const submitActivity = async (
         memberId: userId,
         content: normalizedContent || "(entrega em arquivo)",
         status: ActivitySubmissionStatus.SUBMITTED,
+        rubricVersion: activity.rubricVersion,
         attachmentPath,
         attachmentName: uploadedAttachment?.attachmentName ?? null,
         attachmentMimeType: uploadedAttachment?.attachmentMimeType ?? null,
@@ -348,6 +349,7 @@ export const submitActivity = async (
       update: {
         content: normalizedContent || "(entrega em arquivo)",
         status: ActivitySubmissionStatus.SUBMITTED,
+        rubricVersion: activity.rubricVersion,
         ...(uploadedAttachment ?? {}),
         submittedAt,
       },

@@ -398,6 +398,7 @@ model Member {
   cohortCourseAccessesCreated         CohortCourseAccess[]               @relation("CohortCourseAccessCreator")
   cohortLessonReleasesUpdated         CohortLessonRelease[]              @relation("CohortLessonReleaseUpdater")
   activityCohortTargetsCreated        ActivityCohortTarget[]             @relation("ActivityCohortTargetCreator")
+  activityFeedbackDrafts              ActivityFeedbackDraft[]             @relation("ActivityFeedbackDraftReviewer")
   cohortMembershipsCreated            CohortMembership[]                 @relation("CohortMembershipCreator")
   migrationStudents                   MigrationStudent[]                 @relation("MigrationStudentMember")
   notifications                       Notification[]                     @relation("NotificationRecipient")
@@ -1039,12 +1040,14 @@ model ActivitySubmission {
   attachmentName      String?
   attachmentMimeType  String?
   attachmentSizeBytes BigInt?
+  rubricVersion       Int                      @default(0)
   submittedAt         DateTime?
   createdAt           DateTime                 @default(now())
   updatedAt           DateTime                 @updatedAt
   activity            Activity                 @relation(fields: [activityId], references: [id], onDelete: Cascade)
   member              Member                   @relation(fields: [memberId], references: [id], onDelete: Cascade)
   feedback            Feedback?
+  feedbackDraft       ActivityFeedbackDraft?
 
   @@unique([activityId, memberId])
   @@index([memberId, status, updatedAt])
@@ -1108,13 +1111,33 @@ model LearningAssignmentBatch {
 }
 
 model Feedback {
-  id           String             @id @default(cuid())
-  submissionId String             @unique
-  teacherId    String
-  content      String             @db.Text
-  createdAt    DateTime           @default(now())
-  updatedAt    DateTime           @updatedAt
-  submission   ActivitySubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  id             String             @id @default(cuid())
+  submissionId   String             @unique
+  teacherId      String
+  content        String             @db.Text
+  rubricVersion  Int                @default(0)
+  criteriaScores Json?
+  version        Int                @default(1)
+  submittedAt    DateTime?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  submission     ActivitySubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+}
+
+model ActivityFeedbackDraft {
+  id            String             @id @default(cuid())
+  submissionId  String             @unique
+  reviewerId    String?
+  content       String             @db.Text
+  rubricVersion Int                @default(0)
+  criteriaScores Json?
+  version       Int                @default(1)
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  submission    ActivitySubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  reviewer      Member?            @relation("ActivityFeedbackDraftReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
+
+  @@index([reviewerId, updatedAt])
 }
 
 model Notification {
