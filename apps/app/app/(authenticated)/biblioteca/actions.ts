@@ -5,9 +5,6 @@ import {
   ContentStatus,
   database,
   LibraryBookmarkTargetType,
-  LibraryItemAccessType,
-  LibraryItemDifficulty,
-  LibraryItemKind,
   libraryCatalog,
 } from "@repo/database";
 import { shouldPauseStorageUploadDuringRollback } from "@repo/security/write-freeze";
@@ -21,6 +18,13 @@ import {
   hasLessonAccess,
   hasModuleAccess,
 } from "@/lib/content-access";
+import {
+  type LibraryItemFormState,
+  libraryFormError,
+  libraryFormSuccess,
+  normalizeLibraryLanguage,
+  parseLibraryItemInput,
+} from "@/lib/gestao-library-form-domain";
 import { requireMemberId } from "@/lib/learning";
 import {
   createMemberAssetPath,
@@ -28,65 +32,48 @@ import {
   memberAssetUrl,
   uploadMemberAsset,
 } from "@/lib/member-storage";
-import { readIdempotencyKey } from "@/lib/mutation-contract";
 import {
   consumeMutationRateLimit,
   isUniqueConstraintError,
 } from "@/lib/mutation-reliability";
 
-const LANGUAGE_SEPARATOR_PATTERN = /[,/]/;
-const LANGUAGE_CODE_PATTERN = /^[a-z]{2}(-[a-z]{2})?$/;
-
 const value = (entry: FormDataEntryValue | null) =>
   typeof entry === "string" ? entry.trim() : "";
 
-const safeUrl = (entry: string) => {
-  try {
-    const url = new URL(entry);
-    return url.protocol === "https:" || url.protocol === "http:"
-      ? url.toString()
-      : null;
-  } catch {
-    return null;
-  }
+const staffLibraryPath = (formData: FormData) =>
+  value(formData.get("surface")) === "gestao"
+    ? "/gestao/ensino/biblioteca"
+    : "/admin/library";
+
+const revalidateStaffLibrary = () => {
+  revalidatePath("/admin/library");
+  revalidatePath("/gestao/ensino/biblioteca");
+  revalidatePath("/biblioteca");
 };
 
-const safeCoverUrl = (entry: string) => {
-  const url = safeUrl(entry);
-  return url?.startsWith("https://") ? url : null;
+const redirectToStaffLibrary = (
+  formData: FormData,
+  query: Record<string, string>
+) => {
+  const params = new URLSearchParams(query).toString();
+  redirect(`${staffLibraryPath(formData)}?${params}`);
 };
 
 export type BookmarkMutationResult =
   | { readonly ok: true; readonly saved: boolean }
   | { readonly ok: false };
 
-const libraryLanguage = (entry: string) => {
-  const languages = entry
-    .split(LANGUAGE_SEPARATOR_PATTERN)
-    .map((language) => language.trim().toLowerCase())
-    .filter((language) => LANGUAGE_CODE_PATTERN.test(language));
-  return [...new Set(languages)].slice(0, 4).join(",") || null;
-};
-
 const libraryCatalogKey = (url: string) =>
   `curated:v1:${createHash("sha256").update(url).digest("hex")}`;
 
-const libraryFileTypes = new Set([
-  "application/pdf",
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "text/plain",
-]);
-const maxLibraryFileBytes = 20 * 1024 * 1024;
-
-const validLibraryFile = (entry: FormDataEntryValue | null) =>
-  entry instanceof File &&
-  libraryFileTypes.has(entry.type) &&
-  entry.size > 0 &&
-  entry.size <= maxLibraryFileBytes
-    ? entry
-    : null;
+const libraryLessonExists = async (lessonId: string) =>
+  !lessonId ||
+  Boolean(
+    await database.lesson.findUnique({
+      where: { id: lessonId },
+      select: { id: true },
+    })
+  );
 
 const hasValidSignature = async (file: File) => {
   if (file.type === "text/plain") {
@@ -136,8 +123,49 @@ const uploadLibraryFile = async (file: File, memberId: string) => {
   };
 };
 
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: multipart validation, storage upload, and metadata persistence must remain one atomic staff action.
-export const createLibraryItem = async (formData: FormData) => {
+const tryUploadLibraryFile = async (file: File | null, memberId: string) => {
+  if (!file) {
+    return { ok: true, uploaded: null } as const;
+  }
+  try {
+    const uploaded = await uploadLibraryFile(file, memberId);
+    return uploaded
+      ? ({ ok: true, uploaded } as const)
+      : ({
+          ok: false,
+          state: libraryFormError(
+            "file",
+            "O arquivo não passou na validação de conteúdo. Escolha outro arquivo."
+          ),
+        } as const);
+  } catch {
+    return {
+      ok: false,
+      state: libraryFormError(
+        "file",
+        "Não foi possível enviar o arquivo. Verifique o Storage e tente novamente."
+      ),
+    } as const;
+  }
+};
+
+const deleteReplacedLibraryAsset = async (input: {
+  readonly currentPath: string | null;
+  readonly newPath: string | null;
+  readonly hasExternalUrl: boolean;
+}) => {
+  if (
+    input.currentPath &&
+    ((input.newPath && input.currentPath !== input.newPath) ||
+      (!input.newPath && input.hasExternalUrl))
+  ) {
+    await deleteMemberAsset(input.currentPath);
+  }
+};
+
+const createLibraryItemRecord = async (
+  formData: FormData
+): Promise<LibraryItemFormState> => {
   const { userId } = await requireStaff();
   const fileEntry = formData.get("file");
   const hasUpload = fileEntry instanceof File && fileEntry.size > 0;
@@ -147,120 +175,107 @@ export const createLibraryItem = async (formData: FormData) => {
       hasFile: hasUpload,
     })
   ) {
-    redirect("/admin/library?uploadPaused=1");
+    return libraryFormError(
+      "file",
+      "O envio de arquivos está temporariamente pausado. Nenhuma alteração foi aplicada.",
+      "upload-paused"
+    );
   }
 
   await consumeMutationRateLimit({
     action: "library.mutation",
     memberId: userId,
   });
-  const title = value(formData.get("title"));
-  const description = value(formData.get("description"));
-  const kind = value(formData.get("kind"));
-  const category = value(formData.get("category"));
-  const tags = value(formData.get("tags"));
-  const url = safeUrl(value(formData.get("url")));
-  const pmid = value(formData.get("pmid"));
-  const language = libraryLanguage(value(formData.get("language")));
-  const difficulty = value(formData.get("difficulty"));
-  const accessType = value(formData.get("accessType"));
-  const accessNote = value(formData.get("accessNote")).slice(0, 1200);
-  const version = value(formData.get("version")).slice(0, 240);
-  const lessonId = value(formData.get("lessonId"));
-  const coverUrl = safeCoverUrl(value(formData.get("coverUrl")));
-  const file = validLibraryFile(fileEntry);
-  const idempotencyKey = readIdempotencyKey(formData.get("idempotencyKey"));
-
-  if (
-    !(
-      title &&
-      idempotencyKey &&
-      (url || file) &&
-      Object.values(LibraryItemKind).includes(kind as LibraryItemKind)
-    )
-  ) {
-    return;
+  const parsed = parseLibraryItemInput(formData, {
+    requireIdempotencyKey: true,
+    requireSource: true,
+  });
+  if (!parsed.ok) {
+    return parsed.state;
   }
-  if (
-    lessonId &&
-    !(await database.lesson.findUnique({
-      where: { id: lessonId },
-      select: { id: true },
-    }))
-  ) {
-    return;
+  const input = parsed.input;
+  const { file, idempotencyKey: _idempotencyKey, ...inputData } = input;
+  const idempotencyKey = input.idempotencyKey as string;
+  if (!(await libraryLessonExists(input.lessonId))) {
+    return libraryFormError(
+      "lessonId",
+      "A aula relacionada não está disponível."
+    );
   }
 
   const existingItem = await database.libraryItem.findUnique({
-    where: { createdBy_idempotencyKey: { createdBy: userId, idempotencyKey } },
+    where: {
+      createdBy_idempotencyKey: { createdBy: userId, idempotencyKey },
+    },
     select: { id: true },
   });
   if (existingItem) {
-    revalidatePath("/admin/library");
-    return;
+    revalidateStaffLibrary();
+    return libraryFormSuccess(
+      "material-existente",
+      "Este material já tinha sido salvo; nenhum duplicado foi criado."
+    );
   }
 
-  let uploaded: Awaited<ReturnType<typeof uploadLibraryFile>> = null;
-  if (file) {
-    try {
-      uploaded = await uploadLibraryFile(file, userId);
-    } catch {
-      return;
-    }
-    if (!uploaded) {
-      return;
-    }
+  const uploadResult = await tryUploadLibraryFile(file, userId);
+  if (!uploadResult.ok) {
+    return uploadResult.state;
   }
+  const uploaded = uploadResult.uploaded;
 
   try {
     await database.libraryItem.create({
       data: {
-        title,
-        description: description || null,
-        coverUrl,
-        kind: kind as LibraryItemKind,
-        category: category || null,
-        tags: tags
-          .split(",")
-          .map((tag) => tag.trim().toLowerCase())
-          .filter(Boolean),
-        url: uploaded?.url ?? url ?? "",
-        authors: value(formData.get("authors")) || null,
-        year: Number(value(formData.get("year"))) || null,
-        doi: value(formData.get("doi")) || null,
-        pmid: pmid || null,
-        language,
-        difficulty: Object.values(LibraryItemDifficulty).includes(
-          difficulty as LibraryItemDifficulty
-        )
-          ? (difficulty as LibraryItemDifficulty)
-          : null,
-        accessType: Object.values(LibraryItemAccessType).includes(
-          accessType as LibraryItemAccessType
-        )
-          ? (accessType as LibraryItemAccessType)
-          : null,
-        accessNote: accessNote || null,
-        version: version || null,
+        ...inputData,
+        idempotencyKey,
+        url: uploaded?.url ?? input.url ?? "",
         storagePath: uploaded?.path ?? null,
         mimeType: uploaded?.mimeType ?? null,
         sizeBytes: uploaded?.sizeBytes ?? null,
-        lessonId: lessonId || null,
+        lessonId: input.lessonId || null,
         status: ContentStatus.DRAFT,
         createdBy: userId,
         updatedBy: userId,
-        idempotencyKey,
       },
     });
   } catch (error) {
     if (!isUniqueConstraintError(error)) {
+      if (uploaded?.path) {
+        await deleteMemberAsset(uploaded.path);
+      }
       throw error;
     }
     if (uploaded?.path) {
       await deleteMemberAsset(uploaded.path);
     }
+    revalidateStaffLibrary();
+    return libraryFormSuccess(
+      "material-existente",
+      "Uma referência equivalente já foi salva; nenhum duplicado foi criado."
+    );
   }
-  revalidatePath("/admin/library");
+  revalidateStaffLibrary();
+  return libraryFormSuccess("material-criado", "Material salvo como rascunho.");
+};
+
+export const createGestaoLibraryItem = async (
+  _previousState: LibraryItemFormState,
+  formData: FormData
+) => createLibraryItemRecord(formData);
+
+export const createLibraryItem = async (formData: FormData) => {
+  const result = await createLibraryItemRecord(formData);
+  if (result.status === "success") {
+    if (staffLibraryPath(formData) === "/gestao/ensino/biblioteca") {
+      redirectToStaffLibrary(formData, {
+        resultado: result.result ?? "material-criado",
+      });
+    }
+    return;
+  }
+  if (result.result === "upload-paused") {
+    redirectToStaffLibrary(formData, { uploadPaused: "1" });
+  }
 };
 
 export const setLibraryStatus = async (formData: FormData) => {
@@ -278,13 +293,17 @@ export const setLibraryStatus = async (formData: FormData) => {
     where: { id },
     data: { status: status as ContentStatus, updatedBy: userId },
   });
-  revalidatePath("/admin/library");
-  revalidatePath("/biblioteca");
+  revalidateStaffLibrary();
 };
 
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: replacement uploads and safe cleanup are deliberately coordinated in one staff action.
-export const updateLibraryItem = async (formData: FormData) => {
+const updateLibraryItemRecord = async (
+  formData: FormData
+): Promise<LibraryItemFormState> => {
   const { userId } = await requireStaff();
+  const id = value(formData.get("id"));
+  if (!id) {
+    return libraryFormError("id", "O material não foi identificado.");
+  }
   const fileEntry = formData.get("file");
   const hasUpload = fileEntry instanceof File && fileEntry.size > 0;
   if (
@@ -293,46 +312,31 @@ export const updateLibraryItem = async (formData: FormData) => {
       hasFile: hasUpload,
     })
   ) {
-    redirect("/admin/library?uploadPaused=1");
+    return libraryFormError(
+      "file",
+      "O envio de arquivos está temporariamente pausado. Nenhuma alteração foi aplicada.",
+      "upload-paused"
+    );
   }
 
   await consumeMutationRateLimit({
     action: "library.mutation",
     memberId: userId,
   });
-  const id = value(formData.get("id"));
-  const title = value(formData.get("title"));
-  const description = value(formData.get("description"));
-  const kind = value(formData.get("kind"));
-  const category = value(formData.get("category"));
-  const tags = value(formData.get("tags"));
-  const url = safeUrl(value(formData.get("url")));
-  const pmid = value(formData.get("pmid"));
-  const language = libraryLanguage(value(formData.get("language")));
-  const difficulty = value(formData.get("difficulty"));
-  const accessType = value(formData.get("accessType"));
-  const accessNote = value(formData.get("accessNote")).slice(0, 1200);
-  const version = value(formData.get("version")).slice(0, 240);
-  const lessonId = value(formData.get("lessonId"));
-  const coverUrl = safeCoverUrl(value(formData.get("coverUrl")));
-  const file = validLibraryFile(fileEntry);
-  if (
-    !(
-      id &&
-      title &&
-      Object.values(LibraryItemKind).includes(kind as LibraryItemKind)
-    )
-  ) {
-    return;
+  const parsed = parseLibraryItemInput(formData, {
+    requireIdempotencyKey: false,
+    requireSource: false,
+  });
+  if (!parsed.ok) {
+    return parsed.state;
   }
-  if (
-    lessonId &&
-    !(await database.lesson.findUnique({
-      where: { id: lessonId },
-      select: { id: true },
-    }))
-  ) {
-    return;
+  const input = parsed.input;
+  const { file, idempotencyKey: _idempotencyKey, ...inputData } = input;
+  if (!(await libraryLessonExists(input.lessonId))) {
+    return libraryFormError(
+      "lessonId",
+      "A aula relacionada não está disponível."
+    );
   }
   const current = await database.libraryItem.findUnique({
     where: { id },
@@ -344,74 +348,65 @@ export const updateLibraryItem = async (formData: FormData) => {
     },
   });
   if (!current) {
-    return;
+    return libraryFormError("id", "Este material não está mais disponível.");
   }
-  let uploaded: Awaited<ReturnType<typeof uploadLibraryFile>> = null;
-  if (file) {
-    try {
-      uploaded = await uploadLibraryFile(file, userId);
-    } catch {
-      return;
-    }
-    if (!uploaded) {
-      return;
-    }
+  const uploadResult = await tryUploadLibraryFile(file, userId);
+  if (!uploadResult.ok) {
+    return uploadResult.state;
   }
-  const nextUrl = uploaded?.url ?? url ?? current.url;
-  await database.libraryItem.update({
-    where: { id },
-    data: {
-      title,
-      description: description || null,
-      coverUrl,
-      kind: kind as LibraryItemKind,
-      category: category || null,
-      tags: tags
-        .split(",")
-        .map((tag) => tag.trim().toLowerCase())
-        .filter(Boolean)
-        .slice(0, 12),
-      url: nextUrl,
-      authors: value(formData.get("authors")) || null,
-      year: Number(value(formData.get("year"))) || null,
-      doi: value(formData.get("doi")) || null,
-      pmid: pmid || null,
-      language,
-      difficulty: Object.values(LibraryItemDifficulty).includes(
-        difficulty as LibraryItemDifficulty
-      )
-        ? (difficulty as LibraryItemDifficulty)
-        : null,
-      accessType: Object.values(LibraryItemAccessType).includes(
-        accessType as LibraryItemAccessType
-      )
-        ? (accessType as LibraryItemAccessType)
-        : null,
-      accessNote: accessNote || null,
-      version: version || null,
-      storagePath: uploaded?.path ?? (url ? null : current.storagePath),
-      mimeType: uploaded?.mimeType ?? (url ? null : current.mimeType),
-      sizeBytes: uploaded?.sizeBytes ?? (url ? null : current.sizeBytes),
-      lessonId: lessonId || null,
-      updatedBy: userId,
-    },
+  const uploaded = uploadResult.uploaded;
+  const nextUrl = uploaded?.url ?? input.url ?? current.url;
+  try {
+    await database.libraryItem.update({
+      where: { id },
+      data: {
+        ...inputData,
+        url: nextUrl,
+        storagePath: uploaded?.path ?? (input.url ? null : current.storagePath),
+        mimeType: uploaded?.mimeType ?? (input.url ? null : current.mimeType),
+        sizeBytes:
+          uploaded?.sizeBytes ?? (input.url ? null : current.sizeBytes),
+        lessonId: input.lessonId || null,
+        updatedBy: userId,
+      },
+    });
+  } catch (error) {
+    if (uploaded?.path) {
+      await deleteMemberAsset(uploaded.path);
+    }
+    throw error;
+  }
+  await deleteReplacedLibraryAsset({
+    currentPath: current.storagePath,
+    hasExternalUrl: Boolean(input.url),
+    newPath: uploaded?.path ?? null,
   });
-  if (
-    current.storagePath &&
-    uploaded &&
-    current.storagePath !== uploaded.path
-  ) {
-    await deleteMemberAsset(current.storagePath);
-  }
-  if (current.storagePath && !uploaded && url) {
-    await deleteMemberAsset(current.storagePath);
-  }
-  revalidatePath("/admin/library");
-  revalidatePath("/biblioteca");
+  revalidateStaffLibrary();
   revalidatePath(`/biblioteca/${id}`);
+  return libraryFormSuccess("material-atualizado", "Material atualizado.");
 };
 
-export const importCuratedLibraryCatalog = async () => {
+export const updateGestaoLibraryItem = async (
+  _previousState: LibraryItemFormState,
+  formData: FormData
+) => updateLibraryItemRecord(formData);
+
+export const updateLibraryItem = async (formData: FormData) => {
+  const result = await updateLibraryItemRecord(formData);
+  if (result.status === "success") {
+    if (staffLibraryPath(formData) === "/gestao/ensino/biblioteca") {
+      redirectToStaffLibrary(formData, {
+        resultado: result.result ?? "material-atualizado",
+      });
+    }
+    return;
+  }
+  if (result.result === "upload-paused") {
+    redirectToStaffLibrary(formData, { uploadPaused: "1" });
+  }
+};
+
+export const importCuratedLibraryCatalog = async (formData: FormData) => {
   const { userId } = await requireStaff();
   await consumeMutationRateLimit({
     action: "library.catalog-import",
@@ -421,7 +416,7 @@ export const importCuratedLibraryCatalog = async () => {
   const rows = libraryCatalog.map((reference) => ({
     ...reference,
     catalogKey: libraryCatalogKey(reference.url),
-    language: libraryLanguage(reference.language),
+    language: normalizeLibraryLanguage(reference.language),
   }));
   const existing = await database.libraryItem.findMany({
     where: {
@@ -499,9 +494,8 @@ export const importCuratedLibraryCatalog = async () => {
     }
   });
 
-  revalidatePath("/admin/library");
-  revalidatePath("/biblioteca");
-  redirect("/admin/library?catalog=imported");
+  revalidateStaffLibrary();
+  redirectToStaffLibrary(formData, { catalog: "imported" });
 };
 
 export const toggleLibraryBookmark = async (

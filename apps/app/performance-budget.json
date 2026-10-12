@@ -39,6 +39,12 @@
       "maxGzipBytes": 230400
     },
     {
+      "route": "gestao-library",
+      "manifestSegments": ["(authenticated)", "gestao", "ensino", "biblioteca"],
+      "entrySuffix": "apps/app/app/(authenticated)/gestao/ensino/biblioteca/page",
+      "maxGzipBytes": 230400
+    },
+    {
       "route": "gestao-corrections",
       "manifestSegments": ["(authenticated)", "gestao", "alunos", "correcoes"],
       "entrySuffix": "apps/app/app/(authenticated)/gestao/alunos/correcoes/page",
