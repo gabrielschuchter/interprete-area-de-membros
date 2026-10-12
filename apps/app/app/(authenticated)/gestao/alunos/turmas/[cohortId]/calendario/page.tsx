@@ -80,6 +80,7 @@ const GestaoCohortCalendarPage = async ({
         activeStudentCount={cohort.activeStudentCount}
         archived={cohort.archivedAt !== null}
         cohortId={cohort.id}
+        cohortName={cohort.name}
         conflicts={calendar.conflicts}
         conflictsLimited={calendar.conflictsLimited}
         copySources={copySources ?? []}

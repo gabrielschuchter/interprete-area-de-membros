@@ -2,10 +2,19 @@
 
 import { Button } from "@repo/design-system/components/ui/button";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@repo/design-system/components/ui/dropdown-menu";
+import {
+  CalendarIcon,
   CheckIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   PlusIcon,
+  VideoIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -44,6 +53,7 @@ import {
   type CohortCalendarOccurrenceResult,
   setGestaoCohortCalendarOccurrence,
 } from "./calendar-occurrence-actions";
+import { CohortMeetingDialog } from "./cohort-meeting-dialog";
 
 interface CalendarCopySource {
   readonly id: string;
@@ -206,6 +216,7 @@ interface CalendarDisplayProps {
   readonly events: readonly CalendarEvent[];
   readonly items: readonly CohortCalendarItem[];
   readonly onCreate: (date: string) => void;
+  readonly onCreateMeeting: (date: string) => void;
   readonly onEdit: (event: CalendarEvent) => void;
   readonly onException: (item: CohortCalendarItem) => void;
   readonly view: "month" | "week" | "list";
@@ -315,6 +326,7 @@ const MonthCalendarView = ({
   events,
   items,
   onCreate,
+  onCreateMeeting,
   onEdit,
   onException,
 }: Pick<
@@ -324,6 +336,7 @@ const MonthCalendarView = ({
   | "events"
   | "items"
   | "onCreate"
+  | "onCreateMeeting"
   | "onEdit"
   | "onException"
 >) => (
@@ -345,15 +358,27 @@ const MonthCalendarView = ({
           data-outside-month={String(!day.inMonth)}
           key={day.key}
         >
-          <button
-            aria-label={`Criar evento em ${label}`}
-            className="gt-cohort-day-number"
-            disabled={archived}
-            onClick={() => onCreate(day.key)}
-            type="button"
-          >
-            {day.number}
-          </button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                aria-label={`Adicionar à turma em ${label}`}
+                className="gt-cohort-day-number"
+                disabled={archived}
+                type="button"
+              >
+                {day.number}
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="gt-calendar-day-menu">
+              <DropdownMenuLabel>{label}</DropdownMenuLabel>
+              <DropdownMenuItem onSelect={() => onCreateMeeting(day.key)}>
+                <VideoIcon aria-hidden="true" /> Novo encontro
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => onCreate(day.key)}>
+                <CalendarIcon aria-hidden="true" /> Evento da turma
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <div className="gt-cohort-day-events">
             {dayEvents.slice(0, 3).map((item) => (
               <CalendarEventTile
@@ -1352,6 +1377,7 @@ export const CohortCalendarEditor = ({
   activeStudentCount,
   archived,
   cohortId,
+  cohortName,
   copySources,
   conflicts,
   conflictsLimited,
@@ -1367,6 +1393,7 @@ export const CohortCalendarEditor = ({
   readonly activeStudentCount: number;
   readonly archived: boolean;
   readonly cohortId: string;
+  readonly cohortName: string;
   readonly copySources: readonly CalendarCopySource[];
   readonly conflicts: readonly CohortCalendarDateConflict[];
   readonly conflictsLimited: boolean;
@@ -1398,6 +1425,7 @@ export const CohortCalendarEditor = ({
   >(() => new Set(calendarLayerOptions.map(({ type }) => type)));
   const [eventId, setEventId] = useState<string | null>(null);
   const [eventFormVisible, setEventFormVisible] = useState(false);
+  const [meetingDate, setMeetingDate] = useState<string | null>(null);
   const [form, setForm] = useState<EventForm>(emptyForm);
   const [result, setResult] = useState<CohortCalendarActionResult | null>(null);
   const [occurrenceItem, setOccurrenceItem] =
@@ -1799,6 +1827,7 @@ export const CohortCalendarEditor = ({
             events={events}
             items={displayItems}
             onCreate={beginCreate}
+            onCreateMeeting={setMeetingDate}
             onEdit={beginEdit}
             onException={beginOccurrence}
             view={view}
@@ -1862,6 +1891,15 @@ export const CohortCalendarEditor = ({
         pending={pending}
         result={result}
       />
+      {meetingDate ? (
+        <CohortMeetingDialog
+          cohortId={cohortId}
+          cohortName={cohortName}
+          date={meetingDate}
+          expectedCohortVersion={expectedCohortVersion}
+          onClose={() => setMeetingDate(null)}
+        />
+      ) : null}
       {confirmation ? (
         <CalendarConfirmationDialog
           confirmation={confirmation}

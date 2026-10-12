@@ -964,3 +964,12 @@ Encontros and Planejamento after commit; the feed remains private/no-store.
 The refreshed production build measures calendar at 221.0 KiB and planner at
 224.1 KiB gzip, each across 17 chunks below the 225 KiB budget. This does not
 establish latency percentiles or representative concurrency.
+
+Creating a meeting from a calendar day performs fresh actor/cohort checks,
+then a serializable transaction with a cohort version check, canonical Meeting,
+target and audit event. Replay reads a single actor/key candidate and its
+cohort target plus audit fingerprint. No new list query or persistent cache
+is added. Calendar/planner and Encontros invalidate after persistence.
+The menu responds locally; the form disables immediately on submit and only
+shows success after the committed response. The calendar retains its 225 KiB
+gzip budget; final measurements are recorded in PROGRESS.md.

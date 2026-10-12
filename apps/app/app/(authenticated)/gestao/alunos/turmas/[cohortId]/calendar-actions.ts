@@ -1,5 +1,6 @@
 "use server";
 
+import { createHash } from "node:crypto";
 import {
   ContentStatus,
   database,
@@ -59,6 +60,208 @@ export type CohortCalendarActionResult =
       readonly message: string;
       readonly fields?: Readonly<Record<string, string>>;
     };
+
+const meetingFields = z.object({
+  cohortId: id,
+  expectedCohortVersion: z.number().int().positive(),
+  title: z.string().trim().min(1, "Informe um título.").max(140),
+  description: z.string().trim().max(4000).default(""),
+  startsAt: z.string().min(1, "Informe o início."),
+  endsAt: z.string().min(1, "Informe o término."),
+  timezone: z.string().trim().min(1).max(100),
+  joinUrl: z.string().trim().max(2000).default(""),
+  recurrence: z.nativeEnum(PlannerRecurrence).default(PlannerRecurrence.NONE),
+  recurrenceUntil: z.string().default(""),
+  status: z.enum([ContentStatus.DRAFT, ContentStatus.PUBLISHED]),
+  confirmed: z.boolean().default(false),
+  idempotencyKey: uuid,
+});
+
+export type CohortMeetingActionResult =
+  | { readonly ok: true; readonly meetingId: string }
+  | Extract<CohortCalendarActionResult, { ok: false }>;
+
+const validateMeetingInput = (value: z.infer<typeof meetingFields>) => {
+  const fields: Record<string, string> = {};
+  const startsAt = parseCohortCalendarDateTime(value.startsAt, {
+    timezone: value.timezone,
+  });
+  const endsAt = parseCohortCalendarDateTime(value.endsAt, {
+    timezone: value.timezone,
+  });
+  const recurrenceUntil = value.recurrenceUntil
+    ? parseCohortCalendarDateTime(value.recurrenceUntil, {
+        timezone: value.timezone,
+      })
+    : null;
+  if (!startsAt) {
+    fields.startsAt = "Confira o início e o fuso horário.";
+  }
+  if (!endsAt || (startsAt && endsAt <= startsAt)) {
+    fields.endsAt = "O término deve ser posterior ao início.";
+  }
+  if (
+    value.recurrenceUntil &&
+    (!(recurrenceUntil && startsAt) ||
+      recurrenceUntil < startsAt ||
+      value.recurrence === PlannerRecurrence.NONE)
+  ) {
+    fields.recurrenceUntil = "Confira a repetição e a data final.";
+  }
+  if (value.joinUrl) {
+    try {
+      const url = new URL(value.joinUrl);
+      if (
+        !["https:", "http:"].includes(url.protocol) ||
+        url.username ||
+        url.password
+      ) {
+        fields.joinUrl = "Informe um link HTTP ou HTTPS sem credenciais.";
+      }
+    } catch {
+      fields.joinUrl = "Informe um link válido.";
+    }
+  } else if (value.status === ContentStatus.PUBLISHED) {
+    fields.joinUrl = "Informe o link antes de publicar.";
+  }
+  if (value.status === ContentStatus.PUBLISHED && !value.confirmed) {
+    fields.confirmed = "Confirme a publicação para os alunos da turma.";
+  }
+  if (Object.keys(fields).length || !startsAt || !endsAt) {
+    throw new CalendarMutationFailure(
+      "validation",
+      "Revise os campos indicados.",
+      fields
+    );
+  }
+  return { startsAt, endsAt, recurrenceUntil };
+};
+
+export const createGestaoCohortMeeting = async (
+  input: unknown
+): Promise<CohortMeetingActionResult> => {
+  try {
+    const value = meetingFields.parse(input);
+    const { actor } = await requireGestaoAction("cohort.manage", {
+      cohortId: value.cohortId,
+    });
+    const dates = validateMeetingInput(value);
+    await consumeMutationRateLimit({
+      action: "cohort.mutation",
+      memberId: actor.userId,
+    });
+    const operationKey = `gestao:cohort:meeting:${createHash("sha256")
+      .update(
+        JSON.stringify([actor.userId, value.cohortId, value.idempotencyKey])
+      )
+      .digest("hex")}`;
+    const fingerprint = createHash("sha256")
+      .update(JSON.stringify({ ...value, expectedCohortVersion: undefined }))
+      .digest("hex");
+    const meetingId = await database.$transaction(
+      async (tx) => {
+        const cohort = await requireWritableCohort(
+          tx,
+          actor.userId,
+          value.cohortId
+        );
+        const previous = await tx.meeting.findFirst({
+          where: {
+            teacherId: actor.userId,
+            idempotencyKey: value.idempotencyKey,
+          },
+          select: {
+            id: true,
+            cohortTargets: {
+              where: { cohortId: cohort.id, revokedAt: null },
+              select: { id: true },
+            },
+          },
+        });
+        if (previous) {
+          if (!previous.cohortTargets.length) {
+            throw new CalendarMutationFailure(
+              "conflict",
+              "Esta operação pertence a outra turma."
+            );
+          }
+          const audit = await tx.domainEvent.findUnique({
+            where: { idempotencyKey: operationKey },
+            select: { payload: true },
+          });
+          if (
+            !audit?.payload ||
+            typeof audit.payload !== "object" ||
+            Array.isArray(audit.payload) ||
+            audit.payload.fingerprint !== fingerprint
+          ) {
+            throw new CalendarMutationFailure(
+              "conflict",
+              "Os dados desta operação mudaram. Feche e reabra o formulário."
+            );
+          }
+          return previous.id;
+        }
+        if (cohort.archivedAt) {
+          throw new CalendarMutationFailure(
+            "conflict",
+            "Esta turma está arquivada."
+          );
+        }
+        await bumpCohortVersion(tx, cohort.id, value.expectedCohortVersion);
+        const now = new Date();
+        const meeting = await tx.meeting.create({
+          data: {
+            title: value.title,
+            description: value.description || null,
+            ...dates,
+            timezone: value.timezone,
+            joinUrl: value.joinUrl,
+            status: value.status,
+            publishedAt: value.status === ContentStatus.PUBLISHED ? now : null,
+            teacherId: actor.userId,
+            idempotencyKey: value.idempotencyKey,
+            recurrenceRule:
+              value.recurrence === PlannerRecurrence.NONE
+                ? null
+                : value.recurrence,
+            cohortTargets: {
+              create: {
+                cohortId: cohort.id,
+                createdByMemberId: actor.userId,
+                assignedAt: now,
+              },
+            },
+          },
+          select: { id: true },
+        });
+        await enqueueDomainEvent(tx, {
+          eventType:
+            value.status === ContentStatus.PUBLISHED
+              ? "event.published"
+              : "gestao.cohort.meeting.saved",
+          actorId: actor.userId,
+          aggregateType: "meeting",
+          aggregateId: meeting.id,
+          idempotencyKey: operationKey,
+          payload: { cohortId: cohort.id, status: value.status, fingerprint },
+          occurredAt: now,
+          consumers: [],
+        });
+        return meeting.id;
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+    );
+    revalidateCalendar(value.cohortId);
+    revalidatePath("/encontros");
+    return { ok: true, meetingId };
+  } catch (error) {
+    return errorResult(error) as Extract<
+      CohortCalendarActionResult,
+      { ok: false }
+    >;
+  }
+};
 
 class CalendarMutationFailure extends Error {
   readonly code: Extract<CohortCalendarActionResult, { ok: false }>["code"];

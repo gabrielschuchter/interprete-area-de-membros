@@ -409,3 +409,8 @@ on a server request.
   planner at 224.1 KiB gzip (17 chunks each, 225 KiB budget). Restored admin QA
   captures at 1440 and 320 px show no document overflow; content truncation,
   layout differences and full keyboard acceptance remain open.
+- Calendar-day meeting creation uses a local dropdown and native modal with
+  title autofocus, pending controls and server-confirmed success. Twelve local
+  captures cover six widths with normal/reduced motion; preset dates and Escape
+  worked without document overflow. Full keyboard/focus-return and visual
+  reference acceptance remain open. Final bundle numbers are in PROGRESS.md.

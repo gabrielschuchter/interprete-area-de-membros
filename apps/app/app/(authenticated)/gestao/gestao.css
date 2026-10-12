@@ -10088,3 +10088,61 @@
     padding: 16px;
   }
 }
+
+.gt-calendar-day-menu {
+  width: min(290px, calc(100vw - 24px));
+  color: var(--gestao-text);
+  background: #fff;
+  border-color: var(--gestao-line);
+  box-shadow: 0 12px 28px rgb(64 34 47 / 25%);
+}
+.gt-calendar-day-menu [role="menuitem"] {
+  min-height: 44px;
+}
+.gt-cohort-calendar-event[data-status="draft"] {
+  color: var(--gestao-action);
+  background: #fff;
+  border: 1px dashed currentColor;
+}
+.gt-meeting-dialog {
+  width: min(560px, calc(100vw - 24px));
+  max-height: calc(100dvh - 24px);
+  overflow-y: auto;
+}
+.gt-meeting-form,
+.gt-meeting-form fieldset {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+.gt-meeting-form fieldset {
+  padding: 0;
+  border: 0;
+}
+.gt-meeting-form input:not([type="checkbox"]),
+.gt-meeting-form textarea,
+.gt-meeting-form select {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 10px;
+  background: #fff;
+  border: 1px solid var(--gestao-line);
+  border-radius: 4px;
+}
+.gt-meeting-checkbox {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding-block: 8px;
+}
+.gt-meeting-checkbox input {
+  margin-top: 4px;
+  accent-color: var(--gestao-action);
+}
+.gt-meeting-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}

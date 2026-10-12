@@ -3,6 +3,11 @@
 > Diário de execução. **Atualize a cada unidade concluída**, com evidência. Releia ao começar e depois de qualquer compactação de contexto. Estado confiável = este arquivo + o Git.
 
 ## Estado geral
+
+> Auditoria atual e passagem para outro chat: `docs/gestao/STATUS.md` e
+> `docs/gestao/HANDOFF-PROXIMO-CHAT.md`. Registro compacto por unidade:
+> `docs/gestao/EXECUTION-LOG.md`. O restante deste arquivo preserva o histórico;
+> checkpoints antigos não substituem o resumo atual.
 - Branch: `gestao-v2`
 - Fase atual: Fase 2 — Turmas e resolvers. Fixtures persistentes, projeção das quatro fontes de agenda, exceções, assinatura revogável e atribuição de alunos estão em QA local. Fase 1 ainda não foi aceita; a Fase 3 tem implementação parcial. Nenhuma dessas fases recebeu aceite completo.
 - Calendário unificado, recorrência, cópia e assinatura consolidados em `5581041`; a unidade seguinte consolida a entrada para atribuição de alunos sem turma.
@@ -356,3 +361,67 @@ app em 141 arquivos, 17 de domínio, 9 de API e 32 testes de scripts aprovados
 `boundaries` 846 arquivos, build 8/8, `performance:check` e `git diff --check`
 passaram. Isso encerra a validação de código desta unidade, mantendo abertas
 as lacunas de aceite descritas acima.
+
+## Fechamento solicitado pelo usuário · 12/10/2026
+
+O usuário pediu encerrar a unidade corrente, auditar o estado real e passar o
+trabalho para outro chat. Nenhuma nova fase será iniciada nesta passagem.
+O retrato atual é `docs/gestao/STATUS.md`, com inventário em
+`docs/gestao/estado-auditado-20261012.json`, registro compacto por commit em
+`docs/gestao/EXECUTION-LOG.md` e instrução em `HANDOFF-PROXIMO-CHAT.md`.
+
+### Unidade encerrada: encontro pelo dia do calendário
+
+O número do dia abre menu com Novo encontro e Evento da turma. O formulário de
+Meeting recebe data e nome da turma, início/fim, fuso, repetição, link e
+publicação confirmada. A Server Action cria Meeting + alvo da turma + auditoria
+em transação serializable, relê papel/ativação/escopo, compara versão da turma
+e protege replay por ator/turma/payload. Submit tem trava imediata, estado
+pendente, tratamento de falha de rede e conserva os campos após validação.
+Rascunhos agora têm borda tracejada na Gestão.
+
+`calendar-meeting-actions.test.ts`: 14 testes focados passaram. Typecheck do
+app passou. No navegador admin visual, publicar “QA local — encontro de handoff
+20261012” em 19/10 e salvar “QA local — rascunho de handoff 20261012” em 20/10
+persistiram após reload. A consulta Prisma com CA verificada confirmou o banco
+visual em loopback/55433/TLS, as duas linhas, um alvo ativo cada, 12:00Z–13:00Z
+e publishedAt só no publicado. São extras explícitos de QA preservados no
+visual; eles alteram contagens e não são dados de produção.
+
+Capturas em `output/playwright/gestao-v2/handoff-meeting-{largura}-{movimento}.png`
+para 1440/1280/1024/820/390/320, normal/reduce. Data inicial correta nas 12,
+Escape fechou o diálogo em todas, sem overflow horizontal do documento ou
+pageerror na passada. As imagens 1440/normal e 320/reduce foram inspecionadas;
+isso não é comparação integral com o editor de referência nem aceite visual.
+Faltam as entradas Prazo de atividade/Liberar uma aula, jornada do novo encontro
+como aluno, matriz de papéis, editor completo e fidelidade do quadro 41.
+C1/C2 e Fase 2 continuam IN PROGRESS.
+
+### Auditoria real do estado
+
+O inventário do próprio PROGRESS contém 0 quadros aceitos, 31 em andamento e
+70 pendentes. O contrato tem 53 rotas; o source tem 38 páginas da Gestão, com
+18 matches exatos após normalização dos parâmetros. Não interpretar os outros
+35 como ausência de todo código: há funções em caminhos diferentes. Tampouco
+interpretar matches como telas funcionais. No navegador admin local,
+`/gestao/comunidade/encontros` e `/gestao/administracao/medalhas` mostraram
+“Este fluxo está sendo conectado”; `/gestao/previa` mostrou 404. O streaming
+retornou 200 nas três, então status HTTP isolado seria evidência enganosa.
+A auditoria inicial de 11/10 agora contém aviso de que é histórica.
+
+Não se promoveu nenhuma fase. O log existente era cumulativo e preservava
+informações antigas superadas; o novo STATUS separa o estado atual, evidência
+e lacunas. O próximo chat deve fechar unidades verticais e registrar critério
+de saída, teste/captura/log e SHA, sem repetir a auditoria global em cada ajuste.
+
+Gates de fechamento: check passou (904 arquivos), typecheck 16/16, boundaries
+848 arquivos, testes 627 app/17 domínio/9 API e 32 scripts aprovados/1 ignorado.
+Build reportou 8/8 tarefas bem-sucedidas. Calendário: 222,2 KiB gzip/18 chunks;
+Planejamento: 223,5 KiB/17, ambos abaixo de 225 KiB. Logs separados em
+`output/gestao-final-audit/`. Verificação avulsa de performance será registrada
+no fechamento definitivo.
+
+Releitura SQL com TLS validado confirmou as migrations aditivas de projeção e
+publicação terminadas sem rollback no funcional, e RLS habilitado nas quatro
+tabelas novas de alvos, feeds e exceções. Nenhuma migration foi aplicada nesta
+unidade. O visual continua sem histórico Prisma; nenhuma fase foi promovida.
