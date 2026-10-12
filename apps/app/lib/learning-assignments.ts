@@ -790,11 +790,17 @@ export const revokeLearningAssignment = async (
     },
   });
 
-export const getReceivedLearningAssignments = async (memberId: string) => {
-  const now = new Date();
+export const getReceivedLearningAssignments = async (
+  memberId: string,
+  input: { readonly at?: Date; readonly excludeActivityTargets?: boolean } = {}
+) => {
+  const now = input.at ?? new Date();
   const assignments = await database.activityAssignment.findMany({
     where: {
       memberId,
+      ...(input.excludeActivityTargets
+        ? { targetType: { not: LearningAssignmentTargetType.ACTIVITY } }
+        : {}),
       revokedAt: null,
       status: { not: LearningAssignmentStatus.REVOKED },
       AND: [{ OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] }],

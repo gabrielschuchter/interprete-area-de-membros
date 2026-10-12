@@ -15,6 +15,7 @@ import {
 import { getReceivedLearningAssignments } from "@/lib/learning-assignments";
 import { getMemberLearningBookmarkKeys } from "@/lib/library";
 import { getMemberContinueWatching } from "@/lib/recordings";
+import { resolveStudentFeed } from "@/lib/student-feed";
 
 export const dynamic = "force-dynamic";
 
@@ -157,48 +158,58 @@ const toCollectionCard = (
 
 const LearnPage = async () => {
   const memberId = await requireOnboardedMemberId();
-  const [learningData, assignments, continueData, bookmarkKeys] =
-    await tracePerformance("member.route.learn.primary-data", () => {
-      const pathsPromise = getPublishedLearningPaths(memberId);
-      const collectionsPromise = getPublishedCollectionsForMember(memberId);
-      const learningDataPromise = Promise.all([
-        pathsPromise,
-        collectionsPromise,
-      ]).then(async ([paths, collections]) => {
-        const courseProgressById = new Map(
-          paths.flatMap((path) =>
-            path.courses.map((course) => [course.id, course.progress] as const)
-          )
-        );
-        const collectionCourseIds = [
-          ...new Set(
-            collections.flatMap((collection) =>
-              collection.items.flatMap((item) =>
-                item.course ? [item.course.id] : []
-              )
+  const feedAt = new Date();
+  const [
+    learningData,
+    assignments,
+    feedActivities,
+    continueData,
+    bookmarkKeys,
+  ] = await tracePerformance("member.route.learn.primary-data", () => {
+    const pathsPromise = getPublishedLearningPaths(memberId);
+    const collectionsPromise = getPublishedCollectionsForMember(memberId);
+    const learningDataPromise = Promise.all([
+      pathsPromise,
+      collectionsPromise,
+    ]).then(async ([paths, collections]) => {
+      const courseProgressById = new Map(
+        paths.flatMap((path) =>
+          path.courses.map((course) => [course.id, course.progress] as const)
+        )
+      );
+      const collectionCourseIds = [
+        ...new Set(
+          collections.flatMap((collection) =>
+            collection.items.flatMap((item) =>
+              item.course ? [item.course.id] : []
             )
-          ),
-        ];
-        const missingCourseIds = collectionCourseIds.filter(
-          (courseId) => !courseProgressById.has(courseId)
-        );
-        const additionalCourseProgress = await tracePerformance(
-          "member.route.learn.additional-progress",
-          () => getMemberCourseProgress(memberId, missingCourseIds)
-        );
-        for (const [courseId, progress] of additionalCourseProgress) {
-          courseProgressById.set(courseId, progress);
-        }
-        return { collections, courseProgressById, paths };
-      });
-
-      return Promise.all([
-        learningDataPromise,
-        getReceivedLearningAssignments(memberId),
-        getMemberContinueWatching(memberId),
-        getMemberLearningBookmarkKeys(memberId),
-      ]);
+          )
+        ),
+      ];
+      const missingCourseIds = collectionCourseIds.filter(
+        (courseId) => !courseProgressById.has(courseId)
+      );
+      const additionalCourseProgress = await tracePerformance(
+        "member.route.learn.additional-progress",
+        () => getMemberCourseProgress(memberId, missingCourseIds)
+      );
+      for (const [courseId, progress] of additionalCourseProgress) {
+        courseProgressById.set(courseId, progress);
+      }
+      return { collections, courseProgressById, paths };
     });
+
+    return Promise.all([
+      learningDataPromise,
+      getReceivedLearningAssignments(memberId, {
+        at: feedAt,
+        excludeActivityTargets: true,
+      }),
+      resolveStudentFeed(memberId, feedAt),
+      getMemberContinueWatching(memberId),
+      getMemberLearningBookmarkKeys(memberId),
+    ]);
+  });
   const { collections, courseProgressById, paths } = learningData;
 
   const assignmentCards = assignments.map((assignment) => {
@@ -241,6 +252,26 @@ const LearnPage = async () => {
         [availability, due].filter(Boolean).join(" · ") ||
         (assignmentTargetLabel[assignment.target.type] ?? "Conteúdo"),
       title: assignment.target.title,
+    };
+  });
+  const activityCards = feedActivities.map((activity) => {
+    const isScheduled = Boolean(
+      activity.availableAt && activity.availableAt.getTime() > feedAt.getTime()
+    );
+    const availability = activity.availableAt
+      ? `Disponível em ${formatDate(activity.availableAt)}`
+      : null;
+    const due = activity.dueAt ? `Prazo ${formatDate(activity.dueAt)}` : null;
+    return {
+      actionLabel: isScheduled
+        ? "Aguarde a liberação"
+        : assignmentActionLabel(activity.status),
+      description: activity.message,
+      disabled: isScheduled,
+      href: activity.href,
+      label: assignmentState[activity.status],
+      meta: [availability, due].filter(Boolean).join(" · ") || "Atividade",
+      title: activity.title,
     };
   });
 
@@ -323,7 +354,7 @@ const LearnPage = async () => {
         data-route-content-ready="learn"
       >
         <LearningCatalog
-          cards={assignmentCards}
+          cards={[...assignmentCards, ...activityCards]}
           headingId="assigned-learning-title"
           title="Enviados para você"
         />
