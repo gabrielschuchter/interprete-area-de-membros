@@ -2,6 +2,7 @@ import "server-only";
 
 import { createHash, randomBytes } from "node:crypto";
 import { database } from "@repo/database";
+import { cohortCalendarTimezone } from "./cohort-calendar-domain";
 import { getPlannerDashboard } from "./planner";
 
 export interface PlannerCalendarFeedItem {
@@ -99,6 +100,24 @@ const fromLocalParts = (
       );
   }
   return new Date(guess);
+};
+
+const nextLocalMidnight = (date: Date, timezone: string) => {
+  const parts = localDateParts(date, timezone);
+  const nextDate = new Date(
+    Date.UTC(parts.year, parts.month - 1, parts.day + 1)
+  );
+  return fromLocalParts(
+    {
+      year: nextDate.getUTCFullYear(),
+      month: nextDate.getUTCMonth() + 1,
+      day: nextDate.getUTCDate(),
+      hour: 0,
+      minute: 0,
+      second: 0,
+    },
+    timezone
+  );
 };
 
 const goalDeadline = (
@@ -244,6 +263,24 @@ export const getPlannerCalendarFeedItems = async (
       endsAt: new Date(lessonRelease.releaseAt.getTime() + 30 * 60_000),
       description: "Aula liberada na sua turma.",
       url: absoluteUrl(lessonRelease.href),
+    });
+  }
+  for (const cohortEvent of data.cohortEvents) {
+    const end = cohortEvent.endsAt ?? cohortEvent.startsAt;
+    items.push({
+      uid: `cohort-event-${cohortEvent.id}`,
+      title: cohortEvent.title,
+      startsAt: cohortEvent.startsAt,
+      endsAt: cohortEvent.allDay
+        ? nextLocalMidnight(end, cohortCalendarTimezone)
+        : (cohortEvent.endsAt ??
+          new Date(cohortEvent.startsAt.getTime() + 30 * 60_000)),
+      allDay: cohortEvent.allDay,
+      timezone: cohortEvent.allDay
+        ? cohortCalendarTimezone
+        : data.preferences.timezone,
+      description: cohortEvent.description,
+      url: absoluteUrl("/planejamento"),
     });
   }
   for (const task of data.tasks) {

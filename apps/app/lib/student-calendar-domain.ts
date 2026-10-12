@@ -48,6 +48,44 @@ export interface StudentCalendarLessonRelease {
   readonly title: string;
 }
 
+export interface StudentCalendarEventMembership {
+  readonly cohort: {
+    readonly archivedAt: Date | null;
+    readonly endsAt: Date | null;
+    readonly lateJoinPolicy: "ALL_ACTIVE" | "FROM_JOIN";
+    readonly readAfterEndDays: number;
+    readonly startsAt: Date;
+  };
+  readonly cohortId: string;
+  readonly includePastReadOnly: boolean;
+  readonly joinedAt: Date;
+}
+
+export interface StudentCalendarCohortEventCandidate {
+  readonly allDay: boolean;
+  readonly cohortId: string;
+  readonly color: string;
+  readonly createdAt: Date;
+  readonly description: string | null;
+  readonly endsAt: Date | null;
+  readonly id: string;
+  readonly publishedAt: Date | null;
+  readonly startsAt: Date;
+  readonly status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
+  readonly title: string;
+}
+
+export interface StudentCalendarCohortEvent {
+  readonly allDay: boolean;
+  readonly cohortId: string;
+  readonly color: string;
+  readonly description: string | null;
+  readonly endsAt: Date | null;
+  readonly id: string;
+  readonly startsAt: Date;
+  readonly title: string;
+}
+
 export const resolveStudentCalendarLessonReleases = (
   candidates: readonly StudentCalendarReleaseCandidate[],
   memberships: readonly StudentCalendarReleaseMembership[],
@@ -123,4 +161,74 @@ export const resolveStudentCalendarLessonReleases = (
       left.title.localeCompare(right.title) ||
       left.id.localeCompare(right.id)
   );
+};
+
+export const resolveStudentCalendarCohortEvents = (
+  candidates: readonly StudentCalendarCohortEventCandidate[],
+  memberships: readonly StudentCalendarEventMembership[],
+  range: { readonly end: Date; readonly start: Date },
+  at: Date
+): StudentCalendarCohortEvent[] => {
+  const membershipByCohort = new Map(
+    memberships.map((membership) => [membership.cohortId, membership])
+  );
+
+  return candidates
+    .filter((candidate) => {
+      if (candidate.status !== "PUBLISHED") {
+        return false;
+      }
+      const eventEnd = candidate.endsAt ?? candidate.startsAt;
+      if (candidate.startsAt > range.end || eventEnd < range.start) {
+        return false;
+      }
+
+      const membership = membershipByCohort.get(candidate.cohortId);
+      if (!membership || membership.joinedAt > at) {
+        return false;
+      }
+      const cohort = membership.cohort;
+      const readUntil = cohortEndedReadUntil(
+        cohort.endsAt ?? cohort.archivedAt,
+        cohort.readAfterEndDays
+      );
+      if (
+        cohort.startsAt > at ||
+        (readUntil && at >= readUntil) ||
+        ((candidate.publishedAt ?? candidate.createdAt) < membership.joinedAt &&
+          (cohort.lateJoinPolicy === "FROM_JOIN" ||
+            (eventEnd < membership.joinedAt &&
+              !membership.includePastReadOnly)))
+      ) {
+        return false;
+      }
+      return true;
+    })
+    .map(
+      ({
+        id,
+        cohortId,
+        title,
+        description,
+        startsAt,
+        endsAt,
+        allDay,
+        color,
+      }) => ({
+        id,
+        cohortId,
+        title,
+        description,
+        startsAt,
+        endsAt,
+        allDay,
+        color,
+      })
+    )
+    .sort(
+      (left, right) =>
+        left.startsAt.getTime() - right.startsAt.getTime() ||
+        left.title.localeCompare(right.title) ||
+        left.id.localeCompare(right.id)
+    );
 };

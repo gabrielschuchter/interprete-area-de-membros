@@ -82,6 +82,19 @@
       "maxGzipBytes": 230400
     },
     {
+      "route": "gestao-cohort-calendar",
+      "manifestSegments": [
+        "(authenticated)",
+        "gestao",
+        "alunos",
+        "turmas",
+        "[cohortId]",
+        "calendario"
+      ],
+      "entrySuffix": "apps/app/app/(authenticated)/gestao/alunos/turmas/[cohortId]/calendario/page",
+      "maxGzipBytes": 230400
+    },
+    {
       "route": "gestao-activity-submissions",
       "manifestSegments": [
         "(authenticated)",

@@ -1879,6 +1879,382 @@
   grid-column: 1 / -1;
   margin: 0;
 }
+.gt-calendar-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(280px, 0.8fr);
+  gap: 16px;
+  align-items: start;
+}
+.gt-calendar-main,
+.gt-calendar-aside {
+  min-width: 0;
+}
+.gt-calendar-aside {
+  display: grid;
+  gap: 16px;
+}
+.gt-calendar-heading {
+  align-items: center;
+}
+.gt-calendar-heading > button {
+  flex: none;
+}
+.gt-calendar-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-top: 1px solid var(--gestao-line);
+}
+.gt-calendar-month-nav,
+.gt-calendar-views {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.gt-calendar-month-nav strong {
+  min-width: 150px;
+  color: var(--gestao-text);
+  text-align: center;
+  text-transform: capitalize;
+}
+.gt-calendar-views {
+  min-width: 0;
+  padding: 3px;
+  background: #f4efed;
+  border: 0;
+  border-radius: 6px;
+}
+.gt-calendar-views legend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  white-space: nowrap;
+  clip: rect(0, 0, 0, 0);
+}
+.gt-calendar-view-button {
+  min-height: 32px;
+  padding: 0 10px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--gestao-muted);
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+}
+.gt-calendar-view-button[aria-pressed="true"] {
+  color: var(--gestao-text);
+  background: #fff;
+  box-shadow: 0 1px 3px rgb(38 25 34 / 12%);
+}
+.gt-calendar-view-button:focus-visible,
+.gt-cohort-day-number:focus-visible,
+.gt-cohort-calendar-event:focus-visible {
+  outline: 2px solid var(--gestao-action);
+  outline-offset: 2px;
+}
+.gt-cohort-month-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  border-top: 1px solid var(--gestao-line);
+  border-left: 1px solid var(--gestao-line);
+}
+.gt-cohort-weekday {
+  padding: 9px 4px;
+  font-size: 10px;
+  font-weight: 650;
+  color: var(--gestao-muted);
+  text-align: center;
+  border-right: 1px solid var(--gestao-line);
+  border-bottom: 1px solid var(--gestao-line);
+}
+.gt-cohort-day {
+  --cohort-day-number-color: var(--gestao-text);
+  min-width: 0;
+  min-height: 112px;
+  padding: 5px;
+  background: #fff;
+  border-right: 1px solid var(--gestao-line);
+  border-bottom: 1px solid var(--gestao-line);
+}
+.gt-cohort-day[data-outside-month="true"] {
+  --cohort-day-number-color: #a49994;
+  background: #faf8f7;
+}
+.gt-cohort-day-number {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  font: inherit;
+  font-size: 11px;
+  color: var(--cohort-day-number-color);
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+}
+.gt-cohort-day-number:hover:not(:disabled) {
+  color: #fff;
+  background: var(--gestao-action);
+}
+.gt-cohort-day-number:disabled {
+  cursor: default;
+}
+.gt-cohort-day-events {
+  display: grid;
+  gap: 3px;
+  margin-top: 3px;
+}
+.gt-cohort-calendar-event {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  min-width: 0;
+  padding: 4px 5px;
+  color: var(--gestao-text);
+  text-align: left;
+  cursor: pointer;
+  background: #f6f1f3;
+  border: 0;
+  border-left: 2px solid;
+  border-radius: 3px;
+}
+.gt-cohort-calendar-event span,
+.gt-cohort-calendar-event small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gt-cohort-calendar-event span {
+  font-size: 10px;
+  font-weight: 650;
+}
+.gt-cohort-calendar-event small,
+.gt-cohort-more-events {
+  font-size: 9px;
+  color: var(--gestao-muted);
+}
+.gt-cohort-more-events {
+  padding-left: 4px;
+}
+.gt-cohort-event-rows,
+.gt-cohort-status-list {
+  display: grid;
+  gap: 0;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+.gt-cohort-week-view {
+  display: grid;
+  gap: 0;
+  border-top: 1px solid var(--gestao-line);
+}
+.gt-cohort-week-day {
+  display: grid;
+  grid-template-columns: minmax(112px, 0.55fr) minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  padding: 12px 4px;
+  border-bottom: 1px solid var(--gestao-line);
+}
+.gt-cohort-week-day h3 {
+  margin: 3px 0 0;
+  font-size: 11px;
+  font-weight: 650;
+  color: var(--gestao-text);
+  text-transform: capitalize;
+}
+.gt-cohort-week-day .gt-cohort-calendar-event {
+  max-width: 100%;
+}
+.gt-cohort-week-empty {
+  padding: 4px 0;
+  font-size: 11px;
+  color: var(--gestao-muted);
+}
+.gt-cohort-event-rows li,
+.gt-cohort-status-list li {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+  padding: 12px 0;
+  border-top: 1px solid var(--gestao-line);
+}
+.gt-cohort-event-dot {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+.gt-cohort-event-copy,
+.gt-cohort-status-list li > span:first-child {
+  display: grid;
+  flex: 1;
+  gap: 3px;
+  min-width: 0;
+}
+.gt-cohort-event-copy strong,
+.gt-cohort-status-list strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  color: var(--gestao-text);
+  white-space: nowrap;
+}
+.gt-cohort-event-copy small,
+.gt-cohort-status-list small {
+  font-size: 10px;
+  color: var(--gestao-muted);
+}
+.gt-calendar-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 12px;
+  font-size: 11px;
+  color: var(--gestao-muted);
+}
+.gt-cohort-event-form {
+  display: grid;
+  gap: 12px;
+}
+.gt-cohort-event-form .gt-field {
+  gap: 5px;
+}
+.gt-cohort-event-form input:not([type="checkbox"]),
+.gt-cohort-event-form select,
+.gt-cohort-event-form textarea {
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--gestao-text);
+  background: #fff;
+  border: 1px solid var(--gestao-line);
+  border-radius: 5px;
+}
+.gt-cohort-event-form textarea {
+  resize: vertical;
+}
+.gt-cohort-event-checkbox {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 12px;
+  color: var(--gestao-text);
+}
+.gt-cohort-event-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.gt-calendar-publish-help h2 {
+  margin: 0 0 7px;
+  font-size: 14px;
+  color: var(--gestao-text);
+}
+.gt-calendar-publish-help p {
+  margin: 0 0 9px;
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--gestao-muted);
+}
+.gt-calendar-publish-help a {
+  font-size: 11px;
+  font-weight: 650;
+  color: var(--gestao-action);
+}
+.gt-calendar-confirmation {
+  z-index: 1000;
+  width: min(420px, calc(100vw - 32px));
+  max-width: calc(100vw - 32px);
+  padding: 22px;
+  margin: auto;
+  color: var(--gestao-text);
+  background: #fff;
+  border: 1px solid var(--gestao-line);
+  border-radius: 8px;
+  box-shadow: 0 16px 50px rgb(25 14 22 / 24%);
+}
+.gt-calendar-confirmation::backdrop {
+  background: rgb(25 14 22 / 48%);
+}
+.gt-calendar-confirmation h2 {
+  margin: 0;
+  font-family: var(--font-display-family);
+  font-size: 20px;
+}
+.gt-calendar-confirmation p {
+  margin: 10px 0 18px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--gestao-muted);
+}
+.gt-calendar-confirmation > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+@media (max-width: 60rem) {
+  .gt-calendar-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .gt-calendar-aside {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .gt-calendar-aside > :first-child {
+    grid-row: span 2;
+  }
+}
+@media (max-width: 43rem) {
+  .gt-calendar-aside {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .gt-calendar-aside > :first-child {
+    grid-row: auto;
+  }
+  .gt-cohort-day {
+    min-height: 74px;
+    padding: 3px;
+  }
+  .gt-cohort-day-number {
+    width: 22px;
+    height: 22px;
+  }
+  .gt-cohort-calendar-event {
+    padding: 3px;
+  }
+  .gt-cohort-calendar-event small {
+    display: none;
+  }
+  .gt-cohort-month-grid {
+    font-size: 10px;
+  }
+  .gt-calendar-heading {
+    align-items: flex-start;
+  }
+  .gt-calendar-heading > button {
+    white-space: nowrap;
+  }
+  .gt-cohort-week-day {
+    grid-template-columns: minmax(86px, 0.45fr) minmax(0, 1fr);
+    gap: 8px;
+  }
+  .gt-cohort-event-rows li {
+    flex-wrap: wrap;
+  }
+}
 .gt-invite-page {
   max-width: 780px;
   padding-top: clamp(22px, 5vw, 56px);

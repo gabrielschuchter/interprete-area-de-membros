@@ -21,6 +21,7 @@ export interface GestaoCohortListInput {
 const inviteTokenPattern = /^[a-f\d]{32}$/iu;
 const pageSize = 24;
 const rosterPageSize = 25;
+const cohortEventPageSize = 50;
 const queryMaxLength = 120;
 const statusFilter = (
   status: GestaoCohortTab,
@@ -196,6 +197,62 @@ export const getGestaoCohortDetail = async (cohortId: string) => {
     status: cohortLifecycleStatusAt(cohort, new Date()),
     activeStudentCount: cohort._count.memberships,
     pendingInviteCount: cohort._count.invites,
+  };
+};
+
+export const listGestaoCohortCalendarEvents = async (
+  cohortId: string,
+  input: {
+    readonly end: Date;
+    readonly page?: number;
+    readonly start: Date;
+  }
+) => {
+  const actor = await requireGestaoActor();
+  const cohort = await database.cohort.findFirst({
+    where: { AND: [{ id: cohortId }, actorScope(actor.userId, actor.role)] },
+    select: { id: true },
+  });
+  if (!cohort) {
+    return null;
+  }
+
+  const page = Math.max(1, Math.trunc(input.page ?? 1));
+  const where: Prisma.CohortEventWhereInput = {
+    cohortId,
+    OR: [
+      { startsAt: { gte: input.start, lt: input.end } },
+      { startsAt: { lt: input.start }, endsAt: { gte: input.start } },
+    ],
+  };
+  const [events, totalCount] = await Promise.all([
+    database.cohortEvent.findMany({
+      where,
+      orderBy: [{ startsAt: "asc" }, { id: "asc" }],
+      skip: (page - 1) * cohortEventPageSize,
+      take: cohortEventPageSize,
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        startsAt: true,
+        endsAt: true,
+        allDay: true,
+        color: true,
+        status: true,
+        version: true,
+        publishedAt: true,
+        updatedAt: true,
+      },
+    }),
+    database.cohortEvent.count({ where }),
+  ]);
+  return {
+    events,
+    page,
+    pageSize: cohortEventPageSize,
+    totalCount,
+    totalPages: Math.max(1, Math.ceil(totalCount / cohortEventPageSize)),
   };
 };
 

@@ -864,11 +864,23 @@ course access at release time, applies membership and read-window rules, and
 deduplicates a lesson offered by multiple cohorts. The `.ics` response is
 `private, no-store` so a later fetch observes token and membership changes.
 
-Each source is currently capped at 200 results and has no visible continuation;
-cohort meetings and `CohortEvent` are not projected yet. The planner bundle
-measured 223.0 KiB gzip across 17 initial chunks against the 225 KiB budget.
-This is bundle evidence only: authenticated database behavior, query latency,
-the ≤1 s first-content p95, visual comparison, and mobile acceptance remain
-unverified while local PostgreSQL QA is unavailable. Keep the shared ≤100 ms
+The projection now includes published `CohortEvent` rows from the member's
+active cohorts, bounded to the requested interval and checked against the
+membership's join policy and read window. Drafts and archived events stay out
+of both the planner and private `.ics` feed. All-day cohort events retain their
+São Paulo calendar dates; the `.ics` serializer converts the inclusive end date
+to the required exclusive `DTEND`. Management reads the 42-day visible grid in
+database pages of 50. The management calendar route has its own 225 KiB
+initial-JavaScript budget and measured 217.0 KiB gzip across 17 chunks. Cohort
+meetings still need their own cohort-target and recurrence integration.
+
+Activity deadlines, lesson releases, and student cohort events are currently
+capped at 200 results per source without visible continuation; complete
+pagination remains open. Multi-day events are projected across each day in the
+visible planner range. With that layer included, the planner measured 223.9 KiB
+gzip across 17 initial chunks against its 225 KiB budget. This is
+bundle evidence only: authenticated database behavior, query latency, the ≤1 s
+first-content p95, visual comparison, and mobile acceptance remain unverified
+while local PostgreSQL QA is unavailable. Keep the shared ≤100 ms
 interaction-feedback, ≤500 ms committed small-mutation, and ≤300 ms warmed
 navigation budgets in force.

@@ -406,6 +406,7 @@ model Member {
   accessGrantSourcesAsCreator         AccessGrantSource[]                @relation("AccessGrantSourceCreator")
   cohortCourseAccessesCreated         CohortCourseAccess[]               @relation("CohortCourseAccessCreator")
   cohortLessonReleasesUpdated         CohortLessonRelease[]              @relation("CohortLessonReleaseUpdater")
+  cohortEventsCreated                  CohortEvent[]                      @relation("CohortEventCreator")
   activityCohortTargetsCreated        ActivityCohortTarget[]             @relation("ActivityCohortTargetCreator")
   activityFeedbackDrafts              ActivityFeedbackDraft[]             @relation("ActivityFeedbackDraftReviewer")
   cohortMembershipsCreated            CohortMembership[]                 @relation("CohortMembershipCreator")
@@ -746,6 +747,7 @@ model Cohort {
   invites            CohortInvite[]
   courseAccesses     CohortCourseAccess[]
   lessonReleases     CohortLessonRelease[]
+  events             CohortEvent[]
   accessGrantSources AccessGrantSource[]
   activityTargets    ActivityCohortTarget[]
 
@@ -843,6 +845,30 @@ model CohortLessonRelease {
   @@unique([cohortId, lessonId])
   @@index([cohortId, releaseAt])
   @@index([lessonId, releaseAt])
+}
+
+model CohortEvent {
+  id                String        @id @default(cuid())
+  idempotencyKey    String?
+  cohortId          String
+  title             String
+  description       String?       @db.Text
+  startsAt          DateTime
+  endsAt            DateTime?
+  allDay            Boolean       @default(false)
+  color             String        @default("#6B5B64")
+  status            ContentStatus @default(DRAFT)
+  version           Int           @default(1)
+  publishedAt       DateTime?
+  createdByMemberId String
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  cohort            Cohort        @relation(fields: [cohortId], references: [id], onDelete: Restrict)
+  createdBy         Member        @relation("CohortEventCreator", fields: [createdByMemberId], references: [id], onDelete: Restrict)
+
+  @@unique([createdByMemberId, idempotencyKey])
+  @@index([cohortId, status, startsAt])
+  @@index([cohortId, startsAt, endsAt])
 }
 
 model AccessGrantSource {

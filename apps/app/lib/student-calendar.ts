@@ -3,7 +3,9 @@ import "server-only";
 import { database } from "@repo/database";
 import { tracePerformance } from "@repo/observability/performance";
 import {
+  resolveStudentCalendarCohortEvents,
   resolveStudentCalendarLessonReleases,
+  type StudentCalendarCohortEvent,
   type StudentCalendarLessonRelease,
 } from "./student-calendar-domain";
 import { resolveStudentFeed } from "./student-feed";
@@ -23,12 +25,8 @@ export interface StudentCalendarRange {
   readonly start: Date;
 }
 
-const getLessonReleases = async (
-  memberId: string,
-  range: StudentCalendarRange,
-  at: Date
-): Promise<StudentCalendarLessonRelease[]> => {
-  const memberships = await database.cohortMembership.findMany({
+const getCalendarMemberships = (memberId: string, at: Date) =>
+  database.cohortMembership.findMany({
     where: {
       memberId,
       status: "ACTIVE",
@@ -38,12 +36,13 @@ const getLessonReleases = async (
     select: {
       cohortId: true,
       joinedAt: true,
+      includePastReadOnly: true,
       cohort: {
         select: {
           archivedAt: true,
           endsAt: true,
-          startsAt: true,
           lateJoinPolicy: true,
+          startsAt: true,
           readAfterEndDays: true,
           courseAccesses: {
             where: { revokedAt: null },
@@ -59,6 +58,15 @@ const getLessonReleases = async (
       },
     },
   });
+type CalendarMembership = Awaited<
+  ReturnType<typeof getCalendarMemberships>
+>[number];
+
+const getLessonReleases = async (
+  memberships: readonly CalendarMembership[],
+  range: StudentCalendarRange,
+  at: Date
+): Promise<StudentCalendarLessonRelease[]> => {
   if (memberships.length === 0) {
     return [];
   }
@@ -110,6 +118,60 @@ const getLessonReleases = async (
   );
 };
 
+const getCohortEvents = async (
+  memberships: readonly CalendarMembership[],
+  range: StudentCalendarRange,
+  at: Date
+): Promise<StudentCalendarCohortEvent[]> => {
+  if (memberships.length === 0) {
+    return [];
+  }
+  const candidates = await database.cohortEvent.findMany({
+    where: {
+      cohortId: {
+        in: [...new Set(memberships.map(({ cohortId }) => cohortId))],
+      },
+      status: "PUBLISHED",
+      OR: [
+        { startsAt: { gte: range.start, lte: range.end } },
+        { startsAt: { lt: range.start }, endsAt: { gte: range.start } },
+      ],
+    },
+    orderBy: [{ startsAt: "asc" }, { id: "asc" }],
+    take: 200,
+    select: {
+      id: true,
+      cohortId: true,
+      title: true,
+      description: true,
+      startsAt: true,
+      endsAt: true,
+      allDay: true,
+      color: true,
+      createdAt: true,
+      publishedAt: true,
+      status: true,
+    },
+  });
+  return resolveStudentCalendarCohortEvents(candidates, memberships, range, at);
+};
+
+const getCohortCalendarProjection = async (
+  memberId: string,
+  range: StudentCalendarRange,
+  at: Date
+) => {
+  const memberships = await getCalendarMemberships(memberId, at);
+  if (memberships.length === 0) {
+    return { lessonReleases: [], cohortEvents: [] };
+  }
+  const [lessonReleases, cohortEvents] = await Promise.all([
+    getLessonReleases(memberships, range, at),
+    getCohortEvents(memberships, range, at),
+  ]);
+  return { lessonReleases, cohortEvents };
+};
+
 const isWithinRange = (date: Date, range: StudentCalendarRange) =>
   date >= range.start && date <= range.end;
 
@@ -128,12 +190,12 @@ export const resolveCalendar = (
       throw new Error("O período solicitado não é válido.");
     }
 
-    const [activities, lessonReleases] = await Promise.all([
+    const [activities, cohortCalendar] = await Promise.all([
       resolveStudentFeed(memberId, at, {
         assignmentLimit: 200,
         dueRange: range,
       }),
-      getLessonReleases(memberId, range, at),
+      getCohortCalendarProjection(memberId, range, at),
     ]);
     return {
       activities: activities.flatMap(
@@ -157,6 +219,7 @@ export const resolveCalendar = (
           ];
         }
       ),
-      lessonReleases,
+      lessonReleases: cohortCalendar.lessonReleases,
+      cohortEvents: cohortCalendar.cohortEvents,
     };
   });

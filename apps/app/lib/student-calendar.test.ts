@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   resolveStudentFeed: vi.fn(),
+  cohortEventFindMany: vi.fn(),
   cohortLessonReleaseFindMany: vi.fn(),
   cohortMembershipFindMany: vi.fn(),
 }));
@@ -9,6 +10,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("server-only", () => ({}));
 vi.mock("@repo/database", () => ({
   database: {
+    cohortEvent: { findMany: mocks.cohortEventFindMany },
     cohortLessonRelease: { findMany: mocks.cohortLessonReleaseFindMany },
     cohortMembership: { findMany: mocks.cohortMembershipFindMany },
   },
@@ -26,6 +28,7 @@ describe("resolveCalendar", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.resolveStudentFeed.mockResolvedValue([]);
+    mocks.cohortEventFindMany.mockResolvedValue([]);
     mocks.cohortLessonReleaseFindMany.mockResolvedValue([]);
     mocks.cohortMembershipFindMany.mockResolvedValue([]);
   });
@@ -89,6 +92,7 @@ describe("resolveCalendar", () => {
         },
       ],
       lessonReleases: [],
+      cohortEvents: [],
     });
     expect(mocks.resolveStudentFeed).toHaveBeenCalledWith("member-a", at, {
       assignmentLimit: 200,
@@ -132,6 +136,7 @@ describe("resolveCalendar", () => {
       {
         cohortId: "cohort-a",
         joinedAt,
+        includePastReadOnly: false,
         cohort: {
           archivedAt: null,
           endsAt: null,
@@ -150,6 +155,21 @@ describe("resolveCalendar", () => {
         },
       },
     ]);
+    mocks.cohortEventFindMany.mockResolvedValue([
+      {
+        id: "event-a",
+        cohortId: "cohort-a",
+        title: "Encontro aberto",
+        description: "Revisão da semana",
+        startsAt: releaseAt,
+        endsAt: new Date("2026-10-20T13:00:00.000Z"),
+        allDay: false,
+        color: "#6B5B64",
+        createdAt: new Date("2026-09-15T12:00:00.000Z"),
+        publishedAt: new Date("2026-09-15T12:00:00.000Z"),
+        status: "PUBLISHED",
+      },
+    ]);
 
     await expect(
       resolveCalendar("member-a", { start, end }, at)
@@ -161,6 +181,18 @@ describe("resolveCalendar", () => {
           title: "Aula de avaliação",
           releaseAt,
           href: "/aprender/cursos/curso-clinico/aula-de-avaliacao",
+        },
+      ],
+      cohortEvents: [
+        {
+          id: "event-a",
+          cohortId: "cohort-a",
+          title: "Encontro aberto",
+          description: "Revisão da semana",
+          startsAt: releaseAt,
+          endsAt: new Date("2026-10-20T13:00:00.000Z"),
+          allDay: false,
+          color: "#6B5B64",
         },
       ],
     });
@@ -182,6 +214,18 @@ describe("resolveCalendar", () => {
         }),
       })
     );
+    expect(mocks.cohortEventFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          cohortId: { in: ["cohort-a"] },
+          status: "PUBLISHED",
+          OR: [
+            { startsAt: { gte: start, lte: end } },
+            { startsAt: { lt: start }, endsAt: { gte: start } },
+          ],
+        }),
+      })
+    );
   });
 
   it("does not query lesson releases when the member has no active cohorts", async () => {
@@ -196,5 +240,6 @@ describe("resolveCalendar", () => {
 
     expect(mocks.cohortMembershipFindMany).toHaveBeenCalled();
     expect(mocks.cohortLessonReleaseFindMany).not.toHaveBeenCalled();
+    expect(mocks.cohortEventFindMany).not.toHaveBeenCalled();
   });
 });

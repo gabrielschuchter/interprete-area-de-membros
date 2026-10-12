@@ -61,6 +61,7 @@ describe("planner dashboard reads", () => {
     mocks.resolveCalendar.mockResolvedValue({
       activities: [],
       lessonReleases: [],
+      cohortEvents: [],
     });
   });
 
@@ -126,6 +127,18 @@ describe("planner dashboard reads", () => {
           href: "/aprender/cursos/curso-a/aula-liberada",
         },
       ],
+      cohortEvents: [
+        {
+          id: "event-a",
+          cohortId: "cohort-a",
+          title: "Encontro da turma",
+          description: "Revisão coletiva",
+          startsAt: deadline,
+          endsAt: new Date(deadline.getTime() + 60 * 60_000),
+          allDay: false,
+          color: "#6B5B64",
+        },
+      ],
     });
 
     const dashboard = await getPlannerDashboard("member-qa", { start, end });
@@ -147,5 +160,6 @@ describe("planner dashboard reads", () => {
       },
     ]);
     expect(dashboard.lessonReleases).toHaveLength(1);
+    expect(dashboard.cohortEvents).toHaveLength(1);
   });
 });

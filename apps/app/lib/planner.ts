@@ -716,7 +716,7 @@ export const getPlannerDashboard = async (
           },
         }),
       ])
-    : [{ activities: [], lessonReleases: [] }, []];
+    : [{ activities: [], lessonReleases: [], cohortEvents: [] }, []];
 
   const intervalSeconds = studyTrackingSessions.length
     ? await database.studyActivityInterval.groupBy({
@@ -929,6 +929,7 @@ export const getPlannerDashboard = async (
     meetings,
     activities: assignedActivities,
     lessonReleases: calendar.lessonReleases,
+    cohortEvents: calendar.cohortEvents,
     studySessions: calendarStudySessions,
     goals,
     preferences,

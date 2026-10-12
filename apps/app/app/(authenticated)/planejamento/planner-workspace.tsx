@@ -30,6 +30,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { cohortCalendarEventDateRange } from "@/lib/cohort-calendar-domain";
 import type { getPlannerDashboard } from "@/lib/planner";
 import {
   changePlannerTaskStatusAction,
@@ -209,6 +210,72 @@ const minutesAtTimezone = (value: Date, timezone: string) => {
     Number(parts.find((part) => part.type === type)?.value ?? 0);
   return read("hour") * 60 + read("minute");
 };
+
+const cohortEventEndMinute = (
+  event: {
+    readonly allDay: boolean;
+    readonly endsAt: Date | null;
+  },
+  timezone: string,
+  dayKey: string
+) => {
+  if (event.allDay || !event.endsAt) {
+    return null;
+  }
+  if (dateKeyInTimezone(event.endsAt, timezone) !== dayKey) {
+    return 1440;
+  }
+  return minutesAtTimezone(event.endsAt, timezone);
+};
+
+const cohortEventCalendarRecords = (
+  events: readonly PlannerData["cohortEvents"][number][],
+  timezone: string,
+  visibleStartKey: string,
+  visibleEndKey: string
+) =>
+  events.flatMap((cohortEvent) => {
+    const eventDates = cohortCalendarEventDateRange(cohortEvent, timezone);
+    const firstKey =
+      eventDates.first < visibleStartKey ? visibleStartKey : eventDates.first;
+    const lastKey =
+      eventDates.last > visibleEndKey ? visibleEndKey : eventDates.last;
+    if (firstKey > lastKey) {
+      return [];
+    }
+
+    const firstDate = dateFromKey(firstKey);
+    const dayCount =
+      Math.floor(
+        (dateFromKey(lastKey).getTime() - firstDate.getTime()) / 86_400_000
+      ) + 1;
+    return Array.from({ length: dayCount }, (_, index) => {
+      const dayKey = localDateKey(addUtcDays(firstDate, index));
+      const isFirstDay = dayKey === eventDates.first;
+      const isLastDay = dayKey === eventDates.last;
+      let startMinute: number | null = null;
+      if (!cohortEvent.allDay) {
+        startMinute = isFirstDay
+          ? minutesAtTimezone(cohortEvent.startsAt, timezone)
+          : 0;
+      }
+      let endMinute: number | null = null;
+      if (!cohortEvent.allDay && cohortEvent.endsAt) {
+        endMinute = isLastDay
+          ? cohortEventEndMinute(cohortEvent, timezone, dayKey)
+          : 1440;
+      }
+      return {
+        key: `cohort-event:${cohortEvent.id}:${dayKey}`,
+        dateKey: dayKey,
+        startMinute,
+        endMinute,
+        kind: "cohortEvent" as const,
+        title: cohortEvent.title,
+        cohortEvent,
+      };
+    });
+  });
 
 interface CalendarBlockPlacement {
   readonly key: string;
@@ -948,6 +1015,7 @@ function PlannerWorkspaceContent({
     tasks: true,
     events: true,
     meetings: true,
+    cohortEvents: true,
     activities: true,
     lessonReleases: true,
     studySessions: true,
@@ -1606,6 +1674,10 @@ function PlannerWorkspaceContent({
       )
     );
     const visibleDays = 42;
+    const visibleStartKey = localDateKey(visibleStart);
+    const visibleEndKey = localDateKey(
+      addUtcDays(visibleStart, visibleDays - 1)
+    );
     const goalRecords = Array.from({ length: visibleDays }, (_, index) => {
       const date = addUtcDays(visibleStart, index);
       const dayKey = localDateKey(date);
@@ -1691,6 +1763,14 @@ function PlannerWorkspaceContent({
             };
           })
         : []),
+      ...(enabledLayers.cohortEvents
+        ? cohortEventCalendarRecords(
+            currentData.cohortEvents,
+            timezone,
+            visibleStartKey,
+            visibleEndKey
+          )
+        : []),
       ...(enabledLayers.activities
         ? currentData.activities.map((activity) => ({
             key: `activity:${activity.id}`,
@@ -1729,6 +1809,7 @@ function PlannerWorkspaceContent({
   }, [
     calendarFocusDate,
     currentData.activities,
+    currentData.cohortEvents,
     currentData.events,
     currentData.goals,
     currentData.lessonReleases,
@@ -1897,6 +1978,21 @@ function PlannerWorkspaceContent({
               meeting={record.meeting}
             />
           </a>
+        );
+      case "cohortEvent":
+        return (
+          <div
+            className="block w-full truncate rounded-md border-[#6B5B64] border-l-2 bg-[#F1EBEE] px-2 py-1.5 text-left text-[#51424A] text-xs"
+            key={record.key}
+            title={record.cohortEvent.description ?? "Evento da turma"}
+          >
+            <span className="font-medium">{record.title}</span>
+            {record.cohortEvent.allDay ? null : (
+              <span className="ml-1">
+                {calendarTime(record.cohortEvent.startsAt)}
+              </span>
+            )}
+          </div>
         );
       default:
         return null;
@@ -2536,6 +2632,11 @@ function PlannerWorkspaceContent({
     const gridStart = sundayFor(monthStart);
     const layers = [
       { key: "meetings", label: "Encontros", color: "#8C1535" },
+      {
+        key: "cohortEvents",
+        label: "Eventos da turma",
+        color: "#6B5B64",
+      },
       { key: "activities", label: "Atividades", color: "#D62839" },
       {
         key: "lessonReleases",
@@ -2556,6 +2657,7 @@ function PlannerWorkspaceContent({
       string
     > = {
       meeting: "#8C1535",
+      cohortEvent: "#6B5B64",
       activity: "#D62839",
       lessonRelease: "#456D58",
       task: "#410230",
@@ -2846,6 +2948,11 @@ function PlannerWorkspaceContent({
                 {(
                   [
                     { key: "meetings", label: "Encontros", color: "#8C1535" },
+                    {
+                      key: "cohortEvents",
+                      label: "Eventos da turma",
+                      color: "#6B5B64",
+                    },
                     {
                       key: "activities",
                       label: "Atividades",

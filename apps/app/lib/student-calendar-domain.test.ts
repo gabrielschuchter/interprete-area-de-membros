@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  resolveStudentCalendarCohortEvents,
   resolveStudentCalendarLessonReleases,
+  type StudentCalendarCohortEventCandidate,
+  type StudentCalendarEventMembership,
   type StudentCalendarReleaseCandidate,
   type StudentCalendarReleaseMembership,
 } from "./student-calendar-domain";
@@ -201,5 +204,134 @@ describe("student calendar lesson releases", () => {
         at
       )[0]?.releaseAt
     ).toEqual(releaseAt);
+  });
+});
+
+const calendarEvent = (
+  overrides: Partial<StudentCalendarCohortEventCandidate> = {}
+): StudentCalendarCohortEventCandidate => ({
+  id: "event-a",
+  cohortId: "cohort-a",
+  title: "Encontro da turma",
+  description: "Revisão coletiva",
+  startsAt: releaseAt,
+  endsAt: new Date("2026-10-20T13:00:00.000Z"),
+  allDay: false,
+  color: "#6B5B64",
+  createdAt: new Date("2026-09-15T12:00:00.000Z"),
+  publishedAt: new Date("2026-09-15T12:00:00.000Z"),
+  status: "PUBLISHED",
+  ...overrides,
+});
+
+const eventMembership = (
+  overrides: Partial<StudentCalendarEventMembership> = {}
+): StudentCalendarEventMembership => ({
+  cohortId: "cohort-a",
+  joinedAt: new Date("2026-09-10T12:00:00.000Z"),
+  includePastReadOnly: false,
+  cohort: {
+    archivedAt: null,
+    endsAt: null,
+    lateJoinPolicy: "ALL_ACTIVE",
+    readAfterEndDays: 90,
+    startsAt: new Date("2026-09-01T00:00:00.000Z"),
+  },
+  ...overrides,
+});
+
+describe("student calendar cohort events", () => {
+  it("projects published events overlapping the requested range for current members", () => {
+    expect(
+      resolveStudentCalendarCohortEvents(
+        [
+          calendarEvent(),
+          calendarEvent({
+            id: "event-draft",
+            status: "DRAFT",
+          }),
+        ],
+        [eventMembership()],
+        range,
+        at
+      )
+    ).toEqual([
+      {
+        id: "event-a",
+        cohortId: "cohort-a",
+        title: "Encontro da turma",
+        description: "Revisão coletiva",
+        startsAt: releaseAt,
+        endsAt: new Date("2026-10-20T13:00:00.000Z"),
+        allDay: false,
+        color: "#6B5B64",
+      },
+    ]);
+  });
+
+  it("honors late-join policy, ended-event consent, and cohort read window", () => {
+    const eventCreatedBeforeJoin = calendarEvent({
+      createdAt: new Date("2026-09-01T12:00:00.000Z"),
+      publishedAt: new Date("2026-09-01T12:00:00.000Z"),
+    });
+    expect(
+      resolveStudentCalendarCohortEvents(
+        [eventCreatedBeforeJoin],
+        [
+          eventMembership({
+            cohort: {
+              ...eventMembership().cohort,
+              lateJoinPolicy: "FROM_JOIN",
+            },
+          }),
+        ],
+        range,
+        at
+      )
+    ).toEqual([]);
+
+    const eventEndedBeforeJoin = calendarEvent({
+      startsAt: new Date("2026-09-02T12:00:00.000Z"),
+      endsAt: new Date("2026-09-02T13:00:00.000Z"),
+      createdAt: new Date("2026-09-01T12:00:00.000Z"),
+      publishedAt: new Date("2026-09-01T12:00:00.000Z"),
+    });
+    const pastRange = {
+      start: new Date("2026-09-01T00:00:00.000Z"),
+      end: new Date("2026-09-30T23:59:59.999Z"),
+    };
+    expect(
+      resolveStudentCalendarCohortEvents(
+        [eventEndedBeforeJoin],
+        [eventMembership({ includePastReadOnly: true })],
+        pastRange,
+        at
+      )
+    ).toHaveLength(1);
+    expect(
+      resolveStudentCalendarCohortEvents(
+        [eventEndedBeforeJoin],
+        [eventMembership()],
+        pastRange,
+        at
+      )
+    ).toEqual([]);
+
+    expect(
+      resolveStudentCalendarCohortEvents(
+        [calendarEvent()],
+        [
+          eventMembership({
+            cohort: {
+              ...eventMembership().cohort,
+              endsAt: new Date("2026-07-01T00:00:00.000Z"),
+              readAfterEndDays: 90,
+            },
+          }),
+        ],
+        range,
+        at
+      )
+    ).toEqual([]);
   });
 });

@@ -339,10 +339,18 @@ on a server request.
 - The planner lets learners hide or show the “Aulas liberadas” layer. The
   `.ics` endpoint stays `private, no-store` so later fetches observe revoked
   membership and token changes.
-- Activity deadlines and lesson releases still have fixed caps of 200 with no
-  continuation UI. Cohort meetings and `CohortEvent` are not included yet.
-- The planner measured 223.0 KiB gzip across 17 initial chunks, under the
-  225 KiB budget. This does not establish latency: authenticated query behavior,
-  ≤1 s first usable content p95, visual/mobile QA, and the shared ≤100 ms
-  feedback, ≤500 ms committed mutation, and ≤300 ms warmed navigation budgets
-  remain unverified without local PostgreSQL QA.
+- Published `CohortEvent` rows now join the member's active cohort calendar
+  projection, subject to join policy and the cohort read window. Drafts and
+  archived events remain private. All-day items preserve the São Paulo date in
+  the private `.ics` feed, with an exclusive `DTEND`; management loads the
+  visible 42-day range in database pages of 50. Cohort meetings still need
+  cohort targets and recurrence integration.
+- Activity deadlines, lesson releases, and student cohort events are still
+  capped at 200 per source without continuation UI. The planner measured
+  223.9 KiB gzip across 17 initial chunks, under its 225 KiB budget; multi-day
+  events now appear on every day in the visible range. The management calendar
+  route has a 225 KiB budget and measured 217.0 KiB across 17 chunks. This does
+  not establish latency: authenticated query behavior, ≤1 s first usable
+  content p95, visual/mobile QA, and the shared ≤100 ms feedback, ≤500 ms
+  committed mutation, and ≤300 ms warmed navigation budgets remain unverified
+  without local PostgreSQL QA.

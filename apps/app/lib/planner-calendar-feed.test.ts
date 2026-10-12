@@ -88,6 +88,7 @@ describe("planner calendar feed", () => {
         },
       ],
       lessonReleases: [],
+      cohortEvents: [],
       tasks: [],
       studySessions: [],
       goals: [],
@@ -133,6 +134,7 @@ describe("planner calendar feed", () => {
           href: "/aprender/cursos/curso-clinico/escuta-inicial",
         },
       ],
+      cohortEvents: [],
       tasks: [],
       studySessions: [],
       goals: [],
@@ -154,5 +156,53 @@ describe("planner calendar feed", () => {
       description: "Aula liberada na sua turma.",
       url: "https://members.example/aprender/cursos/curso-clinico/escuta-inicial",
     });
+  });
+
+  it("keeps an all-day cohort event on its São Paulo date range in the private feed", async () => {
+    const startsAt = new Date("2026-10-21T03:00:00.000Z");
+    const endsAt = new Date("2026-10-23T03:00:00.000Z");
+    mocks.getPlannerDashboard.mockResolvedValue({
+      events: [],
+      meetings: [],
+      activities: [],
+      lessonReleases: [],
+      cohortEvents: [
+        {
+          id: "event-a",
+          cohortId: "cohort-a",
+          title: "Evento da turma",
+          description: "Revisão coletiva",
+          startsAt,
+          endsAt,
+          allDay: true,
+          color: "#6B5B64",
+        },
+      ],
+      tasks: [],
+      studySessions: [],
+      goals: [],
+      preferences: { timezone: "America/Los_Angeles" },
+    });
+
+    const result = await getPlannerCalendarFeedItems(
+      "member-a",
+      new Date("2026-10-01T00:00:00.000Z"),
+      new Date("2026-11-01T00:00:00.000Z"),
+      "https://members.example"
+    );
+
+    expect(result.items).toContainEqual({
+      uid: "cohort-event-event-a",
+      title: "Evento da turma",
+      startsAt,
+      endsAt: new Date("2026-10-24T03:00:00.000Z"),
+      allDay: true,
+      timezone: "America/Sao_Paulo",
+      description: "Revisão coletiva",
+      url: "https://members.example/planejamento",
+    });
+    const ics = serializePlannerCalendarFeed(result.items, result.timezone);
+    expect(ics).toContain("DTSTART;VALUE=DATE:20261021\r\n");
+    expect(ics).toContain("DTEND;VALUE=DATE:20261024\r\n");
   });
 });
