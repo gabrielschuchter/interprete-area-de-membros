@@ -7,6 +7,7 @@ const { databaseMock } = vi.hoisted(() => ({
     $queryRaw: vi.fn(),
     activitySubmission: { findFirst: vi.fn() },
     contentCollection: { findFirst: vi.fn() },
+    learningPath: { findFirst: vi.fn() },
     libraryItem: { findFirst: vi.fn() },
     member: { findUnique: vi.fn() },
     profile: { findUnique: vi.fn() },
@@ -26,6 +27,10 @@ const communityAttachmentPath =
   "community-assets/attachments/member-owner/reference.pdf";
 const collectionCoverPath =
   "community-assets/covers/member-owner/collection-cover.webp";
+const learningPathCoverPath =
+  "community-assets/covers/member-owner/learning-path-cover.webp";
+const libraryLearningPathCoverPath =
+  "library-assets/library-owner/learning-path-cover.webp";
 
 describe("member asset read authorization", () => {
   beforeEach(() => {
@@ -35,6 +40,7 @@ describe("member asset read authorization", () => {
     databaseMock.$queryRaw.mockResolvedValue([]);
     databaseMock.activitySubmission.findFirst.mockResolvedValue(null);
     databaseMock.contentCollection.findFirst.mockResolvedValue(null);
+    databaseMock.learningPath.findFirst.mockResolvedValue(null);
     databaseMock.libraryItem.findFirst.mockResolvedValue(null);
   });
 
@@ -79,6 +85,46 @@ describe("member asset read authorization", () => {
 
     await expect(
       canReadMemberAssetPath(collectionCoverPath, "member-reader")
+    ).resolves.toBe(true);
+  });
+
+  test("allows members to read a published learning path cover", async () => {
+    databaseMock.learningPath.findFirst.mockResolvedValueOnce({ id: "path-1" });
+
+    await expect(
+      canReadMemberAssetPath(learningPathCoverPath, "member-reader")
+    ).resolves.toBe(true);
+    expect(databaseMock.learningPath.findFirst).toHaveBeenCalledWith({
+      where: {
+        coverUrl: `/api/member-assets?path=${encodeURIComponent(learningPathCoverPath)}`,
+        status: "PUBLISHED",
+      },
+      select: { id: true },
+    });
+  });
+
+  test("does not expose an unreferenced learning path cover", async () => {
+    await expect(
+      canReadMemberAssetPath(learningPathCoverPath, "member-reader")
+    ).resolves.toBe(false);
+    expect(databaseMock.learningPath.findFirst).toHaveBeenCalledWith({
+      where: {
+        coverUrl: `/api/member-assets?path=${encodeURIComponent(learningPathCoverPath)}`,
+        status: "PUBLISHED",
+      },
+      select: { id: true },
+    });
+  });
+
+  test("keeps a library image readable when a published path uses it as a cover", async () => {
+    databaseMock.libraryItem.findFirst.mockResolvedValueOnce({
+      createdBy: "another-member",
+      status: "ARCHIVED",
+    });
+    databaseMock.learningPath.findFirst.mockResolvedValueOnce({ id: "path-1" });
+
+    await expect(
+      canReadMemberAssetPath(libraryLearningPathCoverPath, "member-reader")
     ).resolves.toBe(true);
   });
 

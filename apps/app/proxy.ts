@@ -29,6 +29,10 @@ const shouldProxyClerkRequests = shouldProxyClerkFrontendApi(
   process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
 );
 const sessionTaskPath = "/session-tasks";
+const loopbackHostnames = new Set(["localhost", "127.0.0.1", "[::1]"]);
+const useDevelopmentTestAuth =
+  process.env.NODE_ENV === "development" &&
+  process.env.GESTAO_DEV_AUTH === "true";
 const protectedRoutePrefixes = [
   "/",
   "/onboarding",
@@ -98,96 +102,124 @@ const redirectLegacyAppHost = (req: NextRequest) => {
 // Clerk middleware wraps other middleware in its callback
 // For apps using Clerk, compose middleware inside authMiddleware callback
 // For apps without Clerk, use createNEMO for composition (see apps/web)
-export default authMiddleware(
-  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: the middleware coordinates Clerk auth states, proxy routing and canonical host redirects in one ordered request boundary
-  async (auth, req) => {
-    if (
-      shouldBlockRequestDuringWriteFreeze({
-        method: req.method,
-        pathname: req.nextUrl.pathname,
-        enabled: env.APP_WRITE_FREEZE === "true",
-        clerkFrontendApiProxy: isClerkFrontendApiProxyPath(
-          req.nextUrl.pathname
-        ),
-      })
-    ) {
-      return createWriteFreezeResponse(req);
-    }
+const clerkProxy = useDevelopmentTestAuth
+  ? null
+  : authMiddleware(
+      // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: the middleware coordinates Clerk auth states, proxy routing and canonical host redirects in one ordered request boundary
+      async (auth, req) => {
+        if (
+          shouldBlockRequestDuringWriteFreeze({
+            method: req.method,
+            pathname: req.nextUrl.pathname,
+            enabled: env.APP_WRITE_FREEZE === "true",
+            clerkFrontendApiProxy: isClerkFrontendApiProxyPath(
+              req.nextUrl.pathname
+            ),
+          })
+        ) {
+          return createWriteFreezeResponse(req);
+        }
 
-    // Keep one visible application host. The legacy alias remains available
-    // only long enough to redirect users to the current production project.
-    if (
-      req.nextUrl.hostname === legacyAppHost &&
-      !req.nextUrl.pathname.startsWith(clerkProxyPrefix)
-    ) {
-      return redirectLegacyAppHost(req);
-    }
+        // Keep one visible application host. The legacy alias remains available
+        // only long enough to redirect users to the current production project.
+        if (
+          req.nextUrl.hostname === legacyAppHost &&
+          !req.nextUrl.pathname.startsWith(clerkProxyPrefix)
+        ) {
+          return redirectLegacyAppHost(req);
+        }
 
-    // Keep the commonly used /login URL compatible with the custom Clerk UI.
-    // The sign-in layout sends authenticated users straight back to the app.
-    if (req.nextUrl.pathname === "/login") {
-      const url = req.nextUrl.clone();
-      url.pathname = "/sign-in";
-      return NextResponse.redirect(url, 308);
-    }
+        // Keep the commonly used /login URL compatible with the custom Clerk UI.
+        // The sign-in layout sends authenticated users straight back to the app.
+        if (req.nextUrl.pathname === "/login") {
+          const url = req.nextUrl.clone();
+          url.pathname = "/sign-in";
+          return NextResponse.redirect(url, 308);
+        }
 
-    // Validate and refresh the Clerk session before protected pages render.
-    // Route handlers keep their own 401/403 behavior and are guarded server-side.
-    if (
-      isProtectedRoute(req.nextUrl.pathname) ||
-      isAuthenticationEntryRoute(req.nextUrl.pathname)
-    ) {
-      const authState = await auth();
+        // Validate and refresh the Clerk session before protected pages render.
+        // Route handlers keep their own 401/403 behavior and are guarded server-side.
+        if (
+          isProtectedRoute(req.nextUrl.pathname) ||
+          isAuthenticationEntryRoute(req.nextUrl.pathname)
+        ) {
+          const authState = await auth();
 
-      if (authState.sessionStatus === "pending") {
-        const returnPath = isProtectedRoute(req.nextUrl.pathname)
-          ? getSafeInternalPath(
-              `${req.nextUrl.pathname}${req.nextUrl.search}`,
+          if (authState.sessionStatus === "pending") {
+            const returnPath = isProtectedRoute(req.nextUrl.pathname)
+              ? getSafeInternalPath(
+                  `${req.nextUrl.pathname}${req.nextUrl.search}`,
+                  req.nextUrl.origin
+                )
+              : getAuthRedirectPath(req.url);
+
+            return redirectToSessionTask(req, returnPath);
+          }
+
+          if (
+            isAuthenticationEntryRoute(req.nextUrl.pathname) &&
+            authState.isAuthenticated
+          ) {
+            return NextResponse.redirect(
+              new URL(getAuthRedirectPath(req.url), req.url)
+            );
+          }
+
+          if (isProtectedRoute(req.nextUrl.pathname)) {
+            await auth.protect();
+          }
+        }
+
+        // An interrupted Clerk task must stay resumable instead of bouncing between
+        // the protected app and the sign-in page.
+        if (isSessionTaskRoute(req.nextUrl.pathname)) {
+          const authState = await auth();
+
+          if (authState.sessionStatus !== "pending") {
+            const returnPath = getSafeInternalPath(
+              req.nextUrl.searchParams.get("redirect_url") ?? "/",
               req.nextUrl.origin
-            )
-          : getAuthRedirectPath(req.url);
+            );
 
-        return redirectToSessionTask(req, returnPath);
-      }
+            return NextResponse.redirect(
+              new URL(
+                authState.isAuthenticated
+                  ? returnPath
+                  : getSignInPath(returnPath),
+                req.url
+              )
+            );
+          }
+        }
 
-      if (
-        isAuthenticationEntryRoute(req.nextUrl.pathname) &&
-        authState.isAuthenticated
-      ) {
-        return NextResponse.redirect(
-          new URL(getAuthRedirectPath(req.url), req.url)
-        );
-      }
+        return securityHeaders();
+      },
+      { frontendApiProxy: { enabled: shouldProxyClerkRequests } }
+    );
 
-      if (isProtectedRoute(req.nextUrl.pathname)) {
-        await auth.protect();
-      }
-    }
+const developmentTestAuthProxy = (req: NextRequest) => {
+  const host = req.nextUrl.hostname.toLowerCase();
+  if (!loopbackHostnames.has(host)) {
+    return new NextResponse(null, { status: 404 });
+  }
 
-    // An interrupted Clerk task must stay resumable instead of bouncing between
-    // the protected app and the sign-in page.
-    if (isSessionTaskRoute(req.nextUrl.pathname)) {
-      const authState = await auth();
+  if (
+    shouldBlockRequestDuringWriteFreeze({
+      method: req.method,
+      pathname: req.nextUrl.pathname,
+      enabled: env.APP_WRITE_FREEZE === "true",
+      clerkFrontendApiProxy: isClerkFrontendApiProxyPath(req.nextUrl.pathname),
+    })
+  ) {
+    return createWriteFreezeResponse(req);
+  }
 
-      if (authState.sessionStatus !== "pending") {
-        const returnPath = getSafeInternalPath(
-          req.nextUrl.searchParams.get("redirect_url") ?? "/",
-          req.nextUrl.origin
-        );
+  return securityHeaders();
+};
 
-        return NextResponse.redirect(
-          new URL(
-            authState.isAuthenticated ? returnPath : getSignInPath(returnPath),
-            req.url
-          )
-        );
-      }
-    }
-
-    return securityHeaders();
-  },
-  { frontendApiProxy: { enabled: shouldProxyClerkRequests } }
-) as unknown as NextProxy;
+export default (useDevelopmentTestAuth
+  ? developmentTestAuthProxy
+  : clerkProxy) as unknown as NextProxy;
 
 export const config = {
   matcher: [

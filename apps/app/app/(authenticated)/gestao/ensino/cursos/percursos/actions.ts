@@ -192,6 +192,256 @@ const learningPathHref = (pathId: string, page: number, state?: string) => {
   return `/gestao/ensino/cursos/percursos/${pathId}${query ? `?${query}` : ""}`;
 };
 
+type LearningPathCourseMembership = "add" | "remove";
+
+const assertPathCanChangeMembership = (
+  path: { readonly status: ContentStatus; readonly updatedAt: Date } | null,
+  expectedVersion: Date,
+  confirmed: boolean
+) => {
+  if (!path) {
+    throw new LearningPathNotFound();
+  }
+  if (path.updatedAt.getTime() !== expectedVersion.getTime()) {
+    throw new LearningPathConflict();
+  }
+  if (path.status === ContentStatus.PUBLISHED && !confirmed) {
+    throw new LearningPathNeedsPublishedConfirmation();
+  }
+};
+
+const assertCourseCanChangeMembership = (
+  course: {
+    readonly experience: CourseExperience;
+    readonly learningPathId: string | null;
+    readonly updatedAt: Date;
+  } | null,
+  input: {
+    readonly expectedVersion: Date;
+    readonly membership: LearningPathCourseMembership;
+    readonly pathId: string;
+  }
+) => {
+  const expectedPathId = input.membership === "add" ? null : input.pathId;
+  if (
+    !course ||
+    course.experience !== CourseExperience.ASYNC ||
+    course.updatedAt.getTime() !== input.expectedVersion.getTime() ||
+    course.learningPathId !== expectedPathId
+  ) {
+    throw new LearningPathConflict();
+  }
+};
+
+const claimPathVersion = async (
+  transaction: Prisma.TransactionClient,
+  pathId: string,
+  expectedVersion: Date
+) => {
+  const updated = await transaction.learningPath.updateMany({
+    where: { id: pathId, updatedAt: expectedVersion },
+    data: {
+      updatedAt: new Date(Math.max(Date.now(), expectedVersion.getTime() + 1)),
+    },
+  });
+  if (updated.count !== 1) {
+    throw new LearningPathConflict();
+  }
+};
+
+const nextPathCoursePosition = async (
+  transaction: Prisma.TransactionClient,
+  pathId: string
+) => {
+  const lastCourse = await transaction.course.findFirst({
+    where: {
+      learningPathId: pathId,
+      experience: CourseExperience.ASYNC,
+    },
+    orderBy: [{ position: "desc" }, { id: "desc" }],
+    select: { position: true },
+  });
+  return (lastCourse?.position ?? -1) + 1;
+};
+
+const persistPathCourseMembership = async (
+  transaction: Prisma.TransactionClient,
+  input: {
+    readonly courseId: string;
+    readonly expectedCourseVersion: Date;
+    readonly expectedPathVersion: Date;
+    readonly membership: LearningPathCourseMembership;
+    readonly pathId: string;
+    readonly publishedChangeConfirmed: boolean;
+  }
+) => {
+  const path = await transaction.learningPath.findUnique({
+    where: { id: input.pathId },
+    select: { status: true, updatedAt: true },
+  });
+  assertPathCanChangeMembership(
+    path,
+    input.expectedPathVersion,
+    input.publishedChangeConfirmed
+  );
+  const course = await transaction.course.findUnique({
+    where: { id: input.courseId },
+    select: {
+      experience: true,
+      learningPathId: true,
+      updatedAt: true,
+    },
+  });
+  assertCourseCanChangeMembership(course, {
+    expectedVersion: input.expectedCourseVersion,
+    membership: input.membership,
+    pathId: input.pathId,
+  });
+
+  // Claim the path version before selecting a unique position. Competing edits
+  // then fail on this version, or serialize against the same row lock.
+  await claimPathVersion(transaction, input.pathId, input.expectedPathVersion);
+  const position =
+    input.membership === "add"
+      ? await nextPathCoursePosition(transaction, input.pathId)
+      : 0;
+  const changed = await transaction.course.updateMany({
+    where: {
+      id: input.courseId,
+      updatedAt: input.expectedCourseVersion,
+      experience: CourseExperience.ASYNC,
+      learningPathId: input.membership === "add" ? null : input.pathId,
+    },
+    data:
+      input.membership === "add"
+        ? { learningPathId: input.pathId, position }
+        : { learningPathId: null },
+  });
+  if (changed.count !== 1) {
+    throw new LearningPathConflict();
+  }
+};
+
+const changeGestaoLearningPathCourseMembership = async (
+  formData: FormData,
+  membership: LearningPathCourseMembership
+): Promise<never> => {
+  const pathId = text(formData, "pathId");
+  const { actor } = await requireGestaoAction(
+    "content.manage",
+    pathId ? { contentId: pathId } : {}
+  );
+  await consumeMutationRateLimit({
+    action: "admin.mutation",
+    memberId: actor.userId,
+  });
+  const courseId = text(formData, "courseId");
+  const requestedPage = Number(text(formData, "page"));
+  const page =
+    Number.isSafeInteger(requestedPage) && requestedPage > 0
+      ? requestedPage
+      : 1;
+  const expectedPathVersion = new Date(text(formData, "expectedPathUpdatedAt"));
+  const expectedCourseVersion = new Date(
+    text(formData, "expectedCourseUpdatedAt")
+  );
+  const key = readIdempotencyKey(formData.get("idempotencyKey"));
+  const confirmPublishedChange =
+    formData.get("confirmPublishedChange") === "on";
+  if (
+    !pathId ||
+    pathId.length > 128 ||
+    !courseId ||
+    courseId.length > 128 ||
+    !Number.isFinite(expectedPathVersion.getTime()) ||
+    !Number.isFinite(expectedCourseVersion.getTime()) ||
+    !key
+  ) {
+    redirect(
+      pathId
+        ? learningPathHref(pathId, page, "associacao-conflito")
+        : "/gestao/ensino/cursos?aba=percursos"
+    );
+  }
+
+  const eventType =
+    membership === "add"
+      ? "gestao.learning-path.course-added"
+      : "gestao.learning-path.course-removed";
+  const fingerprint = inputHash({
+    confirmPublishedChange,
+    courseId,
+    expectedCourseVersion: expectedCourseVersion.toISOString(),
+    expectedPathVersion: expectedPathVersion.toISOString(),
+    membership,
+    pathId,
+  });
+  const operationKey = eventKey(actor.userId, key);
+  let failureCode: string | null = null;
+  try {
+    await database.$transaction(
+      async (transaction) => {
+        const replay = await matchingReplay(transaction, {
+          actorId: actor.userId,
+          aggregateId: pathId,
+          eventKey: operationKey,
+          eventType,
+          requestHash: fingerprint,
+        });
+        if (replay) {
+          return;
+        }
+        await persistPathCourseMembership(transaction, {
+          courseId,
+          expectedCourseVersion,
+          expectedPathVersion,
+          membership,
+          pathId,
+          publishedChangeConfirmed: confirmPublishedChange,
+        });
+        await recordPathEvent(transaction, {
+          actorId: actor.userId,
+          aggregateId: pathId,
+          eventKey: operationKey,
+          eventType,
+          requestHash: fingerprint,
+          details: { courseId, membership },
+        });
+      },
+      { isolationLevel: "Serializable" }
+    );
+  } catch (error) {
+    if (error instanceof LearningPathNotFound) {
+      failureCode = "nao-encontrado";
+    } else if (error instanceof LearningPathNeedsPublishedConfirmation) {
+      failureCode = "associacao-nao-confirmada";
+    } else if (
+      error instanceof LearningPathConflict ||
+      isUniqueConstraintError(error) ||
+      (typeof error === "object" &&
+        error !== null &&
+        "code" in error &&
+        error.code === "P2034")
+    ) {
+      failureCode = "associacao-conflito";
+    } else {
+      failureCode = "associacao-erro";
+    }
+  }
+  if (failureCode) {
+    redirect(learningPathHref(pathId, page, failureCode));
+  }
+
+  revalidateLearningPaths(pathId);
+  redirect(learningPathHref(pathId, page));
+};
+
+export const addGestaoLearningPathCourse = async (formData: FormData) =>
+  changeGestaoLearningPathCourseMembership(formData, "add");
+
+export const removeGestaoLearningPathCourse = async (formData: FormData) =>
+  changeGestaoLearningPathCourseMembership(formData, "remove");
+
 export const createGestaoLearningPath = async (
   _previousState: GestaoLearningPathFormState,
   formData: FormData
@@ -260,7 +510,11 @@ export const updateGestaoLearningPath = async (
   _previousState: GestaoLearningPathFormState,
   formData: FormData
 ): Promise<GestaoLearningPathFormState> => {
-  const { actor } = await requireGestaoAction("content.manage");
+  const pathId = text(formData, "pathId");
+  const { actor } = await requireGestaoAction(
+    "content.manage",
+    pathId ? { contentId: pathId } : {}
+  );
   await consumeMutationRateLimit({
     action: "admin.mutation",
     memberId: actor.userId,
@@ -269,7 +523,6 @@ export const updateGestaoLearningPath = async (
   if (!parsed.ok) {
     return errorState(parsed.message, parsed.fieldErrors);
   }
-  const pathId = text(formData, "pathId");
   const requestedPage = Number(text(formData, "page"));
   const page =
     Number.isSafeInteger(requestedPage) && requestedPage > 0
@@ -313,6 +566,7 @@ export const updateGestaoLearningPath = async (
             title: true,
             slug: true,
             description: true,
+            coverUrl: true,
             status: true,
             updatedAt: true,
           },
@@ -326,7 +580,8 @@ export const updateGestaoLearningPath = async (
         const contentChanged =
           current.title !== parsed.input.title ||
           current.slug !== parsed.input.slug ||
-          current.description !== parsed.input.description;
+          current.description !== parsed.input.description ||
+          current.coverUrl !== parsed.input.coverUrl;
         if (
           current.status === ContentStatus.PUBLISHED &&
           contentChanged &&
@@ -363,12 +618,15 @@ export const updateGestaoLearningPath = async (
 export const changeGestaoLearningPathStatus = async (
   formData: FormData
 ): Promise<never> => {
-  const { actor } = await requireGestaoAction("content.manage");
+  const pathId = text(formData, "pathId");
+  const { actor } = await requireGestaoAction(
+    "content.manage",
+    pathId ? { contentId: pathId } : {}
+  );
   await consumeMutationRateLimit({
     action: "admin.mutation",
     memberId: actor.userId,
   });
-  const pathId = text(formData, "pathId");
   const requestedPage = Number(text(formData, "page"));
   const page =
     Number.isSafeInteger(requestedPage) && requestedPage > 0
@@ -464,12 +722,15 @@ export const changeGestaoLearningPathStatus = async (
 export const moveGestaoLearningPathCourse = async (
   formData: FormData
 ): Promise<never> => {
-  const { actor } = await requireGestaoAction("content.manage");
+  const pathId = text(formData, "pathId");
+  const { actor } = await requireGestaoAction(
+    "content.manage",
+    pathId ? { contentId: pathId } : {}
+  );
   await consumeMutationRateLimit({
     action: "admin.mutation",
     memberId: actor.userId,
   });
-  const pathId = text(formData, "pathId");
   const requestedPage = Number(text(formData, "page"));
   const page =
     Number.isSafeInteger(requestedPage) && requestedPage > 0
@@ -609,6 +870,17 @@ export const moveGestaoLearningPathCourse = async (
           data: { position: neighbor.position },
         });
         if (currentMoved.count !== 1) {
+          throw new LearningPathConflict();
+        }
+        const pathVersionMoved = await transaction.learningPath.updateMany({
+          where: { id: pathId, updatedAt: expectedPathVersion },
+          data: {
+            updatedAt: new Date(
+              Math.max(Date.now(), expectedPathVersion.getTime() + 1)
+            ),
+          },
+        });
+        if (pathVersionMoved.count !== 1) {
           throw new LearningPathConflict();
         }
         await recordPathEvent(transaction, {

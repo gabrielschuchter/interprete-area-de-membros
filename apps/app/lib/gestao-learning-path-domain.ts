@@ -1,4 +1,10 @@
-export type GestaoLearningPathField = "title" | "slug" | "description";
+import { isAllowedCollectionCoverUrl } from "@/lib/collection-covers";
+
+export type GestaoLearningPathField =
+  | "title"
+  | "slug"
+  | "description"
+  | "coverUrl";
 
 export interface GestaoLearningPathFormState {
   readonly fieldErrors?: Partial<Record<GestaoLearningPathField, string>>;
@@ -8,6 +14,7 @@ export interface GestaoLearningPathFormState {
 }
 
 export interface GestaoLearningPathWriteInput {
+  readonly coverUrl: string | null;
   readonly description: string | null;
   readonly slug: string;
   readonly title: string;
@@ -32,6 +39,7 @@ export const parseGestaoLearningPathWrite = (
   const title = value(formData.get("title"));
   const slug = value(formData.get("slug")).toLowerCase();
   const description = value(formData.get("description"));
+  const coverUrl = value(formData.get("coverUrl"));
   const fieldErrors: Partial<Record<GestaoLearningPathField, string>> = {};
 
   if (title.length < 2 || title.length > 120) {
@@ -44,6 +52,12 @@ export const parseGestaoLearningPathWrite = (
   if (description.length > 5000) {
     fieldErrors.description = "A descrição pode ter até 5.000 caracteres.";
   }
+  if (
+    coverUrl.length > 2000 ||
+    (coverUrl.length > 0 && !isAllowedCollectionCoverUrl(coverUrl))
+  ) {
+    fieldErrors.coverUrl = "Escolha uma capa válida da biblioteca.";
+  }
 
   if (Object.keys(fieldErrors).length > 0) {
     return {
@@ -55,6 +69,7 @@ export const parseGestaoLearningPathWrite = (
 
   return {
     input: {
+      coverUrl: coverUrl || null,
       description: description || null,
       slug,
       title,

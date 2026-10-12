@@ -56,8 +56,13 @@ interface GestaoShellProperties {
   readonly children: ReactNode;
   readonly displayName: string;
   readonly email: string | null;
+  readonly localQaAuth: boolean;
   readonly memberId: string;
   readonly role: GestaoRole;
+}
+
+interface GestaoShellViewProperties extends GestaoShellProperties {
+  readonly signOut?: ReturnType<typeof useClerk>["signOut"];
 }
 
 interface NavigationItem {
@@ -217,18 +222,19 @@ const GestaoNavigationEntry = ({
     </div>
   );
 };
-export const GestaoShell = ({
+const GestaoShellView = ({
   avatarUrl,
   children,
   displayName,
   email,
+  localQaAuth,
   memberId,
   role,
-}: GestaoShellProperties) => {
+  signOut,
+}: GestaoShellViewProperties) => {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { signOut } = useClerk();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [welcomeOpen, setWelcomeOpen] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
@@ -239,6 +245,8 @@ export const GestaoShell = ({
   const heading =
     navigation.find((item) => isActivePath(pathname, item.href))?.label ??
     "Gestão";
+  const isPathDetail = pathname.startsWith("/gestao/ensino/cursos/percursos/");
+  const isCoursesIndex = pathname === "/gestao/ensino/cursos";
 
   useEffect(() => {
     try {
@@ -334,6 +342,9 @@ export const GestaoShell = ({
   );
 
   const handleSignOut = async () => {
+    if (localQaAuth || !signOut) {
+      return;
+    }
     setIsSigningOut(true);
     try {
       await signOut({ redirectUrl: "/sign-in" });
@@ -342,6 +353,8 @@ export const GestaoShell = ({
       setIsSigningOut(false);
     }
   };
+  const signedOutLabel = isSigningOut ? "Saindo…" : "Sair";
+  const signOutLabel = localQaAuth ? "Sair (sessão QA fixa)" : signedOutLabel;
   const gestaoHref = (href: string) => withGestaoReturnPath(href, returnTo);
 
   return (
@@ -439,8 +452,11 @@ export const GestaoShell = ({
             <DropdownMenuItem asChild>
               <Link href="/perfil">Meu perfil</Link>
             </DropdownMenuItem>
-            <DropdownMenuItem disabled={isSigningOut} onSelect={handleSignOut}>
-              {isSigningOut ? "Saindo…" : "Sair"}
+            <DropdownMenuItem
+              disabled={isSigningOut || localQaAuth}
+              onSelect={handleSignOut}
+            >
+              {signOutLabel}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -470,12 +486,20 @@ export const GestaoShell = ({
                 <Link href="/gestao">Gestão</Link>
                 <span aria-hidden="true">›</span>
                 <Link href="/gestao/ensino/cursos">Ensino</Link>
-                {pathname === "/gestao/ensino/cursos" ? (
+                {isPathDetail && (
+                  <>
+                    <span aria-hidden="true">›</span>
+                    <Link href="/gestao/ensino/cursos">Cursos e percursos</Link>
+                    <span aria-hidden="true">›</span>
+                    <span aria-current="page">Percursos</span>
+                  </>
+                )}
+                {isCoursesIndex && (
                   <>
                     <span aria-hidden="true">›</span>
                     <span aria-current="page">Cursos e percursos</span>
                   </>
-                ) : null}
+                )}
               </nav>
             ) : (
               <span className="gestao-topbar-section">{heading}</span>
@@ -538,6 +562,25 @@ export const GestaoShell = ({
     </div>
   );
 };
+
+const ClerkGestaoShell = (
+  properties: Omit<GestaoShellProperties, "localQaAuth">
+) => {
+  const { signOut } = useClerk();
+  return (
+    <GestaoShellView {...properties} localQaAuth={false} signOut={signOut} />
+  );
+};
+
+export const GestaoShell = ({
+  localQaAuth,
+  ...properties
+}: GestaoShellProperties) =>
+  localQaAuth ? (
+    <GestaoShellView {...properties} localQaAuth />
+  ) : (
+    <ClerkGestaoShell {...properties} />
+  );
 
 export const GestaoPageHeading = ({
   eyebrow,

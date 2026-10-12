@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { collectionCoverPresets } from "@/lib/collection-covers";
 import {
   isGestaoLearningPathStatusTransitionAllowed,
   parseGestaoLearningPathWrite,
@@ -24,6 +25,7 @@ describe("parseGestaoLearningPathWrite", () => {
       )
     ).toEqual({
       input: {
+        coverUrl: null,
         description: "Uma jornada.",
         slug: "fundamentos-pbe",
         title: "Fundamentos da PBE",
@@ -46,6 +48,34 @@ describe("parseGestaoLearningPathWrite", () => {
       title: "Informe um título entre 2 e 120 caracteres.",
       slug: "Use letras minúsculas, números e hífens, sem hífen no início ou no fim.",
       description: "A descrição pode ter até 5.000 caracteres.",
+    });
+  });
+
+  it("accepts a controlled cover and rejects an unsafe cover URL", () => {
+    const valid = parseGestaoLearningPathWrite(
+      pathForm({
+        title: "Fundamentos da PBE",
+        slug: "fundamentos-pbe",
+        description: "",
+        coverUrl: collectionCoverPresets[0].value,
+      })
+    );
+    expect(valid).toMatchObject({
+      ok: true,
+      input: { coverUrl: collectionCoverPresets[0].value },
+    });
+
+    const invalid = parseGestaoLearningPathWrite(
+      pathForm({
+        title: "Fundamentos da PBE",
+        slug: "fundamentos-pbe",
+        description: "",
+        coverUrl: "javascript:alert(1)",
+      })
+    );
+    expect(invalid).toMatchObject({
+      ok: false,
+      fieldErrors: { coverUrl: "Escolha uma capa válida da biblioteca." },
     });
   });
 });

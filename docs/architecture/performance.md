@@ -677,7 +677,7 @@ the PostgreSQL catalog in groups of 20. Search, status, course, and due-date
 filters run in the database. Submission and direct-assignment counts are
 grouped only for the current page; teacher-visible rows are scoped to active
 members of the teacher's active cohorts. Cohort, course, and library selectors
-are capped at 200 options, and direct student search pages 20 results at a
+are capped at 200 options, and direct student search pages 8 results at a
 time. Activity details select at most 200 direct recipients and the current
 rubric version. The Gestão preview reads saved content without updating
 learner progress.
@@ -902,11 +902,15 @@ are rechecked server-side. No schema migration is needed; existing
 `LearningPath`, `Course.position`, and content authorization remain canonical.
 
 The create and edit routes each have an explicit 225 KiB initial-JavaScript
-budget. The local production build measures the editor at 213.5 KiB gzip and
-the create page at 213.4 KiB across 17 initial chunks each. Authenticated
-database latency, transaction concurrency, and visual/mobile comparison still
-require the isolated PostgreSQL QA environment; these bundle gates do not
-establish those acceptance criteria.
+budget. The production build measures the editor at 215.5 KiB gzip and the
+create page at 215.4 KiB across 17 initial chunks each. The detail page now
+offers eight candidates per SQL page; attach and detach reuse
+the existing path/course models and verify versions, authorization, published
+path confirmation, and idempotency in the write transaction. An isolated local
+PostgreSQL QA session verified add, reload, confirmed removal, and reload with
+the original association preserved. This does not establish real Clerk
+behavior, authenticated latency percentiles, concurrency under representative
+data, or visual/mobile acceptance; those gates remain open.
 
 ### Gestão exercise bank lists
 

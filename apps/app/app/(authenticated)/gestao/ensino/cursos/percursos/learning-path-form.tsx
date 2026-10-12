@@ -5,6 +5,7 @@ import { Input } from "@repo/design-system/components/ui/input";
 import { Textarea } from "@repo/design-system/components/ui/textarea";
 import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
+import { CollectionCoverPicker } from "@/components/gestao/collection-cover-picker";
 import type { GestaoLearningPathFormState } from "@/lib/gestao-learning-path-domain";
 
 type PathAction = (
@@ -23,12 +24,19 @@ const SavePathButton = () => {
 
 export const LearningPathForm = ({
   action,
+  coverOptions,
   idempotencyKey,
   path,
 }: {
   readonly action: PathAction;
+  readonly coverOptions: readonly {
+    readonly id: string;
+    readonly label: string;
+    readonly url: string;
+  }[];
   readonly idempotencyKey: string;
   readonly path?: {
+    readonly coverUrl: string | null;
     readonly description: string | null;
     readonly id: string;
     readonly published: boolean;
@@ -38,6 +46,8 @@ export const LearningPathForm = ({
     readonly updatedAt: string;
   };
 }) => {
+  const [currentIdempotencyKey, setCurrentIdempotencyKey] =
+    useState(idempotencyKey);
   const [draft, setDraft] = useState({
     description: path?.description ?? "",
     expectedUpdatedAt: path?.updatedAt ?? "",
@@ -68,7 +78,7 @@ export const LearningPathForm = ({
       <input
         name="idempotencyKey"
         type="hidden"
-        value={state.idempotencyKey ?? idempotencyKey}
+        value={currentIdempotencyKey}
       />
       <label className="ge-path-field" htmlFor="path-title">
         <span>Título</span>
@@ -79,9 +89,13 @@ export const LearningPathForm = ({
           id="path-title"
           maxLength={120}
           name="title"
-          onChange={(event) =>
-            setDraft((current) => ({ ...current, title: event.target.value }))
-          }
+          onChange={(event) => {
+            setDraft((current) => ({
+              ...current,
+              title: event.target.value,
+            }));
+            setCurrentIdempotencyKey(globalThis.crypto.randomUUID());
+          }}
           placeholder="Ex.: Fundamentos da PBE"
           required
           value={draft.title}
@@ -92,34 +106,41 @@ export const LearningPathForm = ({
           </small>
         ) : null}
       </label>
-      <label className="ge-path-field" htmlFor="path-slug">
-        <span>Endereço</span>
-        <div className="ge-path-slug-input">
-          <span aria-hidden="true">/aprender/trilhas/</span>
-          <Input
-            aria-describedby={slugError ? "path-slug-error" : undefined}
-            aria-invalid={Boolean(slugError)}
-            autoCapitalize="none"
-            autoComplete="off"
-            id="path-slug"
-            maxLength={120}
-            name="slug"
-            onChange={(event) =>
-              setDraft((current) => ({ ...current, slug: event.target.value }))
-            }
-            pattern="[a-z0-9]+(-[a-z0-9]+)*"
-            placeholder="fundamentos-da-pbe"
-            required
-            spellCheck={false}
-            value={draft.slug}
-          />
-        </div>
-        {slugError ? (
-          <small className="ge-path-error" id="path-slug-error">
-            {slugError}
-          </small>
-        ) : null}
-      </label>
+      <details className="ge-path-advanced-field" open={!path}>
+        <summary>Endereço público</summary>
+        <label className="ge-path-field" htmlFor="path-slug">
+          <span>Endereço</span>
+          <div className="ge-path-slug-input">
+            <span aria-hidden="true">/aprender/trilhas/</span>
+            <Input
+              aria-describedby={slugError ? "path-slug-error" : undefined}
+              aria-invalid={Boolean(slugError)}
+              autoCapitalize="none"
+              autoComplete="off"
+              id="path-slug"
+              maxLength={120}
+              name="slug"
+              onChange={(event) => {
+                setDraft((current) => ({
+                  ...current,
+                  slug: event.target.value,
+                }));
+                setCurrentIdempotencyKey(globalThis.crypto.randomUUID());
+              }}
+              pattern="[a-z0-9]+(-[a-z0-9]+)*"
+              placeholder="fundamentos-da-pbe"
+              required
+              spellCheck={false}
+              value={draft.slug}
+            />
+          </div>
+          {slugError ? (
+            <small className="ge-path-error" id="path-slug-error">
+              {slugError}
+            </small>
+          ) : null}
+        </label>
+      </details>
       <label className="ge-path-field" htmlFor="path-description">
         <span>Descrição</span>
         <Textarea
@@ -130,12 +151,13 @@ export const LearningPathForm = ({
           id="path-description"
           maxLength={5000}
           name="description"
-          onChange={(event) =>
+          onChange={(event) => {
             setDraft((current) => ({
               ...current,
               description: event.target.value,
-            }))
-          }
+            }));
+            setCurrentIdempotencyKey(globalThis.crypto.randomUUID());
+          }}
           placeholder="O que esta jornada ajuda a compreender?"
           rows={5}
           value={draft.description}
@@ -146,6 +168,22 @@ export const LearningPathForm = ({
           </small>
         ) : null}
       </label>
+      <fieldset className="gco-cover-fieldset">
+        <legend>Capa</legend>
+        <CollectionCoverPicker
+          coverOptions={coverOptions}
+          initialUrl={path?.coverUrl ?? ""}
+          mutationStatus={state.status}
+          onValueChange={() =>
+            setCurrentIdempotencyKey(globalThis.crypto.randomUUID())
+          }
+        />
+        {state.fieldErrors?.coverUrl ? (
+          <small className="ge-path-error" role="alert">
+            {state.fieldErrors.coverUrl}
+          </small>
+        ) : null}
+      </fieldset>
       {path?.published ? (
         <label className="ge-path-confirm">
           <input name="confirmPublishedChange" required type="checkbox" />

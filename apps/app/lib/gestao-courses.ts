@@ -7,12 +7,14 @@ import {
   MemberRole,
   type Prisma,
 } from "@repo/database";
+import { collectionCoverPresets } from "./collection-covers";
 import { requireGestaoAction } from "./gestao-authorization";
 import {
   gestaoCourseStatusWhere,
   normalizeGestaoCourseFilters,
   resolveGestaoCourseState,
 } from "./gestao-course-catalog";
+import { memberAssetUrl } from "./member-storage";
 
 const pageSize = 25;
 const activeMemberships = {
@@ -223,13 +225,56 @@ export const listGestaoLearningPaths = async (input: {
 };
 
 export const gestaoLearningPathCoursePageSize = 25;
+export const gestaoLearningPathCandidatePageSize = 8;
+
+export const getGestaoLearningPathCoverOptions = async () => {
+  await requireGestaoAction("content.manage");
+  const files = await database.libraryItem.findMany({
+    where: {
+      status: ContentStatus.PUBLISHED,
+      storagePath: { not: null },
+      mimeType: { in: ["image/jpeg", "image/png", "image/webp"] },
+    },
+    orderBy: [{ title: "asc" }, { id: "asc" }],
+    take: 50,
+    select: { id: true, title: true, storagePath: true },
+  });
+  return [
+    ...collectionCoverPresets.map((cover) => ({
+      id: cover.value,
+      label: cover.label,
+      url: cover.value,
+    })),
+    ...files.flatMap((file) =>
+      file.storagePath
+        ? [
+            {
+              id: file.id,
+              label: file.title,
+              url: memberAssetUrl(file.storagePath),
+            },
+          ]
+        : []
+    ),
+  ];
+};
 
 export const getGestaoLearningPath = async (
   pathId: string,
-  requestedPage?: string
+  requestedPage?: string,
+  candidateQueryValue?: string,
+  requestedCandidatePage?: string
 ) => {
   await requireGestaoAction("content.manage", { contentId: pathId });
-  const [path, totalCourses] = await Promise.all([
+  const candidateQuery = candidateQueryValue?.trim().slice(0, 100) ?? "";
+  const candidateWhere: Prisma.CourseWhereInput = {
+    learningPathId: null,
+    experience: CourseExperience.ASYNC,
+    ...(candidateQuery
+      ? { title: { contains: candidateQuery, mode: "insensitive" } }
+      : {}),
+  };
+  const [path, totalCourses, publishedCourseCount] = await Promise.all([
     database.learningPath.findUnique({
       where: { id: pathId },
       select: {
@@ -237,12 +282,20 @@ export const getGestaoLearningPath = async (
         title: true,
         slug: true,
         description: true,
+        coverUrl: true,
         status: true,
         updatedAt: true,
       },
     }),
     database.course.count({
       where: { learningPathId: pathId, experience: CourseExperience.ASYNC },
+    }),
+    database.course.count({
+      where: {
+        learningPathId: pathId,
+        experience: CourseExperience.ASYNC,
+        status: ContentStatus.PUBLISHED,
+      },
     }),
   ]);
   if (!path) {
@@ -257,6 +310,23 @@ export const getGestaoLearningPath = async (
     Number.isSafeInteger(requested) && requested > 0
       ? Math.min(requested, totalPages)
       : 1;
+  const candidateTotal = await database.course.count({ where: candidateWhere });
+  const candidateTotalPages = Math.max(
+    1,
+    Math.ceil(candidateTotal / gestaoLearningPathCandidatePageSize)
+  );
+  const requestedCandidates = Number(requestedCandidatePage);
+  const candidatePage =
+    Number.isSafeInteger(requestedCandidates) && requestedCandidates > 0
+      ? Math.min(requestedCandidates, candidateTotalPages)
+      : 1;
+  const candidateCourses = await database.course.findMany({
+    where: candidateWhere,
+    orderBy: [{ title: "asc" }, { id: "asc" }],
+    skip: (candidatePage - 1) * gestaoLearningPathCandidatePageSize,
+    take: gestaoLearningPathCandidatePageSize,
+    select: { id: true, title: true, status: true, updatedAt: true },
+  });
   const courses = await database.course.findMany({
     where: {
       learningPathId: pathId,
@@ -301,10 +371,17 @@ export const getGestaoLearningPath = async (
   ]);
   return {
     ...path,
+    candidateCourses,
+    candidatePage,
+    candidatePageSize: gestaoLearningPathCandidatePageSize,
+    candidateQuery,
+    candidateTotal,
+    candidateTotalPages,
     courses,
     nextCourse,
     page,
     pageSize: gestaoLearningPathCoursePageSize,
+    publishedCourseCount,
     previousCourse,
     totalCourses,
     totalPages,

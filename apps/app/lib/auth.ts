@@ -17,6 +17,15 @@ export type MemberAuthResult = Pick<
   memberSnapshot?: Awaited<ReturnType<typeof getMemberIdentitySnapshot>>;
 };
 
+if (
+  process.env.GESTAO_DEV_AUTH === "true" &&
+  process.env.NODE_ENV !== "development"
+) {
+  throw new Error(
+    "GESTAO_DEV_AUTH is available only in the local development runtime."
+  );
+}
+
 export const getMemberIdentitySnapshot = cache(async (userId: string) =>
   database.member.findUnique({
     where: { id: userId },
@@ -32,6 +41,31 @@ export const getMemberIdentitySnapshot = cache(async (userId: string) =>
 );
 
 export const getAuth = cache(async (): Promise<MemberAuthResult> => {
+  if (process.env.NODE_ENV === "development") {
+    const { getDevelopmentAuthSession } = await import("./development-auth");
+    const developmentSession = await getDevelopmentAuthSession();
+
+    if (developmentSession) {
+      const member = await tracePerformance("member.auth.snapshot", () =>
+        getMemberIdentitySnapshot(developmentSession.userId)
+      );
+
+      if (!member) {
+        throw new Error(
+          "GESTAO_DEV_AUTH_USER_ID must identify a seeded local QA member."
+        );
+      }
+
+      return {
+        ...applyMemberDeactivation(
+          developmentSession,
+          Boolean(member.deactivatedAt)
+        ),
+        memberSnapshot: member.deactivatedAt ? null : member,
+      };
+    }
+  }
+
   const session = await tracePerformance("member.auth.clerk", () =>
     clerkAuth()
   );

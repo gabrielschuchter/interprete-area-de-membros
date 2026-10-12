@@ -2,11 +2,13 @@ import { randomUUID } from "node:crypto";
 import { Button } from "@repo/design-system/components/ui/button";
 import Link from "next/link";
 import { requireGestaoAction } from "@/lib/gestao-authorization";
+import { getGestaoLearningPathCoverOptions } from "@/lib/gestao-courses";
 import { createGestaoLearningPath } from "../actions";
 import { LearningPathForm } from "../learning-path-form";
 
 const NewGestaoLearningPathPage = async () => {
   await requireGestaoAction("content.manage");
+  const coverOptions = await getGestaoLearningPathCoverOptions();
   const idempotencyKey = randomUUID();
   return (
     <section className="ge-courses-page ge-path-editor-page">
@@ -41,6 +43,7 @@ const NewGestaoLearningPathPage = async () => {
           </div>
           <LearningPathForm
             action={createGestaoLearningPath}
+            coverOptions={coverOptions}
             idempotencyKey={idempotencyKey}
           />
         </section>

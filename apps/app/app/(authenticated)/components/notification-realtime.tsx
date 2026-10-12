@@ -24,6 +24,14 @@ export const NotificationRealtime = ({
   onStatusChange,
 }: NotificationRealtimeProperties) => {
   useEffect(() => {
+    if (
+      process.env.NODE_ENV === "development" &&
+      process.env.NEXT_PUBLIC_GESTAO_DEV_AUTH === "true"
+    ) {
+      onStatusChange(false);
+      return;
+    }
+
     let disposed = false;
     let connecting = false;
     let retryCount = 0;

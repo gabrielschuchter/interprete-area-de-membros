@@ -4,8 +4,8 @@
 
 ## Estado geral
 - Branch: `gestao-v2`
-- Fase atual: 2 — turmas e resolvers (Aprender e Planejamento/`.ics` já projetam atividades e liberações de aulas; encontros/eventos, paginação, QA visual/runtime e persistência local continuam pendentes). Há entregas parciais anteriores da Fase 3, sem avançar seu aceite.
-- Último commit de implementação verificado: `9498351` (liberações de aulas por turma no Planejamento e `.ics`; QA autenticado pendente)
+- Fase atual: 3 — Ensino (trilhas parciais; PostgreSQL local de QA com sessão de teste explícita disponível; a associação curso-percurso foi persistida e retestada em navegador; identidade Clerk real, outras jornadas e aceite visual/runtime permanecem pendentes)
+- Último commit de implementação verificado: `515241a` (quadro GCursoTurmas; esta unidade do quadro 52 segue em alterações locais, sem commit ainda)
 - Orçamento/contexto: (preencher se relevante)
 
 ## Fases
@@ -205,3 +205,12 @@ Esta unidade estende `resolveCalendar` sem criar outro modelo: primeiro consulta
 Verificação desta unidade: 15 testes focados em quatro arquivos passaram; `check` (851 arquivos), `typecheck` (16 tarefas), `boundaries` (798 arquivos), `test` (547 app, 17 domínio, 9 API; 27 scripts passaram e 1 harness aposentado foi ignorado), `build` (8 tarefas), `performance:check` e `git diff --check` passaram. O build mediu `planner` em 223,0 KiB gzip / 17 chunks, abaixo do teto de 225 KiB. A consulta de liberações começa pelas matrículas do membro, evitando varrer e truncar as primeiras 200 liberações globais antes de aplicar autorização.
 
 Não houve conexão com banco, aplicação de migration, usuário autenticado de QA, comparação de PNG, medição de latência ou deployment. O runtime ainda precisa provar membership/revogação no PostgreSQL local; a consulta mantém o limite de 200 e não oferece continuação. Nenhum controle visual novo teve comparação quadro a quadro. Fase 2 e todos os quadros seguem abertos.
+
+
+## Atualização de execução — 12/10/2026 — quadro 52 (continua IN PROGRESS)
+
+O editor de percurso em `/gestao/ensino/cursos/percursos/[pathId]` agora permite incluir cursos por seletor SQL paginado de 8 opções e remover com confirmação explícita quando o percurso está publicado; os botões exibem estado pendente até o commit. Reutiliza `LearningPath` e `Course.position`; as ações verificam papel/escopo, versão e idempotência e registram auditoria/outbox na transação. Nenhuma migration foi criada.
+
+No PostgreSQL local de QA, com TLS validado, migrations e fixtures explicitamente locais, a sessão local de professor concluiu incluir → recarregar → confirmar remoção → recarregar; o curso original continuou vinculado e o candidato voltou a ficar desvinculado. O teste usa `GESTAO_DEV_AUTH` restrito a `NODE_ENV=development` e hosts de loopback, requer um `Member` existente e não representa Clerk real. A busca nos JS gerados não encontrou o ID do fixture nem símbolos do helper executável; o guard de produção permanece fail-closed. Nenhum banco remoto, Production ou deploy foi alterado.
+
+Os gates passaram neste estado: `bun run check` (885 arquivos), `typecheck` (16 tarefas), `boundaries` (832 arquivos), `test` (584 app, 17 domínio, 9 API; 27 scripts passaram e 1 harness aposentado foi ignorado), `build` (8 tarefas), `performance:check` e `git diff --check`. O editor de percurso mede 215,5 KiB gzip/17 chunks, abaixo de 225 KiB. Teste de overflow não encontrou rolagem horizontal nos seis tamanhos desktop/tablet/mobile exercitados. O navegador não conseguiu capturar screenshot por timeout de `Page.captureScreenshot`; por isso não há sobreposição, diff de pixels nem aceite visual do quadro 52. Também permanecem pendentes Clerk real, latências percentis, concorrência com dados representativos e as demais jornadas da Fase 3. Nenhuma fase ou quadro foi marcado como concluído.

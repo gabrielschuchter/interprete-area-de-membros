@@ -15,6 +15,7 @@ type AuthProviderProperties = ComponentProps<typeof ClerkProvider> & {
 };
 
 export const AuthProvider = ({
+  children,
   privacyUrl,
   termsUrl,
   helpUrl,
@@ -23,6 +24,13 @@ export const AuthProvider = ({
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
   const baseTheme = isDark ? dark : undefined;
+
+  if (
+    process.env.NODE_ENV === "development" &&
+    process.env.NEXT_PUBLIC_GESTAO_DEV_AUTH === "true"
+  ) {
+    return children;
+  }
 
   const options = {
     privacyPageUrl: privacyUrl,
@@ -54,6 +62,8 @@ export const AuthProvider = ({
         "setup-mfa": "/session-tasks",
       }}
       {...(clerkProxyUrl ? { proxyUrl: clerkProxyUrl } : {})}
-    />
+    >
+      {children}
+    </ClerkProvider>
   );
 };

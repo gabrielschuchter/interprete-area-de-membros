@@ -18,6 +18,10 @@ const GestaoLayout = async ({ children }: { readonly children: ReactNode }) => {
       avatarUrl={actor.avatarUrl}
       displayName={actor.displayName ?? "Interprete"}
       email={actor.email}
+      localQaAuth={
+        process.env.NODE_ENV === "development" &&
+        process.env.GESTAO_DEV_AUTH === "true"
+      }
       memberId={actor.userId}
       role={actor.role}
     >

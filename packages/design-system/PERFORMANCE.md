@@ -367,10 +367,13 @@ on a server request.
   key, and an audit event in the same serializable transaction. Published path
   metadata, order, and status changes require explicit confirmation.
 - The create and editor routes each have a 225 KiB gzip JavaScript budget.
-  The current production build measures the editor at 213.5 KiB and create at
-  213.4 KiB across 17 chunks each. Authenticated latency, persistence,
-  concurrency, and visual/mobile acceptance remain separate runtime gates
-  that still require the local PostgreSQL QA environment.
+  The current production build measures the editor at 215.5 KiB and create at
+  215.4 KiB across 17 chunks each. The association picker pages 8 candidates
+  from SQL; attach/detach recheck scope and versions in the write transaction,
+  and published-path removal requires explicit confirmation, and submit buttons expose pending state while the transaction runs. Local PostgreSQL
+  QA verified add/reload/remove/reload persistence using a development-only
+  test session. Real Clerk behavior, latency percentiles, representative-data
+  concurrency, and visual/mobile acceptance remain open gates.
 
 ## Gestão exercise bank lists
 

@@ -140,6 +140,17 @@ const hasPublishedCollectionCoverReference = async (
   return Boolean(collection);
 };
 
+const hasPublishedLearningPathCoverReference = async (path: string) => {
+  const learningPath = await database.learningPath.findFirst({
+    where: {
+      coverUrl: memberAssetUrl(path),
+      status: "PUBLISHED",
+    },
+    select: { id: true },
+  });
+  return Boolean(learningPath);
+};
+
 const canReadProfileAvatar = async (path: string, memberId: string) => {
   const ownerId = ownerIdFromPath(path, profileAvatarPrefix);
   if (!ownerId) {
@@ -241,6 +252,8 @@ export const canReadMemberAssetPath = async (
       ownerId === memberId ||
       (communityPrefix === communityCoverPrefix &&
         (await hasPublishedCollectionCoverReference(path, memberId))) ||
+      (communityPrefix === communityCoverPrefix &&
+        (await hasPublishedLearningPathCoverReference(path))) ||
       hasPublishedCommunityReference(path, memberId)
     );
   }
@@ -252,7 +265,8 @@ export const canReadMemberAssetPath = async (
   if (path.startsWith(libraryPrefix)) {
     return (
       (await canReadLibraryAsset(path, memberId)) ||
-      hasPublishedCollectionCoverReference(path, memberId)
+      (await hasPublishedCollectionCoverReference(path, memberId)) ||
+      (await hasPublishedLearningPathCoverReference(path))
     );
   }
 

@@ -9,6 +9,16 @@ export const GET = async () => {
     return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
   }
 
+  if (
+    process.env.NODE_ENV === "development" &&
+    process.env.GESTAO_DEV_AUTH === "true"
+  ) {
+    return NextResponse.json(
+      { error: "Realtime não está disponível na sessão local de QA." },
+      { status: 503, headers: { "Cache-Control": "private, no-store" } }
+    );
+  }
+
   const member = await database.member.findUnique({
     where: { id: userId },
     select: { onboardingStatus: true },
