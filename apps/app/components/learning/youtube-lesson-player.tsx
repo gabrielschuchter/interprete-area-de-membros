@@ -80,7 +80,9 @@ const loadYouTubeApi = () => {
 
 interface YouTubeLessonPlayerProperties {
   readonly assetId: string;
+  readonly endAtSeconds?: number | null;
   readonly persistProgress?: boolean;
+  readonly startAtSeconds?: number | null;
   readonly studyActivityKind?: "LESSON" | "RECORDING";
   readonly studyResourceId?: string;
   readonly title: string;
@@ -114,9 +116,51 @@ const readPlaybackPosition = (player: YouTubePlayerInstance) => {
   };
 };
 
+const readSavedPlaybackPosition = async (
+  assetId: string,
+  persistProgress: boolean
+) => {
+  if (!persistProgress) {
+    return 0;
+  }
+  const response = await fetch(`/api/learning/assets/${assetId}/progress`, {
+    credentials: "same-origin",
+  });
+  if (!response.ok) {
+    return 0;
+  }
+  const payload = (await response.json()) as {
+    progress?: { positionSeconds?: number } | null;
+  };
+  return Math.max(0, Math.floor(payload.progress?.positionSeconds ?? 0));
+};
+
+const playerVariables = (
+  startAtSeconds: number | null,
+  endAtSeconds: number | null,
+  savedPositionSeconds: number
+) => {
+  const variables: Record<string, number | string> = {
+    autoplay: 1,
+    controls: 1,
+    disablekb: 0,
+    enablejsapi: 1,
+    origin: window.location.origin,
+    playsinline: 1,
+    rel: 0,
+    start: Math.max(startAtSeconds ?? 0, savedPositionSeconds),
+  };
+  if (endAtSeconds !== null) {
+    variables.end = endAtSeconds;
+  }
+  return variables;
+};
+
 export const YouTubeLessonPlayer = ({
   assetId,
+  endAtSeconds = null,
   persistProgress = false,
+  startAtSeconds = null,
   studyActivityKind,
   studyResourceId,
   title,
@@ -196,40 +240,21 @@ export const YouTubeLessonPlayer = ({
     const initialize = async () => {
       try {
         const api = await loadYouTubeApi();
-        let startSeconds = 0;
-        if (persistProgress) {
-          const response = await fetch(
-            `/api/learning/assets/${assetId}/progress`,
-            { credentials: "same-origin" }
-          );
-          if (response.ok) {
-            const payload = (await response.json()) as {
-              progress?: { positionSeconds?: number } | null;
-            };
-            startSeconds = Math.max(
-              0,
-              Math.floor(payload.progress?.positionSeconds ?? 0)
-            );
-          }
-        }
+        const startSeconds = await readSavedPlaybackPosition(
+          assetId,
+          persistProgress
+        );
         if (disposed || !containerRef.current) {
           return;
         }
-
         player = new api.Player(containerRef.current, {
           videoId,
           host: "https://www.youtube-nocookie.com",
-          playerVars: {
-            autoplay: 1,
-            controls: 1,
-            disablekb: 0,
-            enablejsapi: 1,
-            modestbranding: 1,
-            origin: window.location.origin,
-            playsinline: 1,
-            rel: 0,
-            start: startSeconds,
-          },
+          playerVars: playerVariables(
+            startAtSeconds,
+            endAtSeconds,
+            startSeconds
+          ),
           events: {
             onReady: ({ target }) => {
               target.getIframe().title = title;
@@ -258,7 +283,15 @@ export const YouTubeLessonPlayer = ({
       saveProgress().catch(() => undefined);
       player?.destroy();
     };
-  }, [assetId, persistProgress, started, title, videoId]);
+  }, [
+    assetId,
+    endAtSeconds,
+    persistProgress,
+    started,
+    startAtSeconds,
+    title,
+    videoId,
+  ]);
 
   useEffect(
     () => () => {

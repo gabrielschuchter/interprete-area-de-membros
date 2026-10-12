@@ -18,12 +18,17 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin, requireStaff } from "@/lib/authorization";
 import { sanitizeRichDocument } from "@/lib/community-content";
+import { requireGestaoAction } from "@/lib/gestao-authorization";
+import { readIdempotencyKey } from "@/lib/mutation-contract";
 import { consumeMutationRateLimit } from "@/lib/mutation-reliability";
 import {
   notifyAnnouncement,
   notifyLessonAvailable,
   notifyModuleAvailable,
 } from "@/lib/notifications";
+import { getYouTubeDataAdapter } from "@/lib/youtube-adapter";
+import { youtubePublicationIssue } from "@/lib/youtube-publication-policy";
+import { verifyYouTubeVideo } from "@/lib/youtube-verification";
 import { getYoutubeVideoId } from "@/lib/youtube-video";
 
 const PARAGRAPH_SPLIT = /\r?\n\r?\n/;
@@ -1100,6 +1105,9 @@ export const createLessonResource = async (formData: FormData) => {
   });
 
   revalidatePath(`/admin/learning/courses/${lesson.module.courseId}`);
+  revalidatePath(
+    `/gestao/ensino/cursos/${lesson.module.courseId}/aulas/${lessonId}`
+  );
 };
 
 export const updateLessonResource = async (formData: FormData) => {
@@ -1123,7 +1131,9 @@ export const updateLessonResource = async (formData: FormData) => {
   const resource = await database.lessonResource.findUnique({
     where: { id: resourceId },
     select: {
-      lesson: { select: { module: { select: { courseId: true } } } },
+      lesson: {
+        select: { id: true, module: { select: { courseId: true } } },
+      },
     },
   });
   if (!resource) {
@@ -1136,6 +1146,9 @@ export const updateLessonResource = async (formData: FormData) => {
   });
 
   revalidatePath(`/admin/learning/courses/${resource.lesson.module.courseId}`);
+  revalidatePath(
+    `/gestao/ensino/cursos/${resource.lesson.module.courseId}/aulas/${resource.lesson.id}`
+  );
 };
 
 export const removeLessonResource = async (formData: FormData) => {
@@ -1147,7 +1160,9 @@ export const removeLessonResource = async (formData: FormData) => {
 
   const resource = await database.lessonResource.findUnique({
     where: { id: resourceId },
-    select: { lesson: { select: { module: { select: { courseId: true } } } } },
+    select: {
+      lesson: { select: { id: true, module: { select: { courseId: true } } } },
+    },
   });
 
   if (!resource) {
@@ -1156,6 +1171,9 @@ export const removeLessonResource = async (formData: FormData) => {
 
   await database.lessonResource.delete({ where: { id: resourceId } });
   revalidatePath(`/admin/learning/courses/${resource.lesson.module.courseId}`);
+  revalidatePath(
+    `/gestao/ensino/cursos/${resource.lesson.module.courseId}/aulas/${resource.lesson.id}`
+  );
 };
 
 export const moveModule = async (formData: FormData) => {
@@ -1304,17 +1322,402 @@ export const setContentStatus = async (formData: FormData) => {
   }
 
   if (entity === "lesson") {
-    const lesson = await database.lesson.update({
-      where: { id },
-      data: { status, publishedAt, updatedBy: userId },
-      select: { module: { select: { courseId: true } } },
+    await updateLessonStatus({
+      actorId: userId,
+      lessonId: id,
+      status,
+      expectedUpdatedAt: null,
+      requireGestaoMedia: false,
+      idempotencyKey: null,
     });
-    if (status === ContentStatus.PUBLISHED) {
-      await notifyAvailableMembers(AccessResourceType.LESSON, id, userId);
-    }
-    revalidatePath(`/admin/learning/courses/${lesson.module.courseId}`);
-    revalidatePath("/aprender", "page");
   }
+};
+
+interface LessonStatusResult {
+  readonly message: string;
+  readonly status: "saved" | "blocked" | "conflict";
+}
+
+class LessonStatusConflict extends Error {}
+
+const loadLessonStatusVideo = (lessonId: string) =>
+  database.lessonAsset.findFirst({
+    where: { lessonId, kind: "VIDEO" },
+    orderBy: { position: "asc" },
+    select: {
+      id: true,
+      updatedAt: true,
+      mediaProvider: true,
+      mediaExternalId: true,
+      youtubeSourceUrl: true,
+      storagePath: true,
+      externalUrl: true,
+    },
+  });
+
+type LessonStatusVideo = NonNullable<
+  Awaited<ReturnType<typeof loadLessonStatusVideo>>
+>;
+
+const gestaoMediaBlockReason = (
+  lessonKind: LessonKind,
+  videoAsset: LessonStatusVideo | null
+) => {
+  if (lessonKind === LessonKind.VIDEO && !videoAsset) {
+    return "Adicione e salve o vídeo antes de publicar esta aula.";
+  }
+  if (
+    videoAsset?.mediaProvider === LessonAssetMediaProvider.STORAGE &&
+    !videoAsset.storagePath
+  ) {
+    return "Vincule um arquivo de vídeo protegido antes de publicar.";
+  }
+  if (
+    videoAsset?.mediaProvider === LessonAssetMediaProvider.EXTERNAL_URL &&
+    !videoAsset.externalUrl
+  ) {
+    return "Informe uma URL de vídeo válida antes de publicar.";
+  }
+  return null;
+};
+
+const verifyLessonYouTube = async (videoAsset: LessonStatusVideo) => {
+  const sourceUrl =
+    videoAsset.youtubeSourceUrl ??
+    (videoAsset.mediaExternalId
+      ? `https://youtu.be/${videoAsset.mediaExternalId}`
+      : "");
+  const { adapter } = await getYouTubeDataAdapter();
+  const result = await verifyYouTubeVideo(sourceUrl, adapter);
+  const message = youtubePublicationIssue(result);
+  return message === null
+    ? { result, message: null }
+    : { result: null, message };
+};
+
+const hasStatusEventReplay = async (
+  transaction: Prisma.TransactionClient,
+  idempotencyKey: string | null,
+  lessonId: string
+) => {
+  if (!idempotencyKey) {
+    return false;
+  }
+  const event = await transaction.domainEvent.findUnique({
+    where: { idempotencyKey },
+    select: { aggregateId: true },
+  });
+  if (!event) {
+    return false;
+  }
+  if (event.aggregateId !== lessonId) {
+    throw new LessonStatusConflict();
+  }
+  return true;
+};
+
+const writeLessonStatus = async ({
+  actorId,
+  idempotencyKey,
+  lesson,
+  lessonId,
+  status,
+  verifiedYouTube,
+  videoAsset,
+}: {
+  readonly actorId: string;
+  readonly idempotencyKey: string | null;
+  readonly lesson: { readonly updatedAt: Date };
+  readonly lessonId: string;
+  readonly status: ContentStatus;
+  readonly verifiedYouTube: Awaited<
+    ReturnType<typeof verifyYouTubeVideo>
+  > | null;
+  readonly videoAsset: LessonStatusVideo | null;
+}) =>
+  database.$transaction(
+    async (transaction) => {
+      if (await hasStatusEventReplay(transaction, idempotencyKey, lessonId)) {
+        return false;
+      }
+
+      if (videoAsset && verifiedYouTube?.metadata) {
+        const assetUpdate = await transaction.lessonAsset.updateMany({
+          where: {
+            id: videoAsset.id,
+            lessonId,
+            updatedAt: videoAsset.updatedAt,
+          },
+          data: {
+            mediaExternalId: verifiedYouTube.videoId,
+            youtubeVideoTitle: verifiedYouTube.metadata.title,
+            youtubeThumbnailUrl: verifiedYouTube.metadata.thumbnailUrl,
+            youtubePrivacyStatus: verifiedYouTube.metadata.privacyStatus,
+            youtubeEmbeddable: verifiedYouTube.metadata.embeddable,
+            youtubeCaptionsAvailable:
+              verifiedYouTube.metadata.captionsAvailable,
+            youtubeVerificationStatus: verifiedYouTube.status,
+            youtubeCheckedAt: new Date(),
+            durationSeconds: verifiedYouTube.metadata.durationSeconds,
+          },
+        });
+        if (assetUpdate.count !== 1) {
+          throw new LessonStatusConflict();
+        }
+      }
+
+      const publishedAt =
+        status === ContentStatus.PUBLISHED ? new Date() : null;
+      const lessonUpdate = await transaction.lesson.updateMany({
+        where: { id: lessonId, updatedAt: lesson.updatedAt },
+        data: { status, publishedAt, updatedBy: actorId },
+      });
+      if (lessonUpdate.count !== 1) {
+        throw new LessonStatusConflict();
+      }
+
+      if (idempotencyKey) {
+        await transaction.domainEvent.create({
+          data: {
+            eventType: "gestao.lesson.status_changed",
+            actorId,
+            aggregateType: "Lesson",
+            aggregateId: lessonId,
+            idempotencyKey,
+            payload: { status },
+            occurredAt: new Date(),
+          },
+        });
+      }
+      return true;
+    },
+    { isolationLevel: "Serializable" }
+  );
+
+const findLessonStatusReplay = async (
+  idempotencyKey: string | null,
+  lessonId: string
+) => {
+  if (!idempotencyKey) {
+    return null;
+  }
+  const event = await database.domainEvent.findUnique({
+    where: { idempotencyKey },
+    select: { aggregateId: true },
+  });
+  if (!event) {
+    return null;
+  }
+  return event.aggregateId === lessonId
+    ? { status: "saved" as const, message: "Esta alteração já foi salva." }
+    : {
+        status: "conflict" as const,
+        message: "A chave desta ação já foi usada.",
+      };
+};
+
+const verifyLessonPublishMedia = async ({
+  lessonKind,
+  requireGestaoMedia,
+  status,
+  videoAsset,
+}: {
+  readonly lessonKind: LessonKind;
+  readonly requireGestaoMedia: boolean;
+  readonly status: ContentStatus;
+  readonly videoAsset: LessonStatusVideo | null;
+}) => {
+  if (status !== ContentStatus.PUBLISHED) {
+    return { verifiedYouTube: null, failure: null };
+  }
+  const mediaBlockReason = requireGestaoMedia
+    ? gestaoMediaBlockReason(lessonKind, videoAsset)
+    : null;
+  if (mediaBlockReason) {
+    return {
+      verifiedYouTube: null,
+      failure: { status: "blocked" as const, message: mediaBlockReason },
+    };
+  }
+  if (videoAsset?.mediaProvider !== LessonAssetMediaProvider.YOUTUBE) {
+    return { verifiedYouTube: null, failure: null };
+  }
+  const youtubeCheck = await verifyLessonYouTube(videoAsset);
+  if (!youtubeCheck.result) {
+    return {
+      verifiedYouTube: null,
+      failure: {
+        status: "blocked" as const,
+        message: youtubeCheck.message ?? "O vídeo não pode ser publicado.",
+      },
+    };
+  }
+  return { verifiedYouTube: youtubeCheck.result, failure: null };
+};
+
+const isLessonStatusConflict = (error: unknown) =>
+  error instanceof LessonStatusConflict ||
+  (typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error.code === "P2034" || error.code === "P2002"));
+
+const commitLessonStatus = async (input: {
+  readonly actorId: string;
+  readonly idempotencyKey: string | null;
+  readonly lesson: { readonly updatedAt: Date };
+  readonly lessonId: string;
+  readonly status: ContentStatus;
+  readonly verifiedYouTube: Awaited<
+    ReturnType<typeof verifyYouTubeVideo>
+  > | null;
+  readonly videoAsset: LessonStatusVideo | null;
+}) => {
+  try {
+    const didMutate = await writeLessonStatus(input);
+    if (didMutate && input.status === ContentStatus.PUBLISHED) {
+      await notifyAvailableMembers(
+        AccessResourceType.LESSON,
+        input.lessonId,
+        input.actorId
+      );
+    }
+    return null;
+  } catch (error) {
+    if (!isLessonStatusConflict(error)) {
+      throw error;
+    }
+    return {
+      status: "conflict" as const,
+      message: "A aula mudou durante a publicação. Recarregue e tente de novo.",
+    };
+  }
+};
+
+const updateLessonStatus = async ({
+  actorId,
+  expectedUpdatedAt,
+  idempotencyKey,
+  lessonId,
+  requireGestaoMedia,
+  status,
+}: {
+  readonly actorId: string;
+  readonly expectedUpdatedAt: Date | null;
+  readonly idempotencyKey: string | null;
+  readonly lessonId: string;
+  readonly requireGestaoMedia: boolean;
+  readonly status: ContentStatus;
+}): Promise<LessonStatusResult> => {
+  const existingEvent = await findLessonStatusReplay(idempotencyKey, lessonId);
+  if (existingEvent) {
+    return existingEvent;
+  }
+
+  const lesson = await database.lesson.findUnique({
+    where: { id: lessonId },
+    select: {
+      id: true,
+      kind: true,
+      updatedAt: true,
+      module: { select: { courseId: true } },
+    },
+  });
+  if (!lesson) {
+    return { status: "blocked", message: "A aula não foi encontrada." };
+  }
+  if (
+    expectedUpdatedAt &&
+    expectedUpdatedAt.getTime() !== lesson.updatedAt.getTime()
+  ) {
+    return {
+      status: "conflict",
+      message: "A aula mudou em outra aba. Recarregue a versão atual.",
+    };
+  }
+
+  const videoAsset =
+    status === ContentStatus.PUBLISHED
+      ? await loadLessonStatusVideo(lessonId)
+      : null;
+  const mediaCheck = await verifyLessonPublishMedia({
+    lessonKind: lesson.kind,
+    requireGestaoMedia,
+    status,
+    videoAsset,
+  });
+  if (mediaCheck.failure) {
+    return mediaCheck.failure;
+  }
+
+  const commitFailure = await commitLessonStatus({
+    actorId,
+    idempotencyKey,
+    lesson,
+    lessonId,
+    status,
+    verifiedYouTube: mediaCheck.verifiedYouTube,
+    videoAsset,
+  });
+  if (commitFailure) {
+    return commitFailure;
+  }
+
+  revalidatePath(`/admin/learning/courses/${lesson.module.courseId}`);
+  revalidatePath(`/gestao/ensino/cursos/${lesson.module.courseId}`);
+  revalidatePath(
+    `/gestao/ensino/cursos/${lesson.module.courseId}/aulas/${lessonId}`
+  );
+  revalidatePath("/aprender", "page");
+  return {
+    status: "saved",
+    message:
+      status === ContentStatus.PUBLISHED
+        ? "Aula publicada."
+        : "Aula atualizada.",
+  };
+};
+
+export const setGestaoLessonStatus = async (
+  previousState: LessonStatusResult & { readonly idempotencyKey: string },
+  formData: FormData
+): Promise<LessonStatusResult & { readonly idempotencyKey: string }> => {
+  const { actor } = await requireGestaoAction("content.manage");
+  await consumeMutationRateLimit({
+    action: "admin.mutation",
+    memberId: actor.userId,
+  });
+  const lessonId = asText(formData.get("lessonId"));
+  const statusValue = asText(formData.get("status"));
+  const expectedUpdatedAt = new Date(asText(formData.get("expectedUpdatedAt")));
+  const idempotencyKey = readIdempotencyKey(formData.get("idempotencyKey"));
+  if (
+    !(
+      lessonId &&
+      Number.isFinite(expectedUpdatedAt.valueOf()) &&
+      idempotencyKey
+    ) ||
+    (statusValue !== ContentStatus.PUBLISHED &&
+      statusValue !== ContentStatus.ARCHIVED)
+  ) {
+    return {
+      ...previousState,
+      status: "blocked",
+      message: "Confira o estado da aula e tente novamente.",
+    };
+  }
+  const result = await updateLessonStatus({
+    actorId: actor.userId,
+    lessonId,
+    status: statusValue,
+    expectedUpdatedAt,
+    requireGestaoMedia: true,
+    idempotencyKey,
+  });
+  return {
+    ...result,
+    idempotencyKey: result.status === "saved" ? randomUUID() : idempotencyKey,
+  };
 };
 
 const announcementAudienceValues = Object.values(AnnouncementAudience);

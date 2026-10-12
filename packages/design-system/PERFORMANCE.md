@@ -244,3 +244,18 @@ on a server request.
   database/Storage persistence. QA p95 targets remain ≤1 s first content,
   ≤500 ms committed small mutation, ≤300 ms warmed navigation, and ≤100 ms
   visible feedback; no authenticated measurements exist yet.
+
+## Gestão lesson editor and publication
+
+- Keep the lesson edit form and YouTube verification result local while the
+  server checks the current video. Use explicit pending and error states; do
+  not report a successful save or publication before the database commit.
+- The editor preview must use the shared player with learner progress writes
+  disabled. The publication action revalidates YouTube privacy and embedding
+  on the server, checks the lesson version, and uses an idempotency key.
+- Preserve the page's one-video projection and omit private Storage paths from
+  client props. The route measured 218.1 KiB gzip across 17 initial chunks,
+  under its 225 KiB budget. A passing bundle check does not prove authenticated
+  latency or persistence.
+- Provide specific pending labels and an announced publication error so the
+  action responds immediately while the remote verification and write finish.

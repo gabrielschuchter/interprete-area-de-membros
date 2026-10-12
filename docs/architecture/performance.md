@@ -764,3 +764,24 @@ No authenticated PostgreSQL/Storage runtime, persistence, concurrency latency,
 or visual comparison has been measured. The shared budgets remain ≤100 ms
 visible feedback, ≤1 s first usable content p95, ≤500 ms committed small
 mutation p95, and ≤300 ms warmed navigation p95 until QA measurements exist.
+
+### Gestão lesson editor and publication
+
+`/gestao/ensino/cursos/[id]/aulas/[lessonId]` requires `content.manage` on
+every request. Its server projection reads one lesson, its module/course
+labels, the first video asset, and the ordered resources used by the editor;
+the video DTO omits private Storage paths. Saving uses an optimistic lesson
+version and a fresh idempotency key, then revalidates the course, lesson editor,
+and learner surface after commit. Publishing rechecks current YouTube metadata
+on the server, allows only embeddable public/unlisted videos, and stores the
+verification with the versioned publication write. The transaction records the
+Gestão status event; notification delivery remains the existing post-commit
+path and needs conversion to the durable outbox in the cross-cutting phase.
+
+The local production build measured `gestao-lesson-editor` at 218.1 KiB gzip
+across 17 initial chunks, under its 225 KiB budget. The rich-text editor and
+YouTube player load in separate chunks; the player mounts only when an
+instructor opens the preview. This is bundle evidence only: no authenticated
+runtime or PostgreSQL QA service is available here. API-key verification,
+Storage uploads, playback persistence, latency percentiles, and visual
+comparison remain unverified.

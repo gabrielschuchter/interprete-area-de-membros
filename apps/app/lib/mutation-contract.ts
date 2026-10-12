@@ -27,6 +27,7 @@ export const mutationLimits = {
   "library.mutation": { max: 30, windowMs: 60_000 },
   "collection.search": { max: 60, windowMs: 60_000 },
   "collection.mutation": { max: 30, windowMs: 60_000 },
+  "youtube.verify": { max: 20, windowMs: 60_000 },
   "meeting.mutation": { max: 30, windowMs: 60_000 },
   "learning.playback": { max: 30, windowMs: 60_000 },
   "study.heartbeat": { max: 180, windowMs: 60_000 },

@@ -616,6 +616,16 @@ model LessonAsset {
   scope             LessonAssetScope         @default(GENERAL)
   mediaProvider     LessonAssetMediaProvider @default(STORAGE)
   mediaExternalId   String?                  @db.VarChar(64)
+  youtubeSourceUrl  String?                  @db.Text
+  youtubeVideoTitle String?                  @db.Text
+  youtubeThumbnailUrl String?                @db.Text
+  youtubePrivacyStatus String?               @db.VarChar(16)
+  youtubeEmbeddable Boolean?
+  youtubeCaptionsAvailable Boolean?
+  youtubeVerificationStatus String?           @db.VarChar(32)
+  youtubeCheckedAt DateTime?
+  youtubeStartAtSeconds Int?
+  youtubeEndAtSeconds Int?
   storagePath       String?                  @db.Text
   externalUrl       String?                  @db.Text
   mimeType          String?

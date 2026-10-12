@@ -19,6 +19,8 @@ export const env = createEnv({
     security(),
   ],
   server: {
+    YOUTUBE_API_KEY: z.string().min(1).optional(),
+    YOUTUBE_DEVELOPMENT_ADAPTER: z.enum(["true", "false"]).default("false"),
     CRON_SECRET: z.string().min(32).optional(),
     APP_WRITE_FREEZE: z.enum(["true", "false"]).default("false"),
     GESTAO_V2_ENABLED: z.enum(["true", "false"]).default("false"),
@@ -26,6 +28,8 @@ export const env = createEnv({
   },
   client: {},
   runtimeEnv: {
+    YOUTUBE_API_KEY: process.env.YOUTUBE_API_KEY,
+    YOUTUBE_DEVELOPMENT_ADAPTER: process.env.YOUTUBE_DEVELOPMENT_ADAPTER,
     CRON_SECRET: process.env.CRON_SECRET,
     APP_WRITE_FREEZE: process.env.APP_WRITE_FREEZE,
     GESTAO_V2_ENABLED: process.env.GESTAO_V2_ENABLED,

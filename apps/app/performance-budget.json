@@ -95,6 +95,20 @@
       "maxGzipBytes": 230400
     },
     {
+      "route": "gestao-lesson-editor",
+      "manifestSegments": [
+        "(authenticated)",
+        "gestao",
+        "ensino",
+        "cursos",
+        "[id]",
+        "aulas",
+        "[lessonId]"
+      ],
+      "entrySuffix": "apps/app/app/(authenticated)/gestao/ensino/cursos/[id]/aulas/[lessonId]/page",
+      "maxGzipBytes": 230400
+    },
+    {
       "route": "planner",
       "manifestSegments": ["(authenticated)", "planejamento"],
       "entrySuffix": "apps/app/app/(authenticated)/planejamento/page",

@@ -342,6 +342,14 @@ export const AdminCourseEditor = async ({
                           <p className="mt-1 text-muted-foreground text-sm">
                             {lesson.description ?? "Sem descrição"}
                           </p>
+                          {gestao ? (
+                            <Link
+                              className="mt-2 inline-flex text-brand-structural text-xs underline underline-offset-4"
+                              href={`/gestao/ensino/cursos/${course.id}/aulas/${lesson.id}`}
+                            >
+                              Abrir editor completo
+                            </Link>
+                          ) : null}
                         </div>
                         <div className="flex gap-1">
                           <form action={moveLesson}>
