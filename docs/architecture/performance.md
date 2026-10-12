@@ -738,3 +738,29 @@ remain open until the isolated local QA services and fixtures are available.
 The shared targets remain ≤100 ms visible feedback, first usable content p95
 ≤1 s, committed small-mutation p95 ≤500 ms, and warmed navigation p95 ≤300 ms;
 none has been measured for this route in authenticated QA.
+
+### Gestão collection catalog, editor, and preview
+
+`/gestao/ensino/colecoes` checks `content.manage` per request and pages the
+catalog in PostgreSQL at 24 collections per page. Search and status filters run
+in SQL. The editor bounds its resource selectors to 20 results per type and
+loads at most 100 collection items for editing or preview. The preview reads
+the saved collection without writing learner progress. Catalog destinations do
+not prefetch on viewport.
+
+Collection mutations use idempotency keys and optimistic versions; resource
+add/remove operations check the affected-row count inside a serializable
+transaction so a stale concurrent edit rolls back. Domain changes and audit
+events commit together, and successful feedback follows the committed server
+action. Cover uploads use the existing private Storage flow. Asset reads check
+ownership while editing and, for other members, a currently published and
+visible collection. Identity, role, audience, and private asset decisions are
+not persistently cached.
+
+The local production build measured the catalog at 213.9 KiB gzip across 17
+chunks, the editor at 218.5 KiB across 17 chunks, and preview at 211.9 KiB
+across 16 chunks; each is under 225 KiB. These are bundle measurements only.
+No authenticated PostgreSQL/Storage runtime, persistence, concurrency latency,
+or visual comparison has been measured. The shared budgets remain ≤100 ms
+visible feedback, ≤1 s first usable content p95, ≤500 ms committed small
+mutation p95, and ≤300 ms warmed navigation p95 until QA measurements exist.

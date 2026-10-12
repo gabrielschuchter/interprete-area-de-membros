@@ -227,3 +227,20 @@ on a server request.
   shared p95 targets (≤1 s first content, ≤500 ms committed small mutation,
   ≤300 ms warmed navigation) and ≤100 ms visible feedback; no authenticated
   measurement is available for this route yet.
+
+## Gestão collection catalog, editor, and preview
+
+- `/gestao/ensino/colecoes` filters and paginates in PostgreSQL at 24 rows per
+  page. Resource search returns at most 20 results per type; editor and preview
+  read at most 100 collection items. Do not prefetch catalog/editor links on
+  viewport. Preview must stay read-only with respect to learner progress.
+- Mutations carry an idempotency key and optimistic version. Add/remove checks
+  the versioned update count inside a serializable transaction; audit events
+  commit with the collection change. Private cover reads require ownership for
+  drafts or a currently published, audience-visible collection for members.
+- The production build measured 213.9 KiB gzip / 17 chunks for the catalog,
+  218.5 KiB / 17 for the editor, and 211.9 KiB / 16 for preview, all under the
+  225 KiB budget. These figures do not establish authenticated latency or
+  database/Storage persistence. QA p95 targets remain ≤1 s first content,
+  ≤500 ms committed small mutation, ≤300 ms warmed navigation, and ≤100 ms
+  visible feedback; no authenticated measurements exist yet.
