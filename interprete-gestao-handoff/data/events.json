@@ -1,0 +1,102 @@
+{
+ "auditoria": [
+  "role.changed",
+  "access.granted",
+  "access.revoked",
+  "cohort.created",
+  "cohort.updated",
+  "cohort.archived",
+  "cohort.member.added",
+  "cohort.member.removed",
+  "cohort.member.moved",
+  "course.published",
+  "course.unpublished",
+  "course.archived",
+  "lesson.video.changed",
+  "delivery.sent",
+  "delivery.ended",
+  "submission.feedback.sent",
+  "event.published",
+  "notice.published",
+  "medal.updated",
+  "medal.symbol.changed",
+  "settings.published",
+  "integration.connected",
+  "integration.disconnected",
+  "historical.linked"
+ ],
+ "notificacoes": [
+  {
+   "evento": "delivery.sent (ASSIGNMENT)",
+   "para": "destinatários",
+   "canal": "interno + e-mail se a preferência permitir",
+   "texto": "{prof} enviou: {titulo}. Prazo: {data}"
+  },
+  {
+   "evento": "delivery.sent (FEATURE)",
+   "para": "destinatários",
+   "canal": "nenhum por padrão (aparece em Aprender); opcional: aviso",
+   "texto": "—"
+  },
+  {
+   "evento": "submission.feedback.sent",
+   "para": "aluno",
+   "canal": "interno",
+   "texto": "Você recebeu feedback em {atividade}"
+  },
+  {
+   "evento": "submission.received",
+   "para": "responsáveis da turma",
+   "canal": "interno",
+   "texto": "{aluno} entregou {atividade}"
+  },
+  {
+   "evento": "event.published",
+   "para": "participantes",
+   "canal": "interno",
+   "texto": "Novo encontro: {titulo}, {data}"
+  },
+  {
+   "evento": "event.reminder",
+   "para": "participantes",
+   "canal": "interno",
+   "texto": "Seu encontro começa em 30 minutos"
+  },
+  {
+   "evento": "notice.published",
+   "para": "público do aviso",
+   "canal": "interno (sem e-mail nesta fase)",
+   "texto": "{titulo}"
+  },
+  {
+   "evento": "cohort.member.added",
+   "para": "aluno",
+   "canal": "interno",
+   "texto": "Você entrou na turma {turma}"
+  },
+  {
+   "evento": "lesson.release",
+   "para": "turma",
+   "canal": "interno (opcional)",
+   "texto": "Nova aula liberada: {aula}"
+  },
+  {
+   "evento": "youtube.video.unavailable",
+   "para": "responsáveis do curso",
+   "canal": "interno",
+   "texto": "A aula {aula} ficou sem vídeo no YouTube"
+  },
+  {
+   "evento": "medal.awarded",
+   "para": "aluno",
+   "canal": "interno",
+   "texto": "Você conquistou a medalha {medalha}"
+  },
+  {
+   "evento": "access.request",
+   "para": "admins",
+   "canal": "interno",
+   "texto": "{aluno} pediu acesso a {recurso}"
+  }
+ ]
+}

@@ -1,0 +1,430 @@
+{
+ "base": "/gestao",
+ "nota": "Todas as rotas verificam permissão no servidor. Parâmetros globais: ?turma=:id, ?q=, ?pagina=, ?ordem=, ?aba=.",
+ "rotas": [
+  {
+   "path": "/",
+   "tela": "Visão geral",
+   "acesso": "TEACHER|ADMIN",
+   "quadros": [
+    "Main",
+    "GVisaoAdmin",
+    "GVisaoLimpa"
+   ]
+  },
+  {
+   "path": "/ensino/cursos",
+   "tela": "Cursos e percursos",
+   "acesso": "TEACHER|ADMIN",
+   "quadros": [
+    "GCursos",
+    "GPercursos"
+   ]
+  },
+  {
+   "path": "/ensino/cursos/novo",
+   "tela": "Novo curso",
+   "acesso": "course.create"
+  },
+  {
+   "path": "/ensino/cursos/:id",
+   "tela": "Curso",
+   "abas": [
+    "conteudo",
+    "turmas",
+    "configuracoes",
+    "publicacao"
+   ],
+   "acesso": "course.edit (escopo)",
+   "quadros": [
+    "GCurso",
+    "GCursoTurmas"
+   ]
+  },
+  {
+   "path": "/ensino/cursos/:id/aulas/:aulaId",
+   "tela": "Editor de aula",
+   "acesso": "course.edit (escopo)",
+   "quadros": [
+    "GAula",
+    "GAulaYT"
+   ]
+  },
+  {
+   "path": "/ensino/cursos/:id/importar-youtube",
+   "tela": "Importar lista do YouTube",
+   "acesso": "course.edit (escopo)",
+   "quadros": [
+    "GYTImport"
+   ]
+  },
+  {
+   "path": "/ensino/percursos",
+   "tela": "Percursos"
+  },
+  {
+   "path": "/ensino/percursos/:id",
+   "tela": "Percurso"
+  },
+  {
+   "path": "/ensino/exercicios",
+   "tela": "Bancos de exercícios",
+   "quadros": [
+    "GExercicios"
+   ]
+  },
+  {
+   "path": "/ensino/exercicios/bancos/:id",
+   "tela": "Banco"
+  },
+  {
+   "path": "/ensino/exercicios/listas/:id",
+   "tela": "Lista de questões",
+   "quadros": [
+    "GLista"
+   ]
+  },
+  {
+   "path": "/ensino/exercicios/questoes/:id",
+   "tela": "Editor de questão",
+   "quadros": [
+    "GQuestao"
+   ]
+  },
+  {
+   "path": "/ensino/atividades",
+   "tela": "Atividades",
+   "quadros": [
+    "GAtividades"
+   ]
+  },
+  {
+   "path": "/ensino/atividades/:id",
+   "tela": "Atividade",
+   "abas": [
+    "detalhes",
+    "entregas"
+   ],
+   "quadros": [
+    "GAtividade",
+    "GAtividadeEntregas"
+   ]
+  },
+  {
+   "path": "/ensino/biblioteca",
+   "tela": "Biblioteca",
+   "quadros": [
+    "GBiblioteca",
+    "GBibliotecaGrade"
+   ]
+  },
+  {
+   "path": "/ensino/biblioteca/novo",
+   "tela": "Novo material",
+   "quadros": [
+    "GMaterial"
+   ]
+  },
+  {
+   "path": "/ensino/biblioteca/:id",
+   "tela": "Material"
+  },
+  {
+   "path": "/ensino/biblioteca/importar",
+   "tela": "Importar curadoria"
+  },
+  {
+   "path": "/ensino/colecoes",
+   "tela": "Coleções",
+   "quadros": [
+    "GColecoes"
+   ]
+  },
+  {
+   "path": "/ensino/colecoes/:id",
+   "tela": "Coleção",
+   "quadros": [
+    "GColecao"
+   ]
+  },
+  {
+   "path": "/alunos/turmas",
+   "tela": "Turmas",
+   "acesso": "cohort.view (escopo)",
+   "quadros": [
+    "GTurmas"
+   ]
+  },
+  {
+   "path": "/alunos/turmas/nova",
+   "tela": "Nova turma",
+   "acesso": "cohort.manage",
+   "quadros": [
+    "GTurmaNova"
+   ]
+  },
+  {
+   "path": "/alunos/turmas/:id",
+   "tela": "Turma",
+   "abas": [
+    "visao",
+    "alunos",
+    "cronograma",
+    "calendario",
+    "atividades",
+    "avisos",
+    "configuracoes"
+   ],
+   "acesso": "cohort.view (escopo)",
+   "quadros": [
+    "GTurma",
+    "GTurmaAlunos",
+    "GTurmaAdd",
+    "GTurmaRemover",
+    "GTurmaCronograma",
+    "GTurmaCalendario",
+    "GTurmaAtividades",
+    "GTurmaAvisos",
+    "GTurmaConfig"
+   ]
+  },
+  {
+   "path": "/alunos/acompanhamento",
+   "tela": "Alunos e acompanhamento",
+   "quadros": [
+    "GAcompanhamento"
+   ]
+  },
+  {
+   "path": "/alunos/acompanhamento/:alunoId",
+   "tela": "Perfil pedagógico",
+   "quadros": [
+    "GAluno"
+   ]
+  },
+  {
+   "path": "/alunos/correcoes",
+   "tela": "Correções",
+   "quadros": [
+    "GCorrecoes"
+   ]
+  },
+  {
+   "path": "/alunos/correcoes/:entregaId",
+   "tela": "Correção de uma entrega"
+  },
+  {
+   "path": "/alunos/atribuicoes",
+   "tela": "Atribuições e destaques",
+   "abas": [
+    "ativas",
+    "agendadas",
+    "encerradas",
+    "destaques"
+   ],
+   "quadros": [
+    "GAtribuicoes",
+    "GDestaques"
+   ]
+  },
+  {
+   "path": "/alunos/atribuicoes/nova",
+   "tela": "Enviar ao aluno",
+   "quadros": [
+    "GEnviar",
+    "GNovaAtribuicao"
+   ]
+  },
+  {
+   "path": "/alunos/atribuicoes/:id",
+   "tela": "Envio"
+  },
+  {
+   "path": "/alunos/tarefas",
+   "tela": "Tarefas e metas",
+   "abas": [
+    "tarefas",
+    "metas"
+   ],
+   "quadros": [
+    "GTarefas"
+   ]
+  },
+  {
+   "path": "/alunos/reconhecimento",
+   "tela": "Reconhecimento",
+   "quadros": [
+    "GReconhecimento"
+   ]
+  },
+  {
+   "path": "/comunidade/publicacoes",
+   "tela": "Publicações (moderação)",
+   "abas": [
+    "publicadas",
+    "arquivadas",
+    "denunciadas"
+   ],
+   "quadros": [
+    "GPublicacoes",
+    "GDenuncias"
+   ]
+  },
+  {
+   "path": "/comunidade/grupos",
+   "tela": "Grupos de estudo",
+   "quadros": [
+    "GGrupos"
+   ]
+  },
+  {
+   "path": "/comunidade/grupos/:id",
+   "tela": "Grupo"
+  },
+  {
+   "path": "/comunidade/avisos",
+   "tela": "Avisos",
+   "quadros": [
+    "GAvisos"
+   ]
+  },
+  {
+   "path": "/comunidade/avisos/novo",
+   "tela": "Novo aviso",
+   "quadros": [
+    "GAviso"
+   ]
+  },
+  {
+   "path": "/comunidade/avisos/:id",
+   "tela": "Aviso"
+  },
+  {
+   "path": "/comunidade/encontros",
+   "tela": "Encontros",
+   "quadros": [
+    "GEncontros"
+   ]
+  },
+  {
+   "path": "/comunidade/encontros/novo",
+   "tela": "Novo encontro",
+   "quadros": [
+    "GEncontro"
+   ]
+  },
+  {
+   "path": "/comunidade/encontros/:id",
+   "tela": "Encontro"
+  },
+  {
+   "path": "/administracao/membros",
+   "tela": "Membros e papéis",
+   "acesso": "ADMIN",
+   "quadros": [
+    "GMembros",
+    "GMembro",
+    "GPapel"
+   ]
+  },
+  {
+   "path": "/administracao/membros/:id",
+   "tela": "Membro"
+  },
+  {
+   "path": "/administracao/acessos",
+   "tela": "Acessos",
+   "abas": [
+    "membro",
+    "conteudo"
+   ],
+   "acesso": "ADMIN",
+   "quadros": [
+    "GAcessos",
+    "GConceder"
+   ]
+  },
+  {
+   "path": "/administracao/gravacoes-historicas",
+   "tela": "Gravações históricas",
+   "acesso": "ADMIN",
+   "quadros": [
+    "GGravacoes"
+   ]
+  },
+  {
+   "path": "/administracao/gravacoes-historicas/:id",
+   "tela": "Grupo de gravações"
+  },
+  {
+   "path": "/administracao/personalizacao",
+   "tela": "Personalização",
+   "acesso": "ADMIN",
+   "quadros": [
+    "GPersonalizacao"
+   ]
+  },
+  {
+   "path": "/administracao/medalhas",
+   "tela": "Medalhas (museu)",
+   "acesso": "ADMIN",
+   "quadros": [
+    "GMedalhas"
+   ]
+  },
+  {
+   "path": "/administracao/medalhas/:id",
+   "tela": "Medalha",
+   "quadros": [
+    "GMedalha"
+   ]
+  },
+  {
+   "path": "/administracao/integracoes",
+   "tela": "Integrações",
+   "acesso": "ADMIN",
+   "quadros": [
+    "GIntegracoes"
+   ]
+  },
+  {
+   "path": "/administracao/integracoes/youtube",
+   "tela": "YouTube"
+  },
+  {
+   "path": "/administracao/auditoria",
+   "tela": "Registro de atividades",
+   "acesso": "ADMIN",
+   "quadros": [
+    "GAuditoria"
+   ]
+  },
+  {
+   "path": "/previa",
+   "tela": "Prévia como aluno",
+   "params": "?turma=:id&aluno=:id",
+   "acesso": "preview.asStudent",
+   "quadros": [
+    "GVerComoAluno"
+   ]
+  }
+ ],
+ "redirecionamentos": {
+  "/professor": "/gestao",
+  "/professor/conteudo": "/gestao/ensino/cursos",
+  "/professor/exercicios": "/gestao/ensino/exercicios",
+  "/professor/atividades": "/gestao/ensino/atividades",
+  "/professor/biblioteca": "/gestao/ensino/biblioteca",
+  "/professor/colecoes": "/gestao/ensino/colecoes",
+  "/professor/atribuicoes": "/gestao/alunos/atribuicoes",
+  "/professor/metas-e-tarefas": "/gestao/alunos/tarefas",
+  "/professor/medalhas": "/gestao/administracao/medalhas",
+  "/professor/membros": "/gestao/administracao/membros",
+  "/professor/comunidade": "/gestao/comunidade/publicacoes",
+  "/professor/avisos": "/gestao/comunidade/avisos",
+  "/professor/encontros": "/gestao/comunidade/encontros",
+  "/professor/gravacoes": "/gestao/administracao/gravacoes-historicas",
+  "/professor/acessos": "/gestao/administracao/acessos",
+  "/professor/personalizacao": "/gestao/administracao/personalizacao"
+ }
+}

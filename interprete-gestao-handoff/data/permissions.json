@@ -1,0 +1,36 @@
+{
+ "papeis": [
+  "MEMBER",
+  "TEACHER",
+  "ADMIN"
+ ],
+ "regra": "papel dá o conjunto inicial; capacidade e escopo refinam. Admin tem tudo. Verificar sempre no servidor.",
+ "capacidades": {
+  "course.create": "criar cursos",
+  "course.edit": "editar cursos, módulos e aulas (escopo: cursos em que é responsável)",
+  "exercise.edit": "bancos, listas e questões",
+  "activity.edit": "atividades",
+  "library.edit": "biblioteca e coleções",
+  "cohort.view": "ver turmas (escopo: turmas em que é responsável)",
+  "cohort.manage": "criar, editar e arquivar turmas e membros (escopo)",
+  "student.view": "ver alunos e progresso (escopo: alunos das suas turmas)",
+  "submission.grade": "corrigir entregas (escopo: suas turmas)",
+  "delivery.send": "atribuir, destacar e avisar (escopo: suas turmas)",
+  "event.manage": "encontros (escopo: suas turmas)",
+  "notice.manage": "avisos (escopo: suas turmas)",
+  "community.moderate": "moderar publicações e grupos",
+  "preview.asStudent": "usar Ver como aluno"
+ },
+ "so_admin": [
+  "role.change",
+  "access.grant",
+  "access.revoke",
+  "historical.link",
+  "settings.publish",
+  "medal.manage",
+  "integration.manage",
+  "audit.view",
+  "cohort.viewAll",
+  "member.directory"
+ ]
+}

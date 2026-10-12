@@ -1,0 +1,27 @@
+# DECISIONS · padrões já decididos e registro de novas decisões
+
+> **Não pergunte ao usuário.** Para cada decisão pendente do `HANDOFF.md §6`, use o padrão abaixo. Registre qualquer decisão nova no fim, com data, contexto, opção escolhida e motivo.
+
+## Padrões adotados (pode implementar já)
+| # | Tema | Padrão |
+|---|---|---|
+| 1 | Aluno em mais de uma turma | **Sim.** Soma o que cada turma oferece; item que chega por duas vias aparece uma vez; conflitos de horário avisam, não bloqueiam. |
+| 2 | Quem entra depois | `ALL_ACTIVE` por padrão; `FROM_JOIN` como opção da turma. |
+| 3 | Escopo do professor | Vê/gerencia só turmas em que é responsável; admin vê todas. |
+| 4 | YouTube | Começar com **chave de API** (sem OAuth): privado e "não encontrado" aparecem como "privado ou não encontrado". Deixar o adaptador pronto para OAuth (`youtube.readonly`) como evolução. Adaptador de teste determinístico para desenvolvimento e testes. |
+| 5 | Conclusão de pendência | Aula concluída com ≥ 90% assistido (IFrame API); atividade = entregue; material = aberto; coleção = todos os itens abertos; lista = finalizada; "marcar como feito" quando não houver sinal automático. |
+| 6 | Recorrência | Não repete / diária / semanal / mensal (subconjunto de RRULE) com exceção por ocorrência. |
+| 7 | Notificações | Internas (tabela + sino). E-mail só se a infraestrutura já existir e a preferência permitir. **Avisos sem e-mail.** Nunca enviar a pessoas reais em desenvolvimento. |
+| 8 | Rubrica | Nota 0–10 por critério; média ponderada **informativa** ao professor; comentário obrigatório para enviar. |
+| 9 | Alunos existentes | **Não matricular automaticamente.** Sem *backfill*. Entregar a ação administrativa "Criar turma e adicionar membros" na interface, sem executá-la. Camada de compatibilidade: aluno sem turma continua vendo o que já via. |
+| 10 | Destaques | Até 3 visíveis; fila ordenada; remover aluno da turma **mantém** envios individuais pendentes. |
+| 11 | Símbolo de medalha ausente | Placeholder neutro (gerado). Upload substitui. |
+| 12 | Notas/tarefas pessoais nos Salvos | Fora do escopo. |
+| 13 | Conclusão de turma | `readAfterEndDays = 90`. |
+| 14 | Convites | Link com token de 128 bits (guardado em hash), validade padrão 14 dias, limite de usos configurável. |
+
+## Registro de decisões novas
+| Data | Contexto | Decisão | Motivo |
+|---|---|---|---|
+| 11/10/2026 | Divergência entre os layouts propostos no handoff e o plano aprovado | Manter uma raiz App Router e trocar o shell por segmento; usar a branch isolada `gestao-v2` | O Next faz navegação de documento completo entre raízes; a decisão aprovada exige continuidade e branch com nome exato. |
+| 11/10/2026 | GOAL pede revisor delegado, mas o usuário determinou execução solo | Não delegar agentes; realizar uma segunda passada independente usando os critérios de aceite | Respeitar a instrução direta do usuário e manter a verificação auditável. |
