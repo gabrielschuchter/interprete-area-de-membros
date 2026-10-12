@@ -22,6 +22,7 @@ import {
   isPlannerSeriesOccurrence as withinSeries,
 } from "@repo/member-domain";
 import { z } from "zod";
+import { resolveCohortCalendarItems } from "./cohort-calendar-domain";
 import { resolveCalendar } from "./student-calendar";
 
 const DEFAULT_TIMEZONE = "America/Sao_Paulo";
@@ -641,8 +642,47 @@ export const getPlannerDashboard = async (
     database.meeting.findMany({
       where: {
         status: "PUBLISHED",
-        startsAt: { gte: rangeStart, lte: rangeEnd },
-        participants: { some: { memberId } },
+        demoKey: null,
+        AND: [
+          {
+            OR: [
+              { participants: { some: { memberId } } },
+              {
+                cohortTargets: {
+                  some: {
+                    revokedAt: null,
+                    cohort: {
+                      is: {
+                        archivedAt: null,
+                        memberships: {
+                          some: {
+                            memberId,
+                            status: "ACTIVE",
+                            leftAt: null,
+                            joinedAt: { lte: now },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            ],
+          },
+          {
+            OR: [
+              { startsAt: { gte: rangeStart, lt: rangeEnd } },
+              { startsAt: { lt: rangeStart }, endsAt: { gte: rangeStart } },
+              {
+                recurrenceRule: { not: null },
+                OR: [
+                  { recurrenceUntil: null },
+                  { recurrenceUntil: { gte: rangeStart } },
+                ],
+              },
+            ],
+          },
+        ],
       },
       orderBy: { startsAt: "asc" },
       take: 200,
@@ -655,6 +695,31 @@ export const getPlannerDashboard = async (
         timezone: true,
         joinUrl: true,
         kind: true,
+        recurrenceRule: true,
+        recurrenceUntil: true,
+        occurrenceExceptions: {
+          where: {
+            OR: [
+              {
+                occurrenceStartsAt: {
+                  gte: rangeStart,
+                  lt: rangeEnd,
+                },
+              },
+              { startsAtOverride: { gte: rangeStart, lt: rangeEnd } },
+            ],
+          },
+          take: 200,
+          select: {
+            occurrenceStartsAt: true,
+            startsAtOverride: true,
+            endsAtOverride: true,
+            titleOverride: true,
+            descriptionOverride: true,
+            cancelledAt: true,
+            version: true,
+          },
+        },
       },
     }),
     database.studyGoal.findMany({
@@ -915,6 +980,42 @@ export const getPlannerDashboard = async (
       });
     });
   const expandedEvents = expandEventOccurrences();
+  const expandedMeetings = meetings.flatMap((meeting) =>
+    resolveCohortCalendarItems(
+      [
+        {
+          id: meeting.id,
+          sourceType: "meeting",
+          title: meeting.title,
+          description: meeting.description,
+          startsAt: meeting.startsAt,
+          endsAt: meeting.endsAt,
+          recurrenceRule: meeting.recurrenceRule,
+          recurrenceUntil: meeting.recurrenceUntil,
+          timezone: meeting.timezone,
+          status: "PUBLISHED",
+          href: `/encontros/${meeting.id}`,
+          exceptions: meeting.occurrenceExceptions.map((exception) => ({
+            ...exception,
+            colorOverride: null,
+          })),
+        },
+      ],
+      { start: rangeStart, end: rangeEnd }
+    )
+      .filter((item) => !item.cancelled)
+      .map((item) => ({
+        id: meeting.id,
+        occurrenceKey: item.occurrenceKey,
+        title: item.title,
+        description: item.description,
+        startsAt: item.startsAt,
+        endsAt: item.endsAt,
+        timezone: item.timezone,
+        joinUrl: meeting.joinUrl,
+        kind: meeting.kind,
+      }))
+  );
 
   return {
     columns: defaultColumns.map(
@@ -926,7 +1027,7 @@ export const getPlannerDashboard = async (
     ),
     tasks: expandedTasks,
     events: expandedEvents,
-    meetings,
+    meetings: expandedMeetings,
     activities: assignedActivities,
     lessonReleases: calendar.lessonReleases,
     cohortEvents: calendar.cohortEvents,

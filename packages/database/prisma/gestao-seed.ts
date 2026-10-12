@@ -59,7 +59,7 @@ interface SeededCohort {
 
 interface ActivityFixture {
   readonly cohort: SeededCohort | undefined;
-  readonly dueAt: Date;
+  readonly dueAt: Date | null;
   readonly key: string;
   readonly title: string;
 }
@@ -99,12 +99,15 @@ const functionalStudentNames = Array.from(
   (_, index) => `Aluno QA Funcional ${String(index + 1).padStart(2, "0")}`
 );
 const visualActiveStudentNames = [
+  "Marina Lopes",
+  "Rafael Duarte",
   "Helena Souza",
+  "Tiago Mendes",
   "Beatriz Cardoso",
   "Lucas Prado",
   ...Array.from(
-    { length: 15 },
-    (_, index) => `Participante Mentoria ${String(index + 4).padStart(2, "0")}`
+    { length: 12 },
+    (_, index) => `Participante Mentoria ${String(index + 7).padStart(2, "0")}`
   ),
 ];
 const visualImmersionStudentNames = Array.from(
@@ -322,9 +325,9 @@ const contentProfiles = {
       "Introdução à prática baseada em evidências",
       "Perguntas clínicas e estratégia PICO",
       "Como buscar evidências",
-      "Estratégias de busca",
-      "Formulando a pergunta (PICO)",
-      "Revisões sistemáticas e meta-análises",
+      "Aula 4",
+      "Aula 5",
+      "Aula 6",
     ],
   },
 } satisfies Record<
@@ -692,7 +695,7 @@ const seedLessonReleases = async (
   const releaseDates =
     profile === "visual"
       ? [
-          { lessonIndex: 3, date: localDate("2026-10-07T09:00:00") },
+          { lessonIndex: 3, date: localDate("2026-09-30T09:00:00") },
           { lessonIndex: 4, date: localDate("2026-10-14T09:00:00") },
           { lessonIndex: 5, date: localDate("2026-10-21T09:00:00") },
         ]
@@ -736,26 +739,26 @@ const activityFixtures = (
     return [
       {
         key: "leitura-critica",
-        title: "Leitura crítica de um ensaio clínico",
+        title: "Leitura crítica",
         dueAt: localDate("2026-10-06T23:59:00"),
         cohort: mentor,
       },
       {
         key: "intervalo-confianca",
-        title: "Interprete o intervalo de confiança",
+        title: "Intervalo de confiança",
         dueAt: localDate("2026-10-12T23:59:00"),
         cohort: mentor,
       },
       {
         key: "risco-vies",
         title: "Avalie o risco de viés",
-        dueAt: localDate("2026-10-20T23:59:00"),
+        dueAt: null,
         cohort: mentor,
       },
       {
         key: "revisao-diretriz",
         title: "Revisão de uma diretriz clínica",
-        dueAt: localDate("2026-10-28T23:59:00"),
+        dueAt: null,
         cohort: mentor,
       },
       {
@@ -968,7 +971,7 @@ const meetingFixtures = (
       {
         key: "risco-de-vies",
         cohort: first,
-        title: "Mentoria — Risco de viés",
+        title: "Risco de viés",
         startsAt: localDate("2026-10-16T19:00:00"),
         endsAt: localDate("2026-10-16T20:30:00"),
         status: "DRAFT" as const,
@@ -978,7 +981,7 @@ const meetingFixtures = (
       {
         key: "revisoes-sistematicas",
         cohort: first,
-        title: "Aula — Revisões sistemáticas e meta-análises",
+        title: "Revisões",
         startsAt: localDate("2026-10-21T19:00:00"),
         endsAt: localDate("2026-10-21T20:30:00"),
         status: "PUBLISHED" as const,
@@ -988,7 +991,7 @@ const meetingFixtures = (
       {
         key: "intervalos",
         cohort: first,
-        title: "Encontro — Intervalos",
+        title: "Intervalos",
         startsAt: localDate("2026-10-29T19:00:00"),
         endsAt: localDate("2026-10-29T20:30:00"),
         status: "PUBLISHED" as const,

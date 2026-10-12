@@ -74,6 +74,44 @@ describe("meeting visibility", () => {
     ).toBe(true);
   });
 
+  test("cohort meetings require an active membership in a targeted cohort", () => {
+    const meeting = {
+      course: { id: "course-a" },
+      participants: [],
+      cohortTargets: [{ cohortId: "cohort-a" }],
+      _count: { participants: 0, cohortTargets: 1 },
+    };
+
+    expect(
+      canReadMeeting(meeting, "member-a", {
+        ...memberScope,
+        cohortIds: new Set(["cohort-a"]),
+      })
+    ).toBe(true);
+    expect(
+      canReadMeeting(meeting, "member-a", {
+        ...memberScope,
+        cohortIds: new Set(["cohort-b"]),
+      })
+    ).toBe(false);
+    expect(canReadMeeting(meeting, "member-a", memberScope)).toBe(false);
+  });
+
+  test("a revoked cohort target cannot fall back to public or course access", () => {
+    expect(
+      canReadMeeting(
+        {
+          course: null,
+          participants: [],
+          cohortTargets: [],
+          _count: { participants: 0, cohortTargets: 1 },
+        },
+        "member-a",
+        memberScope
+      )
+    ).toBe(false);
+  });
+
   test("staff retain full meeting access", () => {
     expect(
       canReadMeeting(

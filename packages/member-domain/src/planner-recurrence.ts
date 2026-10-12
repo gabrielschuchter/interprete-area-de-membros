@@ -113,13 +113,47 @@ export const expandPlannerOccurrences = (
   }
 
   const dates: Date[] = [];
-  let next: Date | null = startsAt;
+  const firstParts = plannerZonedParts(startsAt, timezone);
+  const targetParts = plannerZonedParts(rangeStart, timezone);
+  const firstDay = Date.UTC(
+    firstParts.year,
+    firstParts.month - 1,
+    firstParts.day
+  );
+  const targetDay = Date.UTC(
+    targetParts.year,
+    targetParts.month - 1,
+    targetParts.day
+  );
+  const dayDelta = Math.max(
+    0,
+    Math.floor((targetDay - firstDay) / dayMilliseconds)
+  );
   let index = 0;
+  if (recurrence === PlannerRecurrence.DAILY) {
+    index = dayDelta;
+  } else if (recurrence === PlannerRecurrence.WEEKLY) {
+    index = Math.floor(dayDelta / 7);
+  } else {
+    index = Math.max(
+      0,
+      (targetParts.year - firstParts.year) * 12 +
+        targetParts.month -
+        firstParts.month
+    );
+  }
+  let next = plannerOccurrenceAtIndex(startsAt, recurrence, index, timezone);
+  let skipCount = 0;
+  while (next && next < rangeStart && skipCount < 100_000) {
+    index += 1;
+    skipCount += 1;
+    next = plannerOccurrenceAtIndex(startsAt, recurrence, index, timezone);
+  }
   while (
     next &&
     next <= rangeEnd &&
     (!recurrenceUntil || next <= recurrenceUntil) &&
-    index < maximumOccurrences
+    dates.length < maximumOccurrences
   ) {
     if (next >= rangeStart) {
       dates.push(next);

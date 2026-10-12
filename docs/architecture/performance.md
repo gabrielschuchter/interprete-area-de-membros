@@ -929,3 +929,27 @@ explicit 225 KiB initial-JavaScript budget. The local production build measured
 all three at 212.4 KiB gzip across 17 chunks. This is bundle evidence only:
 authenticated database latency, creation persistence, large-catalog QA,
 concurrency, and visual/mobile comparison remain unverified.
+
+### Gestão cohort calendar projections
+
+The critical path rechecks the actor and cohort scope on the server, then
+reads bounded projections for cohort events, targeted meetings, activity
+deadlines and lesson releases. Calendar source reads cap at 501 rows per type
+and expose a limit warning; the event editor list pages 50 rows in SQL.
+Copy-source options are bounded and scoped. No persistent cache stores role,
+membership or feed authorization. Calendar writes invalidate the cohort
+calendar and planner after commit; pending controls respond immediately and
+success is shown only after persistence.
+
+Revocable ICS subscriptions store a token hash and recheck current member and
+cohort access on every request, with private/no-store responses. Export caps
+each source at 1001 rows and fails instead of silently exporting an incomplete
+source. Agenda copy uses a serializable transaction, expected destination
+version and an actor-scoped idempotency key. It copies at most 500 rows per
+source and does not grant course access to copy lesson releases.
+
+The production build measures the calendar at 220.9 KiB gzip and planner at
+224.0 KiB, each across 17 chunks under the 225 KiB budget. Local QA confirmed
+layer filtering and no horizontal overflow at 320, 390 and 1440 px. These
+measurements do not establish database percentiles, representative-data
+concurrency, real Clerk authentication or final visual acceptance.

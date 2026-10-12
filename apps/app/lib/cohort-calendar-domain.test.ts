@@ -2,12 +2,36 @@ import { describe, expect, it } from "vitest";
 import {
   cohortCalendarEventDateRange,
   cohortCalendarEventLastDate,
+  cohortCalendarMonthGridLength,
+  filterCohortCalendarItems,
   isCohortCalendarEventColor,
+  meetingRecurrenceFromRule,
   parseCohortCalendarDateTime,
   resolveCohortCalendarDateConflicts,
+  resolveCohortCalendarItems,
 } from "./cohort-calendar-domain";
 
 describe("cohort calendar domain", () => {
+  it("uses the fewest full calendar weeks needed for the month", () => {
+    expect(cohortCalendarMonthGridLength(2026, 10)).toBe(35);
+    expect(cohortCalendarMonthGridLength(2026, 8)).toBe(42);
+    expect(cohortCalendarMonthGridLength(2026, 2)).toBe(28);
+  });
+
+  it("filters the calendar layers without changing the source items", () => {
+    const items = [
+      { id: "meeting", sourceType: "meeting" as const },
+      { id: "activity", sourceType: "activity" as const },
+      { id: "lesson", sourceType: "lesson-release" as const },
+      { id: "event", sourceType: "event" as const },
+    ];
+
+    expect(
+      filterCohortCalendarItems(items, ["meeting", "lesson-release"])
+    ).toEqual([items[0], items[2]]);
+    expect(items).toHaveLength(4);
+  });
+
   it("converts São Paulo wall time to an unambiguous instant", () => {
     expect(parseCohortCalendarDateTime("2026-10-21T09:30")?.toISOString()).toBe(
       "2026-10-21T12:30:00.000Z"
@@ -31,6 +55,75 @@ describe("cohort calendar domain", () => {
   it("only accepts the cohort calendar palette", () => {
     expect(isCohortCalendarEventColor("#6B5B64")).toBe(true);
     expect(isCohortCalendarEventColor("url(javascript:alert(1))")).toBe(false);
+  });
+
+  it("projects moved and cancelled recurring meetings for staff to manage each occurrence", () => {
+    const sourceStartsAt = new Date("2026-10-01T12:00:00.000Z");
+    const movedOccurrenceStartsAt = new Date("2026-10-08T12:00:00.000Z");
+    const cancelledOccurrenceStartsAt = new Date("2026-10-15T12:00:00.000Z");
+    const movedStart = new Date("2026-10-13T14:00:00.000Z");
+    const range = {
+      start: new Date("2026-10-12T03:00:00.000Z"),
+      end: new Date("2026-10-16T03:00:00.000Z"),
+    };
+
+    expect(meetingRecurrenceFromRule("FREQ=WEEKLY")).toBe("WEEKLY");
+    expect(meetingRecurrenceFromRule("not-a-rule")).toBe("NONE");
+    expect(
+      resolveCohortCalendarItems(
+        [
+          {
+            id: "meeting-series",
+            sourceType: "meeting",
+            title: "Revisões",
+            description: null,
+            startsAt: sourceStartsAt,
+            endsAt: new Date("2026-10-01T13:00:00.000Z"),
+            recurrenceRule: "WEEKLY",
+            recurrenceUntil: new Date("2026-10-29T12:00:00.000Z"),
+            status: "PUBLISHED",
+            href: "/encontros/meeting-series",
+            exceptions: [
+              {
+                occurrenceStartsAt: movedOccurrenceStartsAt,
+                startsAtOverride: movedStart,
+                endsAtOverride: new Date("2026-10-13T15:00:00.000Z"),
+                titleOverride: "Revisões remarcadas",
+                descriptionOverride: null,
+                cancelledAt: null,
+                version: 2,
+              },
+              {
+                occurrenceStartsAt: cancelledOccurrenceStartsAt,
+                startsAtOverride: null,
+                endsAtOverride: null,
+                titleOverride: null,
+                descriptionOverride: null,
+                cancelledAt: new Date("2026-10-01T00:00:00.000Z"),
+                version: 3,
+              },
+            ],
+          },
+        ],
+        range
+      )
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          occurrenceKey: movedOccurrenceStartsAt.toISOString(),
+          startsAt: movedStart,
+          title: "Revisões remarcadas",
+          cancelled: false,
+          exceptionVersion: 2,
+        }),
+        expect.objectContaining({
+          occurrenceKey: cancelledOccurrenceStartsAt.toISOString(),
+          startsAt: cancelledOccurrenceStartsAt,
+          cancelled: true,
+          exceptionVersion: 3,
+        }),
+      ])
+    );
   });
 
   it("treats an all-day end date as inclusive and a timed midnight as exclusive", () => {
@@ -123,6 +216,7 @@ describe("cohort calendar domain", () => {
       {
         day: "2026-10-21",
         eventCount: 2,
+        sourceCounts: { event: 2 },
         titles: ["Encontro", "Prazo"],
       },
     ]);
@@ -165,6 +259,7 @@ describe("cohort calendar domain", () => {
       {
         day: "2026-10-21",
         eventCount: 2,
+        sourceCounts: { event: 2 },
         titles: ["Imersão", "Roda de conversa"],
       },
     ]);

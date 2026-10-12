@@ -2,6 +2,7 @@ import { plannerDateFromZonedParts } from "@repo/member-domain";
 import { notFound } from "next/navigation";
 import {
   getGestaoCohortDetail,
+  listGestaoCohortCalendarCopySources,
   listGestaoCohortCalendarEvents,
 } from "@/lib/gestao-cohorts";
 import { CohortCalendarEditor } from "../cohort-calendar-editor";
@@ -59,8 +60,9 @@ const GestaoCohortCalendarPage = async ({
     )
   );
   const page = Math.max(1, Number.parseInt(query.page ?? "1", 10) || 1);
-  const [cohort, calendar] = await Promise.all([
+  const [cohort, copySources, calendar] = await Promise.all([
     getGestaoCohortDetail(cohortId),
+    listGestaoCohortCalendarCopySources(cohortId),
     listGestaoCohortCalendarEvents(cohortId, {
       page,
       start: zonedMidnight(visibleStart),
@@ -75,12 +77,16 @@ const GestaoCohortCalendarPage = async ({
     <section className="gt-page gt-detail-page">
       <GestaoCohortHeader activeTab="calendario" cohort={cohort} />
       <CohortCalendarEditor
+        activeStudentCount={cohort.activeStudentCount}
         archived={cohort.archivedAt !== null}
         cohortId={cohort.id}
         conflicts={calendar.conflicts}
         conflictsLimited={calendar.conflictsLimited}
+        copySources={copySources ?? []}
         events={calendar.events}
         expectedCohortVersion={cohort.version}
+        items={calendar.items}
+        itemsLimited={calendar.itemsLimited}
         monthKey={monthKey}
         page={calendar.page}
         totalCount={calendar.totalCount}

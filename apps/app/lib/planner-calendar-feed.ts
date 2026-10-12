@@ -24,6 +24,12 @@ const HTTP_URL_PATTERN = /^https?:\/\//;
 
 const hashFeedToken = (token: string) =>
   createHash("sha256").update(token, "utf8").digest("hex");
+const meetingOccurrenceFeedUid = (meeting: {
+  readonly id: string;
+  readonly occurrenceKey?: string | null;
+  readonly startsAt: Date;
+}) =>
+  `meeting-${meeting.id}-${meeting.occurrenceKey ?? meeting.startsAt.toISOString()}`;
 
 export const issuePlannerCalendarFeedToken = async (memberId: string) => {
   const token = randomBytes(32).toString("base64url");
@@ -235,7 +241,7 @@ export const getPlannerCalendarFeedItems = async (
   }
   for (const meeting of data.meetings) {
     items.push({
-      uid: `meeting-${meeting.id}`,
+      uid: meetingOccurrenceFeedUid(meeting),
       title: meeting.title,
       startsAt: meeting.startsAt,
       endsAt:
@@ -371,7 +377,8 @@ const nextIcsDate = (date: Date, timezone: string) => {
 export const serializePlannerCalendarFeed = (
   items: readonly PlannerCalendarFeedItem[],
   timezone: string,
-  generatedAt = new Date()
+  generatedAt = new Date(),
+  calendarName = "Interprete · Planejamento"
 ) => {
   const lines = [
     "BEGIN:VCALENDAR",
@@ -379,7 +386,7 @@ export const serializePlannerCalendarFeed = (
     "PRODID:-//Interprete//Planejamento//PT-BR",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
-    `X-WR-CALNAME:${escapeIcsText("Interprete · Planejamento")}`,
+    `X-WR-CALNAME:${escapeIcsText(calendarName)}`,
     `X-WR-TIMEZONE:${escapeIcsText(timezone)}`,
   ];
   for (const item of items) {

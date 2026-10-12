@@ -1,6 +1,12 @@
 "use server";
 
-import { ContentStatus, database, MemberRole, Prisma } from "@repo/database";
+import {
+  ContentStatus,
+  database,
+  MemberRole,
+  PlannerRecurrence,
+  Prisma,
+} from "@repo/database";
 import { type DomainEventInput, enqueueDomainEvent } from "@repo/member-domain";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -28,6 +34,8 @@ const eventFields = z.object({
   startsAt: z.string().min(1, "Informe a data e o horário."),
   endsAt: z.string().optional().or(z.literal("")),
   allDay: z.boolean().default(false),
+  recurrence: z.nativeEnum(PlannerRecurrence).default(PlannerRecurrence.NONE),
+  recurrenceUntil: z.string().optional().or(z.literal("")),
   color,
   status: z.enum([ContentStatus.DRAFT, ContentStatus.PUBLISHED]),
   idempotencyKey: uuid,
@@ -212,6 +220,11 @@ const parseEventDates = (value: z.infer<typeof eventFields>) => {
         timezone: cohortCalendarTimezone,
       })
     : null;
+  const recurrenceUntil = value.recurrenceUntil
+    ? parseCohortCalendarDateTime(value.recurrenceUntil, {
+        timezone: cohortCalendarTimezone,
+      })
+    : null;
   if (!startsAt) {
     throw new CalendarMutationFailure(
       "validation",
@@ -233,7 +246,27 @@ const parseEventDates = (value: z.infer<typeof eventFields>) => {
       { endsAt: "Escolha um horário posterior ao início." }
     );
   }
-  return { startsAt, endsAt };
+  if (value.recurrenceUntil && !recurrenceUntil) {
+    throw new CalendarMutationFailure(
+      "validation",
+      "Informe um término válido para a repetição.",
+      { recurrenceUntil: "Confira a data e o horário." }
+    );
+  }
+  if (recurrenceUntil && recurrenceUntil < startsAt) {
+    throw new CalendarMutationFailure(
+      "validation",
+      "A repetição deve terminar depois do início.",
+      { recurrenceUntil: "Escolha uma data posterior ao início." }
+    );
+  }
+  if (value.recurrence === PlannerRecurrence.NONE && recurrenceUntil) {
+    throw new CalendarMutationFailure(
+      "validation",
+      "Escolha uma repetição para informar o término da série."
+    );
+  }
+  return { startsAt, endsAt, recurrenceUntil };
 };
 
 type CalendarEventInput = z.infer<typeof eventFields>;
@@ -306,6 +339,8 @@ const saveExistingEvent = async (
       endsAt: dates.endsAt,
       allDay: input.allDay,
       color: input.color,
+      recurrence: input.recurrence,
+      recurrenceUntil: dates.recurrenceUntil,
       status: input.status,
       publishedAt,
       version: { increment: 1 },
@@ -340,6 +375,8 @@ const createCalendarEvent = async (
       endsAt: dates.endsAt,
       allDay: input.allDay,
       color: input.color,
+      recurrence: input.recurrence,
+      recurrenceUntil: dates.recurrenceUntil,
       status: input.status,
       publishedAt: input.status === ContentStatus.PUBLISHED ? now : null,
     },

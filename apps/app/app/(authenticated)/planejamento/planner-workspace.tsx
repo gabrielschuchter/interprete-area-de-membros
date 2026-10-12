@@ -1749,7 +1749,7 @@ function PlannerWorkspaceContent({
               meeting.endsAt ??
               new Date(meeting.startsAt.getTime() + 30 * 60_000);
             return {
-              key: `meeting:${meeting.id}`,
+              key: `meeting:${meeting.id}:${meeting.occurrenceKey ?? meeting.startsAt.toISOString()}`,
               dateKey: dateKeyInTimezone(meeting.startsAt, timezone),
               startMinute: minutesAtTimezone(meeting.startsAt, timezone),
               endMinute:

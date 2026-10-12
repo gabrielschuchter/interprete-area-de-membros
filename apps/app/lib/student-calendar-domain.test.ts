@@ -334,4 +334,72 @@ describe("student calendar cohort events", () => {
       )
     ).toEqual([]);
   });
+
+  it("projects a moved recurrence after join, hides cancelled dates, and keeps the original series private", () => {
+    const originalStart = new Date("2026-10-01T12:00:00.000Z");
+    const movedOccurrence = new Date("2026-10-08T12:00:00.000Z");
+    const cancelledOccurrence = new Date("2026-10-15T12:00:00.000Z");
+    const joinedAt = new Date("2026-10-12T12:00:00.000Z");
+
+    expect(
+      resolveStudentCalendarCohortEvents(
+        [
+          calendarEvent({
+            startsAt: originalStart,
+            endsAt: new Date("2026-10-01T13:00:00.000Z"),
+            recurrence: "WEEKLY",
+            recurrenceUntil: new Date("2026-10-29T12:00:00.000Z"),
+            publishedAt: joinedAt,
+            occurrenceExceptions: [
+              {
+                occurrenceStartsAt: movedOccurrence,
+                startsAtOverride: new Date("2026-10-13T14:00:00.000Z"),
+                endsAtOverride: new Date("2026-10-13T15:00:00.000Z"),
+                titleOverride: "Encontro remarcado",
+                descriptionOverride: null,
+                colorOverride: null,
+                cancelledAt: null,
+                version: 2,
+              },
+              {
+                occurrenceStartsAt: cancelledOccurrence,
+                startsAtOverride: null,
+                endsAtOverride: null,
+                titleOverride: null,
+                descriptionOverride: null,
+                colorOverride: null,
+                cancelledAt: new Date("2026-10-01T00:00:00.000Z"),
+                version: 3,
+              },
+            ],
+          }),
+        ],
+        [
+          eventMembership({
+            joinedAt,
+            cohort: {
+              ...eventMembership().cohort,
+              lateJoinPolicy: "FROM_JOIN",
+            },
+          }),
+        ],
+        {
+          start: new Date("2026-10-12T03:00:00.000Z"),
+          end: new Date("2026-10-16T03:00:00.000Z"),
+        },
+        at
+      )
+    ).toEqual([
+      {
+        id: `event-a:${movedOccurrence.toISOString()}`,
+        cohortId: "cohort-a",
+        title: "Encontro remarcado",
+        description: "Revisão coletiva",
+        startsAt: new Date("2026-10-13T14:00:00.000Z"),
+        endsAt: new Date("2026-10-13T15:00:00.000Z"),
+        allDay: false,
+        color: "#6B5B64",
+      },
+    ]);
+  });
 });

@@ -2,10 +2,13 @@ import "server-only";
 
 import { createHash } from "node:crypto";
 
-import { database, MemberRole, type Prisma } from "@repo/database";
+import { ContentStatus, database, MemberRole, Prisma } from "@repo/database";
 import { cache } from "react";
 import { requireOnboardedMemberId } from "./authorization";
-import { resolveCohortCalendarDateConflicts } from "./cohort-calendar-domain";
+import {
+  resolveCohortCalendarDateConflicts,
+  resolveCohortCalendarItems,
+} from "./cohort-calendar-domain";
 import {
   type CohortLifecycleStatus,
   cohortLifecycleStatusAt,
@@ -25,6 +28,56 @@ const rosterPageSize = 25;
 const cohortEventPageSize = 50;
 const cohortCalendarConflictReadLimit = 500;
 const queryMaxLength = 120;
+const cohortLearningProgress = async (
+  cohortIds: readonly string[],
+  activeStudentCounts: ReadonlyMap<string, number>
+) => {
+  if (cohortIds.length === 0) {
+    return new Map<string, number>();
+  }
+  const rows = await database.$queryRaw<
+    Array<{
+      cohortId: string;
+      completedLessonCount: number;
+      lessonCount: number;
+    }>
+  >(Prisma.sql`
+    SELECT
+      access."cohortId" AS "cohortId",
+      COUNT(DISTINCT lesson.id)::integer AS "lessonCount",
+      COUNT(DISTINCT progress.id)::integer AS "completedLessonCount"
+    FROM "CohortCourseAccess" AS access
+    JOIN "Module" AS module ON module."courseId" = access."courseId"
+    JOIN "Lesson" AS lesson ON lesson."moduleId" = module.id
+    LEFT JOIN "LessonProgress" AS progress
+      ON progress."lessonId" = lesson.id
+      AND progress.status = 'COMPLETED'::"ProgressStatus"
+      AND EXISTS (
+        SELECT 1
+        FROM "CohortMembership" AS membership
+        WHERE membership."cohortId" = access."cohortId"
+          AND membership."memberId" = progress."memberId"
+          AND membership.status = 'ACTIVE'::"CohortMemberStatus"
+          AND membership."leftAt" IS NULL
+      )
+    WHERE access."cohortId" IN (${Prisma.join(cohortIds)})
+      AND access."revokedAt" IS NULL
+      AND lesson.status = 'PUBLISHED'::"ContentStatus"
+    GROUP BY access."cohortId"
+  `);
+  const progressByCohort = new Map<string, number>();
+  for (const row of rows) {
+    const studentCount = activeStudentCounts.get(row.cohortId) ?? 0;
+    const denominator = studentCount * row.lessonCount;
+    progressByCohort.set(
+      row.cohortId,
+      denominator > 0
+        ? Math.round((row.completedLessonCount / denominator) * 100)
+        : 0
+    );
+  }
+  return progressByCohort;
+};
 const statusFilter = (
   status: GestaoCohortTab,
   now: Date
@@ -111,6 +164,17 @@ export const listGestaoCohorts = cache(
               memberships: { where: { status: "ACTIVE", leftAt: null } },
               courseAccesses: { where: { revokedAt: null } },
               invites: { where: { revokedAt: null, expiresAt: { gt: now } } },
+              meetingTargets: {
+                where: {
+                  revokedAt: null,
+                  meeting: {
+                    demoKey: null,
+                    status: {
+                      in: [ContentStatus.DRAFT, ContentStatus.PUBLISHED],
+                    },
+                  },
+                },
+              },
             },
           },
         },
@@ -126,6 +190,13 @@ export const listGestaoCohorts = cache(
           })
         : Promise.resolve(null),
     ]);
+    const activeStudentCounts = new Map(
+      cohorts.map((cohort) => [cohort.id, cohort._count.memberships])
+    );
+    const progressByCohort = await cohortLearningProgress(
+      cohorts.map(({ id }) => id),
+      activeStudentCounts
+    );
     return {
       cohorts: cohorts.map((cohort) => ({
         ...cohort,
@@ -133,6 +204,8 @@ export const listGestaoCohorts = cache(
         activeStudentCount: cohort._count.memberships,
         courseCount: cohort._count.courseAccesses,
         pendingInviteCount: cohort._count.invites,
+        meetingCount: cohort._count.meetingTargets,
+        averageProgress: progressByCohort.get(cohort.id) ?? 0,
         responsible: cohort.teachers.map(({ member }) => member),
       })),
       page,
@@ -144,6 +217,65 @@ export const listGestaoCohorts = cache(
         Exclude<GestaoCohortTab, "ALL">,
         number
       >,
+    };
+  }
+);
+
+export const listGestaoAssignableCohorts = cache(
+  async (input: { readonly page?: number; readonly query?: string } = {}) => {
+    const actor = await requireGestaoActor();
+    const now = new Date();
+    const page = Math.max(1, Math.trunc(input.page ?? 1));
+    const query = searchInput(input.query);
+    const where: Prisma.CohortWhereInput = {
+      AND: [
+        actorScope(actor.userId, actor.role),
+        {
+          OR: [statusFilter("ACTIVE", now), statusFilter("NOT_STARTED", now)],
+        },
+        cohortSearch(query),
+      ],
+    };
+    const [cohorts, totalCount] = await Promise.all([
+      database.cohort.findMany({
+        where,
+        orderBy: [{ startsAt: "asc" }, { id: "asc" }],
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        select: {
+          id: true,
+          name: true,
+          startsAt: true,
+          endsAt: true,
+          archivedAt: true,
+          teachers: {
+            orderBy: { assignedAt: "asc" },
+            take: 1,
+            select: { member: { select: { displayName: true } } },
+          },
+          _count: {
+            select: {
+              memberships: { where: { status: "ACTIVE", leftAt: null } },
+            },
+          },
+        },
+      }),
+      database.cohort.count({ where }),
+    ]);
+    return {
+      cohorts: cohorts.map((cohort) => ({
+        id: cohort.id,
+        name: cohort.name,
+        startsAt: cohort.startsAt,
+        endsAt: cohort.endsAt,
+        status: cohortLifecycleStatusAt(cohort, now),
+        activeStudentCount: cohort._count.memberships,
+        responsible: cohort.teachers[0]?.member.displayName ?? null,
+      })),
+      page,
+      pageSize,
+      totalCount,
+      totalPages: Math.max(1, Math.ceil(totalCount / pageSize)),
     };
   }
 );
@@ -225,9 +357,44 @@ export const listGestaoCohortCalendarEvents = async (
     OR: [
       { startsAt: { gte: input.start, lt: input.end } },
       { startsAt: { lt: input.start }, endsAt: { gte: input.start } },
+      {
+        recurrence: { not: "NONE" },
+        OR: [
+          { recurrenceUntil: null },
+          { recurrenceUntil: { gte: input.start } },
+        ],
+      },
     ],
   };
-  const [events, totalCount, conflictCandidates] = await Promise.all([
+  const sourceLimit = cohortCalendarConflictReadLimit + 1;
+  const [
+    eventRows,
+    events,
+    totalCount,
+    meetingRows,
+    activityRows,
+    releaseRows,
+  ] = await Promise.all([
+    database.cohortEvent.findMany({
+      where,
+      orderBy: [{ startsAt: "asc" }, { id: "asc" }],
+      take: sourceLimit,
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        startsAt: true,
+        endsAt: true,
+        allDay: true,
+        color: true,
+        status: true,
+        version: true,
+        publishedAt: true,
+        updatedAt: true,
+        recurrence: true,
+        recurrenceUntil: true,
+      },
+    }),
     database.cohortEvent.findMany({
       where,
       orderBy: [{ startsAt: "asc" }, { id: "asc" }],
@@ -245,39 +412,249 @@ export const listGestaoCohortCalendarEvents = async (
         version: true,
         publishedAt: true,
         updatedAt: true,
+        recurrence: true,
+        recurrenceUntil: true,
       },
     }),
     database.cohortEvent.count({ where }),
-    database.cohortEvent.findMany({
-      where: { ...where, status: "PUBLISHED" },
+    database.meeting.findMany({
+      where: {
+        demoKey: null,
+        cohortTargets: { some: { cohortId, revokedAt: null } },
+        OR: [
+          { startsAt: { gte: input.start, lt: input.end } },
+          { startsAt: { lt: input.start }, endsAt: { gte: input.start } },
+          { recurrenceRule: { not: null } },
+        ],
+      },
       orderBy: [{ startsAt: "asc" }, { id: "asc" }],
-      take: cohortCalendarConflictReadLimit + 1,
+      take: sourceLimit,
       select: {
         id: true,
         title: true,
+        description: true,
         startsAt: true,
         endsAt: true,
-        allDay: true,
         status: true,
+        recurrenceRule: true,
+        recurrenceUntil: true,
+        updatedAt: true,
+        timezone: true,
+        occurrenceExceptions: {
+          where: {
+            OR: [
+              { occurrenceStartsAt: { gte: input.start, lt: input.end } },
+              { startsAtOverride: { gte: input.start, lt: input.end } },
+            ],
+          },
+          select: {
+            occurrenceStartsAt: true,
+            startsAtOverride: true,
+            endsAtOverride: true,
+            titleOverride: true,
+            descriptionOverride: true,
+            cancelledAt: true,
+            version: true,
+          },
+        },
+      },
+    }),
+    database.activity.findMany({
+      where: {
+        status: "PUBLISHED",
+        dueAt: { gte: input.start, lt: input.end },
+        cohortTargets: {
+          some: { cohortId, activeKey: { not: null }, revokedAt: null },
+        },
+      },
+      orderBy: [{ dueAt: "asc" }, { id: "asc" }],
+      take: sourceLimit,
+      select: { id: true, title: true, slug: true, dueAt: true },
+    }),
+    database.cohortLessonRelease.findMany({
+      where: {
+        cohortId,
+        releaseAt: { gte: input.start, lt: input.end },
+        lesson: {
+          is: {
+            status: "PUBLISHED",
+            module: {
+              is: {
+                status: "PUBLISHED",
+                course: { is: { status: "PUBLISHED" } },
+              },
+            },
+          },
+        },
+      },
+      orderBy: [{ releaseAt: "asc" }, { id: "asc" }],
+      take: sourceLimit,
+      select: {
+        id: true,
+        releaseAt: true,
+        lesson: {
+          select: {
+            title: true,
+            slug: true,
+            module: { select: { course: { select: { slug: true } } } },
+          },
+        },
       },
     }),
   ]);
+
+  const eventExceptions =
+    await database.cohortEventOccurrenceException.findMany({
+      where: {
+        event: { cohortId },
+        OR: [
+          { occurrenceStartsAt: { gte: input.start, lt: input.end } },
+          { startsAtOverride: { gte: input.start, lt: input.end } },
+        ],
+      },
+      take: sourceLimit,
+      select: {
+        eventId: true,
+        occurrenceStartsAt: true,
+        startsAtOverride: true,
+        endsAtOverride: true,
+        titleOverride: true,
+        descriptionOverride: true,
+        colorOverride: true,
+        cancelledAt: true,
+        version: true,
+      },
+    });
+  const exceptionsByEvent = new Map<string, typeof eventExceptions>();
+  for (const exception of eventExceptions) {
+    const list = exceptionsByEvent.get(exception.eventId) ?? [];
+    list.push(exception);
+    exceptionsByEvent.set(exception.eventId, list);
+  }
+  const sources = [
+    ...eventRows.map((event) => ({
+      id: event.id,
+      sourceType: "event" as const,
+      title: event.title,
+      description: event.description,
+      startsAt: event.startsAt,
+      endsAt: event.endsAt,
+      allDay: event.allDay,
+      color: event.color,
+      status: event.status,
+      recurrence: event.recurrence,
+      recurrenceUntil: event.recurrenceUntil,
+      sourceRevision: event.version,
+      href: `/gestao/alunos/turmas/${cohortId}/calendario`,
+      exceptions: (exceptionsByEvent.get(event.id) ?? []).map((item) => ({
+        ...item,
+        colorOverride: item.colorOverride,
+      })),
+    })),
+    ...meetingRows.map((meeting) => ({
+      id: meeting.id,
+      sourceType: "meeting" as const,
+      title: meeting.title,
+      description: meeting.description,
+      startsAt: meeting.startsAt,
+      endsAt: meeting.endsAt,
+      status: meeting.status,
+      recurrenceRule: meeting.recurrenceRule,
+      recurrenceUntil: meeting.recurrenceUntil,
+      sourceRevision: meeting.updatedAt.toISOString(),
+      timezone: meeting.timezone,
+      href: `/encontros/${meeting.id}`,
+      exceptions: meeting.occurrenceExceptions.map((item) => ({
+        ...item,
+        colorOverride: null,
+      })),
+    })),
+    ...activityRows.flatMap((activity) =>
+      activity.dueAt
+        ? [
+            {
+              id: activity.id,
+              sourceType: "activity" as const,
+              title: activity.title,
+              description: null,
+              startsAt: activity.dueAt,
+              endsAt: null,
+              status: "PUBLISHED" as const,
+              href: `/atividades/${activity.slug}`,
+            },
+          ]
+        : []
+    ),
+    ...releaseRows.map((release) => ({
+      id: release.id,
+      sourceType: "lesson-release" as const,
+      title: release.lesson.title,
+      description: null,
+      startsAt: release.releaseAt,
+      endsAt: null,
+      status: "PUBLISHED" as const,
+      href: `/aprender/cursos/${release.lesson.module.course.slug}/${release.lesson.slug}`,
+    })),
+  ];
+  const items = resolveCohortCalendarItems(sources, {
+    start: input.start,
+    end: input.end,
+  });
   const conflictsLimited =
-    conflictCandidates.length > cohortCalendarConflictReadLimit;
+    eventRows.length > cohortCalendarConflictReadLimit ||
+    meetingRows.length > cohortCalendarConflictReadLimit ||
+    activityRows.length > cohortCalendarConflictReadLimit ||
+    releaseRows.length > cohortCalendarConflictReadLimit ||
+    eventExceptions.length > cohortCalendarConflictReadLimit;
   return {
     events,
+    items,
+    itemsLimited: conflictsLimited,
     conflicts: conflictsLimited
       ? []
-      : resolveCohortCalendarDateConflicts(conflictCandidates, {
-          start: input.start,
-          end: input.end,
-        }),
+      : resolveCohortCalendarDateConflicts(
+          items.filter(
+            ({ status, cancelled }) => status === "PUBLISHED" && !cancelled
+          ),
+          {
+            start: input.start,
+            end: input.end,
+          }
+        ),
     conflictsLimited,
     page,
     pageSize: cohortEventPageSize,
     totalCount,
     totalPages: Math.max(1, Math.ceil(totalCount / cohortEventPageSize)),
   };
+};
+
+export const listGestaoCohortCalendarCopySources = async (
+  destinationCohortId: string
+) => {
+  const actor = await requireGestaoActor();
+  const destination = await database.cohort.findFirst({
+    where: {
+      AND: [
+        { id: destinationCohortId, archivedAt: null },
+        actorScope(actor.userId, actor.role),
+      ],
+    },
+    select: { id: true },
+  });
+  if (!destination) {
+    return null;
+  }
+  return database.cohort.findMany({
+    where: {
+      id: { not: destinationCohortId },
+      archivedAt: null,
+      ...actorScope(actor.userId, actor.role),
+    },
+    orderBy: [{ name: "asc" }, { id: "asc" }],
+    take: 100,
+    select: { id: true, name: true },
+  });
 };
 
 export const getGestaoCohortRoster = async (
@@ -356,9 +733,16 @@ export const getGestaoCohortRoster = async (
 
 export const getGestaoAddableMembers = async (
   cohortId: string,
-  input: { readonly page?: number; readonly query?: string } = {}
+  input: {
+    readonly page?: number;
+    readonly query?: string;
+    readonly unassignedOnly?: boolean;
+  } = {}
 ) => {
   const actor = await requireGestaoActor();
+  if (input.unassignedOnly && actor.role !== "ADMIN") {
+    return null;
+  }
   const allowed = await database.cohort.findFirst({
     where: { AND: [{ id: cohortId }, actorScope(actor.userId, actor.role)] },
     select: { id: true },
@@ -371,7 +755,13 @@ export const getGestaoAddableMembers = async (
   const where: Prisma.MemberWhereInput = {
     role: MemberRole.MEMBER,
     deactivatedAt: null,
-    cohortMemberships: { none: { cohortId, status: "ACTIVE", leftAt: null } },
+    cohortMemberships: {
+      none: {
+        ...(input.unassignedOnly ? {} : { cohortId }),
+        status: "ACTIVE",
+        leftAt: null,
+      },
+    },
     ...(query
       ? {
           OR: [

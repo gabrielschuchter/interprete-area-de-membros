@@ -33,6 +33,7 @@ export interface LearningAccessOrigin {
 
 export interface LearningAccessScope {
   readonly assetIds: ReadonlySet<string>;
+  readonly cohortIds?: ReadonlySet<string>;
   readonly courseIds: ReadonlySet<string>;
   readonly fullAccess: boolean;
   readonly fullCourseIds: ReadonlySet<string>;
@@ -48,6 +49,7 @@ const emptyScope = (): LearningAccessScope => ({
   fullAccess: false,
   fullCourseIds: new Set(),
   courseIds: new Set(),
+  cohortIds: new Set(),
   moduleIds: new Set(),
   unavailableLessonIds: new Set(),
   lessonIds: new Set(),
@@ -578,6 +580,11 @@ const getLearningAccessScopeUncached = async (
     fullAccess: false,
     fullCourseIds: scope.fullCourseIds,
     courseIds: scope.courseIds,
+    cohortIds: new Set(
+      eligibleMemberships
+        .filter(({ joinedAt }) => joinedAt <= now)
+        .map(({ cohortId }) => cohortId)
+    ),
     moduleIds: scope.moduleIds,
     unavailableLessonIds: scope.unavailableLessonIds,
     lessonIds: scope.lessonIds,

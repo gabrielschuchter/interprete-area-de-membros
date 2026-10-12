@@ -1,4 +1,8 @@
 import {
+  type CohortCalendarException,
+  resolveCohortCalendarItems,
+} from "./cohort-calendar-domain";
+import {
   cohortEndedReadUntil,
   resolveCohortCourseAccess,
 } from "./cohort-domain";
@@ -69,7 +73,10 @@ export interface StudentCalendarCohortEventCandidate {
   readonly description: string | null;
   readonly endsAt: Date | null;
   readonly id: string;
+  readonly occurrenceExceptions?: readonly CohortCalendarException[];
   readonly publishedAt: Date | null;
+  readonly recurrence?: "NONE" | "DAILY" | "WEEKLY" | "MONTHLY";
+  readonly recurrenceUntil?: Date | null;
   readonly startsAt: Date;
   readonly status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
   readonly title: string;
@@ -163,6 +170,58 @@ export const resolveStudentCalendarLessonReleases = (
   );
 };
 
+const canReadStudentCohortEventSeries = (
+  candidate: StudentCalendarCohortEventCandidate,
+  membership: StudentCalendarEventMembership,
+  at: Date
+) => {
+  if (candidate.status !== "PUBLISHED" || membership.joinedAt > at) {
+    return false;
+  }
+  const cohort = membership.cohort;
+  const readUntil = cohortEndedReadUntil(
+    cohort.endsAt ?? cohort.archivedAt,
+    cohort.readAfterEndDays
+  );
+  if (cohort.startsAt > at || (readUntil && at >= readUntil)) {
+    return false;
+  }
+  const publishedAt = candidate.publishedAt ?? candidate.createdAt;
+  if (publishedAt >= membership.joinedAt) {
+    return true;
+  }
+  if (cohort.lateJoinPolicy === "FROM_JOIN") {
+    return false;
+  }
+  const eventEnd = candidate.endsAt ?? candidate.startsAt;
+  return eventEnd >= membership.joinedAt || membership.includePastReadOnly;
+};
+
+const projectStudentCohortEvent = (
+  candidate: StudentCalendarCohortEventCandidate,
+  range: { readonly end: Date; readonly start: Date }
+) =>
+  resolveCohortCalendarItems(
+    [
+      {
+        id: candidate.id,
+        sourceType: "event",
+        title: candidate.title,
+        description: candidate.description,
+        startsAt: candidate.startsAt,
+        endsAt: candidate.endsAt,
+        allDay: candidate.allDay,
+        color: candidate.color,
+        status: candidate.status,
+        recurrence: candidate.recurrence ?? "NONE",
+        recurrenceUntil: candidate.recurrenceUntil ?? null,
+        exceptions: candidate.occurrenceExceptions ?? [],
+        href: "/planejamento",
+      },
+    ],
+    range
+  ).filter((occurrence) => !occurrence.cancelled);
+
 export const resolveStudentCalendarCohortEvents = (
   candidates: readonly StudentCalendarCohortEventCandidate[],
   memberships: readonly StudentCalendarEventMembership[],
@@ -172,63 +231,33 @@ export const resolveStudentCalendarCohortEvents = (
   const membershipByCohort = new Map(
     memberships.map((membership) => [membership.cohortId, membership])
   );
+  const visible = candidates.flatMap((candidate) => {
+    const membership = membershipByCohort.get(candidate.cohortId);
+    if (
+      !(
+        membership && canReadStudentCohortEventSeries(candidate, membership, at)
+      )
+    ) {
+      return [];
+    }
+    return projectStudentCohortEvent(candidate, range).map((occurrence) => ({
+      id: occurrence.occurrenceKey
+        ? `${candidate.id}:${occurrence.occurrenceKey}`
+        : candidate.id,
+      cohortId: candidate.cohortId,
+      title: occurrence.title,
+      description: occurrence.description,
+      startsAt: occurrence.startsAt,
+      endsAt: occurrence.endsAt,
+      allDay: occurrence.allDay,
+      color: occurrence.color,
+    }));
+  });
 
-  return candidates
-    .filter((candidate) => {
-      if (candidate.status !== "PUBLISHED") {
-        return false;
-      }
-      const eventEnd = candidate.endsAt ?? candidate.startsAt;
-      if (candidate.startsAt > range.end || eventEnd < range.start) {
-        return false;
-      }
-
-      const membership = membershipByCohort.get(candidate.cohortId);
-      if (!membership || membership.joinedAt > at) {
-        return false;
-      }
-      const cohort = membership.cohort;
-      const readUntil = cohortEndedReadUntil(
-        cohort.endsAt ?? cohort.archivedAt,
-        cohort.readAfterEndDays
-      );
-      if (
-        cohort.startsAt > at ||
-        (readUntil && at >= readUntil) ||
-        ((candidate.publishedAt ?? candidate.createdAt) < membership.joinedAt &&
-          (cohort.lateJoinPolicy === "FROM_JOIN" ||
-            (eventEnd < membership.joinedAt &&
-              !membership.includePastReadOnly)))
-      ) {
-        return false;
-      }
-      return true;
-    })
-    .map(
-      ({
-        id,
-        cohortId,
-        title,
-        description,
-        startsAt,
-        endsAt,
-        allDay,
-        color,
-      }) => ({
-        id,
-        cohortId,
-        title,
-        description,
-        startsAt,
-        endsAt,
-        allDay,
-        color,
-      })
-    )
-    .sort(
-      (left, right) =>
-        left.startsAt.getTime() - right.startsAt.getTime() ||
-        left.title.localeCompare(right.title) ||
-        left.id.localeCompare(right.id)
-    );
+  return visible.sort(
+    (left, right) =>
+      left.startsAt.getTime() - right.startsAt.getTime() ||
+      left.title.localeCompare(right.title) ||
+      left.id.localeCompare(right.id)
+  );
 };

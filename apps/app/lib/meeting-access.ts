@@ -2,7 +2,11 @@ import type { LearningAccessScope } from "./content-access";
 import { getYoutubeVideoId } from "./youtube-video";
 
 interface MeetingReadPolicy {
-  readonly _count: { readonly participants: number };
+  readonly _count: {
+    readonly cohortTargets?: number;
+    readonly participants: number;
+  };
+  readonly cohortTargets?: readonly { readonly cohortId: string }[];
   readonly course: { readonly id: string } | null;
   readonly participants: readonly { readonly memberId: string }[];
 }
@@ -10,15 +14,30 @@ interface MeetingReadPolicy {
 export const canReadMeeting = (
   meeting: MeetingReadPolicy,
   memberId: string,
-  scope: Pick<LearningAccessScope, "courseIds" | "fullAccess">
+  scope: Pick<LearningAccessScope, "courseIds" | "fullAccess"> &
+    Partial<Pick<LearningAccessScope, "cohortIds">>
 ) => {
   if (scope.fullAccess) {
     return true;
   }
-  if (meeting._count.participants > 0) {
-    return meeting.participants.some(
+  if (
+    meeting.participants.some(
       (participant) => participant.memberId === memberId
+    )
+  ) {
+    return true;
+  }
+  const cohortTargets = meeting.cohortTargets ?? [];
+  if (cohortTargets.length > 0) {
+    return cohortTargets.some((target) =>
+      scope.cohortIds?.has(target.cohortId)
     );
+  }
+  if ((meeting._count.cohortTargets ?? 0) > 0) {
+    return false;
+  }
+  if (meeting._count.participants > 0) {
+    return false;
   }
   return !meeting.course || scope.courseIds.has(meeting.course.id);
 };

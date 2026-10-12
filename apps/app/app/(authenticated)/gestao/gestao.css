@@ -910,11 +910,41 @@
   font-size: 18px;
   color: var(--gestao-text);
 }
+.gt-cohort-progress {
+  display: grid;
+  gap: 6px;
+  margin: 14px 0 16px;
+  font-size: 11px;
+  color: var(--gestao-muted);
+}
+.gt-cohort-progress-label {
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+.gt-cohort-progress-track {
+  height: 6px;
+  overflow: hidden;
+  background: #e4d9d4;
+  border-radius: 999px;
+}
+.gt-cohort-progress-track span {
+  display: block;
+  height: 100%;
+  background: var(--gestao-action);
+  border-radius: inherit;
+}
 .gt-cohort-footer {
   display: flex;
   gap: 8px;
   align-items: center;
   justify-content: space-between;
+}
+.gt-cohort-card-actions {
+  display: flex;
+  flex: none;
+  gap: 8px;
+  align-items: center;
 }
 .gt-responsibles {
   display: flex;
@@ -949,6 +979,9 @@
 }
 .gt-cohort-list .gt-cohort-card-body {
   display: grid;
+  grid-template-areas:
+    "title facts progress"
+    "footer footer footer";
   grid-template-columns: minmax(180px, 1.4fr) minmax(190px, 1fr) minmax(
       180px,
       1.2fr
@@ -958,11 +991,18 @@
 }
 .gt-cohort-list .gt-cohort-title-row {
   flex-wrap: wrap;
+  grid-area: title;
 }
 .gt-cohort-list .gt-cohort-facts {
+  grid-area: facts;
+  margin: 0;
+}
+.gt-cohort-list .gt-cohort-progress {
+  grid-area: progress;
   margin: 0;
 }
 .gt-cohort-list .gt-cohort-footer {
+  grid-area: footer;
   justify-content: flex-end;
 }
 .gt-page .gestao-empty-state {
@@ -1895,7 +1935,7 @@
 }
 .gt-calendar-workspace {
   display: grid;
-  grid-template-columns: minmax(0, 1.65fr) minmax(280px, 0.8fr);
+  grid-template-columns: minmax(0, 2.85fr) minmax(280px, 1fr);
   gap: 16px;
   align-items: start;
 }
@@ -1932,7 +1972,6 @@
   min-width: 150px;
   color: var(--gestao-text);
   text-align: center;
-  text-transform: capitalize;
 }
 .gt-calendar-views {
   min-width: 0;
@@ -1964,6 +2003,58 @@
   color: var(--gestao-text);
   background: #fff;
   box-shadow: 0 1px 3px rgb(38 25 34 / 12%);
+}
+.gt-calendar-layers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+  padding: 0;
+  margin: 0 0 16px;
+  border: 0;
+}
+.gt-calendar-layer {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 12px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--gestao-text);
+  cursor: pointer;
+  background: #fff;
+  border: 1px solid var(--gestao-line);
+  border-radius: 999px;
+}
+.gt-calendar-layer:focus-visible {
+  outline: 2px solid var(--gestao-action);
+  outline-offset: 2px;
+}
+.gt-calendar-layer-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  color: #fff;
+  background: transparent;
+  border: 1px solid var(--gestao-line);
+  border-radius: 5px;
+}
+.gt-calendar-layer-check[data-active="true"] {
+  background: var(--gestao-action);
+  border-color: var(--gestao-action);
+}
+.gt-calendar-layer-check svg {
+  width: 12px;
+  height: 12px;
+}
+.gt-calendar-layer-color {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
 }
 .gt-calendar-view-button:focus-visible,
 .gt-cohort-day-number:focus-visible,
@@ -2188,6 +2279,20 @@
   font-weight: 650;
   color: var(--gestao-action);
 }
+.gt-calendar-feed-controls {
+  display: grid;
+  gap: 8px;
+  margin: 10px 0;
+}
+.gt-calendar-feed-controls .gt-cohort-event-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+.gt-calendar-form-heading-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
 .gt-calendar-conflicts > p {
   margin: 0;
   font-size: 11px;
@@ -2214,6 +2319,11 @@
 .gt-calendar-conflict-list span {
   font-size: 10px;
   line-height: 1.5;
+  color: var(--gestao-muted);
+}
+.gt-calendar-conflict-list small {
+  font-size: 10px;
+  line-height: 1.4;
   color: var(--gestao-muted);
 }
 .gt-calendar-confirmation {
@@ -2295,6 +2405,25 @@
   }
   .gt-cohort-event-rows li {
     flex-wrap: wrap;
+  }
+}
+@media (max-width: 22.5rem) {
+  .gt-calendar-month-nav {
+    gap: 4px;
+    width: 100%;
+  }
+  .gt-calendar-month-nav > button:not(:first-child) {
+    width: 38px;
+    height: 40px;
+  }
+  .gt-calendar-month-nav > button:first-child {
+    min-width: 48px;
+    height: 40px;
+  }
+  .gt-calendar-month-nav strong {
+    flex: 1;
+    min-width: 0;
+    font-size: 12px;
   }
 }
 .gt-invite-page {

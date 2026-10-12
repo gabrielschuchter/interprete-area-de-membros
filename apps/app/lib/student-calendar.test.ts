@@ -222,6 +222,13 @@ describe("resolveCalendar", () => {
           OR: [
             { startsAt: { gte: start, lte: end } },
             { startsAt: { lt: start }, endsAt: { gte: start } },
+            {
+              recurrence: { not: "NONE" },
+              OR: [
+                { recurrenceUntil: null },
+                { recurrenceUntil: { gte: start } },
+              ],
+            },
           ],
         }),
       })

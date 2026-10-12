@@ -135,6 +135,13 @@ const getCohortEvents = async (
       OR: [
         { startsAt: { gte: range.start, lte: range.end } },
         { startsAt: { lt: range.start }, endsAt: { gte: range.start } },
+        {
+          recurrence: { not: "NONE" },
+          OR: [
+            { recurrenceUntil: null },
+            { recurrenceUntil: { gte: range.start } },
+          ],
+        },
       ],
     },
     orderBy: [{ startsAt: "asc" }, { id: "asc" }],
@@ -151,6 +158,32 @@ const getCohortEvents = async (
       createdAt: true,
       publishedAt: true,
       status: true,
+      recurrence: true,
+      recurrenceUntil: true,
+      occurrenceExceptions: {
+        where: {
+          OR: [
+            {
+              occurrenceStartsAt: {
+                gte: range.start,
+                lte: range.end,
+              },
+            },
+            { startsAtOverride: { gte: range.start, lte: range.end } },
+          ],
+        },
+        take: 200,
+        select: {
+          occurrenceStartsAt: true,
+          startsAtOverride: true,
+          endsAtOverride: true,
+          titleOverride: true,
+          descriptionOverride: true,
+          colorOverride: true,
+          cancelledAt: true,
+          version: true,
+        },
+      },
     },
   });
   return resolveStudentCalendarCohortEvents(candidates, memberships, range, at);

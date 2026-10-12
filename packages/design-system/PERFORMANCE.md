@@ -387,3 +387,16 @@ on a server request.
   212.4 KiB across 17 chunks. Authenticated query latency, persisted creation,
   large-catalog navigation, and visual/mobile comparison remain open until
   the isolated PostgreSQL QA environment is available.
+
+## Gestão cohort calendar
+
+- Month navigation, layer toggles and pending mutation controls give immediate
+  feedback. Layer buttons expose `aria-pressed` within a named fieldset;
+  filtering is local over the already authorized bounded projection.
+- The month grid uses complete weeks (28, 35 or 42 cells). The month controls
+  fit 320 px; local browser checks found no horizontal overflow at 320, 390
+  and 1440 px. Native confirmation dialogs retain keyboard focus.
+- Calendar initial JavaScript is 220.9 KiB gzip across 17 chunks, below the
+  225 KiB budget. Planner is 224.0 KiB across 17 chunks. Saved local captures
+  and functional QA are documented in PROGRESS.md; the complete width/role
+  matrix, reduced-motion checks and visual acceptance remain open.

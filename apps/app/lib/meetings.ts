@@ -29,6 +29,10 @@ const meetingSelection = {
   relatedActivity: { select: { id: true, title: true, slug: true } },
   relatedLibraryItem: { select: { id: true, title: true } },
   course: { select: { id: true, title: true, slug: true } },
+  cohortTargets: {
+    where: { revokedAt: null },
+    select: { cohortId: true },
+  },
 } as const;
 
 const memberMeetingSelection = (memberId: string) => ({
@@ -37,7 +41,7 @@ const memberMeetingSelection = (memberId: string) => ({
     where: { memberId },
     select: { memberId: true },
   },
-  _count: { select: { participants: true } },
+  _count: { select: { participants: true, cohortTargets: true } },
 });
 
 const attachAuthorizedRecordings = async <T extends { readonly id: string }>(
@@ -161,24 +165,7 @@ export const getUpcomingMeetings = async (
     // Keep the same filtering headroom as the full calendar query. A member
     // may not be allowed to see every course-linked meeting in the first page.
     take: 48,
-    select: {
-      id: true,
-      title: true,
-      description: true,
-      startsAt: true,
-      endsAt: true,
-      timezone: true,
-      joinUrl: true,
-      recordingUrl: true,
-      teacherId: true,
-      kind: true,
-      recurrenceRule: true,
-      relatedActivity: { select: { id: true, title: true, slug: true } },
-      relatedLibraryItem: { select: { id: true, title: true } },
-      course: { select: { id: true } },
-      participants: { where: { memberId }, select: { memberId: true } },
-      _count: { select: { participants: true } },
-    },
+    select: memberMeetingSelection(memberId),
   });
   const [scope, meetings] = await Promise.all([scopePromise, meetingsPromise]);
 
@@ -201,7 +188,16 @@ export const getMemberMeetingRecordings = async (memberId: string) => {
         OR: [
           { participants: { some: { memberId } } },
           {
+            cohortTargets: {
+              some: {
+                cohortId: { in: [...(scope.cohortIds ?? [])] },
+                revokedAt: null,
+              },
+            },
+          },
+          {
             participants: { none: {} },
+            cohortTargets: { none: {} },
             OR: [
               { courseId: null },
               { courseId: { in: [...scope.courseIds] } },
@@ -227,7 +223,11 @@ export const getMemberMeetingRecordings = async (memberId: string) => {
       recordingUrl: true,
       course: { select: { id: true, title: true } },
       participants: { where: { memberId }, select: { memberId: true } },
-      _count: { select: { participants: true } },
+      cohortTargets: {
+        where: { revokedAt: null },
+        select: { cohortId: true },
+      },
+      _count: { select: { participants: true, cohortTargets: true } },
     },
   });
   const visibleMeetings = meetings.filter((meeting) =>
