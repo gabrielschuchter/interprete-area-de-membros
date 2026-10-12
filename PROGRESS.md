@@ -418,10 +418,16 @@ Gates de fechamento: check passou (904 arquivos), typecheck 16/16, boundaries
 848 arquivos, testes 627 app/17 domínio/9 API e 32 scripts aprovados/1 ignorado.
 Build reportou 8/8 tarefas bem-sucedidas. Calendário: 222,2 KiB gzip/18 chunks;
 Planejamento: 223,5 KiB/17, ambos abaixo de 225 KiB. Logs separados em
-`output/gestao-final-audit/`. Verificação avulsa de performance será registrada
-no fechamento definitivo.
+`output/gestao-final-audit/`. A execução final terminou com exit 0 em todos os
+seis gates, incluindo `performance:check`; `git diff --check` também passou.
 
 Releitura SQL com TLS validado confirmou as migrations aditivas de projeção e
 publicação terminadas sem rollback no funcional, e RLS habilitado nas quatro
 tabelas novas de alvos, feeds e exceções. Nenhuma migration foi aplicada nesta
 unidade. O visual continua sem histórico Prisma; nenhuma fase foi promovida.
+
+Preview reaberto após os gates em `http://localhost:3000`. A sondagem final no
+Playwright renderizou Turma Mentoria PBE / Agenda da turma, sem placeholder,
+com o encontro publicado preservado. Processo dev deixado ativo para inspeção.
+Encerramento e passagem para outro chat solicitados pelo usuário; objetivo
+completo permanece não atingido e deve ficar pausado.

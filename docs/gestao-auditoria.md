@@ -1,5 +1,10 @@
 # Auditoria da Gestão do Interprete
 
+> Histórico inicial de 11/10. Para o estado atual, leia
+> `docs/gestao/STATUS.md`, `EXECUTION-LOG.md` e `estado-auditado-20261012.json`.
+> Afirmações abaixo sobre ausência de resolvers, ambiente ou dependências
+> foram superadas; não usá-las como diagnóstico atual.
+
 Data: 11/10/2026
 Branch de trabalho: `gestao-v2`
 Base auditada: `a4b68b81dc084d6de4648c488a0442e14cfb0539`

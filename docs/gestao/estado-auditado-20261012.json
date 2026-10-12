@@ -1,0 +1,373 @@
+{
+  "auditedAt": "2026-10-12T19:48:43.5328537-03:00",
+  "baselineCommit": "d468e342a655dad2a27a23e09f3d926b33ab3a9d",
+  "scope": "isolated local worktree, no remote audit or writes",
+  "specifiedRoutes": 53,
+  "dedicatedGestaoPageFiles": 38,
+  "exactDedicatedRouteMatches": 18,
+  "frames": {
+    "accepted": 0,
+    "inProgress": 31,
+    "pending": 70
+  },
+  "routes": [
+    {
+      "path": "/gestao",
+      "dedicatedPage": true,
+      "source": "apps/app/app/(authenticated)/gestao/page.tsx",
+      "note": "File presence only; not functional, authorization, visual or runtime acceptance"
+    },
+    {
+      "path": "/gestao/ensino/cursos",
+      "dedicatedPage": true,
+      "source": "apps/app/app/(authenticated)/gestao/ensino/cursos/page.tsx",
+      "note": "File presence only; not functional, authorization, visual or runtime acceptance"
+    },
+    {
+      "path": "/gestao/ensino/cursos/novo",
+      "dedicatedPage": true,
+      "source": "apps/app/app/(authenticated)/gestao/ensino/cursos/novo/page.tsx",
+      "note": "File presence only; not functional, authorization, visual or runtime acceptance"
+    },
+    {
+      "path": "/gestao/ensino/cursos/:id",
+      "dedicatedPage": true,
+      "source": "apps/app/app/(authenticated)/gestao/ensino/cursos/[id]/page.tsx",
+      "note": "File presence only; not functional, authorization, visual or runtime acceptance"
+    },
+    {
+      "path": "/gestao/ensino/cursos/:id/aulas/:aulaId",
+      "dedicatedPage": true,
+      "source": "apps/app/app/(authenticated)/gestao/ensino/cursos/[id]/aulas/[lessonId]/page.tsx",
+      "note": "File presence only; not functional, authorization, visual or runtime acceptance"
+    },
+    {
+      "path": "/gestao/ensino/cursos/:id/importar-youtube",
+      "dedicatedPage": false,
+      "source": null,
+      "note": "File presence only; not functional, authorization, visual or runtime acceptance"
+    },
+    {
+      "path": "/gestao/ensino/percursos",
+      "dedicatedPage": false,
+      "source": null,
+      "note": "File presence only; not functional, authorization, visual or runtime acceptance"
+    },
+    {
+      "path": "/gestao/ensino/percursos/:id",
+      "dedicatedPage": false,
+      "source": null,
+      "note": "File presence only; not functional, authorization, visual or runtime acceptance"
+    },
+    {
+      "path": "/gestao/ensino/exercicios",
+      "dedicatedPage": true,
+      "source": "apps/app/app/(authenticated)/gestao/ensino/exercicios/page.tsx",
+      "note": "File presence only; not functional, authorization, visual or runtime acceptance"
+    },
+    {
+      "path": "/gestao/ensino/exercicios/bancos/:id",
+      "dedicatedPage": true,
+      "source": "apps/app/app/(authenticated)/gestao/ensino/exercicios/bancos/[bankId]/page.tsx",
+      "note": "File presence only; not functional, authorization, visual or runtime acceptance"
+    },
+    {
+      "path": "/gestao/ensino/exercicios/listas/:id",
+      "dedicatedPage": false,
+      "source": null,
+      "note": "File presence only; not functional, authorization, visual or runtime acceptance"
+    },
+    {
+      "path": "/gestao/ensino/exercicios/questoes/:id",
+      "dedicatedPage": false,
+      "source": null,
+      "note": "File presence only; not functional, authorization, visual or runtime acceptance"
+    },
+    {
+      "path": "/gestao/ensino/atividades",
+      "dedicatedPage": true,
+      "source": "apps/app/app/(authenticated)/gestao/ensino/atividades/page.tsx",
+      "note": "File presence only; not functional, authorization, visual or runtime acceptance"
+    },
+    {
+      "path": "/gestao/ensino/atividades/:id",
+      "dedicatedPage": true,
+      "source": "apps/app/app/(authenticated)/gestao/ensino/atividades/[id]/page.tsx",
+      "note": "File presence only; not functional, authorization, visual or runtime acceptance"
+    },
+    {
+      "path": "/gestao/ensino/biblioteca",
+      "dedicatedPage": true,
+      "source": "apps/app/app/(authenticated)/gestao/ensino/biblioteca/page.tsx",
+      "note": "File presence only; not functional, authorization, visual or runtime acceptance"
+    },
+    {
+      "path": "/gestao/ensino/biblioteca/novo",
+      "dedicatedPage": true,
+      "source": "apps/app/app/(authenticated)/gestao/ensino/biblioteca/novo/page.tsx",
+      "note": "File presence only; not functional, authorization, visual or runtime acceptance"
+    },
+    {
+      "path": "/gestao/ensino/biblioteca/:id",
+      "dedicatedPage": true,
+      "source": "apps/app/app/(authenticated)/gestao/ensino/biblioteca/[id]/page.tsx",
+      "note": "File presence only; not functional, authorization, visual or runtime acceptance"
+    },
+    {
+      "path": "/gestao/ensino/biblioteca/importar",
+      "dedicatedPage": false,
+      "source": null,
+      "note": "File presence only; not functional, authorization, visual or runtime acceptance"
+    },
+    {
+      "path": "/gestao/ensino/colecoes",
+      "dedicatedPage": true,
+      "source": "apps/app/app/(authenticated)/gestao/ensino/colecoes/page.tsx",
+      "note": "File presence only; not functional, authorization, visual or runtime acceptance"
+    },
+    {
+      "path": "/gestao/ensino/colecoes/:id",
+      "dedicatedPage": true,
+      "source": "apps/app/app/(authenticated)/gestao/ensino/colecoes/[id]/page.tsx",
+      "note": "File presence only; not functional, authorization, visual or runtime acceptance"
+    },
+    {
+      "path": "/gestao/alunos/turmas",
+      "dedicatedPage": true,
+      "source": "apps/app/app/(authenticated)/gestao/alunos/turmas/page.tsx",
+      "note": "File presence only; not functional, authorization, visual or runtime acceptance"
+    },
+    {
+      "path": "/gestao/alunos/turmas/nova",
+      "dedicatedPage": true,
+      "source": "apps/app/app/(authenticated)/gestao/alunos/turmas/nova/page.tsx",
+      "note": "File presence only; not functional, authorization, visual or runtime acceptance"
+    },
+    {
+      "path": "/gestao/alunos/turmas/:id",
+      "dedicatedPage": true,
+      "source": "apps/app/app/(authenticated)/gestao/alunos/turmas/[cohortId]/page.tsx",
+      "note": "File presence only; not functional, authorization, visual or runtime acceptance"
+    },
+    {
+      "path": "/gestao/alunos/acompanhamento",
+      "dedicatedPage": false,
+      "source": null,
+      "note": "File presence only; not functional, authorization, visual or runtime acceptance"
+    },
+    {
+      "path": "/gestao/alunos/acompanhamento/:alunoId",
+      "dedicatedPage": false,
+      "source": null,
+      "note": "File presence only; not functional, authorization, visual or runtime acceptance"
+    },
+    {
+      "path": "/gestao/alunos/correcoes",
+      "dedicatedPage": true,
+      "source": "apps/app/app/(authenticated)/gestao/alunos/correcoes/page.tsx",
+      "note": "File presence only; not functional, authorization, visual or runtime acceptance"
+    },
+    {
+      "path": "/gestao/alunos/correcoes/:entregaId",
+      "dedicatedPage": false,
+      "source": null,
+      "note": "File presence only; not functional, authorization, visual or runtime acceptance"
+    },
+    {
+      "path": "/gestao/alunos/atribuicoes",
+      "dedicatedPage": false,
+      "source": null,
+      "note": "File presence only; not functional, authorization, visual or runtime acceptance"
+    },
+    {
+      "path": "/gestao/alunos/atribuicoes/nova",
+      "dedicatedPage": false,
+      "source": null,
+      "note": "File presence only; not functional, authorization, visual or runtime acceptance"
+    },
+    {
+      "path": "/gestao/alunos/atribuicoes/:id",
+      "dedicatedPage": false,
+      "source": null,
+      "note": "File presence only; not functional, authorization, visual or runtime acceptance"
+    },
+    {
+      "path": "/gestao/alunos/tarefas",
+      "dedicatedPage": false,
+      "source": null,
+      "note": "File presence only; not functional, authorization, visual or runtime acceptance"
+    },
+    {
+      "path": "/gestao/alunos/reconhecimento",
+      "dedicatedPage": false,
+      "source": null,
+      "note": "File presence only; not functional, authorization, visual or runtime acceptance"
+    },
+    {
+      "path": "/gestao/comunidade/publicacoes",
+      "dedicatedPage": false,
+      "source": null,
+      "note": "File presence only; not functional, authorization, visual or runtime acceptance"
+    },
+    {
+      "path": "/gestao/comunidade/grupos",
+      "dedicatedPage": false,
+      "source": null,
+      "note": "File presence only; not functional, authorization, visual or runtime acceptance"
+    },
+    {
+      "path": "/gestao/comunidade/grupos/:id",
+      "dedicatedPage": false,
+      "source": null,
+      "note": "File presence only; not functional, authorization, visual or runtime acceptance"
+    },
+    {
+      "path": "/gestao/comunidade/avisos",
+      "dedicatedPage": false,
+      "source": null,
+      "note": "File presence only; not functional, authorization, visual or runtime acceptance"
+    },
+    {
+      "path": "/gestao/comunidade/avisos/novo",
+      "dedicatedPage": false,
+      "source": null,
+      "note": "File presence only; not functional, authorization, visual or runtime acceptance"
+    },
+    {
+      "path": "/gestao/comunidade/avisos/:id",
+      "dedicatedPage": false,
+      "source": null,
+      "note": "File presence only; not functional, authorization, visual or runtime acceptance"
+    },
+    {
+      "path": "/gestao/comunidade/encontros",
+      "dedicatedPage": false,
+      "source": null,
+      "note": "File presence only; not functional, authorization, visual or runtime acceptance"
+    },
+    {
+      "path": "/gestao/comunidade/encontros/novo",
+      "dedicatedPage": false,
+      "source": null,
+      "note": "File presence only; not functional, authorization, visual or runtime acceptance"
+    },
+    {
+      "path": "/gestao/comunidade/encontros/:id",
+      "dedicatedPage": false,
+      "source": null,
+      "note": "File presence only; not functional, authorization, visual or runtime acceptance"
+    },
+    {
+      "path": "/gestao/administracao/membros",
+      "dedicatedPage": false,
+      "source": null,
+      "note": "File presence only; not functional, authorization, visual or runtime acceptance"
+    },
+    {
+      "path": "/gestao/administracao/membros/:id",
+      "dedicatedPage": false,
+      "source": null,
+      "note": "File presence only; not functional, authorization, visual or runtime acceptance"
+    },
+    {
+      "path": "/gestao/administracao/acessos",
+      "dedicatedPage": false,
+      "source": null,
+      "note": "File presence only; not functional, authorization, visual or runtime acceptance"
+    },
+    {
+      "path": "/gestao/administracao/gravacoes-historicas",
+      "dedicatedPage": false,
+      "source": null,
+      "note": "File presence only; not functional, authorization, visual or runtime acceptance"
+    },
+    {
+      "path": "/gestao/administracao/gravacoes-historicas/:id",
+      "dedicatedPage": false,
+      "source": null,
+      "note": "File presence only; not functional, authorization, visual or runtime acceptance"
+    },
+    {
+      "path": "/gestao/administracao/personalizacao",
+      "dedicatedPage": false,
+      "source": null,
+      "note": "File presence only; not functional, authorization, visual or runtime acceptance"
+    },
+    {
+      "path": "/gestao/administracao/medalhas",
+      "dedicatedPage": false,
+      "source": null,
+      "note": "File presence only; not functional, authorization, visual or runtime acceptance"
+    },
+    {
+      "path": "/gestao/administracao/medalhas/:id",
+      "dedicatedPage": false,
+      "source": null,
+      "note": "File presence only; not functional, authorization, visual or runtime acceptance"
+    },
+    {
+      "path": "/gestao/administracao/integracoes",
+      "dedicatedPage": false,
+      "source": null,
+      "note": "File presence only; not functional, authorization, visual or runtime acceptance"
+    },
+    {
+      "path": "/gestao/administracao/integracoes/youtube",
+      "dedicatedPage": false,
+      "source": null,
+      "note": "File presence only; not functional, authorization, visual or runtime acceptance"
+    },
+    {
+      "path": "/gestao/administracao/auditoria",
+      "dedicatedPage": false,
+      "source": null,
+      "note": "File presence only; not functional, authorization, visual or runtime acceptance"
+    },
+    {
+      "path": "/gestao/previa",
+      "dedicatedPage": false,
+      "source": null,
+      "note": "File presence only; not functional, authorization, visual or runtime acceptance"
+    }
+  ],
+  "dedicatedPageSources": [
+    "apps/app/app/(authenticated)/gestao/page.tsx",
+    "apps/app/app/(authenticated)/gestao/[...slug]/page.tsx",
+    "apps/app/app/(authenticated)/gestao/ensino/page.tsx",
+    "apps/app/app/(authenticated)/gestao/comunidade/page.tsx",
+    "apps/app/app/(authenticated)/gestao/administracao/page.tsx",
+    "apps/app/app/(authenticated)/gestao/alunos/page.tsx",
+    "apps/app/app/(authenticated)/gestao/ensino/exercicios/page.tsx",
+    "apps/app/app/(authenticated)/gestao/alunos/turmas/page.tsx",
+    "apps/app/app/(authenticated)/gestao/alunos/correcoes/page.tsx",
+    "apps/app/app/(authenticated)/gestao/ensino/exercicios/[listId]/page.tsx",
+    "apps/app/app/(authenticated)/gestao/alunos/turmas/nova/page.tsx",
+    "apps/app/app/(authenticated)/gestao/alunos/turmas/atribuir/page.tsx",
+    "apps/app/app/(authenticated)/gestao/ensino/biblioteca/[id]/page.tsx",
+    "apps/app/app/(authenticated)/gestao/ensino/biblioteca/page.tsx",
+    "apps/app/app/(authenticated)/gestao/ensino/colecoes/page.tsx",
+    "apps/app/app/(authenticated)/gestao/ensino/cursos/page.tsx",
+    "apps/app/app/(authenticated)/gestao/ensino/biblioteca/novo/page.tsx",
+    "apps/app/app/(authenticated)/gestao/ensino/colecoes/[id]/page.tsx",
+    "apps/app/app/(authenticated)/gestao/ensino/atividades/page.tsx",
+    "apps/app/app/(authenticated)/gestao/ensino/colecoes/novo/page.tsx",
+    "apps/app/app/(authenticated)/gestao/alunos/turmas/[cohortId]/page.tsx",
+    "apps/app/app/(authenticated)/gestao/alunos/turmas/[cohortId]/alunos/page.tsx",
+    "apps/app/app/(authenticated)/gestao/ensino/exercicios/bancos/[bankId]/page.tsx",
+    "apps/app/app/(authenticated)/gestao/ensino/atividades/nova/page.tsx",
+    "apps/app/app/(authenticated)/gestao/ensino/cursos/[id]/page.tsx",
+    "apps/app/app/(authenticated)/gestao/ensino/colecoes/[id]/previa/page.tsx",
+    "apps/app/app/(authenticated)/gestao/ensino/cursos/novo/page.tsx",
+    "apps/app/app/(authenticated)/gestao/ensino/atividades/[id]/page.tsx",
+    "apps/app/app/(authenticated)/gestao/alunos/turmas/[cohortId]/calendario/page.tsx",
+    "apps/app/app/(authenticated)/gestao/alunos/turmas/[cohortId]/conteudo/page.tsx",
+    "apps/app/app/(authenticated)/gestao/alunos/turmas/[cohortId]/configuracoes/page.tsx",
+    "apps/app/app/(authenticated)/gestao/ensino/atividades/[id]/entregas/page.tsx",
+    "apps/app/app/(authenticated)/gestao/ensino/cursos/[id]/preview/page.tsx",
+    "apps/app/app/(authenticated)/gestao/ensino/atividades/[id]/previa/page.tsx",
+    "apps/app/app/(authenticated)/gestao/ensino/cursos/percursos/novo/page.tsx",
+    "apps/app/app/(authenticated)/gestao/ensino/cursos/[id]/turmas/page.tsx",
+    "apps/app/app/(authenticated)/gestao/ensino/cursos/percursos/[pathId]/page.tsx",
+    "apps/app/app/(authenticated)/gestao/ensino/cursos/[id]/aulas/[lessonId]/page.tsx"
+  ]
+}
