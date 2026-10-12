@@ -716,3 +716,25 @@ dispatcher runs only after commit. These routes have explicit JavaScript budget
 entries at 225 KiB gzip each; bundle sizes, authenticated latency, concurrent
 review behavior, and persisted QA are still unmeasured until a local database
 and staff/student fixtures are available.
+
+### Gestão library catalog and editor
+
+`/gestao/ensino/biblioteca` checks `content.manage` on every request, applies
+search and filters in PostgreSQL, returns 24 materials per page, and selects
+only the columns needed by the active list/grid. Status counts are grouped in
+the database; category, language, and collection selectors are capped at 100,
+50, and 100 rows. Catalog links do not prefetch on viewport. Bulk submission
+accepts at most 100 unique IDs; collection additions use a serializable
+transaction and avoid duplicate links. Success is shown only after the write
+commits and the server action returns. Mutations revalidate the Gestão catalog,
+the legacy admin catalog, and the learner library; bulk collection updates also
+revalidate the collection and Aprender surfaces. No role, identity, or private
+asset result is persistently cached.
+
+The route measured 214.2 KiB gzip across 17 chunks against its 225 KiB budget.
+This is a bundle check, not a latency measurement: authenticated PostgreSQL
+percentiles, Storage behavior, concurrent bulk mutation, and visual/runtime QA
+remain open until the isolated local QA services and fixtures are available.
+The shared targets remain ≤100 ms visible feedback, first usable content p95
+≤1 s, committed small-mutation p95 ≤500 ms, and warmed navigation p95 ≤300 ms;
+none has been measured for this route in authenticated QA.

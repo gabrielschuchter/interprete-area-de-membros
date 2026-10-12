@@ -208,3 +208,22 @@ on a server request.
 - Both routes now have 225 KiB gzip budget entries. Authenticated route
   percentiles, the measured bundle, and persisted concurrent-review behavior
   remain open until local PostgreSQL QA is available.
+
+## Gestão library catalog and editor
+
+- `/gestao/ensino/biblioteca` applies filters in PostgreSQL and returns 24
+  materials per page with a minimal list/grid projection. Status counts are
+  grouped in SQL; category, language, and collection options are capped at
+  100, 50, and 100. Catalog links do not prefetch on viewport.
+- Bulk actions accept no more than 100 unique materials. Adding selected items
+  to a collection is serializable and skips existing links; success follows the
+  committed write. Library creates use idempotency keys and begin as drafts.
+- The route measured 214.2 KiB gzip across 17 chunks, below 225 KiB. This does
+  not establish authenticated latency or persisted behavior; local database,
+  Storage, concurrency, and visual acceptance remain open.
+- Mutations revalidate the Gestión catalog, legacy admin catalog, and learner
+  library; bulk collection writes also refresh collection and Aprender routes.
+  Keep role, identity, and private asset results out of shared caches. Use the
+  shared p95 targets (≤1 s first content, ≤500 ms committed small mutation,
+  ≤300 ms warmed navigation) and ≤100 ms visible feedback; no authenticated
+  measurement is available for this route yet.
