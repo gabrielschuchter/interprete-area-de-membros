@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   exerciseBankListsHref,
   exerciseBankListsPath,
+  exerciseListEditorHref,
   exerciseManagementPath,
   resolveExercisePage,
   resolveExerciseQuestionSwap,
@@ -52,6 +53,40 @@ describe("exercise bank list routes and pagination", () => {
       page: 1,
       totalPages: 3,
     });
+  });
+});
+
+describe("exerciseListEditorHref", () => {
+  it("retains question, category, and reusable-question filters between pages", () => {
+    const base = {
+      basePath: "/gestao/ensino/exercicios" as const,
+      listId: "list/one",
+      filters: {
+        bankCategoryId: "category-one",
+        bankCategoryPage: 2,
+        bankCategoryQuery: "neuro",
+        listPage: 1,
+        listQuery: "hipertensão",
+        listStatus: "PUBLISHED",
+        reusablePage: 3,
+        reusableQuery: "pressão",
+      },
+    };
+    expect(
+      exerciseListEditorHref({
+        ...base,
+        overrides: { bankCategoryPage: 3 },
+      })
+    ).toBe(
+      "/gestao/ensino/exercicios/list%2Fone?q=hipertens%C3%A3o&categoria=category-one&estado=PUBLISHED&categoriaBusca=neuro&categoriaPagina=3&questaoBusca=press%C3%A3o&questaoPagina=3"
+    );
+    expect(
+      exerciseListEditorHref({
+        ...base,
+        basePath: "/admin/exercicios",
+        overrides: { reusablePage: 4 },
+      })
+    ).toContain("/admin/exercicios/list%2Fone?");
   });
 });
 

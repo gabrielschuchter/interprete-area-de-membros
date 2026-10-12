@@ -50,6 +50,53 @@ export const resolveExercisePage = (
   return { page, totalPages };
 };
 
+export interface ExerciseListEditorFilters {
+  readonly bankCategoryId: string;
+  readonly bankCategoryPage: number;
+  readonly bankCategoryQuery: string;
+  readonly listPage: number;
+  readonly listQuery: string;
+  readonly listStatus: string;
+  readonly reusablePage: number;
+  readonly reusableQuery: string;
+}
+
+export const exerciseListEditorHref = (input: {
+  readonly basePath: "/admin/exercicios" | "/gestao/ensino/exercicios";
+  readonly filters: ExerciseListEditorFilters;
+  readonly listId: string;
+  readonly overrides?: Partial<ExerciseListEditorFilters>;
+}) => {
+  const filters = { ...input.filters, ...input.overrides };
+  const params = new URLSearchParams();
+  if (filters.listQuery) {
+    params.set("q", filters.listQuery);
+  }
+  if (filters.bankCategoryId !== "ALL") {
+    params.set("categoria", filters.bankCategoryId);
+  }
+  if (filters.listStatus !== "ALL") {
+    params.set("estado", filters.listStatus);
+  }
+  if (filters.listPage > 1) {
+    params.set("pagina", String(filters.listPage));
+  }
+  if (filters.bankCategoryQuery) {
+    params.set("categoriaBusca", filters.bankCategoryQuery);
+  }
+  if (filters.bankCategoryPage > 1) {
+    params.set("categoriaPagina", String(filters.bankCategoryPage));
+  }
+  if (filters.reusableQuery) {
+    params.set("questaoBusca", filters.reusableQuery);
+  }
+  if (filters.reusablePage > 1) {
+    params.set("questaoPagina", String(filters.reusablePage));
+  }
+  const search = params.toString();
+  return `${input.basePath}/${encodeURIComponent(input.listId)}${search ? `?${search}` : ""}`;
+};
+
 export const resolveExerciseQuestionSwap = <T extends ExerciseListPosition>(
   items: readonly T[],
   itemId: string,

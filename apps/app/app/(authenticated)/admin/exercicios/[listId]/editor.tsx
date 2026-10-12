@@ -1,4 +1,4 @@
-import { ContentStatus, database, type Prisma } from "@repo/database";
+import { ContentStatus, database, Prisma } from "@repo/database";
 import { Badge } from "@repo/design-system/components/ui/badge";
 import { Button } from "@repo/design-system/components/ui/button";
 import { Input } from "@repo/design-system/components/ui/input";
@@ -10,6 +10,11 @@ import {
   SingleFlightSubmit,
 } from "@/components/mutations/single-flight-form";
 import { requireStaff } from "@/lib/authorization";
+import {
+  type ExerciseListEditorFilters,
+  exerciseListEditorHref,
+  resolveExercisePage,
+} from "@/lib/exercise-management";
 import {
   attachExerciseQuestionToList,
   moveExerciseListQuestion,
@@ -23,15 +28,21 @@ interface AdminExerciseListPageProperties {
   readonly params: Promise<{ readonly listId: string }>;
   readonly searchParams: Promise<{
     readonly categoria?: string;
+    readonly categoriaBusca?: string;
+    readonly categoriaPagina?: string;
     readonly estado?: string;
     readonly pagina?: string;
     readonly q?: string;
+    readonly questaoBusca?: string;
+    readonly questaoPagina?: string;
     readonly resultado?: string;
   }>;
 }
 
 const labels = ["A", "B", "C", "D", "E"];
 const pageSize = 25;
+const categoryPageSize = 30;
+const reusableQuestionPageSize = 20;
 const statusFilters = ["ALL", "DRAFT", "PUBLISHED", "ARCHIVED"] as const;
 type ExerciseStatusFilter = (typeof statusFilters)[number];
 
@@ -76,7 +87,11 @@ const getExerciseListPageData = async (
   query: Awaited<AdminExerciseListPageProperties["searchParams"]>
 ) => {
   const searchText = (query.q ?? "").trim().slice(0, 120);
-  const categoryId = query.categoria?.trim().slice(0, 255) || "ALL";
+  const categorySearchText = (query.categoriaBusca ?? "").trim().slice(0, 120);
+  const reusableQuestionSearchText = (query.questaoBusca ?? "")
+    .trim()
+    .slice(0, 120);
+  const requestedCategoryId = query.categoria?.trim().slice(0, 255) || "ALL";
   const questionStatus = normalizeExerciseStatus(query.estado);
   const requestedPage = Math.max(1, Math.trunc(Number(query.pagina) || 1));
   const exerciseList = await database.exerciseList.findUnique({
@@ -100,6 +115,17 @@ const getExerciseListPageData = async (
   if (!exerciseList) {
     notFound();
   }
+  const selectedCategory =
+    requestedCategoryId === "ALL"
+      ? null
+      : await database.exerciseCategory.findFirst({
+          where: {
+            id: requestedCategoryId,
+            bankId: exerciseList.bank.id,
+          },
+          select: { id: true, title: true },
+        });
+  const categoryId = selectedCategory?.id ?? "ALL";
   const itemWhere: Prisma.ExerciseListItemWhereInput = {
     listId: exerciseList.id,
     ...(searchText
@@ -124,36 +150,78 @@ const getExerciseListPageData = async (
         }
       : {}),
   };
-  const [filteredCount, categories, reusableQuestions] = await Promise.all([
-    database.exerciseListItem.count({ where: itemWhere }),
+  const categoryWhere: Prisma.ExerciseCategoryWhereInput = {
+    bankId: exerciseList.bank.id,
+    ...(categorySearchText
+      ? { title: { contains: categorySearchText, mode: "insensitive" } }
+      : {}),
+  };
+  const reusableQuestionStatus =
+    exerciseList.status === ContentStatus.PUBLISHED &&
+    exerciseList.bank.status === ContentStatus.PUBLISHED
+      ? Prisma.sql`question.\"status\"::text = 'PUBLISHED'`
+      : Prisma.sql`question.\"status\"::text <> 'ARCHIVED'`;
+  const reusableQuestionSearch = reusableQuestionSearchText
+    ? Prisma.sql`AND version.\"statement\" ILIKE ${`%${reusableQuestionSearchText}%`}`
+    : Prisma.empty;
+  const reusableQuestionFromWhere = Prisma.sql`
+    FROM \"ExerciseQuestion\" AS question
+    JOIN \"ExerciseQuestionVersion\" AS version
+      ON version.\"questionId\" = question.\"id\"
+      AND version.\"version\" = question.\"latestVersion\"
+    WHERE question.\"bankId\" = ${exerciseList.bank.id}
+      AND ${reusableQuestionStatus}
+      AND NOT EXISTS (
+        SELECT 1
+        FROM \"ExerciseListItem\" AS list_item
+        WHERE list_item.\"listId\" = ${exerciseList.id}
+          AND list_item.\"questionId\" = question.\"id\"
+      )
+      ${reusableQuestionSearch}
+  `;
+  const [filteredCount, categoryCount, reusableQuestionCountRows] =
+    await Promise.all([
+      database.exerciseListItem.count({ where: itemWhere }),
+      database.exerciseCategory.count({ where: categoryWhere }),
+      database.$queryRaw<Array<{ count: bigint }>>(
+        Prisma.sql`SELECT COUNT(*)::bigint AS \"count\" ${reusableQuestionFromWhere}`
+      ),
+    ]);
+  const reusableQuestionCount = Number(
+    reusableQuestionCountRows[0]?.count ?? 0n
+  );
+  const categoryPagination = resolveExercisePage(
+    query.categoriaPagina,
+    categoryCount,
+    categoryPageSize
+  );
+  const reusablePagination = resolveExercisePage(
+    query.questaoPagina,
+    reusableQuestionCount,
+    reusableQuestionPageSize
+  );
+  const [categories, reusableRows] = await Promise.all([
     database.exerciseCategory.findMany({
-      where: { bankId: exerciseList.bank.id },
+      where: categoryWhere,
       orderBy: [{ title: "asc" }, { id: "asc" }],
-      take: 100,
+      skip: (categoryPagination.page - 1) * categoryPageSize,
+      take: categoryPageSize,
       select: { id: true, title: true },
     }),
-    database.exerciseQuestion.findMany({
-      where: {
-        bankId: exerciseList.bank.id,
-        status:
-          exerciseList.status === ContentStatus.PUBLISHED &&
-          exerciseList.bank.status === ContentStatus.PUBLISHED
-            ? ContentStatus.PUBLISHED
-            : { not: ContentStatus.ARCHIVED },
-        listItems: { none: { listId: exerciseList.id } },
-      },
-      orderBy: [{ updatedAt: "desc" }, { id: "asc" }],
-      take: 100,
-      select: {
-        id: true,
-        versions: {
-          orderBy: { version: "desc" },
-          take: 1,
-          select: { statement: true },
-        },
-      },
-    }),
+    database.$queryRaw<Array<{ id: string; statement: string }>>(
+      Prisma.sql`
+        SELECT question.\"id\", version.\"statement\"
+        ${reusableQuestionFromWhere}
+        ORDER BY question.\"updatedAt\" DESC, question.\"id\" ASC
+        LIMIT ${reusableQuestionPageSize}
+        OFFSET ${(reusablePagination.page - 1) * reusableQuestionPageSize}
+      `
+    ),
   ]);
+  const reusableQuestions = reusableRows.map(({ id, statement }) => ({
+    id,
+    versions: [{ statement }],
+  }));
   const totalPages = Math.max(1, Math.ceil(filteredCount / pageSize));
   const page = Math.min(requestedPage, totalPages);
   const items = await database.exerciseListItem.findMany({
@@ -193,13 +261,22 @@ const getExerciseListPageData = async (
   });
   return {
     categories,
+    categoryCount,
     categoryId,
+    categoryPage: categoryPagination.page,
+    categorySearchText,
+    categoryTotalPages: categoryPagination.totalPages,
     exerciseList,
     filteredCount,
     items,
     page,
     questionStatus,
+    reusableQuestionCount,
+    reusableQuestionPage: reusablePagination.page,
+    reusableQuestionSearchText,
+    reusableQuestionTotalPages: reusablePagination.totalPages,
     reusableQuestions,
+    selectedCategory,
     searchText,
     totalPages,
   };
@@ -453,29 +530,30 @@ const ExerciseListHeading = ({
   );
 
 interface ExerciseListPaginationProperties {
-  readonly categoryId: string;
   readonly filteredCount: number;
+  readonly filters: ExerciseListEditorFilters;
   readonly gestao: boolean;
   readonly listId: string;
   readonly page: number;
-  readonly questionStatus: ExerciseStatusFilter;
-  readonly searchText: string;
   readonly totalPages: number;
 }
 
 const ExerciseListPagination = ({
-  categoryId,
+  filters,
   filteredCount,
   gestao,
   listId,
   page,
-  questionStatus,
-  searchText,
   totalPages,
 }: ExerciseListPaginationProperties) => {
   const basePath = gestao ? "/gestao/ensino/exercicios" : "/admin/exercicios";
   const pageHref = (targetPage: number) =>
-    `${basePath}/${listId}?q=${encodeURIComponent(searchText)}&categoria=${encodeURIComponent(categoryId)}&estado=${questionStatus}&pagina=${targetPage}`;
+    exerciseListEditorHref({
+      basePath,
+      filters,
+      listId,
+      overrides: { listPage: targetPage },
+    });
   const pageLabel =
     filteredCount === 0
       ? "0 questões"
@@ -511,6 +589,56 @@ const ExerciseListPagination = ({
   );
 };
 
+interface ExercisePickerPaginationProperties {
+  readonly ariaLabel: string;
+  readonly count: number;
+  readonly getHref: (page: number) => string;
+  readonly noun: string;
+  readonly page: number;
+  readonly pageSize: number;
+  readonly totalPages: number;
+}
+
+const ExercisePickerPagination = ({
+  ariaLabel,
+  count,
+  getHref,
+  noun,
+  page,
+  pageSize: size,
+  totalPages,
+}: ExercisePickerPaginationProperties) => {
+  const rangeLabel =
+    count === 0
+      ? `0 ${noun}`
+      : `${(page - 1) * size + 1}–${Math.min(page * size, count)} de ${count}`;
+  return (
+    <nav aria-label={ariaLabel} className="gestao-exercise-pagination">
+      <span>{rangeLabel}</span>
+      <div>
+        {page > 1 ? (
+          <Button asChild variant="outline">
+            <Link href={getHref(page - 1)}>Anterior</Link>
+          </Button>
+        ) : (
+          <Button disabled variant="outline">
+            Anterior
+          </Button>
+        )}
+        {page < totalPages ? (
+          <Button asChild variant="outline">
+            <Link href={getHref(page + 1)}>Próxima</Link>
+          </Button>
+        ) : (
+          <Button disabled variant="outline">
+            Próxima
+          </Button>
+        )}
+      </div>
+    </nav>
+  );
+};
+
 export const AdminExerciseListPage = async ({
   params,
   searchParams,
@@ -521,13 +649,22 @@ export const AdminExerciseListPage = async ({
   const data = await getExerciseListPageData(listId, query);
   const {
     categories,
+    categoryCount,
     categoryId,
+    categoryPage,
+    categorySearchText,
+    categoryTotalPages,
     exerciseList,
     filteredCount,
     items,
     page,
     questionStatus,
+    reusableQuestionCount,
+    reusableQuestionPage,
+    reusableQuestionSearchText,
+    reusableQuestionTotalPages,
     reusableQuestions,
+    selectedCategory,
     searchText,
     totalPages,
   } = data;
@@ -537,6 +674,35 @@ export const AdminExerciseListPage = async ({
   const hasFilters = Boolean(
     searchText || categoryId !== "ALL" || questionStatus !== "ALL"
   );
+  const basePath = gestao ? "/gestao/ensino/exercicios" : "/admin/exercicios";
+  const listRouteHref = `${basePath}/${encodeURIComponent(exerciseList.id)}`;
+  const listEditorFilters: ExerciseListEditorFilters = {
+    bankCategoryId: categoryId,
+    bankCategoryPage: categoryPage,
+    bankCategoryQuery: categorySearchText,
+    listPage: page,
+    listQuery: searchText,
+    listStatus: questionStatus,
+    reusablePage: reusableQuestionPage,
+    reusableQuery: reusableQuestionSearchText,
+  };
+  const categoryPageHref = (targetPage: number) =>
+    exerciseListEditorHref({
+      basePath,
+      filters: listEditorFilters,
+      listId: exerciseList.id,
+      overrides: { bankCategoryPage: targetPage },
+    });
+  const reusablePageHref = (targetPage: number) =>
+    exerciseListEditorHref({
+      basePath,
+      filters: listEditorFilters,
+      listId: exerciseList.id,
+      overrides: { reusablePage: targetPage },
+    });
+  const showSelectedCategoryOption =
+    selectedCategory &&
+    !categories.some((category) => category.id === selectedCategory.id);
 
   return (
     <main
@@ -620,6 +786,44 @@ export const AdminExerciseListPage = async ({
         <h2 className="font-display text-3xl" id="exercise-questions-title">
           Questões da lista
         </h2>
+        <form
+          action={listRouteHref}
+          className="gestao-exercise-list-filters"
+          method="get"
+        >
+          <input name="q" type="hidden" value={searchText} />
+          <input name="categoria" type="hidden" value={categoryId} />
+          <input name="estado" type="hidden" value={questionStatus} />
+          <input name="pagina" type="hidden" value={page} />
+          <input
+            name="categoriaBusca"
+            type="hidden"
+            value={categorySearchText}
+          />
+          <input name="categoriaPagina" type="hidden" value={categoryPage} />
+          <label htmlFor="reusable-question-search">
+            <span className="sr-only">Buscar questões reutilizáveis</span>
+            <Input
+              defaultValue={reusableQuestionSearchText}
+              id="reusable-question-search"
+              maxLength={120}
+              name="questaoBusca"
+              placeholder="Buscar questões reutilizáveis"
+            />
+          </label>
+          <Button type="submit" variant="outline">
+            Buscar questões
+          </Button>
+        </form>
+        <ExercisePickerPagination
+          ariaLabel="Paginação das questões reutilizáveis"
+          count={reusableQuestionCount}
+          getHref={reusablePageHref}
+          noun="questões reutilizáveis"
+          page={reusableQuestionPage}
+          pageSize={reusableQuestionPageSize}
+          totalPages={reusableQuestionTotalPages}
+        />
         <div className="mt-4 flex flex-wrap items-end gap-3 rounded-lg border bg-card p-4">
           <SingleFlightForm
             action={attachExerciseQuestionToList}
@@ -638,6 +842,7 @@ export const AdminExerciseListPage = async ({
               </span>
               <select
                 className="h-10 rounded-md border bg-background px-3"
+                disabled={reusableQuestions.length === 0}
                 id="reusable-question"
                 name="questionId"
                 required
@@ -653,6 +858,7 @@ export const AdminExerciseListPage = async ({
             </label>
             <SingleFlightSubmit
               className="w-fit"
+              disabled={reusableQuestions.length === 0}
               pendingLabel="Adicionando…"
               variant="outline"
             >
@@ -665,14 +871,20 @@ export const AdminExerciseListPage = async ({
           </p>
         </div>
         <form
-          action={
-            gestao
-              ? `/gestao/ensino/exercicios/${exerciseList.id}`
-              : `/admin/exercicios/${exerciseList.id}`
-          }
+          action={listRouteHref}
           className="gestao-exercise-list-filters"
           method="get"
         >
+          <input
+            name="questaoBusca"
+            type="hidden"
+            value={reusableQuestionSearchText}
+          />
+          <input
+            name="questaoPagina"
+            type="hidden"
+            value={reusableQuestionPage}
+          />
           <label htmlFor="exercise-list-search">
             <span className="sr-only">Buscar nesta lista</span>
             <Input
@@ -683,6 +895,16 @@ export const AdminExerciseListPage = async ({
               placeholder="Buscar nesta lista"
             />
           </label>
+          <label htmlFor="exercise-list-category-search">
+            <span className="sr-only">Buscar categorias</span>
+            <Input
+              defaultValue={categorySearchText}
+              id="exercise-list-category-search"
+              maxLength={120}
+              name="categoriaBusca"
+              placeholder="Buscar categorias"
+            />
+          </label>
           <label htmlFor="exercise-list-category">
             <span className="sr-only">Categoria</span>
             <select
@@ -691,6 +913,11 @@ export const AdminExerciseListPage = async ({
               name="categoria"
             >
               <option value="ALL">Categoria · todas</option>
+              {showSelectedCategoryOption ? (
+                <option value={selectedCategory.id}>
+                  {selectedCategory.title}
+                </option>
+              ) : null}
               {categories.map((category) => (
                 <option key={category.id} value={category.id}>
                   {category.title}
@@ -715,6 +942,15 @@ export const AdminExerciseListPage = async ({
             Buscar
           </Button>
         </form>
+        <ExercisePickerPagination
+          ariaLabel="Paginação das categorias"
+          count={categoryCount}
+          getHref={categoryPageHref}
+          noun="categorias"
+          page={categoryPage}
+          pageSize={categoryPageSize}
+          totalPages={categoryTotalPages}
+        />
         {hasFilters && (
           <p className="gestao-exercise-reorder-hint">
             Limpe os filtros para reordenar questões da lista.
@@ -740,13 +976,11 @@ export const AdminExerciseListPage = async ({
           )}
         </div>{" "}
         <ExerciseListPagination
-          categoryId={categoryId}
           filteredCount={filteredCount}
+          filters={listEditorFilters}
           gestao={gestao}
           listId={exerciseList.id}
           page={page}
-          questionStatus={questionStatus}
-          searchText={searchText}
           totalPages={totalPages}
         />
       </section>
