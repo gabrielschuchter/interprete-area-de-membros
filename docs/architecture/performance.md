@@ -852,3 +852,23 @@ database persistence, multi-user authorization, visual/mobile comparison, and
 the ≤1 s first-content p95 remain unverified because local PostgreSQL QA is
 unavailable. The shared ≤100 ms interaction-feedback, ≤500 ms committed small
 mutation, and ≤300 ms warmed navigation budgets remain in force.
+
+### Student calendar: activity deadlines and cohort lesson releases
+
+`resolveCalendar` is request-scoped and shared by the planner and its private
+`.ics` feed. It selects activity deadlines through the learner feed, then
+loads the current member's active cohort memberships before querying lesson
+releases, so the release query is bounded to those cohort IDs and the requested
+time range. The projection includes only published lessons/courses, rechecks
+course access at release time, applies membership and read-window rules, and
+deduplicates a lesson offered by multiple cohorts. The `.ics` response is
+`private, no-store` so a later fetch observes token and membership changes.
+
+Each source is currently capped at 200 results and has no visible continuation;
+cohort meetings and `CohortEvent` are not projected yet. The planner bundle
+measured 223.0 KiB gzip across 17 initial chunks against the 225 KiB budget.
+This is bundle evidence only: authenticated database behavior, query latency,
+the ≤1 s first-content p95, visual comparison, and mobile acceptance remain
+unverified while local PostgreSQL QA is unavailable. Keep the shared ≤100 ms
+interaction-feedback, ≤500 ms committed small-mutation, and ≤300 ms warmed
+navigation budgets in force.

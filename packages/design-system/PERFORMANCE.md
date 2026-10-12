@@ -329,3 +329,20 @@ on a server request.
   retain the shared targets of ≤100 ms visible feedback, ≤1 s first usable
   content p95, ≤500 ms committed small mutation p95, and ≤300 ms warmed
   navigation p95.
+
+## Student calendar: activity deadlines and lesson releases
+
+- Use the shared request-scoped `resolveCalendar` projection for the planner
+  and private `.ics` feed. Resolve the member's active cohorts first, then
+  query only their published lesson releases within the requested interval;
+  recheck course access at release time and deduplicate a lesson across cohorts.
+- The planner lets learners hide or show the “Aulas liberadas” layer. The
+  `.ics` endpoint stays `private, no-store` so later fetches observe revoked
+  membership and token changes.
+- Activity deadlines and lesson releases still have fixed caps of 200 with no
+  continuation UI. Cohort meetings and `CohortEvent` are not included yet.
+- The planner measured 223.0 KiB gzip across 17 initial chunks, under the
+  225 KiB budget. This does not establish latency: authenticated query behavior,
+  ≤1 s first usable content p95, visual/mobile QA, and the shared ≤100 ms
+  feedback, ≤500 ms committed mutation, and ≤300 ms warmed navigation budgets
+  remain unverified without local PostgreSQL QA.
