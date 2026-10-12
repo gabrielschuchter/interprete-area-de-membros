@@ -6,6 +6,7 @@ const { databaseMock } = vi.hoisted(() => ({
   databaseMock: {
     $queryRaw: vi.fn(),
     activitySubmission: { findFirst: vi.fn() },
+    contentCollection: { findFirst: vi.fn() },
     libraryItem: { findFirst: vi.fn() },
     member: { findUnique: vi.fn() },
     profile: { findUnique: vi.fn() },
@@ -23,6 +24,8 @@ const profilePath = "profile-assets/avatars/member-owner/avatar.webp";
 const communityPath = "community-assets/inline/member-owner/inline.webp";
 const communityAttachmentPath =
   "community-assets/attachments/member-owner/reference.pdf";
+const collectionCoverPath =
+  "community-assets/covers/member-owner/collection-cover.webp";
 
 describe("member asset read authorization", () => {
   beforeEach(() => {
@@ -31,6 +34,7 @@ describe("member asset read authorization", () => {
     databaseMock.profile.findUnique.mockResolvedValue({ avatarUrl: null });
     databaseMock.$queryRaw.mockResolvedValue([]);
     databaseMock.activitySubmission.findFirst.mockResolvedValue(null);
+    databaseMock.contentCollection.findFirst.mockResolvedValue(null);
     databaseMock.libraryItem.findFirst.mockResolvedValue(null);
   });
 
@@ -65,6 +69,16 @@ describe("member asset read authorization", () => {
 
     await expect(
       canReadMemberAssetPath(communityAttachmentPath, "member-reader")
+    ).resolves.toBe(true);
+  });
+
+  test("allows a member of the collection audience to read its published cover", async () => {
+    databaseMock.contentCollection.findFirst.mockResolvedValueOnce({
+      id: "collection-1",
+    });
+
+    await expect(
+      canReadMemberAssetPath(collectionCoverPath, "member-reader")
     ).resolves.toBe(true);
   });
 

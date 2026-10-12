@@ -110,6 +110,36 @@ const hasPublishedCommunityReference = async (
   return commentReferences.length > 0;
 };
 
+const hasPublishedCollectionCoverReference = async (
+  path: string,
+  memberId: string
+) => {
+  const now = new Date();
+  const collection = await database.contentCollection.findFirst({
+    where: {
+      coverUrl: memberAssetUrl(path),
+      status: "PUBLISHED",
+      AND: [
+        { OR: [{ availableAt: null }, { availableAt: { lte: now } }] },
+        { OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] },
+      ],
+      OR: [
+        { audienceSpaceId: null },
+        {
+          audienceSpace: {
+            is: {
+              status: "PUBLISHED",
+              OR: [{ ownerId: memberId }, { members: { some: { memberId } } }],
+            },
+          },
+        },
+      ],
+    },
+    select: { id: true },
+  });
+  return Boolean(collection);
+};
+
 const canReadProfileAvatar = async (path: string, memberId: string) => {
   const ownerId = ownerIdFromPath(path, profileAvatarPrefix);
   if (!ownerId) {
@@ -208,7 +238,10 @@ export const canReadMemberAssetPath = async (
     // Keep the upload-to-save experience working for the author while a draft
     // is still being persisted. Other members need a real visible reference.
     return (
-      ownerId === memberId || hasPublishedCommunityReference(path, memberId)
+      ownerId === memberId ||
+      (communityPrefix === communityCoverPrefix &&
+        (await hasPublishedCollectionCoverReference(path, memberId))) ||
+      hasPublishedCommunityReference(path, memberId)
     );
   }
 
@@ -217,7 +250,10 @@ export const canReadMemberAssetPath = async (
   }
 
   if (path.startsWith(libraryPrefix)) {
-    return canReadLibraryAsset(path, memberId);
+    return (
+      (await canReadLibraryAsset(path, memberId)) ||
+      hasPublishedCollectionCoverReference(path, memberId)
+    );
   }
 
   return false;

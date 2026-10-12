@@ -25,6 +25,8 @@ export const mutationLimits = {
   "library.bookmark": { max: 30, windowMs: 60_000 },
   "library.catalog-import": { max: 3, windowMs: 60 * 60_000 },
   "library.mutation": { max: 30, windowMs: 60_000 },
+  "collection.search": { max: 60, windowMs: 60_000 },
+  "collection.mutation": { max: 30, windowMs: 60_000 },
   "meeting.mutation": { max: 30, windowMs: 60_000 },
   "learning.playback": { max: 30, windowMs: 60_000 },
   "study.heartbeat": { max: 180, windowMs: 60_000 },

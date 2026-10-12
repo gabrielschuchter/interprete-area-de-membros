@@ -45,6 +45,37 @@
       "maxGzipBytes": 230400
     },
     {
+      "route": "gestao-collections",
+      "manifestSegments": ["(authenticated)", "gestao", "ensino", "colecoes"],
+      "entrySuffix": "apps/app/app/(authenticated)/gestao/ensino/colecoes/page",
+      "maxGzipBytes": 230400
+    },
+    {
+      "route": "gestao-collection-editor",
+      "manifestSegments": [
+        "(authenticated)",
+        "gestao",
+        "ensino",
+        "colecoes",
+        "[id]"
+      ],
+      "entrySuffix": "apps/app/app/(authenticated)/gestao/ensino/colecoes/[id]/page",
+      "maxGzipBytes": 230400
+    },
+    {
+      "route": "gestao-collection-preview",
+      "manifestSegments": [
+        "(authenticated)",
+        "gestao",
+        "ensino",
+        "colecoes",
+        "[id]",
+        "previa"
+      ],
+      "entrySuffix": "apps/app/app/(authenticated)/gestao/ensino/colecoes/[id]/previa/page",
+      "maxGzipBytes": 230400
+    },
+    {
       "route": "gestao-corrections",
       "manifestSegments": ["(authenticated)", "gestao", "alunos", "correcoes"],
       "entrySuffix": "apps/app/app/(authenticated)/gestao/alunos/correcoes/page",
