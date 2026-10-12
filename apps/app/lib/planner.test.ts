@@ -58,7 +58,10 @@ describe("planner dashboard reads", () => {
     mocks.count.mockResolvedValue(0);
     mocks.aggregate.mockResolvedValue({ _sum: { seconds: null } });
     mocks.studyTrackingSessionFindMany.mockResolvedValue([]);
-    mocks.resolveCalendar.mockResolvedValue([]);
+    mocks.resolveCalendar.mockResolvedValue({
+      activities: [],
+      lessonReleases: [],
+    });
   });
 
   it("opens with defaults without any database writes for a new member", async () => {
@@ -99,17 +102,31 @@ describe("planner dashboard reads", () => {
     const start = "2026-10-01T00:00:00.000Z";
     const end = "2026-11-01T00:00:00.000Z";
     const deadline = new Date("2026-10-20T12:00:00.000Z");
-    mocks.resolveCalendar.mockResolvedValue([
-      {
-        id: "cohort-activity:activity-a",
-        activityId: "activity-a",
-        title: "Atividade da turma",
-        slug: "atividade-da-turma",
-        dueAt: deadline,
-        status: "NEW",
-        href: "/atividades/atividade-da-turma",
-      },
-    ]);
+    mocks.resolveCalendar.mockResolvedValue({
+      activities: [
+        {
+          id: "cohort-activity:activity-a",
+          activityId: "activity-a",
+          title: "Atividade da turma",
+          slug: "atividade-da-turma",
+          dueAt: deadline,
+          status: "NEW",
+          href: "/atividades/atividade-da-turma",
+        },
+      ],
+      lessonReleases: [
+        {
+          id: "release-a",
+          lessonId: "lesson-a",
+          title: "Aula liberada",
+          lessonSlug: "aula-liberada",
+          courseId: "course-a",
+          courseSlug: "curso-a",
+          releaseAt: deadline,
+          href: "/aprender/cursos/curso-a/aula-liberada",
+        },
+      ],
+    });
 
     const dashboard = await getPlannerDashboard("member-qa", { start, end });
 
@@ -129,5 +146,6 @@ describe("planner dashboard reads", () => {
         href: "/atividades/atividade-da-turma",
       },
     ]);
+    expect(dashboard.lessonReleases).toHaveLength(1);
   });
 });

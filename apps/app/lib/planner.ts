@@ -695,7 +695,7 @@ export const getPlannerDashboard = async (
     }),
   ]);
 
-  const [calendarActivities, studyTrackingSessions] = rangeInput
+  const [calendar, studyTrackingSessions] = rangeInput
     ? await Promise.all([
         resolveCalendar(memberId, { start: rangeStart, end: rangeEnd }, now),
         database.studyTrackingSession.findMany({
@@ -716,7 +716,7 @@ export const getPlannerDashboard = async (
           },
         }),
       ])
-    : [[], []];
+    : [{ activities: [], lessonReleases: [] }, []];
 
   const intervalSeconds = studyTrackingSessions.length
     ? await database.studyActivityInterval.groupBy({
@@ -788,7 +788,7 @@ export const getPlannerDashboard = async (
   const timerById = new Map(
     linkedTimerSessions.map((session) => [session.id, session])
   );
-  const assignedActivities = calendarActivities;
+  const assignedActivities = calendar.activities;
   const calendarStudySessions = studyTrackingSessions.flatMap((session) => {
     const seconds = secondsBySession.get(session.id) ?? 0;
     if (!(seconds && session.endedAt)) {
@@ -928,6 +928,7 @@ export const getPlannerDashboard = async (
     events: expandedEvents,
     meetings,
     activities: assignedActivities,
+    lessonReleases: calendar.lessonReleases,
     studySessions: calendarStudySessions,
     goals,
     preferences,

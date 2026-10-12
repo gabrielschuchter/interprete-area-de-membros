@@ -949,6 +949,7 @@ function PlannerWorkspaceContent({
     events: true,
     meetings: true,
     activities: true,
+    lessonReleases: true,
     studySessions: true,
     goals: true,
   });
@@ -1701,6 +1702,17 @@ function PlannerWorkspaceContent({
             activity,
           }))
         : []),
+      ...(enabledLayers.lessonReleases
+        ? currentData.lessonReleases.map((lessonRelease) => ({
+            key: `lesson-release:${lessonRelease.id}`,
+            dateKey: dateKeyInTimezone(lessonRelease.releaseAt, timezone),
+            startMinute: minutesAtTimezone(lessonRelease.releaseAt, timezone),
+            endMinute: null,
+            kind: "lessonRelease" as const,
+            title: lessonRelease.title,
+            lessonRelease,
+          }))
+        : []),
       ...(enabledLayers.studySessions
         ? currentData.studySessions.map((studySession) => ({
             key: `study:${studySession.id}`,
@@ -1719,6 +1731,7 @@ function PlannerWorkspaceContent({
     currentData.activities,
     currentData.events,
     currentData.goals,
+    currentData.lessonReleases,
     currentData.meetings,
     currentData.preferences.timezone,
     currentData.studySessions,
@@ -1820,6 +1833,20 @@ function PlannerWorkspaceContent({
           >
             <span className="font-medium">{record.title}</span>
             <span className="ml-1">{calendarTime(record.activity.dueAt)}</span>
+          </a>
+        );
+      case "lessonRelease":
+        return (
+          <a
+            className="block w-full truncate rounded-md bg-[#EFF5F1] px-2 py-1.5 text-left text-[#456D58] text-xs hover:bg-[#E4EFE7]"
+            href={record.lessonRelease.href}
+            key={record.key}
+            title="Abrir aula liberada"
+          >
+            <span className="font-medium">Aula liberada: {record.title}</span>
+            <span className="ml-1">
+              {calendarTime(record.lessonRelease.releaseAt)}
+            </span>
           </a>
         );
       case "study":
@@ -2510,6 +2537,11 @@ function PlannerWorkspaceContent({
     const layers = [
       { key: "meetings", label: "Encontros", color: "#8C1535" },
       { key: "activities", label: "Atividades", color: "#D62839" },
+      {
+        key: "lessonReleases",
+        label: "Aulas liberadas",
+        color: "#456D58",
+      },
       { key: "tasks", label: "Tarefas", color: "#410230" },
       {
         key: "studySessions",
@@ -2525,6 +2557,7 @@ function PlannerWorkspaceContent({
     > = {
       meeting: "#8C1535",
       activity: "#D62839",
+      lessonRelease: "#456D58",
       task: "#410230",
       study: "#B0785A",
       goal: "#6A1A3A",
@@ -2817,6 +2850,11 @@ function PlannerWorkspaceContent({
                       key: "activities",
                       label: "Atividades",
                       color: "#D62839",
+                    },
+                    {
+                      key: "lessonReleases",
+                      label: "Aulas liberadas",
+                      color: "#456D58",
                     },
                     { key: "tasks", label: "Tarefas", color: "#410230" },
                     {

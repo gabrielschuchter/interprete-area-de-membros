@@ -87,6 +87,7 @@ describe("planner calendar feed", () => {
           href: "/atividades/atividade-da-turma",
         },
       ],
+      lessonReleases: [],
       tasks: [],
       studySessions: [],
       goals: [],
@@ -111,6 +112,47 @@ describe("planner calendar feed", () => {
     expect(mocks.getPlannerDashboard).toHaveBeenCalledWith("member-a", {
       start: "2026-10-01T00:00:00.000Z",
       end: "2026-11-01T00:00:00.000Z",
+    });
+  });
+
+  it("includes cohort lesson-release markers in the private calendar projection", async () => {
+    const releaseAt = new Date("2026-10-21T12:00:00.000Z");
+    mocks.getPlannerDashboard.mockResolvedValue({
+      events: [],
+      meetings: [],
+      activities: [],
+      lessonReleases: [
+        {
+          id: "release-a",
+          lessonId: "lesson-a",
+          title: "Escuta inicial",
+          lessonSlug: "escuta-inicial",
+          courseId: "course-a",
+          courseSlug: "curso-clinico",
+          releaseAt,
+          href: "/aprender/cursos/curso-clinico/escuta-inicial",
+        },
+      ],
+      tasks: [],
+      studySessions: [],
+      goals: [],
+      preferences: { timezone: "America/Sao_Paulo" },
+    });
+
+    const result = await getPlannerCalendarFeedItems(
+      "member-a",
+      new Date("2026-10-01T00:00:00.000Z"),
+      new Date("2026-11-01T00:00:00.000Z"),
+      "https://members.example"
+    );
+
+    expect(result.items).toContainEqual({
+      uid: "lesson-release-release-a",
+      title: "Aula liberada: Escuta inicial",
+      startsAt: releaseAt,
+      endsAt: new Date("2026-10-21T12:30:00.000Z"),
+      description: "Aula liberada na sua turma.",
+      url: "https://members.example/aprender/cursos/curso-clinico/escuta-inicial",
     });
   });
 });

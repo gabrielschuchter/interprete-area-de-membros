@@ -236,6 +236,16 @@ export const getPlannerCalendarFeedItems = async (
       url: absoluteUrl(activity.href),
     });
   }
+  for (const lessonRelease of data.lessonReleases) {
+    items.push({
+      uid: `lesson-release-${lessonRelease.id}`,
+      title: `Aula liberada: ${lessonRelease.title}`,
+      startsAt: lessonRelease.releaseAt,
+      endsAt: new Date(lessonRelease.releaseAt.getTime() + 30 * 60_000),
+      description: "Aula liberada na sua turma.",
+      url: absoluteUrl(lessonRelease.href),
+    });
+  }
   for (const task of data.tasks) {
     if (!(task.dueAt && rangeContains(task.dueAt, rangeStart, rangeEnd))) {
       continue;

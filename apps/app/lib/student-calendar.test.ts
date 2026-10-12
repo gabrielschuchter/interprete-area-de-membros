@@ -1,8 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ resolveStudentFeed: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  resolveStudentFeed: vi.fn(),
+  cohortLessonReleaseFindMany: vi.fn(),
+  cohortMembershipFindMany: vi.fn(),
+}));
 
 vi.mock("server-only", () => ({}));
+vi.mock("@repo/database", () => ({
+  database: {
+    cohortLessonRelease: { findMany: mocks.cohortLessonReleaseFindMany },
+    cohortMembership: { findMany: mocks.cohortMembershipFindMany },
+  },
+}));
 vi.mock("@repo/observability/performance", () => ({
   tracePerformance: (_name: string, operation: () => unknown) => operation(),
 }));
@@ -13,7 +23,12 @@ vi.mock("./student-feed", () => ({
 import { resolveCalendar } from "./student-calendar";
 
 describe("resolveCalendar", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.resolveStudentFeed.mockResolvedValue([]);
+    mocks.cohortLessonReleaseFindMany.mockResolvedValue([]);
+    mocks.cohortMembershipFindMany.mockResolvedValue([]);
+  });
 
   it("projects deduplicated due activities in range and hides scheduled items", async () => {
     const start = new Date("2026-10-01T00:00:00.000Z");
@@ -61,17 +76,20 @@ describe("resolveCalendar", () => {
 
     await expect(
       resolveCalendar("member-a", { start, end }, at)
-    ).resolves.toEqual([
-      {
-        id: "cohort-activity:activity-a",
-        activityId: "activity-a",
-        title: "Atividade da turma",
-        slug: "atividade-da-turma",
-        dueAt,
-        status: "NEW",
-        href: "/atividades/atividade-da-turma",
-      },
-    ]);
+    ).resolves.toEqual({
+      activities: [
+        {
+          id: "cohort-activity:activity-a",
+          activityId: "activity-a",
+          title: "Atividade da turma",
+          slug: "atividade-da-turma",
+          dueAt,
+          status: "NEW",
+          href: "/atividades/atividade-da-turma",
+        },
+      ],
+      lessonReleases: [],
+    });
     expect(mocks.resolveStudentFeed).toHaveBeenCalledWith("member-a", at, {
       assignmentLimit: 200,
       dueRange: { start, end },
@@ -86,5 +104,97 @@ describe("resolveCalendar", () => {
       })
     ).rejects.toThrow("O período solicitado não é válido.");
     expect(mocks.resolveStudentFeed).not.toHaveBeenCalled();
+  });
+
+  it("resolves published lesson releases only through a current cohort course grant", async () => {
+    const start = new Date("2026-10-01T00:00:00.000Z");
+    const end = new Date("2026-11-01T00:00:00.000Z");
+    const at = new Date("2026-10-12T12:00:00.000Z");
+    const releaseAt = new Date("2026-10-20T12:00:00.000Z");
+    const joinedAt = new Date("2026-09-10T12:00:00.000Z");
+    mocks.cohortLessonReleaseFindMany.mockResolvedValue([
+      {
+        id: "release-a",
+        cohortId: "cohort-a",
+        lessonId: "lesson-a",
+        releaseAt,
+        lesson: {
+          title: "Aula de avaliação",
+          slug: "aula-de-avaliacao",
+          module: {
+            courseId: "course-a",
+            course: { id: "course-a", slug: "curso-clinico" },
+          },
+        },
+      },
+    ]);
+    mocks.cohortMembershipFindMany.mockResolvedValue([
+      {
+        cohortId: "cohort-a",
+        joinedAt,
+        cohort: {
+          archivedAt: null,
+          endsAt: null,
+          startsAt: new Date("2026-09-01T00:00:00.000Z"),
+          lateJoinPolicy: "FROM_JOIN",
+          readAfterEndDays: 90,
+          courseAccesses: [
+            {
+              courseId: "course-a",
+              createdAt: new Date("2026-09-12T00:00:00.000Z"),
+              releaseMode: "SCHEDULE",
+              startsAt: new Date("2026-10-19T00:00:00.000Z"),
+              revokedAt: null,
+            },
+          ],
+        },
+      },
+    ]);
+
+    await expect(
+      resolveCalendar("member-a", { start, end }, at)
+    ).resolves.toMatchObject({
+      lessonReleases: [
+        {
+          id: "release-a",
+          lessonId: "lesson-a",
+          title: "Aula de avaliação",
+          releaseAt,
+          href: "/aprender/cursos/curso-clinico/aula-de-avaliacao",
+        },
+      ],
+    });
+    expect(mocks.cohortLessonReleaseFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          cohortId: { in: ["cohort-a"] },
+          releaseAt: { gte: start, lte: end },
+        }),
+      })
+    );
+    expect(mocks.cohortMembershipFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          memberId: "member-a",
+          status: "ACTIVE",
+          leftAt: null,
+          joinedAt: { lte: at },
+        }),
+      })
+    );
+  });
+
+  it("does not query lesson releases when the member has no active cohorts", async () => {
+    await resolveCalendar(
+      "member-a",
+      {
+        start: new Date("2026-10-01T00:00:00.000Z"),
+        end: new Date("2026-11-01T00:00:00.000Z"),
+      },
+      new Date("2026-10-12T12:00:00.000Z")
+    );
+
+    expect(mocks.cohortMembershipFindMany).toHaveBeenCalled();
+    expect(mocks.cohortLessonReleaseFindMany).not.toHaveBeenCalled();
   });
 });
