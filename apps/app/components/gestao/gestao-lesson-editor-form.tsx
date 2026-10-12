@@ -5,12 +5,19 @@ import { Input } from "@repo/design-system/components/ui/input";
 import { Textarea } from "@repo/design-system/components/ui/textarea";
 import type { JSONContent } from "@tiptap/core";
 import dynamic from "next/dynamic";
-import { useActionState, useRef, useState } from "react";
+import {
+  useActionState,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   type GestaoLessonSaveState,
   saveGestaoLesson,
 } from "@/app/(authenticated)/gestao/ensino/cursos/actions";
 import { isYouTubeVerificationStatus } from "@/lib/youtube-verification";
+import { GestaoLessonVideoUpload } from "./gestao-lesson-video-upload";
 import { YouTubeVerificationCard } from "./youtube-verification-card";
 
 const TopicEditor = dynamic(
@@ -56,6 +63,16 @@ interface GestaoLessonEditorFormProperties {
     readonly title: string;
     readonly updatedAt: Date;
   };
+  readonly maxVideoUploadBytes: number;
+  readonly memberId: string;
+  readonly pendingUpload: {
+    readonly expiresAt: string;
+    readonly fileName: string;
+    readonly id: string;
+    readonly mimeType: string;
+    readonly sizeBytes: number;
+    readonly status: "PENDING" | "READY";
+  } | null;
 }
 
 const providerOptions = [
@@ -317,6 +334,9 @@ export const GestaoLessonEditorForm = ({
   courseId,
   initialIdempotencyKey,
   lesson,
+  maxVideoUploadBytes,
+  memberId,
+  pendingUpload,
 }: GestaoLessonEditorFormProperties) => {
   const initialState: GestaoLessonSaveState = {
     assetExpectedUpdatedAt: asset?.updatedAt.toISOString() ?? "",
@@ -347,6 +367,24 @@ export const GestaoLessonEditorForm = ({
       ? ""
       : String(asset.youtubeEndAtSeconds)
   );
+  const [videoUploadId, setVideoUploadId] = useState(
+    pendingUpload?.status === "READY" ? pendingUpload.id : ""
+  );
+  const [videoUploadCanSave, setVideoUploadCanSave] = useState(true);
+  const handleVideoUploadStatus = useCallback(
+    (next: { readonly canSave: boolean; readonly uploadId: string | null }) => {
+      setVideoUploadId(next.uploadId ?? "");
+      setVideoUploadCanSave(next.canSave);
+    },
+    []
+  );
+
+  useEffect(() => {
+    if (state.status === "saved") {
+      setVideoUploadId("");
+      setVideoUploadCanSave(true);
+    }
+  }, [state.status]);
 
   return (
     <form
@@ -362,6 +400,11 @@ export const GestaoLessonEditorForm = ({
         value={state.expectedUpdatedAt}
       />
       <input name="assetId" type="hidden" value={state.assetId ?? ""} />
+      <input
+        name="videoUploadId"
+        type="hidden"
+        value={provider === "STORAGE" ? videoUploadId : ""}
+      />
       <input
         name="assetExpectedUpdatedAt"
         type="hidden"
@@ -398,11 +441,23 @@ export const GestaoLessonEditorForm = ({
             startAt={startAt}
           />
         ) : (
-          <div className="gl-lesson-upload-note">
-            {asset?.hasStoredAsset
-              ? "Arquivo protegido já vinculado a esta aula."
-              : "Selecione um arquivo existente na biblioteca para vincular à aula."}
-          </div>
+          <GestaoLessonVideoUpload
+            courseId={courseId}
+            currentAsset={
+              asset
+                ? {
+                    hasStoredAsset: asset.hasStoredAsset,
+                    id: asset.id,
+                    updatedAt: asset.updatedAt.toISOString(),
+                  }
+                : null
+            }
+            lessonId={lesson.id}
+            maxSizeBytes={maxVideoUploadBytes}
+            memberId={memberId}
+            onStatusChange={handleVideoUploadStatus}
+            pendingUpload={pendingUpload}
+          />
         )}
 
         {provider === "EXTERNAL_URL" ? (
@@ -425,7 +480,7 @@ export const GestaoLessonEditorForm = ({
         />
         <div className="gl-lesson-save-row">
           <SaveFeedback message={state.message} status={state.status} />
-          <Button disabled={pending} type="submit">
+          <Button disabled={pending || !videoUploadCanSave} type="submit">
             {pending ? "Salvando…" : "Salvar alterações"}
           </Button>
         </div>

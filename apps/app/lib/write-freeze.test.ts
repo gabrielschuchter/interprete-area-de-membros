@@ -114,6 +114,9 @@ describe("write freeze", () => {
     for (const pathname of [
       "/api/member-assets",
       "/api/learning/recordings/recording-1/thumbnail",
+      "/api/gestao/lesson-video-uploads",
+      "/api/gestao/lesson-video-uploads/upload-1/token",
+      "/api/gestao/lesson-video-uploads/upload-1/finalize",
     ]) {
       expect(
         shouldPauseUploadDuringRollback({

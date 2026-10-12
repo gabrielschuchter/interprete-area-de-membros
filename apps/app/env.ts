@@ -25,6 +25,12 @@ export const env = createEnv({
     APP_WRITE_FREEZE: z.enum(["true", "false"]).default("false"),
     GESTAO_V2_ENABLED: z.enum(["true", "false"]).default("false"),
     UPLOADS_PAUSED_FOR_ROLLBACK: z.enum(["true", "false"]).default("false"),
+    GESTAO_VIDEO_MAX_UPLOAD_BYTES: z.coerce
+      .number()
+      .int()
+      .min(1_000_000)
+      .max(50_000_000_000)
+      .default(500_000_000),
   },
   client: {},
   runtimeEnv: {
@@ -34,5 +40,6 @@ export const env = createEnv({
     APP_WRITE_FREEZE: process.env.APP_WRITE_FREEZE,
     GESTAO_V2_ENABLED: process.env.GESTAO_V2_ENABLED,
     UPLOADS_PAUSED_FOR_ROLLBACK: process.env.UPLOADS_PAUSED_FOR_ROLLBACK,
+    GESTAO_VIDEO_MAX_UPLOAD_BYTES: process.env.GESTAO_VIDEO_MAX_UPLOAD_BYTES,
   },
 });

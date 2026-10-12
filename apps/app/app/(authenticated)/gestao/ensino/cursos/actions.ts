@@ -11,6 +11,7 @@ import {
   LessonAssetKind,
   LessonAssetMediaProvider,
   LessonAssetScope,
+  LessonAssetUploadStatus,
   LessonKind,
   type Prisma,
 } from "@repo/database";
@@ -1265,6 +1266,7 @@ export const saveGestaoLesson = async (
   const kind = formText(formData, "kind");
   const expectedUpdatedAt = new Date(formText(formData, "expectedUpdatedAt"));
   const assetId = formText(formData, "assetId") || null;
+  const videoUploadId = formText(formData, "videoUploadId") || null;
   const assetExpectedUpdatedAtText = formText(
     formData,
     "assetExpectedUpdatedAt"
@@ -1339,6 +1341,10 @@ export const saveGestaoLesson = async (
         select: {
           id: true,
           updatedAt: true,
+          mediaProvider: true,
+          storagePath: true,
+          mimeType: true,
+          sizeBytes: true,
           mediaExternalId: true,
           youtubeVideoTitle: true,
           youtubeThumbnailUrl: true,
@@ -1354,6 +1360,57 @@ export const saveGestaoLesson = async (
     return result("conflict", "O vídeo desta aula mudou. Recarregue a página.");
   }
 
+  const videoUpload = videoUploadId
+    ? await database.lessonAssetUpload.findFirst({
+        where: { id: videoUploadId, actorId: actor.userId, lessonId },
+        select: {
+          id: true,
+          assetId: true,
+          expectedAssetId: true,
+          expectedAssetUpdatedAt: true,
+          storagePath: true,
+          originalFileName: true,
+          mimeType: true,
+          sizeBytes: true,
+          status: true,
+          expiresAt: true,
+        },
+      })
+    : null;
+  if (videoUploadId && !videoUpload) {
+    return result(
+      "conflict",
+      "O vídeo enviado não está disponível. Envie o arquivo novamente."
+    );
+  }
+  if (
+    videoUpload &&
+    provider === LessonAssetMediaProvider.STORAGE &&
+    !(
+      videoUpload.status === LessonAssetUploadStatus.READY ||
+      (videoUpload.status === LessonAssetUploadStatus.COMPLETED &&
+        videoUpload.assetId === currentAsset?.id &&
+        currentAsset.storagePath === videoUpload.storagePath)
+    )
+  ) {
+    return result(
+      "conflict",
+      "O envio do vídeo ainda não foi confirmado. Tente novamente."
+    );
+  }
+  if (
+    videoUpload?.status === LessonAssetUploadStatus.READY &&
+    (videoUpload.expiresAt.getTime() <= Date.now() ||
+      videoUpload.expectedAssetId !== assetId ||
+      videoUpload.expectedAssetUpdatedAt?.getTime() !==
+        assetExpectedUpdatedAt?.getTime())
+  ) {
+    return result(
+      "conflict",
+      "O vídeo da aula mudou. Recarregue e confirme a versão atual."
+    );
+  }
+
   let mediaData: Prisma.LessonAssetUpdateManyMutationInput | null = null;
   if (provider === LessonAssetMediaProvider.YOUTUBE) {
     const { adapter } = await getYouTubeDataAdapter();
@@ -1366,6 +1423,12 @@ export const saveGestaoLesson = async (
       verification.videoId === currentAsset?.mediaExternalId,
       currentAsset ?? undefined
     );
+    mediaData = {
+      ...mediaData,
+      storagePath: null,
+      mimeType: null,
+      sizeBytes: null,
+    };
   } else if (provider === LessonAssetMediaProvider.EXTERNAL_URL) {
     let externalUrl: string | null = null;
     try {
@@ -1383,6 +1446,9 @@ export const saveGestaoLesson = async (
       mediaProvider: LessonAssetMediaProvider.EXTERNAL_URL,
       mediaExternalId: null,
       externalUrl,
+      storagePath: null,
+      mimeType: null,
+      sizeBytes: null,
       youtubeSourceUrl: null,
       youtubeVideoTitle: null,
       youtubeThumbnailUrl: null,
@@ -1395,23 +1461,54 @@ export const saveGestaoLesson = async (
       youtubeEndAtSeconds: null,
       durationSeconds: null,
     };
-  } else if (currentAsset) {
-    mediaData = {
-      mediaProvider: LessonAssetMediaProvider.STORAGE,
-      mediaExternalId: null,
-      externalUrl: null,
-      youtubeSourceUrl: null,
-      youtubeVideoTitle: null,
-      youtubeThumbnailUrl: null,
-      youtubePrivacyStatus: null,
-      youtubeEmbeddable: null,
-      youtubeCaptionsAvailable: null,
-      youtubeVerificationStatus: null,
-      youtubeCheckedAt: null,
-      youtubeStartAtSeconds: null,
-      youtubeEndAtSeconds: null,
-      durationSeconds: currentAsset.durationSeconds,
-    };
+  } else if (provider === LessonAssetMediaProvider.STORAGE) {
+    if (videoUpload?.status === LessonAssetUploadStatus.READY) {
+      mediaData = {
+        mediaProvider: LessonAssetMediaProvider.STORAGE,
+        mediaExternalId: null,
+        externalUrl: null,
+        storagePath: videoUpload.storagePath,
+        mimeType: videoUpload.mimeType,
+        sizeBytes: videoUpload.sizeBytes,
+        youtubeSourceUrl: null,
+        youtubeVideoTitle: null,
+        youtubeThumbnailUrl: null,
+        youtubePrivacyStatus: null,
+        youtubeEmbeddable: null,
+        youtubeCaptionsAvailable: null,
+        youtubeVerificationStatus: null,
+        youtubeCheckedAt: null,
+        youtubeStartAtSeconds: null,
+        youtubeEndAtSeconds: null,
+        durationSeconds: null,
+        originalTitle: videoUpload.originalFileName,
+      };
+    } else if (
+      currentAsset?.storagePath &&
+      currentAsset.mediaProvider === LessonAssetMediaProvider.STORAGE
+    ) {
+      mediaData = {
+        mediaProvider: LessonAssetMediaProvider.STORAGE,
+        mediaExternalId: null,
+        externalUrl: null,
+        youtubeSourceUrl: null,
+        youtubeVideoTitle: null,
+        youtubeThumbnailUrl: null,
+        youtubePrivacyStatus: null,
+        youtubeEmbeddable: null,
+        youtubeCaptionsAvailable: null,
+        youtubeVerificationStatus: null,
+        youtubeCheckedAt: null,
+        youtubeStartAtSeconds: null,
+        youtubeEndAtSeconds: null,
+        durationSeconds: currentAsset.durationSeconds,
+      };
+    } else if (currentAsset) {
+      return result(
+        "invalid",
+        "Envie um vídeo MP4 ou WebM antes de salvar a aula."
+      );
+    }
   }
 
   let currentAssetId = assetId;
@@ -1439,6 +1536,25 @@ export const saveGestaoLesson = async (
           currentLesson.updatedAt.getTime() !== expectedUpdatedAt.getTime()
         ) {
           throw new LessonVersionConflict();
+        }
+
+        if (videoUpload?.status === LessonAssetUploadStatus.READY) {
+          const uploadStillReady =
+            await transaction.lessonAssetUpload.findFirst({
+              where: {
+                id: videoUpload.id,
+                actorId: actor.userId,
+                lessonId,
+                status: LessonAssetUploadStatus.READY,
+                expiresAt: { gt: new Date() },
+                expectedAssetId: videoUpload.expectedAssetId,
+                expectedAssetUpdatedAt: videoUpload.expectedAssetUpdatedAt,
+              },
+              select: { id: true },
+            });
+          if (!uploadStillReady) {
+            throw new LessonVersionConflict();
+          }
         }
 
         if (assetId) {
@@ -1484,15 +1600,40 @@ export const saveGestaoLesson = async (
             throw new LessonVersionConflict();
           }
         } else if (mediaData) {
+          const position = await transaction.lessonAsset.aggregate({
+            where: { lessonId },
+            _max: { position: true },
+          });
           const createdAsset = await transaction.lessonAsset.create({
             data: {
               lessonId,
               title,
               kind: LessonAssetKind.VIDEO,
+              position: (position._max.position ?? -1) + 1,
               ...mediaData,
             } as Prisma.LessonAssetUncheckedCreateInput,
           });
           currentAssetId = createdAsset.id;
+        }
+
+        if (videoUpload?.status === LessonAssetUploadStatus.READY) {
+          const completedUpload =
+            await transaction.lessonAssetUpload.updateMany({
+              where: {
+                id: videoUpload.id,
+                actorId: actor.userId,
+                lessonId,
+                status: LessonAssetUploadStatus.READY,
+              },
+              data: {
+                status: LessonAssetUploadStatus.COMPLETED,
+                assetId: currentAssetId,
+                completedAt: new Date(),
+              },
+            });
+          if (completedUpload.count !== 1) {
+            throw new LessonVersionConflict();
+          }
         }
 
         await transaction.domainEvent.create({
@@ -1506,6 +1647,7 @@ export const saveGestaoLesson = async (
               courseId,
               mediaProvider: provider,
               verificationStatus: mediaData?.youtubeVerificationStatus ?? null,
+              videoUploadId: videoUpload?.id ?? null,
             },
             occurredAt: new Date(),
           },

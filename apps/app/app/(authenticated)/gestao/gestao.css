@@ -7026,6 +7026,52 @@
   border-radius: 6px;
 }
 
+.gl-lesson-upload {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  margin-top: 12px;
+  background: #fbf8f5;
+  border: 1px solid var(--gestao-line);
+  border-radius: 6px;
+}
+
+.gl-lesson-upload .gl-lesson-field {
+  margin: 0;
+}
+
+.gl-lesson-upload-note {
+  padding: 0;
+  margin: 0;
+  border: 0;
+}
+
+.gl-lesson-upload-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.gl-lesson-upload-progress {
+  width: 100%;
+  height: 8px;
+  accent-color: var(--gestao-action);
+}
+
+.gl-lesson-upload-feedback {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--gestao-muted);
+}
+
+.gl-lesson-upload-feedback.is-error {
+  color: #8d3037;
+}
+
+.gl-lesson-upload-feedback.is-ready {
+  color: #38634b;
+}
+
 .gl-lesson-rich-label {
   margin: 18px 0 8px;
   font-size: 12px;
@@ -7842,6 +7888,10 @@
 }
 
 @media (max-width: 600px) {
+  .gl-lesson-upload-actions > button {
+    flex: 1 1 140px;
+  }
+
   .gl-playlist-dialog {
     width: calc(100vw - 20px);
     max-height: 94dvh;

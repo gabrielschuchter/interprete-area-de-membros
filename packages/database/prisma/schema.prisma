@@ -273,6 +273,15 @@ enum LessonAssetMediaProvider {
   EXTERNAL_URL
 }
 
+enum LessonAssetUploadStatus {
+  PENDING
+  READY
+  COMPLETED
+  CANCELLED
+  EXPIRED
+  FAILED
+}
+
 enum CohortLateJoinPolicy {
   ALL_ACTIVE
   FROM_JOIN
@@ -583,6 +592,7 @@ model Lesson {
   resources          LessonResource[]
   libraryItems       LibraryItem[]
   assets             LessonAsset[]
+  assetUploads       LessonAssetUpload[]
   progress           LessonProgress[]
   activities         Activity[]
   importedRecordings ImportedRecording[]
@@ -644,6 +654,7 @@ model LessonAsset {
   ownerMember       Member?                  @relation("OwnedLessonAssets", fields: [ownerMemberId], references: [id], onDelete: SetNull)
   importedRecording ImportedRecording?
   playbackProgress  PlaybackProgress[]
+  uploadVersions    LessonAssetUpload[]      @relation("LessonAssetUploadAsset")
   collectionItems   ContentCollectionItem[]
   libraryBookmarks  LibraryBookmark[]
 
@@ -651,6 +662,34 @@ model LessonAsset {
   @@unique([sourcePlatform, sourceId])
   @@index([lessonId, kind, position])
   @@index([ownerMemberId, scope])
+}
+
+model LessonAssetUpload {
+  id                      String                  @id @default(cuid())
+  actorId                 String                  @db.VarChar(128)
+  idempotencyKey          String                  @db.Uuid
+  lessonId                String
+  expectedAssetId         String?
+  expectedAssetUpdatedAt  DateTime?
+  assetId                 String?
+  storagePath             String                  @unique @db.Text
+  originalFileName        String                  @db.VarChar(255)
+  mimeType                String                  @db.VarChar(128)
+  sizeBytes               BigInt
+  status                  LessonAssetUploadStatus @default(PENDING)
+  expiresAt               DateTime
+  completedAt             DateTime?
+  storageDeletedAt        DateTime?
+  createdAt               DateTime                @default(now())
+  updatedAt               DateTime                @updatedAt
+  lesson                  Lesson                  @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  asset                   LessonAsset?            @relation("LessonAssetUploadAsset", fields: [assetId], references: [id], onDelete: SetNull)
+
+  @@unique([actorId, idempotencyKey])
+  @@index([lessonId, status, createdAt])
+  @@index([actorId, status, createdAt])
+  @@index([assetId])
+  @@index([storageDeletedAt, status, expiresAt])
 }
 
 model Enrollment {

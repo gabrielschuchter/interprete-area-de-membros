@@ -2,6 +2,8 @@ const mutatingMethods = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 const safeMethods = new Set(["GET", "HEAD", "OPTIONS"]);
 const recordingThumbnailPathPattern =
   /^\/api\/learning\/recordings\/[^/]+\/thumbnail\/?$/;
+const gestaoLessonVideoUploadPathPattern =
+  /^\/api\/gestao\/lesson-video-uploads(?:\/[^/]+(?:\/(?:token|finalize))?)?\/?$/;
 const apiLikePathPattern = /^\/(?:api|cron|webhooks)(?:\/|$)/;
 
 export const isAppWriteFreezeEnabled = (value = process.env.APP_WRITE_FREEZE) =>
@@ -59,7 +61,8 @@ export const shouldPauseUploadDuringRollback = (input: {
   input.enabled &&
   input.method.toUpperCase() === "POST" &&
   (input.pathname === "/api/member-assets" ||
-    recordingThumbnailPathPattern.test(input.pathname));
+    recordingThumbnailPathPattern.test(input.pathname) ||
+    gestaoLessonVideoUploadPathPattern.test(input.pathname));
 
 export const shouldPauseStorageUploadDuringRollback = (input: {
   readonly enabled: boolean;

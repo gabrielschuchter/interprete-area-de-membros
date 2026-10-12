@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { database } from "@repo/database";
+import { database, LessonAssetUploadStatus } from "@repo/database";
 import { Button } from "@repo/design-system/components/ui/button";
 import {
   ArrowLeftIcon,
@@ -16,13 +16,14 @@ import {
 import { GestaoLessonEditorForm } from "@/components/gestao/gestao-lesson-editor-form";
 import { GestaoLessonPublication } from "@/components/gestao/gestao-lesson-publication";
 import { requireGestaoAction } from "@/lib/gestao-authorization";
+import { gestaoVideoUploadLimit } from "@/lib/gestao-lesson-video-upload";
 
 const GestaoLessonEditorPage = async ({
   params,
 }: {
   readonly params: Promise<{ id: string; lessonId: string }>;
 }) => {
-  await requireGestaoAction("content.manage");
+  const { actor } = await requireGestaoAction("content.manage");
   const { id: courseId, lessonId } = await params;
   const lesson = await database.lesson.findFirst({
     where: {
@@ -80,6 +81,34 @@ const GestaoLessonEditorPage = async ({
   }
 
   const storedAsset = lesson.assets[0] ?? null;
+  const pendingUpload = await database.lessonAssetUpload.findFirst({
+    where: {
+      actorId: actor.userId,
+      lessonId,
+      status: {
+        in: [LessonAssetUploadStatus.PENDING, LessonAssetUploadStatus.READY],
+      },
+      expiresAt: { gt: new Date() },
+    },
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      expectedAssetId: true,
+      expectedAssetUpdatedAt: true,
+      originalFileName: true,
+      mimeType: true,
+      sizeBytes: true,
+      status: true,
+      expiresAt: true,
+    },
+  });
+  const resumableUpload =
+    pendingUpload &&
+    pendingUpload.expectedAssetId === (storedAsset?.id ?? null) &&
+    pendingUpload.expectedAssetUpdatedAt?.getTime() ===
+      (storedAsset?.updatedAt.getTime() ?? undefined)
+      ? pendingUpload
+      : null;
   const asset = storedAsset
     ? {
         durationSeconds: storedAsset.durationSeconds,
@@ -154,6 +183,23 @@ const GestaoLessonEditorPage = async ({
               title: lesson.title,
               updatedAt: lesson.updatedAt,
             }}
+            maxVideoUploadBytes={gestaoVideoUploadLimit()}
+            memberId={actor.userId}
+            pendingUpload={
+              resumableUpload
+                ? {
+                    expiresAt: resumableUpload.expiresAt.toISOString(),
+                    fileName: resumableUpload.originalFileName,
+                    id: resumableUpload.id,
+                    mimeType: resumableUpload.mimeType,
+                    sizeBytes: Number(resumableUpload.sizeBytes),
+                    status:
+                      resumableUpload.status === LessonAssetUploadStatus.READY
+                        ? "READY"
+                        : "PENDING",
+                  }
+                : null
+            }
           />
 
           <section className="gl-lesson-card gl-lesson-materials">

@@ -5,6 +5,10 @@
     {
       "path": "/api/cron/activity-deadlines",
       "schedule": "0 12 * * *"
+    },
+    {
+      "path": "/api/cron/gestao-video-upload-cleanup",
+      "schedule": "0 * * * *"
     }
   ]
 }
