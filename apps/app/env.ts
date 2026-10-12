@@ -21,12 +21,14 @@ export const env = createEnv({
   server: {
     CRON_SECRET: z.string().min(32).optional(),
     APP_WRITE_FREEZE: z.enum(["true", "false"]).default("false"),
+    GESTAO_V2_ENABLED: z.enum(["true", "false"]).default("false"),
     UPLOADS_PAUSED_FOR_ROLLBACK: z.enum(["true", "false"]).default("false"),
   },
   client: {},
   runtimeEnv: {
     CRON_SECRET: process.env.CRON_SECRET,
     APP_WRITE_FREEZE: process.env.APP_WRITE_FREEZE,
+    GESTAO_V2_ENABLED: process.env.GESTAO_V2_ENABLED,
     UPLOADS_PAUSED_FOR_ROLLBACK: process.env.UPLOADS_PAUSED_FOR_ROLLBACK,
   },
 });

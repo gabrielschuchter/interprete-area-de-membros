@@ -3728,3 +3728,21 @@
     }
   }
 }
+
+.member-app-shell {
+  transition:
+    opacity 160ms ease,
+    transform 160ms ease;
+}
+
+.member-app-shell[data-shell-switching="true"] {
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(4px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .member-app-shell {
+    transition-duration: 0.01ms !important;
+  }
+}

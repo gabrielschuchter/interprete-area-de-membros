@@ -37,7 +37,7 @@ import {
   UserRoundIcon,
   VideoIcon,
 } from "lucide-react";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
   type ReactNode,
   useCallback,
@@ -46,6 +46,7 @@ import {
   useState,
 } from "react";
 import { BrandWordmark } from "@/components/brand/brand-mark";
+import { withGestaoReturnPath } from "@/lib/gestao-navigation";
 import { IntentLink } from "./intent-link";
 import { isSidebarPathActive } from "./member-section";
 
@@ -56,6 +57,7 @@ interface MemberAreaSidebarProperties {
   readonly chromeVisible: boolean;
   readonly displayName: string;
   readonly email: string;
+  readonly gestaoV2Enabled?: boolean;
   readonly portalMode: boolean;
 }
 
@@ -66,6 +68,82 @@ const mainNavigation = [
 ] as const;
 
 const whitespacePattern = /\s+/;
+const ManagementSidebarEntry = ({
+  activePath,
+  enabled,
+  onNavigationStart,
+}: {
+  readonly activePath: string;
+  readonly enabled: boolean;
+  readonly onNavigationStart: (href: string) => void;
+}) => {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const serializedSearch = searchParams.toString();
+  const returnPath = [pathname, serializedSearch].filter(Boolean).join("?");
+  const href = enabled ? withGestaoReturnPath("/gestao", returnPath) : "/admin";
+  const label = enabled ? "Gestão" : "Professor";
+  const targetPath = enabled ? "/gestao" : "/admin";
+  const active = isMemberSidebarPathActive(activePath, targetPath, [
+    "/gestao",
+    "/admin",
+  ]);
+
+  return (
+    <SidebarMenu className="mt-5 border-sidebar-border border-t pt-4">
+      <SidebarMenuItem>
+        <SidebarMenuButton
+          asChild
+          className="rounded-sm py-2.5 data-[active=true]:border-sidebar-primary data-[active=true]:border-l-2 data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground"
+          isActive={active}
+          tooltip={label}
+        >
+          <IntentLink
+            aria-current={active ? "page" : undefined}
+            href={href}
+            onNavigationStart={onNavigationStart}
+          >
+            <BookOpenIcon aria-hidden="true" />
+            <span>{label}</span>
+          </IntentLink>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    </SidebarMenu>
+  );
+};
+
+const isMemberSidebarPathActive = (
+  activePath: string,
+  href: string,
+  navigationHrefs: readonly string[]
+) => {
+  if (href === "/gestao") {
+    return activePath === href || activePath.startsWith(`${href}/`);
+  }
+  if (href === "/estudar") {
+    const studyAreas = [
+      "/estudar",
+      "/aprender",
+      "/exercicios",
+      "/atividades",
+      "/biblioteca",
+      "/planejamento",
+      "/ferramentas",
+      "/tarefas",
+    ];
+    return studyAreas.some(
+      (area) => activePath === area || activePath.startsWith(`${area}/`)
+    );
+  }
+  if (
+    href === "/comunidade" &&
+    activePath.startsWith("/encontros") &&
+    !activePath.startsWith("/encontros/gravacoes")
+  ) {
+    return true;
+  }
+  return isSidebarPathActive(activePath, href, navigationHrefs);
+};
 
 const initialsFor = (value: string) =>
   value
@@ -84,6 +162,7 @@ export const MemberAreaSidebar = ({
   chromeVisible,
   displayName,
   email,
+  gestaoV2Enabled = false,
   portalMode,
 }: MemberAreaSidebarProperties) => {
   const pathname = usePathname();
@@ -102,36 +181,15 @@ export const MemberAreaSidebar = ({
   const activePath = pendingHref ?? pathname;
   const navigationHrefs = [
     ...mainNavigation.map((item) => item.href),
+    "/gestao",
     "/admin",
     "/perfil",
     "/configuracoes",
     "/comunidade/meus-topicos",
     "/encontros/gravacoes",
   ];
-  const isActivePath = (href: string) => {
-    if (href === "/estudar") {
-      return [
-        "/estudar",
-        "/aprender",
-        "/exercicios",
-        "/atividades",
-        "/biblioteca",
-        "/planejamento",
-        "/ferramentas",
-        "/tarefas",
-      ].some(
-        (area) => activePath === area || activePath.startsWith(`${area}/`)
-      );
-    }
-    if (
-      href === "/comunidade" &&
-      activePath.startsWith("/encontros") &&
-      !activePath.startsWith("/encontros/gravacoes")
-    ) {
-      return true;
-    }
-    return isSidebarPathActive(activePath, href, navigationHrefs);
-  };
+  const isActivePath = (href: string) =>
+    isMemberSidebarPathActive(activePath, href, navigationHrefs);
 
   const handleNavigationStart = useCallback(
     (href: string) => {
@@ -292,25 +350,11 @@ export const MemberAreaSidebar = ({
               ))}
             </SidebarMenu>
             {canManageContent ? (
-              <SidebarMenu className="mt-5 border-sidebar-border border-t pt-4">
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    asChild
-                    className="rounded-sm py-2.5 data-[active=true]:border-sidebar-primary data-[active=true]:border-l-2 data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground"
-                    isActive={isActivePath("/admin")}
-                    tooltip="Professor"
-                  >
-                    <IntentLink
-                      aria-current={isActivePath("/admin") ? "page" : undefined}
-                      href="/admin"
-                      onNavigationStart={handleNavigationStart}
-                    >
-                      <BookOpenIcon aria-hidden="true" />
-                      <span>Professor</span>
-                    </IntentLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </SidebarMenu>
+              <ManagementSidebarEntry
+                activePath={activePath}
+                enabled={gestaoV2Enabled}
+                onNavigationStart={handleNavigationStart}
+              />
             ) : null}
           </SidebarGroup>
         </SidebarContent>

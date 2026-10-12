@@ -5,14 +5,14 @@
 ## Estado geral
 - Branch: `gestao-v2`
 - Fase atual: 1 — Shell, permissões, rotas e transição
-- Último commit verificado: base `a4b68b8`; checkpoint da Fase 0 será registrado neste commit
+- Último commit verificado: `ffbb93e` (auditoria, Fase 0)
 - Orçamento/contexto: (preencher se relevante)
 
 ## Fases
 | Fase | Estado | Evidência (testes, commit) | Verificação independente |
 |---|---|---|---|
-| 0 Auditoria | concluída | `docs/gestao-auditoria.md`; 101 pares HTML/PNG inventariados e revistos em pranchas; matriz 1:1 gerada; nenhum código/migration alterado | releitura dos critérios e conferência solo; sem subagente por instrução direta para trabalhar sozinho |
-| 1 Shell, permissões, rotas, transição | pendente | | |
+| 0 Auditoria | concluída | `docs/gestao-auditoria.md`; 101 pares HTML/PNG inventariados e revistos em pranchas; matriz 1:1 gerada; commit `ffbb93e`; nenhum código/migration alterado | releitura dos critérios e conferência solo; sem subagente por instrução direta para trabalhar sozinho |
+| 1 Shell, permissões, rotas, transição | concluída; QA local visual pendente | shell responsivo desktop/trilho/gaveta; flag `GESTAO_V2_ENABLED` false por padrão; mapa de ações por papel e redirecionamentos internos seguros; 20 testes direcionados; `bun run check`, `typecheck`, `boundaries`, `test`, `build`, `performance:check`, `git diff --check` passaram; commit nesta fase | revisão solo dos critérios e teste de função/papel; comparação visual e navegação autenticada bloqueadas pelo serviço Docker local parado e sem permissão para iniciá-lo; nenhuma referência PNG marcada concluída |
 | 2 Turmas e resolvers | pendente | | |
 | 3 Ensino (YouTube, atividades, exercícios, biblioteca, coleções) | pendente | | |
 | 4 Envios, cronograma, calendário, Aprender, Personalização | pendente | | |

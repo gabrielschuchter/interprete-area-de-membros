@@ -82,6 +82,7 @@ const AppLayout = async ({ children }: AppLayoutProperties) => {
       canManageContent={member.role === "TEACHER" || member.role === "ADMIN"}
       displayName={profile?.displayName ?? member.displayName ?? "Membro"}
       email={member.email ?? ""}
+      gestaoV2Enabled={env.GESTAO_V2_ENABLED === "true"}
       memberId={userId}
       productConfig={productConfig}
     >

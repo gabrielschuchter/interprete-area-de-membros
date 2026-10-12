@@ -22,6 +22,7 @@ vi.mock("@repo/design-system/hooks/use-mobile", () => ({
 }));
 vi.mock("next/navigation", () => ({
   usePathname: () => "/",
+  useSearchParams: () => new URLSearchParams(),
   useRouter: () => ({ prefetch: vi.fn() }),
 }));
 vi.mock("./intent-link", () => ({
@@ -54,14 +55,19 @@ function Controls() {
     </>
   );
 }
-const content = (portalMode: boolean) => (
+const content = (
+  portalMode: boolean,
+  canManageContent = false,
+  gestaoV2Enabled = false
+) => (
   <SidebarProvider>
     <MemberAreaSidebar
       avatarUrl={null}
-      canManageContent={false}
+      canManageContent={canManageContent}
       chromeVisible
       displayName="QA"
       email="qa@example.test"
+      gestaoV2Enabled={gestaoV2Enabled}
       portalMode={portalMode}
     >
       <Controls />
@@ -113,6 +119,18 @@ describe("member sidebar drawer entry", () => {
     await waitFor(() =>
       expect(screen.getByTestId("state").textContent).toBe("false")
     );
+  });
+  it("shows the Gestão entry with a safe return path when the flag is enabled", () => {
+    setup();
+    render(content(false, true, true));
+    const link = screen.getByRole("link", { name: "Gestão" });
+    expect(link.getAttribute("href")).toBe("/gestao?from=%2F");
+  });
+  it("keeps the legacy Professor entry when the flag is disabled", () => {
+    setup();
+    render(content(false, true, false));
+    const link = screen.getByRole("link", { name: "Professor" });
+    expect(link.getAttribute("href")).toBe("/admin");
   });
   it("allows a desktop portal menu to stay open, close and reopen", () => {
     setup();

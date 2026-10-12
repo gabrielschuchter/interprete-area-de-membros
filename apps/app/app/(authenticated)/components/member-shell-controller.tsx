@@ -12,6 +12,7 @@ import type {
 } from "react";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { MemberAreaTabs } from "@/components/navigation/member-area-tabs";
+import { isGestaoShellPath } from "@/lib/gestao-navigation";
 import { ActiveTimerPill } from "./active-timer-pill";
 import { MemberAreaSidebar } from "./member-area-sidebar";
 import { MemberHeader } from "./member-header";
@@ -34,6 +35,7 @@ interface MemberShellControllerProperties {
   readonly children: ReactNode;
   readonly displayName: string;
   readonly email: string;
+  readonly gestaoV2Enabled: boolean;
   readonly memberId: string;
   readonly productConfig: {
     readonly showLearnNavigation: boolean;
@@ -277,6 +279,7 @@ const MemberShellView = ({
   canManageContent,
   children,
   displayName,
+  gestaoV2Enabled,
   email,
   memberId,
   productConfig,
@@ -292,6 +295,7 @@ const MemberShellView = ({
   const [outgoingRoute, setOutgoingRoute] =
     useState<RouteMotionSnapshot | null>(null);
   const [announcement, setAnnouncement] = useState("");
+  const [shellSwitching, setShellSwitching] = useState(false);
   const latestPortalChildren = useRef<ReactNode | null>(null);
   const transitionRef = useRef<PortalTransition | null>(null);
   const routeTransitionRef = useRef<MemberRouteTransition | null>(null);
@@ -572,7 +576,9 @@ const MemberShellView = ({
         return;
       }
       const destinationPath = normalizedPath(href);
-      if (pathname === "/" && destinationPath !== "/") {
+      if (isGestaoShellPath(pathname) !== isGestaoShellPath(destinationPath)) {
+        router.push(href);
+      } else if (pathname === "/" && destinationPath !== "/") {
         startPortalEnter(href, "direct", null, true);
       } else if (pathname !== "/" && destinationPath === "/") {
         startPortalReturn(pathname, href, true);
@@ -582,10 +588,22 @@ const MemberShellView = ({
     },
     [
       pathname,
+      router.push,
       startInternalRouteTransition,
       startPortalEnter,
       startPortalReturn,
     ]
+  );
+
+  const startShellSwitch = useCallback(
+    (href: string) => {
+      setShellSwitching(true);
+      const reducedMotion =
+        window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ??
+        false;
+      schedule(reducedMotion ? 0 : 160, () => router.push(href));
+    },
+    [router, schedule]
   );
 
   const handleNavigationCapture = useCallback(
@@ -608,6 +626,13 @@ const MemberShellView = ({
       }
 
       event.preventDefault();
+      if (
+        isGestaoShellPath(pathname) !==
+        isGestaoShellPath(normalizedPath(navigation.href))
+      ) {
+        startShellSwitch(navigation.href);
+        return;
+      }
       if (navigation.intent === "portal-enter") {
         startPortalEnter(
           navigation.href,
@@ -628,11 +653,22 @@ const MemberShellView = ({
       startInternalRouteTransition,
       startPortalEnter,
       startPortalReturn,
+      startShellSwitch,
     ]
   );
 
   const reconcilePathTransition = useCallback(
     (previous: string, current: string, previousRoute: RouteMotionSnapshot) => {
+      if (isGestaoShellPath(previous) !== isGestaoShellPath(current)) {
+        clearTimers();
+        setActiveTransition(null);
+        setActiveRouteTransition(null);
+        setOutgoingRoute(null);
+        setChromeVisible(true);
+        setShellSwitching(false);
+        return;
+      }
+
       const active = transitionRef.current;
       if (active?.targetPath === current && active.minimumElapsed) {
         finishTransition(active.id, current);
@@ -665,6 +701,7 @@ const MemberShellView = ({
       enterInternalRoute,
       finishTransition,
       setActiveRouteTransition,
+      setActiveTransition,
       startPortalEnter,
       startPortalReturn,
     ]
@@ -735,10 +772,21 @@ const MemberShellView = ({
       </div>
     ) : null;
 
+  if (isGestaoShellPath(pathname)) {
+    return (
+      <MemberNavigationContext.Provider value={contextValue}>
+        {children}
+      </MemberNavigationContext.Provider>
+    );
+  }
+
   return (
     <MemberNavigationContext.Provider value={contextValue}>
       <div
+        aria-hidden={shellSwitching || undefined}
         className="member-app-shell flex min-h-svh w-full min-w-0"
+        data-shell-switching={String(shellSwitching)}
+        inert={shellSwitching || undefined}
         onClickCapture={handleNavigationCapture}
       >
         <MemberAreaSidebar
@@ -747,6 +795,7 @@ const MemberShellView = ({
           chromeVisible={transitionActive && chromeVisible}
           displayName={displayName}
           email={email}
+          gestaoV2Enabled={gestaoV2Enabled}
           portalMode={
             pathname === "/" ||
             (transition?.direction === "enter" && !chromeVisible)

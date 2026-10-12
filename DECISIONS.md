@@ -25,3 +25,6 @@
 |---|---|---|---|
 | 11/10/2026 | Divergência entre os layouts propostos no handoff e o plano aprovado | Manter uma raiz App Router e trocar o shell por segmento; usar a branch isolada `gestao-v2` | O Next faz navegação de documento completo entre raízes; a decisão aprovada exige continuidade e branch com nome exato. |
 | 11/10/2026 | GOAL pede revisor delegado, mas o usuário determinou execução solo | Não delegar agentes; realizar uma segunda passada independente usando os critérios de aceite | Respeitar a instrução direta do usuário e manter a verificação auditável. |
+
+| 11/10/2026 | Lint global inclui as referências HTML/JSON do handoff presentes no workspace | Ignorar apenas interprete-gestao-handoff no escopo do Biome, preservando os arquivos de referência | O código do produto segue verificado sem reformatar os originais usados na comparação visual. |
+| 11/10/2026 | QA autenticado precisa de banco local, mas o serviço Docker não pode ser iniciado pela conta atual | Não apontar para Supabase remoto nem criar credenciais fictícias; registrar o runtime como não verificado e continuar com validação isolada | Respeita o limite de ambiente local e mantém a possibilidade de retomar comparação e jornadas quando o serviço local estiver disponível. |

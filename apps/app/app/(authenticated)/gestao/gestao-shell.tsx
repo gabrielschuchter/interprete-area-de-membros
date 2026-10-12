@@ -1,0 +1,461 @@
+"use client";
+
+import { useClerk } from "@repo/auth/client";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@repo/design-system/components/ui/avatar";
+import { Button } from "@repo/design-system/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@repo/design-system/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@repo/design-system/components/ui/dropdown-menu";
+import { toast } from "@repo/design-system/lib/toast";
+import {
+  ArrowLeftIcon,
+  BookOpenIcon,
+  ChevronRightIcon,
+  LayoutDashboardIcon,
+  LockKeyholeIcon,
+  MenuIcon,
+  MessageCircleIcon,
+  PlusIcon,
+  Settings2Icon,
+  UsersRoundIcon,
+  XIcon,
+} from "lucide-react";
+import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import type { MouseEvent as ReactMouseEvent, ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  isGestaoShellPath,
+  safeGestaoReturnPath,
+  withGestaoReturnPath,
+} from "@/lib/gestao-navigation";
+import type { GestaoRole } from "@/lib/gestao-permissions";
+import { MemberHeaderControls } from "../components/member-header-controls";
+
+interface GestaoShellProperties {
+  readonly avatarUrl: string | null;
+  readonly children: ReactNode;
+  readonly displayName: string;
+  readonly email: string | null;
+  readonly memberId: string;
+  readonly role: GestaoRole;
+}
+
+const navigation = [
+  {
+    href: "/gestao",
+    icon: LayoutDashboardIcon,
+    label: "Visão geral",
+    admin: false,
+  },
+  { href: "/gestao/ensino", icon: BookOpenIcon, label: "Ensino", admin: false },
+  {
+    href: "/gestao/alunos",
+    icon: UsersRoundIcon,
+    label: "Alunos",
+    admin: false,
+  },
+  {
+    href: "/gestao/comunidade",
+    icon: MessageCircleIcon,
+    label: "Comunidade",
+    admin: false,
+  },
+  {
+    href: "/gestao/administracao",
+    icon: Settings2Icon,
+    label: "Administração",
+    admin: true,
+  },
+] as const;
+
+const createActions = [
+  { href: "/gestao/ensino/cursos/novo", label: "Novo curso" },
+  { href: "/gestao/alunos/turmas/nova", label: "Nova turma" },
+  { href: "/gestao/alunos/atribuicoes/nova", label: "Atribuir conteúdo" },
+  { href: "/gestao/comunidade/avisos/novo", label: "Novo aviso" },
+] as const;
+
+const gestaoWhitespacePattern = /\s+/;
+
+const initialsFor = (value: string) =>
+  value
+    .trim()
+    .split(gestaoWhitespacePattern)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase() || "I";
+
+const isActivePath = (pathname: string, href: string) =>
+  href === "/gestao"
+    ? pathname === href
+    : pathname === href || pathname.startsWith(`${href}/`);
+
+export const GestaoShell = ({
+  avatarUrl,
+  children,
+  displayName,
+  email,
+  memberId,
+  role,
+}: GestaoShellProperties) => {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const { signOut } = useClerk();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [welcomeOpen, setWelcomeOpen] = useState(false);
+  const [isLeaving, setIsLeaving] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
+  const leaveTimer = useRef<number | null>(null);
+  const rawReturnTo = searchParams.get("from");
+  const returnTo = safeGestaoReturnPath(rawReturnTo);
+  const heading =
+    navigation.find((item) => isActivePath(pathname, item.href))?.label ??
+    "Gestão";
+
+  useEffect(() => {
+    try {
+      if (
+        window.localStorage.getItem(
+          `interprete:gestao:welcome:v1:${memberId}`
+        ) !== "seen"
+      ) {
+        setWelcomeOpen(true);
+      }
+    } catch {
+      setWelcomeOpen(true);
+    }
+    return () => {
+      if (leaveTimer.current !== null) {
+        window.clearTimeout(leaveTimer.current);
+      }
+    };
+  }, [memberId]);
+
+  const dismissWelcome = useCallback(() => {
+    try {
+      window.localStorage.setItem(
+        `interprete:gestao:welcome:v1:${memberId}`,
+        "seen"
+      );
+    } catch {
+      // The dialog still closes if browser storage is unavailable.
+    }
+    setWelcomeOpen(false);
+  }, [memberId]);
+
+  const leaveGestaoFor = useCallback(
+    (href: string) => {
+      if (leaveTimer.current !== null) {
+        window.clearTimeout(leaveTimer.current);
+      }
+      setIsLeaving(true);
+      setMobileMenuOpen(false);
+      const reducedMotion = window.matchMedia?.(
+        "(prefers-reduced-motion: reduce)"
+      ).matches;
+      const duration = reducedMotion ? 0 : 160;
+      leaveTimer.current = window.setTimeout(() => {
+        router.push(href);
+      }, duration);
+    },
+    [router]
+  );
+
+  const handleShellNavigation = useCallback(
+    (event: ReactMouseEvent<HTMLDivElement>) => {
+      if (
+        event.defaultPrevented ||
+        event.button !== 0 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey
+      ) {
+        return;
+      }
+      const target = event.target;
+      if (!(target instanceof Element)) {
+        return;
+      }
+      const anchor = target.closest<HTMLAnchorElement>("a[href]");
+      if (
+        !anchor ||
+        anchor.target === "_blank" ||
+        anchor.hasAttribute("download")
+      ) {
+        return;
+      }
+      let destination: URL;
+      try {
+        destination = new URL(anchor.href, window.location.href);
+      } catch {
+        return;
+      }
+      if (
+        destination.origin === window.location.origin &&
+        isGestaoShellPath(pathname) &&
+        !isGestaoShellPath(destination.pathname)
+      ) {
+        event.preventDefault();
+        leaveGestaoFor(
+          `${destination.pathname}${destination.search}${destination.hash}`
+        );
+      }
+    },
+    [leaveGestaoFor, pathname]
+  );
+
+  const handleSignOut = async () => {
+    setIsSigningOut(true);
+    try {
+      await signOut({ redirectUrl: "/sign-in" });
+    } catch {
+      toast.error("Não foi possível encerrar a sessão. Tente novamente.");
+      setIsSigningOut(false);
+    }
+  };
+  const gestaoHref = (href: string) => withGestaoReturnPath(href, returnTo);
+
+  return (
+    <div
+      className="gestao-shell"
+      data-menu-open={String(mobileMenuOpen)}
+      data-transition-out={String(isLeaving)}
+      onClickCapture={handleShellNavigation}
+    >
+      {mobileMenuOpen ? (
+        <button
+          aria-label="Fechar navegação da Gestão"
+          className="gestao-mobile-backdrop"
+          onClick={() => setMobileMenuOpen(false)}
+          type="button"
+        />
+      ) : null}
+      <aside className="gestao-sidebar">
+        <div className="gestao-sidebar-brand">
+          <Link
+            aria-label="Interprete, visão geral da Gestão"
+            className="gestao-brand"
+            href={gestaoHref("/gestao")}
+          >
+            <span className="gestao-brand-word">Interprete.</span>
+            <span className="gestao-brand-kicker">Gestão</span>
+          </Link>
+          <button
+            aria-label="Fechar menu"
+            className="gestao-close-menu"
+            onClick={() => setMobileMenuOpen(false)}
+            type="button"
+          >
+            <XIcon aria-hidden="true" />
+          </button>
+        </div>
+        <nav
+          aria-label="Navegação da Gestão"
+          className="gestao-navigation"
+          id="gestao-navigation"
+        >
+          {navigation.map(({ admin, href, icon: Icon, label }) => {
+            const active = isActivePath(pathname, href);
+            const isLocked = admin && role !== "ADMIN";
+            return (
+              <Link
+                aria-current={active ? "page" : undefined}
+                aria-label={isLocked ? `${label}, acesso restrito` : label}
+                className="gestao-navigation-link"
+                data-active={String(active)}
+                data-locked={String(Boolean(isLocked))}
+                href={gestaoHref(href)}
+                key={href}
+                onClick={() => setMobileMenuOpen(false)}
+                title={label}
+              >
+                <Icon aria-hidden="true" className="gestao-navigation-icon" />
+                <span className="gestao-navigation-label">{label}</span>
+                {isLocked ? (
+                  <LockKeyholeIcon
+                    aria-hidden="true"
+                    className="gestao-navigation-trailing"
+                  />
+                ) : null}
+                {!isLocked && href !== "/gestao" ? (
+                  <ChevronRightIcon
+                    aria-hidden="true"
+                    className="gestao-navigation-trailing"
+                  />
+                ) : null}
+              </Link>
+            );
+          })}
+        </nav>
+        <div className="gestao-sidebar-spacer" />
+        <Link
+          className="gestao-back-link"
+          href={returnTo}
+          onClick={() => setMobileMenuOpen(false)}
+        >
+          <ArrowLeftIcon aria-hidden="true" />
+          <span>Voltar à área de membros</span>
+        </Link>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              aria-label={`Abrir menu da conta de ${displayName}`}
+              className="gestao-account"
+              type="button"
+            >
+              <Avatar className="gestao-account-avatar">
+                <AvatarImage alt="" src={avatarUrl ?? undefined} />
+                <AvatarFallback>{initialsFor(displayName)}</AvatarFallback>
+              </Avatar>
+              <span className="gestao-account-copy">
+                <span className="gestao-account-name">{displayName}</span>
+                <span className="gestao-account-role">
+                  {role === "ADMIN" ? "Administração" : "Professor"}
+                </span>
+              </span>
+              <ChevronRightIcon
+                aria-hidden="true"
+                className="gestao-account-chevron"
+              />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="min-w-56" side="top">
+            <DropdownMenuLabel>
+              {displayName}
+              {email ? (
+                <span className="block font-normal text-muted-foreground">
+                  {email}
+                </span>
+              ) : null}
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link href="/perfil">Meu perfil</Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem disabled={isSigningOut} onSelect={handleSignOut}>
+              {isSigningOut ? "Saindo…" : "Sair"}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </aside>
+      <div
+        aria-hidden={isLeaving || undefined}
+        className="gestao-main-column"
+        inert={isLeaving || undefined}
+      >
+        <header className="gestao-topbar">
+          <button
+            aria-controls="gestao-navigation"
+            aria-expanded={mobileMenuOpen}
+            aria-label={mobileMenuOpen ? "Fechar menu" : "Abrir menu"}
+            className="gestao-mobile-menu-button"
+            onClick={() => setMobileMenuOpen((open) => !open)}
+            type="button"
+          >
+            <MenuIcon aria-hidden="true" />
+          </button>
+          <div className="gestao-topbar-context">
+            <span className="gestao-topbar-section">{heading}</span>
+          </div>
+          <div className="gestao-topbar-actions">
+            <MemberHeaderControls memberId={memberId} showSaved={false} />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button className="gestao-create-button" size="sm">
+                  <PlusIcon aria-hidden="true" />
+                  <span>Criar</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-52">
+                <DropdownMenuLabel>Criar em Gestão</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {createActions.map((item) => (
+                  <DropdownMenuItem asChild key={item.href}>
+                    <Link href={gestaoHref(item.href)}>{item.label}</Link>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </header>
+        <div className="gestao-page-scroll">
+          <main className="gestao-page-content" id="gestao-main-content">
+            {children}
+          </main>
+        </div>
+      </div>
+      <Dialog
+        onOpenChange={(open) => {
+          if (!open) {
+            dismissWelcome();
+          }
+        }}
+        open={welcomeOpen}
+      >
+        <DialogContent className="gestao-welcome-dialog">
+          <DialogHeader>
+            <p className="gestao-eyebrow">Interprete · Gestão</p>
+            <DialogTitle className="gestao-welcome-title">
+              Seu espaço de ensino, em um só lugar.
+            </DialogTitle>
+            <DialogDescription>
+              Aqui você acompanha turmas, organiza conteúdos e cuida da
+              comunidade. As permissões da sua conta definem quais áreas
+              aparecem para você.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button onClick={dismissWelcome}>Começar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};
+
+export const GestaoPageHeading = ({
+  eyebrow,
+  title,
+  description,
+  children,
+}: {
+  readonly eyebrow?: string;
+  readonly title: string;
+  readonly description?: string;
+  readonly children?: ReactNode;
+}) => (
+  <div className="gestao-page-heading">
+    <div>
+      {eyebrow ? <p className="gestao-eyebrow">{eyebrow}</p> : null}
+      <h1>{title}</h1>
+      {description ? (
+        <p className="gestao-page-description">{description}</p>
+      ) : null}
+    </div>
+    {children ? (
+      <div className="gestao-page-heading-actions">{children}</div>
+    ) : null}
+  </div>
+);

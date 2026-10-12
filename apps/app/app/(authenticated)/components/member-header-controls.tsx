@@ -76,11 +76,13 @@ const announceNewBadgeNotifications = (
 interface MemberHeaderControlsProperties {
   readonly memberId: string;
   readonly noteEditorMode?: boolean;
+  readonly showSaved?: boolean;
 }
 
 export const MemberHeaderControls = ({
   memberId,
   noteEditorMode = false,
+  showSaved = true,
 }: MemberHeaderControlsProperties) => {
   const pathname = usePathname();
   const [activeOverlay, setActiveOverlay] = useState<ActiveOverlay>(null);
@@ -198,21 +200,23 @@ export const MemberHeaderControls = ({
       className="member-header-controls ml-auto flex items-center gap-1"
       data-note-editor-controls={String(noteEditorMode)}
     >
-      <Button
-        aria-label="Abrir salvos"
-        asChild
-        className={`${noteEditorMode ? "size-11" : "size-10"} rounded-full text-muted-foreground hover:bg-accent hover:text-foreground ${pathname === "/salvos" ? "bg-accent text-brand-action-text" : ""}`}
-        size="icon-sm"
-        title="Salvos"
-        variant="ghost"
-      >
-        <IntentLink
-          aria-current={pathname === "/salvos" ? "page" : undefined}
-          href="/salvos"
+      {showSaved ? (
+        <Button
+          aria-label="Abrir salvos"
+          asChild
+          className={`${noteEditorMode ? "size-11" : "size-10"} rounded-full text-muted-foreground hover:bg-accent hover:text-foreground ${pathname === "/salvos" ? "bg-accent text-brand-action-text" : ""}`}
+          size="icon-sm"
+          title="Salvos"
+          variant="ghost"
         >
-          <BookmarkIcon aria-hidden="true" />
-        </IntentLink>
-      </Button>
+          <IntentLink
+            aria-current={pathname === "/salvos" ? "page" : undefined}
+            href="/salvos"
+          >
+            <BookmarkIcon aria-hidden="true" />
+          </IntentLink>
+        </Button>
+      ) : null}
       <Button
         aria-expanded={activeOverlay === "search"}
         aria-haspopup="dialog"
