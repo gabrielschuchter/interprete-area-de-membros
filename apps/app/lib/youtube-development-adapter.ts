@@ -39,6 +39,15 @@ export const createYouTubeDevelopmentAdapter = (): YouTubeDataAdapter => ({
       demoVideos.find((video) => video.videoId === videoId) ?? null
     );
   },
+  getVideos(videoIds) {
+    return Promise.resolve(
+      new Map(
+        demoVideos
+          .filter((video) => videoIds.includes(video.videoId))
+          .map((video) => [video.videoId, video])
+      )
+    );
+  },
   getPlaylistPage(playlistId, pageToken) {
     if (playlistId !== "PLGestaoDevFixture01" || pageToken) {
       return Promise.resolve({
@@ -54,7 +63,9 @@ export const createYouTubeDevelopmentAdapter = (): YouTubeDataAdapter => ({
         position,
         thumbnailUrl: video.thumbnailUrl,
         metadata: video,
-        importable: video.embeddable,
+        importable:
+          video.privacyStatus === "PUBLIC" ||
+          video.privacyStatus === "UNLISTED",
       })),
       nextPageToken: null,
       totalResults: demoVideos.length,

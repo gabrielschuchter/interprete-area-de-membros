@@ -260,6 +260,28 @@ on a server request.
 - Provide specific pending labels and an announced publication error so the
   action responds immediately while the remote verification and write finish.
 
+## Gestão YouTube playlist import
+
+- The playlist dialog keeps the URL, current page, selection, target module,
+  title choice, and publication state local. Default selection stops at 200
+  importable videos per transaction; the user can deselect earlier items to
+  choose later pages. Private or missing videos remain disabled, and selected
+  public videos show a visibility warning.
+- Let the dialog's focus management move focus to the first input and restore
+  it to the trigger when closed. Keep row checkboxes, pagination, and both
+  footer actions keyboard reachable, and announce pending, error, and
+  post-commit success states.
+- The server rechecks selected video metadata immediately before a write. A
+  published import requires a published course and module and embeddable
+  videos; a draft can preserve a public/unlisted video whose embedding is
+  disabled. Lesson creation, audit, and published-lesson notifications commit
+  atomically. The same idempotency key only replays the same import intent.
+- The course editor measured 216.5 KiB gzip across 17 initial chunks in the
+  local production build, below its 225 KiB route budget. Target ≤100 ms
+  visible feedback and ≤500 ms small persisted mutation p95. Neither local
+  authenticated latency nor YouTube/database-backed persistence and mobile
+  visual acceptance has been measured yet.
+
 ## Learner video playback progress
 
 - Keep `GET` and `PUT /api/learning/assets/[assetId]/progress` private and

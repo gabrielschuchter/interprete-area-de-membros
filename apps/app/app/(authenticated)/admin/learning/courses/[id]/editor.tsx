@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { Badge } from "@repo/design-system/components/ui/badge";
 import { Button } from "@repo/design-system/components/ui/button";
 import { Input } from "@repo/design-system/components/ui/input";
@@ -13,7 +14,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { TopicEditor } from "@/components/community/topic-editor";
+import { LazyTopicEditor } from "@/components/gestao/lazy-topic-editor";
+import { YouTubePlaylistImport } from "@/components/gestao/youtube-playlist-import";
 import { getAdminCourse } from "@/lib/admin-learning";
 import {
   createLesson,
@@ -112,6 +114,18 @@ export const AdminCourseEditor = async ({
           </p>
         )}
         <div className="mt-6 flex flex-wrap gap-2">
+          {gestao ? (
+            <YouTubePlaylistImport
+              courseId={course.id}
+              courseStatus={course.status}
+              initialIdempotencyKey={randomUUID()}
+              modules={course.modules.map((module) => ({
+                id: module.id,
+                status: module.status,
+                title: module.title,
+              }))}
+            />
+          ) : null}
           {course.status !== "PUBLISHED" && (
             <form action={setContentStatus}>
               <input name="entity" type="hidden" value="course" />
@@ -455,7 +469,7 @@ export const AdminCourseEditor = async ({
                             name="objectives"
                             placeholder="Objetivos da aula, um por linha"
                           />
-                          <TopicEditor
+                          <LazyTopicEditor
                             ariaLabel="Conteúdo da aula"
                             defaultValue={lesson.content as JSONContent}
                           />
@@ -720,7 +734,7 @@ export const AdminCourseEditor = async ({
                       <option value="MATERIAL">Material</option>
                       <option value="VIDEO">Vídeo</option>
                     </select>
-                    <TopicEditor ariaLabel="Conteúdo da aula" />
+                    <LazyTopicEditor ariaLabel="Conteúdo da aula" />
                     <div className="flex justify-end">
                       <Button size="sm" type="submit">
                         Criar aula

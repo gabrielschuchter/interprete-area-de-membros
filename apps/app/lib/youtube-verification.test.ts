@@ -32,6 +32,14 @@ const adapterFor = (
   },
   getPlaylistPage: () =>
     Promise.resolve({ items: [], nextPageToken: null, totalResults: 0 }),
+  getVideos: (videoIds) =>
+    Promise.resolve(
+      new Map(
+        video && videoIds.includes(video.videoId)
+          ? [[video.videoId, video]]
+          : []
+      )
+    ),
 });
 
 describe("YouTube verification domain", () => {

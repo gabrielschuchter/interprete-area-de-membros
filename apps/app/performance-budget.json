@@ -109,6 +109,18 @@
       "maxGzipBytes": 230400
     },
     {
+      "route": "gestao-course-editor",
+      "manifestSegments": [
+        "(authenticated)",
+        "gestao",
+        "ensino",
+        "cursos",
+        "[id]"
+      ],
+      "entrySuffix": "apps/app/app/(authenticated)/gestao/ensino/cursos/[id]/page",
+      "maxGzipBytes": 230400
+    },
+    {
       "route": "planner",
       "manifestSegments": ["(authenticated)", "planejamento"],
       "entrySuffix": "apps/app/app/(authenticated)/planejamento/page",

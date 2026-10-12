@@ -129,7 +129,7 @@ const metadataFrom = (
       ? thumbnailFrom(video.snippet.thumbnails)
       : null,
     privacyStatus: privacyStatusFrom(privacy),
-    embeddable: video.status?.embeddable !== false,
+    embeddable: video.status?.embeddable === true,
     captionsAvailable: captionsAvailableFrom(video.contentDetails?.caption),
   };
 };
@@ -174,6 +174,17 @@ export const createYouTubeDataApiAdapter = (
       const videos = await getVideos([videoId]);
       return videos.get(videoId) ?? null;
     },
+    async getVideos(videoIds) {
+      const uniqueIds = [...new Set(videoIds)];
+      const result = new Map<string, YouTubeVideoMetadata>();
+      for (let offset = 0; offset < uniqueIds.length; offset += 50) {
+        const batch = await getVideos(uniqueIds.slice(offset, offset + 50));
+        for (const [videoId, metadata] of batch) {
+          result.set(videoId, metadata);
+        }
+      }
+      return result;
+    },
 
     async getPlaylistPage(playlistId, pageToken) {
       const url = new URL(
@@ -214,9 +225,11 @@ export const createYouTubeDataApiAdapter = (
       );
       const items = playlistRows.map((item) => {
         const video = metadata.get(item.videoId) ?? null;
-        const importable = Boolean(
-          video?.embeddable && video.privacyStatus !== "PRIVATE"
-        );
+        const importable =
+          video !== null &&
+          video !== undefined &&
+          (video.privacyStatus === "PUBLIC" ||
+            video.privacyStatus === "UNLISTED");
         return {
           ...item,
           metadata: video,

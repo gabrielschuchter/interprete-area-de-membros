@@ -114,4 +114,56 @@ describe("YouTube Data API adapter", () => {
       "YouTube Data API returned 403"
     );
   });
+
+  it("rechecks selected videos in batches of at most 50 and requires known privacy", async () => {
+    const videoIds = Array.from(
+      { length: 51 },
+      (_, index) => `AbC123xYz${String(index).padStart(2, "0")}`
+    );
+    const fetchImplementation = vi.fn<typeof fetch>((input) => {
+      const requestedIds = new URL(String(input)).searchParams
+        .get("id")
+        ?.split(",");
+      return Promise.resolve(
+        response({
+          items: (requestedIds ?? []).map((id) => ({
+            id,
+            snippet: { title: `Video ${id}` },
+            contentDetails: { duration: "PT1M" },
+            status: { privacyStatus: "unlisted", embeddable: true },
+          })),
+        })
+      );
+    });
+    const adapter = createYouTubeDataApiAdapter(
+      "server-secret",
+      fetchImplementation
+    );
+
+    const metadata = await adapter.getVideos(videoIds);
+    expect(metadata.size).toBe(51);
+    expect(fetchImplementation).toHaveBeenCalledTimes(2);
+    const firstBatch = new URL(String(fetchImplementation.mock.calls[0]?.[0]));
+    const secondBatch = new URL(String(fetchImplementation.mock.calls[1]?.[0]));
+    expect(firstBatch.searchParams.get("id")?.split(",")).toHaveLength(50);
+    expect(secondBatch.searchParams.get("id")?.split(",")).toHaveLength(1);
+  });
+
+  it("treats missing embed eligibility as unavailable instead of assuming it is enabled", async () => {
+    const adapter = createYouTubeDataApiAdapter("server-secret", async () =>
+      response({
+        items: [
+          {
+            id: "AbC123xYz01",
+            snippet: { title: "Sem confirmação de incorporação" },
+            status: { privacyStatus: "unlisted" },
+          },
+        ],
+      })
+    );
+    await expect(adapter.getVideo("AbC123xYz01")).resolves.toMatchObject({
+      privacyStatus: "UNLISTED",
+      embeddable: false,
+    });
+  });
 });

@@ -65,8 +65,18 @@ export interface YouTubeDataAdapter {
     pageToken?: string | null
   ): Promise<YouTubePlaylistPage>;
   getVideo(videoId: string): Promise<YouTubeVideoMetadata | null>;
+  getVideos(
+    videoIds: readonly string[]
+  ): Promise<ReadonlyMap<string, YouTubeVideoMetadata>>;
   readonly source?: "API" | "DEVELOPMENT" | "TEST";
 }
+
+export const isYouTubePlaylistItemImportable = (
+  metadata: YouTubeVideoMetadata | null
+) =>
+  metadata !== null &&
+  (metadata.privacyStatus === "PUBLIC" ||
+    metadata.privacyStatus === "UNLISTED");
 
 export interface YouTubeVerificationResult {
   readonly metadata: YouTubeVideoMetadata | null;

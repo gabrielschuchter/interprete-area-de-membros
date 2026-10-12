@@ -786,6 +786,20 @@ runtime or PostgreSQL QA service is available here. API-key verification,
 Storage uploads, playback persistence, latency percentiles, and visual
 comparison remain unverified.
 
+The Gestão course editor now includes the playlist-import dialog as a local
+client island. It fetches one YouTube Data API playlist page at a time, selects
+up to 200 videos per transaction, and shows an immediate pending state while
+the server rechecks current metadata. Playlist rows and signed selection tokens
+are returned as a bounded page; neither the API key nor unpublished member
+data crosses the server boundary. Replaying an idempotency key with changed
+selection or options is rejected. Published imports write lessons, assets,
+audit, and notification outbox rows in one serializable transaction; draft
+imports do not notify learners. The `gestao-course-editor` bundle now has its
+own 225 KiB gzip gate and measured 216.5 KiB across 17 initial chunks in the
+local production build. The local QA database, YouTube key, authenticated
+latency, transaction concurrency, and visual/device comparison are not
+available here, so this describes code paths rather than runtime acceptance.
+
 ### Learner playback progress
 
 `GET` and `PUT /api/learning/assets/[assetId]/progress` re-check current asset
