@@ -4,8 +4,16 @@ import { Button } from "@repo/design-system/components/ui/button";
 import { ChevronLeftIcon, ChevronRightIcon, PlusIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
+  type ReactNode,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
+import {
+  type CohortCalendarDateConflict,
   cohortCalendarEventColors,
   cohortCalendarEventLastDate,
   cohortCalendarTimezone,
@@ -338,6 +346,8 @@ const CalendarDisplay = (props: CalendarDisplayProps) => {
 
 interface CalendarEditorSidebarProps {
   readonly archived: boolean;
+  readonly conflicts: readonly CohortCalendarDateConflict[];
+  readonly conflictsLimited: boolean;
   readonly eventId: string | null;
   readonly eventPublished: boolean;
   readonly events: readonly CalendarEvent[];
@@ -441,8 +451,62 @@ const CalendarStatusPanel = ({
   );
 };
 
+const CalendarConflictPanel = ({
+  conflicts,
+  limited,
+}: {
+  readonly conflicts: readonly CohortCalendarDateConflict[];
+  readonly limited: boolean;
+}) => {
+  let content: ReactNode;
+  if (limited) {
+    content = (
+      <p>
+        Há muitos eventos publicados neste período para comparar de uma vez.
+        Revise a lista completa antes de publicar.
+      </p>
+    );
+  } else if (conflicts.length === 0) {
+    content = <p>Não há eventos publicados no mesmo dia neste período.</p>;
+  } else {
+    content = (
+      <>
+        <p>
+          Estes avisos são informativos e não impedem salvar ou publicar.
+          Confira os horários antes de confirmar.
+        </p>
+        <ul className="gt-calendar-conflict-list">
+          {conflicts.map((conflict) => (
+            <li key={conflict.day}>
+              <strong>
+                {dateLabel(new Date(`${conflict.day}T12:00:00Z`))}
+              </strong>
+              <span>{conflict.titles.join(" · ")}</span>
+            </li>
+          ))}
+        </ul>
+      </>
+    );
+  }
+
+  return (
+    <section
+      aria-labelledby="gt-calendar-conflicts-heading"
+      aria-live="polite"
+      className="gt-panel gt-calendar-conflicts"
+    >
+      <div className="gt-panel-heading">
+        <h2 id="gt-calendar-conflicts-heading">Conflitos de data</h2>
+      </div>
+      {content}
+    </section>
+  );
+};
+
 const CalendarEditorSidebar = ({
   archived,
+  conflicts,
+  conflictsLimited,
   eventId,
   eventPublished,
   events,
@@ -583,6 +647,7 @@ const CalendarEditorSidebar = ({
         </p>
         <Link href="/planejamento">Ver o Planejamento do aluno</Link>
       </section>
+      <CalendarConflictPanel conflicts={conflicts} limited={conflictsLimited} />
       <CalendarStatusPanel
         archived={archived}
         events={events}
@@ -647,6 +712,8 @@ const CalendarConfirmationDialog = ({
 export const CohortCalendarEditor = ({
   archived,
   cohortId,
+  conflicts,
+  conflictsLimited,
   expectedCohortVersion,
   events,
   monthKey,
@@ -656,6 +723,8 @@ export const CohortCalendarEditor = ({
 }: {
   readonly archived: boolean;
   readonly cohortId: string;
+  readonly conflicts: readonly CohortCalendarDateConflict[];
+  readonly conflictsLimited: boolean;
   readonly expectedCohortVersion: number;
   readonly events: readonly CalendarEvent[];
   readonly monthKey: string;
@@ -669,8 +738,11 @@ export const CohortCalendarEditor = ({
   const monthDate = new Date(`${monthKey}-01T12:00:00Z`);
   const now = dateParts(new Date());
   const [month, setMonth] = useState(monthDate);
-  const [focusDate, setFocusDate] = useState(
-    () => new Date(Date.UTC(now.year, now.month - 1, now.day))
+  const [focusDate, setFocusDate] = useState(() =>
+    monthDate.getUTCFullYear() === now.year &&
+    monthDate.getUTCMonth() + 1 === now.month
+      ? new Date(Date.UTC(now.year, now.month - 1, now.day))
+      : monthDate
   );
   const [view, setView] = useState<"month" | "week" | "list">("month");
   const [eventId, setEventId] = useState<string | null>(null);
@@ -685,7 +757,12 @@ export const CohortCalendarEditor = ({
     const [year, monthValue] = monthKey.split("-").map(Number);
     const nextMonth = new Date(Date.UTC(year, monthValue - 1, 1));
     setMonth(nextMonth);
-    setFocusDate(nextMonth);
+    setFocusDate((current) =>
+      current.getUTCFullYear() === year &&
+      current.getUTCMonth() + 1 === monthValue
+        ? current
+        : nextMonth
+    );
   }, [monthKey]);
 
   const monthParts = {
@@ -876,6 +953,15 @@ export const CohortCalendarEditor = ({
     setFocusDate(next);
   };
 
+  const moveToToday = () => {
+    const today = dateParts(new Date());
+    const todayMonth = new Date(Date.UTC(today.year, today.month - 1, 1));
+    const todayKey = `${today.year}-${String(today.month).padStart(2, "0")}`;
+    setMonth(todayMonth);
+    setFocusDate(new Date(Date.UTC(today.year, today.month - 1, today.day)));
+    router.push(`?month=${todayKey}`);
+  };
+
   return (
     <div className="gt-calendar-workspace">
       <section className="gt-panel gt-calendar-main">
@@ -900,6 +986,14 @@ export const CohortCalendarEditor = ({
           className="gt-calendar-toolbar"
         >
           <div className="gt-calendar-month-nav">
+            <Button
+              onClick={moveToToday}
+              size="sm"
+              type="button"
+              variant="outline"
+            >
+              Hoje
+            </Button>
             <Button
               aria-label="Mês anterior"
               onClick={() => moveMonth(-1)}
@@ -985,6 +1079,8 @@ export const CohortCalendarEditor = ({
 
       <CalendarEditorSidebar
         archived={archived}
+        conflicts={conflicts}
+        conflictsLimited={conflictsLimited}
         eventId={eventId}
         eventPublished={editingEvent?.status === "PUBLISHED"}
         events={events}

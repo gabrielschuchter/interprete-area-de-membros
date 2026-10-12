@@ -2188,6 +2188,34 @@
   font-weight: 650;
   color: var(--gestao-action);
 }
+.gt-calendar-conflicts > p {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--gestao-muted);
+}
+.gt-calendar-conflict-list {
+  display: grid;
+  gap: 8px;
+  padding: 0;
+  margin: 10px 0 0;
+  list-style: none;
+}
+.gt-calendar-conflict-list li {
+  display: grid;
+  gap: 3px;
+  padding-left: 9px;
+  border-left: 2px solid var(--gestao-action);
+}
+.gt-calendar-conflict-list strong {
+  font-size: 11px;
+  color: var(--gestao-text);
+}
+.gt-calendar-conflict-list span {
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--gestao-muted);
+}
 .gt-calendar-confirmation {
   z-index: 1000;
   width: min(420px, calc(100vw - 32px));

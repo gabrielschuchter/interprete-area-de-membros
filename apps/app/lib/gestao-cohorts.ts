@@ -5,6 +5,7 @@ import { createHash } from "node:crypto";
 import { database, MemberRole, type Prisma } from "@repo/database";
 import { cache } from "react";
 import { requireOnboardedMemberId } from "./authorization";
+import { resolveCohortCalendarDateConflicts } from "./cohort-calendar-domain";
 import {
   type CohortLifecycleStatus,
   cohortLifecycleStatusAt,
@@ -22,6 +23,7 @@ const inviteTokenPattern = /^[a-f\d]{32}$/iu;
 const pageSize = 24;
 const rosterPageSize = 25;
 const cohortEventPageSize = 50;
+const cohortCalendarConflictReadLimit = 500;
 const queryMaxLength = 120;
 const statusFilter = (
   status: GestaoCohortTab,
@@ -225,7 +227,7 @@ export const listGestaoCohortCalendarEvents = async (
       { startsAt: { lt: input.start }, endsAt: { gte: input.start } },
     ],
   };
-  const [events, totalCount] = await Promise.all([
+  const [events, totalCount, conflictCandidates] = await Promise.all([
     database.cohortEvent.findMany({
       where,
       orderBy: [{ startsAt: "asc" }, { id: "asc" }],
@@ -246,9 +248,31 @@ export const listGestaoCohortCalendarEvents = async (
       },
     }),
     database.cohortEvent.count({ where }),
+    database.cohortEvent.findMany({
+      where: { ...where, status: "PUBLISHED" },
+      orderBy: [{ startsAt: "asc" }, { id: "asc" }],
+      take: cohortCalendarConflictReadLimit + 1,
+      select: {
+        id: true,
+        title: true,
+        startsAt: true,
+        endsAt: true,
+        allDay: true,
+        status: true,
+      },
+    }),
   ]);
+  const conflictsLimited =
+    conflictCandidates.length > cohortCalendarConflictReadLimit;
   return {
     events,
+    conflicts: conflictsLimited
+      ? []
+      : resolveCohortCalendarDateConflicts(conflictCandidates, {
+          start: input.start,
+          end: input.end,
+        }),
+    conflictsLimited,
     page,
     pageSize: cohortEventPageSize,
     totalCount,

@@ -77,6 +77,8 @@ const GestaoCohortCalendarPage = async ({
       <CohortCalendarEditor
         archived={cohort.archivedAt !== null}
         cohortId={cohort.id}
+        conflicts={calendar.conflicts}
+        conflictsLimited={calendar.conflictsLimited}
         events={calendar.events}
         expectedCohortVersion={cohort.version}
         monthKey={monthKey}
