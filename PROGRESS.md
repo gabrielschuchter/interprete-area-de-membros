@@ -4,16 +4,16 @@
 
 ## Estado geral
 - Branch: `gestao-v2`
-- Fase atual: 1 — Shell, permissões, rotas e transição
-- Último commit verificado: `ffbb93e` (auditoria, Fase 0)
+- Fase atual: 2 — Turmas e acesso (em andamento; validação de runtime local pendente)
+- Último commit verificado: `c151c9b` (fundação de turmas e acesso)
 - Orçamento/contexto: (preencher se relevante)
 
 ## Fases
 | Fase | Estado | Evidência (testes, commit) | Verificação independente |
 |---|---|---|---|
 | 0 Auditoria | concluída | `docs/gestao-auditoria.md`; 101 pares HTML/PNG inventariados e revistos em pranchas; matriz 1:1 gerada; commit `ffbb93e`; nenhum código/migration alterado | releitura dos critérios e conferência solo; sem subagente por instrução direta para trabalhar sozinho |
-| 1 Shell, permissões, rotas, transição | concluída; QA local visual pendente | shell responsivo desktop/trilho/gaveta; flag `GESTAO_V2_ENABLED` false por padrão; mapa de ações por papel e redirecionamentos internos seguros; 20 testes direcionados; `bun run check`, `typecheck`, `boundaries`, `test`, `build`, `performance:check`, `git diff --check` passaram; commit nesta fase | revisão solo dos critérios e teste de função/papel; comparação visual e navegação autenticada bloqueadas pelo serviço Docker local parado e sem permissão para iniciá-lo; nenhuma referência PNG marcada concluída |
-| 2 Turmas e resolvers | pendente | | |
+| 1 Shell, permissões, rotas, transição | IN PROGRESS — aceite visual/runtime pendente | Shell responsivo desktop/trilho/gaveta; flag `GESTAO_V2_ENABLED` false por padrão; mapa de ações por papel e retorno interno seguro; 20 testes focados e gates locais registrados no commit `1d04e5a` | Revisão solo dos critérios; comparações visuais e jornada autenticada ainda pendentes, portanto os quadros permanecem abertos |
+| 2 Turmas e resolvers | IN PROGRESS | Modelos e migration aditiva; autorização por papel/turma; CRUD de turmas, responsáveis, matrículas, convites, cursos e liberações; regras de acesso e 24 testes focados. `check`, `typecheck`, `boundaries`, `test` (449 app + API/domínio/scripts), `build`, `performance:check`, `git diff --check` passaram; `prisma validate` passou; commit `c151c9b`. Migration não aplicada: PostgreSQL local indisponível. `resolveStudentFeed` e `resolveCalendar` continuam pendentes | Revisão solo das regras; persistência local, fluxos autenticados e comparação visual pendentes |
 | 3 Ensino (YouTube, atividades, exercícios, biblioteca, coleções) | pendente | | |
 | 4 Envios, cronograma, calendário, Aprender, Personalização | pendente | | |
 | 5 Alunos e correções | pendente | | |
@@ -68,17 +68,17 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluído com evidência
 - [ ] `GMedalhasAluno` — O museu de medalhas que o aluno vê (conquistadas e bloqueadas)
 
 ### Turmas
-- [ ] `GTurmas` — Alunos — turmas
-- [ ] `GTurma` — Turma — visão geral
-- [ ] `GTurmaAlunos` — Turma — alunos (adicionar, mover e remover)
-- [ ] `GTurmaAdd` — Turma — adicionar alunos (buscar, importar ou convidar)
-- [ ] `GTurmaRemover` — Turma — remover ou mover aluno (consequências claras)
-- [ ] `GTurmaCronograma` — Turma — conteúdo e cronograma (liberação por data)
+- [~] `GTurmas` — Alunos — turmas
+- [~] `GTurma` — Turma — visão geral
+- [~] `GTurmaAlunos` — Turma — alunos (adicionar, mover e remover)
+- [~] `GTurmaAdd` — Turma — adicionar alunos (buscar, importar ou convidar)
+- [~] `GTurmaRemover` — Turma — remover ou mover aluno (consequências claras)
+- [~] `GTurmaCronograma` — Turma — conteúdo e cronograma (liberação por data)
 - [ ] `GTurmaCalendario` — Turma — encontros e calendário (o que os alunos veem)
 - [ ] `GTurmaAtividades` — Turma — atividades da turma
 - [ ] `GTurmaAvisos` — Turma — avisos da turma
-- [ ] `GTurmaNova` — Turmas — nova turma (passo 3: pessoas e regra de entrada)
-- [ ] `GTurmaConfig` — Turma — configurações (regra de entrada, duplicar, arquivar)
+- [~] `GTurmaNova` — Turmas — nova turma (passo 3: pessoas e regra de entrada)
+- [~] `GTurmaConfig` — Turma — configurações (regra de entrada, duplicar, arquivar)
 
 ### Ensino
 - [ ] `GCursos` — Ensino — cursos e percursos
@@ -151,9 +151,14 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluído com evidência
 ## Não verificado / dependências externas
 | Item | Motivo | O que falta |
 |---|---|---|
+| Runtime local e migration da Fase 2 | Serviço `com.docker.service` parado; iniciar o Docker Desktop não criou o pipe Linux; `127.0.0.1:5432` sem listener. Não usei banco remoto. | Disponibilizar Supabase/Postgres local, aplicar a migration aditiva, rodar fixtures explícitas e validar persistência/autorização com os papéis de QA. |
+| Visual e jornadas autenticadas | A aplicação local depende do banco; a única aba autenticada disponível aponta para Production e foi consultada somente para leitura. | Abrir o app local com contas de QA, comparar PNGs nos tamanhos do aceite e percorrer os fluxos reais. |
 
 ## Controles removidos por não terem função
-(listar)
+Nenhum removido nesta unidade. A varredura integral de controles fica pendente para o aceite final.
 
 ## Notas e problemas abertos
-(listar)
+- Fase 1 permanece `IN PROGRESS` até QA autenticado e comparação visual; nenhuma referência foi marcada como concluída.
+- Fase 2 tem código local e migration versionada, mas a migration não foi aplicada a banco algum; não há evidência de persistência até a execução do QA local.
+- Fechar `resolveStudentFeed` e `resolveCalendar` e integrar os resolvers às telas do aluno/Planejamento na sequência prevista.
+- Sem alteração de Production, de Supabase remoto ou de notificações externas.
