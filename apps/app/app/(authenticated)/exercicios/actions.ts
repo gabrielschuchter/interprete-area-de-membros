@@ -24,6 +24,9 @@ import {
   validateExerciseDraft,
 } from "@/lib/exercise-engine";
 import {
+  exerciseBankListPageSize,
+  exerciseBankListsHref,
+  exerciseBankListsPath,
   exerciseManagementPath,
   resolveExerciseQuestionSwap,
 } from "@/lib/exercise-management";
@@ -1013,6 +1016,8 @@ export const createExerciseList = async (formData: FormData) => {
   const gestaoReturn = gestaoReturnRequested(formData);
   const { userId } = await requireExerciseStaff(gestaoReturn);
   const bankId = value(formData, "bankId");
+  const returnToBank =
+    gestaoReturn && value(formData, "returnToBank") === "BANK";
   const title = value(formData, "title").slice(0, 160);
   const description = value(formData, "description").slice(0, 2000);
   const coverUrl = value(formData, "coverUrl");
@@ -1048,6 +1053,18 @@ export const createExerciseList = async (formData: FormData) => {
   });
   if (!created) {
     redirect(`${exerciseManagementPath(gestaoReturn)}?resultado=list-invalid`);
+  }
+  if (returnToBank) {
+    const destination = exerciseBankListsPath(bankId);
+    const listCount = await database.exerciseList.count({ where: { bankId } });
+    const lastPage = Math.max(
+      1,
+      Math.ceil(listCount / exerciseBankListPageSize)
+    );
+    revalidatePath(destination);
+    redirect(
+      `${exerciseBankListsHref({ bankId, page: lastPage })}?resultado=list-created`
+    );
   }
   revalidateExerciseManagement(gestaoReturn);
   redirect(`${exerciseManagementPath(gestaoReturn)}?resultado=list-created`);

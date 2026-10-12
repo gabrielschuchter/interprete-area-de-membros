@@ -907,3 +907,21 @@ the create page at 213.4 KiB across 17 initial chunks each. Authenticated
 database latency, transaction concurrency, and visual/mobile comparison still
 require the isolated PostgreSQL QA environment; these bundle gates do not
 establish those acceptance criteria.
+
+### Gestão exercise bank lists
+
+The exercise bank catalog still reads 18 banks per SQL page and shows at most
+20 list summaries on each card. The staff-only
+`/gestao/ensino/exercicios/bancos/[bankId]` route provides the complete list
+view with title/status filters, a 20-row database page, and aggregate counts.
+Creating a list starts from its bank context, so the prior 200-bank
+`<select>` cap is removed; after the transaction commits, the action counts
+the bank's lists and returns to the last page containing the appended list.
+Search, counts, and pagination remain server-side, and every request rechecks
+`content.manage`.
+
+The catalog, existing list editor, and bank-list detail route each have an
+explicit 225 KiB initial-JavaScript budget. The local production build measured
+all three at 212.4 KiB gzip across 17 chunks. This is bundle evidence only:
+authenticated database latency, creation persistence, large-catalog QA,
+concurrency, and visual/mobile comparison remain unverified.

@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  exerciseBankListsHref,
+  exerciseBankListsPath,
   exerciseManagementPath,
+  resolveExercisePage,
   resolveExerciseQuestionSwap,
 } from "./exercise-management";
 
@@ -16,6 +19,39 @@ describe("exerciseManagementPath", () => {
     expect(exerciseManagementPath(true, "list-one")).toBe(
       "/gestao/ensino/exercicios/list-one"
     );
+  });
+});
+
+describe("exercise bank list routes and pagination", () => {
+  it("encodes bank identifiers and retains only active list filters", () => {
+    expect(
+      exerciseBankListsHref({
+        bankId: "bank/one",
+        page: 3,
+        query: "pbe aplicada",
+        status: "PUBLISHED",
+      })
+    ).toBe(
+      "/gestao/ensino/exercicios/bancos/bank%2Fone?q=pbe+aplicada&estado=PUBLISHED&pagina=3"
+    );
+    expect(exerciseBankListsPath("bank-one")).toBe(
+      "/gestao/ensino/exercicios/bancos/bank-one"
+    );
+  });
+
+  it("clamps requested pages to the visible result range", () => {
+    expect(resolveExercisePage("9", 41, 20)).toEqual({
+      page: 3,
+      totalPages: 3,
+    });
+    expect(resolveExercisePage("0", 0, 20)).toEqual({
+      page: 1,
+      totalPages: 1,
+    });
+    expect(resolveExercisePage("2.5", 41, 20)).toEqual({
+      page: 1,
+      totalPages: 3,
+    });
   });
 });
 

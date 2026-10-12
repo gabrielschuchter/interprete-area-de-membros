@@ -12,7 +12,6 @@ import {
 import { requireGestaoAction } from "@/lib/gestao-authorization";
 import {
   createExerciseBank,
-  createExerciseList,
   setExerciseBankStatus,
   updateExerciseBank,
 } from "../../../exercicios/actions";
@@ -100,15 +99,7 @@ const GestaoExercisesPage = async ({
         }
       : {}),
   };
-  const [totalCount, bankOptions] = await Promise.all([
-    database.exerciseBank.count({ where }),
-    database.exerciseBank.findMany({
-      where: { status: { not: ContentStatus.ARCHIVED } },
-      orderBy: [{ title: "asc" }, { id: "asc" }],
-      take: 200,
-      select: { id: true, title: true },
-    }),
-  ]);
+  const totalCount = await database.exerciseBank.count({ where });
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
   const page = Math.min(requestedPage, totalPages);
   const banks = await database.exerciseBank.findMany({
@@ -179,54 +170,6 @@ const GestaoExercisesPage = async ({
             </SingleFlightSubmit>
           </SingleFlightForm>
         </details>
-        <details className="gestao-exercise-create">
-          <summary className="gestao-exercise-button">
-            <PlusIcon aria-hidden="true" /> Nova lista
-          </summary>
-          <SingleFlightForm
-            action={createExerciseList}
-            className="gestao-exercise-popover"
-          >
-            <input name="gestaoReturn" type="hidden" value="GESTAO" />
-            <h2>Nova lista</h2>
-            <label htmlFor="new-exercise-list-bank">
-              <span>Banco</span>
-              <select id="new-exercise-list-bank" name="bankId" required>
-                <option value="">Selecione um banco</option>
-                {bankOptions.map((bank) => (
-                  <option key={bank.id} value={bank.id}>
-                    {bank.title}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label htmlFor="new-exercise-list-title">
-              <span>Nome da lista</span>
-              <Input
-                id="new-exercise-list-title"
-                maxLength={160}
-                name="title"
-                required
-              />
-            </label>
-            <label htmlFor="new-exercise-list-description">
-              <span>Descrição (opcional)</span>
-              <Textarea
-                id="new-exercise-list-description"
-                maxLength={2000}
-                name="description"
-                rows={2}
-              />
-            </label>
-            <label htmlFor="new-exercise-list-cover">
-              <span>Capa por URL HTTPS (opcional)</span>
-              <Input id="new-exercise-list-cover" name="coverUrl" type="url" />
-            </label>
-            <SingleFlightSubmit pendingLabel="Criando lista…">
-              Criar lista
-            </SingleFlightSubmit>
-          </SingleFlightForm>
-        </details>
       </GestaoPageHeading>
 
       {resultMessage && (
@@ -291,6 +234,17 @@ const GestaoExercisesPage = async ({
                   {statusNames[bank.status]}
                 </Badge>
               </header>
+              <Button asChild size="sm" variant="outline">
+                <Link
+                  href={`/gestao/ensino/exercicios/bancos/${encodeURIComponent(bank.id)}`}
+                  prefetch={false}
+                >
+                  {bank._count.lists > 20
+                    ? "Ver todas as listas"
+                    : "Gerenciar listas"}
+                  <span className="sr-only"> de {bank.title}</span>
+                </Link>
+              </Button>
 
               <fieldset className="gestao-exercise-bank-actions">
                 <legend className="sr-only">

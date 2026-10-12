@@ -371,3 +371,16 @@ on a server request.
   213.4 KiB across 17 chunks each. Authenticated latency, persistence,
   concurrency, and visual/mobile acceptance remain separate runtime gates
   that still require the local PostgreSQL QA environment.
+
+## Gestão exercise bank lists
+
+- The exercise catalog keeps its bank page at 18 rows and previews at most
+  20 lists per bank. Every bank now has a staff-only detail route that searches
+  and pages all its lists in PostgreSQL at 20 rows per page. List creation
+  starts with a specific bank, so no capped global bank selector hides older
+  records; after commit it returns to the page containing the appended list.
+- The catalog, existing list editor, and bank-list route each have a 225 KiB
+  gzip JavaScript budget. The current production build measures all three at
+  212.4 KiB across 17 chunks. Authenticated query latency, persisted creation,
+  large-catalog navigation, and visual/mobile comparison remain open until
+  the isolated PostgreSQL QA environment is available.
