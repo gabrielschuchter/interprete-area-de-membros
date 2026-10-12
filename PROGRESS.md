@@ -5,7 +5,7 @@
 ## Estado geral
 - Branch: `gestao-v2`
 - Fase atual: 3 — Ensino (catálogo de cursos e entrada para edição; demais módulos e aceite visual/runtime pendentes)
-- Último commit verificado: `9a5c3c6` (registro da Fase 2 e base da unidade atual)
+- Último commit de implementação verificado: `343d5ad` (catálogo e rotas de curso da Gestão)
 - Orçamento/contexto: (preencher se relevante)
 
 ## Fases
@@ -14,7 +14,7 @@
 | 0 Auditoria | concluída | `docs/gestao-auditoria.md`; 101 pares HTML/PNG inventariados e revistos em pranchas; matriz 1:1 gerada; commit `ffbb93e`; nenhum código/migration alterado | releitura dos critérios e conferência solo; sem subagente por instrução direta para trabalhar sozinho |
 | 1 Shell, permissões, rotas, transição | IN PROGRESS — aceite visual/runtime pendente | Shell responsivo desktop/trilho/gaveta; flag `GESTAO_V2_ENABLED` false por padrão; mapa de ações por papel e retorno interno seguro; 20 testes focados e gates locais registrados no commit `1d04e5a` | Revisão solo dos critérios; comparações visuais e jornada autenticada ainda pendentes, portanto os quadros permanecem abertos |
 | 2 Turmas e resolvers | IN PROGRESS | Modelos e migration aditiva; autorização por papel/turma; CRUD de turmas, responsáveis, matrículas, convites, cursos e liberações; regras de acesso e 24 testes focados. `check`, `typecheck`, `boundaries`, `test`, `build`, `performance:check`, `git diff --check` e `prisma validate` passaram; commit de código `c151c9b`, registro atualizado em `9a5c3c6`. Migration não aplicada: PostgreSQL local indisponível. `resolveStudentFeed` e `resolveCalendar` continuam pendentes | Revisão solo das regras; persistência local, fluxos autenticados e comparação visual pendentes |
-| 3 Ensino (YouTube, atividades, exercícios, biblioteca, coleções) | IN PROGRESS — catálogo de cursos parcial | Novo catálogo DB-driven com busca, filtros, paginação e contagens; criação e edição de curso sob `/gestao/ensino/cursos`, reaproveitando o domínio e editor existentes; 4 testes focados. `check`, `typecheck`, `boundaries`, `test` (453 app, 9 API, 17 domínio), `build` com `SKIP_ENV_VALIDATION=true`, `performance:check` e `git diff --check` passaram nesta unidade | Rotas geradas no build; sem sessão local autenticada, persistência em banco, comparação dos quadros ou revisão independente; portanto nenhum quadro desta fase concluído |
+| 3 Ensino (YouTube, atividades, exercícios, biblioteca, coleções) | IN PROGRESS — catálogo de cursos parcial | Novo catálogo DB-driven com busca, filtros, paginação e contagens; criação e edição de curso sob `/gestao/ensino/cursos`, reaproveitando o domínio e editor existentes; 4 testes focados; commit `343d5ad`. `check`, `typecheck`, `boundaries`, `test` (453 app, 9 API, 17 domínio), `build` com `SKIP_ENV_VALIDATION=true`, `performance:check` e `git diff --check` passaram nesta unidade | Rotas geradas no build; sem sessão local autenticada, persistência em banco, comparação dos quadros ou revisão independente; portanto nenhum quadro desta fase concluído |
 | 4 Envios, cronograma, calendário, Aprender, Personalização | pendente | | |
 | 5 Alunos e correções | pendente | | |
 | 6 Comunidade | pendente | | |
