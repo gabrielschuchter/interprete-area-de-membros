@@ -8,6 +8,7 @@ const loopbackHostnames = new Set(["localhost", "127.0.0.1", "[::1]"]);
 export const getDevelopmentAuthSession = async () => {
   const userId = resolveDevelopmentAuthUserId({
     enabled: process.env.GESTAO_DEV_AUTH,
+    publicEnabled: process.env.NEXT_PUBLIC_GESTAO_DEV_AUTH,
     nodeEnv: process.env.NODE_ENV,
     userId: process.env.GESTAO_DEV_AUTH_USER_ID,
   });

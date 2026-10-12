@@ -6,6 +6,7 @@ describe("resolveDevelopmentAuthUserId", () => {
     expect(
       resolveDevelopmentAuthUserId({
         enabled: undefined,
+        publicEnabled: undefined,
         nodeEnv: "development",
         userId: "user_qa_teacher",
       })
@@ -13,6 +14,7 @@ describe("resolveDevelopmentAuthUserId", () => {
     expect(
       resolveDevelopmentAuthUserId({
         enabled: "false",
+        publicEnabled: "false",
         nodeEnv: "development",
         userId: "user_qa_teacher",
       })
@@ -23,6 +25,7 @@ describe("resolveDevelopmentAuthUserId", () => {
     expect(
       resolveDevelopmentAuthUserId({
         enabled: "true",
+        publicEnabled: "true",
         nodeEnv: "development",
         userId: "  user_qa_teacher  ",
       })
@@ -33,6 +36,7 @@ describe("resolveDevelopmentAuthUserId", () => {
     expect(() =>
       resolveDevelopmentAuthUserId({
         enabled: "true",
+        publicEnabled: "true",
         nodeEnv: "production",
         userId: "user_qa_teacher",
       })
@@ -40,6 +44,7 @@ describe("resolveDevelopmentAuthUserId", () => {
     expect(() =>
       resolveDevelopmentAuthUserId({
         enabled: "true",
+        publicEnabled: "true",
         nodeEnv: "development",
         userId: " ",
       })
@@ -47,9 +52,34 @@ describe("resolveDevelopmentAuthUserId", () => {
     expect(() =>
       resolveDevelopmentAuthUserId({
         enabled: "yes",
+        publicEnabled: "true",
         nodeEnv: "development",
         userId: "user_qa_teacher",
       })
     ).toThrow("must be either true or false");
+    expect(() =>
+      resolveDevelopmentAuthUserId({
+        enabled: "true",
+        publicEnabled: "false",
+        nodeEnv: "development",
+        userId: "user_qa_teacher",
+      })
+    ).toThrow("must be enabled together");
+    expect(() =>
+      resolveDevelopmentAuthUserId({
+        enabled: "false",
+        publicEnabled: "true",
+        nodeEnv: "development",
+        userId: "user_qa_teacher",
+      })
+    ).toThrow("must be enabled together");
+    expect(() =>
+      resolveDevelopmentAuthUserId({
+        enabled: "false",
+        publicEnabled: "perhaps",
+        nodeEnv: "development",
+        userId: "user_qa_teacher",
+      })
+    ).toThrow("NEXT_PUBLIC_GESTAO_DEV_AUTH must be either true or false");
   });
 });

@@ -30,9 +30,36 @@ const shouldProxyClerkRequests = shouldProxyClerkFrontendApi(
 );
 const sessionTaskPath = "/session-tasks";
 const loopbackHostnames = new Set(["localhost", "127.0.0.1", "[::1]"]);
+const developmentServerAuthFlag = process.env.GESTAO_DEV_AUTH;
+const developmentClientAuthFlag = process.env.NEXT_PUBLIC_GESTAO_DEV_AUTH;
+
+if (
+  process.env.NODE_ENV === "development" &&
+  ((developmentServerAuthFlag !== undefined &&
+    developmentServerAuthFlag !== "true" &&
+    developmentServerAuthFlag !== "false") ||
+    (developmentClientAuthFlag !== undefined &&
+      developmentClientAuthFlag !== "true" &&
+      developmentClientAuthFlag !== "false"))
+) {
+  throw new Error(
+    "GESTAO_DEV_AUTH and NEXT_PUBLIC_GESTAO_DEV_AUTH must be either true or false."
+  );
+}
+
+if (
+  process.env.NODE_ENV === "development" &&
+  (developmentServerAuthFlag === "true") !==
+    (developmentClientAuthFlag === "true")
+) {
+  throw new Error(
+    "GESTAO_DEV_AUTH and NEXT_PUBLIC_GESTAO_DEV_AUTH must be enabled together for local QA."
+  );
+}
+
 const useDevelopmentTestAuth =
   process.env.NODE_ENV === "development" &&
-  process.env.GESTAO_DEV_AUTH === "true";
+  developmentServerAuthFlag === "true";
 const protectedRoutePrefixes = [
   "/",
   "/onboarding",
