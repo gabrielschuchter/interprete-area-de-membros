@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => {
   const transaction = {
     $queryRaw: vi.fn(),
     exerciseCategory: { upsert: vi.fn() },
+    exerciseBank: { findUnique: vi.fn(), update: vi.fn() },
     exerciseAnswer: {
       count: vi.fn(),
       create: vi.fn(),
@@ -41,6 +42,7 @@ const mocks = vi.hoisted(() => {
     dispatchPendingNotifications: vi.fn(),
     evaluateExerciseAnswer: vi.fn(),
     evaluateMemberBadges: vi.fn(),
+    requireGestaoAction: vi.fn(),
     markLearningAssignmentCompleted: vi.fn(),
     markLearningAssignmentStarted: vi.fn(),
     redirect,
@@ -54,7 +56,11 @@ const mocks = vi.hoisted(() => {
 
 vi.mock("@repo/database", () => ({
   BadgeCriterion: { EXERCISE_ANSWERS: "EXERCISE_ANSWERS" },
-  ContentStatus: { PUBLISHED: "PUBLISHED" },
+  ContentStatus: {
+    ARCHIVED: "ARCHIVED",
+    DRAFT: "DRAFT",
+    PUBLISHED: "PUBLISHED",
+  },
   ExerciseQuestionType: {
     MULTIPLE_CHOICE: "MULTIPLE_CHOICE",
     SINGLE_CHOICE: "SINGLE_CHOICE",
@@ -75,6 +81,9 @@ vi.mock("@repo/observability/performance", () => ({
 vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidatePath }));
 vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
 vi.mock("@/lib/authorization", () => ({ requireStaff: mocks.requireStaff }));
+vi.mock("@/lib/gestao-authorization", () => ({
+  requireGestaoAction: mocks.requireGestaoAction,
+}));
 vi.mock("@/lib/badges", () => ({
   evaluateMemberBadges: mocks.evaluateMemberBadges,
 }));
@@ -94,6 +103,7 @@ vi.mock("@/lib/notification-outbox-dispatch", () => ({
 
 import {
   saveExerciseQuestion,
+  setExerciseBankStatus,
   startExerciseFavoriteSession,
   startExerciseSession,
   submitExerciseAnswer,
@@ -151,6 +161,9 @@ beforeEach(() => {
     userId: "teacher_1",
     role: "TEACHER",
   });
+  mocks.requireGestaoAction.mockResolvedValue({
+    actor: { userId: "teacher_1", role: "TEACHER" },
+  });
   mocks.database.$transaction.mockImplementation(
     async (callback: (transaction: typeof mocks.transaction) => unknown) =>
       callback(mocks.transaction)
@@ -204,6 +217,10 @@ beforeEach(() => {
   mocks.transaction.exerciseQuestionVersion.create.mockResolvedValue({
     id: "question_version_3",
   });
+  mocks.transaction.exerciseBank.findUnique.mockResolvedValue({
+    id: "bank_1",
+  });
+  mocks.transaction.exerciseBank.update.mockResolvedValue({ id: "bank_1" });
   mocks.evaluateExerciseAnswer.mockReturnValue({
     isCorrect: true,
     selectedOptionIds: ["option_correct"],
@@ -213,6 +230,30 @@ beforeEach(() => {
   mocks.markLearningAssignmentCompleted.mockResolvedValue({ count: 1 });
   mocks.evaluateMemberBadges.mockResolvedValue([]);
   mocks.dispatchPendingNotifications.mockResolvedValue(undefined);
+});
+
+test("publishes a bank transactionally and invalidates learner surfaces", async () => {
+  await expect(
+    setExerciseBankStatus(
+      formData({
+        bankId: "bank_1",
+        status: "PUBLISHED",
+        gestaoReturn: "GESTAO",
+      })
+    )
+  ).rejects.toThrow(
+    "NEXT_REDIRECT:/gestao/ensino/exercicios?resultado=bank-status-updated"
+  );
+
+  expect(mocks.requireGestaoAction).toHaveBeenCalledWith("content.manage");
+  expect(mocks.requireStaff).not.toHaveBeenCalled();
+  expect(mocks.transaction.exerciseBank.update).toHaveBeenCalledWith({
+    where: { id: "bank_1" },
+    data: { status: "PUBLISHED" },
+    select: { id: true },
+  });
+  expect(mocks.revalidatePath).toHaveBeenCalledWith("/exercicios");
+  expect(mocks.revalidatePath).toHaveBeenCalledWith("/aprender");
 });
 
 test("keeps invalid question edits on their list without writing a version", async () => {

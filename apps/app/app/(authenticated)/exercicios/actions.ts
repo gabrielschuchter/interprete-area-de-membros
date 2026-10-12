@@ -23,6 +23,10 @@ import {
   findMissingExerciseExplanationOptionReferences,
   validateExerciseDraft,
 } from "@/lib/exercise-engine";
+import {
+  exerciseManagementPath,
+  resolveExerciseQuestionSwap,
+} from "@/lib/exercise-management";
 import { requireMemberId } from "@/lib/learning";
 import {
   markLearningAssignmentCompleted,
@@ -33,6 +37,29 @@ import { dispatchPendingNotifications } from "@/lib/notification-outbox-dispatch
 const value = (formData: FormData, name: string) => {
   const field = formData.get(name);
   return typeof field === "string" ? field.trim() : "";
+};
+
+const gestaoReturnRequested = (formData: FormData) =>
+  value(formData, "gestaoReturn") === "GESTAO";
+
+const requireExerciseStaff = async (gestaoReturn: boolean) => {
+  if (!gestaoReturn) {
+    return requireStaff();
+  }
+  const { requireGestaoAction } = await import("@/lib/gestao-authorization");
+  const { actor } = await requireGestaoAction("content.manage");
+  return { userId: actor.userId, role: actor.role };
+};
+
+const revalidateExerciseManagement = (
+  gestaoReturn: boolean,
+  listId?: string
+) => {
+  const root = exerciseManagementPath(gestaoReturn);
+  revalidatePath(root);
+  if (listId) {
+    revalidatePath(exerciseManagementPath(gestaoReturn, listId));
+  }
 };
 
 const optionValues = (formData: FormData): ExerciseChoiceDraft[] =>
@@ -793,7 +820,6 @@ const editableExerciseListSelect = {
   bankId: true,
   status: true,
   bank: { select: { status: true } },
-  items: { select: { id: true, questionId: true, position: true } },
 } satisfies Prisma.ExerciseListSelect;
 
 type EditableExerciseList = Prisma.ExerciseListGetPayload<{
@@ -923,23 +949,299 @@ const addQuestionToExerciseList = async (
     1,
     input.draft
   );
-  const position =
-    input.list.items.reduce(
-      (highest, item) => Math.max(highest, item.position),
-      -1
-    ) + 1;
+  const highestPosition = await transaction.exerciseListItem.aggregate({
+    where: { listId: input.list.id },
+    _max: { position: true },
+  });
   await transaction.exerciseListItem.create({
     data: {
       listId: input.list.id,
       questionId: question.id,
       questionVersionId: version.id,
-      position,
+      position: (highestPosition._max.position ?? -1) + 1,
     },
   });
 };
 
+export const createExerciseBank = async (formData: FormData) => {
+  const gestaoReturn = gestaoReturnRequested(formData);
+  const { userId } = await requireExerciseStaff(gestaoReturn);
+  const title = value(formData, "title").slice(0, 160);
+  const description = value(formData, "description").slice(0, 2000);
+  if (!title) {
+    redirect(`${exerciseManagementPath(gestaoReturn)}?resultado=bank-invalid`);
+  }
+  await database.exerciseBank.create({
+    data: {
+      title,
+      description: description || null,
+      slug: uniqueSlug(title),
+      status: ContentStatus.DRAFT,
+      createdByMemberId: userId,
+    },
+    select: { id: true },
+  });
+  revalidateExerciseManagement(gestaoReturn);
+  redirect(`${exerciseManagementPath(gestaoReturn)}?resultado=bank-created`);
+};
+
+export const updateExerciseBank = async (formData: FormData) => {
+  const gestaoReturn = gestaoReturnRequested(formData);
+  await requireExerciseStaff(gestaoReturn);
+  const bankId = value(formData, "bankId");
+  const title = value(formData, "title").slice(0, 160);
+  const description = value(formData, "description").slice(0, 2000);
+  if (!(bankId && title)) {
+    redirect(`${exerciseManagementPath(gestaoReturn)}?resultado=bank-invalid`);
+  }
+  const bank = await database.exerciseBank.findUnique({
+    where: { id: bankId },
+    select: { id: true, status: true },
+  });
+  if (!bank || bank.status === ContentStatus.ARCHIVED) {
+    redirect(`${exerciseManagementPath(gestaoReturn)}?resultado=bank-invalid`);
+  }
+  await database.exerciseBank.update({
+    where: { id: bank.id },
+    data: { title, description: description || null },
+  });
+  revalidateExerciseManagement(gestaoReturn);
+  redirect(`${exerciseManagementPath(gestaoReturn)}?resultado=bank-updated`);
+};
+
+export const createExerciseList = async (formData: FormData) => {
+  const gestaoReturn = gestaoReturnRequested(formData);
+  const { userId } = await requireExerciseStaff(gestaoReturn);
+  const bankId = value(formData, "bankId");
+  const title = value(formData, "title").slice(0, 160);
+  const description = value(formData, "description").slice(0, 2000);
+  const coverUrl = value(formData, "coverUrl");
+  if (!(bankId && title) || (coverUrl && !isHttpsUrl(coverUrl))) {
+    redirect(`${exerciseManagementPath(gestaoReturn)}?resultado=list-invalid`);
+  }
+  const created = await database.$transaction(async (transaction) => {
+    const bank = await transaction.exerciseBank.findFirst({
+      where: { id: bankId, status: { not: ContentStatus.ARCHIVED } },
+      select: { id: true },
+    });
+    if (!bank) {
+      return false;
+    }
+    const highestPosition = await transaction.exerciseList.aggregate({
+      where: { bankId: bank.id },
+      _max: { position: true },
+    });
+    await transaction.exerciseList.create({
+      data: {
+        bankId: bank.id,
+        title,
+        description: description || null,
+        coverUrl: coverUrl || null,
+        slug: uniqueSlug(title),
+        status: ContentStatus.DRAFT,
+        position: (highestPosition._max.position ?? -1) + 1,
+        createdByMemberId: userId,
+      },
+      select: { id: true },
+    });
+    return true;
+  });
+  if (!created) {
+    redirect(`${exerciseManagementPath(gestaoReturn)}?resultado=list-invalid`);
+  }
+  revalidateExerciseManagement(gestaoReturn);
+  redirect(`${exerciseManagementPath(gestaoReturn)}?resultado=list-created`);
+};
+
+export const setExerciseBankStatus = async (formData: FormData) => {
+  const gestaoReturn = gestaoReturnRequested(formData);
+  await requireExerciseStaff(gestaoReturn);
+  const bankId = value(formData, "bankId");
+  const requestedStatus = value(formData, "status") as ContentStatus;
+  if (
+    !(
+      bankId &&
+      [
+        ContentStatus.DRAFT,
+        ContentStatus.PUBLISHED,
+        ContentStatus.ARCHIVED,
+      ].includes(requestedStatus)
+    )
+  ) {
+    redirect(`${exerciseManagementPath(gestaoReturn)}?resultado=bank-invalid`);
+  }
+
+  const updated = await database.$transaction(async (transaction) => {
+    const bank = await transaction.exerciseBank.findUnique({
+      where: { id: bankId },
+      select: { id: true },
+    });
+    if (!bank) {
+      return false;
+    }
+    await transaction.exerciseBank.update({
+      where: { id: bank.id },
+      data: { status: requestedStatus },
+      select: { id: true },
+    });
+    return true;
+  });
+  if (!updated) {
+    redirect(`${exerciseManagementPath(gestaoReturn)}?resultado=bank-invalid`);
+  }
+  revalidateExerciseManagement(gestaoReturn);
+  revalidatePath("/exercicios");
+  revalidatePath("/aprender");
+  redirect(
+    `${exerciseManagementPath(gestaoReturn)}?resultado=bank-status-updated`
+  );
+};
+
+export const attachExerciseQuestionToList = async (formData: FormData) => {
+  const gestaoReturn = gestaoReturnRequested(formData);
+  await requireExerciseStaff(gestaoReturn);
+  const listId = value(formData, "listId");
+  const questionId = value(formData, "questionId");
+  if (!(listId && questionId)) {
+    redirect(`${exerciseManagementPath(gestaoReturn)}?resultado=invalid`);
+  }
+  await database.$transaction(
+    async (transaction) => {
+      const list = await findEditableExerciseList(transaction, listId);
+      if (!list || list.bank.status === ContentStatus.ARCHIVED) {
+        throw new Error("Lista de exercícios indisponível para edição.");
+      }
+      const question = await transaction.exerciseQuestion.findFirst({
+        where: {
+          id: questionId,
+          bankId: list.bankId,
+          status: { not: ContentStatus.ARCHIVED },
+        },
+        select: {
+          id: true,
+          status: true,
+          versions: {
+            orderBy: { version: "desc" },
+            take: 1,
+            select: { id: true },
+          },
+        },
+      });
+      if (!question?.versions[0]) {
+        throw new Error("Questão indisponível para reutilização.");
+      }
+      if (
+        list.status === ContentStatus.PUBLISHED &&
+        list.bank.status === ContentStatus.PUBLISHED &&
+        question.status !== ContentStatus.PUBLISHED
+      ) {
+        throw new Error(
+          "Publique a questão antes de reutilizá-la em uma lista publicada."
+        );
+      }
+      const existingItem = await transaction.exerciseListItem.findFirst({
+        where: { listId, questionId: question.id },
+        select: { id: true },
+      });
+      if (existingItem) {
+        throw new Error("Esta questão já faz parte da lista.");
+      }
+      const highestPosition = await transaction.exerciseListItem.aggregate({
+        where: { listId },
+        _max: { position: true },
+      });
+      await transaction.exerciseListItem.create({
+        data: {
+          listId,
+          questionId: question.id,
+          questionVersionId: question.versions[0].id,
+          position: (highestPosition._max.position ?? -1) + 1,
+        },
+      });
+    },
+    { isolationLevel: "Serializable" }
+  );
+  revalidateExerciseManagement(gestaoReturn, listId);
+  revalidatePath("/exercicios");
+  redirect(
+    `${exerciseManagementPath(gestaoReturn, listId)}?resultado=questao-reutilizada`
+  );
+};
+
+export const moveExerciseListQuestion = async (formData: FormData) => {
+  const gestaoReturn = gestaoReturnRequested(formData);
+  await requireExerciseStaff(gestaoReturn);
+  const listId = value(formData, "listId");
+  const itemId = value(formData, "itemId");
+  const direction = value(formData, "direction");
+  if (!(listId && itemId && ["UP", "DOWN"].includes(direction))) {
+    redirect(`${exerciseManagementPath(gestaoReturn)}?resultado=invalid`);
+  }
+  await database.$transaction(
+    async (transaction) => {
+      const list = await findEditableExerciseList(transaction, listId);
+      if (!list || list.bank.status === ContentStatus.ARCHIVED) {
+        throw new Error("Lista de exercícios indisponível para edição.");
+      }
+      const current = await transaction.exerciseListItem.findFirst({
+        where: { id: itemId, listId },
+        select: { id: true, position: true },
+      });
+      if (!current) {
+        return;
+      }
+      const neighbor = await transaction.exerciseListItem.findFirst({
+        where: {
+          listId,
+          position:
+            direction === "UP"
+              ? { lt: current.position }
+              : { gt: current.position },
+        },
+        orderBy: { position: direction === "UP" ? "desc" : "asc" },
+        select: { id: true, position: true },
+      });
+      if (!neighbor) {
+        return;
+      }
+      const highestPosition = await transaction.exerciseListItem.aggregate({
+        where: { listId },
+        _max: { position: true },
+      });
+      const swap = resolveExerciseQuestionSwap(
+        [current, neighbor],
+        current.id,
+        direction as "UP" | "DOWN",
+        (highestPosition._max.position ?? -1) + 1
+      );
+      if (!swap) {
+        return;
+      }
+      await transaction.exerciseListItem.update({
+        where: { id: swap.current.id },
+        data: { position: swap.temporaryPosition },
+      });
+      await transaction.exerciseListItem.update({
+        where: { id: swap.neighbor.id },
+        data: { position: swap.current.position },
+      });
+      await transaction.exerciseListItem.update({
+        where: { id: swap.current.id },
+        data: { position: swap.neighbor.position },
+      });
+    },
+    { isolationLevel: "Serializable" }
+  );
+  revalidateExerciseManagement(gestaoReturn, listId);
+  revalidatePath("/exercicios");
+  redirect(
+    `${exerciseManagementPath(gestaoReturn, listId)}?resultado=questao-reordenada`
+  );
+};
+
 export const createExercisePack = async (formData: FormData) => {
-  const { userId } = await requireStaff();
+  const gestaoReturn = gestaoReturnRequested(formData);
+  const { userId } = await requireExerciseStaff(gestaoReturn);
   const bankTitle = value(formData, "bankTitle").slice(0, 160);
   const listTitle = value(formData, "listTitle").slice(0, 160);
   const listDescription = value(formData, "listDescription").slice(0, 2000);
@@ -951,7 +1253,7 @@ export const createExercisePack = async (formData: FormData) => {
     !(bankTitle && listTitle && draft) ||
     (coverUrl && !isHttpsUrl(coverUrl))
   ) {
-    redirect("/admin/exercicios?resultado=invalid");
+    redirect(`${exerciseManagementPath(gestaoReturn)}?resultado=invalid`);
   }
   const validDraft = draft;
   if (
@@ -960,7 +1262,9 @@ export const createExercisePack = async (formData: FormData) => {
       validDraft.options
     ).length > 0
   ) {
-    redirect("/admin/exercicios?resultado=referencias-invalidas");
+    redirect(
+      `${exerciseManagementPath(gestaoReturn)}?resultado=referencias-invalidas`
+    );
   }
   const validation = validateExerciseDraft(
     validDraft.kind,
@@ -968,7 +1272,7 @@ export const createExercisePack = async (formData: FormData) => {
     validDraft.options
   );
   if (!validation.valid) {
-    redirect("/admin/exercicios?resultado=invalid");
+    redirect(`${exerciseManagementPath(gestaoReturn)}?resultado=invalid`);
   }
   const status = publish ? ContentStatus.PUBLISHED : ContentStatus.DRAFT;
   const bankSlug = uniqueSlug(bankTitle);
@@ -1045,13 +1349,14 @@ export const createExercisePack = async (formData: FormData) => {
       },
     });
   });
-  revalidatePath("/admin/exercicios");
+  revalidateExerciseManagement(gestaoReturn);
   revalidatePath("/exercicios");
-  redirect("/admin/exercicios?resultado=created");
+  redirect(`${exerciseManagementPath(gestaoReturn)}?resultado=created`);
 };
 
 export const saveExerciseQuestion = async (formData: FormData) => {
-  await requireStaff();
+  const gestaoReturn = gestaoReturnRequested(formData);
+  await requireExerciseStaff(gestaoReturn);
   const listId = value(formData, "listId");
   const questionId = value(formData, "questionId");
   const categoryTitle = value(formData, "categoryTitle").slice(0, 100);
@@ -1060,11 +1365,11 @@ export const saveExerciseQuestion = async (formData: FormData) => {
     ? validateExerciseDraft(draft.kind, draft.statement, draft.options)
     : null;
   if (!listId) {
-    redirect("/admin/exercicios?resultado=invalid");
+    redirect(`${exerciseManagementPath(gestaoReturn)}?resultado=invalid`);
   }
   if (!(draft && validation?.valid)) {
     redirect(
-      `/admin/exercicios/${encodeURIComponent(listId)}?resultado=invalid`
+      `${exerciseManagementPath(gestaoReturn, listId)}?resultado=invalid`
     );
   }
   if (
@@ -1074,7 +1379,7 @@ export const saveExerciseQuestion = async (formData: FormData) => {
     ).length > 0
   ) {
     redirect(
-      `/admin/exercicios/${encodeURIComponent(listId)}?resultado=referencias-invalidas`
+      `${exerciseManagementPath(gestaoReturn, listId)}?resultado=referencias-invalidas`
     );
   }
   const validDraft = draft;
@@ -1129,15 +1434,16 @@ export const saveExerciseQuestion = async (formData: FormData) => {
     },
     { isolationLevel: "Serializable" }
   );
-  revalidatePath("/admin/exercicios");
+  revalidateExerciseManagement(gestaoReturn, listId);
   revalidatePath("/exercicios");
   redirect(
-    `/admin/exercicios/${encodeURIComponent(listId)}?resultado=questao-salva`
+    `${exerciseManagementPath(gestaoReturn, listId)}?resultado=questao-salva`
   );
 };
 
 export const setExerciseListStatus = async (formData: FormData) => {
-  await requireStaff();
+  const gestaoReturn = gestaoReturnRequested(formData);
+  await requireExerciseStaff(gestaoReturn);
   const listId = value(formData, "listId");
   const requestedStatus = value(formData, "status") as ContentStatus;
   if (
@@ -1147,7 +1453,7 @@ export const setExerciseListStatus = async (formData: FormData) => {
       ContentStatus.ARCHIVED,
     ].includes(requestedStatus)
   ) {
-    redirect("/admin/exercicios?resultado=invalid");
+    redirect(`${exerciseManagementPath(gestaoReturn)}?resultado=invalid`);
   }
   await database.$transaction(async (transaction) => {
     const list = await transaction.exerciseList.findUnique({
@@ -1186,10 +1492,9 @@ export const setExerciseListStatus = async (formData: FormData) => {
       },
     });
   });
-  revalidatePath("/admin/exercicios");
-  revalidatePath(`/admin/exercicios/${listId}`);
+  revalidateExerciseManagement(gestaoReturn, listId);
   revalidatePath("/exercicios");
-  redirect(`/admin/exercicios/${encodeURIComponent(listId)}`);
+  redirect(exerciseManagementPath(gestaoReturn, listId));
 };
 
 const parseTags = (formData: FormData) =>
