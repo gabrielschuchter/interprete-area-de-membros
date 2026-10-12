@@ -973,3 +973,14 @@ is added. Calendar/planner and Encontros invalidate after persistence.
 The menu responds locally; the form disables immediately on submit and only
 shows success after the committed response. The calendar retains its 225 KiB
 gzip budget; final measurements are recorded in PROGRESS.md.
+
+Gestão shell navigation opens rail submenus and the mobile drawer using local
+state and existing design-system primitives. Its critical path adds no database
+query, identity call, persistent cache or mutation. The authorized actor remains
+the server layout's projection; destination routes/actions still authorize
+independently. Rail destination links disable automatic prefetch. Lists retain
+their existing SQL pagination; navigation itself has a fixed number of items.
+Opening a menu does not invalidate data. Route navigation uses the existing
+App Router behavior, and preserves the safe member return path. Local feedback
+is immediate; drawer motion uses opacity/transform for 200 ms with reduced
+motion supported. The shared 225 KiB route budget still applies.

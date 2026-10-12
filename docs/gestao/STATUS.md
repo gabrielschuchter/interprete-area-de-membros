@@ -6,17 +6,17 @@
 
 - Worktree autorizado: `C:\Users\gabsc\.codex\worktrees\interprete-gestao\interprete-area-de-membros`, branch `gestao-v2`.
 - O checkout original em Documents tem trabalho alheio e não foi alterado.
-- **0/101 quadros aceitos**, 31 em andamento e 70 pendentes no inventário de `PROGRESS.md`.
+- **0/101 quadros aceitos**, 33 em andamento e 68 pendentes no inventário de `PROGRESS.md`. GRail/GMMenu entraram em andamento na unidade de navegação da Fase 1.
 - Só a Fase 0 (auditoria inicial) está registrada como concluída. Fase 1 sem aceite; Fase 2 é o foco; Fases 3–5 têm trabalho parcial; Fases 6–9 estão pendentes.
 - 53 rotas no contrato; 38 arquivos `page.tsx` na Gestão; **18 correspondências exatas** após normalizar nomes de parâmetros. Os 35 caminhos sem correspondência incluem funcionalidades parcialmente disponíveis em rotas diferentes. Esses números **não medem telas prontas**.
-- Inventário verificável: `estado-auditado-20261012.json`. A presença de arquivo não comprova funcionalidade, autorização ou fidelidade.
+- Inventário histórico da auditoria inicial: `estado-auditado-20261012.json` (31 em andamento naquele momento). A presença de arquivo não comprova funcionalidade, autorização ou fidelidade.
 - Não houve push, merge, deploy ou escrita em banco remoto nesta execução.
 
 ## Evidência atual versus lacunas
 
 | Área | Evidência inspecionada | O que não está concluído |
 |---|---|---|
-| Shell e entrada | Shell/flag, papel no servidor, retorno seguro e QA local | Comparação integral dos quadros 13–30, transições, teclado e matriz completa de papéis |
+| Shell e entrada | Shell/flag, papel no servidor, retorno seguro e QA local; trilho com submenus e gaveta modal, ensaio local R1/R3 em 12 combinações de largura/movimento | Comparação integral dos quadros 13–30, transições, restante do teclado e matriz completa de papéis; GRail/GMMenu ainda divergem visualmente |
 | Turmas | Páginas próprias, matrículas, atribuição de aluno sem turma, fixtures persistentes | T1–T8 completos no navegador; importação/movimentação/duplicação e isolamento de todos os perfis não têm aceite conjunto |
 | Calendário | Quatro fontes, camadas, recorrência/exceções, cópia, ICS revogável; QA local anterior de persistência/revogação | Menu do dia só tem encontro/evento; prazo/liberação pelo menu faltam; fidelidade, calendário do aluno e matriz completa não aceitos |
 | Novo encontro pelo dia | Publicado e rascunho criados pela UI, reload e leitura SQL confirmaram persistência/vínculo; rascunho tracejado; 14 testes focados | C1/C2 completos ainda precisam de navegação como aluno, demais papéis, edição completa e comparação visual |
@@ -55,6 +55,9 @@ que já têm evidência e sem chamar gates verdes de conclusão do produto.**
 - `pg_hba.conf` recebeu regras temporárias `hostssl/trust` só para os dois bancos QA, usuário postgres e loopback. Ao **encerrar** o preview, restaurar `%TEMP%\interprete-gestao-qa-20261012\pg_hba.before-live-preview-20261012.conf` sobre `postgres-data\pg_hba.conf` e executar `pg_ctl reload` no data-dir correto. Procedimento em `DECISIONS.md`.
 
 ## Qualidade e capturas
+
+- Unidade local R1/R3: harness 12/12 combinações de largura/movimento, sem pageerror/overflow, em `output/playwright/gestao-v2/shell-navigation/`. Comparação de 30/93 realizada com diferenças registradas; nenhum quadro aceito.
+- Gates da unidade R1/R3 passaram: check 905 arquivos, typecheck 16/16, boundaries 848, testes 627 app/17 domínio/9 API e 32 scripts aprovados/1 ignorado, build 8/8, performance:check e diff. Logs em `output/gestao-shell-navigation/`. Calendário 222,7 KiB/18 chunks; Planejamento 223,5 KiB/17 (teto 225 KiB). Build com URLs locais, sem autenticação QA de desenvolvimento; não comprova Clerk/produção.
 
 - Baseline `02fa927`: 613 testes app, 17 domínio, 9 API e 32 scripts aprovados/1 ignorado; gates completos registrados no diário.
 - Unidade de fechamento `d468e34`: 14 testes focados; gates finais passaram: check 904 arquivos, typecheck 16/16, boundaries 848, testes 627 app/17 domínio/9 API e 32 scripts aprovados/1 ignorado, build 8/8, performance:check e git diff --check. Logs em `output/gestao-final-audit/*.log`.

@@ -64,7 +64,7 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluído com evidência
 - [ ] `GRestrito` — Administração — acesso restrito (professor)
 - [ ] `GNotificacoes` — Notificações da Gestão
 - [ ] `GBusca` — Busca da Gestão (alunos, turmas, conteúdo)
-- [ ] `GRail` — Notebook pequeno (1024 px): barra lateral recolhida com submenu ao passar o mouse
+- [~] `GRail` — Notebook pequeno (1024 px): trilho de 72 px, submenu por hover/toque/teclado; comparação feita, fidelidade integral e papéis pendentes
 
 ### O que o aluno vê (resultado das ações)
 - [~] `GAprenderAluno` — O que o aluno vê em Aprender (atividades diretas e de turma deduplicadas; destaques, estados completos e comparação pendentes)
@@ -143,7 +143,7 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluído com evidência
 - [~] `GTCorrecoes` — Tablet — correções (fila e correção lado a lado; composição responsiva codificada, comparação pendente)
 
 ### Mobile
-- [ ] `GMMenu` — Mobile — menu de Gestão (gaveta)
+- [~] `GMMenu` — Mobile — gaveta modal, contenção/Escape/retorno de foco; comparação feita, fidelidade integral e papéis pendentes
 - [ ] `GMVisao` — Mobile — visão geral
 - [ ] `GMCursos` — Mobile — cursos (cartões, filtros e novo curso)
 - [~] `GMCorrecoes` — Mobile — correções (fila; validação em dispositivo pendente)
@@ -431,3 +431,65 @@ Playwright renderizou Turma Mentoria PBE / Agenda da turma, sem placeholder,
 com o encontro publicado preservado. Processo dev deixado ativo para inspeção.
 Encerramento e passagem para outro chat solicitados pelo usuário; objetivo
 completo permanece não atingido e deve ficar pausado.
+
+## Unidade em execução · Fase 1 · R1/R3 · 12/10/2026
+
+Requisito: trilho de 72 px com submenu por ponteiro, toque e teclado (quadro 30);
+gaveta modal abaixo de 1024 px com Escape, contenção e retorno de foco
+(quadro 93). Arquivos principais: gestao-shell.tsx, gestao.css e harness local
+Playwright. Evidência existente: papel/flag e retorno seguro têm testes;
+nenhuma prova anterior de navegação completa por teclado ou submenu inativo.
+Critério de saída desta unidade: menus reais das áreas já implementadas abrem
+sem navegar primeiro; links preservam origem; gaveta fechada não recebe foco;
+Escape/devolução do foco e resize funcionam; seis larguras e movimento reduzido
+sem overflow; capturas comparadas; gates completos. Não equivale ao aceite da
+Fase 1: transição, visão geral, papéis e demais quadros continuam pendentes.
+
+### Resultado da unidade R1/R3 · shell · 12/10/2026
+
+Trilho: 72 px, botões reais para abrir páginas de Ensino/Alunos mesmo quando
+inativas, hover com passagem para o painel, toque real, setas/Enter/Escape e
+retorno de foco. Links reais preservam `from` sanitizado, sem prefetch automático
+no submenu. A gaveta usa Dialog do design system (modal, scroll lock, foco
+contido, Escape, clique fora e retorno de foco); menu fechado não é tabulável.
+Menus fecham ao sair do seu breakpoint. Menu da conta não fecha a gaveta em
+cascata; após resize para desktop, o foco volta à navegação visível. O retorno
+à área de membros tem nome acessível inclusive no trilho.
+
+Harness `scripts/qa/gestao-shell-local.mjs`: 12/12 combinações de
+1440/1280/1024/820/390/320 com movimento normal/reduzido passaram. Inclui Tab e
+Shift+Tab contidos, menu da conta aninhado, Escape/clique fora/botão fechar,
+resize, navegação real para Turmas/Exercícios, origem preservada e ausência de
+overflow/pageerror. Relatório e 12 capturas:
+`output/playwright/gestao-v2/shell-navigation/`; log:
+`output/gestao-shell-navigation/browser.log`. A primeira rodada encontrou o
+deslocamento de centralização herdado do diálogo e o fechamento em cascata do
+menu; ambos foram corrigidos antes da rodada final. Nenhum dado foi criado,
+removido ou migrado nesta unidade. Não há ação de persistência nova a validar;
+o contexto de retorno segue na URL das navegações verificadas.
+
+HTMLs 30/93 lidos e PNGs inspecionados; capturas implementadas 1024/normal e
+390/reduce comparadas com as referências. Trilho e painel têm dimensões
+contratuais; gaveta tem 312 px em 390 e limite de 272 px em 320. Ainda diferem
+ícone da visão geral, tipografia/pesos, espaçamento vertical, linha/estilo do
+perfil e conteúdo/header atrás do menu. Os alvos de toque usam ao menos 44 px,
+embora os subitens do HTML mobile usem 38 px. Não há aceite visual integral.
+GRail/GMMenu ficam [~]; 0/101 aceitos, 33 em andamento, 68 pendentes. Fase 1
+continua aberta: N1/N2/N3 completos, quadros 13–30, matriz de papéis, leitor de
+tela real, CLS/latências e demais controles do shell não estão aceitos.
+
+Gates finais passaram: check 905 arquivos; typecheck 16/16; boundaries 848;
+testes 627 app/17 domínio/9 API, 32 scripts aprovados/1 ignorado; build 8/8;
+performance:check e git diff --check. Logs em `output/gestao-shell-navigation/`.
+Calendário: 222,7 KiB gzip/18 chunks; Planejamento: 223,5 KiB/17, sob 225 KiB.
+Build usa URLs locais e SKIP_ENV_VALIDATION, com flags de autenticação QA
+desligadas; não comprova autenticação ou produção. Critério funcional local
+desta unidade cumprido; critérios integrais de quadro/fase continuam abertos.
+Commit identificado por `fix(gestao): make rail and drawer navigation accessible`.
+
+Preview reaberto após build pelo comando Bun autorizado, com admin visual,
+loopback e CA validada. Navegador confirmou Turmas e Agenda da turma de
+Mentoria, sem catch-all/placeholder; snapshot de continuidade em
+`output/gestao-shell-navigation/preview-calendar.yml`. O preview permanece
+ativo; a configuração temporária do PostgreSQL foi preservada conforme o
+procedimento de DECISIONS.md. Sem push/merge/deploy ou banco remoto.

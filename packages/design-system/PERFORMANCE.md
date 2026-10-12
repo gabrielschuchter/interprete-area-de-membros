@@ -414,3 +414,12 @@ on a server request.
   captures cover six widths with normal/reduced motion; preset dates and Escape
   worked without document overflow. Full keyboard/focus-return and visual
   reference acceptance remain open. Final bundle numbers are in PROGRESS.md.
+
+- Gestão's rail uses the existing dropdown primitive, with a bounded submenu,
+  mouse/touch/keyboard entry and no automatic destination prefetch. Its mobile
+  drawer reuses the dialog primitive for focus containment, Escape, scroll lock
+  and return to the trigger; closed mobile navigation is removed from focus
+  order. Menus close when their breakpoint ceases to apply. No library, data
+  fetch or cache is added. Drawer movement is limited to opacity/transform;
+  reduced motion removes displacement. Browser evidence and remaining visual
+  differences are recorded in PROGRESS.md.

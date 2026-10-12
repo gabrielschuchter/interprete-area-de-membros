@@ -90,6 +90,15 @@ equivalem a aceite visual.
 
 ## Ainda não verificado
 
+Regressão local do shell (R1/R3): `node scripts/qa/gestao-shell-local.mjs`.
+Usa Playwright instalado no ambiente; se necessário, definir
+`QA_PLAYWRIGHT_MODULE` para o caminho absoluto de `playwright/index.mjs`, sem
+instalar dependência de produto. O destino `QA_BASE_URL` é limitado a localhost
+ou 127.0.0.1. Requer o preview com a fixture visual admin existente. O ensaio
+navega, abre menus e captura imagens; não cria fixtures nem chama mutações de
+domínio. Evidências em `output/playwright/gestao-v2/shell-navigation/`.
+Esse ensaio não prova papéis diferentes, Clerk real ou fidelidade integral.
+
 - Matriz completa de papéis, URLs e Server Actions dos cenários de `docs/05`
   do handoff; Clerk real, concorrência representativa e latência por percentil.
 - Fidelidade de todos os quadros, teclado completo e jornadas de aluno.

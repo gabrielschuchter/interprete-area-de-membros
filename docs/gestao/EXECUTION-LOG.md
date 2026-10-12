@@ -14,6 +14,7 @@ O resumo vigente fica em `STATUS.md`. Não registrar segredos ou dados pessoais.
 | 12/10/2026 | `02fa927` | Política de entrada/publicação dos encontros; shell de QA do aluno | URLs before/after/direct; 613 testes app e gates | ICS do aluno/fluxos completos pendentes |
 | 12/10/2026 | `d468e34` | Menu encontro/evento, formulário predefinido, publicação/rascunho persistentes e estilo tracejado | 14 testes focados; duas criações pela UI + reload + SQL TLS; 12 capturas | Faltam prazo/liberação pelo menu, editor completo, aluno e aceite C1/C2 integral |
 | 12/10/2026 | Auditoria/handoff, identificar por `docs(gestao): hand off audited implementation state` | Contagem de quadros, inventário de rotas e sondagens reais; resumo vigente e instrução de continuidade | 0/101 aceitos; 53 rotas, 38 páginas, 18 matches exatos; 2 placeholders e prévia 404 | Trabalho interrompido a pedido do usuário; nenhuma fase promovida |
+| 12/10/2026 | Unidade R1/R3, identificar por `fix(gestao): make rail and drawer navigation accessible` | Submenus do trilho por hover/toque/teclado; gaveta modal com Escape, foco contido/retornado, menu da conta aninhado e resize | Harness local 12/12; JSON/12 capturas em `output/playwright/gestao-v2/shell-navigation`; comparação com PNGs 30/93; gates em `output/gestao-shell-navigation` | GRail/GMMenu em andamento, sem aceite visual; Fase 1 e matriz completa continuam abertas; nenhum dado ou migration alterado |
 
 ## Formato das próximas entradas
 

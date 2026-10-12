@@ -160,6 +160,39 @@ const GestaoNavigationEntry = ({
   role,
 }: GestaoNavigationEntryProperties) => {
   const active = isActivePath(pathname, item.href);
+  const [railOpen, setRailOpen] = useState(false);
+  const hoverOpened = useRef(false);
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelClose = () => {
+    if (closeTimer.current !== null) {
+      clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
+  };
+  const scheduleClose = () => {
+    if (!hoverOpened.current) {
+      return;
+    }
+    cancelClose();
+    closeTimer.current = setTimeout(() => setRailOpen(false), 150);
+  };
+  useEffect(() => {
+    const rail = window.matchMedia(
+      "(min-width: 1024px) and (max-width: 1279px)"
+    );
+    const closeOutsideRail = () => {
+      if (!rail.matches) {
+        setRailOpen(false);
+      }
+    };
+    rail.addEventListener("change", closeOutsideRail);
+    return () => {
+      rail.removeEventListener("change", closeOutsideRail);
+      if (closeTimer.current !== null) {
+        clearTimeout(closeTimer.current);
+      }
+    };
+  }, []);
   const isLocked = item.admin && role !== "ADMIN";
   let TrailingIcon: LucideIcon | null = null;
 
@@ -182,6 +215,7 @@ const GestaoNavigationEntry = ({
         aria-label={isLocked ? `${item.label}, acesso restrito` : item.label}
         className="gestao-navigation-link"
         data-active={String(active)}
+        data-has-children={Boolean(item.children)}
         data-locked={String(isLocked)}
         href={withGestaoReturnPath(item.href, returnTo)}
         onClick={onNavigate}
@@ -196,6 +230,71 @@ const GestaoNavigationEntry = ({
           />
         ) : null}
       </Link>
+      {item.children ? (
+        <DropdownMenu modal={false} onOpenChange={setRailOpen} open={railOpen}>
+          <DropdownMenuTrigger asChild>
+            <button
+              aria-label={`Abrir páginas de ${item.label}`}
+              className="gestao-navigation-link gestao-rail-trigger"
+              data-active={String(active)}
+              onKeyDown={() => {
+                cancelClose();
+                hoverOpened.current = false;
+              }}
+              onPointerDown={() => {
+                cancelClose();
+                hoverOpened.current = false;
+              }}
+              onPointerEnter={(event) => {
+                if (event.pointerType === "mouse") {
+                  cancelClose();
+                  hoverOpened.current = true;
+                  setRailOpen(true);
+                }
+              }}
+              onPointerLeave={scheduleClose}
+              type="button"
+            >
+              <item.icon
+                aria-hidden="true"
+                className="gestao-navigation-icon"
+              />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="start"
+            className="gestao-rail-submenu"
+            onCloseAutoFocus={(event) => {
+              if (hoverOpened.current) {
+                event.preventDefault();
+              }
+            }}
+            onPointerEnter={cancelClose}
+            onPointerLeave={scheduleClose}
+            side="right"
+            sideOffset={10}
+          >
+            <DropdownMenuLabel>{item.label}</DropdownMenuLabel>
+            {item.children.map((child) => (
+              <DropdownMenuItem asChild key={child.href}>
+                <Link
+                  aria-current={
+                    isActivePath(pathname, child.href) ? "page" : undefined
+                  }
+                  href={withGestaoReturnPath(child.href, returnTo)}
+                  onClick={() => {
+                    setRailOpen(false);
+                    onNavigate();
+                  }}
+                  prefetch={false}
+                >
+                  {child.label}
+                </Link>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ) : null}
       {active && item.children ? (
         <ul
           aria-label={`Páginas de ${item.label}`}
@@ -240,6 +339,8 @@ const GestaoShellView = ({
   const [isLeaving, setIsLeaving] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const leaveTimer = useRef<number | null>(null);
+  const mobileMenuTrigger = useRef<HTMLButtonElement>(null);
+  const sidebar = useRef<HTMLElement>(null);
   const rawReturnTo = searchParams.get("from");
   const returnTo = safeGestaoReturnPath(rawReturnTo);
   const heading =
@@ -247,6 +348,17 @@ const GestaoShellView = ({
     "Gestão";
   const isPathDetail = pathname.startsWith("/gestao/ensino/cursos/percursos/");
   const isCoursesIndex = pathname === "/gestao/ensino/cursos";
+
+  useEffect(() => {
+    const desktop = window.matchMedia("(min-width: 1024px)");
+    const closeOnDesktop = () => {
+      if (desktop.matches) {
+        setMobileMenuOpen(false);
+      }
+    };
+    desktop.addEventListener("change", closeOnDesktop);
+    return () => desktop.removeEventListener("change", closeOnDesktop);
+  }, []);
 
   useEffect(() => {
     try {
@@ -357,110 +469,135 @@ const GestaoShellView = ({
   const signOutLabel = localQaAuth ? "Sair (sessão QA fixa)" : signedOutLabel;
   const gestaoHref = (href: string) => withGestaoReturnPath(href, returnTo);
 
+  const sidebarContent = (
+    <>
+      <div className="gestao-sidebar-brand">
+        <Link
+          aria-label="Interprete, visão geral da Gestão"
+          className="gestao-brand"
+          href={gestaoHref("/gestao")}
+        >
+          <span className="gestao-brand-word">Interprete.</span>
+          <span className="gestao-brand-kicker">Gestão</span>
+        </Link>
+        <button
+          aria-label="Fechar menu"
+          className="gestao-close-menu"
+          onClick={() => setMobileMenuOpen(false)}
+          type="button"
+        >
+          <XIcon aria-hidden="true" />
+        </button>
+      </div>
+      <nav aria-label="Navegação da Gestão" className="gestao-navigation">
+        {navigation.map((item) => (
+          <GestaoNavigationEntry
+            item={item}
+            key={item.href}
+            onNavigate={() => setMobileMenuOpen(false)}
+            pathname={pathname}
+            returnTo={returnTo}
+            role={role}
+          />
+        ))}
+      </nav>
+      <div className="gestao-sidebar-spacer" />
+      <Link
+        aria-label="Voltar à área de membros"
+        className="gestao-back-link"
+        href={returnTo}
+        onClick={() => setMobileMenuOpen(false)}
+        title="Voltar à área de membros"
+      >
+        <ArrowLeftIcon aria-hidden="true" />
+        <span>Voltar à área de membros</span>
+      </Link>
+      <DropdownMenu modal={false}>
+        <DropdownMenuTrigger asChild>
+          <button
+            aria-label={`Abrir menu da conta de ${displayName}`}
+            className="gestao-account"
+            type="button"
+          >
+            <Avatar className="gestao-account-avatar">
+              <AvatarImage alt="" src={avatarUrl ?? undefined} />
+              <AvatarFallback>{initialsFor(displayName)}</AvatarFallback>
+            </Avatar>
+            <span className="gestao-account-copy">
+              <span className="gestao-account-name">{displayName}</span>
+              <span className="gestao-account-role">
+                {role === "ADMIN" ? "Administração" : "Professor"}
+              </span>
+            </span>
+            <ChevronRightIcon
+              aria-hidden="true"
+              className="gestao-account-chevron"
+            />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          align="end"
+          className="min-w-56"
+          onEscapeKeyDown={(event) => event.stopPropagation()}
+          side="top"
+        >
+          <DropdownMenuLabel>
+            {displayName}
+            {email ? (
+              <span className="block font-normal text-muted-foreground">
+                {email}
+              </span>
+            ) : null}
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem asChild>
+            <Link href="/perfil">Meu perfil</Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            disabled={isSigningOut || localQaAuth}
+            onSelect={handleSignOut}
+          >
+            {signOutLabel}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </>
+  );
+
   return (
     <div
       className="gestao-shell"
-      data-menu-open={String(mobileMenuOpen)}
       data-transition-out={String(isLeaving)}
       onClickCapture={handleShellNavigation}
     >
-      {mobileMenuOpen ? (
-        <button
-          aria-label="Fechar navegação da Gestão"
-          className="gestao-mobile-backdrop"
-          onClick={() => setMobileMenuOpen(false)}
-          type="button"
-        />
-      ) : null}
-      <aside className="gestao-sidebar">
-        <div className="gestao-sidebar-brand">
-          <Link
-            aria-label="Interprete, visão geral da Gestão"
-            className="gestao-brand"
-            href={gestaoHref("/gestao")}
-          >
-            <span className="gestao-brand-word">Interprete.</span>
-            <span className="gestao-brand-kicker">Gestão</span>
-          </Link>
-          <button
-            aria-label="Fechar menu"
-            className="gestao-close-menu"
-            onClick={() => setMobileMenuOpen(false)}
-            type="button"
-          >
-            <XIcon aria-hidden="true" />
-          </button>
-        </div>
-        <nav
-          aria-label="Navegação da Gestão"
-          className="gestao-navigation"
-          id="gestao-navigation"
-        >
-          {navigation.map((item) => (
-            <GestaoNavigationEntry
-              item={item}
-              key={item.href}
-              onNavigate={() => setMobileMenuOpen(false)}
-              pathname={pathname}
-              returnTo={returnTo}
-              role={role}
-            />
-          ))}
-        </nav>
-        <div className="gestao-sidebar-spacer" />
-        <Link
-          className="gestao-back-link"
-          href={returnTo}
-          onClick={() => setMobileMenuOpen(false)}
-        >
-          <ArrowLeftIcon aria-hidden="true" />
-          <span>Voltar à área de membros</span>
-        </Link>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              aria-label={`Abrir menu da conta de ${displayName}`}
-              className="gestao-account"
-              type="button"
-            >
-              <Avatar className="gestao-account-avatar">
-                <AvatarImage alt="" src={avatarUrl ?? undefined} />
-                <AvatarFallback>{initialsFor(displayName)}</AvatarFallback>
-              </Avatar>
-              <span className="gestao-account-copy">
-                <span className="gestao-account-name">{displayName}</span>
-                <span className="gestao-account-role">
-                  {role === "ADMIN" ? "Administração" : "Professor"}
-                </span>
-              </span>
-              <ChevronRightIcon
-                aria-hidden="true"
-                className="gestao-account-chevron"
-              />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="min-w-56" side="top">
-            <DropdownMenuLabel>
-              {displayName}
-              {email ? (
-                <span className="block font-normal text-muted-foreground">
-                  {email}
-                </span>
-              ) : null}
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link href="/perfil">Meu perfil</Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              disabled={isSigningOut || localQaAuth}
-              onSelect={handleSignOut}
-            >
-              {signOutLabel}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+      <aside className="gestao-sidebar" ref={sidebar}>
+        {sidebarContent}
       </aside>
+      <Dialog onOpenChange={setMobileMenuOpen} open={mobileMenuOpen}>
+        <DialogContent
+          aria-describedby={undefined}
+          className="gestao-drawer translate-x-0 translate-y-0"
+          id="gestao-mobile-navigation"
+          onClickCapture={handleShellNavigation}
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            if (window.matchMedia("(max-width: 1023px)").matches) {
+              mobileMenuTrigger.current?.focus();
+            } else {
+              sidebar.current
+                ?.querySelector<HTMLElement>(
+                  "[aria-current='page'], .gestao-navigation-link"
+                )
+                ?.focus();
+            }
+          }}
+          overlayClassName="gestao-drawer-overlay"
+          showCloseButton={false}
+        >
+          <DialogTitle className="sr-only">Menu da Gestão</DialogTitle>
+          {sidebarContent}
+        </DialogContent>
+      </Dialog>
       <div
         aria-hidden={isLeaving || undefined}
         className="gestao-main-column"
@@ -468,11 +605,12 @@ const GestaoShellView = ({
       >
         <header className="gestao-topbar">
           <button
-            aria-controls="gestao-navigation"
+            aria-controls="gestao-mobile-navigation"
             aria-expanded={mobileMenuOpen}
             aria-label={mobileMenuOpen ? "Fechar menu" : "Abrir menu"}
             className="gestao-mobile-menu-button"
             onClick={() => setMobileMenuOpen((open) => !open)}
+            ref={mobileMenuTrigger}
             type="button"
           >
             <MenuIcon aria-hidden="true" />
