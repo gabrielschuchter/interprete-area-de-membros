@@ -5,7 +5,7 @@
 ## Estado geral
 - Branch: `gestao-v2`
 - Fase atual: 3 — Ensino (trilhas parciais; PostgreSQL local de QA com sessão de teste explícita disponível; a associação curso-percurso foi persistida e retestada em navegador; identidade Clerk real, outras jornadas e aceite visual/runtime permanecem pendentes)
-- Último commit de implementação verificado: `3ac7a32` (quadro 52 — associação e persistência de cursos em percursos; QA local passou; aceite visual pendente)
+- Último commit de implementação verificado: `4a2226f` (quadro 52 — ajuste do cabeçalho mobile; gates passam; aceite visual pendente)
 - Orçamento/contexto: (preencher se relevante)
 
 ## Fases
