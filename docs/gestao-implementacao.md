@@ -54,6 +54,18 @@ Rollback da aplicação preserva os objetos aditivos e volta o código; não
 executar exclusões de tabelas/dados como rollback. A reversão da configuração
 temporária de conexão do preview está em `DECISIONS.md`.
 
+A migration aditiva `20261012223000_meeting_publication_time` acrescenta
+`Meeting.publishedAt` nullable. Foi aplicada via `migrate deploy` no funcional;
+o SQL exato foi aplicado no visual após conferir banco, loopback, porta e TLS.
+O visual continua sem histórico Prisma. Publicações novas registram o primeiro
+instante; legados usam `createdAt` na política de entrada, sem backfill.
+O rollback preserva a coluna e volta o código, sem apagar dados.
+
+Há três encontros e uma turma adicionais de QA no funcional, prefixados
+`gestao_entry_qa_`, para conferir publicação anterior/posterior à entrada e
+convite individual. São fixtures locais explícitas, preservadas fora da seed
+padrão; não representam os totais definidos pelos perfis da seed.
+
 ## Verificar
 
 ```powershell

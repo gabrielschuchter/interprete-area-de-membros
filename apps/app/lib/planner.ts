@@ -23,6 +23,8 @@ import {
 } from "@repo/member-domain";
 import { z } from "zod";
 import { resolveCohortCalendarItems } from "./cohort-calendar-domain";
+import { canReadMeetingCohortTarget } from "./meeting-cohort-access";
+import { getMeetingCohortMemberships } from "./meeting-cohort-memberships";
 import { resolveCalendar } from "./student-calendar";
 
 const DEFAULT_TIMEZONE = "America/Sao_Paulo";
@@ -498,6 +500,7 @@ export const getPlannerDashboard = async (
     throw new Error("O período solicitado não é válido.");
   }
 
+  const meetingMembershipsPromise = getMeetingCohortMemberships(memberId, now);
   const weekStart = startOfLocalDay(now, timezone);
   const weekday = new Intl.DateTimeFormat("en-US", {
     timeZone: timezone,
@@ -653,7 +656,6 @@ export const getPlannerDashboard = async (
                     revokedAt: null,
                     cohort: {
                       is: {
-                        archivedAt: null,
                         memberships: {
                           some: {
                             memberId,
@@ -695,6 +697,13 @@ export const getPlannerDashboard = async (
         timezone: true,
         joinUrl: true,
         kind: true,
+        createdAt: true,
+        publishedAt: true,
+        participants: { where: { memberId }, select: { memberId: true } },
+        cohortTargets: {
+          where: { revokedAt: null },
+          select: { cohortId: true, assignedAt: true },
+        },
         recurrenceRule: true,
         recurrenceUntil: true,
         occurrenceExceptions: {
@@ -980,6 +989,7 @@ export const getPlannerDashboard = async (
       });
     });
   const expandedEvents = expandEventOccurrences();
+  const meetingMemberships = await meetingMembershipsPromise;
   const expandedMeetings = meetings.flatMap((meeting) =>
     resolveCohortCalendarItems(
       [
@@ -1003,7 +1013,23 @@ export const getPlannerDashboard = async (
       ],
       { start: rangeStart, end: rangeEnd }
     )
-      .filter((item) => !item.cancelled)
+      .filter(
+        (item) =>
+          !item.cancelled &&
+          (meeting.participants.length > 0 ||
+            meeting.cohortTargets.some((target) =>
+              canReadMeetingCohortTarget(
+                {
+                  ...meeting,
+                  startsAt: item.startsAt,
+                  endsAt: item.endsAt,
+                  recurrenceRule: null,
+                },
+                target,
+                meetingMemberships.get(target.cohortId)
+              )
+            ))
+      )
       .map((item) => ({
         id: meeting.id,
         occurrenceKey: item.occurrenceKey,

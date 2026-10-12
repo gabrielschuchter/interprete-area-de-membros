@@ -14,8 +14,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { MemberAreaSidebar } from "./member-area-sidebar";
 
 const viewport = vi.hoisted(() => ({ tablet: false, mobile: false }));
+const clerkHook = vi.hoisted(() => vi.fn(() => ({ signOut: vi.fn() })));
 vi.mock("@repo/auth/client", () => ({
-  useClerk: () => ({ signOut: vi.fn() }),
+  useClerk: clerkHook,
 }));
 vi.mock("@repo/design-system/hooks/use-mobile", () => ({
   useIsMobile: () => viewport.mobile,
@@ -58,7 +59,8 @@ function Controls() {
 const content = (
   portalMode: boolean,
   canManageContent = false,
-  gestaoV2Enabled = false
+  gestaoV2Enabled = false,
+  localQaAuth = false
 ) => (
   <SidebarProvider>
     <MemberAreaSidebar
@@ -68,6 +70,7 @@ const content = (
       displayName="QA"
       email="qa@example.test"
       gestaoV2Enabled={gestaoV2Enabled}
+      localQaAuth={localQaAuth}
       portalMode={portalMode}
     >
       <Controls />
@@ -96,6 +99,13 @@ afterEach(() => {
   });
 });
 describe("member sidebar drawer entry", () => {
+  it("renders the server-authorized local QA shell without a Clerk hook", () => {
+    setup();
+    clerkHook.mockClear();
+    render(content(false, false, false, true));
+    expect(screen.getByRole("link", { name: "Estudar" })).toBeTruthy();
+    expect(clerkHook).not.toHaveBeenCalled();
+  });
   it("closes the mobile drawer with one Escape after focusing a menu link", async () => {
     vi.stubGlobal(
       "ResizeObserver",

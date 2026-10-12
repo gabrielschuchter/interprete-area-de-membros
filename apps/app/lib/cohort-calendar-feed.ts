@@ -7,6 +7,10 @@ import {
   cohortCalendarTimezone,
   resolveCohortCalendarItems,
 } from "./cohort-calendar-domain";
+import {
+  canReadMeetingCohortTarget,
+  type MeetingCohortMembership,
+} from "./meeting-cohort-access";
 import type { PlannerCalendarFeedItem } from "./planner-calendar-feed";
 import { serializePlannerCalendarFeed } from "./planner-calendar-feed";
 
@@ -75,7 +79,8 @@ const buildFeedItems = async (
   tx: Prisma.TransactionClient,
   cohortId: string,
   range: { readonly end: Date; readonly start: Date },
-  origin: string
+  origin: string,
+  membership?: MeetingCohortMembership
 ) => {
   const [events, meetings, activities, releases] = await Promise.all([
     tx.cohortEvent.findMany({
@@ -150,6 +155,12 @@ const buildFeedItems = async (
         recurrenceRule: true,
         recurrenceUntil: true,
         timezone: true,
+        createdAt: true,
+        publishedAt: true,
+        cohortTargets: {
+          where: { cohortId, revokedAt: null },
+          select: { assignedAt: true },
+        },
         occurrenceExceptions: {
           where: {
             OR: [
@@ -290,9 +301,30 @@ const buildFeedItems = async (
       href: `/aprender/cursos/${release.lesson.module.course.slug}/${release.lesson.slug}`,
     })),
   ];
-  const items = resolveCohortCalendarItems(sources, range).filter(
-    (item) => item.status === "PUBLISHED" && !item.cancelled
-  );
+  const meetingById = new Map(meetings.map((meeting) => [meeting.id, meeting]));
+  const items = resolveCohortCalendarItems(sources, range).filter((item) => {
+    if (item.status !== "PUBLISHED" || item.cancelled) {
+      return false;
+    }
+    if (!membership || item.sourceType !== "meeting") {
+      return true;
+    }
+    const meeting = meetingById.get(item.sourceId);
+    return Boolean(
+      meeting?.cohortTargets.some((target) =>
+        canReadMeetingCohortTarget(
+          {
+            ...meeting,
+            startsAt: item.startsAt,
+            endsAt: item.endsAt,
+            recurrenceRule: null,
+          },
+          target,
+          membership
+        )
+      )
+    );
+  });
   const toAbsoluteUrl = (path: string) => new URL(path, origin).toString();
   const feedItems: PlannerCalendarFeedItem[] = items.map((item) => ({
     uid: `${item.sourceType}-${item.sourceId}-${item.occurrenceKey ?? item.startsAt.toISOString()}`,
@@ -383,7 +415,39 @@ export const readCohortCalendarFeed = async (
     if (!allowed) {
       return null;
     }
-    const items = await buildFeedItems(tx, feed.cohortId, range, origin);
+    const membership =
+      feed.member.role === MemberRole.MEMBER
+        ? await tx.cohortMembership.findFirst({
+            where: {
+              memberId: feed.memberId,
+              cohortId: feed.cohortId,
+              status: "ACTIVE",
+              leftAt: null,
+              joinedAt: { lte: new Date() },
+            },
+            select: {
+              joinedAt: true,
+              includePastReadOnly: true,
+              cohort: { select: { lateJoinPolicy: true } },
+            },
+          })
+        : null;
+    if (feed.member.role === MemberRole.MEMBER && !membership) {
+      return null;
+    }
+    const items = await buildFeedItems(
+      tx,
+      feed.cohortId,
+      range,
+      origin,
+      membership
+        ? {
+            joinedAt: membership.joinedAt,
+            includePastReadOnly: membership.includePastReadOnly,
+            lateJoinPolicy: membership.cohort.lateJoinPolicy,
+          }
+        : undefined
+    );
     return {
       items,
       name: feed.cohort.name,

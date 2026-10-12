@@ -10,6 +10,9 @@ const mocks = vi.hoisted(() => ({
   resolveCalendar: vi.fn(),
 }));
 vi.mock("server-only", () => ({}));
+vi.mock("./meeting-cohort-memberships", () => ({
+  getMeetingCohortMemberships: vi.fn().mockResolvedValue(new Map()),
+}));
 vi.mock("@repo/database", () => ({
   database: {
     plannerPreferences: { findUnique: mocks.preferences },

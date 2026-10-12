@@ -953,3 +953,14 @@ The production build measures the calendar at 220.9 KiB gzip and planner at
 layer filtering and no horizontal overflow at 320, 390 and 1440 px. These
 measurements do not establish database percentiles, representative-data
 concurrency, real Clerk authentication or final visual acceptance.
+
+Meeting reads now project publication/assignment dates and current cohort
+membership metadata to enforce entry policy consistently in details, recordings,
+planner occurrences and member ICS feeds. Planner reads the small membership
+projection in parallel with its existing queries; it does not load lesson trees
+or progress. Its candidate meeting cap remains 200 and filtering happens before
+serialization. Authorization metadata is request-local. Publication invalidates
+Encontros and Planejamento after commit; the feed remains private/no-store.
+The refreshed production build measures calendar at 221.0 KiB and planner at
+224.1 KiB gzip, each across 17 chunks below the 225 KiB budget. This does not
+establish latency percentiles or representative concurrency.

@@ -401,10 +401,19 @@ export const setMeetingStatus = async (formData: FormData) => {
   ) {
     return;
   }
-  await database.meeting.update({
-    where: { id },
-    data: { status: nextStatus as ContentStatus },
+  await database.$transaction(async (tx) => {
+    await tx.meeting.update({
+      where: { id },
+      data: { status: nextStatus as ContentStatus },
+    });
+    if (nextStatus === ContentStatus.PUBLISHED) {
+      await tx.meeting.updateMany({
+        where: { id, publishedAt: null },
+        data: { publishedAt: new Date() },
+      });
+    }
   });
   revalidatePath("/admin/meetings");
   revalidatePath("/encontros");
+  revalidatePath("/planejamento");
 };

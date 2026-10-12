@@ -78,7 +78,11 @@ describe("meeting visibility", () => {
     const meeting = {
       course: { id: "course-a" },
       participants: [],
-      cohortTargets: [{ cohortId: "cohort-a" }],
+      startsAt: new Date("2026-10-21T12:00:00Z"),
+      createdAt: new Date("2026-10-01T12:00:00Z"),
+      cohortTargets: [
+        { cohortId: "cohort-a", assignedAt: new Date("2026-10-01T12:00:00Z") },
+      ],
       _count: { participants: 0, cohortTargets: 1 },
     };
 
@@ -86,6 +90,16 @@ describe("meeting visibility", () => {
       canReadMeeting(meeting, "member-a", {
         ...memberScope,
         cohortIds: new Set(["cohort-a"]),
+        cohortMemberships: new Map([
+          [
+            "cohort-a",
+            {
+              joinedAt: new Date("2026-10-10T12:00:00Z"),
+              lateJoinPolicy: "ALL_ACTIVE" as const,
+              includePastReadOnly: false,
+            },
+          ],
+        ]),
       })
     ).toBe(true);
     expect(

@@ -36,6 +36,7 @@ interface MemberShellControllerProperties {
   readonly displayName: string;
   readonly email: string;
   readonly gestaoV2Enabled: boolean;
+  readonly localQaAuth?: boolean;
   readonly memberId: string;
   readonly productConfig: {
     readonly showLearnNavigation: boolean;
@@ -280,6 +281,7 @@ const MemberShellView = ({
   children,
   displayName,
   gestaoV2Enabled,
+  localQaAuth,
   email,
   memberId,
   productConfig,
@@ -796,6 +798,7 @@ const MemberShellView = ({
           displayName={displayName}
           email={email}
           gestaoV2Enabled={gestaoV2Enabled}
+          localQaAuth={localQaAuth}
           portalMode={
             pathname === "/" ||
             (transition?.direction === "enter" && !chromeVisible)

@@ -83,6 +83,10 @@ const AppLayout = async ({ children }: AppLayoutProperties) => {
       displayName={profile?.displayName ?? member.displayName ?? "Membro"}
       email={member.email ?? ""}
       gestaoV2Enabled={env.GESTAO_V2_ENABLED === "true"}
+      localQaAuth={
+        process.env.NODE_ENV === "development" &&
+        process.env.GESTAO_DEV_AUTH === "true"
+      }
       memberId={userId}
       productConfig={productConfig}
     >

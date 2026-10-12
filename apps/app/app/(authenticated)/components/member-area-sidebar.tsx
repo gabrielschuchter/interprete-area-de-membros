@@ -58,6 +58,7 @@ interface MemberAreaSidebarProperties {
   readonly displayName: string;
   readonly email: string;
   readonly gestaoV2Enabled?: boolean;
+  readonly localQaAuth?: boolean;
   readonly portalMode: boolean;
 }
 
@@ -155,7 +156,7 @@ const initialsFor = (value: string) =>
     .join("")
     .toUpperCase() || "M";
 
-export const MemberAreaSidebar = ({
+const MemberAreaSidebarView = ({
   avatarUrl,
   canManageContent,
   children,
@@ -164,9 +165,11 @@ export const MemberAreaSidebar = ({
   email,
   gestaoV2Enabled = false,
   portalMode,
-}: MemberAreaSidebarProperties) => {
+  signOut,
+}: MemberAreaSidebarProperties & {
+  readonly signOut?: ReturnType<typeof useClerk>["signOut"];
+}) => {
   const pathname = usePathname();
-  const { signOut } = useClerk();
   const [pendingHref, setPendingHref] = useState<string | null>(null);
   const [tabletDrawer, setTabletDrawer] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
@@ -245,6 +248,12 @@ export const MemberAreaSidebar = ({
   }, [portalMode, setOpenMobile, setSidebarOpen, sidebarOpen]);
 
   const handleSignOut = async () => {
+    if (!signOut) {
+      toast.info(
+        "A sessão local de QA é controlada pelo servidor de desenvolvimento."
+      );
+      return;
+    }
     setIsSigningOut(true);
     try {
       await signOut({ redirectUrl: "/sign-in" });
@@ -441,3 +450,15 @@ export const MemberAreaSidebar = ({
     </>
   );
 };
+
+const ClerkMemberAreaSidebar = (properties: MemberAreaSidebarProperties) => {
+  const { signOut } = useClerk();
+  return <MemberAreaSidebarView {...properties} signOut={signOut} />;
+};
+
+export const MemberAreaSidebar = (properties: MemberAreaSidebarProperties) =>
+  properties.localQaAuth ? (
+    <MemberAreaSidebarView {...properties} />
+  ) : (
+    <ClerkMemberAreaSidebar {...properties} />
+  );

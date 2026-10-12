@@ -400,3 +400,12 @@ on a server request.
   225 KiB budget. Planner is 224.0 KiB across 17 chunks. Saved local captures
   and functional QA are documented in PROGRESS.md; the complete width/role
   matrix, reduced-motion checks and visual acceptance remain open.
+
+- The member sidebar separates its Clerk hook from the local QA view. The
+  server chooses QA only in the guarded development runtime; local sign-out
+  explains the server-controlled session without simulating successful logout.
+  This fixes the observed QA render error; it is not real Clerk-flow evidence.
+- After this change, the production bundle measures calendar at 221.0 KiB and
+  planner at 224.1 KiB gzip (17 chunks each, 225 KiB budget). Restored admin QA
+  captures at 1440 and 320 px show no document overflow; content truncation,
+  layout differences and full keyboard acceptance remain open.

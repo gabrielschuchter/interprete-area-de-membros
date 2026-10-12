@@ -283,3 +283,76 @@ Capturas adicionais salvas em `output/playwright/gestao-v2/calendar-qa-2202-{lar
 Os gates desta correção passaram: `check` (897 arquivos), `boundaries` (842), `typecheck` (16/16), `test` (598 testes do app, 17 de domínio, 9 de API e 32 scripts aprovados/1 ignorado), `build` (8/8), `performance:check` e `git diff --check`. A build reconfirmou também o tratamento de Esc, com calendário em 220,9 KiB gzip/17 chunks e Planejamento em 224,0 KiB/17 chunks. O preview foi reaberto no worktree isolado com os dados visuais locais: a rota do calendário retornou HTTP 200 e a grade ficou visível após navegação completa. Não houve escrita remota.
 
 Próxima revisão de acesso: os vínculos de encontros agora alcançam o calendário, mas a política `FROM_JOIN` e a inclusão opcional de encontros passados ainda precisam ser auditadas nas leituras de Meeting. O modelo atual não tem `publishedAt`; não confundir presença de matrícula ativa com prova dessas regras de entrada. Resolver isso antes de aceitar C1/T2 ou o calendário do aluno. O guia de execução e limites foi iniciado em `docs/gestao-implementacao.md`.
+
+## Checkpoint · política de entrada dos encontros (12/10/2026)
+
+A Fase 2 — Turmas e resolvers de acesso, feed e calendário — continua IN PROGRESS.
+Encontros agora usam publicação/atribuição e os metadados da matrícula para
+FROM_JOIN e histórico optativo de ALL_ACTIVE. A mesma política atende detalhes,
+gravações, ocorrências do Planejamento e encontros no feed ICS do membro.
+Convite individual mantém precedência. A primeira publicação é registrada
+transacionalmente; republicar não substitui um instante existente. Legados sem
+`publishedAt` usam `createdAt`, sem fabricar backfill.
+
+A migration aditiva `20261012223000_meeting_publication_time` foi aplicada com
+`migrate deploy` no banco funcional local (63 migrations no diretório), e o SQL
+exato foi aplicado no visual após conferir nome do banco, loopback, porta 55433
+e TLS verificado. O visual continua sem `_prisma_migrations`; não afirmar
+aplicação versionada nele. Nenhum banco remoto foi acessado. Rollback preserva
+coluna/dados e volta o código.
+
+QA persistido funcional: turma `gestao_entry_qa_20261012` e três encontros de
+teste, usando um Member já semeado com entrada em 10/10. A consulta real e a
+política negaram o encontro publicado em 02/10, permitiram o publicado em 11/10
+e preservaram o convite individual. A primeira criação da matrícula falhou no
+check de `activeKey`; a repetição idempotente usou a chave canônica, preservou
+o check e os dados já criados. Esses extras não alteram a definição da seed.
+
+No navegador, o shell do aluno inicialmente retornou HTTP 500 por chamar
+`useClerk` sem provider no runtime local. A view foi separada do componente
+Clerk e o layout servidor seleciona QA. Após a correção, os três cenários
+renderizaram respectivamente “404”, o encontro posterior e o convite direto;
+o título protegido não apareceu. Next fez streaming com HTTP 200 também na
+página not-found; a prova aqui é a negação do conteúdo, não status HTTP 404.
+Planejamento abriu e a rodada final não capturou `pageerror` nem resposta 5xx.
+Relatório: `output/playwright/gestao-v2/meeting-entry-qa-20261012.json`.
+Antes dessa rodada final houve também um 500 em focus-timer durante a primeira
+provisão concorrente de preferências; as leituras seguintes responderam 200.
+Esse fluxo legado ainda exige ensaio próprio de concorrência.
+
+Testes focados: 29 de política/acesso/Planner/conteúdo e 11 de publicação/shell
+passaram; incluem regressão sem hook Clerk, transação da publicação, preservação
+ao voltar a rascunho, autorização negada e status inválido. Lint final passou
+em 901 arquivos. Gates completos desta unidade ainda em execução; não usar
+os números do checkpoint anterior como validação das mudanças novas. Matriz
+completa de papéis/ações, Clerk real, feed de aluno ponta a ponta e comparação
+visual continuam pendentes; nenhum quadro foi aceito.
+
+Atualização dos gates e preview desta unidade: build 8/8 passou com
+`SKIP_ENV_VALIDATION=true` e URL local, sem precisar conectar ao banco;
+`performance:check` passou com calendário 221,0 KiB e Planner 224,1 KiB gzip,
+17 chunks cada. `typecheck` 16/16 e `boundaries` 846 arquivos passaram após o
+novo teste de publicação. A suíte incluída na build passou com 609 testes do
+app, 17 domínio e 9 API; o teste posterior de publicação passou com 4 casos
+focados. A execução final de `bun run test` que inclui todos os 613 casos ainda
+está em andamento.
+
+O preview foi restaurado para o admin visual. Após a build, o dev respondeu
+com a rota provisória em vez do calendário; reiniciar com `.next/dev` movido
+para `.next/dev-before-entry-policy-qa-20261012` preservou o cache anterior e
+restaurou a rota correta. Houve timeout na primeira compilação a frio; depois
+abriu “Turma Mentoria PBE”. Capturas finais salvas em
+`output/playwright/gestao-v2/calendar-entry-policy-20261012-{1440|320}.png`, sem
+`pageerror` na passada e sem overflow horizontal do documento. As duas imagens
+foram inspecionadas, e a de desktop comparada manualmente ao PNG 41: ainda
+faltam alinhamento do shell/toolbar, estilo de rascunho/itens, menu do dia e
+outros detalhes. Em 320 px há truncamento de itens e navegação interna rolável;
+ausência de overflow não equivale a aceite visual ou acessibilidade completa.
+Nenhum quadro foi concluído.
+
+Fechamento dos gates desta unidade: `bun run test` terminou com 613 testes do
+app em 141 arquivos, 17 de domínio, 9 de API e 32 testes de scripts aprovados
+(1 harness aposentado ignorado). `check` 901 arquivos, `typecheck` 16/16,
+`boundaries` 846 arquivos, build 8/8, `performance:check` e `git diff --check`
+passaram. Isso encerra a validação de código desta unidade, mantendo abertas
+as lacunas de aceite descritas acima.

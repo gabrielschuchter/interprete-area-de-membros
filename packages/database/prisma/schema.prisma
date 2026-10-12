@@ -1550,6 +1550,7 @@ model Meeting {
   joinUrl              String               @db.Text
   recordingUrl         String?              @db.Text
   status               ContentStatus        @default(DRAFT)
+  publishedAt          DateTime?
   teacherId            String?
   courseId             String?
   position             Int                  @default(0)

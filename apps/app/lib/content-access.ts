@@ -17,6 +17,7 @@ import {
   resolveLockedCohortLessons,
 } from "./cohort-domain";
 import { activeAssignmentStatuses } from "./learning-assignments";
+import type { MeetingCohortMembership } from "./meeting-cohort-access";
 import { getAccessibleRecordingIds } from "./recordings";
 
 export const activeGrantFilter = (now: Date) => ({
@@ -34,6 +35,7 @@ export interface LearningAccessOrigin {
 export interface LearningAccessScope {
   readonly assetIds: ReadonlySet<string>;
   readonly cohortIds?: ReadonlySet<string>;
+  readonly cohortMemberships?: ReadonlyMap<string, MeetingCohortMembership>;
   readonly courseIds: ReadonlySet<string>;
   readonly fullAccess: boolean;
   readonly fullCourseIds: ReadonlySet<string>;
@@ -50,6 +52,7 @@ const emptyScope = (): LearningAccessScope => ({
   fullCourseIds: new Set(),
   courseIds: new Set(),
   cohortIds: new Set(),
+  cohortMemberships: new Map(),
   moduleIds: new Set(),
   unavailableLessonIds: new Set(),
   lessonIds: new Set(),
@@ -331,6 +334,7 @@ const getLearningAccessScopeUncached = async (
         select: {
           cohortId: true,
           joinedAt: true,
+          includePastReadOnly: true,
           cohort: {
             select: {
               archivedAt: true,
@@ -584,6 +588,18 @@ const getLearningAccessScopeUncached = async (
       eligibleMemberships
         .filter(({ joinedAt }) => joinedAt <= now)
         .map(({ cohortId }) => cohortId)
+    ),
+    cohortMemberships: new Map(
+      eligibleMemberships
+        .filter(({ joinedAt }) => joinedAt <= now)
+        .map((membership) => [
+          membership.cohortId,
+          {
+            joinedAt: membership.joinedAt,
+            lateJoinPolicy: membership.cohort.lateJoinPolicy,
+            includePastReadOnly: membership.includePastReadOnly,
+          },
+        ])
     ),
     moduleIds: scope.moduleIds,
     unavailableLessonIds: scope.unavailableLessonIds,

@@ -1,12 +1,19 @@
 import type { LearningAccessScope } from "./content-access";
+import {
+  canReadMeetingCohortTarget,
+  type MeetingPublication,
+} from "./meeting-cohort-access";
 import { getYoutubeVideoId } from "./youtube-video";
 
-interface MeetingReadPolicy {
+interface MeetingReadPolicy extends MeetingPublication {
   readonly _count: {
     readonly cohortTargets?: number;
     readonly participants: number;
   };
-  readonly cohortTargets?: readonly { readonly cohortId: string }[];
+  readonly cohortTargets?: readonly {
+    readonly cohortId: string;
+    readonly assignedAt?: Date;
+  }[];
   readonly course: { readonly id: string } | null;
   readonly participants: readonly { readonly memberId: string }[];
 }
@@ -15,7 +22,7 @@ export const canReadMeeting = (
   meeting: MeetingReadPolicy,
   memberId: string,
   scope: Pick<LearningAccessScope, "courseIds" | "fullAccess"> &
-    Partial<Pick<LearningAccessScope, "cohortIds">>
+    Partial<Pick<LearningAccessScope, "cohortIds" | "cohortMemberships">>
 ) => {
   if (scope.fullAccess) {
     return true;
@@ -30,7 +37,11 @@ export const canReadMeeting = (
   const cohortTargets = meeting.cohortTargets ?? [];
   if (cohortTargets.length > 0) {
     return cohortTargets.some((target) =>
-      scope.cohortIds?.has(target.cohortId)
+      canReadMeetingCohortTarget(
+        meeting,
+        target,
+        scope.cohortMemberships?.get(target.cohortId)
+      )
     );
   }
   if ((meeting._count.cohortTargets ?? 0) > 0) {
