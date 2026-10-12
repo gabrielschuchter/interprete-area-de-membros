@@ -152,3 +152,20 @@ on a server request.
   inside the new shell. Keep it behind the same server authorization and move
   its editor-specific controls into Gestão components before claiming visual
   acceptance.
+- The Gestão exercise catalog pages 18 banks at a time and bounds nested list
+  summaries to 20 per bank. A list detail pages 25 questions and applies text,
+  category, and status filters in the database; category and reusable-question
+  selectors are capped at 100 results. Keep all catalog and editor links
+  without viewport prefetch. These are projection bounds, not measured latency
+  evidence; local authenticated routes, large-catalog navigation, and database
+  concurrency remain open acceptance checks.
+- The current `exercises` bundle entry measures the student `/exercicios` route,
+  not `/gestao/ensino/exercicios`; add an explicit Gestão entry before treating
+  that route's JavaScript budget as measured. The new-list selector is capped
+  at 200 banks, bank cards show 20 lists, and reusable/category selectors return
+  at most 100 results, so complete large-catalog navigation remains open.
+- Reusing a question pins its current immutable version in the selected list.
+  Saving an edited version advances that list item only, leaving other list
+  bindings and existing session snapshots stable. Adjacent reordering uses a
+  serializable swap and a temporary unique position; verify concurrent edits
+  and persisted results in the isolated local QA database.

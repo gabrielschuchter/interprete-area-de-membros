@@ -632,3 +632,31 @@ nested course/module/lesson authoring fields. That editor projection, its
 mutation audit/outbox coverage, and the new route's authenticated latency have
 not yet passed the Gestão acceptance gate. Until local QA has a database and
 staff fixtures, the budgets above remain targets rather than measured results.
+
+### Gestão exercise bank and list surfaces
+
+The exercise bank catalog authorizes `content.manage` on each request. Search
+and bank status filters run in PostgreSQL; bank pages return at most 18 banks,
+with up to 20 list summaries per bank. List detail returns 25 question versions
+per page, with question search, category, and status filters applied in SQL.
+The page also bounds category options to 100 and reusable questions to 100.
+These limits keep the initial projection bounded; navigation through very
+large catalogs and the authenticated route latency remain part of local QA.
+The new-list bank selector is limited to 200 non-archived banks, and the bank
+cards show up to 20 lists each; these are known large-catalog navigation gaps.
+
+Question reuse is constrained to the same bank and pins the current immutable
+version into the destination list. Editing a reused question creates a new
+version and advances only the list item being edited; other list bindings and
+existing student session snapshots keep their selected versions. List ordering
+uses one adjacent swap in a serializable transaction and a temporary unique
+position, rather than loading the full list. These server actions invalidate
+the affected Gestão and learner routes after the database commit. No
+identity/permission result is persistently cached. Database concurrency,
+authenticated mutation latency, and student-session preservation still need
+runtime verification against the local QA database.
+
+The current bundle-budget script reports the member-facing `/exercicios` route
+at 208.1 KiB gzip. It does not separately measure `/gestao/ensino/exercicios`;
+the Gestión route's initial JavaScript budget still needs an explicit entry
+and measurement before its performance gate can be accepted.
