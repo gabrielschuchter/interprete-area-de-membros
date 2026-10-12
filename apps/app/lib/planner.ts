@@ -22,6 +22,7 @@ import {
   isPlannerSeriesOccurrence as withinSeries,
 } from "@repo/member-domain";
 import { z } from "zod";
+import { resolveCalendar } from "./student-calendar";
 
 const DEFAULT_TIMEZONE = "America/Sao_Paulo";
 const hexColorPattern = /^#[\da-fA-F]{6}$/;
@@ -694,31 +695,9 @@ export const getPlannerDashboard = async (
     }),
   ]);
 
-  const [activities, studyTrackingSessions] = rangeInput
+  const [calendarActivities, studyTrackingSessions] = rangeInput
     ? await Promise.all([
-        database.activityAssignment.findMany({
-          where: {
-            memberId,
-            targetType: "ACTIVITY",
-            status: { in: ["NEW", "VIEWED", "STARTED", "COMPLETED"] },
-            revokedAt: null,
-            AND: [
-              { OR: [{ availableAt: null }, { availableAt: { lte: now } }] },
-              { OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] },
-            ],
-            activity: { is: { status: "PUBLISHED" } },
-          },
-          orderBy: [{ dueAt: "asc" }, { assignedAt: "desc" }],
-          take: 200,
-          select: {
-            id: true,
-            status: true,
-            dueAt: true,
-            activity: {
-              select: { id: true, title: true, slug: true, dueAt: true },
-            },
-          },
-        }),
+        resolveCalendar(memberId, { start: rangeStart, end: rangeEnd }, now),
         database.studyTrackingSession.findMany({
           where: {
             memberId,
@@ -809,24 +788,7 @@ export const getPlannerDashboard = async (
   const timerById = new Map(
     linkedTimerSessions.map((session) => [session.id, session])
   );
-  const assignedActivities = activities.flatMap((assignment) => {
-    const activity = assignment.activity;
-    const dueAt = assignment.dueAt ?? activity?.dueAt ?? null;
-    if (!(activity && dueAt) || dueAt < rangeStart || dueAt > rangeEnd) {
-      return [];
-    }
-    return [
-      {
-        id: assignment.id,
-        activityId: activity.id,
-        title: activity.title,
-        slug: activity.slug,
-        dueAt,
-        status: assignment.status,
-        href: `/atividades/${activity.slug}`,
-      },
-    ];
-  });
+  const assignedActivities = calendarActivities;
   const calendarStudySessions = studyTrackingSessions.flatMap((session) => {
     const seconds = secondsBySession.get(session.id) ?? 0;
     if (!(seconds && session.endedAt)) {

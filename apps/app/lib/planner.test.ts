@@ -6,6 +6,8 @@ const mocks = vi.hoisted(() => ({
   findMany: vi.fn(),
   count: vi.fn(),
   aggregate: vi.fn(),
+  studyTrackingSessionFindMany: vi.fn(),
+  resolveCalendar: vi.fn(),
 }));
 vi.mock("server-only", () => ({}));
 vi.mock("@repo/database", () => ({
@@ -17,6 +19,7 @@ vi.mock("@repo/database", () => ({
     meeting: { findMany: mocks.findMany },
     studyGoal: { findMany: mocks.findMany },
     studyActivityInterval: { aggregate: mocks.aggregate },
+    studyTrackingSession: { findMany: mocks.studyTrackingSessionFindMany },
     lessonProgress: { count: mocks.count },
     activitySubmission: { count: mocks.count },
     learningTaskCompletion: { count: mocks.count },
@@ -32,6 +35,9 @@ vi.mock("@repo/database", () => ({
   },
   PlannerTaskStatus: { TODO: "TODO", IN_PROGRESS: "IN_PROGRESS", DONE: "DONE" },
   StudyGoalPeriod: { WEEKLY: "WEEKLY", MONTHLY: "MONTHLY" },
+}));
+vi.mock("./student-calendar", () => ({
+  resolveCalendar: mocks.resolveCalendar,
 }));
 vi.mock("@repo/member-domain", async () => ({
   ...(await vi.importActual(
@@ -51,6 +57,8 @@ describe("planner dashboard reads", () => {
     mocks.findMany.mockResolvedValue([]);
     mocks.count.mockResolvedValue(0);
     mocks.aggregate.mockResolvedValue({ _sum: { seconds: null } });
+    mocks.studyTrackingSessionFindMany.mockResolvedValue([]);
+    mocks.resolveCalendar.mockResolvedValue([]);
   });
 
   it("opens with defaults without any database writes for a new member", async () => {
@@ -85,5 +93,41 @@ describe("planner dashboard reads", () => {
     expect(dashboard.columns).toHaveLength(3);
     expect(dashboard.columns[1].label).toBe("Estudando");
     expect(dashboard.columns[1].id).toBe("column-qa");
+  });
+
+  it("uses the shared calendar resolver for activity deadlines in a requested range", async () => {
+    const start = "2026-10-01T00:00:00.000Z";
+    const end = "2026-11-01T00:00:00.000Z";
+    const deadline = new Date("2026-10-20T12:00:00.000Z");
+    mocks.resolveCalendar.mockResolvedValue([
+      {
+        id: "cohort-activity:activity-a",
+        activityId: "activity-a",
+        title: "Atividade da turma",
+        slug: "atividade-da-turma",
+        dueAt: deadline,
+        status: "NEW",
+        href: "/atividades/atividade-da-turma",
+      },
+    ]);
+
+    const dashboard = await getPlannerDashboard("member-qa", { start, end });
+
+    expect(mocks.resolveCalendar).toHaveBeenCalledWith(
+      "member-qa",
+      { start: new Date(start), end: new Date(end) },
+      expect.any(Date)
+    );
+    expect(dashboard.activities).toEqual([
+      {
+        id: "cohort-activity:activity-a",
+        activityId: "activity-a",
+        title: "Atividade da turma",
+        slug: "atividade-da-turma",
+        dueAt: deadline,
+        status: "NEW",
+        href: "/atividades/atividade-da-turma",
+      },
+    ]);
   });
 });

@@ -1,10 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
 
+const mocks = vi.hoisted(() => ({ getPlannerDashboard: vi.fn() }));
+
 vi.mock("server-only", () => ({}));
 vi.mock("@repo/database", () => ({ database: {} }));
-vi.mock("./planner", () => ({ getPlannerDashboard: vi.fn() }));
+vi.mock("./planner", () => ({
+  getPlannerDashboard: mocks.getPlannerDashboard,
+}));
 
 import {
+  getPlannerCalendarFeedItems,
   type PlannerCalendarFeedItem,
   serializePlannerCalendarFeed,
 } from "./planner-calendar-feed";
@@ -63,5 +68,49 @@ describe("planner calendar feed", () => {
 
     expect(feed).toContain("DTSTART;VALUE=DATE:20261010\r\n");
     expect(feed).toContain("DTEND;VALUE=DATE:20261011\r\n");
+  });
+
+  it("includes dynamically assigned cohort deadlines in the private calendar projection", async () => {
+    const startsAt = new Date("2026-10-20T12:00:00.000Z");
+    const endsAt = new Date("2026-10-20T12:30:00.000Z");
+    mocks.getPlannerDashboard.mockResolvedValue({
+      events: [],
+      meetings: [],
+      activities: [
+        {
+          id: "cohort-activity:activity-a",
+          activityId: "activity-a",
+          title: "Atividade da turma",
+          slug: "atividade-da-turma",
+          dueAt: startsAt,
+          status: "NEW",
+          href: "/atividades/atividade-da-turma",
+        },
+      ],
+      tasks: [],
+      studySessions: [],
+      goals: [],
+      preferences: { timezone: "America/Sao_Paulo" },
+    });
+
+    const result = await getPlannerCalendarFeedItems(
+      "member-a",
+      new Date("2026-10-01T00:00:00.000Z"),
+      new Date("2026-11-01T00:00:00.000Z"),
+      "https://members.example"
+    );
+
+    expect(result.items).toContainEqual({
+      uid: "activity-cohort-activity:activity-a",
+      title: "Prazo: Atividade da turma",
+      startsAt,
+      endsAt,
+      description: "Atividade atribuída no Interprete. Status: NEW.",
+      url: "https://members.example/atividades/atividade-da-turma",
+    });
+    expect(mocks.getPlannerDashboard).toHaveBeenCalledWith("member-a", {
+      start: "2026-10-01T00:00:00.000Z",
+      end: "2026-11-01T00:00:00.000Z",
+    });
   });
 });

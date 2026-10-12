@@ -92,7 +92,7 @@ export const GET = async (request: Request) => {
     );
     return new Response(serializePlannerCalendarFeed(items, timezone, now), {
       headers: {
-        "Cache-Control": "private, max-age=300",
+        "Cache-Control": "private, no-store",
         "Content-Disposition": 'inline; filename="interprete-calendario.ics"',
         "Content-Type": "text/calendar; charset=utf-8",
         "X-Content-Type-Options": "nosniff",

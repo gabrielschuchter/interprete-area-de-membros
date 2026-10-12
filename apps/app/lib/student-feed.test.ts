@@ -107,4 +107,27 @@ describe("resolveStudentFeed", () => {
       assignedAt: { gte: joinedAt, lte: at },
     });
   });
+
+  it("bounds calendar feed candidates and assignments to due dates in range", async () => {
+    const start = new Date("2026-10-01T00:00:00.000Z");
+    const end = new Date("2026-11-01T00:00:00.000Z");
+
+    await resolveStudentFeed("member-a", at, {
+      assignmentLimit: 200,
+      dueRange: { start, end },
+    });
+
+    const assignmentQuery = mocks.activityAssignmentFindMany.mock.calls[0]?.[0];
+    expect(assignmentQuery.take).toBe(200);
+    expect(assignmentQuery.where.AND[1].OR).toEqual([
+      { dueAt: { gte: start, lte: end } },
+      { activity: { is: { dueAt: { gte: start, lte: end } } } },
+    ]);
+
+    const activityQuery = mocks.activityFindMany.mock.calls[0]?.[0];
+    const cohortBranch = activityQuery.where.AND[1].OR.find(
+      (branch: { cohortTargets?: unknown }) => branch.cohortTargets
+    );
+    expect(cohortBranch.AND[1]).toEqual({ dueAt: { gte: start, lte: end } });
+  });
 });

@@ -43,9 +43,15 @@ const activityVisibleToLearners: Prisma.ActivityWhereInput = {
   ],
 };
 
+export interface StudentFeedOptions {
+  readonly assignmentLimit?: number;
+  readonly dueRange?: { readonly end: Date; readonly start: Date };
+}
+
 const getStudentFeedUncached = async (
   memberId: string,
-  at: Date
+  at: Date,
+  options: StudentFeedOptions
 ): Promise<StudentFeedActivity[]> => {
   const [memberships, assignments] = await Promise.all([
     database.cohortMembership.findMany({
@@ -81,10 +87,36 @@ const getStudentFeedUncached = async (
         targetType: LearningAssignmentTargetType.ACTIVITY,
         revokedAt: null,
         status: { not: LearningAssignmentStatus.REVOKED },
-        AND: [{ OR: [{ expiresAt: null }, { expiresAt: { gt: at } }] }],
+        AND: [
+          { OR: [{ expiresAt: null }, { expiresAt: { gt: at } }] },
+          ...(options.dueRange
+            ? [
+                {
+                  OR: [
+                    {
+                      dueAt: {
+                        gte: options.dueRange.start,
+                        lte: options.dueRange.end,
+                      },
+                    },
+                    {
+                      activity: {
+                        is: {
+                          dueAt: {
+                            gte: options.dueRange.start,
+                            lte: options.dueRange.end,
+                          },
+                        },
+                      },
+                    },
+                  ],
+                },
+              ]
+            : []),
+        ],
       },
       orderBy: [{ assignedAt: "desc" }, { id: "asc" }],
-      take: 100,
+      take: options.assignmentLimit ?? 100,
       select: {
         id: true,
         targetId: true,
@@ -133,7 +165,19 @@ const getStudentFeedUncached = async (
     );
     candidateBranches.push({
       cohortTargets: { some: { OR: cohortTargetFilters } },
-      AND: [{ OR: [{ dueAt: null }, { dueAt: { gte: earliestJoin } }] }],
+      AND: [
+        { OR: [{ dueAt: null }, { dueAt: { gte: earliestJoin } }] },
+        ...(options.dueRange
+          ? [
+              {
+                dueAt: {
+                  gte: options.dueRange.start,
+                  lte: options.dueRange.end,
+                },
+              },
+            ]
+          : []),
+      ],
     });
   }
   if (candidateBranches.length === 0) {
@@ -185,7 +229,11 @@ const getStudentFeedUncached = async (
   return resolveStudentFeedActivities(candidates, membershipContexts, at);
 };
 
-export const resolveStudentFeed = (memberId: string, at = new Date()) =>
+export const resolveStudentFeed = (
+  memberId: string,
+  at = new Date(),
+  options: StudentFeedOptions = {}
+) =>
   tracePerformance("member.learning.student-feed", () =>
-    getStudentFeedUncached(memberId, at)
+    getStudentFeedUncached(memberId, at, options)
   );
