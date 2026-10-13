@@ -9,7 +9,7 @@
 > `docs/gestao/EXECUTION-LOG.md`. O restante deste arquivo preserva o histórico;
 > checkpoints antigos não substituem o resumo atual.
 - Branch: `gestao-v2`
-- Fase atual: Fase 2 — Turmas e resolvers. Fixtures persistentes, projeção das quatro fontes de agenda, exceções, assinatura revogável e atribuição de alunos estão em QA local. Fase 1 ainda não foi aceita; a Fase 3 tem implementação parcial. Nenhuma dessas fases recebeu aceite completo.
+- Fase atual: Fase 1 — Shell, autorização, rotas e entrada, retomada para fechar o aceite antes da Fase 2. Fixtures persistentes e trabalho parcial de Turmas/resolvers/Ensino são preservados. Nenhuma dessas fases recebeu aceite completo.
 - Calendário unificado, recorrência, cópia e assinatura consolidados em `5581041`; a unidade seguinte consolida a entrada para atribuição de alunos sem turma.
 - Orçamento/contexto: (preencher se relevante)
 
@@ -45,11 +45,11 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluído com evidência
 - [ ] `GBreakpoints` — Pontos de quebra: como a Gestão se adapta
 
 ### Como se chega à Gestão e as transições
-- [ ] `GChegada` — Como se chega à Gestão e como se volta
+- [~] `GChegada` — Origem por aba/usuário após navegação e reload; entradas contextuais e matriz de papéis pendentes
 - [ ] `GEntrada` — O item “Gestão” na área de membros (professor e membro comum)
-- [ ] `GTransicao` — Transição — área de membros para a Gestão (desktop)
-- [ ] `GTransicaoEstados` — Transições: estados, gatilhos e respostas (entrar, sair, falhar)
-- [ ] `GTransicaoMobile` — Transição — área de membros para a Gestão (celular)
+- [~] `GTransicao` — Snapshots/fallback, foco e anúncio; timings locais, fidelidade integral e stagger pendentes
+- [~] `GTransicaoEstados` — Espera limitada, offline/retry sem apagar a página anterior; estados de permissão/sessão/edição pendentes
+- [~] `GTransicaoMobile` — Entrada/retorno e aviso contextual; fidelidade integral pendente
 - [ ] `GAulaAluno` — Atalho “Editar na Gestão” na página que o aluno também vê
 - [ ] `GVerComoAluno` — Ver como aluno (prévia com a barra de contexto)
 - [ ] `GBoasVindas` — Primeiro acesso à Gestão (boas-vindas)
@@ -493,3 +493,76 @@ Mentoria, sem catch-all/placeholder; snapshot de continuidade em
 `output/gestao-shell-navigation/preview-calendar.yml`. O preview permanece
 ativo; a configuração temporária do PostgreSQL foi preservada conforme o
 procedimento de DECISIONS.md. Sem push/merge/deploy ou banco remoto.
+
+### Unidade em execução — Fase 1, N2/N3: troca de ambiente e origem
+
+Requisito: docs/04 §1–3, quadros 13–17; entrar/sair com feedback imediato,
+foco/anúncio no destino, transição reduzida e retorno à origem mesmo após
+navegação interna sem `from` e reload. Arquivos principais: controlador do
+shell persistente, contexto de navegação, shell da Gestão, CSS global e
+harness local. Evidência anterior: retorno sanitizado em URLs do shell e
+R1/R3; ainda sem sessão de origem nem foco/anúncio entre ambientes. Critério
+de saída: entrada/retorno reais nas seis larguras e dois modos, query/hash
+preservados após reload, fallback sem View Transitions, falha/offline sem
+tela vazia ou bloqueio permanente, testes e gates. Não inclui fila offline
+de escritas/401 em editores (Fase 8), nem promove aceite visual dos quadros.
+
+Resultado funcional local N2/N3: controlador persistente agora centraliza a
+troca entre shells, conserva a página anterior enquanto espera, previne
+disparo duplicado, limita a espera a 12 s e oferece retry. Snapshots nativos
+evitam duplicar árvores/effects; fallback CSS funciona sem a API ou quando
+ela lança sincronicamente. Origem inclui query/hash, é sanitizada e guardada
+por aba/usuário; URL explícita prevalece. Há loading sem dados de domínio,
+foco no título renderizado, anúncio de chegada/retorno, aviso mobile de 4 s e
+foco após fechar boas-vindas. Não há nova query, biblioteca ou migration.
+
+`use-shell-navigation.test.tsx`: cinco testes de sessão/isolamento,
+sanitização, offline/retry, duplicidade/timeout, API que lança e título tardio
+(alguns cenários compartilham o mesmo teste). Com os cinco testes existentes
+de gestao-navigation, dez passam. Harness
+`scripts/qa/gestao-shell-entry-local.mjs`: 12/12 combinações em seis larguras
+e dois modos, Enter real, conteúdo sem `from`, reload e retorno à origem,
+foco/anúncio, overflow/pageerror, offline/retry e fallback. Na rodada final,
+animação nativa de conteúdo foi 400/120 ms; feedback 20,4–85 ms; CLS zero.
+São medidas locais de uma rodada, não percentis nem dispositivo real.
+JSON/12 capturas em `output/playwright/gestao-v2/shell-entry/`; logs
+`output/gestao-shell-entry/browser-duration.log`.
+
+O ensaio inicialmente confundiu o nome da fixture (Turma Mentoria PBE) e
+alcançou a barra antes de seu modo responsivo hidratar. Após três tentativas
+de sincronizar o mobile por visibilidade/animação/foco, mudou-se a abordagem:
+rastrear eventos e identidade do DOM. A barra SSR usa `collapsible=none`, sem
+o container esperado pelo teste; aguardar sua remoção real corrigiu o ensaio.
+Não se removeu a ativação por Enter nem se enfraqueceu uma asserção funcional.
+
+PNGs 15/17 e HTMLs aplicáveis inspecionados; imagens implementadas desktop e
+mobile comparadas. O destino ainda diverge em tipografia, composição da visão
+geral, cards e tamanho/quebra do aviso mobile. Stagger e cronologia integral
+das camadas não têm aceite; N2 integral segue pendente. GChegada/GTransicao/
+GTransicaoEstados/GTransicaoMobile ficam [~]: 0/101 aceitos, 37 em andamento,
+64 pendentes. Critério funcional da unidade cumprido; Fase 1 continua aberta.
+
+Foi observado 500 inicial de `/api/focus-timer?compact=1` no CLI; o harness
+final não teve pageerror. Não confundir isso com ausência comprovada de todo
+erro HTTP/console. Correção da provisão concorrente do legado continua
+pendente. Leitura dos guards também identificou redirecionamento de membro
+para `/` e possível ciclo do professor em Administração; será a próxima
+unidade N1/permissões, sem ampliar para Turmas antes disso.
+
+Gates já aprovados: check 910 arquivos, typecheck 16/16, boundaries 852,
+testes 632 app/17 domínio/9 API e 32 scripts aprovados/1 ignorado. Build 8/8,
+performance:check e diff aprovados. Calendário 223,7 KiB/18 chunks;
+Planejamento 224,5 KiB/17 (teto 225 KiB). Logs em
+`output/gestao-shell-entry/`. Primeira build com NODE_ENV=production
+herdado fez Vite externalizar node:crypto nos testes dependentes; log preservado
+em `build-node-env-production.log`. Nova build usa NODE_ENV não definido no
+orquestrador; Next define produção em seu próprio processo. Sem segredos,
+escrita remota, push/merge/deploy.
+
+Preview reaberto com admin visual e os mesmos bancos/CA locais; navegação real
+reconfirmou Agenda da turma Mentoria. Identificar esta unidade por
+`fix(gestao): preserve origin and coordinate environment navigation`. Nenhum
+quadro/fase promovido. Próximo: N1/GRestrito, guard de login com destino,
+negação sem ciclo/sem payload administrativo e matriz local de papéis. O foco
+de conteúdo que só chega após os 4 s do aviso ainda precisa de ensaio lento;
+não declarar esse limite de rede aceito pela rodada rápida.

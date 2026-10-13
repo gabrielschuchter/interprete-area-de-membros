@@ -3729,20 +3729,115 @@
   }
 }
 
-.member-app-shell {
-  transition:
-    opacity 160ms ease,
-    transform 160ms ease;
+.shell-navigation-feedback {
+  position: fixed;
+  right: 16px;
+  bottom: max(16px, env(safe-area-inset-bottom));
+  left: 16px;
+  z-index: 100;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 16px;
+  font-size: 14px;
+  color: #fff;
+  background: #40222f;
+  border-radius: 6px;
+}
+.shell-mobile-arrival {
+  display: none;
+}
+.shell-mobile-arrival a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+@media (max-width: 1023px) {
+  .shell-mobile-arrival {
+    display: flex;
+  }
 }
 
-.member-app-shell[data-shell-switching="true"] {
-  pointer-events: none;
-  opacity: 0;
-  transform: translateY(4px);
+html[data-shell-transition] {
+  --shell-duration: 400ms;
 }
-
+html[data-shell-transition="return"] {
+  --shell-duration: 300ms;
+}
+html[data-shell-transition] #member-main-content,
+html[data-shell-transition] #gestao-main-content {
+  view-transition-name: main-content;
+}
+@media (min-width: 1024px) {
+  html[data-shell-transition] .gestao-sidebar,
+  html[data-shell-transition] [data-slot="sidebar-inner"] {
+    view-transition-name: app-sidebar;
+  }
+}
+html[data-shell-transition]::view-transition-group(*) {
+  animation: none;
+}
+html[data-shell-transition]::view-transition-old(root),
+html[data-shell-transition]::view-transition-old(main-content) {
+  animation: shell-fade-out var(--shell-duration) cubic-bezier(0.45, 0, 0.2, 1)
+    both;
+}
+html[data-shell-transition]::view-transition-new(root) {
+  animation: shell-fade-in var(--shell-duration) cubic-bezier(0.45, 0, 0.2, 1)
+    both;
+}
+html[data-shell-transition]::view-transition-old(app-sidebar) {
+  animation: shell-fade-out 240ms cubic-bezier(0.45, 0, 0.2, 1) both;
+}
+html[data-shell-transition]::view-transition-new(app-sidebar) {
+  animation: shell-fade-in 240ms cubic-bezier(0.45, 0, 0.2, 1) both;
+}
+html[data-shell-transition]::view-transition-new(main-content) {
+  animation: shell-content-in var(--shell-duration)
+    cubic-bezier(0.45, 0, 0.2, 1) both;
+}
+html[data-shell-fallback][data-shell-arrival] .gestao-page-content,
+html[data-shell-fallback][data-shell-arrival] .member-route-page {
+  animation: shell-content-in 400ms cubic-bezier(0.45, 0, 0.2, 1) both;
+}
+html[data-shell-fallback][data-shell-arrival="return"] .member-route-page {
+  animation-duration: 300ms;
+}
+@keyframes shell-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes shell-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes shell-content-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 @media (prefers-reduced-motion: reduce) {
-  .member-app-shell {
-    transition-duration: 0.01ms !important;
+  html[data-shell-transition] {
+    --shell-duration: 120ms;
+  }
+  html[data-shell-transition]::view-transition-new(main-content),
+  html[data-shell-transition]::view-transition-new(app-sidebar),
+  html[data-shell-fallback][data-shell-arrival] .gestao-page-content,
+  html[data-shell-fallback][data-shell-arrival] .member-route-page {
+    animation: shell-fade-in 120ms linear both;
+  }
+  html[data-shell-transition]::view-transition-old(app-sidebar) {
+    animation-duration: 120ms;
   }
 }

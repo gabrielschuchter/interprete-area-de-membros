@@ -423,3 +423,11 @@ on a server request.
   fetch or cache is added. Drawer movement is limited to opacity/transform;
   reduced motion removes displacement. Browser evidence and remaining visual
   differences are recorded in PROGRESS.md.
+
+- Environment switching uses browser snapshots rather than duplicated React
+  trees. The shared controller acknowledges activation immediately, keeps the
+  current page visible while waiting, focuses the destination heading and
+  announces arrival. Motion is opacity/transform only, with a 120 ms reduced
+  fusion; CSS arrival is the fallback. A bounded watchdog exposes retry instead
+  of leaving an invisible/inert shell. A mobile arrival notice lasts four
+  seconds. No new dependency, query, auth cache or automatic prefetch is added.

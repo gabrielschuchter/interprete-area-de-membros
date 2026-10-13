@@ -45,11 +45,12 @@ import type { MouseEvent as ReactMouseEvent, ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   isGestaoShellPath,
-  safeGestaoReturnPath,
   withGestaoReturnPath,
 } from "@/lib/gestao-navigation";
 import type { GestaoRole } from "@/lib/gestao-permissions";
 import { MemberHeaderControls } from "../components/member-header-controls";
+import { useMemberNavigation } from "../components/member-navigation-context";
+import { useGestaoReturnPath } from "./use-gestao-return-path";
 
 interface GestaoShellProperties {
   readonly avatarUrl: string | null;
@@ -336,13 +337,12 @@ const GestaoShellView = ({
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [welcomeOpen, setWelcomeOpen] = useState(false);
-  const [isLeaving, setIsLeaving] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
-  const leaveTimer = useRef<number | null>(null);
   const mobileMenuTrigger = useRef<HTMLButtonElement>(null);
   const sidebar = useRef<HTMLElement>(null);
   const rawReturnTo = searchParams.get("from");
-  const returnTo = safeGestaoReturnPath(rawReturnTo);
+  const returnTo = useGestaoReturnPath(memberId, rawReturnTo);
+  const memberNavigation = useMemberNavigation();
   const heading =
     navigation.find((item) => isActivePath(pathname, item.href))?.label ??
     "Gestão";
@@ -372,11 +372,6 @@ const GestaoShellView = ({
     } catch {
       setWelcomeOpen(true);
     }
-    return () => {
-      if (leaveTimer.current !== null) {
-        window.clearTimeout(leaveTimer.current);
-      }
-    };
   }, [memberId]);
 
   const dismissWelcome = useCallback(() => {
@@ -393,20 +388,14 @@ const GestaoShellView = ({
 
   const leaveGestaoFor = useCallback(
     (href: string) => {
-      if (leaveTimer.current !== null) {
-        window.clearTimeout(leaveTimer.current);
-      }
-      setIsLeaving(true);
       setMobileMenuOpen(false);
-      const reducedMotion = window.matchMedia?.(
-        "(prefers-reduced-motion: reduce)"
-      ).matches;
-      const duration = reducedMotion ? 0 : 160;
-      leaveTimer.current = window.setTimeout(() => {
+      if (memberNavigation?.navigateShell) {
+        memberNavigation.navigateShell(href);
+      } else {
         router.push(href);
-      }, duration);
+      }
     },
-    [router]
+    [memberNavigation, router]
   );
 
   const handleShellNavigation = useCallback(
@@ -565,11 +554,7 @@ const GestaoShellView = ({
   );
 
   return (
-    <div
-      className="gestao-shell"
-      data-transition-out={String(isLeaving)}
-      onClickCapture={handleShellNavigation}
-    >
+    <div className="gestao-shell" onClickCapture={handleShellNavigation}>
       <aside className="gestao-sidebar" ref={sidebar}>
         {sidebarContent}
       </aside>
@@ -598,11 +583,7 @@ const GestaoShellView = ({
           {sidebarContent}
         </DialogContent>
       </Dialog>
-      <div
-        aria-hidden={isLeaving || undefined}
-        className="gestao-main-column"
-        inert={isLeaving || undefined}
-      >
+      <div className="gestao-main-column">
         <header className="gestao-topbar">
           <button
             aria-controls="gestao-mobile-navigation"
@@ -683,7 +664,17 @@ const GestaoShellView = ({
         }}
         open={welcomeOpen}
       >
-        <DialogContent className="gestao-welcome-dialog">
+        <DialogContent
+          className="gestao-welcome-dialog"
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            const heading = document.querySelector<HTMLElement>(
+              "#gestao-main-content h1"
+            );
+            heading?.setAttribute("tabindex", "-1");
+            heading?.focus({ preventScroll: true });
+          }}
+        >
           <DialogHeader>
             <p className="gestao-eyebrow">Interprete · Gestão</p>
             <DialogTitle className="gestao-welcome-title">

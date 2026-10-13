@@ -6,8 +6,8 @@
 
 - Worktree autorizado: `C:\Users\gabsc\.codex\worktrees\interprete-gestao\interprete-area-de-membros`, branch `gestao-v2`.
 - O checkout original em Documents tem trabalho alheio e não foi alterado.
-- **0/101 quadros aceitos**, 33 em andamento e 68 pendentes no inventário de `PROGRESS.md`. GRail/GMMenu entraram em andamento na unidade de navegação da Fase 1.
-- Só a Fase 0 (auditoria inicial) está registrada como concluída. Fase 1 sem aceite; Fase 2 é o foco; Fases 3–5 têm trabalho parcial; Fases 6–9 estão pendentes.
+- **0/101 quadros aceitos**, 37 em andamento e 64 pendentes no inventário de `PROGRESS.md`. GChegada/GTransicao/GTransicaoEstados/GTransicaoMobile entraram em andamento após GRail/GMMenu.
+- Só a Fase 0 (auditoria inicial) está registrada como concluída. Fase 1 é o foco para fechar o aceite antes da Fase 2; Fases 2–5 têm trabalho parcial; Fases 6–9 estão pendentes.
 - 53 rotas no contrato; 38 arquivos `page.tsx` na Gestão; **18 correspondências exatas** após normalizar nomes de parâmetros. Os 35 caminhos sem correspondência incluem funcionalidades parcialmente disponíveis em rotas diferentes. Esses números **não medem telas prontas**.
 - Inventário histórico da auditoria inicial: `estado-auditado-20261012.json` (31 em andamento naquele momento). A presença de arquivo não comprova funcionalidade, autorização ou fidelidade.
 - Não houve push, merge, deploy ou escrita em banco remoto nesta execução.
@@ -16,7 +16,7 @@
 
 | Área | Evidência inspecionada | O que não está concluído |
 |---|---|---|
-| Shell e entrada | Shell/flag, papel no servidor, retorno seguro e QA local; trilho com submenus e gaveta modal, ensaio local R1/R3 em 12 combinações de largura/movimento | Comparação integral dos quadros 13–30, transições, restante do teclado e matriz completa de papéis; GRail/GMMenu ainda divergem visualmente |
+| Shell e entrada | Trilho/gaveta R1/R3; entrada/retorno N2/N3 em 12 combinações; sessão de origem sanitizada após navegação sem `from` e reload; foco/anúncio, snapshots/fallback, offline/retry, feedback 20,4–85 ms e CLS local zero | Comparação integral 13–30, stagger/timing integral, restante do teclado, leitor de tela real e matriz de papéis; guards atuais redirecionam membro e podem criar ciclo de professor na Administração; 500 inicial de focus-timer ainda pendente |
 | Turmas | Páginas próprias, matrículas, atribuição de aluno sem turma, fixtures persistentes | T1–T8 completos no navegador; importação/movimentação/duplicação e isolamento de todos os perfis não têm aceite conjunto |
 | Calendário | Quatro fontes, camadas, recorrência/exceções, cópia, ICS revogável; QA local anterior de persistência/revogação | Menu do dia só tem encontro/evento; prazo/liberação pelo menu faltam; fidelidade, calendário do aluno e matriz completa não aceitos |
 | Novo encontro pelo dia | Publicado e rascunho criados pela UI, reload e leitura SQL confirmaram persistência/vínculo; rascunho tracejado; 14 testes focados | C1/C2 completos ainda precisam de navegação como aluno, demais papéis, edição completa e comparação visual |
@@ -55,6 +55,16 @@ que já têm evidência e sem chamar gates verdes de conclusão do produto.**
 - `pg_hba.conf` recebeu regras temporárias `hostssl/trust` só para os dois bancos QA, usuário postgres e loopback. Ao **encerrar** o preview, restaurar `%TEMP%\interprete-gestao-qa-20261012\pg_hba.before-live-preview-20261012.conf` sobre `postgres-data\pg_hba.conf` e executar `pg_ctl reload` no data-dir correto. Procedimento em `DECISIONS.md`.
 
 ## Qualidade e capturas
+
+- N2/N3: harness 12/12 mais offline/retry/fallback; duração nativa 400/120 ms,
+  feedback 20,4–85 ms e CLS local zero. Cinco testes novos; check 910 arquivos,
+  typecheck 16/16, boundaries 852, testes 632 app/17 domínio/9 API e 32 scripts
+  aprovados/1 ignorado, build 8/8, performance/diff passaram. Calendário
+  223,7 KiB/18 chunks; Planejamento 224,5 KiB/17 (teto 225 KiB). Logs em
+  `output/gestao-shell-entry/`; JSON/capturas em `shell-entry/`. Comparação de
+  15/17 registra divergências, sem aceite. Ensaio de título após espera >4 s
+  permanece pendente. Build com NODE_ENV não definido no orquestrador e flags
+  QA desligadas; Next gera produção, sem comprovar credenciais ou entrega.
 
 - Unidade local R1/R3: harness 12/12 combinações de largura/movimento, sem pageerror/overflow, em `output/playwright/gestao-v2/shell-navigation/`. Comparação de 30/93 realizada com diferenças registradas; nenhum quadro aceito.
 - Gates da unidade R1/R3 passaram: check 905 arquivos, typecheck 16/16, boundaries 848, testes 627 app/17 domínio/9 API e 32 scripts aprovados/1 ignorado, build 8/8, performance:check e diff. Logs em `output/gestao-shell-navigation/`. Calendário 222,7 KiB/18 chunks; Planejamento 223,5 KiB/17 (teto 225 KiB). Build com URLs locais, sem autenticação QA de desenvolvimento; não comprova Clerk/produção.

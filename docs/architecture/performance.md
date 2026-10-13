@@ -984,3 +984,16 @@ Opening a menu does not invalidate data. Route navigation uses the existing
 App Router behavior, and preserves the safe member return path. Local feedback
 is immediate; drawer motion uses opacity/transform for 200 ms with reduced
 motion supported. The shared 225 KiB route budget still applies.
+
+Environment navigation shares the persistent shell controller. Its critical
+path adds no identity/database request, persistent authorization cache or list
+query. Native View Transitions snapshot the existing DOM; no duplicate React
+tree runs effects or loads data. Only opacity/transform animate (400 ms entry,
+300 ms return, 120 ms reduced; sidebar fade 240 ms). Unsupported snapshots use
+CSS arrival. Feedback is local and does not wait for the route payload. A
+12-second watchdog releases a stalled transition and exposes retry; successful
+arrival is determined by the committed route, then the rendered heading.
+The bounded navigation has no pagination or invalidation; destination data
+keeps its existing projections, authorization and invalidation. The sanitized
+return path is browser-tab session state keyed per actor. Local feedback/CLS
+measurements are in the N2/N3 harness; they are not production percentiles.

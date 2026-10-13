@@ -33,6 +33,7 @@ export interface MemberNavigationContextValue {
   readonly displayName: string;
   readonly memberId: string;
   readonly navigate: (href: string) => void;
+  readonly navigateShell?: (href: string) => void;
   readonly onPortalReady: (
     transitionId: number,
     geometry: PortalTransitionGeometry

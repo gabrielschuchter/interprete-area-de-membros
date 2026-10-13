@@ -106,5 +106,5 @@ export const withGestaoReturnPath = (href: string, returnPath: string) => {
   const url = new URL(href, "https://gestao-route.invalid");
   const params = url.searchParams;
   params.set("from", safeGestaoReturnPath(returnPath));
-  return `${url.pathname}?${params.toString()}`;
+  return `${url.pathname}?${params.toString()}${url.hash}`;
 };

@@ -17,15 +17,20 @@
   -webkit-font-smoothing: antialiased;
   color: var(--gestao-text);
   background: var(--gestao-canvas);
-  transition:
-    opacity 160ms ease,
-    transform 160ms ease;
 }
 
-.gestao-shell[data-transition-out="true"] {
-  pointer-events: none;
-  opacity: 0;
-  transform: translateY(4px);
+.gestao-loading {
+  padding: 24px;
+}
+.gestao-loading-lines {
+  display: grid;
+  gap: 16px;
+  margin-top: 24px;
+}
+.gestao-loading-lines span {
+  height: 80px;
+  background: #e2d6d1;
+  border-radius: 8px;
 }
 
 .gestao-sidebar {

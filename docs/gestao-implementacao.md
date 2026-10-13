@@ -99,6 +99,15 @@ navega, abre menus e captura imagens; não cria fixtures nem chama mutações de
 domínio. Evidências em `output/playwright/gestao-v2/shell-navigation/`.
 Esse ensaio não prova papéis diferentes, Clerk real ou fidelidade integral.
 
+Entrada/retorno N2/N3: `node scripts/qa/gestao-shell-entry-local.mjs`, com as
+mesmas variáveis e preview visual. Valida origem com busca/fragmento, navegação
+interna sem `from`, reload, foco, anúncio, duração das animações, feedback até
+100 ms, ausência de overflow, offline/retry e fallback sem View Transitions.
+`QA_WIDTH` limita uma rodada de diagnóstico a uma largura. Evidências em
+`output/playwright/gestao-v2/shell-entry/`. A origem usa sessionStorage local
+por aba/usuário e é sanitizada ao ler/gravar; o padrão é `/estudar`. Não há
+migration. Isso não implementa fila offline de escritas ou autenticação Clerk.
+
 - Matriz completa de papéis, URLs e Server Actions dos cenários de `docs/05`
   do handoff; Clerk real, concorrência representativa e latência por percentil.
 - Fidelidade de todos os quadros, teclado completo e jornadas de aluno.

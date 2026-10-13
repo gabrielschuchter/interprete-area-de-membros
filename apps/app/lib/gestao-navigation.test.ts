@@ -44,5 +44,11 @@ describe("Gestão navigation", () => {
     expect(
       withGestaoReturnPath("/gestao/alunos?aba=turmas", "//evil.example")
     ).toBe("/gestao/alunos?aba=turmas&from=%2Festudar");
+    expect(
+      withGestaoReturnPath(
+        "/gestao/alunos#lista",
+        "/biblioteca?q=leitura#retomar"
+      )
+    ).toBe("/gestao/alunos?from=%2Fbiblioteca%3Fq%3Dleitura%23retomar#lista");
   });
 });
