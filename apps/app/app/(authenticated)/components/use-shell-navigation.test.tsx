@@ -45,6 +45,8 @@ describe("Gestão environment navigation", () => {
   });
   afterEach(() => {
     cleanup();
+    document.getElementById("gestao-main-content")?.remove();
+    document.querySelector("[data-shell-test-dialog]")?.remove();
     vi.useRealTimers();
     delete document.documentElement.dataset.shellFallback;
   });
@@ -113,12 +115,14 @@ describe("Gestão environment navigation", () => {
     expect(screen.getByText("Verificando seu acesso…")).toBeTruthy();
   });
 
-  it("waits for the rendered title after shell commit, then focuses and announces", async () => {
+  it("focuses and announces a title rendered after the four-second arrival notice", async () => {
     const view = render(<Harness />);
     fireEvent.click(screen.getByText("Entrar"));
     route.pathname = "/gestao";
     view.rerender(<Harness />);
     expect(screen.queryByText("Verificando seu acesso…")).toBeNull();
+    act(() => vi.advanceTimersByTime(6000));
+    expect(document.querySelector(".shell-mobile-arrival")).toBeNull();
     const main = document.createElement("main");
     main.id = "gestao-main-content";
     main.innerHTML = "<h1>Visão geral</h1>";
@@ -130,5 +134,52 @@ describe("Gestão environment navigation", () => {
     expect(document.activeElement).toBe(main.querySelector("h1"));
     expect(screen.getByText("Você está na Gestão")).toBeTruthy();
     main.remove();
+  });
+
+  it("waits for an open dialog to close before focusing the late title", async () => {
+    const view = render(<Harness />);
+    const dialog = document.createElement("div");
+    dialog.setAttribute("role", "dialog");
+    dialog.dataset.state = "open";
+    dialog.dataset.shellTestDialog = "";
+    dialog.innerHTML = "<button>Fechar</button>";
+    document.body.append(dialog);
+    dialog.querySelector("button")?.focus();
+    route.pathname = "/gestao";
+    view.rerender(<Harness />);
+    act(() => vi.advanceTimersByTime(6000));
+    const main = document.createElement("main");
+    main.id = "gestao-main-content";
+    main.innerHTML = "<h1>Visão geral</h1>";
+    await act(async () => {
+      document.body.append(main);
+      await Promise.resolve();
+    });
+    expect(document.activeElement).toBe(dialog.querySelector("button"));
+    expect(screen.queryByText("Você está na Gestão")).toBeNull();
+    await act(async () => {
+      dialog.dataset.state = "closed";
+      await Promise.resolve();
+    });
+    expect(document.activeElement).toBe(main.querySelector("h1"));
+    expect(screen.getByText("Você está na Gestão")).toBeTruthy();
+  });
+
+  it("cancels a pending focus when navigation leaves that destination", async () => {
+    const view = render(<Harness />);
+    route.pathname = "/gestao";
+    view.rerender(<Harness />);
+    act(() => vi.advanceTimersByTime(6000));
+    route.pathname = "/gestao/alunos/turmas";
+    view.rerender(<Harness />);
+    const main = document.createElement("main");
+    main.id = "gestao-main-content";
+    main.innerHTML = "<h1>Turmas</h1>";
+    await act(async () => {
+      document.body.append(main);
+      await Promise.resolve();
+    });
+    expect(document.activeElement).not.toBe(main.querySelector("h1"));
+    expect(screen.queryByText("Você está na Gestão")).toBeNull();
   });
 });

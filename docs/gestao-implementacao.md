@@ -141,3 +141,11 @@ pendente e o registro. Não chama review(false), pois essa ação legada exclui.
 As fixtures student_02/03 já possuem preferências e timer encerrado desta
 validação; selecione outro aluno existente sem linha para novo ensaio inicial.
 Evidências em `output/playwright/gestao-v2/timer-preferences`.
+
+Para ensaiar foco/anúncio com h1 tardio, usar `QA_DELAY_TITLE=true` no
+harness shell-entry. A captura fica em `shell-entry-delayed` e retém o título
+real por 6 s via instrumentação do DOM no navegador; o código de produto e
+as respostas não são alterados. Não usar o CLS dessa instrumentação como
+métrica da rota. Sem a variável, roda a regressão normal. O pedido de foco
+agora sobrevive ao aviso de 4 s e cancela ao sair da rota, sem capturar foco
+de um diálogo aberto. Leitor de tela/rede lenta reais continuam pendentes.

@@ -30,6 +30,10 @@ export const useShellNavigation = () => {
   const router = useRouter();
   const previous = useRef(pathname);
   const pending = useRef<PendingNavigation | null>(null);
+  const focusRequest = useRef<{
+    readonly pathname: string;
+    readonly direction: "enter" | "return";
+  } | null>(null);
   const returnTo = useRef("/estudar");
   const sequence = useRef(0);
   const [destination, setDestination] = useState<string | null>(null);
@@ -146,30 +150,35 @@ export const useShellNavigation = () => {
     }
     setDestination(null);
     setFailure(null);
-    setArrival(isGestaoShellPath(pathname) ? "enter" : "return");
+    const direction = isGestaoShellPath(pathname) ? "enter" : "return";
+    focusRequest.current = { pathname, direction };
+    setArrival(direction);
   }, [pathname]);
 
   useEffect(() => {
-    if (!arrival) {
+    const request = focusRequest.current;
+    if (!request || request.pathname !== pathname) {
       return;
     }
-    const root = document.documentElement;
-    root.dataset.shellArrival = arrival;
     const mainId =
-      arrival === "enter" ? "gestao-main-content" : "member-main-content";
+      request.direction === "enter"
+        ? "gestao-main-content"
+        : "member-main-content";
     const focus = () => {
       const main = document.getElementById(mainId);
       const heading = main?.querySelector<HTMLElement>("h1");
-      if (!heading) {
+      if (
+        !heading ||
+        document.querySelector('[role="dialog"][data-state="open"]')
+      ) {
         return false;
       }
       // A first-visit welcome dialog owns focus until it is dismissed.
-      if (!document.querySelector('[role="dialog"][data-state="open"]')) {
-        heading.setAttribute("tabindex", "-1");
-        heading.focus({ preventScroll: true });
-      }
+      heading.setAttribute("tabindex", "-1");
+      heading.focus({ preventScroll: true });
+      focusRequest.current = null;
       setAnnouncement(
-        arrival === "enter"
+        request.direction === "enter"
           ? "Você está na Gestão"
           : "Você voltou à área de membros"
       );
@@ -181,16 +190,33 @@ export const useShellNavigation = () => {
       }
     });
     if (!focus()) {
-      observer.observe(document.body, { childList: true, subtree: true });
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ["data-state"],
+      });
     }
-    const timer = setTimeout(() => {
+    return () => {
       observer.disconnect();
+      if (focusRequest.current === request) {
+        focusRequest.current = null;
+      }
+    };
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!arrival) {
+      return;
+    }
+    const root = document.documentElement;
+    root.dataset.shellArrival = arrival;
+    const timer = setTimeout(() => {
       delete root.dataset.shellArrival;
       delete root.dataset.shellFallback;
       setArrival(null);
     }, 4000);
     return () => {
-      observer.disconnect();
       clearTimeout(timer);
       delete root.dataset.shellArrival;
       delete root.dataset.shellFallback;

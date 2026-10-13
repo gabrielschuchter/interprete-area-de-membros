@@ -445,3 +445,9 @@ on a server request.
   collision without a new client request or dependency. Settings remain user
   scoped and uncached; explicit Start uses insert-or-ignore. Local concurrent
   runtime evidence is recorded in PROGRESS; no new visual frame is accepted.
+
+- Arrival notice duration does not limit destination focus. The observer waits
+  for a late heading and an open dialog to release focus, then disconnects;
+  route changes/unmount cancel stale requests. A controlled six-second heading
+  delay passed all six widths/two motion modes. This is rendering-fixture
+  evidence, not real slow-network or screen-reader/device acceptance.

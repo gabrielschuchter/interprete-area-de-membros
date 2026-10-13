@@ -1016,3 +1016,10 @@ than a check-then-insert race. Saved settings remain untouched. No pagination,
 index, pool, schema or invalidation change is added. Local 8-request bursts
 prove the tested startup race, not representative production percentiles.
 Legacy expired-session finalization remains outside this preferences fix.
+
+Destination-heading focus is independent from the four-second arrival notice.
+A request-scoped-to-route ref and DOM observer wait for the heading and modal
+release; observer cleanup cancels stale focus when pathname changes or the
+controller unmounts. It disconnects after focusing, with preventScroll. This
+adds no network call or data cache. Controlled six-second heading delay proves
+focus behavior; its artificial layout shift is not real-route CLS evidence.

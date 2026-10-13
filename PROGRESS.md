@@ -710,3 +710,59 @@ inspecionado, layout da visão geral mantém as divergências já registradas.
 Preview admin visual reaberto. Critério da dependência cumprido; quadro/fase
 não promovidos. Identificar por fix(timer): avoid provisioning preferences
 during reads. Próximo: foco/anúncio do título tardio na entrada N2/N3.
+
+### Unidade em execução — Fase 1, N2/N3: título após o aviso de chegada
+
+Requisito: foco/anúncio da entrada quando o h1 só chega depois de 4 s. O
+observer atual é desconectado pelo mesmo timer do aviso, perdendo foco/anúncio.
+Arquivos: use-shell-navigation.tsx/test e harness shell-entry. Critério:
+regressão com título após 6 s, não roubar foco de diálogo aberto e cancelar
+observer ao sair da rota; ensaio no controlador real com atraso controlado
+do título, além de entrada/retorno normal; seis larguras/dois movimentos,
+gates e orçamento existente. Distinguir atraso controlado do DOM de prova de
+latência de servidor/rede. Sem dados, consulta, migration ou novo catálogo.
+Evidência reutilizável: N2/N3 normal passou 12 combinações; resta ensaio >4 s.
+
+### Resultado N2/N3: título tardio — 13/10/2026
+
+Separado o ciclo do aviso (4 s) do ciclo de foco/anúncio. O pedido de foco
+agora pertence à rota de destino; observa até existir o h1 sem diálogo aberto,
+e é cancelado ao sair dessa rota/unmount. Observer filtra atributos data-state
+para perceber o fechamento do diálogo, e desconecta após cumprir o foco.
+Não há consulta, cache de autorização, árvore duplicada ou novo timer de rede.
+Revisão solo com vercel:react-best-practices focou cleanup, estado/ref por
+instância, efeitos e acesso ao DOM; sem delegação.
+
+Sete testes focados passam: o teste do título agora avança 6 s antes de
+renderizar; dois novos cobrem diálogo aberto e cancelamento na navegação.
+Harness shell-entry ganhou QA_DELAY_TITLE=true: retém o h1 real antes de
+anexar ao DOM e o repõe após 6 s; a mesma árvore e navegação reais continuam.
+Isso é atraso controlado de renderização, não medição de servidor/rede.
+Passaram 12/12 combinações atrasadas, mais fallback/offline/retorno, em
+116,5 s. Título voltou após 6000,25–6016,66 ms, aviso já ausente, foco/anúncio
+corretos; feedback 13,91–37,55 ms. Capturas/JSON em
+output/playwright/gestao-v2/shell-entry-delayed; log browser-delayed em
+output/gestao-shell-late-title. A retirada artificial do título desloca layout
+(CLS 0,016–0,04), então essa rodada não prova CLS da rota real.
+
+Rodada normal atual também passou 12/12 e fallback/offline/reload/retorno,
+13 subtestes/50,1 s; JSON/capturas em shell-entry, log browser-normal. Capturas
+mantêm o visual anterior, com divergências já registradas; nenhum quadro foi
+aceito. O ensaio passou a nomear cada largura/movimento; mover somente os
+loops não bastou para o limite de complexidade, e setup/asserts do atraso
+foram extraídos para helpers de teste sem remover verificações.
+
+Gates em execução. O critério de foco tardio foi cumprido no atraso controlado;
+leitor de tela/dispositivo real, cronologia integral/stagger e fidelidade de
+N2 continuam pendentes. Próximo depois dos gates: shell/topbar da Fase 1 e
+visão geral com dados autorizados conforme quadros 23/24/25.
+
+Gates finais N2/N3 tardio: check 917 arquivos, typecheck 16/16, boundaries
+857, 662 app/17 domínio/9 API e 32 scripts aprovados/1 ignorado, build 8/8,
+performance:check/diff. Calendário 223,8 KiB/18 chunks, Planejamento 224,5
+KiB/17 e Ferramentas 222,9 KiB/17 (teto 225). Rodada normal: feedback
+13,77–38,82 ms e CLS zero; são números locais de uma rodada, não percentis.
+Preview visual reaberto. Identificar por fix(gestao): retain destination focus
+after arrival notice. Próxima unidade executável: shell/topbar e visão geral
+23/24/25; professor ainda exibe placeholder mesmo com turmas atribuídas.
+39 em andamento/62 pendentes/0 aceitos permanecem, Fase 1 aberta.

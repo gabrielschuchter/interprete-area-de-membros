@@ -16,7 +16,7 @@
 
 | Área | Evidência inspecionada | O que não está concluído |
 |---|---|---|
-| Shell e entrada | R1/R3 e N2/N3; N1 com quatro atores, HTTP 403, ausência dos payloads conferidos, sem ciclo e login com destino; 36 capturas restritas. Colisão de PlannerPreferences corrigida: 40 GETs concorrentes sem provisionar, dois Starts 200/409, browser com timer 200 e preferências salvas inalteradas | Comparação integral 13–30, stagger/timing integral, título após espera >4 s, restante do teclado, leitor de tela e Clerk reais; matriz de todas as ações e ciclo legado de timer expirado ainda pendentes |
+| Shell e entrada | R1/R3 e N2/N3; N1 com quatro atores, HTTP 403, ausência dos payloads conferidos, sem ciclo e login com destino; 36 capturas restritas. Preferências do timer sem provisionar no GET. Foco/anúncio após título retido 6 s passou em 12 combinações, além de 12 normais; diálogo e cancelamento cobertos | Comparação integral 13–30, visão geral de professor ainda placeholder, shell/topbar divergente, stagger/timing integral, restante do teclado, leitor de tela e Clerk reais; matriz de todas as ações, rede lenta real e ciclo legado de timer expirado ainda pendentes |
 | Turmas | Páginas próprias, matrículas, atribuição de aluno sem turma, fixtures persistentes | T1–T8 completos no navegador; importação/movimentação/duplicação e isolamento de todos os perfis não têm aceite conjunto |
 | Calendário | Quatro fontes, camadas, recorrência/exceções, cópia, ICS revogável; QA local anterior de persistência/revogação | Menu do dia só tem encontro/evento; prazo/liberação pelo menu faltam; fidelidade, calendário do aluno e matriz completa não aceitos |
 | Novo encontro pelo dia | Publicado e rascunho criados pela UI, reload e leitura SQL confirmaram persistência/vínculo; rascunho tracejado; 14 testes focados | C1/C2 completos ainda precisam de navegação como aluno, demais papéis, edição completa e comparação visual |
@@ -57,6 +57,17 @@ que já têm evidência e sem chamar gates verdes de conclusão do produto.**
 
 ## Qualidade e capturas
 
+- N2/N3 título tardio: sete testes focados (dois novos), 12/12 atrasados e
+  12/12 normais, mais offline/fallback/retorno. Retenção do DOM por 6 s é
+  controlada; não comprova rede lenta real. Foco respeita diálogo e cancela
+  na troca de rota. Feedback normal 13,77–38,82 ms, CLS normal zero; CLS
+  artificial da rodada atrasada não é métrica da rota. Gates: check 917,
+  typecheck 16/16, boundaries 857, 662 app/17 domínio/9 API e 32 scripts
+  aprovados/1 ignorado; build 8/8, performance/diff. Calendário 223,8 KiB,
+  Planejamento 224,5 KiB, Ferramentas 222,9 KiB. Logs em
+  `output/gestao-shell-late-title`; capturas/JSON em `shell-entry-delayed`
+  e `shell-entry`. Nenhum quadro/fase aceito; preview admin visual ativo.
+
 - Dependência de entrada/cronômetro: dois testes novos, 40 GETs reais e um
   início concorrente 200/409; zero linhas de preferências após os GETs, uma
   após Start e zero timers ativos após Stop. Registros de student_02/03
@@ -86,8 +97,8 @@ que já têm evidência e sem chamar gates verdes de conclusão do produto.**
   aprovados/1 ignorado, build 8/8, performance/diff passaram. Calendário
   223,7 KiB/18 chunks; Planejamento 224,5 KiB/17 (teto 225 KiB). Logs em
   `output/gestao-shell-entry/`; JSON/capturas em `shell-entry/`. Comparação de
-  15/17 registra divergências, sem aceite. Ensaio de título após espera >4 s
-  permanece pendente. Build com NODE_ENV não definido no orquestrador e flags
+  15/17 registra divergências, sem aceite. Espera >4 s agora coberta pelo
+  atraso controlado descrito acima; rede real segue pendente. Build com NODE_ENV não definido no orquestrador e flags
   QA desligadas; Next gera produção, sem comprovar credenciais ou entrega.
 
 - Unidade local R1/R3: harness 12/12 combinações de largura/movimento, sem pageerror/overflow, em `output/playwright/gestao-v2/shell-navigation/`. Comparação de 30/93 realizada com diferenças registradas; nenhum quadro aceito.

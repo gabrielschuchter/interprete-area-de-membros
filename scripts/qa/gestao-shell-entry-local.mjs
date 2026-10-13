@@ -12,7 +12,10 @@ const { chromium } = await import(
 );
 const base = new URL(process.env.QA_BASE_URL ?? "http://localhost:3000");
 assert(["localhost", "127.0.0.1"].includes(base.hostname), "Local QA only");
-const output = resolve("output/playwright/gestao-v2/shell-entry");
+const delayedTitle = process.env.QA_DELAY_TITLE === "true";
+const output = resolve(
+  `output/playwright/gestao-v2/${delayedTitle ? "shell-entry-delayed" : "shell-entry"}`
+);
 const origin = "/biblioteca?q=leitura#retomar";
 const cohortHeading = /Mentoria/;
 const openMemberMenu = async (page) => {
@@ -49,6 +52,71 @@ const assertNoOverflow = async (page) =>
     "No horizontal overflow"
   );
 
+// Controlled rendering fixture, not a server/network latency measurement.
+// Hold the real heading before React attaches it; restore that same node after
+// the notice expires. No product code, data, response or timing budget is mocked.
+const holdOverviewTitle = (page) =>
+  page.evaluate(() => {
+    const prototype = Node.prototype;
+    const append = prototype.appendChild;
+    const insert = prototype.insertBefore;
+    let held = false;
+    const hold = (node) => {
+      if (held || !(node instanceof Element)) {
+        return node;
+      }
+      const heading = node.matches("h1") ? node : node.querySelector("h1");
+      if (heading?.textContent?.trim() !== "Visão geral") {
+        return node;
+      }
+      held = true;
+      prototype.appendChild = append;
+      prototype.insertBefore = insert;
+      const marker = document.createComment("QA controlled late title");
+      window.shellDelayedTitle = { heldAt: performance.now() };
+      if (heading !== node) {
+        heading.replaceWith(marker);
+      }
+      setTimeout(() => {
+        window.shellDelayedTitle.restoredAt = performance.now();
+        window.shellDelayedTitle.noticePresentAtRestore = Boolean(
+          document.querySelector(".shell-mobile-arrival")
+        );
+        marker.replaceWith(heading);
+      }, 6000);
+      return heading === node ? marker : node;
+    };
+    prototype.appendChild = function (node) {
+      const next = hold(node);
+      append.call(this, next);
+      return node;
+    };
+    prototype.insertBefore = function (node, before) {
+      const next = hold(node);
+      insert.call(this, next, before);
+      return node;
+    };
+  });
+
+const prepareTitle = (page) =>
+  delayedTitle ? holdOverviewTitle(page) : undefined;
+const verifyTitleDelay = (page, timing) => {
+  if (!delayedTitle) {
+    return;
+  }
+  return test("title restores after the arrival notice expires", async () => {
+    timing.controlledTitleDelay = await page.evaluate(
+      () => window.shellDelayedTitle
+    );
+    assert(
+      timing.controlledTitleDelay.restoredAt -
+        timing.controlledTitleDelay.heldAt >=
+        6000
+    );
+    assert.equal(timing.controlledTitleDelay.noticePresentAtRestore, false);
+  });
+};
+
 await test("N2/N3: entry, source session, reload, return, offline and fallback", async () => {
   await mkdir(output, { recursive: true });
   const browser = await chromium.launch();
@@ -59,236 +127,247 @@ await test("N2/N3: entry, source session, reload, return, offline and fallback",
       ? [Number(process.env.QA_WIDTH)]
       : [1440, 1280, 1024, 820, 390, 320]) {
       for (const reducedMotion of ["no-preference", "reduce"]) {
-        const context = await browser.newContext({
-          viewport: { width, height: 900 },
-          reducedMotion,
-        });
-        await context.addInitScript(() => {
-          localStorage.setItem(
-            "interprete:gestao:welcome:v1:gestao_qa_visual_admin",
-            "seen"
+        await test(`N2/N3 ${width}px ${reducedMotion}`, async () => {
+          const context = await browser.newContext({
+            viewport: { width, height: 900 },
+            reducedMotion,
+          });
+          await context.addInitScript(() => {
+            localStorage.setItem(
+              "interprete:gestao:welcome:v1:gestao_qa_visual_admin",
+              "seen"
+            );
+          });
+          const page = await context.newPage();
+          page.setDefaultTimeout(15_000);
+          page.on("close", () =>
+            process.stdout.write(`Finished ${width}/${reducedMotion}\n`)
           );
-        });
-        const page = await context.newPage();
-        page.setDefaultTimeout(15_000);
-        page.on("close", () =>
-          process.stdout.write(`Finished ${width}/${reducedMotion}\n`)
-        );
-        page.on("pageerror", (error) => errors.push(error.message));
-        await page.goto(new URL(origin, base).href);
-        await page
-          .getByRole("heading", { name: "Biblioteca Interprete." })
-          .waitFor();
-        // The member sidebar settles its media-query mode after hydration.
-        if (width < 768) {
+          page.on("pageerror", (error) => errors.push(error.message));
+          await page.goto(new URL(origin, base).href);
           await page
-            .locator(".member-area-sidebar")
-            .waitFor({ state: "detached" });
-        } else if (width < 1024) {
-          await page
-            .locator('.member-area-sidebar[aria-hidden="true"]')
+            .getByRole("heading", { name: "Biblioteca Interprete." })
             .waitFor();
-        }
-        const entry = await openMemberMenu(page);
-        await page.evaluate(() => {
-          window.shellEntryEvents = [];
-          for (const name of ["keydown", "click", "focusin"]) {
-            document.addEventListener(
-              name,
-              (event) =>
-                window.shellEntryEvents.push({
-                  name,
-                  tag: event.target?.tagName,
-                  href: event.target?.closest?.("a")?.getAttribute("href"),
-                  label: event.target?.getAttribute?.("aria-label"),
-                }),
-              true
-            );
+          // The member sidebar settles its media-query mode after hydration.
+          if (width < 768) {
+            await page
+              .locator(".member-area-sidebar")
+              .waitFor({ state: "detached" });
+          } else if (width < 1024) {
+            await page
+              .locator('.member-area-sidebar[aria-hidden="true"]')
+              .waitFor();
           }
-          window.shellEntryTiming = { start: null, feedbackMs: null, cls: 0 };
-          const nativeTransition = document.startViewTransition.bind(document);
-          document.startViewTransition = (update) => {
-            const transition = nativeTransition(update);
-            transition.ready
-              .then(() => {
-                window.shellEntryTiming.animationDuration = getComputedStyle(
-                  document.documentElement,
-                  "::view-transition-new(main-content)"
-                ).animationDuration;
-              })
-              .catch((error) => {
-                window.shellEntryTiming.snapshotSkipped = error.name;
-              });
-            return transition;
-          };
-          document.addEventListener(
-            "keydown",
-            (event) => {
-              if (event.key === "Enter") {
-                window.shellEntryTiming.start = performance.now();
-              }
-            },
-            { once: true }
-          );
-          const observer = new MutationObserver(() => {
-            if (
-              document.querySelector("output.shell-navigation-feedback") &&
-              window.shellEntryTiming.start !== null
-            ) {
-              window.shellEntryTiming.feedbackMs =
-                performance.now() - window.shellEntryTiming.start;
-              observer.disconnect();
+          const entry = await openMemberMenu(page);
+          await page.evaluate(() => {
+            window.shellEntryEvents = [];
+            for (const name of ["keydown", "click", "focusin"]) {
+              document.addEventListener(
+                name,
+                (event) =>
+                  window.shellEntryEvents.push({
+                    name,
+                    tag: event.target?.tagName,
+                    href: event.target?.closest?.("a")?.getAttribute("href"),
+                    label: event.target?.getAttribute?.("aria-label"),
+                  }),
+                true
+              );
             }
-          });
-          observer.observe(document.body, { subtree: true, childList: true });
-          const shifts = new PerformanceObserver((list) => {
-            for (const item of list.getEntries()) {
-              if (
-                window.shellEntryTiming.start !== null &&
-                !item.hadRecentInput
-              ) {
-                window.shellEntryTiming.cls += item.value;
-              }
-            }
-          });
-          shifts.observe({ type: "layout-shift" });
-          window.stopShellEntryMeasurement = () => shifts.disconnect();
-        });
-        await entry.focus();
-        // Focus starts intentional prefetch; let its React commit settle before
-        // the browser synthesizes activation on the current anchor node.
-        await page.evaluate(
-          () =>
-            new Promise((resolveFrame) =>
-              requestAnimationFrame(() => requestAnimationFrame(resolveFrame))
-            )
-        );
-        assert(
-          await entry.evaluate((element) => element === document.activeElement),
-          "Entry retains keyboard focus"
-        );
-        await page.keyboard.press("Enter");
-        await page
-          .getByRole("heading", { name: "Visão geral", exact: true })
-          .waitFor()
-          .catch(async (error) => {
-            await page.screenshot({
-              path: `${output}/${width}-${reducedMotion}-failure.png`,
-            });
-            await writeFile(
-              `${output}/failure.json`,
-              JSON.stringify(
-                await page.evaluate(() => ({
-                  path: location.pathname,
-                  focused: document.activeElement?.tagName,
-                  title: document.querySelector("h1")?.textContent,
-                  status: document.querySelector(".shell-navigation-feedback")
-                    ?.textContent,
-                  dialog: !!document.querySelector('[role="dialog"]'),
-                  events: window.shellEntryEvents,
-                })),
-                null,
-                2
-              )
+            window.shellEntryTiming = { start: null, feedbackMs: null, cls: 0 };
+            const nativeTransition =
+              document.startViewTransition.bind(document);
+            document.startViewTransition = (update) => {
+              const transition = nativeTransition(update);
+              transition.ready
+                .then(() => {
+                  window.shellEntryTiming.animationDuration = getComputedStyle(
+                    document.documentElement,
+                    "::view-transition-new(main-content)"
+                  ).animationDuration;
+                })
+                .catch((error) => {
+                  window.shellEntryTiming.snapshotSkipped = error.name;
+                });
+              return transition;
+            };
+            document.addEventListener(
+              "keydown",
+              (event) => {
+                if (event.key === "Enter") {
+                  window.shellEntryTiming.start = performance.now();
+                }
+              },
+              { once: true }
             );
-            throw error;
+            const observer = new MutationObserver(() => {
+              if (
+                document.querySelector("output.shell-navigation-feedback") &&
+                window.shellEntryTiming.start !== null
+              ) {
+                window.shellEntryTiming.feedbackMs =
+                  performance.now() - window.shellEntryTiming.start;
+                observer.disconnect();
+              }
+            });
+            observer.observe(document.body, { subtree: true, childList: true });
+            const shifts = new PerformanceObserver((list) => {
+              for (const item of list.getEntries()) {
+                if (
+                  window.shellEntryTiming.start !== null &&
+                  !item.hadRecentInput
+                ) {
+                  window.shellEntryTiming.cls += item.value;
+                }
+              }
+            });
+            shifts.observe({ type: "layout-shift" });
+            window.stopShellEntryMeasurement = () => shifts.disconnect();
           });
-        await page.waitForFunction(
-          () =>
-            document.querySelector("[data-shell-announcement]")?.textContent ===
-            "Você está na Gestão"
-        );
-        assert.equal(new URL(page.url()).searchParams.get("from"), origin);
-        await page.waitForFunction(
-          () => document.activeElement?.tagName === "H1"
-        );
-        await assertNoOverflow(page);
-        await page.evaluate(async () => {
-          await Promise.all(
-            document
-              .getAnimations()
-              .filter(
-                (animation) =>
-                  animation.effect?.getTiming().iterations !==
-                  Number.POSITIVE_INFINITY
+          await entry.focus();
+          await prepareTitle(page);
+          // Focus starts intentional prefetch; let its React commit settle before
+          // the browser synthesizes activation on the current anchor node.
+          await page.evaluate(
+            () =>
+              new Promise((resolveFrame) =>
+                requestAnimationFrame(() => requestAnimationFrame(resolveFrame))
               )
-              .map((animation) => animation.finished.catch(() => undefined))
           );
-          window.stopShellEntryMeasurement();
-        });
-        const timing = await page.evaluate(() => window.shellEntryTiming);
-        assert(
-          timing.feedbackMs !== null && timing.feedbackMs <= 100,
-          `Feedback ${timing.feedbackMs} ms`
-        );
-        assert.equal(
-          timing.animationDuration,
-          reducedMotion === "reduce" ? "0.12s" : "0.4s"
-        );
-        await page.screenshot({
-          path: `${output}/${width}-${reducedMotion}-arrival.png`,
-        });
+          assert(
+            await entry.evaluate(
+              (element) => element === document.activeElement
+            ),
+            "Entry retains keyboard focus"
+          );
+          await page.keyboard.press("Enter");
+          await page
+            .getByRole("heading", { name: "Visão geral", exact: true })
+            .waitFor()
+            .catch(async (error) => {
+              await page.screenshot({
+                path: `${output}/${width}-${reducedMotion}-failure.png`,
+              });
+              await writeFile(
+                `${output}/failure.json`,
+                JSON.stringify(
+                  await page.evaluate(() => ({
+                    path: location.pathname,
+                    focused: document.activeElement?.tagName,
+                    title: document.querySelector("h1")?.textContent,
+                    status: document.querySelector(".shell-navigation-feedback")
+                      ?.textContent,
+                    dialog: !!document.querySelector('[role="dialog"]'),
+                    events: window.shellEntryEvents,
+                  })),
+                  null,
+                  2
+                )
+              );
+              throw error;
+            });
+          await page.waitForFunction(
+            () =>
+              document.querySelector("[data-shell-announcement]")
+                ?.textContent === "Você está na Gestão"
+          );
+          assert.equal(new URL(page.url()).searchParams.get("from"), origin);
+          await page.waitForFunction(
+            () => document.activeElement?.tagName === "H1"
+          );
+          await assertNoOverflow(page);
+          await page.evaluate(async () => {
+            await Promise.all(
+              document
+                .getAnimations()
+                .filter(
+                  (animation) =>
+                    animation.effect?.getTiming().iterations !==
+                    Number.POSITIVE_INFINITY
+                )
+                .map((animation) => animation.finished.catch(() => undefined))
+            );
+            window.stopShellEntryMeasurement();
+          });
+          const timing = await page.evaluate(() => window.shellEntryTiming);
+          await verifyTitleDelay(page, timing);
+          assert(
+            timing.feedbackMs !== null && timing.feedbackMs <= 100,
+            `Feedback ${timing.feedbackMs} ms`
+          );
+          assert.equal(
+            timing.animationDuration,
+            reducedMotion === "reduce" ? "0.12s" : "0.4s"
+          );
+          await page.screenshot({
+            path: `${output}/${width}-${reducedMotion}-arrival.png`,
+          });
 
-        // Navigate through the shell, then through a content link without `from`.
-        await openGestaoMenu(page, width);
-        if (width === 1024) {
-          await page
-            .getByRole("button", { name: "Abrir páginas de Alunos" })
-            .click();
-          await page
-            .getByRole("menuitem", { name: "Turmas", exact: true })
-            .click();
-        } else {
-          await page.getByRole("link", { name: "Alunos", exact: true }).click();
+          // Navigate through the shell, then through a content link without `from`.
+          await openGestaoMenu(page, width);
+          if (width === 1024) {
+            await page
+              .getByRole("button", { name: "Abrir páginas de Alunos" })
+              .click();
+            await page
+              .getByRole("menuitem", { name: "Turmas", exact: true })
+              .click();
+          } else {
+            await page
+              .getByRole("link", { name: "Alunos", exact: true })
+              .click();
+            await page
+              .getByRole("heading", { name: "Turmas", exact: true })
+              .waitFor();
+          }
           await page
             .getByRole("heading", { name: "Turmas", exact: true })
             .waitFor();
-        }
-        await page
-          .getByRole("heading", { name: "Turmas", exact: true })
-          .waitFor();
-        const detail = page
-          .locator('a[href="/gestao/alunos/turmas/cmv5no8ih0024kgyp2ew3ouke"]')
-          .first();
-        await detail.click();
-        await page.waitForURL(
-          "**/gestao/alunos/turmas/cmv5no8ih0024kgyp2ew3ouke"
-        );
-        assert.equal(new URL(page.url()).searchParams.has("from"), false);
-        await page.reload();
-        await page.getByRole("heading", { name: cohortHeading }).waitFor();
-        await openGestaoMenu(page, width);
-        const back = page.getByRole("link", {
-          name: "Voltar à área de membros",
-          exact: true,
+          const detail = page
+            .locator(
+              'a[href="/gestao/alunos/turmas/cmv5no8ih0024kgyp2ew3ouke"]'
+            )
+            .first();
+          await detail.click();
+          await page.waitForURL(
+            "**/gestao/alunos/turmas/cmv5no8ih0024kgyp2ew3ouke"
+          );
+          assert.equal(new URL(page.url()).searchParams.has("from"), false);
+          await page.reload();
+          await page.getByRole("heading", { name: cohortHeading }).waitFor();
+          await openGestaoMenu(page, width);
+          const back = page.getByRole("link", {
+            name: "Voltar à área de membros",
+            exact: true,
+          });
+          await page.waitForFunction(
+            (expected) =>
+              document
+                .querySelector(".gestao-back-link")
+                ?.getAttribute("href") === expected,
+            origin
+          );
+          assert.equal(await back.getAttribute("href"), origin);
+          await back.click();
+          await page.waitForURL(new URL(origin, base).href);
+          await page.waitForFunction(
+            () =>
+              document.querySelector("[data-shell-announcement]")
+                ?.textContent === "Você voltou à área de membros"
+          );
+          await page.waitForFunction(
+            () => document.activeElement?.tagName === "H1"
+          );
+          await assertNoOverflow(page);
+          results.push({
+            width,
+            reducedMotion,
+            sourceAfterReload: origin,
+            entryAndReturn: "PASS",
+            timing,
+          });
+          await context.close();
         });
-        await page.waitForFunction(
-          (expected) =>
-            document
-              .querySelector(".gestao-back-link")
-              ?.getAttribute("href") === expected,
-          origin
-        );
-        assert.equal(await back.getAttribute("href"), origin);
-        await back.click();
-        await page.waitForURL(new URL(origin, base).href);
-        await page.waitForFunction(
-          () =>
-            document.querySelector("[data-shell-announcement]")?.textContent ===
-            "Você voltou à área de membros"
-        );
-        await page.waitForFunction(
-          () => document.activeElement?.tagName === "H1"
-        );
-        await assertNoOverflow(page);
-        results.push({
-          width,
-          reducedMotion,
-          sourceAfterReload: origin,
-          entryAndReturn: "PASS",
-          timing,
-        });
-        await context.close();
       }
     }
     const context = await browser.newContext({

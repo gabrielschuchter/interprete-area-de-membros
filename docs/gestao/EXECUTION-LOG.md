@@ -22,6 +22,8 @@ O resumo vigente fica em `STATUS.md`. Não registrar segredos ou dados pessoais.
 
 | 13/10/2026 | Dependência N1/N2, identificar por `fix(timer): avoid provisioning preferences during reads` | GETs do timer usam padrões sem criar preferências; Start explícito provisiona sem sobrescrever | 40 GETs/zero linhas; Starts 200/409/uma linha; Stop sem apagar; dois testes novos; browser e gates completos em `output/gestao-timer-preferences` | Timers de QA de student_02/03 preservados com revisão pendente; ciclo legado de expiração fora do escopo; foco tardio e visual da Fase 1 seguem pendentes |
 
+| 13/10/2026 | N2/N3 título tardio, identificar por `fix(gestao): retain destination focus after arrival notice` | Observer de foco separado do aviso de 4 s; respeita diálogo e cancela na troca de rota | Sete testes focados; 12 combinações normais e 12 com h1 retido por 6 s; gates em `output/gestao-shell-late-title` | Atraso do DOM não é rede lenta real; visual, cronologia/stagger e demais unidades da Fase 1 continuam pendentes; próximo shell/visão geral |
+
 ## Formato das próximas entradas
 
 `Data | SHA | escopo e requisito fechado | teste/captura/log | pendências exatas`.
