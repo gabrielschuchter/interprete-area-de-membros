@@ -30,6 +30,8 @@ O resumo vigente fica em `STATUS.md`. Não registrar segredos ou dados pessoais.
 
 | 13/10/2026 | MVP/atividade, identificar por `fix(gestao): keep targeted activities private and verify MVP journey` | Corrigido fallback global; professor publica com rubrica, aluno envia, professor corrige e aluno relê notas/comentário | 8 regressões; gravações iniciais/SQL/capturas1440/390/320; retomada multipart passa com 403/sem payload/pageerrors0; check932/typecheck16/boundaries866/699app/build8/performance/diff em output/gestao-mvp-activity | 0/101 aceitos; A1/A2 integrais/Clerk/YouTube/worker/fidelidade pendentes; desvio de QA criou feedback próprio do professor2, preservado e documentado em MVP.md; próximo T2 |
 
+| 13/10/2026 | T2/goal, identificar por `fix(gestao): validate cohort membership MVP and fresh mutation roles` | Matrícula/acesso/reload/remoção; grant direto e histórico preservados; papel transacional, rótulo correto, keys únicas e quebra mobile | 8 regressões,707app e gates completos; browser-settled1/1/106s, URL403/ação alheia sem escrita; logs output/gestao-mvp-t2 | 0/101 aceitos; turma nova com três vínculos REMOVED/grant12 preservados; Clerk real/matriz integral/30dias pendentes; próximo A2 |
+
 ## Formato das próximas entradas
 
 `Data | SHA | escopo e requisito fechado | teste/captura/log | pendências exatas`.

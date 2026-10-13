@@ -39,6 +39,11 @@ interface TargetCohort {
 }
 
 const whitespacePattern = /\s+/u;
+const completedActionLabels = {
+  add: "adicionados",
+  move: "movidos",
+  remove: "removidos",
+} as const;
 const initials = (name: string | null) =>
   name
     ?.trim()
@@ -334,6 +339,9 @@ export const CohortRosterManager = ({
     null
   );
   const [message, setMessage] = useState<CohortActionResult | null>(null);
+  const [completedAction, setCompletedAction] = useState<
+    "add" | "move" | "remove"
+  >("add");
   const [pending, startTransition] = useTransition();
   const addKey = useRef("");
   const addSelected = (event: FormEvent<HTMLFormElement>) => {
@@ -351,6 +359,7 @@ export const CohortRosterManager = ({
         idempotencyKey: addKey.current,
       });
       setMessage(result);
+      setCompletedAction("add");
       if (result.ok) {
         setSelectedAddable([]);
         addKey.current = "";
@@ -398,6 +407,7 @@ export const CohortRosterManager = ({
               idempotencyKey: key,
             });
       setMessage(result);
+      setCompletedAction(action);
       setConfirmAction(null);
       if (result.ok) {
         setSelected([]);
@@ -450,7 +460,7 @@ export const CohortRosterManager = ({
         {message?.ok === true ? (
           <output className="gt-success-message">
             {message.invitedCount !== undefined
-              ? `${message.invitedCount} aluno(s) adicionados.`
+              ? `${message.invitedCount} aluno(s) ${completedActionLabels[completedAction]}.`
               : "Alteração salva."}
           </output>
         ) : null}

@@ -469,3 +469,8 @@ on a server request.
   isolation adds no client code or motion. Smoke targets desktop 1440 and
   mobile 390/320 with a real local text submission and persisted rubric scores;
   this does not accept complete responsive/visual matrices or all controls.
+
+- Roster completion labels reflect the persisted add/move/remove operation.
+  Existing pending transitions acknowledge submit locally; no optimistic
+  membership or new client request/cache is added. T2 uses existing forms and
+  confirmations; full visual/accessibility acceptance remains separate.

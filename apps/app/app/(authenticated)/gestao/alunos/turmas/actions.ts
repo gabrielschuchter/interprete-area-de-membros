@@ -202,6 +202,20 @@ const requireCohort = async (
   actor: { role: GestaoRole; userId: string },
   cohortId: string
 ) => {
+  const currentActor = await tx.member.findUnique({
+    where: { id: actor.userId },
+    select: { role: true, deactivatedAt: true },
+  });
+  if (
+    !currentActor ||
+    currentActor.deactivatedAt ||
+    currentActor.role !== actor.role
+  ) {
+    throw new MutationFailure(
+      "forbidden",
+      "Sua permissão mudou. Atualize a página."
+    );
+  }
   const cohort = await tx.cohort.findFirst({
     where: {
       id: cohortId,

@@ -20,6 +20,12 @@ encerrar o visual do Main para verificar a jornada seguinte. Gates verdes,
 capturas e MVP local não promovem fases nem quadros sem seus critérios originais.
 Continuam proibidos banco remoto/Production, push, merge, deploy e exclusão.
 
+Goal solicitado em 13/10: fechar T2 do MVP com matrícula/acesso/reload e
+remoção/revogação da origem da turma, preservando concessão direta e histórico;
+negação real fora do perfil, smoke1440/390/320, gates, documentação e commit.
+Estado/evidência dessa unidade em `docs/gestao/STATUS.md` e final de PROGRESS.
+O goal não concede aceite visual nem altera os limites locais acima.
+
 Entregar a **Gestão** descrita no handoff, **funcionando de verdade e visualmente idêntica aos quadros**, sem ajuda humana. O resultado final será avaliado como se fosse produto: não basta existir a tela; cada botão, filtro, regra de turma, envio, calendário, vídeo do YouTube, medalha e permissão precisa funcionar.
 
 **Quem executa é você, sozinho.** Ninguém responde perguntas durante a execução. Você mesmo decide, contorna e verifica.

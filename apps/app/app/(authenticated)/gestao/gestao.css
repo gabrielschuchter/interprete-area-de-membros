@@ -2672,6 +2672,9 @@
   color: var(--gestao-action);
 }
 @media (max-width: 43rem) {
+  .gt-lesson-release-panel .gt-panel-heading {
+    flex-wrap: wrap;
+  }
   .gt-lesson-release-row {
     grid-template-columns: minmax(0, 1fr);
     align-items: stretch;

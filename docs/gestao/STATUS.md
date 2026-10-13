@@ -32,7 +32,7 @@ Limites mantidos: somente local, sem push/merge/deploy/banco remoto/exclusão.
 | Área | Evidência inspecionada | O que não está concluído |
 |---|---|---|
 | Shell e entrada | R1/R3, N2/N3 e N1 locais; HTTP 403 e ausência de payload; timer sem provisionar preferências no GET; foco tardio por 6 s. Main conta feedback e números semanais reais com filtro de turma; abre a fila correspondente | Comparação integral 13–30; Main ainda sem outras categorias de atenção, próximos encontros, movimentação, Institucional e atalhos/prévia; shell/topbar divergente, stagger/timing integral, restante do teclado, leitor de tela, Clerk reais, matriz de todas as ações e rede lenta real pendentes |
-| Turmas | Páginas próprias, matrículas, atribuição de aluno sem turma, fixtures persistentes | T1–T8 completos no navegador; importação/movimentação/duplicação e isolamento de todos os perfis não têm aceite conjunto |
+| Turmas | T2 funcional local: criar turma/curso, matricular três alunos, acesso/reload, remover, revogar só origem da turma, preservar grant direto e histórico; URL alheia403 e ação alheia recusada | T1–T8 completos, concessão temporária, CSV/movimentação/duplicação e matriz integral não têm aceite conjunto |
 | Calendário | Quatro fontes, camadas, recorrência/exceções, cópia, ICS revogável; QA local anterior de persistência/revogação | Menu do dia só tem encontro/evento; prazo/liberação pelo menu faltam; fidelidade, calendário do aluno e matriz completa não aceitos |
 | Novo encontro pelo dia | Publicado e rascunho criados pela UI, reload e leitura SQL confirmaram persistência/vínculo; rascunho tracejado; 14 testes focados | C1/C2 completos ainda precisam de navegação como aluno, demais papéis, edição completa e comparação visual |
 | Acesso a encontros | Commit `02fa927`; publicação/atribuição e FROM_JOIN, histórico ALL_ACTIVE, convite individual; URLs locais de aluno verificadas | Política integrada de todas as fontes e ICS do aluno não têm aceite completo |
@@ -71,6 +71,29 @@ que já têm evidência e sem chamar gates verdes de conclusão do produto.**
 - `pg_hba.conf` recebeu regras temporárias `hostssl/trust` só para os dois bancos QA, usuário postgres e loopback. Ao **encerrar** o preview, restaurar `%TEMP%\interprete-gestao-qa-20261012\pg_hba.before-live-preview-20261012.conf` sobre `postgres-data\pg_hba.conf` e executar `pg_ctl reload` no data-dir correto. Procedimento em `DECISIONS.md`.
 
 ## Qualidade e capturas
+
+- T2/goal local: turma nova `cmv6vx0ga000048ypclxtji6x` criada por professor1,
+  curso publicado vinculado, alunos04/11/12 matriculados/removidos pela UI e
+  relidos após reload. Aluno11 ganha e perde acesso somente pela turma;12
+  mantém grant DIRECT criado pelo admin. Histórico04 e grant12 idênticos.
+  Professor2 recebe URL403; Server Action válida adulterada no POST retorna
+  not-found sem escrita (HTTP200 é envelope de erro tipado, não sucesso).
+  `browser-settled` passou1/1 em106s, errors=[]; capturas1440/390/320 e logs
+  em `output/playwright/gestao-v2/mvp-t2` / `output/gestao-mvp-t2`.
+  Oito regressões do guard transacional passaram; papel/ativação frescos antes
+  de lookup/replay. Corrigidos rótulo de remoção e keys duplicadas no cronograma.
+  Smoke adicional achou cabeçalho de aulas transbordando329px em320; flex-wrap
+  mobile específico aplicado, sem esconder o overflow global. Gates de código:
+  check934, typecheck16/16, boundaries867,707app/17domínio/9API,
+  32scripts aprovados/1ignorado,build8/8/performance/diff. Main214,6KiB,
+  Calendário223,8KiB,Planejamento224,5KiB (teto225). Logs finais build-closed.
+  Fixtures novas preservadas: turma ativa/vazia, curso vinculado, três
+  memberships REMOVED e grant DIRECT12. Sem exclusão/migration/remoto.
+  Clerk real, matriz integral e concessão30dias não são prova desta unidade;
+  nenhum quadro/fase promovido. Próximo A2 privado/retomada/próxima entrega.
+  Fechamento pós-ajuste: `browser-closed`1/1/73s,errors=[], cronograma/roster
+  1440/390/320 sem overflow; audit.json confirma histórico/grant e matrícula
+  original04 preservados. Preview admin visual/Main renderizado restaurados.
 
 - Jornada MVP/atividade com rubrica: turma funcional existente, professor 1
   criou rascunho/publicou pela UI, student_04 enviou texto, professor gravou
@@ -184,6 +207,6 @@ que já têm evidência e sem chamar gates verdes de conclusão do produto.**
 
 1. Ler `HANDOFF-PROXIMO-CHAT.md`, este estado, `GOAL.md`, `DECISIONS.md` e o trecho relevante do diário.
 2. Escolher uma unidade vertical com critério de saída e casos de teste nomeados. Não reauditar todo o repositório a cada pequeno ajuste.
-3. Main/semana fechado em `6316cb3`; ciclo local de atividade com rubrica verificado nesta unidade. Próxima jornada: T2, matrícula/remover aluno → acesso ao conteúdo/revogação → preservar entregas e concessão direta. Reutilizar formulários/fixtures; detalhes em `MVP.md`. Aparência do quadro 41 continua no backlog.
+3. Main/semana fechado em `6316cb3`; atividade/rubrica em `9d7e48a`; T2 funcional local verificado na unidade do goal. Próxima jornada mínima: A2, rascunho privado/reload/retomada e próxima entrega na fila. Reutilizar formulários e fixtures explícitas, preservar feedback anterior. Detalhes em `MVP.md`; aparência do quadro41 continua no backlog.
 4. Atualizar este resumo, adicionar uma linha em `EXECUTION-LOG.md`, anexar a evidência e commitar. Nenhum `[x]` sem os 8 requisitos.
 5. Manter aceite integral separado do MVP. Os números de fases são os de `GOAL.md`, não os do roadmap geral 1–10.

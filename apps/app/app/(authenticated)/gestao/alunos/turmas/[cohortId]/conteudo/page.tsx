@@ -39,13 +39,13 @@ const GestaoCohortContentPage = async ({
         courses={courses}
         currentAccesses={cohort.courseAccesses}
         expectedVersion={cohort.version}
-        key={`${cohortId}:${cohort.version}`}
+        key={`courses:${cohortId}:${cohort.version}`}
       />
       <CohortLessonReleaseEditor
         archived={cohort.archivedAt !== null}
         cohortId={cohortId}
         expectedVersion={cohort.version}
-        key={`${cohortId}:${cohort.version}`}
+        key={`lessons:${cohortId}:${cohort.version}`}
         lessons={lessons}
       />
     </section>

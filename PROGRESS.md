@@ -998,3 +998,67 @@ Smoke final do preview restaurado: Main200→reload em1440/390/320, bloco
 Esta semana renderizado,overflow=false/pageErrors=[]; JSON preview-smoke.json
 em output/gestao-mvp-activity e capturas final-preview-* em mvp-activity.
 Identificar esta unidade por fix(gestao): keep targeted activities private and verify MVP journey.
+
+### Goal ativo — T2 do MVP, 13/10/2026
+
+Solicitado pelo usuário: goal criado para matrícula → conteúdo autorizado →
+remoção → revogação da origem da turma, preservando concessão direta e histórico.
+Critério: UI e SQL TLS local, URL/ação alheias negadas, reload, 1440/390/320,
+gates aplicáveis, documentação e commit. Sem promover fases/quadros ou usar
+serviços remotos. Arquivos: ações/roster existentes, content-access e harness T2.
+Fixture proposta: turma nova do professor1, curso1 já publicado, alunos11/12
+sem matrículas/grants atuais e aluno04 com histórico protegido. Admin concede
+origem direta ao12; remover os três apenas da turma nova. Não alterar turmas
+anteriores nem reenviar feedback. Lacuna: requireCohort revalida vínculo, mas
+não papel/ativação dentro da transação. Corrigir e testar revogação/replay.
+
+T2 implementado/ensaiado: guard transacional projeta papel/ativação atuais;
+mudança de papel falha fechada antes do lookup/replay. Oito testes focados
+passaram (revogação/desativação/admin rebaixado/replay/vínculo/preservação).
+Sucesso do roster agora distingue adicionar/mover/remover. Cronograma deixou
+de usar a mesma key para editores irmãos de cursos e liberações.
+
+Ensaio UI: turma adicional cmv6vx0ga000048ypclxtji6x criada por professor1,
+ALL_ACTIVE, curso1 publicado associado pela UI; admin criou um grant DIRECT
+ao12; matriculados04/11/12, ACTIVE após reload. Aluno11 sem acesso antes e
+com curso após matrícula;12 vê a união. Removidos somente os três vínculos
+da turma nova, REMOVED/leftAt/activeKey null após reload. Aluno11 passa a404
+sem payload do curso;12 mantém curso após reload. Hashes/status/notas/autoria
+do histórico04 e grant12 idênticos. Professor2 recebe403 na URL direta e
+not-found em Server Action válida com cohortId adulterado no POST serializado,
+sem alterar matrículas. browser-settled passou1/1 em106s, errors=[], capturas
+1440/390/320 em output/playwright/gestao-v2/mvp-t2. Nenhum feedback reenviado.
+
+Harness: primeira espera de URL aceitava /nova e foi corrigida; nenhuma turma
+foi criada naquela tentativa. Rodada seguinte persistiu fixtures e leu o
+skeleton cedo demais; passou a esperar título real/404 após payload completo,
+retomando registros sem reenviar as escritas. Capturas mantêm caret inicial:
+o padrão de screenshot injetava caret-color antes de hidratar, gerando aviso
+de atributo divergente. Não tratar esse aviso como bug de produto.
+
+Smoke adicional do cronograma após build encontrou overflow real em320:
+contador de aulas no cabeçalho da liberação projetava texto até329px. Ensaio
+CSS isolado comprovou scrollWidth320 com flex-wrap no cabeçalho específico.
+Aplicado só no breakpointmobile, sem esconder overflow global. Fechamento
+do build/smoke desse ajuste em curso. Não promover fase/quadro;0/101aceitos.
+
+Fechamento T2: check934/typecheck16/16/boundaries867,707app/17domínio/9API,
+32scripts aprovados/1ignorado,build8/8,performance:check/diff aprovados.
+Logs finais output/gestao-mvp-t2/check-closed.log,build-closed.log,
+performance-closed.log; typecheck-final/boundaries-final/test. Build local,
+flagsQA desligadas,URLsQA/TLS/envvalidation dispensada; sem prova externa.
+Main214,6KiB,Calendário223,8KiB,Planejamento224,5KiB,teto225KiB.
+
+browser-closed passou1/1 em73s após o último build: cronograma/roster e
+acesso negado/preservado em1440/390/320,sem overflow; errors=[] inclui
+pageerror e consoleerror exceto recursos404/403 esperados. O contador de
+aulas já cabe em320; capturas content-current/roster-removed inspecionadas.
+Audit.json guarda TLS, três membershipsREMOVED, grantDIRECT12 idêntico,
+hashes/versões/notas/autoria do histórico04 antes/depois e matrícula original04
+ACTIVE. Retomada não repete matrícula/remoção nem reenvia feedback.
+Preview admin visual restaurado,Main200comEsta semana renderizado; listener
+loopback3000 e PostgreSQL55433 permanecem ativos. Critérios locais do goal
+T2 cumpridos; registrar commit focado antes de concluir a meta. Próximo A2:
+rascunho privado/reload/retomada e próxima entrega, usando novas fixtures.
+Sem push/merge/deploy/remoto/migration/exclusão;0/101aceitos,42em andamento,
+59pendentes. Identificar por fix(gestao): validate cohort membership MVP and fresh mutation roles.

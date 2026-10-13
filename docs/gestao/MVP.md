@@ -42,7 +42,57 @@ em memória, e recusa envio sem essa alteração. A entrega protegida do Main e
 a correção nova continuam com comentário/autoria/versão exatos. Auditoria SQL
 TLS em `output/gestao-mvp-activity/preserved-fixtures-audit.json`.
 
-## Correção necessária ao MVP
+## T2 — matrícula, acesso e remoção (local)
+
+Goal solicitado em 13/10/2026: provar a jornada com persistência, isolamento
+e preservação de origens, sem esperar o aceite visual completo. Usada turma
+nova do professor1, `cmv6vx0ga000048ypclxtji6x`, com curso1 já publicado.
+
+| Caso | Evidência |
+|---|---|
+| Criar e liberar conteúdo | Turma criada na UI, ALL_ACTIVE; curso1 associado pela UI e relido no banco |
+| Matricular | Alunos04/11/12 adicionados pela UI, três memberships ACTIVE após reload |
+| Ganhar acesso | Aluno11 sem acesso antes, curso visível depois da matrícula e após reload |
+| União de origens | Admin concedeu acesso DIRECT independente ao12 pela UI; curso visível por ambas as origens |
+| Remover | Três matrículas da turma nova encerradas pela UI; REMOVED/leftAt/activeKey null após reload, sem exclusão |
+| Revogar só a turma | Aluno11 vê 404 sem payload do curso; aluno12 continua vendo o curso após reload |
+| Preservar histórico | Entregas/feedbacks/notas/hashes de aluno04 e grant independente de12 idênticos antes/depois |
+| Negar professor alheio | Professor2 recebe 403 na URL direta; ação válida com cohortId adulterado no POST retorna not-found sem alterar matrícula |
+| Mobile | Capturas1440/390/320 sem overflow; capturas são funcionais, não aceite de quadros |
+
+Fontes: `scripts/qa/gestao-mvp-t2-local.mjs`, logs em
+`output/gestao-mvp-t2`, JSON/capturas em `output/playwright/gestao-v2/mvp-t2`.
+A rodada `browser-resumed` criou turma/grant/matrículas; interrompeu na leitura
+prematura do skeleton. `browser-settled` passou1/1 em106s, incluindo remoção,
+acesso/revogação e ação alheia. Retomadas preservam memberships encerradas e
+não repetem as escritas concluídas. O teste espera conteúdo real/404 e mantém
+o caret nas capturas para não injetar estilos durante a hidratação.
+
+Correções concretas: papel/ativação relidos dentro da transação antes de
+lookup/replay (oito regressões); mensagem de remoção agora diz removidos;
+keys de curso/liberação no cronograma são distintas. O aviso de hidratação
+da captura anterior vinha de caret-color aplicado pelo screenshot antes de
+hidratar; não foi usado como prova de bug do produto. Clerk real, matriz
+integral, concessão temporária de30dias e mover/CSV continuam sem aceite.
+
+O smoke adicional do cronograma revelou contador de aulas transbordando até
+329px em viewport320; o cabeçalho de liberação agora permite quebra de linha
+no mobile. O ensaio CSS específico voltou a scrollWidth320 sem ocultar o
+overflow do documento. Evidência final desse ajuste registrada em STATUS.
+
+Fechamento pós-build: `browser-closed.log` passou1/1 em73s, errors=[] incluindo
+console, cronograma/roster1440/390/320 sem overflow. `audit.json` confirma
+histórico antes/depois, grant DIRECT12 e matrícula original04 ACTIVE. Gates
+completos aprovados em output/gestao-mvp-t2 (build-closed/performance-closed,
+707testesapp); preview admin visual reaberto. Critérios locais do goal T2
+cumpridos; isso não aceita a fase inteira nem os quadros correspondentes.
+
+Fixtures preservadas: turma nova ativa/vazia, vínculo do curso publicado,
+três memberships REMOVED e uma origem DIRECT ao12. Elas alteram contagens de
+QA; não apagar/resetar para restaurar os totais antigos. Turmas anteriores e
+feedbacks das unidades anteriores foram preservados.
+
+## Isolamento de atividades
 
 Atividade sem curso e com destinatários caía no fallback global. Agora lista,
 detalhe e guard de envio consultam as contagens das origens junto da projeção
@@ -54,10 +104,10 @@ quatro falharam antes da correção; oito passaram depois.
 
 ## Backlog separado
 
-- Próxima unidade MVP: adicionar/remover aluno de turma com conteúdo liberado,
-  provar acesso/revogação e preservar entregas/concessão direta (T2), reutilizando
-  formulário/fixtures existentes. Criação, CSV, movimentação e duplicação de
-  turma não estão integralmente aceitos nesta unidade.
+- T2 funcional local comprovado na unidade acima. Próxima unidade MVP: A2,
+  rascunho privado de correção → sair/reload → retomar sem expor ao aluno e
+  próxima entrega após envio, reutilizando fila e novas fixtures explícitas.
+  Criação/CSV/movimentação/duplicação de turma não recebem aceite integral.
 - A1/A2 integrais: pesos inválidos na publicação real, rascunho privado/reload,
   próxima entrega automática e notificações com worker contínuo não recebem
   aceite por esse ciclo. Outbox não equivale a entrega externa comprovada.

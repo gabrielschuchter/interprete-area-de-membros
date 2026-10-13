@@ -1056,3 +1056,13 @@ and invalidation are unchanged; the pre-existing activity catalog pagination
 gap is still backlog, not claimed resolved by this isolation fix. The local
 MVP proof covers one cohort, text submission and two rubric criteria; it does
 not establish production percentiles or representative concurrency.
+
+T2 cohort mutations now project current Member role/deactivation inside the
+serializable transaction before scoped cohort lookup and idempotency replay.
+A changed role fails closed; responsibility remains a fresh database predicate.
+This adds one small transaction-local query per cohort guard, with no Clerk
+Backend API, shared identity cache, index, pool increase or secondary job.
+Roster queries retain database pagination. Membership removal only ends the
+membership and records the existing domain event; independent grants and
+submissions remain untouched. Success labels update after the persisted result.
+Local 1440/390/320 browser checks do not establish latency percentiles.

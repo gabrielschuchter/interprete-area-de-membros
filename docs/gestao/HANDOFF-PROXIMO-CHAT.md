@@ -21,6 +21,13 @@ slug `gestao-qa-mvp-atividade-20261013`; preservá-la e retomar sem reenviar.
 Próxima unidade mínima: T2, matrícula/remover e acesso/revogação preservando
 entregas e concessões diretas. O texto histórico abaixo não redefine prioridade.
 
+Atualização da unidade do goal: T2 funcional local foi exercitado com a turma
+nova `cmv6vx0ga000048ypclxtji6x`, alunos04/11/12 e curso1. Os três vínculos
+foram encerrados e preservados;12 tem grant DIRECT independente; histórico04
+mantido. Não reabrir/resetar esses vínculos para repetir o ensaio. Ver últimos
+logs/gates em STATUS/PROGRESS e docs/gestao/MVP.md. Próxima unidade: A2,
+rascunho privado/reload/retomada e próxima entrega; não reenviar feedbacks.
+
 ## Texto para colar no próximo chat
 
 ```text
