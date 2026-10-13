@@ -22,7 +22,7 @@ Limites mantidos: somente local, sem push/merge/deploy/banco remoto/exclusão.
 - Worktree autorizado: `C:\Users\gabsc\.codex\worktrees\interprete-gestao\interprete-area-de-membros`, branch `gestao-v2`.
 - O checkout original em Documents tem trabalho alheio e não foi alterado.
 - **0/101 quadros aceitos**, 42 em andamento e 59 pendentes no inventário de `PROGRESS.md`. Main/GVisaoAdmin/GVisaoLimpa têm o primeiro trecho real de feedback/filtro, sem aceite integral.
-- Só a Fase 0 (auditoria inicial) está registrada como concluída. Fase 1 é o foco para fechar o aceite antes da Fase 2; Fases 2–5 têm trabalho parcial; Fases 6–9 estão pendentes.
+- Só a Fase 0 (auditoria inicial) está registrada como concluída. Fase 1 sem aceite; Fases 2–5 têm trabalho parcial; Fases 6–9 estão pendentes. A prioridade vigente é a jornada MVP, mantendo o aceite integral separado.
 - 53 rotas no contrato; 38 arquivos `page.tsx` na Gestão; **18 correspondências exatas** após normalizar nomes de parâmetros. Os 35 caminhos sem correspondência incluem funcionalidades parcialmente disponíveis em rotas diferentes. Esses números **não medem telas prontas**.
 - Inventário histórico da auditoria inicial: `estado-auditado-20261012.json` (31 em andamento naquele momento). A presença de arquivo não comprova funcionalidade, autorização ou fidelidade.
 - Não houve push, merge, deploy ou escrita em banco remoto nesta execução.
@@ -31,13 +31,13 @@ Limites mantidos: somente local, sem push/merge/deploy/banco remoto/exclusão.
 
 | Área | Evidência inspecionada | O que não está concluído |
 |---|---|---|
-| Shell e entrada | R1/R3, N2/N3 e N1 locais; HTTP 403 e ausência de payload; timer sem provisionar preferências no GET; foco tardio por 6 s. Main agora conta feedback com filtro de turma paginado e abre a fila correspondente; professor com vínculo deixou de receber placeholder | Comparação integral 13–30; Main ainda sem outras categorias de atenção, próximos encontros, movimentação, semana, Institucional e atalhos/prévia; shell/topbar divergente, stagger/timing integral, restante do teclado, leitor de tela, Clerk reais, matriz de todas as ações e rede lenta real pendentes |
+| Shell e entrada | R1/R3, N2/N3 e N1 locais; HTTP 403 e ausência de payload; timer sem provisionar preferências no GET; foco tardio por 6 s. Main conta feedback e números semanais reais com filtro de turma; abre a fila correspondente | Comparação integral 13–30; Main ainda sem outras categorias de atenção, próximos encontros, movimentação, Institucional e atalhos/prévia; shell/topbar divergente, stagger/timing integral, restante do teclado, leitor de tela, Clerk reais, matriz de todas as ações e rede lenta real pendentes |
 | Turmas | Páginas próprias, matrículas, atribuição de aluno sem turma, fixtures persistentes | T1–T8 completos no navegador; importação/movimentação/duplicação e isolamento de todos os perfis não têm aceite conjunto |
 | Calendário | Quatro fontes, camadas, recorrência/exceções, cópia, ICS revogável; QA local anterior de persistência/revogação | Menu do dia só tem encontro/evento; prazo/liberação pelo menu faltam; fidelidade, calendário do aluno e matriz completa não aceitos |
 | Novo encontro pelo dia | Publicado e rascunho criados pela UI, reload e leitura SQL confirmaram persistência/vínculo; rascunho tracejado; 14 testes focados | C1/C2 completos ainda precisam de navegação como aluno, demais papéis, edição completa e comparação visual |
 | Acesso a encontros | Commit `02fa927`; publicação/atribuição e FROM_JOIN, histórico ALL_ACTIVE, convite individual; URLs locais de aluno verificadas | Política integrada de todas as fontes e ICS do aluno não têm aceite completo |
 | Ensino | Páginas próprias de cursos, atividades, exercícios, biblioteca, coleções, percursos e aula; testes e bundles | Fluxos e fidelidade completos, upload/playback real, YouTube real e rotas canônicas divergentes |
-| Envios/Aprender/correções | Resolvers existem em `content-access.ts`, `student-feed.ts`, `student-calendar.ts`; fila/rubrica têm código | Destaques/envios configuráveis, personalização e jornadas de aluno/correção ainda sem aceite |
+| Envios/Aprender/correções | Jornada MVP local: professor publica atividade com rubrica, aluno envia, professor corrige, aluno vê comentário/notas após reload; aluno alheio sem payload e professor alheio 403 na ação | Destaques/envios configuráveis, personalização, A1/A2 integrais, notificações contínuas e comparação visual continuam sem aceite |
 | Comunidade | `/gestao/comunidade/encontros` abriu **“Este fluxo está sendo conectado”** no browser admin local | Página/editor editorial de encontros, publicações, grupos e avisos da Gestão |
 | Administração | `/gestao/administracao/medalhas` abriu **“Este fluxo está sendo conectado”** | Gestão de membros/acessos/medalhas/integrações/auditoria completa |
 | Ver como aluno | `/gestao/previa` renderizou **404** no browser admin local | Prévia contextual com acesso do aluno e bloqueio de escrita |
@@ -71,6 +71,27 @@ que já têm evidência e sem chamar gates verdes de conclusão do produto.**
 - `pg_hba.conf` recebeu regras temporárias `hostssl/trust` só para os dois bancos QA, usuário postgres e loopback. Ao **encerrar** o preview, restaurar `%TEMP%\interprete-gestao-qa-20261012\pg_hba.before-live-preview-20261012.conf` sobre `postgres-data\pg_hba.conf` e executar `pg_ctl reload` no data-dir correto. Procedimento em `DECISIONS.md`.
 
 ## Qualidade e capturas
+
+- Jornada MVP/atividade com rubrica: turma funcional existente, professor 1
+  criou rascunho/publicou pela UI, student_04 enviou texto, professor gravou
+  notas 8/9 e comentário, aluno viu ambos após reload. Fixture adicional
+  `gestao-qa-mvp-atividade-20261013` preservada. O fallback global indevido
+  foi corrigido em lista/detalhe/guard de envio; quatro regressões vermelhas
+  antes e oito verdes depois. Outro aluno sem título/payload na URL direta;
+  professor alheio não seleciona a entrega e ação adulterada retorna 403.
+  Capturas 1440/390/320 em `output/playwright/gestao-v2/mvp-activity`; logs em
+  `output/gestao-mvp-activity`. Não é Clerk real nem A1/A2 integral.
+  Gates: check932, typecheck16/16, boundaries866, 699app/17domínio/9API,
+  32scripts aprovados/1ignorado, build8/8, performance/diff. Main214,6KiB,
+  Correções215,3KiB, Planejamento224,5KiB; teto225KiB. Sem migration/remoto.
+  Desvio do harness pós-build: hidratação restaurou hidden IDs e enviou
+  feedback à entrega própria `cmv5mu60x001powyp9wvyj1wh` do professor 2,
+  agora REVIEWED/Feedback v1; preservado, não resetar. POST serializado
+  substitui a adulteração do DOM. SQL TLS confirma intactos o feedback
+  protegido anterior e a nova rubrica. Detalhes e limites em `MVP.md`.
+  Fechamento `browser-serialized.log`: 1/1 passou em45s, cinco campos alterados,
+  HTTP403/registro intacto, HTML do aluno sem payload, pageErrors=[], smoke
+  1440/390/320 sem overflow; preview admin visual restaurado.
 
 - Main/semana preservado e fechado como unidade local de MVP em 13/10:
   agregado SQL por papel/turma, alunos únicos, união de intervalos, segunda
@@ -163,6 +184,6 @@ que já têm evidência e sem chamar gates verdes de conclusão do produto.**
 
 1. Ler `HANDOFF-PROXIMO-CHAT.md`, este estado, `GOAL.md`, `DECISIONS.md` e o trecho relevante do diário.
 2. Escolher uma unidade vertical com critério de saída e casos de teste nomeados. Não reauditar todo o repositório a cada pequeno ajuste.
-3. Fechar a unidade semanal preservada; depois verificar a menor jornada turma/atividade/aluno/correção com rubrica, reload e negação fora do escopo. A aparência do quadro 41 continua no backlog.
+3. Main/semana fechado em `6316cb3`; ciclo local de atividade com rubrica verificado nesta unidade. Próxima jornada: T2, matrícula/remover aluno → acesso ao conteúdo/revogação → preservar entregas e concessão direta. Reutilizar formulários/fixtures; detalhes em `MVP.md`. Aparência do quadro 41 continua no backlog.
 4. Atualizar este resumo, adicionar uma linha em `EXECUTION-LOG.md`, anexar a evidência e commitar. Nenhum `[x]` sem os 8 requisitos.
 5. Manter aceite integral separado do MVP. Os números de fases são os de `GOAL.md`, não os do roadmap geral 1–10.

@@ -13,6 +13,14 @@ Fidelidade/acabamento, Clerk/YouTube reais e cobertura completa são backlog
 identificado, salvo bloqueio do MVP. Nenhuma fase promovida, nenhum push,
 merge, deploy, banco remoto ou exclusão de dados autorizado.
 
+Continuação desta instrução: Main/semana fechado em `6316cb3`; jornada de
+atividade com rubrica executada localmente (publicar, enviar, corrigir, reload,
+aluno alheio sem conteúdo e ação do professor alheio 403). Ver `MVP.md` e
+último checkpoint de PROGRESS para gates e limitações. A atividade extra usa
+slug `gestao-qa-mvp-atividade-20261013`; preservá-la e retomar sem reenviar.
+Próxima unidade mínima: T2, matrícula/remover e acesso/revogação preservando
+entregas e concessões diretas. O texto histórico abaixo não redefine prioridade.
+
 ## Texto para colar no próximo chat
 
 ```text

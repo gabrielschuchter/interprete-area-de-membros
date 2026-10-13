@@ -4,6 +4,10 @@ Estado atual: implementação em andamento. `GOAL.md` define o aceite;
 `PROGRESS.md` registra evidências, capturas e lacunas por unidade. As fases 1
 e 2 ainda não foram aceitas. Este guia não autoriza publicação remota.
 
+Desde 13/10/2026, a prioridade é MVP funcional local antes de acabamento e
+comparação integral dos 101 quadros. Critérios, evidências e backlog separados
+em [gestao/MVP.md](gestao/MVP.md); estado vigente em [gestao/STATUS.md](gestao/STATUS.md).
+
 ## Rodar o preview
 
 Use o worktree `interprete-gestao`, branch `gestao-v2`. Preserve o checkout

@@ -26,9 +26,11 @@ O resumo vigente fica em `STATUS.md`. Não registrar segredos ou dados pessoais.
 
 | 13/10/2026 | `95c8aea` — Main/feedback | Count SQL compartilhado com fila, filtro paginado, negação de turma alheia, correção da paginação e papel fresco na transação; invalidação após feedback | UI funcional 4 → 3/reload, aluno/reload, formulário adulterado e replay 403; notificação interna/job SUCCEEDED após recovery local UTC; 30/30 na retomada, 48 capturas e gates completos em output/gestao-overview-feedback | 0/101 aceitos, 42 em andamento/59 pendentes; Main parcial, A1/rubrica/A2/próxima entrega/Clerk/worker agendado não aceitos; preservar feedback de student_04 |
 
-## Formato das próximas entradas
+| 13/10/2026 | `6316cb3` — Main/semana | Preservado diff de nove arquivos, agregado semanal real e prioridade MVP separada do contrato visual | 102/102 e 48 capturas anteriores auditadas; gates atualizados em output/gestao-mvp-week: check930/typecheck16/boundaries865/691app/build8/performance/diff | 0/101 aceitos; próximo ciclo atividade com rubrica e isolamento, sem bloquear por acabamento do Main; somente local |
 
-| 13/10/2026 | Main/semana, identificar por `feat(gestao): add scoped weekly overview for functional MVP` | Preservado diff de nove arquivos, agregado semanal real e prioridade MVP separada do contrato visual | 102/102 e 48 capturas anteriores auditadas; gates atualizados em output/gestao-mvp-week: check930/typecheck16/boundaries865/691app/build8/performance/diff | 0/101 aceitos; próximo ciclo atividade com rubrica e isolamento, sem bloquear por acabamento do Main; somente local |
+| 13/10/2026 | MVP/atividade, identificar por `fix(gestao): keep targeted activities private and verify MVP journey` | Corrigido fallback global; professor publica com rubrica, aluno envia, professor corrige e aluno relê notas/comentário | 8 regressões; gravações iniciais/SQL/capturas1440/390/320; retomada multipart passa com 403/sem payload/pageerrors0; check932/typecheck16/boundaries866/699app/build8/performance/diff em output/gestao-mvp-activity | 0/101 aceitos; A1/A2 integrais/Clerk/YouTube/worker/fidelidade pendentes; desvio de QA criou feedback próprio do professor2, preservado e documentado em MVP.md; próximo T2 |
+
+## Formato das próximas entradas
 
 `Data | SHA | escopo e requisito fechado | teste/captura/log | pendências exatas`.
 

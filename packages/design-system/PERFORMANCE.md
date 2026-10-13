@@ -464,3 +464,8 @@ on a server request.
   an explicit missing average, while measured zero remains zero. Scope/search
   feedback uses the existing filter. Six widths/two motion modes have local
   functional evidence; full visual acceptance remains separate from MVP.
+
+- Activity MVP uses the existing form/editor/correction primitives. Access
+  isolation adds no client code or motion. Smoke targets desktop 1440 and
+  mobile 390/320 with a real local text submission and persisted rubric scores;
+  this does not accept complete responsive/visual matrices or all controls.

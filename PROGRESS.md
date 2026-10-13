@@ -938,3 +938,63 @@ mesmo com destinatários; corrigir antes de chamar a jornada MVP verificada.
 Feedback anterior de student_04 e fixtures semanais preservados. Sem remoto,
 push/merge/deploy/migration/exclusão. Preview foi pausado para build; a próxima
 rodada local assume runtime e restaura admin visual ao terminar.
+
+### MVP vertical — atividade de turma com rubrica, 13/10/2026
+
+Critério da unidade: reutilizar turma ativa/responsável/Member reais do QA,
+publicar atividade com critérios, aluno autorizado enviar texto, professor
+corrigir, aluno ler comentário/notas após reload; negar aluno/professor fora
+do escopo, sem abrir catálogo novo. Fontes: docs/01 §§3–4, docs/05 A1/A2/T8
+como rastreio parcial, activities.ts, editor existente e correction-actions.
+
+Lacuna real encontrada: canReadActivity retornava true para courseId null,
+mesmo com alvos de turma/atribuição fora do escopo. Contagens das origens na
+mesma query distinguem global legado de direcionado; revogação/expiração e
+FROM_JOIN não caem em global. Concessões independentes e staff preservados.
+Oito regressões em activities-access.test.ts; quatro falharam antes do ajuste,
+oito passaram depois. Sem migration, backfill, pool ou cache compartilhado.
+
+Ensaio UI inicial: professor_1 criou rascunho e publicou atividade adicional
+slug gestao-qa-mvp-atividade-20261013 para turma ativa, rubrica 60/40;
+student_04 enviou resposta e releu textarea, SUBMITTED/rubricVersion1;
+professor_1 gravou comentário/notas8/9, REVIEWED/Feedbackv1; aluno viu
+comentário e notas após reload. SQL TLS e capturas1440/390/320 conferidos,
+sem overflow nessas passadas. Feedback do Main anterior não foi reenviado.
+O primeiro harness completou gravações e falhou numa expectativa incorreta
+de que a fila alheia não teria nenhum formulário; ela seleciona entrega própria.
+Retomada sem reenviar passou e confirmou negação403 da entrega alheia.
+
+Desvio seguinte do QA, explicitamente preservado: no ensaio pós-build, React
+reconciliou os hidden IDs adulterados no DOM antes do submit. O servidor
+recebeu a entrega própria cmv5mu60x001powyp9wvyj1wh do professor_2 e gravou
+Feedbackv1/REVIEWED com o comentário da tentativa. Não ocorreu bypass da
+entrega alheia; não chamar esse POST200 de negação. Não apagar/reverter o
+registro. Auditoria SQL TLS confirma o feedback protegido do Main exato e
+o novo MVP com notas8/9/autor1/versão1 intactos. Log browser-final registra
+a falha; preserved-fixtures-audit.json registra hashes/status sem corpos.
+O harness agora intercepta POST multipart serializado e altera cinco campos
+em memória, recusando envio sem alteração; não depende da hidratação e não
+salva headers/body/cookies. Registros extras influenciam contagens futuras.
+
+Gates finais de código: check932/typecheck16/16/boundaries866,
+699app/17domínio/9API,32scripts aprovados/1ignorado,build8/8,
+performance:check/diff aprovados em output/gestao-mvp-activity.
+Main214,6KiB/17chunks,Correções215,3KiB/17,Planejamento224,5KiB/17,
+teto225KiB. Build local com QA desligado/TLS/URLlocal/envvalidation dispensada.
+MVP.md separa escopo funcional do contrato completo; A1/A2 integrais,
+notificação/worker contínuo, uploads, Clerk/YouTube reais, percentis,
+dispositivos e101comparações continuam sem aceite.0/101aceitos,42em andamento,
+59pendentes; nenhuma fase promovida. Próxima unidade mínima:T2,matrícula/
+remoção→acesso/revogação,preservando entregas/concessão direta.
+
+Fechamento do harness corrigido: browser-serialized.log passou1/1 em45s,
+cinco campos do POST alterados antes da rede,403,registro alheio inalterado;
+HTML negado do aluno não contém título/payload. JSON final pageErrors=[];
+smoke1440/390/320 de envio/feedback/negação sem overflow. Retomada não reenvia
+resposta/feedback. Preview admin visual restaurado em loopback. Limites e
+desvio de QA acima permanecem explícitos; não houve push/merge/deploy/remoto.
+
+Smoke final do preview restaurado: Main200→reload em1440/390/320, bloco
+Esta semana renderizado,overflow=false/pageErrors=[]; JSON preview-smoke.json
+em output/gestao-mvp-activity e capturas final-preview-* em mvp-activity.
+Identificar esta unidade por fix(gestao): keep targeted activities private and verify MVP journey.

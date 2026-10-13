@@ -1046,3 +1046,13 @@ secondary job. No list is materialized or paginated for this aggregate; cohort
 selection retains ten database options per page. Reload/filter navigation reads
 fresh data and existing correction writes invalidate /gestao. Main retains its
 225 KiB gzip budget. Local fixture checks are not production latency percentiles.
+
+Activity list/detail/submission access now projects two relation counts with the
+existing activity query, rather than fetching recipient IDs. This distinguishes
+legacy global practices from targeted practices after access expires/revokes.
+No identity cache, new round trip, migration, pool/index change or secondary
+job is added. Current authorized sources remain fresh per request. Pagination
+and invalidation are unchanged; the pre-existing activity catalog pagination
+gap is still backlog, not claimed resolved by this isolation fix. The local
+MVP proof covers one cohort, text submission and two rubric criteria; it does
+not establish production percentiles or representative concurrency.

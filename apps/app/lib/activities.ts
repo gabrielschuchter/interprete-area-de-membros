@@ -89,6 +89,10 @@ const currentMemberCohortTargets = (memberId: string) => ({
 });
 
 interface ActivityAccessContext {
+  readonly _count: {
+    readonly assignments: number;
+    readonly cohortTargets: number;
+  };
   readonly assignments: readonly { readonly dueAt: Date | null }[];
   readonly cohortTargets: readonly ActivityCohortTargetForMember[];
   readonly courseId: string | null;
@@ -121,7 +125,14 @@ const canReadActivity = (
 
   // Course-level practices require course-level entitlement. A module-only
   // grant must not expose every practice attached to its parent course.
-  return activity.courseId ? scope.fullCourseIds.has(activity.courseId) : true;
+  if (activity.courseId) {
+    return scope.fullCourseIds.has(activity.courseId);
+  }
+  // Only legacy activities that have never had recipients are global. An
+  // absent, expired or revoked grant must not widen a targeted activity.
+  return (
+    activity._count.assignments === 0 && activity._count.cohortTargets === 0
+  );
 };
 
 export const canAccessPublishedActivity = async (
@@ -133,6 +144,7 @@ export const canAccessPublishedActivity = async (
       where: { id: activityId, ...publishedActivityWhere },
       select: {
         courseId: true,
+        _count: { select: { assignments: true, cohortTargets: true } },
         assignments: {
           where: currentMemberAssignmentWhere(memberId),
           select: { dueAt: true },
@@ -170,6 +182,7 @@ export const getPublishedActivities = async (
     select: {
       id: true,
       courseId: true,
+      _count: { select: { assignments: true, cohortTargets: true } },
       title: true,
       slug: true,
       prompt: true,
@@ -220,6 +233,7 @@ export const getPublishedActivity = async (slug: string, memberId: string) => {
       select: {
         id: true,
         courseId: true,
+        _count: { select: { assignments: true, cohortTargets: true } },
         title: true,
         slug: true,
         prompt: true,
