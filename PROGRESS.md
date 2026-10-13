@@ -647,3 +647,66 @@ flags QA falsas, URL loopback e CA verificada; não comprova produção/Clerk.
 Preview admin visual reaberto após a build. Unidade identificada pelo commit
 fix(gestao): enforce private 403 responses before streaming. Próximo:
 dependência PlannerPreferences/focus-timer concorrente, sem avançar de fase.
+
+### Unidade em execução — Fase 1, dependência focus-timer/PlannerPreferences
+
+Requisito: entrada e navegação N1/N2 sem o 500 inicial já observado. Não
+ampliar o editor de ferramentas. Causa inspecionada: getFocusTimerState e
+getActiveFocusTimerState fazem ensureTimerDefaults/upsert com update vazio
+antes da leitura; chamadas concorrentes provisionam a mesma chave memberId.
+Arquivos: lib/focus-timer.ts, padrões do cronômetro, testes e harness local.
+Critério: leituras compacta/completa funcionam sem linha persistida, preservam
+preferências existentes e não escrevem PlannerPreferences; concorrência real
+retorna 200 e mantém a linha ausente. Iniciar timer pode provisionar padrões
+idempotentemente como mutação explícita. Comparar UI de entrada existente,
+rodar gates, documentar limite: o ciclo legado de encerramento de sessão
+expirada não será refeito nesta correção de preferências. Sem migration,
+remoção de dados, mudança de papel ou alteração de fixtures existentes.
+
+### Resultado da dependência de preferências do cronômetro — 13/10/2026
+
+GET compacto/completo agora busca só os campos de configuração e usa padrões
+canônicos quando não há PlannerPreferences. Não faz upsert/create nessa
+leitura. Os padrões já usados pela UI foram movidos para módulo compartilhado,
+sem mudar os valores. Iniciar timer, ação explícita, provisiona com createMany
+skipDuplicates (INSERT ON CONFLICT DO NOTHING), preservando valores existentes.
+O encerramento legado de timers expirados continua fora desta correção; não
+se afirma que todos os efeitos do GET foram removidos.
+
+Dois testes de regressão cobrem oito leituras compactas/completas simultâneas
+sem provisionar e preferências salvas preservadas. Os quatro testes do arquivo
+focus-timer.test.ts passam. Harness focus-timer-preferences-local.mjs fez 40
+GETs reais em cinco rajadas de oito, metade compactos, todos 200, no-store e
+configuração padrão; SQL TLS antes/depois confirmou ausência da linha e de
+timer ativo. Ator student_03 funcional confirmado no SSR de Biblioteca antes
+do ensaio. Dois inícios explícitos simultâneos deram 200/409, uma única linha
+de preferências e um timer ativo; Stop parou somente esse timer. Registro e
+revisão pendente foram preservados, sem review(false), que apagaria o registro.
+Evidências em output/playwright/gestao-v2/timer-preferences/{reads.json,
+explicit-starts.json}; runtime-final.log em output/gestao-timer-preferences.
+
+A rodada anterior no student_02 já passou os 40 GETs; o harness confundiu
+o envelope POST {result} e esperava 400 em vez do 409 documentado do conflito.
+Nenhuma falha de produto foi ocultada: corrigido o harness, o timer próprio
+foi parado após conferir ator/id/título; a nova rodada usa student_03 ainda
+sem preferências, sem apagar a linha de student_02. Um erro de redeclaração
+no script foi corrigido antes da rodada final. Ambos os registros de timer
+ficam encerrados com revisão pendente; não foram registrados como estudo.
+Não alterar package.json por causa do aviso MODULE_TYPELESS_PACKAGE_JSON do
+Node ao importar o módulo TS puro no harness; não afeta o runtime Next/Bun.
+
+Gates em andamento; typecheck 16/16 e boundaries 857 já passaram. Não há novo
+quadro aceito ou mudança de fase. Próximo: foco do título que chega depois
+dos quatro segundos do aviso de entrada; depois visual do shell/visão geral.
+
+Gates finais da dependência passaram: check 917 arquivos, typecheck 16/16,
+boundaries 857, 660 testes app/17 domínio/9 API e 32 scripts aprovados/1
+ignorado; build 8/8, performance:check e diff. Calendário 223,7 KiB/18 chunks,
+Planejamento 224,5 KiB/17 e Ferramentas 222,8 KiB/17, teto 225 KiB. Browser
+com admin visual fez Biblioteca → Gestão → reload, duas respostas compactas
+200, sem pageerror e SQL de preferências idêntico antes/depois. JSON em
+output/gestao-timer-preferences/browser.json; screenshot shell-smoke.png
+inspecionado, layout da visão geral mantém as divergências já registradas.
+Preview admin visual reaberto. Critério da dependência cumprido; quadro/fase
+não promovidos. Identificar por fix(timer): avoid provisioning preferences
+during reads. Próximo: foco/anúncio do título tardio na entrada N2/N3.

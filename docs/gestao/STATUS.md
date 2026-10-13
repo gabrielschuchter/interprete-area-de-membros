@@ -16,7 +16,7 @@
 
 | Área | Evidência inspecionada | O que não está concluído |
 |---|---|---|
-| Shell e entrada | R1/R3 e N2/N3; N1 com membro, dois professores e admin persistidos: item condicionado ao papel, URLs permitidas/negadas, HTTP 403 e ausência dos payloads conferidos; Administração sem ciclo; login com destino nos testes do proxy; 36 capturas do estado restrito | Comparação integral 13–30, stagger/timing integral, título após espera >4 s, restante do teclado, leitor de tela e Clerk reais; matriz de todas as ações ainda pendente; 500 inicial de focus-timer ainda pendente |
+| Shell e entrada | R1/R3 e N2/N3; N1 com quatro atores, HTTP 403, ausência dos payloads conferidos, sem ciclo e login com destino; 36 capturas restritas. Colisão de PlannerPreferences corrigida: 40 GETs concorrentes sem provisionar, dois Starts 200/409, browser com timer 200 e preferências salvas inalteradas | Comparação integral 13–30, stagger/timing integral, título após espera >4 s, restante do teclado, leitor de tela e Clerk reais; matriz de todas as ações e ciclo legado de timer expirado ainda pendentes |
 | Turmas | Páginas próprias, matrículas, atribuição de aluno sem turma, fixtures persistentes | T1–T8 completos no navegador; importação/movimentação/duplicação e isolamento de todos os perfis não têm aceite conjunto |
 | Calendário | Quatro fontes, camadas, recorrência/exceções, cópia, ICS revogável; QA local anterior de persistência/revogação | Menu do dia só tem encontro/evento; prazo/liberação pelo menu faltam; fidelidade, calendário do aluno e matriz completa não aceitos |
 | Novo encontro pelo dia | Publicado e rascunho criados pela UI, reload e leitura SQL confirmaram persistência/vínculo; rascunho tracejado; 14 testes focados | C1/C2 completos ainda precisam de navegação como aluno, demais papéis, edição completa e comparação visual |
@@ -56,6 +56,18 @@ que já têm evidência e sem chamar gates verdes de conclusão do produto.**
 - `pg_hba.conf` recebeu regras temporárias `hostssl/trust` só para os dois bancos QA, usuário postgres e loopback. Ao **encerrar** o preview, restaurar `%TEMP%\interprete-gestao-qa-20261012\pg_hba.before-live-preview-20261012.conf` sobre `postgres-data\pg_hba.conf` e executar `pg_ctl reload` no data-dir correto. Procedimento em `DECISIONS.md`.
 
 ## Qualidade e capturas
+
+- Dependência de entrada/cronômetro: dois testes novos, 40 GETs reais e um
+  início concorrente 200/409; zero linhas de preferências após os GETs, uma
+  após Start e zero timers ativos após Stop. Registros de student_02/03
+  preservados com revisão pendente, sem estudo registrado ou exclusão.
+  Browser Biblioteca → Gestão → reload: duas respostas de timer 200, sem
+  pageerror, preferências do admin visual inalteradas. Gates: check 917,
+  typecheck 16/16, boundaries 857, 660 app/17 domínio/9 API e 32 scripts
+  aprovados/1 ignorado; build 8/8, performance/diff. Calendário 223,7 KiB,
+  Planejamento 224,5 KiB, Ferramentas 222,8 KiB (teto 225). Logs em
+  `output/gestao-timer-preferences`, JSON/captura em `timer-preferences`.
+  Nenhum novo quadro/fase aceito; preview admin visual ativo.
 
 - N1/GRestrito: 47 testes focados; quatro atores locais com HTTP 403 e payloads
   negados conferidos; POST barrado antes do despacho; 36 capturas em seis

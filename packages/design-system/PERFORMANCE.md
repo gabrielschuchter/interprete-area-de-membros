@@ -439,3 +439,9 @@ on a server request.
   no document overflow/pageerror. Proxy identity/EXISTS reads are minimal and
   uncached; DAL/actions still authorize. Visual shell and full role-action
   matrix acceptance remain open; current bundle measurements are in PROGRESS.
+
+- Timer settings defaults are shared by the tools UI and server. Initial shell
+  GETs no longer provision preferences, eliminating the observed first-entry
+  collision without a new client request or dependency. Settings remain user
+  scoped and uncached; explicit Start uses insert-or-ignore. Local concurrent
+  runtime evidence is recorded in PROGRESS; no new visual frame is accepted.

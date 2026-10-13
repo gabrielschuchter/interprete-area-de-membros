@@ -47,6 +47,10 @@ import {
   MemberViewSwitcher,
 } from "@/components/navigation/member-view-switcher";
 import type { getFocusTimerState } from "@/lib/focus-timer";
+import {
+  defaultTimerSettings,
+  type TimerSettings,
+} from "@/lib/focus-timer-settings";
 import type { getPlannerNotes } from "@/lib/planner-notes";
 import { formatStudyTimestamp as textDate } from "@/lib/study-date";
 
@@ -95,22 +99,6 @@ interface ActiveTimer {
   startedAt: string;
   title: string | null;
 }
-interface TimerSettings {
-  focusMinutes: number;
-  keepScreenAwake: boolean;
-  longBreakEvery: number;
-  longBreakMinutes: number;
-  shortBreakMinutes: number;
-  systemNotificationsEnabled: boolean;
-  timerAutoAdvance: boolean;
-  timerOpenFocusOnStart: boolean;
-  timerSoundEnabled: boolean;
-  timerSoundType: "SOFT_BELL" | "WOOD" | "DIGITAL" | "NONE";
-  timerTickEnabled: boolean;
-  timerVibrationEnabled: boolean;
-  timerVolume: number;
-  timezone: string;
-}
 
 type FocusTimerAction =
   | {
@@ -130,22 +118,6 @@ type FocusTimerAction =
     }
   | { action: "history-delete"; id: string }
   | { action: "settings"; settings: TimerSettings };
-const defaultTimerSettings: TimerSettings = {
-  focusMinutes: 25,
-  shortBreakMinutes: 5,
-  longBreakMinutes: 15,
-  longBreakEvery: 4,
-  timerSoundEnabled: true,
-  systemNotificationsEnabled: false,
-  timerSoundType: "SOFT_BELL",
-  timerVolume: 70,
-  timerTickEnabled: false,
-  timerVibrationEnabled: true,
-  timerAutoAdvance: false,
-  timerOpenFocusOnStart: false,
-  keepScreenAwake: true,
-  timezone: "America/Sao_Paulo",
-};
 interface TimerHistoryItem {
   completedAt: Date | string | null;
   durationSeconds: number | null;

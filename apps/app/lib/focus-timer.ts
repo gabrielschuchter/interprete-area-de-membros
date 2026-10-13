@@ -9,6 +9,7 @@ import {
   StudyGoalPeriod,
 } from "@repo/database";
 import { z } from "zod";
+import { defaultTimerSettings } from "./focus-timer-settings";
 import { getPublishedLearningPaths } from "./learning";
 
 const DEFAULT_TIMEZONE = "America/Sao_Paulo";
@@ -382,13 +383,35 @@ const snapshot = (session: TimerSession, now: Date) => {
 };
 
 const ensureTimerDefaults = async (memberId: string) => {
-  await database.plannerPreferences.upsert({
-    where: { memberId },
-    create: { memberId, timezone: DEFAULT_TIMEZONE },
-    update: {},
-    select: { id: true },
+  await database.plannerPreferences.createMany({
+    data: [{ memberId, timezone: DEFAULT_TIMEZONE }],
+    skipDuplicates: true,
   });
 };
+
+const getTimerSettings = async (
+  transaction: Prisma.TransactionClient,
+  memberId: string
+) =>
+  (await transaction.plannerPreferences.findUnique({
+    where: { memberId },
+    select: {
+      focusMinutes: true,
+      shortBreakMinutes: true,
+      longBreakMinutes: true,
+      longBreakEvery: true,
+      timerSoundEnabled: true,
+      systemNotificationsEnabled: true,
+      timerSoundType: true,
+      timerVolume: true,
+      timerTickEnabled: true,
+      timerVibrationEnabled: true,
+      timerAutoAdvance: true,
+      timerOpenFocusOnStart: true,
+      keepScreenAwake: true,
+      timezone: true,
+    },
+  })) ?? defaultTimerSettings;
 
 export const getFocusTimerLinkResources = async (memberId: string) => {
   const paths = await getPublishedLearningPaths(memberId);
@@ -408,8 +431,7 @@ export const getFocusTimerLinkResources = async (memberId: string) => {
   );
 };
 
-export const getFocusTimerState = async (memberId: string) => {
-  await ensureTimerDefaults(memberId);
+export const getFocusTimerState = (memberId: string) => {
   return database.$transaction(async (transaction) => {
     const now = new Date();
     let current = await transaction.focusTimerSession.findFirst({
@@ -427,7 +449,7 @@ export const getFocusTimerState = async (memberId: string) => {
       }
     }
     const [settings, history] = await Promise.all([
-      transaction.plannerPreferences.findUniqueOrThrow({ where: { memberId } }),
+      getTimerSettings(transaction, memberId),
       transaction.focusTimerSession.findMany({
         where: { memberId, endedAt: { not: null }, needsReview: false },
         orderBy: { endedAt: "desc" },
@@ -594,8 +616,7 @@ export const getFocusTimerState = async (memberId: string) => {
   });
 };
 
-export const getActiveFocusTimerState = async (memberId: string) => {
-  await ensureTimerDefaults(memberId);
+export const getActiveFocusTimerState = (memberId: string) => {
   return database.$transaction(async (transaction) => {
     const now = new Date();
     let session = await transaction.focusTimerSession.findFirst({
@@ -612,25 +633,7 @@ export const getActiveFocusTimerState = async (memberId: string) => {
         });
       }
     }
-    const settings = await transaction.plannerPreferences.findUniqueOrThrow({
-      where: { memberId },
-      select: {
-        focusMinutes: true,
-        shortBreakMinutes: true,
-        longBreakMinutes: true,
-        longBreakEvery: true,
-        timerSoundEnabled: true,
-        systemNotificationsEnabled: true,
-        timerSoundType: true,
-        timerVolume: true,
-        timerTickEnabled: true,
-        timerVibrationEnabled: true,
-        timerAutoAdvance: true,
-        timerOpenFocusOnStart: true,
-        keepScreenAwake: true,
-        timezone: true,
-      },
-    });
+    const settings = await getTimerSettings(transaction, memberId);
     const pendingReview = await transaction.focusTimerSession.findFirst({
       where: { memberId, endedAt: { not: null }, needsReview: true },
       orderBy: { endedAt: "desc" },

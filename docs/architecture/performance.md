@@ -1007,3 +1007,12 @@ private/no-store; denied POST is stopped before action dispatch. Additional
 critical-path cost is one identity projection, plus one scoped EXISTS for
 cohort detail; pagination/invalidation are unchanged. Browser evidence is
 local and does not establish percentiles or production Clerk behavior.
+
+Timer preference reads used by both shells no longer issue an upsert before
+reading. Compact/full responses project only the settings fields; absence
+uses the same static defaults as the tools UI, without an identity/role cache.
+Start is an explicit mutation and provisions through insert-or-ignore rather
+than a check-then-insert race. Saved settings remain untouched. No pagination,
+index, pool, schema or invalidation change is added. Local 8-request bursts
+prove the tested startup race, not representative production percentiles.
+Legacy expired-session finalization remains outside this preferences fix.

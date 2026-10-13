@@ -130,3 +130,14 @@ proxy, sem comprovar Clerk real. POST sentinela verifica somente a barreira
 anterior ao despacho; a matriz das Server Actions válidas continua pendente.
 Proxy faz Member mínimo fresco e EXISTS de vínculo antes do streaming para
 emitir 403 real; página e mutação continuam verificando autorização própria.
+
+Regressão do primeiro acesso ao cronômetro:
+`QA_TIMER_MEMBER_ID=gestao_qa_functional_student_XX node scripts/qa/focus-timer-preferences-local.mjs`
+com preview no mesmo ator funcional já persistido, ainda sem preferências.
+O script confere o ator no SSR e SQL TLS antes/depois; não apague linhas para
+reexecutar. Por padrão só lê. `QA_TIMER_WRITE=true` autoriza no harness dois
+Starts concorrentes e Stop do timer criado por ele, preservando a revisão
+pendente e o registro. Não chama review(false), pois essa ação legada exclui.
+As fixtures student_02/03 já possuem preferências e timer encerrado desta
+validação; selecione outro aluno existente sem linha para novo ensaio inicial.
+Evidências em `output/playwright/gestao-v2/timer-preferences`.
