@@ -11,11 +11,13 @@ let nextConfig: NextConfig = withLogging(config);
 // an individual handler has a chance to add its more specific headers.
 nextConfig = {
   ...nextConfig,
-  // Windows QA shares memory with two dev servers and Chrome. Avoid spawning
-  // one prerender worker per logical CPU; Vercel keeps its Linux defaults.
-  ...(process.platform === "win32"
-    ? { experimental: { ...nextConfig.experimental, cpus: 2 } }
-    : {}),
+  experimental: {
+    ...nextConfig.experimental,
+    authInterrupts: true,
+    // Windows QA shares memory with dev servers and Chrome. Vercel keeps
+    // its Linux defaults rather than one prerender worker per local CPU.
+    ...(process.platform === "win32" ? { cpus: 2 } : {}),
+  },
   logging: {
     incomingRequests: {
       ignore: [/__clerk_/],

@@ -46,7 +46,7 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluído com evidência
 
 ### Como se chega à Gestão e as transições
 - [~] `GChegada` — Origem por aba/usuário após navegação e reload; entradas contextuais e matriz de papéis pendentes
-- [ ] `GEntrada` — O item “Gestão” na área de membros (professor e membro comum)
+- [~] `GEntrada` — Item condicionado ao papel; quatro atores locais e login com destino testados; comparação integral e Clerk real pendentes
 - [~] `GTransicao` — Snapshots/fallback, foco e anúncio; timings locais, fidelidade integral e stagger pendentes
 - [~] `GTransicaoEstados` — Espera limitada, offline/retry sem apagar a página anterior; estados de permissão/sessão/edição pendentes
 - [~] `GTransicaoMobile` — Entrada/retorno e aviso contextual; fidelidade integral pendente
@@ -61,7 +61,7 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluído com evidência
 - [ ] `GVisaoAdmin` — Visão geral — administrador
 - [ ] `GVisaoLimpa` — Visão geral — sem pendências
 - [ ] `GCriar` — Menu Criar (qualquer tela)
-- [ ] `GRestrito` — Administração — acesso restrito (professor)
+- [~] `GRestrito` — Negação HTTP 403 sem payload, retorno e ajuda reais; 36 capturas; comparação integral do shell pendente
 - [ ] `GNotificacoes` — Notificações da Gestão
 - [ ] `GBusca` — Busca da Gestão (alunos, turmas, conteúdo)
 - [~] `GRail` — Notebook pequeno (1024 px): trilho de 72 px, submenu por hover/toque/teclado; comparação feita, fidelidade integral e papéis pendentes
@@ -566,3 +566,84 @@ quadro/fase promovido. Próximo: N1/GRestrito, guard de login com destino,
 negação sem ciclo/sem payload administrativo e matriz local de papéis. O foco
 de conteúdo que só chega após os 4 s do aviso ainda precisa de ensaio lento;
 não declarar esse limite de rede aceito pela rodada rápida.
+
+### Unidade em execução — Fase 1, N1/GRestrito: entrada e negação no servidor
+
+Requisito: docs/04 §1 e docs/05 N1/matriz; quadros 14/27. Incluir Gestão e
+Professor na proteção do proxy com destino de login; membro comum recebe
+negação sem dados administrativos; professor pode abrir Gestão mas não
+Administração, sem ciclo de redirects. Turma de outro professor continua
+negada no servidor. Arquivos: proxy/testes, gestao-authorization, Next config
+e página forbidden da Gestão. Critério: testes unitários da sessão/flag/papel,
+URLs reais nos quatro atores persistidos (membro, docentes 1/2 e admin),
+payload de negação sem dados administrativos, retorno funcional, seis larguras
+do estado restrito e gates. Sem login Clerk real depende de credenciais
+indisponíveis; validar o proxy com adaptador determinístico e manter essa
+limitação explícita. Não alterar dados de fixtures ou papéis para o ensaio.
+Evidência anterior: guards/testes de escopo existem; os guards atuais usam
+requireStaff/redirect e o caso teacher → administração redireciona para si.
+
+### Resultado N1/GRestrito — 13/10/2026
+
+Implementado: proxy protege /gestao e /professor e preserva caminho/busca
+no login. Guard da Gestão usa sessão + Member fresco, sem requireStaff que
+redirecionava membro para /. Administração negada usa forbidden em vez de
+redirect para si. Detalhe de turma sem vínculo retorna restrito, sem consulta
+não escopada para distinguir existência. Estado tem retorno e ajuda modal
+reais, Escape e foco de volta. Ilustração vem do SVG do HTML 27; nenhum novo
+asset desenhado. authInterrupts habilitado conforme docs locais Next 16.3.6.
+
+A primeira rodada detectou 404 no detalhe de outra turma. Após corrigir esse
+estado, a rodada passou semanticamente mas manteve HTTP 200 por streaming.
+Isso não satisfaz a matriz: o proxy agora faz uma projeção fresca de papel/
+ativação e, para professor em detalhe, EXISTS por id/vínculo. NextResponse.next
+com status 403 fixa o status antes do streaming; os guards de página/ação
+continuam reautorizando. Escrita negada termina no proxy com JSON 403 privado,
+antes de despachar. Typecheck encontrou headers lidos de Promise; corrigido
+com await e teste de preservação do cabeçalho de segurança assíncrono.
+
+47 testes focados passaram (autorização, boundary e proxy). Harness
+scripts/qa/gestao-entry-permissions-local.mjs passou nos quatro atores: admin,
+teacher_1, teacher_2 e student_01 do banco funcional. Confere item Gestão,
+URLs, status 200/403, turma própria/alheia, resposta sem nome da turma negada
+nem payload administrativo testado, POST negado antes do despacho, URL sem
+ciclo, retorno do membro, modal/Escape/foco e 36 capturas (três atores negados,
+seis larguras, dois movimentos) sem overflow/pageerror. JSON/capturas em
+output/playwright/gestao-v2/entry-permissions; logs browser-http-status e
+browser-final em output/gestao-entry-permissions. POST usa identificador
+sentinela: comprova barreira anterior ao despacho, não substitui a matriz de
+Server Actions válidas com payload de outra turma. Sem login real segue não
+verificado; redirecionamento é exercitado com adaptador determinístico do proxy.
+
+PNG 27 e capturas desktop/mobile inspecionados. Fonte apontava para token
+inexistente; corrigida para font-display-family. Medidas, gap, texto, arte e
+botões ajustados ao HTML. Shell/topbar, identidade da fixture funcional e
+fidelidade conjunta ainda divergem. GEntrada/GRestrito ficam [~], total
+0 aceitos / 39 em andamento / 62 pendentes. Critério funcional desta unidade
+cumprido no QA; Fase 1 e aceite visual continuam abertos.
+
+O ambiente reiniciou durante a continuidade: handles antigos desapareceram,
+PostgreSQL/preview estavam parados. PGDATA não tinha diretórios auxiliares
+vazios (pg_notify e outros). Antes de recuperar, foi feita cópia física local
+postgres-data-before-directory-recovery-20261013. Somente diretórios ausentes
+foram criados conforme PostgreSQL 17 storage-file-layout; sem initdb, reset de
+WAL ou remoção. O servidor executou recovery normal e aceitou conexão TLS.
+Releitura dos dois bancos confirmou 4 turmas/16 membros no funcional,
+4 turmas/60 membros no visual e os dois extras de handoff publicados/rascunho
+preservados. Não confundir cópia física com dump lógico. Regras hostssl locais
+anteriores permanecem enquanto o preview está ativo.
+
+Gates desta unidade em execução; não promover por resultado intermediário.
+Próxima dependência de aceite da Fase 1: eliminar P2002 concorrente de
+PlannerPreferences/focus-timer observado novamente no primeiro acesso, sem
+mutação em leitura. Depois fechar espera lenta do título e visual do shell.
+
+Gates N1/GRestrito aprovados: check 915 arquivos; typecheck 16/16; boundaries
+856; 658 testes app/17 domínio/9 API e 32 scripts aprovados/1 ignorado;
+build 8/8, performance:check e diff. Calendário 223,7 KiB/18 chunks;
+Planejamento 224,5 KiB/17, ambos abaixo de 225 KiB. Logs finais em
+output/gestao-entry-permissions. Build sem NODE_ENV herdado no orquestrador,
+flags QA falsas, URL loopback e CA verificada; não comprova produção/Clerk.
+Preview admin visual reaberto após a build. Unidade identificada pelo commit
+fix(gestao): enforce private 403 responses before streaming. Próximo:
+dependência PlannerPreferences/focus-timer concorrente, sem avançar de fase.

@@ -1,11 +1,10 @@
-import { notFound } from "next/navigation";
+import { forbidden, notFound } from "next/navigation";
 import { requireGestaoActor } from "@/lib/gestao-authorization";
 import {
   canPerformGestaoAction,
   type GestaoAction,
 } from "@/lib/gestao-permissions";
 import { GestaoPageHeading } from "../gestao-shell";
-import { GestaoRestrictedState } from "../restricted-state";
 
 const areaBySlug: Record<string, { action: GestaoAction; label: string }> = {
   ensino: { action: "content.manage", label: "Ensino" },
@@ -26,7 +25,7 @@ const GestaoPendingRoute = async ({
   }
 
   if (!canPerformGestaoAction(actor.role, area.action)) {
-    return <GestaoRestrictedState />;
+    forbidden();
   }
 
   return (

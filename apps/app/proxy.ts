@@ -64,6 +64,8 @@ const protectedRoutePrefixes = [
   "/",
   "/onboarding",
   "/admin",
+  "/gestao",
+  "/professor",
   "/aprender",
   "/atividades",
   "/biblioteca",
@@ -92,6 +94,30 @@ const isProtectedRoute = (pathname: string) =>
   protectedRoutePrefixes.some((pathPrefix) =>
     matchesPath(pathname, pathPrefix)
   );
+
+const gestaoBoundaryResponse = async (req: NextRequest, userId: string) => {
+  if (
+    env.GESTAO_V2_ENABLED !== "true" ||
+    !matchesPath(req.nextUrl.pathname, "/gestao")
+  ) {
+    return null;
+  }
+  const { canEnterGestaoRoute } = await import(
+    "./lib/gestao-route-authorization"
+  );
+  if (await canEnterGestaoRoute(userId, req.nextUrl.pathname)) {
+    return null;
+  }
+  const headers = new Headers((await securityHeaders()).headers);
+  headers.set("Cache-Control", "private, no-store");
+  if (req.method !== "GET" && req.method !== "HEAD") {
+    return NextResponse.json(
+      { error: "Você não tem mais acesso a esta área." },
+      { status: 403, headers }
+    );
+  }
+  return NextResponse.next({ status: 403, headers });
+};
 
 const isSessionTaskRoute = (pathname: string) =>
   matchesPath(pathname, sessionTaskPath);
@@ -193,7 +219,22 @@ const clerkProxy = useDevelopmentTestAuth
           }
 
           if (isProtectedRoute(req.nextUrl.pathname)) {
+            if (!authState.isAuthenticated) {
+              return NextResponse.redirect(
+                new URL(
+                  getSignInPath(`${req.nextUrl.pathname}${req.nextUrl.search}`),
+                  req.url
+                )
+              );
+            }
             await auth.protect();
+            const denial = await gestaoBoundaryResponse(
+              req,
+              authState.userId as string
+            );
+            if (denial) {
+              return denial;
+            }
           }
         }
 
@@ -224,7 +265,7 @@ const clerkProxy = useDevelopmentTestAuth
       { frontendApiProxy: { enabled: shouldProxyClerkRequests } }
     );
 
-const developmentTestAuthProxy = (req: NextRequest) => {
+const developmentTestAuthProxy = async (req: NextRequest) => {
   const host = req.nextUrl.hostname.toLowerCase();
   if (!loopbackHostnames.has(host)) {
     return new NextResponse(null, { status: 404 });
@@ -241,7 +282,17 @@ const developmentTestAuthProxy = (req: NextRequest) => {
     return createWriteFreezeResponse(req);
   }
 
-  return securityHeaders();
+  const { resolveDevelopmentAuthUserId } = await import(
+    "./lib/development-auth-config"
+  );
+  const userId = resolveDevelopmentAuthUserId({
+    enabled: developmentServerAuthFlag,
+    publicEnabled: developmentClientAuthFlag,
+    nodeEnv: process.env.NODE_ENV,
+    userId: process.env.GESTAO_DEV_AUTH_USER_ID,
+  });
+  const denial = userId ? await gestaoBoundaryResponse(req, userId) : null;
+  return denial ?? securityHeaders();
 };
 
 export default (useDevelopmentTestAuth

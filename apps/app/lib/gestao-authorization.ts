@@ -1,10 +1,10 @@
 import "server-only";
 
 import { database } from "@repo/database";
-import { notFound, redirect } from "next/navigation";
+import { forbidden, notFound, redirect } from "next/navigation";
 import { env } from "@/env";
 import { getMemberIdentitySnapshot } from "./auth";
-import { requireStaff } from "./authorization";
+import { requireSession } from "./authorization";
 import {
   canPerformGestaoAction,
   type GestaoAction,
@@ -30,10 +30,14 @@ export const requireGestaoActor = async (): Promise<GestaoActor> => {
     notFound();
   }
 
-  const { userId, role } = await requireStaff();
+  const userId = await requireSession();
   const member = await getMemberIdentitySnapshot(userId);
   if (!member || member.deactivatedAt) {
     redirect("/conta-desativada");
+  }
+  const role = member.role;
+  if (role !== "TEACHER" && role !== "ADMIN") {
+    forbidden();
   }
 
   return {
@@ -63,7 +67,7 @@ export const requireGestaoAction = async (
 ) => {
   const decision = await authorizeGestao(action, resource);
   if (!decision.allowed) {
-    redirect("/gestao/administracao?restrito=1");
+    forbidden();
   }
   return decision;
 };
@@ -84,7 +88,7 @@ export const requireGestaoCohortActor = async (cohortId: string) => {
     select: { id: true, version: true },
   });
   if (!cohort) {
-    notFound();
+    forbidden();
   }
   return { actor: actor.actor, cohort };
 };

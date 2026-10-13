@@ -3,6 +3,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 
 import { ContentStatus, database, MemberRole, Prisma } from "@repo/database";
+import { forbidden } from "next/navigation";
 import { cache } from "react";
 import { requireOnboardedMemberId } from "./authorization";
 import {
@@ -324,7 +325,7 @@ export const getGestaoCohortDetail = async (cohortId: string) => {
     },
   });
   if (!cohort) {
-    return null;
+    forbidden();
   }
   return {
     ...cohort,

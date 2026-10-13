@@ -985,9 +985,9 @@ App Router behavior, and preserves the safe member return path. Local feedback
 is immediate; drawer motion uses opacity/transform for 200 ms with reduced
 motion supported. The shared 225 KiB route budget still applies.
 
-Environment navigation shares the persistent shell controller. Its critical
-path adds no identity/database request, persistent authorization cache or list
-query. Native View Transitions snapshot the existing DOM; no duplicate React
+Environment navigation shares the persistent shell controller. The controller
+adds no identity/database request, persistent authorization cache or list
+query. Destination authorization still runs. Native View Transitions snapshot the existing DOM; no duplicate React
 tree runs effects or loads data. Only opacity/transform animate (400 ms entry,
 300 ms return, 120 ms reduced; sidebar fade 240 ms). Unsupported snapshots use
 CSS arrival. Feedback is local and does not wait for the route payload. A
@@ -997,3 +997,13 @@ The bounded navigation has no pagination or invalidation; destination data
 keeps its existing projections, authorization and invalidation. The sanitized
 return path is browser-tab session state keyed per actor. Local feedback/CLS
 measurements are in the N2/N3 harness; they are not production percentiles.
+
+Gestão route denial now begins before streaming: proxy reads only current
+Member role/deactivation, then only cohort id with the responsibility filter
+for a teacher's cohort detail. No shared cache, secondary job, list or write
+is introduced. Pages and actions reauthorize independently; this boundary is
+not a substitute for transactional mutation guards. Denied HTML is 403 with
+private/no-store; denied POST is stopped before action dispatch. Additional
+critical-path cost is one identity projection, plus one scoped EXISTS for
+cohort detail; pagination/invalidation are unchanged. Browser evidence is
+local and does not establish percentiles or production Clerk behavior.

@@ -431,3 +431,11 @@ on a server request.
   fusion; CSS arrival is the fallback. A bounded watchdog exposes retry instead
   of leaving an invisible/inert shell. A mobile arrival notice lasts four
   seconds. No new dependency, query, auth cache or automatic prefetch is added.
+
+- Restricted Gestão state uses the canonical reference SVG and existing dialog
+  primitive. Help supports Escape and focus return; actions remain at least
+  48 px and wrap at 320 px. Four local persisted actors verified allowed and
+  denied URLs, including real pre-stream HTTP 403, with 36 denial captures and
+  no document overflow/pageerror. Proxy identity/EXISTS reads are minimal and
+  uncached; DAL/actions still authorize. Visual shell and full role-action
+  matrix acceptance remain open; current bundle measurements are in PROGRESS.

@@ -4,7 +4,7 @@ const mocks = vi.hoisted(() => ({
   cohortFindFirst: vi.fn(),
   env: { GESTAO_V2_ENABLED: "true" },
   member: vi.fn(),
-  requireStaff: vi.fn(),
+  requireSession: vi.fn(),
 }));
 
 vi.mock("server-only", () => ({}));
@@ -16,9 +16,12 @@ vi.mock("./auth", () => ({
   getMemberIdentitySnapshot: mocks.member,
 }));
 vi.mock("./authorization", () => ({
-  requireStaff: mocks.requireStaff,
+  requireSession: mocks.requireSession,
 }));
 vi.mock("next/navigation", () => ({
+  forbidden: () => {
+    throw new Error("navigation:forbidden");
+  },
   notFound: () => {
     throw new Error("navigation:not-found");
   },
@@ -45,10 +48,7 @@ describe("Gestão server authorization", () => {
       onboardingStatus: "COMPLETED",
       role: "TEACHER",
     });
-    mocks.requireStaff.mockReset().mockResolvedValue({
-      role: "TEACHER",
-      userId: "teacher-qa",
-    });
+    mocks.requireSession.mockReset().mockResolvedValue("teacher-qa");
     mocks.cohortFindFirst.mockReset().mockResolvedValue({
       id: "cohort-1",
       version: 1,
@@ -63,7 +63,7 @@ describe("Gestão server authorization", () => {
       role: "TEACHER",
       userId: "teacher-qa",
     });
-    expect(mocks.requireStaff).toHaveBeenCalledTimes(1);
+    expect(mocks.requireSession).toHaveBeenCalledTimes(1);
     expect(mocks.member).toHaveBeenCalledWith("teacher-qa");
   });
 
@@ -82,9 +82,7 @@ describe("Gestão server authorization", () => {
   });
 
   it("blocks direct access to admin actions for a teacher", async () => {
-    await expect(requireGestaoAdmin()).rejects.toThrow(
-      "navigation:redirect:/gestao/administracao?restrito=1"
-    );
+    await expect(requireGestaoAdmin()).rejects.toThrow("navigation:forbidden");
   });
 
   it("limits a teacher to cohorts where their current responsibility exists", async () => {
@@ -99,15 +97,12 @@ describe("Gestão server authorization", () => {
 
     mocks.cohortFindFirst.mockResolvedValue(null);
     await expect(requireGestaoCohortActor("cohort-private")).rejects.toThrow(
-      "navigation:not-found"
+      "navigation:forbidden"
     );
   });
 
   it("lets an administrator access any cohort without a teacher filter", async () => {
-    mocks.requireStaff.mockResolvedValue({
-      role: "ADMIN",
-      userId: "admin-qa",
-    });
+    mocks.requireSession.mockResolvedValue("admin-qa");
     mocks.member.mockResolvedValue({
       avatarUrl: null,
       deactivatedAt: null,
@@ -125,10 +120,7 @@ describe("Gestão server authorization", () => {
   });
 
   it("uses the latest staff role to authorize administration", async () => {
-    mocks.requireStaff.mockResolvedValue({
-      role: "ADMIN",
-      userId: "admin-qa",
-    });
+    mocks.requireSession.mockResolvedValue("admin-qa");
     mocks.member.mockResolvedValue({
       avatarUrl: null,
       deactivatedAt: null,
@@ -146,7 +138,7 @@ describe("Gestão server authorization", () => {
   it("does not resolve a staff identity while the feature flag is off", async () => {
     mocks.env.GESTAO_V2_ENABLED = "false";
     await expect(requireGestaoActor()).rejects.toThrow("navigation:not-found");
-    expect(mocks.requireStaff).not.toHaveBeenCalled();
+    expect(mocks.requireSession).not.toHaveBeenCalled();
     expect(mocks.member).not.toHaveBeenCalled();
   });
 
@@ -162,5 +154,21 @@ describe("Gestão server authorization", () => {
     await expect(requireGestaoActor()).rejects.toThrow(
       "navigation:redirect:/conta-desativada"
     );
+  });
+
+  it("denies a member before any cohort or administrative data is loaded", async () => {
+    mocks.member.mockResolvedValue({ role: "MEMBER", deactivatedAt: null });
+    await expect(requireGestaoActor()).rejects.toThrow("navigation:forbidden");
+    expect(mocks.cohortFindFirst).not.toHaveBeenCalled();
+  });
+
+  it("propagates an unauthenticated session redirect without loading member data", async () => {
+    mocks.requireSession.mockRejectedValue(
+      new Error("navigation:redirect:/sign-in")
+    );
+    await expect(requireGestaoActor()).rejects.toThrow(
+      "navigation:redirect:/sign-in"
+    );
+    expect(mocks.member).not.toHaveBeenCalled();
   });
 });

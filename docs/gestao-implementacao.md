@@ -117,3 +117,16 @@ migration. Isso não implementa fila offline de escritas ou autenticação Clerk
   Cenários validados com adaptador permanecem **NÃO VERIFICADOS COM API REAL**.
 - Demais lacunas por fase listadas em `PROGRESS.md`; nenhum deploy faz parte
   da evidência local.
+
+N1/GRestrito: pausar o preview, depois rodar
+`node scripts/qa/gestao-entry-permissions-local.mjs` com QA_PLAYWRIGHT_MODULE.
+O harness só aceita Windows, PostgreSQL loopback/55433, os dois bancos exatos
+e quatro atores persistidos; verifica TLS, alterna seus próprios processos
+locais e tenta restaurar admin visual ao terminar. Se o executor encerrar os
+filhos ao sair, reabrir com o comando dev e as variáveis acima. Não usar com
+preview já ativo; ele falha sem matar processo alheio. Resultados em
+`output/playwright/gestao-v2/entry-permissions/`. Sem login usa testes do
+proxy, sem comprovar Clerk real. POST sentinela verifica somente a barreira
+anterior ao despacho; a matriz das Server Actions válidas continua pendente.
+Proxy faz Member mínimo fresco e EXISTS de vínculo antes do streaming para
+emitir 403 real; página e mutação continuam verificando autorização própria.

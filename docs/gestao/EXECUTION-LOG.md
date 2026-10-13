@@ -18,6 +18,8 @@ O resumo vigente fica em `STATUS.md`. Não registrar segredos ou dados pessoais.
 
 | 12/10/2026 | Unidade N2/N3, identificar por `fix(gestao): preserve origin and coordinate environment navigation` | Origem sanitizada por aba/usuário após links sem `from` e reload; snapshots/fallback, foco/anúncio, offline/retry e limite de espera | 12/12 combinações, duração 400/120 ms, feedback 20,4–85 ms, CLS local zero; cinco testes novos e gates completos em `output/gestao-shell-entry` | N2 integral e quadros 13–17 sem aceite visual; matriz N1 e guard restrito são próximos; título após >4 s ainda sem aceite; preview admin visual reaberto |
 
+| 13/10/2026 | N1/GRestrito, identificar por `fix(gestao): enforce private 403 responses before streaming` | Login com destino; negação fresca de membro/admin/turma no proxy e DAL, sem ciclo; estado restrito com retorno/ajuda | 47 testes focados; quatro atores, status HTTP 403, POST barrado, 36 capturas, no payload conferido; gates completos em `output/gestao-entry-permissions` | 0/101 aceitos; 39 em andamento; Clerk real, matriz de ações válidas e visual integral pendentes; P2002 de focus-timer é a próxima dependência; preview admin visual reaberto |
+
 ## Formato das próximas entradas
 
 `Data | SHA | escopo e requisito fechado | teste/captura/log | pendências exatas`.

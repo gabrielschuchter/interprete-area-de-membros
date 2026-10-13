@@ -1,4 +1,4 @@
-# Gestão — estado atual auditado em 12/10/2026
+# Gestão — estado atual atualizado em 13/10/2026
 
 **Leia este arquivo antes do diário histórico. O produto está incompleto.**
 
@@ -6,7 +6,7 @@
 
 - Worktree autorizado: `C:\Users\gabsc\.codex\worktrees\interprete-gestao\interprete-area-de-membros`, branch `gestao-v2`.
 - O checkout original em Documents tem trabalho alheio e não foi alterado.
-- **0/101 quadros aceitos**, 37 em andamento e 64 pendentes no inventário de `PROGRESS.md`. GChegada/GTransicao/GTransicaoEstados/GTransicaoMobile entraram em andamento após GRail/GMMenu.
+- **0/101 quadros aceitos**, 39 em andamento e 62 pendentes no inventário de `PROGRESS.md`. GEntrada/GRestrito entram em andamento após as unidades de navegação/transição.
 - Só a Fase 0 (auditoria inicial) está registrada como concluída. Fase 1 é o foco para fechar o aceite antes da Fase 2; Fases 2–5 têm trabalho parcial; Fases 6–9 estão pendentes.
 - 53 rotas no contrato; 38 arquivos `page.tsx` na Gestão; **18 correspondências exatas** após normalizar nomes de parâmetros. Os 35 caminhos sem correspondência incluem funcionalidades parcialmente disponíveis em rotas diferentes. Esses números **não medem telas prontas**.
 - Inventário histórico da auditoria inicial: `estado-auditado-20261012.json` (31 em andamento naquele momento). A presença de arquivo não comprova funcionalidade, autorização ou fidelidade.
@@ -16,7 +16,7 @@
 
 | Área | Evidência inspecionada | O que não está concluído |
 |---|---|---|
-| Shell e entrada | Trilho/gaveta R1/R3; entrada/retorno N2/N3 em 12 combinações; sessão de origem sanitizada após navegação sem `from` e reload; foco/anúncio, snapshots/fallback, offline/retry, feedback 20,4–85 ms e CLS local zero | Comparação integral 13–30, stagger/timing integral, restante do teclado, leitor de tela real e matriz de papéis; guards atuais redirecionam membro e podem criar ciclo de professor na Administração; 500 inicial de focus-timer ainda pendente |
+| Shell e entrada | R1/R3 e N2/N3; N1 com membro, dois professores e admin persistidos: item condicionado ao papel, URLs permitidas/negadas, HTTP 403 e ausência dos payloads conferidos; Administração sem ciclo; login com destino nos testes do proxy; 36 capturas do estado restrito | Comparação integral 13–30, stagger/timing integral, título após espera >4 s, restante do teclado, leitor de tela e Clerk reais; matriz de todas as ações ainda pendente; 500 inicial de focus-timer ainda pendente |
 | Turmas | Páginas próprias, matrículas, atribuição de aluno sem turma, fixtures persistentes | T1–T8 completos no navegador; importação/movimentação/duplicação e isolamento de todos os perfis não têm aceite conjunto |
 | Calendário | Quatro fontes, camadas, recorrência/exceções, cópia, ICS revogável; QA local anterior de persistência/revogação | Menu do dia só tem encontro/evento; prazo/liberação pelo menu faltam; fidelidade, calendário do aluno e matriz completa não aceitos |
 | Novo encontro pelo dia | Publicado e rascunho criados pela UI, reload e leitura SQL confirmaram persistência/vínculo; rascunho tracejado; 14 testes focados | C1/C2 completos ainda precisam de navegação como aluno, demais papéis, edição completa e comparação visual |
@@ -46,6 +46,7 @@ que já têm evidência e sem chamar gates verdes de conclusão do produto.**
 
 - Preview: `http://localhost:3000/gestao/alunos/turmas`; adaptador de QA local com admin visual, sem Clerk real.
 - PostgreSQL local: `127.0.0.1:55433`, TLS com CA validada.
+- Após reinício do ambiente em 13/10, faltavam diretórios auxiliares no PGDATA. Cópia física preservada em `%TEMP%/interprete-gestao-qa-20261012/postgres-data-before-directory-recovery-20261013`; somente diretórios ausentes recriados. PostgreSQL fez recovery normal do WAL. SQL TLS confirmou os dois bancos, contagens e os dois encontros de handoff preservados; log `output/gestao-entry-permissions/db-recovery.log`. Sem initdb/reset de WAL ou exclusão.
 - Funcional: `interprete_gestao_qa_20261012`; visual: `interprete_gestao_visual_qa_20261012`.
 - CA: `%TEMP%\interprete-gestao-qa-20261012\local-qa-ca.crt`.
 - Migrations aditivas recentes: `20261012180000_cohort_calendar_projection` e `20261012223000_meeting_publication_time`, aplicadas no funcional. Visual tem schema, mas **não** tem `_prisma_migrations`; não afirmar aplicação versionada nele.
@@ -55,6 +56,17 @@ que já têm evidência e sem chamar gates verdes de conclusão do produto.**
 - `pg_hba.conf` recebeu regras temporárias `hostssl/trust` só para os dois bancos QA, usuário postgres e loopback. Ao **encerrar** o preview, restaurar `%TEMP%\interprete-gestao-qa-20261012\pg_hba.before-live-preview-20261012.conf` sobre `postgres-data\pg_hba.conf` e executar `pg_ctl reload` no data-dir correto. Procedimento em `DECISIONS.md`.
 
 ## Qualidade e capturas
+
+- N1/GRestrito: 47 testes focados; quatro atores locais com HTTP 403 e payloads
+  negados conferidos; POST barrado antes do despacho; 36 capturas em seis
+  larguras/dois movimentos sem overflow/pageerror, Escape e foco restaurado.
+  Gates: check 915 arquivos, typecheck 16/16, boundaries 856, 658 testes app,
+  17 domínio/9 API e 32 scripts aprovados/1 ignorado; build 8/8,
+  performance:check/diff passaram. Calendário 223,7 KiB/18 chunks e
+  Planejamento 224,5 KiB/17, teto 225 KiB. Logs em
+  `output/gestao-entry-permissions`; JSON/capturas em `entry-permissions`.
+  Referência 27 comparada; fonte/medidas ajustadas, shell ainda divergente.
+  Preview visual reaberto após build; sem migration ou alteração de fixtures.
 
 - N2/N3: harness 12/12 mais offline/retry/fallback; duração nativa 400/120 ms,
   feedback 20,4–85 ms e CLS local zero. Cinco testes novos; check 910 arquivos,
