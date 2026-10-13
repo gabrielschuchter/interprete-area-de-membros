@@ -301,3 +301,6 @@ skills-lock.json
 /migration-recordings-source-inventory.json
 /scripts/recordings-drive-migration.mjs
 /scripts/recordings-drive-remux-migration.mjs
+
+# Isolated local Next QA runtimes; preserve the preview on port 3000.
+.next-local-*/

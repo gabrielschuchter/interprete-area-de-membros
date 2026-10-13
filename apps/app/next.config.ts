@@ -3,6 +3,14 @@ import { withLogging, withSentry } from "@repo/observability/next-config";
 import type { NextConfig } from "next";
 import { env } from "@/env";
 
+const localDistDir = process.env.INTERPRETE_LOCAL_DIST_DIR;
+if (
+  localDistDir &&
+  (process.env.VERCEL || !/^\.next-local-[a-z0-9-]+$/.test(localDistDir))
+) {
+  throw new Error("Diretório de QA local inválido ou configurado na Vercel.");
+}
+
 let nextConfig: NextConfig = withLogging(config);
 
 // Every application API route is either identity-bound or protected by an
@@ -11,6 +19,7 @@ let nextConfig: NextConfig = withLogging(config);
 // an individual handler has a chance to add its more specific headers.
 nextConfig = {
   ...nextConfig,
+  ...(localDistDir ? { distDir: localDistDir } : {}),
   experimental: {
     ...nextConfig.experimental,
     authInterrupts: true,

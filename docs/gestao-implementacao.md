@@ -153,3 +153,33 @@ as respostas não são alterados. Não usar o CLS dessa instrumentação como
 métrica da rota. Sem a variável, roda a regressão normal. O pedido de foco
 agora sobrevive ao aviso de 4 s e cancela ao sair da rota, sem capturar foco
 de um diálogo aberto. Leitor de tela/rede lenta reais continuam pendentes.
+
+
+## Preview contínuo e artefatos locais em outro volume
+
+Manter o processo3000 existente; QA A2 usa3002 e distDir independente.
+`INTERPRETE_LOCAL_DIST_DIR=.next-local-<nome>` escolhe o diretório relativo de
+artefatos do app; nomes externos/../ e uso na Vercel falham fechados. A produção
+continua com o distDir padrão quando a variável não existe. Não aplicar essa
+variável ao ambiente publicado.
+
+No Windows desta execução, .next-local-a2 aponta por junction para
+D:/CodexCache/interprete-gestao-20261013/next-a2-preserved; .next-local-build-d
+aponta para next-build no mesmo diretório. A junction node_modules nesse
+pai aponta às dependências existentes de apps/app, para resolver módulos pelo
+caminho físico D:. Nenhum código/dependência/banco/fixture foi copiado ou
+movido; somente cache e logs gerados. Não excluir recursivamente junctions.
+
+Build isolado: executar os gates usuais com NODE_OPTIONS=--use-system-ca,
+QA auth desligado, envvalidation ignorada somente no ensaio local e conexão
+QA/TLS existente. Para build no diretório .next-local-build-d, definir também
+INTERPRETE_NEXT_DIST_DIR=.next-local-build-d, pois performance:check precisa
+medir os mesmos manifests. Executar `bun run build --concurrency=1 --cache=local:r`
+para não gravar um resultado de cache Turbo com outputs fora do .next padrão;
+o checker de performance lê o diretório explícito. Processos Windows em segundo
+plano usam WindowStyle Hidden; wrapper Next usa windowsHide. Não gerar CMDs
+visíveis para cada perfil. QA usa Webpack, preservando Turbopack do preview.
+
+D: foi verificado como NTFS/local/saudável com espaço e escrita; links são
+configuração local ignorada pelo Git. A alternativa portável é usar os mesmos
+nomes .next-local-* dentro do worktree, sem junction, se houver espaço.

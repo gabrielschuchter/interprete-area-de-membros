@@ -84,6 +84,7 @@ function main() {
   }
 
   const child = spawn(configuration.command, configuration.args, {
+    windowsHide: true,
     env: configuration.env,
     stdio: "inherit",
   });
