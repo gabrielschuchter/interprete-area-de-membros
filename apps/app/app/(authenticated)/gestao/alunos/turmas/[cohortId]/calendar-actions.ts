@@ -14,11 +14,13 @@ import { z } from "zod";
 import {
   cohortCalendarTimezone,
   isCohortCalendarEventColor,
+  meetingRecurrenceFromRule,
   parseCohortCalendarDateTime,
 } from "@/lib/cohort-calendar-domain";
 import { requireGestaoAction } from "@/lib/gestao-authorization";
 import { readIdempotencyKey } from "@/lib/mutation-contract";
 import { consumeMutationRateLimit } from "@/lib/mutation-reliability";
+import { meetingCohortScopeWhere } from "./meeting-cohort-scope";
 
 const id = z.string().trim().min(1).max(255);
 const uuid = z.string().uuid();
@@ -80,6 +82,30 @@ const meetingFields = z.object({
 export type CohortMeetingActionResult =
   | { readonly ok: true; readonly meetingId: string }
   | Extract<CohortCalendarActionResult, { ok: false }>;
+
+export interface CohortMeetingEditValues {
+  readonly cohortVersion: number;
+  readonly description: string | null;
+  readonly endsAt: string;
+  readonly id: string;
+  readonly joinUrl: string;
+  readonly recurrence: PlannerRecurrence;
+  readonly recurrenceUntil: string;
+  readonly startsAt: string;
+  readonly status: "DRAFT" | "PUBLISHED";
+  readonly timezone: string;
+  readonly title: string;
+  readonly updatedAt: string;
+}
+
+export type CohortMeetingEditResult =
+  | { readonly ok: true; readonly meeting: CohortMeetingEditValues }
+  | Extract<CohortCalendarActionResult, { ok: false }>;
+
+const meetingUpdateFields = meetingFields.extend({
+  meetingId: id,
+  expectedMeetingUpdatedAt: z.string().datetime({ offset: true }),
+});
 
 const validateMeetingInput = (value: z.infer<typeof meetingFields>) => {
   const fields: Record<string, string> = {};
@@ -386,7 +412,7 @@ const requireWritableCohort = async (
       "Turma não encontrada ou sem acesso."
     );
   }
-  return cohort;
+  return { ...cohort, actorRole: currentActor.role };
 };
 
 const bumpCohortVersion = async (
@@ -410,6 +436,345 @@ const revalidateCalendar = (cohortId: string) => {
   revalidatePath(`/gestao/alunos/turmas/${cohortId}`);
   revalidatePath(`/gestao/alunos/turmas/${cohortId}/calendario`);
   revalidatePath("/planejamento");
+};
+
+export const getGestaoCohortMeetingForEdit = async (
+  input: unknown
+): Promise<CohortMeetingEditResult> => {
+  try {
+    const value = z.object({ cohortId: id, meetingId: id }).parse(input);
+    const { actor } = await requireGestaoAction("cohort.manage", {
+      cohortId: value.cohortId,
+    });
+    const meeting = await database.$transaction(async (tx) => {
+      const cohort = await requireWritableCohort(
+        tx,
+        actor.userId,
+        value.cohortId
+      );
+      if (cohort.archivedAt) {
+        throw new CalendarMutationFailure(
+          "conflict",
+          "Esta turma está arquivada."
+        );
+      }
+      const row = await tx.meeting.findFirst({
+        where: {
+          id: value.meetingId,
+          demoKey: null,
+          ...meetingCohortScopeWhere({
+            actorId: actor.userId,
+            actorRole: cohort.actorRole,
+            cohortId: value.cohortId,
+          }),
+        },
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          startsAt: true,
+          endsAt: true,
+          timezone: true,
+          joinUrl: true,
+          recurrenceRule: true,
+          recurrenceUntil: true,
+          status: true,
+          updatedAt: true,
+        },
+      });
+      if (!row || row.status === ContentStatus.ARCHIVED) {
+        throw new CalendarMutationFailure(
+          "not-found",
+          "Encontro não encontrado ou sem acesso nesta turma."
+        );
+      }
+      return {
+        cohortVersion: cohort.version,
+        description: row.description,
+        endsAt: row.endsAt?.toISOString() ?? "",
+        id: row.id,
+        joinUrl: row.joinUrl,
+        recurrence: meetingRecurrenceFromRule(row.recurrenceRule),
+        recurrenceUntil: row.recurrenceUntil?.toISOString() ?? "",
+        startsAt: row.startsAt.toISOString(),
+        status: row.status,
+        timezone: row.timezone,
+        title: row.title,
+        updatedAt: row.updatedAt.toISOString(),
+      } satisfies CohortMeetingEditValues;
+    });
+    return { ok: true, meeting };
+  } catch (error) {
+    return errorResult(error) as Extract<
+      CohortCalendarActionResult,
+      { ok: false }
+    >;
+  }
+};
+
+interface MeetingUpdateTransactionInput {
+  readonly actorId: string;
+  readonly cohortId: string;
+  readonly dates: ReturnType<typeof validateMeetingInput>;
+  readonly fingerprint: string;
+  readonly meetingId: string;
+  readonly operationKey: string;
+  readonly value: z.infer<typeof meetingUpdateFields>;
+}
+
+const requireMeetingUpdateTarget = async (
+  tx: Prisma.TransactionClient,
+  input: MeetingUpdateTransactionInput,
+  actorRole: MemberRole
+) => {
+  const scope = meetingCohortScopeWhere({
+    actorId: input.actorId,
+    actorRole,
+    cohortId: input.cohortId,
+  });
+  const previous = await tx.meeting.findFirst({
+    where: { id: input.meetingId, demoKey: null, ...scope },
+    select: {
+      id: true,
+      status: true,
+      publishedAt: true,
+      updatedAt: true,
+    },
+  });
+  if (!previous) {
+    throw new CalendarMutationFailure(
+      "not-found",
+      "Encontro não encontrado ou sem acesso nesta turma."
+    );
+  }
+  return { previous, scope };
+};
+
+const hasProcessedMeetingUpdate = async (
+  tx: Prisma.TransactionClient,
+  input: MeetingUpdateTransactionInput
+) => {
+  const audit = await tx.domainEvent.findUnique({
+    where: { idempotencyKey: input.operationKey },
+    select: { payload: true },
+  });
+  if (!audit) {
+    return false;
+  }
+  const payload = audit.payload;
+  if (
+    !payload ||
+    typeof payload !== "object" ||
+    Array.isArray(payload) ||
+    payload.fingerprint !== input.fingerprint ||
+    payload.meetingId !== input.meetingId ||
+    payload.cohortId !== input.cohortId
+  ) {
+    throw new CalendarMutationFailure(
+      "conflict",
+      "Os dados desta operação mudaram. Feche e reabra o formulário."
+    );
+  }
+  return true;
+};
+
+const assertMeetingUpdateIsCurrent = (
+  cohort: { readonly archivedAt: Date | null; readonly version: number },
+  previous: {
+    readonly status: ContentStatus;
+    readonly updatedAt: Date;
+  },
+  value: z.infer<typeof meetingUpdateFields>
+) => {
+  if (cohort.archivedAt) {
+    throw new CalendarMutationFailure("conflict", "Esta turma está arquivada.");
+  }
+  if (cohort.version !== value.expectedCohortVersion) {
+    throw new CalendarMutationFailure(
+      "conflict",
+      "A turma mudou em outra sessão. Atualize os dados antes de salvar."
+    );
+  }
+  if (previous.status === ContentStatus.ARCHIVED) {
+    throw new CalendarMutationFailure(
+      "conflict",
+      "Este encontro está arquivado."
+    );
+  }
+  if (previous.updatedAt.toISOString() !== value.expectedMeetingUpdatedAt) {
+    throw new CalendarMutationFailure(
+      "conflict",
+      "Este encontro mudou em outra sessão. Atualize a agenda."
+    );
+  }
+  if (
+    previous.status === ContentStatus.PUBLISHED &&
+    value.status === ContentStatus.DRAFT
+  ) {
+    throw new CalendarMutationFailure(
+      "conflict",
+      "Um encontro publicado não pode voltar a rascunho por este formulário."
+    );
+  }
+};
+
+const meetingPublishedAtAfterUpdate = (
+  previous: {
+    readonly publishedAt: Date | null;
+    readonly status: ContentStatus;
+  },
+  status: ContentStatus,
+  now: Date
+) => {
+  if (status !== ContentStatus.PUBLISHED) {
+    return null;
+  }
+  if (previous.status === ContentStatus.PUBLISHED && previous.publishedAt) {
+    return previous.publishedAt;
+  }
+  return now;
+};
+
+const meetingUpdateEventType = (
+  previousStatus: ContentStatus,
+  status: ContentStatus
+) => {
+  if (status === ContentStatus.DRAFT) {
+    return "gestao.cohort.meeting.saved";
+  }
+  if (previousStatus === ContentStatus.DRAFT) {
+    return "event.published";
+  }
+  return "gestao.cohort.meeting.updated";
+};
+
+const saveMeetingUpdateTransaction = async (
+  tx: Prisma.TransactionClient,
+  input: MeetingUpdateTransactionInput
+) => {
+  const cohort = await requireWritableCohort(tx, input.actorId, input.cohortId);
+  const { previous, scope } = await requireMeetingUpdateTarget(
+    tx,
+    input,
+    cohort.actorRole
+  );
+  if (await hasProcessedMeetingUpdate(tx, input)) {
+    return;
+  }
+  assertMeetingUpdateIsCurrent(cohort, previous, input.value);
+  await bumpCohortVersion(
+    tx,
+    input.cohortId,
+    input.value.expectedCohortVersion
+  );
+  const now = new Date();
+  const changed = await tx.meeting.updateMany({
+    where: {
+      id: input.meetingId,
+      demoKey: null,
+      updatedAt: previous.updatedAt,
+      ...scope,
+    },
+    data: {
+      title: input.value.title,
+      description: input.value.description || null,
+      startsAt: input.dates.startsAt,
+      endsAt: input.dates.endsAt,
+      timezone: input.value.timezone,
+      joinUrl: input.value.joinUrl,
+      recurrenceRule:
+        input.value.recurrence === PlannerRecurrence.NONE
+          ? null
+          : input.value.recurrence,
+      recurrenceUntil: input.dates.recurrenceUntil,
+      status: input.value.status,
+      publishedAt: meetingPublishedAtAfterUpdate(
+        previous,
+        input.value.status,
+        now
+      ),
+    },
+  });
+  if (changed.count !== 1) {
+    throw new CalendarMutationFailure(
+      "conflict",
+      "Este encontro mudou em outra sessão. Atualize a agenda."
+    );
+  }
+  await enqueueDomainEvent(tx, {
+    eventType: meetingUpdateEventType(previous.status, input.value.status),
+    actorId: input.actorId,
+    aggregateType: "meeting",
+    aggregateId: input.meetingId,
+    idempotencyKey: input.operationKey,
+    payload: {
+      cohortId: input.cohortId,
+      meetingId: input.meetingId,
+      status: input.value.status,
+      fingerprint: input.fingerprint,
+    },
+    occurredAt: now,
+    consumers: [],
+  });
+};
+
+export const updateGestaoCohortMeeting = async (
+  input: unknown
+): Promise<CohortMeetingActionResult> => {
+  let cohortId = "";
+  let meetingId = "";
+  try {
+    const value = meetingUpdateFields.parse(input);
+    cohortId = value.cohortId;
+    meetingId = value.meetingId;
+    const { actor } = await requireGestaoAction("cohort.manage", {
+      cohortId,
+    });
+    const idempotencyKey = readIdempotencyKey(value.idempotencyKey);
+    if (!idempotencyKey) {
+      throw new CalendarMutationFailure(
+        "validation",
+        "Atualize o formulário e tente novamente."
+      );
+    }
+    const dates = validateMeetingInput(value);
+    await consumeMutationRateLimit({
+      action: "cohort.mutation",
+      memberId: actor.userId,
+    });
+    const operationKey = `gestao:cohort:meeting:update:${createHash("sha256")
+      .update(
+        JSON.stringify([actor.userId, cohortId, meetingId, idempotencyKey])
+      )
+      .digest("hex")}`;
+    const { expectedCohortVersion, expectedMeetingUpdatedAt, ...mutation } =
+      value;
+    const fingerprint = createHash("sha256")
+      .update(JSON.stringify({ ...mutation, idempotencyKey: undefined }))
+      .digest("hex");
+    await database.$transaction(
+      (tx) =>
+        saveMeetingUpdateTransaction(tx, {
+          actorId: actor.userId,
+          cohortId,
+          dates,
+          fingerprint,
+          meetingId,
+          operationKey,
+          value,
+        }),
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+    );
+    revalidateCalendar(cohortId);
+    revalidatePath("/encontros");
+    revalidatePath(`/encontros/${meetingId}`);
+    return { ok: true, meetingId };
+  } catch (error) {
+    return errorResult(error) as Extract<
+      CohortCalendarActionResult,
+      { ok: false }
+    >;
+  }
 };
 
 const parseEventDates = (value: z.infer<typeof eventFields>) => {

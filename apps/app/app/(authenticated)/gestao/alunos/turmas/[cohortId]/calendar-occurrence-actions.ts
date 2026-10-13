@@ -21,6 +21,7 @@ import {
 import { requireGestaoAction } from "@/lib/gestao-authorization";
 import { readIdempotencyKey } from "@/lib/mutation-contract";
 import { consumeMutationRateLimit } from "@/lib/mutation-reliability";
+import { meetingCohortScopeWhere } from "./meeting-cohort-scope";
 
 const id = z.string().trim().min(1).max(255);
 const uuid = z.string().uuid();
@@ -349,17 +350,7 @@ const saveMeetingOccurrence = async (
       id: input.sourceId,
       demoKey: null,
       status: { not: "ARCHIVED" },
-      cohortTargets: {
-        some: { cohortId, revokedAt: null },
-        ...(actorRole === MemberRole.ADMIN
-          ? {}
-          : {
-              none: {
-                revokedAt: null,
-                cohort: { teachers: { none: { memberId: actorId } } },
-              },
-            }),
-      },
+      ...meetingCohortScopeWhere({ actorId, actorRole, cohortId }),
     },
     select: {
       id: true,

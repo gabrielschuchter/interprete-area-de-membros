@@ -126,3 +126,71 @@ Typecheck serial16/16 passou; gates ainda precisam ser fechados no diff final.
 | Data | Unidade | Mudança | Evidência | Próximo / limite |
 |---|---|---|---|---|
 | 13/10/2026 | A2 `347ba84`; runtime `406dd2d` | Comentário controlado, campos por entrega, redirect pós-commit/próxima filtrada; runtime QA oculto/isolado/cache D; estratégia base→QA→publicação |27 focados; browser1/1/621s+pós-build1/1/191s, API/notificação/job/histórico; check939/type16/bound871/727app/build8/perf/diff | Item2 MVP: turma/cronograma/encontro→Aprender/calendário. Sem fase/quadro promovido; goal integral ativo, produção condicionada ao QA completo |
+
+### 13/10/2026 — início do item 2: turma → encontro → calendário do aluno
+
+Requisito vigente em `MVP.md`: fechar publicação/liberação e as políticas de
+entrada/saída integradas; encontro publicado deve aparecer ao aluno e rascunho
+deve permanecer oculto. O recorte funcional pedido mantém a criação pelo dia,
+retomada, edição/publicação, autorização fresca, reload e layouts 1440/390/320.
+
+Provas existentes reutilizadas, sem repetir escritas: T2 (origens de acesso e
+histórico preservados); criação de encontro publicado/rascunho pelo calendário,
+persistência após reload e SQL, rascunho tracejado; resolvers de calendário e
+política de encontro `ALL_ACTIVE`/`FROM_JOIN`; 14 testes focados registrados
+em `STATUS.md`/`PROGRESS.md`. A página do aluno usa `getPublishedMeeting`.
+
+Lacuna observada: o calendário da Gestão monta `/encontros/{id}` também para
+rascunhos; esse destino filtra `PUBLISHED`. O diálogo atual só cria e encerra
+após salvar; não permite retomar/editar/publicar depois. `updateMeeting` e
+`setMeetingStatus` legados não demonstram escopo de turma nessa operação. A
+política para encontro compartilhado exige responsabilidade por todas as
+turmas-alvo e deve ser mantida com a validação do servidor.
+
+Arquivos principais já localizados: `calendar-actions.ts`,
+`calendar-occurrence-actions.ts`, `cohort-calendar-editor.tsx`,
+`cohort-meeting-dialog.tsx`, `gestao-cohorts.ts`, `meetings.ts`, página
+`/encontros/[id]` e testes/harness de calendário. Nenhuma implementação da
+unidade começou neste registro.
+
+Critério de saída: professor/admin cria ou retoma encontro; rascunho persiste,
+aparece na Gestão e fica ausente da rota/calendário do aluno; editar/publicar
+atualiza detalhe e calendário do aluno após reload; professor sem vínculo é
+negado na rota/ação real; compartilhamento e histórico são preservados; sem
+overflow em 1440/390/320. Reutilizar a criação, T2, resolvers e recorrência já
+comprovados. Não reenviar nem resetar fixtures A2/T2. Sem promover fase/quadro.
+
+Ambiente retomado para esta unidade: PID 12524 do preview3000 permaneceu ativo.
+O PG local estava parado com PID salvo obsoleto; o mesmo PostgreSQL 17.10 foi
+iniciado sobre o PGDATA existente, com loopback e SSL/TLS. Recovery nativo
+concluiu e a rota `/gestao/alunos/turmas` voltou a HTTP 200; sem reseed,
+restauração de backup ou alteração de fixtures.
+
+### 13/10/2026 — item 2: encontro contextual editável/publicável
+
+Implementação local: gestão de encontro DRAFT/PUBLISHED no contexto da turma,
+com alvo compartilhado protegido pela responsabilidade sobre todas as turmas
+ativas, papel/atribuição frescos, transação serializável, versão otimista,
+idempotência, auditoria e revalidação. O editor reutiliza campos, validação,
+fuso e recorrência; rascunhos passaram a abrir para edição em vez de apontar
+para uma rota do aluno que os oculta. Planner recebeu o ajuste responsivo do
+cabeçalho para 320 px.
+
+QA funcional: a fixture cmv75fgiw0003foyptlld9yp6, na turma
+cmv5mu5uh000vowyp56sgazpj, foi criada DRAFT, retomada após reload, editada e
+publicada pela Professora QA Ana. Student04 não a viu antes da publicação e
+recebeu 404 direto; depois viu calendário e detalhe após reload. Professor2
+recebeu 403 na rota e no replay da Server Action real. SQL TLS confirmou que o
+replay não alterou registro/auditoria; após publicação, status PUBLISHED,
+um alvo ativo, zero exceções e quatro eventos. A fixture example.invalid é
+somente de QA. Fixtures/históricos T2/A2 e demais feedbacks foram preservados.
+Detalhe em output/gestao-mvp-item2/local-browser-smoke.md.
+
+Sete testes focados, incluindo encontro legado sem término; gates finais
+check941, typecheck16/16, boundaries873,
+app734/domínio17/API9, scripts32 aprovados/1ignorado, build8/8,
+performance:check e diff-check. Bundles Gestão calendário224,8KiB e
+Planejamento224,6KiB/225KiB. Build/cache isolado em D: com URL local
+documentada e banco QA/TLS; não é prova de Clerk ou produção. Nenhuma
+migration, push, merge, deploy, escrita remota ou promoção de fase/quadro.
+Goal integral ativo; próxima unidade item3, Ensino → aluno.

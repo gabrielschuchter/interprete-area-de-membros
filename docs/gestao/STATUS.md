@@ -23,7 +23,45 @@ abaixo são históricos quando divergirem desta instrução.
 
 **Leia este arquivo antes do diário histórico. O produto está incompleto.**
 
-## Unidade mais recente — A2 funcional local verificada
+## Unidade mais recente — item 2: turma → encontro → calendário do aluno (13/10/2026)
+
+Fechado funcionalmente em QA local, sem promover fase/quadro. Na turma QA
+ativa cmv5mu5uh000vowyp56sgazpj, a professora criou o encontro
+cmv75fgiw0003foyptlld9yp6 como rascunho, saiu/recarregou, retomou, editou e
+publicou. O registro foi relido por PostgreSQL com TLS: PUBLISHED,
+publishedAt preenchido, um alvo ativo, zero exceções e quatro eventos de
+auditoria. A edição preservou turma/alvo e histórico.
+
+Antes da publicação, student04 não viu o encontro no calendário e recebeu 404
+na rota direta. Depois, Planejamento/calendário mostrou o encontro após reload;
+detalhe do aluno também mostrou título/descrição/link após reload. Professor2
+recebeu 403 na rota da Gestão e a repetição da Server Action real, capturada
+na sessão autorizada e enviada no perfil alheio, retornou 403. A leitura TLS
+posterior confirmou descrição/status/updatedAt sem alteração e nenhuma
+auditoria nova. É autorização do adaptador local de QA, não prova de Clerk real.
+
+Editar/publicar reaproveita o escopo server-side de todas as turmas-alvo
+ativas, papel/atribuição frescos, transação serializável, versão otimista,
+idempotência, auditoria e revalidação. Fixtures T2/C1/C2 anteriores foram
+reutilizadas sem reenvio/reset. A fixture nova tem link example.invalid e deve
+permanecer somente em QA; não copiar para produção.
+
+Browser pós-reload: Gestão e calendário do aluno sem overflow em 1440/390/320;
+consoleErrors=0 na sessão do aluno e da professora. Sete testes focados
+passaram, incluindo encontro legado sem horário final. Gates: check941 arquivos, typecheck16/16, boundaries873; app734,
+domínio17, API9; scripts32 aprovados/1 ignorado; build8/8; performance e
+diff-check aprovados. Bundles de Gestão calendário224,8KiB e Planejamento
+224,6KiB, cada um abaixo do orçamento225KiB com margem estreita. Build usa
+dist/cache isolado no D:, URL local documentada e conexão QA TLS; não comprova
+credenciais Clerk/Supabase/Vercel reais, deployment, QA integrado ou aceite
+visual.
+
+Preview3000 permaneceu PID12524/HTTP200 e checkout original não foi tocado.
+O goal integral segue ativo. Próxima unidade: item3, Ensino → aluno, conforme
+MVP.md. A base funcional completa, QA integrado e preflight de produção ainda
+estão pendentes.
+
+## Unidade anterior — A2 funcional local verificada
 
 Rascunho parcial salvo → sair/reload/retomar → aluno sem payload privado →
 professor alheio403 → validação preserva comentário → envio/próxima pendente
@@ -56,7 +94,12 @@ Sem migration, push, merge, deploy ou escrita remota. Sem promover fase/quadro:
 worker contínuo ou QA de todas as seções. Próxima unidade: item2 de MVP.md,
 turma/cronograma/encontro → Aprender/calendário; goal integral continua ativo.
 
-## Prioridade vigente: MVP funcional local
+## Registro histórico — prioridade de MVP funcional local (13/10/2026)
+
+Este checkpoint é anterior à estratégia de publicação condicional descrita
+no início deste arquivo. Seus critérios de produto continuam válidos; a regra
+de publicação vigente é a mais recente do usuário e não deve ser inferida do
+texto histórico abaixo.
 
 Instrução de 13/10/2026 substitui a prioridade de fechar todo o Main/shell
 visualmente antes de continuar. Entregar em unidades verticais: gestão de
@@ -87,8 +130,8 @@ Limites mantidos: somente local, sem push/merge/deploy/banco remoto/exclusão.
 |---|---|---|
 | Shell e entrada | R1/R3, N2/N3 e N1 locais; HTTP 403 e ausência de payload; timer sem provisionar preferências no GET; foco tardio por 6 s. Main conta feedback e números semanais reais com filtro de turma; abre a fila correspondente | Comparação integral 13–30; Main ainda sem outras categorias de atenção, próximos encontros, movimentação, Institucional e atalhos/prévia; shell/topbar divergente, stagger/timing integral, restante do teclado, leitor de tela, Clerk reais, matriz de todas as ações e rede lenta real pendentes |
 | Turmas | T2 funcional local: criar turma/curso, matricular três alunos, acesso/reload, remover, revogar só origem da turma, preservar grant direto e histórico; URL alheia403 e ação alheia recusada | T1–T8 completos, concessão temporária, CSV/movimentação/duplicação e matriz integral não têm aceite conjunto |
-| Calendário | Quatro fontes, camadas, recorrência/exceções, cópia, ICS revogável; QA local anterior de persistência/revogação | Menu do dia só tem encontro/evento; prazo/liberação pelo menu faltam; fidelidade, calendário do aluno e matriz completa não aceitos |
-| Novo encontro pelo dia | Publicado e rascunho criados pela UI, reload e leitura SQL confirmaram persistência/vínculo; rascunho tracejado; 14 testes focados | C1/C2 completos ainda precisam de navegação como aluno, demais papéis, edição completa e comparação visual |
+| Calendário | Quatro fontes, camadas, recorrência/exceções, cópia e ICS revogável; edição/publicação contextual do encontro, rascunho oculto ao aluno e calendário/detalhe após reload comprovados em QA local | Prazo/liberação pelo menu do dia, fidelidade, restantes das políticas combinadas e matriz completa não aceitos |
+| Novo encontro pelo dia | Criar e retomar rascunho, editar/publicar pela turma, reload, SQL/TLS, calendário e detalhe do aluno; professor alheio 403 na rota e na Server Action; 7 testes focados | C1/C2 e calendário completo não aceitos; ficam pendentes outras combinações de acesso/perfis, restante do menu e comparação visual |
 | Acesso a encontros | Commit `02fa927`; publicação/atribuição e FROM_JOIN, histórico ALL_ACTIVE, convite individual; URLs locais de aluno verificadas | Política integrada de todas as fontes e ICS do aluno não têm aceite completo |
 | Ensino | Páginas próprias de cursos, atividades, exercícios, biblioteca, coleções, percursos e aula; testes e bundles | Fluxos e fidelidade completos, upload/playback real, YouTube real e rotas canônicas divergentes |
 | Envios/Aprender/correções | Jornada MVP local: professor publica atividade com rubrica, aluno envia, professor corrige, aluno vê comentário/notas após reload; aluno alheio sem payload e professor alheio 403 na ação | Destaques/envios configuráveis, personalização, A1/A2 integrais, notificações contínuas e comparação visual continuam sem aceite |
@@ -261,6 +304,6 @@ que já têm evidência e sem chamar gates verdes de conclusão do produto.**
 
 1. Ler `HANDOFF-PROXIMO-CHAT.md`, este estado, `GOAL.md`, `DECISIONS.md` e o trecho relevante do diário.
 2. Escolher uma unidade vertical com critério de saída e casos de teste nomeados. Não reauditar todo o repositório a cada pequeno ajuste.
-3. Main/semana fechado em `6316cb3`; atividade/rubrica em `9d7e48a`; T2 funcional local verificado na unidade do goal. Próxima jornada mínima: A2, rascunho privado/reload/retomada e próxima entrega na fila. Reutilizar formulários e fixtures explícitas, preservar feedback anterior. Detalhes em `MVP.md`; aparência do quadro41 continua no backlog.
+3. Main/semana, atividade/rubrica, T2, A2 e item2 de turma/encontro têm provas locais separadas em STATUS/MVP/PROGRESS. Próxima unidade da sequência: item3, Ensino → aluno. Reutilizar CRUDs/serviços e fixtures autorizadas; preservar os históricos já verificados. Aparência dos 101 quadros continua separada.
 4. Atualizar este resumo, adicionar uma linha em `EXECUTION-LOG.md`, anexar a evidência e commitar. Nenhum `[x]` sem os 8 requisitos.
 5. Manter aceite integral separado do MVP. Os números de fases são os de `GOAL.md`, não os do roadmap geral 1–10.

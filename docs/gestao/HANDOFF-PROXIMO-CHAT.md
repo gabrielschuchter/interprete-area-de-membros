@@ -23,19 +23,24 @@ abaixo são históricos quando divergirem desta instrução.
 
 ## Última unidade e próximo passo
 
-A2 funcional local verificada; leitura autoritativa em STATUS/MVP e Git.
-Dois Feedback v1 da rodada2, rascunho privado/reload, validação, próxima/última,
-403 alheio, notificações internas/API e histórico preservado. Não reenviar os
-feedbacks das duas atividades A2; a primeira preserva o desvio que revelou o
-bug do comentário resetado. Gates completos e retomada pós-build passaram;
-nenhum quadro/fase promovido. Próxima unidade é item2 da sequência de MVP.md,
-turma/cronograma/encontro → Aprender/calendário, reutilizando evidência T2/C2.
+Item2 de MVP.md está fechado funcionalmente no QA local: professora criou,
+retomou, editou e publicou encontro contextual; aluno não viu DRAFT e viu
+PUBLISHED no calendário e detalhe após reload; professor alheio recebeu 403 na
+rota e no replay da Server Action real sem mutação. Fixture
+cmv75fgiw0003foyptlld9yp6, link example.invalid, é de QA e deve permanecer
+isolada. Evidência, gates, IDs e limites estão em STATUS.md, MVP.md,
+EXECUTION-LOG.md, PROGRESS.md e output/gestao-mvp-item2/local-browser-smoke.md.
 
-Preview3000/PG55433 continuam ativos. QA3002 é independente, oculto/sem detached,
-com Webpack. Caches/build no D: configurados por junctions locais; dependências
-continuam no worktree C:. Não mover banco/fixtures nem limpar histórico/cache
-preservado. Guia e caminhos em gestao-implementacao.md/DECISIONS. Goal completo
-permanece ativo até base, QA integrado, publicação e smoke reais concluídos.
+Próxima unidade: item3, Ensino → aluno, segundo a ordem de MVP.md. Não refazer
+A2, T2 nem o item2; preservar seus feedbacks, vínculos removidos e encontro de
+QA. Goal integral continua ativo até base local, QA integrado, preflight,
+publicação autorizada e smoke real.
+
+Preview3000 permaneceu PID12524/HTTP200. QA3002 usou porta/distDir próprios,
+Webpack e processo oculto; desligar apenas o processo QA próprio depois da
+verificação. Caches/build no D: por junctions locais; não mover banco/fixtures
+ou apagar cache/histórico preservado. Clerk real, QA integrado da Gestão e
+aceite visual seguem pendentes.
 
 ## Prioridade atualizada em 13/10/2026
 
@@ -65,7 +70,12 @@ mantido. Não reabrir/resetar esses vínculos para repetir o ensaio. Ver último
 logs/gates em STATUS/PROGRESS e docs/gestao/MVP.md. Próxima unidade: A2,
 rascunho privado/reload/retomada e próxima entrega; não reenviar feedbacks.
 
-## Texto para colar no próximo chat
+## Texto histórico para colar no próximo chat — pré-fechamento A2
+
+O bloco abaixo é uma instrução histórica anterior a T2/A2/item2. Não use seu
+status, sequência ou proibição absoluta de publicação como estado atual.
+Prevalecem o objetivo integral do usuário e as instruções vigentes no topo de
+GOAL.md e STATUS.md.
 
 ```text
 Retome a implementação completa da Nova Gestão do Interprete. O usuário
@@ -114,7 +124,7 @@ O preview local foi deixado para continuidade. Confira se está vivo
 antes de reiniciar. Ambiente, evidências e pendências estão neste handoff.
 ```
 
-## Git e última unidade
+## Git e unidade inicial do calendário — histórico anterior ao item 2
 
 Baseline anterior: `02fa927 fix(gestao): enforce meeting cohort entry policy`.
 O fechamento seguinte é `d468e34 feat(gestao): create cohort meetings from
@@ -142,14 +152,16 @@ implementation state`. Resolva os SHAs com `git log -5 --oneline`.
    uma aula** pelo dia ainda faltam. Não adicionar controles decorativos nem
    links que percam a data/turma selecionadas.
 2. Revisar área clicável/destaque do dia sem criar botões aninhados.
-3. O diálogo novo cria encontros; não substitui o editor completo da Fase 6.
-   Relacionados, participantes individuais, gravação, presença, autosave,
-   guard de saída e edição posterior contextual permanecem por completar.
+3. Item2 acrescentou retomada/edição/publicação contextual de encontro pela
+   turma. Isso não substitui o editor completo da Fase 6. Relacionados,
+   participantes individuais, gravação, presença, autosave e guard de saída
+   permanecem por completar.
 4. Auditoria `event.published` existe; não há prova de todas as notificações/jobs.
    `consumers: []` não representa notificação entregue.
-5. C1/C2 não aceitos integralmente: faltam jornada desse novo encontro como
-   aluno, outros perfis, fidelidade e restante do menu. Escape foi exercitado
-   nos seis tamanhos; teclado completo/retorno de foco/leitor de tela pendentes.
+5. C1/C2 não aceitos integralmente: o fluxo DRAFT/PUBLISHED foi testado com
+   aluno e professor alheio em QA local; restam outras combinações de acesso,
+   perfis, fidelidade e restante do menu. Teclado completo, retorno de foco e
+   leitor de tela seguem pendentes.
 
 ## Ambiente local
 

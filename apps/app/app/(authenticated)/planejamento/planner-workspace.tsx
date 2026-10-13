@@ -2873,7 +2873,7 @@ function PlannerWorkspaceContent({
             </Button>
           </div>
           <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
               <Button
                 aria-label={`Anterior: ${calendarStepLabel}`}
                 className="size-10"
@@ -2885,7 +2885,7 @@ function PlannerWorkspaceContent({
               </Button>
               <span
                 aria-live="polite"
-                className="min-w-52 text-center font-display text-[#40222F] text-xl capitalize"
+                className="min-w-[7rem] flex-1 text-center font-display text-[#40222F] text-base capitalize sm:min-w-52 sm:text-xl"
               >
                 {calendarHeading}
               </span>

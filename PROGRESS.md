@@ -1156,3 +1156,36 @@ Nenhum quadro/fase promovido; A2 integral/worker contínuo/Clerk/QA de toda a
 Gestão não concluídos. Próximo item2 em MVP.md; objetivo inteiro até publicação
 permanece ativo. Commits focados: runtime local406dd2d; correção A2 em347ba84; documentação
 de estratégia/evidências. Não usar fechamento desta unidade como aceite do produto.
+
+### 13/10/2026 — item 2: Gestão de encontro → calendário do aluno (local)
+
+Fechamento funcional local após A2, sem reiniciar planejamento nem reproduzir
+provas antigas. Na turma QA ativa cmv5mu5uh000vowyp56sgazpj, professora QA Ana
+criou o encontro cmv75fgiw0003foyptlld9yp6 como DRAFT, saiu/recarregou,
+retomou/alterou e publicou. A edição usa escopo server-side para todas as
+turmas-alvo ativas, papel/atribuição frescos, serializable, versão otimista,
+idempotência, DomainEvent e revalidação. O legado de encontros fora desse fluxo
+não foi reaproveitado.
+
+student04 não viu o rascunho no calendário e recebeu 404 na rota direta; após
+publicação, calendário e detalhe exibiram o registro após reload. Professor2
+recebeu 403 na rota e no replay da Server Action real; SQL TLS confirmou que
+seu registro e auditoria não mudaram. Pós-publicação: PUBLISHED, publishedAt,
+um alvo ativo, zero exceções, quatro eventos. Sem alteração de memberships,
+exceções ou feedbacks históricos; T2/C1/C2/A2 existentes foram preservadas.
+Fixture nova tem link example.invalid e permanece só na base QA.
+
+Gestão e Planejamento do aluno sem overflow a 1440/390/320; detalhe do aluno
+também reload e três larguras; consoleErrors=0 nas sessões de aluno/professora.
+Sete testes focados aprovados, incluindo encontro legado sem término. Gates:
+check941, typecheck16/16, boundaries873,
+app734/domínio17/API9, scripts32/1 ignorado, build8/8, performance e diff-check.
+Calendário Gestão224,8KiB; Planejamento224,6KiB, teto225KiB. Build isolado no
+D: usou URL local documentada e QA PostgreSQL/TLS, sem credenciais Clerk
+inventadas. Evidência resumida em output/gestao-mvp-item2/local-browser-smoke.md.
+
+Nenhum push/merge/deploy/remoto, migration, exclusão, transporte de fixture ou
+promoção de quadro/fase. Preview3000 PID12524/HTTP200 mantido; checkout original
+intocado. Goal integral ativo. Próxima unidade: item3, Ensino → aluno; depois
+envios/acompanhamento, Comunidade, Administração, shell, QA integrado e
+preflight/publicação condicional conforme GOAL/STATUS.

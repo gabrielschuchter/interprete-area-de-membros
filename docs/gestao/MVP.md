@@ -16,7 +16,7 @@ necessário, sem abrir novos editores antes de fechar a unidade corrente.
 | Ordem | Unidade / reaproveitamento | Critério de saída funcional |
 |---|---|---|
 | 1 | A2 funcional local verificada: fila, rascunhos e feedback existentes | Salvar privado, sair/reload, retomar notas/texto, negar outro professor, enviar e abrir próxima pendente filtrada sem carregar notas da anterior; aluno vê apenas enviado |
-| 2 | Turma → cronograma/encontro → Aprender/calendário | Fechar publicação/liberação e políticas de entrada/saída integradas, encontro publicado visível e rascunho oculto; reaproveitar T2 e calendário comprovados |
+| 2 | Turma → cronograma/encontro → Aprender/calendário — funcional local fechada em 13/10 | Rascunho persistente, retomada/edição/publicação contextual, isolamento aluno/professor e calendário/detalhe após reload; restante de C1/C2/visual permanece separado |
 | 3 | Ensino → aluno: cursos/aulas, exercícios, biblioteca/coleções | Criar/editar/publicar/atribuir e consumir autorizado; validar upload/playback no ambiente disponível, sem refazer CRUD existente; erro real explícito para integração indisponível |
 | 4 | Envios e acompanhamento | Destaque/pendência/aviso chega ao aluno correto; conclusão reflete no acompanhamento após reload; outbox/worker e notificação interna recuperáveis |
 | 5 | Comunidade | Conectar publicações/moderação, grupos, avisos e agenda editorial aos domínios existentes, com público e permissões reais; eliminar placeholders essenciais |
@@ -31,6 +31,36 @@ Acabamento/pixel comparison dos101 quadros, movimentos detalhados e dispositivos
 físicos ficam separados. Clerk real e integrações necessárias deixam de ser
 backlog ao chegar ao preflight: devem ser verificadas ou registradas como
 bloqueio da publicação. QA local com adaptador não satisfaz esse critério.
+
+## Unidade vertical: turma → encontro → Aprender/calendário (QA local)
+
+Escopo: criar encontro contextual na turma, retomar o rascunho depois de
+navegar/recarregar, editar/publicar sob a mesma responsabilidade por turma e
+confirmar que o aluno só recebe o encontro publicado. Unidade funcional local
+fechada; C1/C2, aceite visual e goal integral continuam abertos.
+
+| Critério | Evidência local |
+|---|---|
+| Criar/retomar rascunho | Professora QA Ana criou o encontro pela Gestão, saiu/recarregou, reabriu o item no calendário e leu os campos salvos |
+| Editar/publicar | Duas edições e publicação pela UI; SQL TLS confirmou status PUBLISHED, publishedAt, horário/fuso e descrição; quatro eventos de auditoria |
+| Privacidade e entrega ao aluno | student04 não viu rascunho no calendário e recebeu 404 na rota direta; após publicação, título apareceu em Planejamento/calendário e título/descrição/link no detalhe após reload |
+| Isolar professor alheio | teacher2 recebeu 403 na rota; replay da Server Action de atualização real, sob o ator alheio, recebeu 403; SQL TLS confirmou registro e auditoria sem mutação |
+| Compartilhamento e histórico | A atualização exige responsabilidade sobre todas as turmas-alvo ativas; não muda alvos, exceções, matrículas ou feedbacks históricos |
+| Desktop/mobile | Calendário da Gestão e Planejamento do aluno medidos após reload em 1440/390/320, sem overflow; consoleErrors=0 nas sessões verificadas |
+
+Fixture QA adicionada e preservada: turma cmv5mu5uh000vowyp56sgazpj;
+encontro cmv75fgiw0003foyptlld9yp6; slug QA item2 meeting edit publish
+20261013; link example.invalid. Não reenviar, apagar, copiar ou transportar
+essa fixture para produção. A autorização testada usa adaptador de
+desenvolvimento local, não Clerk real.
+
+Sete testes focados passaram, incluindo retorno vazio de horário final em
+encontro legado sem término. Gates finais: check941 arquivos, typecheck16/16,
+boundaries873; app734, domínio17, API9; scripts32 aprovados/1 ignorado;
+build8/8; performance:check e diff-check aprovados. Gestão calendário224,8KiB
+e Planejamento224,6KiB, orçamento225KiB. Build no dist isolado em D: usou URL
+local documentada e conexão TLS da base QA. Isso não prova Clerk/Supabase/
+Vercel de produção, worker contínuo, QA integrado ou fidelidade visual.
 
 ## Unidade vertical: atividade de turma com rubrica
 
@@ -154,8 +184,9 @@ Feedback v1. Ambos os conjuntos são dados explícitos de QA, nunca de produçã
 do comentário. Retomada pós-build1/1/191s sem reenviar, pageErrors=[]/consoleErrors=[]; API
 privada de notificações confirmou o feedback próprio sem o do outro aluno.
 Gates finais check939/type16/boundaries871/727app/build8/performance/diff em STATUS; o fluxo acima
-não aceita toda a matriz A2, Clerk real, fase ou quadro. Próxima unidade da
-sequência: turma/cronograma/encontro → Aprender/calendário, reutilizando T2.
+não aceita toda a matriz A2, Clerk real, fase ou quadro. Naquele checkpoint,
+a próxima unidade era turma/cronograma/encontro; ela foi fechada localmente
+mais adiante, conforme a seção Item 2 acima.
 
 ## Isolamento de atividades
 
@@ -169,8 +200,8 @@ quatro falharam antes da correção; oito passaram depois.
 
 ## Backlog separado
 
-- T2 e a unidade local A2 têm evidência acima. Próxima unidade: item2 da
-  sequência. Criação/CSV/movimentação/duplicação de turma não recebem aceite
+- T2, A2 e item2 têm evidência local acima. Próxima unidade: item3, Ensino →
+  aluno. Criação/CSV/movimentação/duplicação de turma não recebem aceite
   integral por T2; A2 não encerra a matriz de todas as ações/perfis.
 - A1: pesos inválidos na publicação real e versões completas continuam abertos.
   Worker contínuo/canais externos também; notificações internas desta A2 têm

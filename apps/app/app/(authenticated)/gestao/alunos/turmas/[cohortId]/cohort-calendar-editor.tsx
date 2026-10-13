@@ -130,12 +130,15 @@ const dateParts = (value: Date) => {
   };
 };
 
-const dateTimeInput = (value: Date | null) => {
+const dateTimeInput = (
+  value: Date | null,
+  timezone = cohortCalendarTimezone
+) => {
   if (!value) {
     return "";
   }
   const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: cohortCalendarTimezone,
+    timeZone: timezone,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -218,6 +221,7 @@ interface CalendarDisplayProps {
   readonly onCreate: (date: string) => void;
   readonly onCreateMeeting: (date: string) => void;
   readonly onEdit: (event: CalendarEvent) => void;
+  readonly onEditMeeting: (meetingId: string) => void;
   readonly onException: (item: CohortCalendarItem) => void;
   readonly view: "month" | "week" | "list";
   readonly weekDays: readonly string[];
@@ -236,6 +240,7 @@ const CalendarEventTile = ({
   item,
   sourceEvent,
   onEdit,
+  onEditMeeting,
   onException,
   showTime,
 }: {
@@ -243,6 +248,7 @@ const CalendarEventTile = ({
   readonly item: CohortCalendarItem;
   readonly sourceEvent?: CalendarEvent;
   readonly onEdit: (event: CalendarEvent) => void;
+  readonly onEditMeeting: (meetingId: string) => void;
   readonly onException: (item: CohortCalendarItem) => void;
   readonly showTime: boolean;
 }) => {
@@ -281,7 +287,7 @@ const CalendarEventTile = ({
         className="gt-cohort-calendar-event"
         data-cancelled={String(item.cancelled)}
         data-status={item.status.toLowerCase()}
-        disabled={archived}
+        disabled={archived || item.status === "ARCHIVED"}
         key={item.id}
         onClick={() => onException(item)}
         style={{ borderLeftColor: item.color }}
@@ -299,6 +305,22 @@ const CalendarEventTile = ({
         disabled={archived}
         key={item.id}
         onClick={() => onEdit(sourceEvent)}
+        style={{ borderLeftColor: item.color }}
+        type="button"
+      >
+        {tile}
+      </button>
+    );
+  }
+  if (item.sourceType === "meeting") {
+    return (
+      <button
+        aria-label={`Editar encontro: ${item.title}, ${dateTimeLabel(item.startsAt)}`}
+        className="gt-cohort-calendar-event"
+        data-status={item.status.toLowerCase()}
+        disabled={archived || item.status === "ARCHIVED"}
+        key={item.id}
+        onClick={() => onEditMeeting(item.sourceId)}
         style={{ borderLeftColor: item.color }}
         type="button"
       >
@@ -328,6 +350,7 @@ const MonthCalendarView = ({
   onCreate,
   onCreateMeeting,
   onEdit,
+  onEditMeeting,
   onException,
 }: Pick<
   CalendarDisplayProps,
@@ -338,6 +361,7 @@ const MonthCalendarView = ({
   | "onCreate"
   | "onCreateMeeting"
   | "onEdit"
+  | "onEditMeeting"
   | "onException"
 >) => (
   <div className="gt-cohort-month-grid">
@@ -386,6 +410,7 @@ const MonthCalendarView = ({
                 item={item}
                 key={item.id}
                 onEdit={onEdit}
+                onEditMeeting={onEditMeeting}
                 onException={onException}
                 showTime={false}
                 sourceEvent={
@@ -412,11 +437,18 @@ const WeekCalendarView = ({
   events,
   items,
   onEdit,
+  onEditMeeting,
   onException,
   weekDays,
 }: Pick<
   CalendarDisplayProps,
-  "archived" | "events" | "items" | "onEdit" | "onException" | "weekDays"
+  | "archived"
+  | "events"
+  | "items"
+  | "onEdit"
+  | "onEditMeeting"
+  | "onException"
+  | "weekDays"
 >) => (
   <div className="gt-cohort-week-view">
     {weekDays.map((day) => {
@@ -431,6 +463,7 @@ const WeekCalendarView = ({
                 item={item}
                 key={item.id}
                 onEdit={onEdit}
+                onEditMeeting={onEditMeeting}
                 onException={onException}
                 showTime
                 sourceEvent={
@@ -449,72 +482,152 @@ const WeekCalendarView = ({
   </div>
 );
 
+const CalendarListPrimaryAction = ({
+  archived,
+  event,
+  item,
+  onEdit,
+  onEditMeeting,
+}: {
+  readonly archived: boolean;
+  readonly event: CalendarEvent | undefined;
+  readonly item: CohortCalendarItem;
+  readonly onEdit: (event: CalendarEvent) => void;
+  readonly onEditMeeting: (meetingId: string) => void;
+}) => {
+  if (event) {
+    return (
+      <Button
+        disabled={archived}
+        onClick={() => onEdit(event)}
+        type="button"
+        variant="outline"
+      >
+        Editar
+      </Button>
+    );
+  }
+  if (item.sourceType === "meeting") {
+    return (
+      <Button
+        aria-label={`Editar encontro: ${item.title}`}
+        disabled={archived || item.status === "ARCHIVED"}
+        onClick={() => onEditMeeting(item.sourceId)}
+        type="button"
+        variant="outline"
+      >
+        Editar
+      </Button>
+    );
+  }
+  return (
+    <Link className="gt-calendar-open-link" href={item.href}>
+      Abrir
+    </Link>
+  );
+};
+
+const CalendarListOccurrenceAction = ({
+  archived,
+  item,
+  onException,
+}: {
+  readonly archived: boolean;
+  readonly item: CohortCalendarItem;
+  readonly onException: (item: CohortCalendarItem) => void;
+}) => {
+  if (item.recurrence === "NONE") {
+    return null;
+  }
+  return (
+    <Button
+      disabled={archived || item.status === "ARCHIVED"}
+      onClick={() => onException(item)}
+      type="button"
+      variant="outline"
+    >
+      {item.cancelled ? "Restaurar data" : "Esta data"}
+    </Button>
+  );
+};
+
+const CalendarListRow = ({
+  archived,
+  events,
+  item,
+  onEdit,
+  onEditMeeting,
+  onException,
+}: {
+  readonly archived: boolean;
+  readonly events: readonly CalendarEvent[];
+  readonly item: CohortCalendarItem;
+  readonly onEdit: (event: CalendarEvent) => void;
+  readonly onEditMeeting: (meetingId: string) => void;
+  readonly onException: (item: CohortCalendarItem) => void;
+}) => {
+  const event =
+    item.sourceType === "event"
+      ? events.find((candidate) => candidate.id === item.sourceId)
+      : undefined;
+  return (
+    <li>
+      <span
+        aria-hidden="true"
+        className="gt-cohort-event-dot"
+        style={{ backgroundColor: item.color }}
+      />
+      <span className="gt-cohort-event-copy">
+        <strong>{item.title}</strong>
+        <small>
+          {item.cancelled ? "Cancelado · " : ""}
+          {item.allDay ? "Dia inteiro" : dateTimeLabel(item.startsAt)}
+          {item.endsAt ? ` · até ${dateTimeLabel(item.endsAt)}` : ""}
+          {item.recurrence !== "NONE" ? " · recorrente" : ""}
+        </small>
+      </span>
+      <span className={`gt-status-pill gt-status-${item.status.toLowerCase()}`}>
+        {statusLabel[item.status]}
+      </span>
+      <CalendarListPrimaryAction
+        archived={archived}
+        event={event}
+        item={item}
+        onEdit={onEdit}
+        onEditMeeting={onEditMeeting}
+      />
+      <CalendarListOccurrenceAction
+        archived={archived}
+        item={item}
+        onException={onException}
+      />
+    </li>
+  );
+};
+
 const ListCalendarView = ({
   archived,
   events,
   items,
   onEdit,
+  onEditMeeting,
   onException,
 }: Pick<
   CalendarDisplayProps,
-  "archived" | "events" | "items" | "onEdit" | "onException"
+  "archived" | "events" | "items" | "onEdit" | "onEditMeeting" | "onException"
 >) => (
   <ol className="gt-cohort-event-rows">
-    {items.map((item) => {
-      const event =
-        item.sourceType === "event"
-          ? events.find((candidate) => candidate.id === item.sourceId)
-          : undefined;
-      return (
-        <li key={item.id}>
-          <span
-            aria-hidden="true"
-            className="gt-cohort-event-dot"
-            style={{ backgroundColor: item.color }}
-          />
-          <span className="gt-cohort-event-copy">
-            <strong>{item.title}</strong>
-            <small>
-              {item.cancelled ? "Cancelado · " : ""}
-              {item.allDay ? "Dia inteiro" : dateTimeLabel(item.startsAt)}
-              {item.endsAt ? ` · até ${dateTimeLabel(item.endsAt)}` : ""}
-              {item.recurrence !== "NONE" ? " · recorrente" : ""}
-            </small>
-          </span>
-          <span
-            className={`gt-status-pill gt-status-${item.status.toLowerCase()}`}
-          >
-            {item.sourceType === "event"
-              ? statusLabel[item.status]
-              : "Publicado"}
-          </span>
-          {event ? (
-            <Button
-              disabled={archived}
-              onClick={() => onEdit(event)}
-              type="button"
-              variant="outline"
-            >
-              Editar
-            </Button>
-          ) : (
-            <Link className="gt-calendar-open-link" href={item.href}>
-              Abrir
-            </Link>
-          )}
-          {item.recurrence !== "NONE" ? (
-            <Button
-              disabled={archived}
-              onClick={() => onException(item)}
-              type="button"
-              variant="outline"
-            >
-              {item.cancelled ? "Restaurar data" : "Esta data"}
-            </Button>
-          ) : null}
-        </li>
-      );
-    })}
+    {items.map((item) => (
+      <CalendarListRow
+        archived={archived}
+        events={events}
+        item={item}
+        key={item.id}
+        onEdit={onEdit}
+        onEditMeeting={onEditMeeting}
+        onException={onException}
+      />
+    ))}
     {items.length === 0 ? (
       <li className="gt-panel-empty">Não há itens neste período.</li>
     ) : null}
@@ -1235,12 +1348,14 @@ type CalendarOccurrenceOperation = "move" | "cancel" | "restore";
 const CalendarOccurrenceDialog = ({
   item,
   onCancel,
+  onEditMeeting,
   onSave,
   pending,
   result,
 }: {
   readonly item: CohortCalendarItem;
   readonly onCancel: () => void;
+  readonly onEditMeeting: (meetingId: string) => void;
   readonly onSave: (
     operation: CalendarOccurrenceOperation,
     startsAtOverride: string,
@@ -1254,7 +1369,7 @@ const CalendarOccurrenceDialog = ({
   const [operation, setOperation] =
     useState<CalendarOccurrenceOperation>("move");
   const [startsAtOverride, setStartsAtOverride] = useState(() =>
-    dateTimeInput(item.startsAt)
+    dateTimeInput(item.startsAt, item.timezone)
   );
   const saveLabel =
     operation === "restore" ? "Restaurar data" : "Salvar alteração";
@@ -1356,6 +1471,16 @@ const CalendarOccurrenceDialog = ({
         </div>
       ) : null}
       <div>
+        {item.sourceType === "meeting" ? (
+          <Button
+            disabled={pending}
+            onClick={() => onEditMeeting(item.sourceId)}
+            type="button"
+            variant="outline"
+          >
+            Editar série
+          </Button>
+        ) : null}
         <Button
           autoFocus={operation !== "move"}
           disabled={pending}
@@ -1426,6 +1551,7 @@ export const CohortCalendarEditor = ({
   const [eventId, setEventId] = useState<string | null>(null);
   const [eventFormVisible, setEventFormVisible] = useState(false);
   const [meetingDate, setMeetingDate] = useState<string | null>(null);
+  const [meetingId, setMeetingId] = useState<string | null>(null);
   const [form, setForm] = useState<EventForm>(emptyForm);
   const [result, setResult] = useState<CohortCalendarActionResult | null>(null);
   const [occurrenceItem, setOccurrenceItem] =
@@ -1540,6 +1666,29 @@ export const CohortCalendarEditor = ({
     });
     setResult(null);
     setEventFormVisible(true);
+  };
+
+  const beginCreateMeeting = (date: string) => {
+    setOccurrenceItem(null);
+    setOccurrenceResult(null);
+    setMeetingId(null);
+    setMeetingDate(date);
+  };
+
+  const beginEditMeeting = (id: string) => {
+    setOccurrenceItem(null);
+    setOccurrenceResult(null);
+    setMeetingId(id);
+    const item = items.find(
+      (candidate) =>
+        candidate.sourceType === "meeting" && candidate.sourceId === id
+    );
+    setMeetingDate(dateKey(item?.startsAt ?? new Date()));
+  };
+
+  const closeMeetingDialog = () => {
+    setMeetingDate(null);
+    setMeetingId(null);
   };
 
   const beginEdit = (event: CalendarEvent) => {
@@ -1827,8 +1976,9 @@ export const CohortCalendarEditor = ({
             events={events}
             items={displayItems}
             onCreate={beginCreate}
-            onCreateMeeting={setMeetingDate}
+            onCreateMeeting={beginCreateMeeting}
             onEdit={beginEdit}
+            onEditMeeting={beginEditMeeting}
             onException={beginOccurrence}
             view={view}
             weekDays={weekDays}
@@ -1897,7 +2047,8 @@ export const CohortCalendarEditor = ({
           cohortName={cohortName}
           date={meetingDate}
           expectedCohortVersion={expectedCohortVersion}
-          onClose={() => setMeetingDate(null)}
+          meetingId={meetingId ?? undefined}
+          onClose={closeMeetingDialog}
         />
       ) : null}
       {confirmation ? (
@@ -1915,6 +2066,7 @@ export const CohortCalendarEditor = ({
         <CalendarOccurrenceDialog
           item={occurrenceItem}
           onCancel={() => setOccurrenceItem(null)}
+          onEditMeeting={beginEditMeeting}
           onSave={saveOccurrence}
           pending={pending}
           result={occurrenceResult}
