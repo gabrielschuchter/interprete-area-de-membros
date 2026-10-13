@@ -25,3 +25,60 @@ export const getGestaoCorrectionRecipientScope = (
           },
         },
       };
+
+export const getGestaoCorrectionSubmissionScope = (
+  actor: GestaoActor,
+  input: {
+    readonly activityId?: string;
+    readonly cohortId?: string;
+    readonly query?: string;
+  }
+) => {
+  const filters: Prisma.ActivitySubmissionWhereInput[] = [
+    {
+      status: {
+        in: ["SUBMITTED", "REVIEWED"],
+      },
+    },
+    { submittedAt: { not: null } },
+    { member: { is: getGestaoCorrectionRecipientScope(actor) } },
+  ];
+  if (input.activityId) {
+    filters.push({ activityId: input.activityId });
+  }
+  if (input.cohortId) {
+    filters.push({
+      member: {
+        is: {
+          cohortMemberships: {
+            some: {
+              cohortId: input.cohortId,
+              status: "ACTIVE",
+              leftAt: null,
+              cohort: { is: getGestaoCorrectionCohortScope(actor) },
+            },
+          },
+        },
+      },
+    });
+  }
+  if (input.query) {
+    filters.push({
+      OR: [
+        {
+          member: {
+            is: {
+              displayName: { contains: input.query, mode: "insensitive" },
+            },
+          },
+        },
+        {
+          activity: {
+            is: { title: { contains: input.query, mode: "insensitive" } },
+          },
+        },
+      ],
+    });
+  }
+  return { AND: filters } satisfies Prisma.ActivitySubmissionWhereInput;
+};

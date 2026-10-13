@@ -57,9 +57,9 @@ Legenda: `[ ]` pendente · `[~]` em andamento · `[x]` concluído com evidência
 - [ ] `GInterrupcoes` — Interrupções: salvar, sessão, conflito, permissão e rede
 
 ### Shell e visão geral
-- [ ] `Main` — Visão geral — professor
-- [ ] `GVisaoAdmin` — Visão geral — administrador
-- [ ] `GVisaoLimpa` — Visão geral — sem pendências
+- [~] `Main` — Filtro de turma e contagem de feedback ligada à fila; demais blocos/controles e fidelidade pendentes
+- [~] `GVisaoAdmin` — Mesma projeção real sem limite de página para contagem; Institucional e restante do Main pendentes
+- [~] `GVisaoLimpa` — Vazio de feedback/turma exercitado; vazio integral de todas as categorias e comparação do quadro 25 pendentes
 - [ ] `GCriar` — Menu Criar (qualquer tela)
 - [~] `GRestrito` — Negação HTTP 403 sem payload, retorno e ajuda reais; 36 capturas; comparação integral do shell pendente
 - [ ] `GNotificacoes` — Notificações da Gestão
@@ -766,3 +766,125 @@ Preview visual reaberto. Identificar por fix(gestao): retain destination focus
 after arrival notice. Próxima unidade executável: shell/topbar e visão geral
 23/24/25; professor ainda exibe placeholder mesmo com turmas atribuídas.
 39 em andamento/62 pendentes/0 aceitos permanecem, Fase 1 aberta.
+
+### Unidade em execução — Fase 1, Main: atenção e filtro de turma do professor
+
+Requisito: docs/03 A, Main (23), GVisaoLimpa (25), T8/matriz. Escolha vertical:
+professor abre Visão geral → filtra sua turma (?turma=) → vê a contagem real
+de entregas aguardando feedback → Corrigir abre exatamente a mesma fila
+filtrada → recarrega preservando filtro. Seleção de turma alheia não pode
+cair silenciosamente em Todas. É o primeiro trecho do Main; manter a unidade
+Main aberta até seus demais controles/dados e comparação integral fecharem.
+Não abrir outro catálogo/editor novo; reutilizar a fila existente.
+
+Arquivos principais: gestao/page.tsx, nova projeção gestao-overview, escopo
+compartilhado de correções, seleção paginada de turmas e CSS da visão geral.
+Critério desta unidade: counts reais iguais à fila PENDING, filtro/reload,
+professor próprio/alheio/admin/membro/sem vínculo, estados com e sem turma e
+sem pendências; interface baseada no HTML/PNG, seis larguras/dois movimentos,
+gates e registro. Itens restantes do Main (atrasos, encontros, rascunhos,
+movimentação, semana, Institucional e atalhos/preview) não serão simulados.
+Não marcar Main/GVisaoLimpa concluídos após apenas esta fatia.
+
+Evidência atual: teacher branch sempre retorna "Suas turmas vão aparecer
+aqui", mesmo para professores funcionais com vínculo. Fila existente já
+aplica getGestaoCorrectionRecipientScope e status SUBMITTED/REVIEWED; o
+builder submissionScope pode ser extraído para a contagem usar exatamente
+o mesmo conjunto. getAdminOverview conta páginas limitadas em memória e
+não é projeção adequada para professor. Visual tem 2 turmas ativas (18/24),
+12 alunos de turma encerrada e 3 sem turma; não apagar extras de handoff.
+
+Extensão necessária da unidade Main/feedback: confirmar uma correção real
+como professor responsável, persistência/reload, redução da contagem e visão
+do aluno. Reutilizar uma entrega funcional SUBMITTED sem Feedback nem
+FeedbackDraft; preservar conteúdo/resposta, não criar rascunho no ensaio
+(pois o envio legado apaga o rascunho publicado). Comentário de QA explícito,
+sem apagar/resetar registros. Conferir notificação interna por registro/job,
+sem inferir entrega por consumers vazio. Capturar uma requisição de Server
+Action válida só em memória e reexecutar como outro professor em URL permitida,
+para comprovar escopo do payload fora da UI. Não registrar corpo/cookies/chaves.
+
+Leitura atual de correction-actions encontrou autorização inicial por Member,
+mas o papel não era relido na transação; prepare retornava nao-encontrada com
+HTTP 200 para entrega fora do escopo. Corrigir para autorização fresca e 403,
+com testes de revogação/escopo. Não mudar papéis de fixtures para o ensaio.
+Também invalidar /gestao após persistir, para o contador não reaparecer velho.
+Isso é dependência da jornada Main, sem abrir catálogo novo de Correções.
+### Main/feedback — implementação e ensaio atual
+
+A projeção compartilha o predicado da fila, conta no SQL e lê somente dois
+nomes de atividade; busca de turmas explícita, dez por página, seleção fora
+da página validada separadamente. Turma alheia/inválida não cai em Todas;
+proxy nega filtros alheios/repetidos antes de streaming e DAL revalida.
+Corrigido o default NaN da paginação da fila, que tornava o link de Main 500.
+
+Dependência de autorização: papel/ativação relidos dentro da transação,
+escopo reconstruído com o papel atual, negação 403 distinta de conflito.
+Sete testes focados novos exercitam revogação, rebaixamento, escopo, conflito
+e barreira de commit. O teste do proxy agora usa NextResponse.next real:
+Nosecone trazia x-middleware-next e copiá-lo no JSON terminal continuava o
+despacho (404). Esse cabeçalho é removido somente da resposta terminal.
+A prova anterior de POST com o mock simplificado não cobria essa situação.
+
+Ensaio real: entrega funcional de student_04, sem FeedbackDraft/Feedback,
+pertencente somente ao professor_1. student_01 foi descartado ANTES de
+escrever porque pertence a ambos os professores. Comentário explícito de
+QA salvo pela UI; status REVIEWED, Feedback v1, autoria correta, hash da
+resposta e submittedAt preservados, nenhum rascunho criado/apagado. Main
+caiu de 4 para 3 e permaneceu após reload. Log browser-write-visible contém
+esse subteste aprovado. Não reenviar/resetar essa entrega em novas rodadas.
+
+Falhas do harness foram separadas: seletor CSS encontrava árvore SSR oculta;
+a seleção sem entrega em 320 px mantém o painel de correção oculto. Usar
+papéis acessíveis/escopo main e viewport desktop explícito para o ensaio do
+payload. Retomada exige flag própria e o feedback exato já persistido; não
+sobrescreve registro. A tentativa fora do perfil e aluno seguem em validação.
+
+Comparação direta PNG 23 versus captura desktop atual: hierarquia do título,
+card, divisória, ícone e botão aproximados; título da linha corrigido para
+fonte sans da referência. Card está 65 px acima por faltar a faixa de atalhos;
+coluna direita, outros itens e seções faltam; shell/topbar ainda divergentes.
+Não houve aceite pixel a pixel. Os vazios testados são de feedback/turma,
+não de todas as categorias do Main. 42 em andamento/59 pendentes/0 aceitos.
+
+Fechamento da jornada Main/feedback: o ensaio inicial de gravação passou;
+a rodada retomada browser-write-recovered passou 30/30 em 110 s (admin,
+teacher_1, teacher_2, student_04 e teacher visual sem turma), sem reenviar.
+Professor alheio recebeu 403 em formulário com IDs adulterados e replay de
+Server Action válida em URL sem filtro de turma. Feedback/resposta/version
+permaneceram inalterados. Aluno abriu atividade 200, viu o comentário e
+recarregou; captura inspecionada. As 48 capturas do filtro cobrem seis
+larguras/dois movimentos; sem pageerror/overflow. Counts reais pós-gravação
+são agora admin=3/teacher_1=3/teacher_2=2, não resetar fixtures.
+
+A notificação revelou um problema real do QA: banco America/Sao_Paulo e
+Prisma timestamp UTC deixavam availableAt três horas adiante de CURRENT_TIMESTAMP.
+Aplicado somente ALTER DATABASE funcional SET timezone UTC, sem reescrever
+linhas/datas. Worker canônico em Bun/react-server, guard explícito exato e
+TLS, batch5: claimed1/succeeded1/dead0/retried0/stale0. Releitura confirmou
+uma Notification FEEDBACK_RECEIVED/dedupe feedback:...:v1 e OutboxJob SUCCEEDED.
+O evento usa sufixo :batch:0; o ensaio foi corrigido para esse contrato e o
+estado SUCCEEDED, em vez de nomes presumidos. O worker agendado não foi
+iniciado/provado; não chamar esse recovery manual de operação contínua.
+Visual mantém timezone anterior. Nenhuma notificação externa/e-mail.
+
+Critério desta fatia funcional cumprido: filtro/count/fila, validação vazia,
+gravação, reload, aluno e isolamento. Main integral NÃO cumprido, por faltar
+os blocos/controles/visual listados acima. A1/rubrica real, A2/próxima entrega,
+Clerk e percentis seguem sem aceite. Nenhuma fase promovida. Gates em curso.
+
+Gates finais Main/feedback: check925, typecheck16/16, boundaries862,
+682app/17domínio/9API, 32scripts aprovados/1ignorado, build8/8,
+performance:check/diff aprovados. Main214,6KiB/17chunks; calendário223,8,
+Planejamento224,5 e Ferramentas222,9KiB (teto225). Logs separados em
+output/gestao-overview-feedback. Sem migration, push, merge ou deploy.
+Preview visual admin reaberto com --hostname127.0.0.1; smoke pós-build
+Main200/reload em1440/390/320, nenhum overflow/pageerror. Capturas fechadas
+visual-admin-closed-* salvas. O .next/dev não precisou ser removido/renomeado.
+
+Próxima unidade dentro do Main: restantes categorias reais de atenção,
+próximos encontros e destinos operacionais, depois movimentação/semana/
+Institucional/atalhos e comparação completa23–25; não abrir outro catálogo
+antes de encerrar Main. Atualizar restrições da topbar junto das dependências
+reais, sem botões decorativos. Permanecem0/101aceitos,42em andamento/59pendentes.
+Identificar fechamento por feat(gestao): connect overview feedback to scoped correction queue.

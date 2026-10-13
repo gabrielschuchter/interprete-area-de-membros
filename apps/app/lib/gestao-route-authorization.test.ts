@@ -57,3 +57,18 @@ test("does not mistake the create route for a cohort", async () => {
   );
   expect(mocks.cohort).not.toHaveBeenCalled();
 });
+
+test("checks a cohort selected by the overview URL instead of widening to all", async () => {
+  mocks.cohort.mockResolvedValue(null);
+  expect(await canEnterGestaoRoute("qa", "/gestao", "cohort-foreign")).toBe(
+    false
+  );
+  expect(mocks.cohort).toHaveBeenCalledWith({
+    where: {
+      id: "cohort-foreign",
+      archivedAt: null,
+      teachers: { some: { memberId: "qa" } },
+    },
+    select: { id: true },
+  });
+});

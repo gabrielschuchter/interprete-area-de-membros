@@ -6,7 +6,7 @@
 
 - Worktree autorizado: `C:\Users\gabsc\.codex\worktrees\interprete-gestao\interprete-area-de-membros`, branch `gestao-v2`.
 - O checkout original em Documents tem trabalho alheio e não foi alterado.
-- **0/101 quadros aceitos**, 39 em andamento e 62 pendentes no inventário de `PROGRESS.md`. GEntrada/GRestrito entram em andamento após as unidades de navegação/transição.
+- **0/101 quadros aceitos**, 42 em andamento e 59 pendentes no inventário de `PROGRESS.md`. Main/GVisaoAdmin/GVisaoLimpa têm o primeiro trecho real de feedback/filtro, sem aceite integral.
 - Só a Fase 0 (auditoria inicial) está registrada como concluída. Fase 1 é o foco para fechar o aceite antes da Fase 2; Fases 2–5 têm trabalho parcial; Fases 6–9 estão pendentes.
 - 53 rotas no contrato; 38 arquivos `page.tsx` na Gestão; **18 correspondências exatas** após normalizar nomes de parâmetros. Os 35 caminhos sem correspondência incluem funcionalidades parcialmente disponíveis em rotas diferentes. Esses números **não medem telas prontas**.
 - Inventário histórico da auditoria inicial: `estado-auditado-20261012.json` (31 em andamento naquele momento). A presença de arquivo não comprova funcionalidade, autorização ou fidelidade.
@@ -16,7 +16,7 @@
 
 | Área | Evidência inspecionada | O que não está concluído |
 |---|---|---|
-| Shell e entrada | R1/R3 e N2/N3; N1 com quatro atores, HTTP 403, ausência dos payloads conferidos, sem ciclo e login com destino; 36 capturas restritas. Preferências do timer sem provisionar no GET. Foco/anúncio após título retido 6 s passou em 12 combinações, além de 12 normais; diálogo e cancelamento cobertos | Comparação integral 13–30, visão geral de professor ainda placeholder, shell/topbar divergente, stagger/timing integral, restante do teclado, leitor de tela e Clerk reais; matriz de todas as ações, rede lenta real e ciclo legado de timer expirado ainda pendentes |
+| Shell e entrada | R1/R3, N2/N3 e N1 locais; HTTP 403 e ausência de payload; timer sem provisionar preferências no GET; foco tardio por 6 s. Main agora conta feedback com filtro de turma paginado e abre a fila correspondente; professor com vínculo deixou de receber placeholder | Comparação integral 13–30; Main ainda sem outras categorias de atenção, próximos encontros, movimentação, semana, Institucional e atalhos/prévia; shell/topbar divergente, stagger/timing integral, restante do teclado, leitor de tela, Clerk reais, matriz de todas as ações e rede lenta real pendentes |
 | Turmas | Páginas próprias, matrículas, atribuição de aluno sem turma, fixtures persistentes | T1–T8 completos no navegador; importação/movimentação/duplicação e isolamento de todos os perfis não têm aceite conjunto |
 | Calendário | Quatro fontes, camadas, recorrência/exceções, cópia, ICS revogável; QA local anterior de persistência/revogação | Menu do dia só tem encontro/evento; prazo/liberação pelo menu faltam; fidelidade, calendário do aluno e matriz completa não aceitos |
 | Novo encontro pelo dia | Publicado e rascunho criados pela UI, reload e leitura SQL confirmaram persistência/vínculo; rascunho tracejado; 14 testes focados | C1/C2 completos ainda precisam de navegação como aluno, demais papéis, edição completa e comparação visual |
@@ -56,6 +56,25 @@ que já têm evidência e sem chamar gates verdes de conclusão do produto.**
 - `pg_hba.conf` recebeu regras temporárias `hostssl/trust` só para os dois bancos QA, usuário postgres e loopback. Ao **encerrar** o preview, restaurar `%TEMP%\interprete-gestao-qa-20261012\pg_hba.before-live-preview-20261012.conf` sobre `postgres-data\pg_hba.conf` e executar `pg_ctl reload` no data-dir correto. Procedimento em `DECISIONS.md`.
 
 ## Qualidade e capturas
+
+- Main/feedback parcial: matriz com admin, dois professores, membro e professor
+  visual sem vínculo; count/filtro/reload iguais ao SQL e à fila, turma alheia
+  403, busca vazia preservando contagem. 48 capturas de filtro em seis larguras
+  e dois movimentos, sem overflow/pageerror. Feedback real de student_04
+  persistido por teacher_1, resposta preservada, contagem 4 → 3 após reload;
+  teacher_2 recebeu 403 no formulário adulterado e replay válido; aluno vê
+  comentário após reload. Uma notificação interna e job SUCCEEDED confirmados
+  após recuperação local explícita. Log inicial browser-write-visible prova
+  a gravação; browser-write-recovered passou 30/30 retomando sem reenviar.
+  JSON/capturas em overview-feedback; logs em output/gestao-overview-feedback.
+  PNG 23 comparado: blocos/atalhos ausentes e shell/topbar divergentes; nenhum
+  quadro aceito. Rubrica dessa fixture é versão 0: não comprova A1 integral,
+  próxima entrega automática de A2, worker agendado ou serviço externo.
+  Gates: check 925, typecheck 16/16, boundaries 862, testes 682 app/17 domínio/
+  9 API e 32 scripts aprovados/1 ignorado; build 8/8, performance/diff.
+  Main 214,6 KiB/17 chunks; Calendário 223,8, Planejamento 224,5 e Ferramentas
+  222,9 KiB, teto 225. Preview visual reaberto em loopback e smoke 1440/390/320
+  com reload, sem overflow/pageerror. Funcional usa UTC; visual preservado.
 
 - N2/N3 título tardio: sete testes focados (dois novos), 12/12 atrasados e
   12/12 normais, mais offline/fallback/retorno. Retenção do DOM por 6 s é

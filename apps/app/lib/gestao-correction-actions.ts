@@ -3,6 +3,7 @@
 import { ActivitySubmissionStatus, database, Prisma } from "@repo/database";
 import { enqueueNotificationBatch } from "@repo/member-domain";
 import { revalidatePath } from "next/cache";
+import { forbidden } from "next/navigation";
 import { parseActivityReview } from "@/lib/gestao-activity-review-domain";
 import { requireGestaoAction } from "@/lib/gestao-authorization";
 import type { CorrectionActionState } from "@/lib/gestao-correction-contract";
@@ -103,8 +104,11 @@ const readCorrectionContext = async (input: {
     },
   });
   const submittedAt = submission?.submittedAt;
+  if (!submission) {
+    forbidden();
+  }
   if (
-    !(submission && submittedAt) ||
+    !submittedAt ||
     submission.rubricVersion !== input.preview.rubricVersion ||
     submittedAt.valueOf() !== input.preview.submittedAt.valueOf() ||
     submission.updatedAt.valueOf() !== input.preview.updatedAt.valueOf()
@@ -296,7 +300,6 @@ interface PreparedCorrection {
     readonly updatedAt: Date;
     readonly activity: { readonly slug: string };
   };
-  readonly recipientWhere: ReturnType<typeof getGestaoCorrectionRecipientScope>;
   readonly returnTo: string;
   readonly submissionId: string;
 }
@@ -365,7 +368,7 @@ const prepareCorrection = async (
     },
   });
   if (!preview) {
-    return { ok: false, state: correctionActionError("nao-encontrada") };
+    forbidden();
   }
   const previewSubmittedAt = preview.submittedAt;
   if (
@@ -400,7 +403,6 @@ const prepareCorrection = async (
       feedbackVersion,
       intent,
       parsed,
-      recipientWhere,
       returnTo,
       submissionId,
       preview: {
@@ -447,10 +449,24 @@ export const saveGestaoCorrection = async (
   try {
     outcome = await database.$transaction(
       async (transaction) => {
+        const currentMember = await transaction.member.findUnique({
+          where: { id: actor.userId },
+          select: { role: true, deactivatedAt: true },
+        });
+        if (
+          !currentMember ||
+          currentMember.deactivatedAt ||
+          (currentMember.role !== "ADMIN" && currentMember.role !== "TEACHER")
+        ) {
+          forbidden();
+        }
         const context = await readCorrectionContext({
           transaction,
           submissionId: input.submissionId,
-          recipientWhere: input.recipientWhere,
+          recipientWhere: getGestaoCorrectionRecipientScope({
+            userId: actor.userId,
+            role: currentMember.role,
+          }),
           preview: input.preview,
           draftVersion: input.draftVersion,
         });
@@ -498,6 +514,7 @@ export const saveGestaoCorrection = async (
     revalidatePath("/estudar");
   }
   revalidatePath("/gestao/alunos/correcoes");
+  revalidatePath("/gestao");
   revalidatePath(
     ["/gestao/ensino/atividades", input.preview.activityId, "entregas"].join(
       "/"

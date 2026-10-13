@@ -24,6 +24,8 @@ O resumo vigente fica em `STATUS.md`. Não registrar segredos ou dados pessoais.
 
 | 13/10/2026 | N2/N3 título tardio, identificar por `fix(gestao): retain destination focus after arrival notice` | Observer de foco separado do aviso de 4 s; respeita diálogo e cancela na troca de rota | Sete testes focados; 12 combinações normais e 12 com h1 retido por 6 s; gates em `output/gestao-shell-late-title` | Atraso do DOM não é rede lenta real; visual, cronologia/stagger e demais unidades da Fase 1 continuam pendentes; próximo shell/visão geral |
 
+| 13/10/2026 | Main/feedback, identificar por `feat(gestao): connect overview feedback to scoped correction queue` | Count SQL compartilhado com fila, filtro paginado, negação de turma alheia, correção da paginação e papel fresco na transação; invalidação após feedback | UI funcional 4 → 3/reload, aluno/reload, formulário adulterado e replay 403; notificação interna/job SUCCEEDED após recovery local UTC; 30/30 na retomada, 48 capturas e gates completos em output/gestao-overview-feedback | 0/101 aceitos, 42 em andamento/59 pendentes; Main parcial, A1/rubrica/A2/próxima entrega/Clerk/worker agendado não aceitos; preservar feedback de student_04 |
+
 ## Formato das próximas entradas
 
 `Data | SHA | escopo e requisito fechado | teste/captura/log | pendências exatas`.

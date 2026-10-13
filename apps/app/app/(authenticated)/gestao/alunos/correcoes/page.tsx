@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { forbidden, notFound } from "next/navigation";
 import { GestaoCorrectionQueue } from "@/components/gestao/correction-queue";
 import { getGestaoCorrectionQueue } from "@/lib/gestao-corrections";
 
@@ -17,6 +17,9 @@ const GestaoCorrectionsPage = async ({
   searchParams,
 }: GestaoCorrectionsPageProperties) => {
   const params = await searchParams;
+  if (Array.isArray(params.turma)) {
+    forbidden();
+  }
   const data = await getGestaoCorrectionQueue({
     selectedSubmissionId: params.entrega,
     status: params.estado,

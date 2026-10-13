@@ -451,3 +451,10 @@ on a server request.
   route changes/unmount cancel stale requests. A controlled six-second heading
   delay passed all six widths/two motion modes. This is rendering-fixture
   evidence, not real slow-network or screen-reader/device acceptance.
+
+- Overview cohort selection uses explicit search with ten database options per
+  page, local pending feedback, 44 px controls, Escape/focus return and no
+  automatic link prefetch. Feedback counts share the queue's authorized SQL
+  predicate, rather than counting a capped array. Six widths/two motion modes
+  cover the current partial card/filter; other Main blocks and visual fidelity
+  remain open. The 225 KiB route budget applies without relaxation.

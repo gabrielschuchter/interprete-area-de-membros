@@ -1023,3 +1023,15 @@ release; observer cleanup cancels stale focus when pathname changes or the
 controller unmounts. It disconnects after focusing, with preventScroll. This
 adds no network call or data cache. Controlled six-second heading delay proves
 focus behavior; its artificial layout shift is not real-route CLS evidence.
+
+Gestão overview feedback uses the same submission predicate as the correction
+queue. Counts are SQL counts, with two projected activity titles; cohort
+search is explicit, ten options per database page, and selected scope is
+validated separately. No shared identity/scope cache or automatic destination
+prefetch is added. Critical path is fresh staff authorization, selected cohort
+validation when present, counts/title projection, then a bounded options page.
+The overview has the same 225 KiB gzip entry budget as adjacent Gestão routes.
+Feedback success follows the serializable commit, fresh transactional Member
+and recipient scope, and durable notification outbox. It invalidates /gestao
+along with queue/student routes. Local browser/SQL evidence is not production
+percentile or representative concurrency evidence.

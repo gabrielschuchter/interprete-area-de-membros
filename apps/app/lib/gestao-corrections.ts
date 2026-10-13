@@ -5,10 +5,11 @@ import {
   database,
   type Prisma,
 } from "@repo/database";
-import { type GestaoActor, requireGestaoAction } from "./gestao-authorization";
+import { forbidden } from "next/navigation";
+import { requireGestaoAction } from "./gestao-authorization";
 import {
   getGestaoCorrectionCohortScope,
-  getGestaoCorrectionRecipientScope,
+  getGestaoCorrectionSubmissionScope,
 } from "./gestao-correction-scope";
 
 export type GestaoCorrectionStatus = "PENDING" | "REVIEWED" | "ALL";
@@ -49,66 +50,6 @@ const normalizeStatus = (value: string | undefined): GestaoCorrectionStatus =>
 
 const cohortScope = getGestaoCorrectionCohortScope;
 
-const submissionScope = (
-  actor: GestaoActor,
-  input: {
-    readonly activityId?: string;
-    readonly cohortId?: string;
-    readonly query?: string;
-  }
-) => {
-  const filters: Prisma.ActivitySubmissionWhereInput[] = [
-    {
-      status: {
-        in: [
-          ActivitySubmissionStatus.SUBMITTED,
-          ActivitySubmissionStatus.REVIEWED,
-        ],
-      },
-    },
-    { submittedAt: { not: null } },
-    { member: { is: getGestaoCorrectionRecipientScope(actor) } },
-  ];
-  if (input.activityId) {
-    filters.push({ activityId: input.activityId });
-  }
-  if (input.cohortId) {
-    filters.push({
-      member: {
-        is: {
-          cohortMemberships: {
-            some: {
-              cohortId: input.cohortId,
-              status: "ACTIVE",
-              leftAt: null,
-              cohort: { is: cohortScope(actor) },
-            },
-          },
-        },
-      },
-    });
-  }
-  if (input.query) {
-    filters.push({
-      OR: [
-        {
-          member: {
-            is: {
-              displayName: { contains: input.query, mode: "insensitive" },
-            },
-          },
-        },
-        {
-          activity: {
-            is: { title: { contains: input.query, mode: "insensitive" } },
-          },
-        },
-      ],
-    });
-  }
-  return { AND: filters } satisfies Prisma.ActivitySubmissionWhereInput;
-};
-
 const withStatus = (
   scope: Prisma.ActivitySubmissionWhereInput,
   status: GestaoCorrectionStatus
@@ -138,17 +79,25 @@ export const getGestaoCorrectionQueue = async (input: {
   const { actor } = await requireGestaoAction("assignments.manage");
   const status = normalizeStatus(input.status);
   const query = (input.query ?? "").trim().slice(0, 120);
-  const page = Math.min(Math.max(1, Math.floor(input.page ?? 1)), 1000);
+  const page = Math.min(Math.max(1, Math.floor(Number(input.page) || 1)), 1000);
   const cohorts = await database.cohort.findMany({
     where: cohortScope(actor),
     orderBy: [{ startsAt: "desc" }, { name: "asc" }],
     take: 200,
     select: { id: true, name: true },
   });
-  const cohortId = cohorts.some(({ id }) => id === input.cohortId)
-    ? input.cohortId
-    : "";
-  const scope = submissionScope(actor, {
+  const cohortId = input.cohortId?.trim() ?? "";
+  if (cohortId && !cohorts.some(({ id }) => id === cohortId)) {
+    const selected = await database.cohort.findFirst({
+      where: { AND: [cohortScope(actor), { id: cohortId }] },
+      select: { id: true, name: true },
+    });
+    if (!selected) {
+      forbidden();
+    }
+    cohorts.push(selected);
+  }
+  const scope = getGestaoCorrectionSubmissionScope(actor, {
     activityId: input.activityId,
     cohortId,
     query,

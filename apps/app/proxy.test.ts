@@ -1,4 +1,4 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { beforeEach, expect, test, vi } from "vitest";
 
 const boundary = vi.hoisted(() => ({
@@ -18,7 +18,7 @@ vi.mock("@repo/auth/clerk-proxy", () => ({
 vi.mock("@repo/security/proxy", () => ({
   noseconeOptions: {},
   securityMiddleware: () => async () =>
-    new Response(null, { status: 200, headers: { "X-Frame-Options": "DENY" } }),
+    NextResponse.next({ headers: { "X-Frame-Options": "DENY" } }),
 }));
 vi.mock("@/env", () => ({ env: boundary.env }));
 
@@ -106,7 +106,8 @@ test("sets a private 403 before a denied page starts streaming", async () => {
   expect(response.headers.get("x-middleware-next")).toBe("1");
   expect(boundary.canEnter).toHaveBeenCalledWith(
     "qa-current",
-    "/gestao/administracao"
+    "/gestao/administracao",
+    undefined
   );
 });
 
@@ -128,5 +129,14 @@ test("denies a write before dispatch and without rendering a protected page", as
 test("does not load Gestão role data when the release flag is off", async () => {
   boundary.env.GESTAO_V2_ENABLED = "false";
   await run(auth, new NextRequest("https://example.test/gestao"));
+  expect(boundary.canEnter).not.toHaveBeenCalled();
+});
+
+test("rejects repeated cohort selectors before a page can stream a widened result", async () => {
+  const response = await run(
+    auth,
+    new NextRequest("https://example.test/gestao?turma=own&turma=foreign")
+  );
+  expect(response.status).toBe(403);
   expect(boundary.canEnter).not.toHaveBeenCalled();
 });

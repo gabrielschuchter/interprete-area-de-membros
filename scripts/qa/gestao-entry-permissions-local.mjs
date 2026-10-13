@@ -8,6 +8,16 @@ import { resolve } from "node:path";
 import { test } from "node:test";
 import { setTimeout as delay } from "node:timers/promises";
 import { pathToFileURL } from "node:url";
+import {
+  readOverviewExpected,
+  verifyOverviewFeedback,
+} from "./gestao-overview-feedback-checks.mjs";
+import {
+  denyForeignFeedback,
+  prepareFeedbackWrite,
+  sendOverviewFeedback,
+  verifyStudentFeedback,
+} from "./gestao-overview-feedback-write.mjs";
 
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Sequential actor matrix owns and restores one local server; explicit branches keep denial assertions reviewable.
 await test("N1: persisted local actors and server denials", async () => {
@@ -45,6 +55,7 @@ await test("N1: persisted local actors and server denials", async () => {
   });
   await client.connect();
   let cohorts;
+  const overviewExpected = new Map();
   try {
     const tls = await client.query(
       "SELECT current_database() AS db, ssl FROM pg_stat_ssl WHERE pid = pg_backend_pid()"
@@ -59,12 +70,22 @@ await test("N1: persisted local actors and server denials", async () => {
     ).rows;
     assert(cohorts.some((cohort) => cohort.teacher.endsWith("teacher_1")));
     assert(cohorts.some((cohort) => cohort.teacher.endsWith("teacher_2")));
+    if (process.env.QA_OVERVIEW_FEEDBACK === "true") {
+      for (const actor of ["admin", "teacher_1", "teacher_2"]) {
+        const id = `gestao_qa_functional_${actor}`;
+        overviewExpected.set(id, await readOverviewExpected(client, id));
+      }
+    }
   } finally {
     await client.end();
   }
   const bun = resolve(process.env.USERPROFILE, ".bun/bin/bun.exe");
   const start = (actor, profile = "functional") => {
-    assert(["admin", "teacher_1", "teacher_2", "student_01"].includes(actor));
+    assert(
+      ["admin", "teacher_1", "teacher_2", "student_01", "student_04"].includes(
+        actor
+      )
+    );
     assert(["functional", "visual"].includes(profile));
     const database =
       profile === "visual"
@@ -72,27 +93,31 @@ await test("N1: persisted local actors and server denials", async () => {
         : "interprete_gestao_qa_20261012";
     const databaseUrl = `postgresql://postgres@127.0.0.1:55433/${database}?connection_limit=2`;
     const fd = openSync(`${output}/${profile}-${actor}-server.log`, "a");
-    const child = spawn(bun, ["run", "--cwd", "apps/app", "dev"], {
-      cwd: root,
-      windowsHide: true,
-      detached: true,
-      stdio: ["ignore", fd, fd],
-      env: {
-        ...process.env,
-        NODE_ENV: "development",
-        NODE_OPTIONS: "--use-system-ca",
-        SKIP_ENV_VALIDATION: "true",
-        DATABASE_URL: databaseUrl,
-        DIRECT_URL: databaseUrl,
-        DATABASE_CA_CERT_PATH: ca,
-        GESTAO_DEV_AUTH: "true",
-        NEXT_PUBLIC_GESTAO_DEV_AUTH: "true",
-        GESTAO_DEV_AUTH_USER_ID: `gestao_qa_${profile}_${actor}`,
-        GESTAO_V2_ENABLED: "true",
-        NEXT_PUBLIC_APP_URL: base,
-        NEXT_PUBLIC_API_URL: "http://localhost:3001",
-      },
-    });
+    const child = spawn(
+      bun,
+      ["run", "--cwd", "apps/app", "dev", "--hostname", "127.0.0.1"],
+      {
+        cwd: root,
+        windowsHide: true,
+        detached: true,
+        stdio: ["ignore", fd, fd],
+        env: {
+          ...process.env,
+          NODE_ENV: "development",
+          NODE_OPTIONS: "--use-system-ca",
+          SKIP_ENV_VALIDATION: "true",
+          DATABASE_URL: databaseUrl,
+          DIRECT_URL: databaseUrl,
+          DATABASE_CA_CERT_PATH: ca,
+          GESTAO_DEV_AUTH: "true",
+          NEXT_PUBLIC_GESTAO_DEV_AUTH: "true",
+          GESTAO_DEV_AUTH_USER_ID: `gestao_qa_${profile}_${actor}`,
+          GESTAO_V2_ENABLED: "true",
+          NEXT_PUBLIC_APP_URL: base,
+          NEXT_PUBLIC_API_URL: "http://localhost:3001",
+        },
+      }
+    );
     closeSync(fd);
     return child;
   };
@@ -136,10 +161,28 @@ await test("N1: persisted local actors and server denials", async () => {
       : "playwright"
   );
   const browser = await chromium.launch();
+  let writeClient;
+  let writeState;
   const results = [];
   let owned;
   try {
-    for (const actor of ["admin", "teacher_1", "teacher_2", "student_01"]) {
+    if (process.env.QA_OVERVIEW_FEEDBACK_WRITE === "true") {
+      assert.equal(process.env.QA_OVERVIEW_FEEDBACK, "true");
+      writeClient = new pg.Client({
+        host: "127.0.0.1",
+        port: 55_433,
+        user: "postgres",
+        database: "interprete_gestao_qa_20261012",
+        ssl: { ca: readFileSync(ca, "utf8"), rejectUnauthorized: true },
+      });
+      await writeClient.connect();
+      writeState = await prepareFeedbackWrite(writeClient);
+    }
+    const studentActor =
+      process.env.QA_OVERVIEW_FEEDBACK_WRITE === "true"
+        ? "student_04"
+        : "student_01";
+    for (const actor of ["admin", "teacher_1", "teacher_2", studentActor]) {
       owned = start(actor);
       await ready(owned);
       const context = await browser.newContext({
@@ -166,14 +209,14 @@ await test("N1: persisted local actors and server denials", async () => {
         .waitFor();
       assert.equal(
         await page.getByRole("link", { name: "Gestão", exact: true }).count(),
-        actor === "student_01" ? 0 : 1
+        actor === studentActor ? 0 : 1
       );
       const entry = await page.goto(`${base}/gestao`);
-      assert.equal(entry.status(), actor === "student_01" ? 403 : 200);
+      assert.equal(entry.status(), actor === studentActor ? 403 : 200);
       await page
         .getByRole("heading", {
           name:
-            actor === "student_01"
+            actor === studentActor
               ? "Você não tem acesso a esta área."
               : "Visão geral",
           exact: true,
@@ -183,14 +226,41 @@ await test("N1: persisted local actors and server denials", async () => {
         actor,
         path: "/gestao",
         status: entry.status(),
-        rendered: actor === "student_01" ? "DENIED" : "ALLOWED",
+        rendered: actor === studentActor ? "DENIED" : "ALLOWED",
       });
-      if (actor === "student_01") {
+      if (actor === studentActor) {
         await page
           .getByRole("link", { name: "Voltar à área de membros", exact: true })
           .click();
         await page.waitForURL(`${base}/estudar`);
       } else {
+        if (process.env.QA_OVERVIEW_FEEDBACK === "true") {
+          await verifyOverviewFeedback(
+            page,
+            overviewExpected.get(`gestao_qa_functional_${actor}`)
+          );
+          const foreign =
+            actor === "admin"
+              ? null
+              : cohorts.find(
+                  (cohort) => cohort.teacher !== `gestao_qa_functional_${actor}`
+                );
+          if (foreign) {
+            for (const path of ["/gestao", "/gestao/alunos/correcoes"]) {
+              const deniedFilter = await page.goto(
+                `${base}${path}?turma=${foreign.id}`
+              );
+              assert.equal(deniedFilter.status(), 403);
+              await page
+                .getByRole("heading", {
+                  name: "Você não tem acesso a esta área.",
+                  exact: true,
+                })
+                .waitFor();
+              assert(!(await deniedFilter.text()).includes(foreign.name));
+            }
+          }
+        }
         for (const cohort of cohorts) {
           const allowed =
             actor === "admin" ||
@@ -281,11 +351,63 @@ await test("N1: persisted local actors and server denials", async () => {
         rendered: denied ? "DENIED" : "ALLOWED",
         errors,
       });
+      if (writeState) {
+        if (actor === "teacher_1" && !writeState.sent) {
+          await sendOverviewFeedback(page, writeClient, writeState);
+        }
+        if (actor === "teacher_2") {
+          await denyForeignFeedback(page, writeClient, writeState);
+        }
+        if (actor === studentActor) {
+          await verifyStudentFeedback(page, writeClient, writeState);
+        }
+      }
       assert.deepEqual(errors, []);
       await context.close();
       await stop(owned);
       owned = null;
       process.stdout.write(`Verified ${actor}\n`);
+    }
+    if (process.env.QA_OVERVIEW_FEEDBACK === "true") {
+      const visualClient = new pg.Client({
+        host: "127.0.0.1",
+        port: 55_433,
+        user: "postgres",
+        database: "interprete_gestao_visual_qa_20261012",
+        ssl: { ca: readFileSync(ca, "utf8"), rejectUnauthorized: true },
+      });
+      await visualClient.connect();
+      let emptyTeacher;
+      try {
+        const tls = await visualClient.query(
+          "SELECT current_database() AS db, ssl FROM pg_stat_ssl WHERE pid=pg_backend_pid()"
+        );
+        assert.equal(tls.rows[0].db, "interprete_gestao_visual_qa_20261012");
+        assert.equal(tls.rows[0].ssl, true);
+        emptyTeacher = await readOverviewExpected(
+          visualClient,
+          "gestao_qa_visual_teacher_1"
+        );
+        assert.equal(emptyTeacher.cohorts.length, 0);
+      } finally {
+        await visualClient.end();
+      }
+      owned = start("teacher_1", "visual");
+      await ready(owned);
+      const context = await browser.newContext({
+        viewport: { width: 1440, height: 900 },
+      });
+      await context.addInitScript(() =>
+        localStorage.setItem(
+          "interprete:gestao:welcome:v1:gestao_qa_visual_teacher_1",
+          "seen"
+        )
+      );
+      const page = await context.newPage();
+      await verifyOverviewFeedback(page, emptyTeacher);
+      await context.close();
+      await stop(owned);
+      owned = null;
     }
   } catch (error) {
     for (const context of browser.contexts()) {
@@ -298,6 +420,7 @@ await test("N1: persisted local actors and server denials", async () => {
     }
     throw error;
   } finally {
+    await writeClient?.end();
     await browser.close();
     await stop(owned);
     const preview = start("admin", "visual");

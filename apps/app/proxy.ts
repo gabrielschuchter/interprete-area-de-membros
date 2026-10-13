@@ -105,12 +105,23 @@ const gestaoBoundaryResponse = async (req: NextRequest, userId: string) => {
   const { canEnterGestaoRoute } = await import(
     "./lib/gestao-route-authorization"
   );
-  if (await canEnterGestaoRoute(userId, req.nextUrl.pathname)) {
+  const selectedCohorts = req.nextUrl.searchParams.getAll("turma");
+  if (
+    selectedCohorts.length <= 1 &&
+    (await canEnterGestaoRoute(
+      userId,
+      req.nextUrl.pathname,
+      selectedCohorts[0]
+    ))
+  ) {
     return null;
   }
   const headers = new Headers((await securityHeaders()).headers);
   headers.set("Cache-Control", "private, no-store");
   if (req.method !== "GET" && req.method !== "HEAD") {
+    // Nosecone returns NextResponse.next(). Its continuation marker must not
+    // turn this terminal denial into permission to dispatch a Server Action.
+    headers.delete("x-middleware-next");
     return NextResponse.json(
       { error: "Você não tem mais acesso a esta área." },
       { status: 403, headers }
