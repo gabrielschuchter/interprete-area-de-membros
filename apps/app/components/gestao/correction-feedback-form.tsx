@@ -18,9 +18,11 @@ interface CorrectionCriterion {
 const initialState: CorrectionActionState = { status: "idle" };
 const scoreValues = Array.from({ length: 11 }, (_, value) => value);
 
-export const CorrectionFeedbackForm = ({
+const CorrectionFeedbackFields = ({
   content,
   criteria,
+  formAction,
+  state,
   draftCurrent,
   draftVersion,
   feedbackVersion,
@@ -30,6 +32,8 @@ export const CorrectionFeedbackForm = ({
   submittedAt,
   submissionUpdatedAt,
 }: {
+  readonly formAction: (formData: FormData) => void;
+  readonly state: CorrectionActionState;
   readonly content: string;
   readonly criteria: readonly CorrectionCriterion[];
   readonly draftCurrent: boolean;
@@ -41,11 +45,7 @@ export const CorrectionFeedbackForm = ({
   readonly submittedAt: string;
   readonly submissionUpdatedAt: string;
 }) => {
-  const router = useRouter();
-  const [state, formAction] = useActionState(
-    saveGestaoCorrection,
-    initialState
-  );
+  const [comment, setComment] = useState(content);
   const [scores, setScores] = useState<Record<string, number>>({
     ...initialScores,
   });
@@ -83,12 +83,6 @@ export const CorrectionFeedbackForm = ({
       return next;
     });
   };
-
-  useEffect(() => {
-    if (state.status === "success" && state.href) {
-      router.replace(state.href);
-    }
-  }, [router, state]);
 
   return (
     <form action={formAction} className="gc-feedback-form">
@@ -163,12 +157,13 @@ export const CorrectionFeedbackForm = ({
             fieldErrors?.content ? "gc-comment-error" : undefined
           }
           aria-invalid={Boolean(fieldErrors?.content)}
-          defaultValue={content}
           id="gc-comment"
           maxLength={20_000}
           name="content"
+          onChange={(event) => setComment(event.currentTarget.value)}
           placeholder="Escreva uma orientação breve e concreta..."
           rows={8}
+          value={comment}
         />
       </label>
       {fieldErrors?.content ? (
@@ -205,5 +200,41 @@ export const CorrectionFeedbackForm = ({
         Ao enviar, a entrega fica corrigida e o aluno recebe uma notificação.
       </p>
     </form>
+  );
+};
+
+export const CorrectionFeedbackForm = (
+  properties: Omit<
+    Parameters<typeof CorrectionFeedbackFields>[0],
+    "formAction" | "state"
+  >
+) => {
+  const router = useRouter();
+  const [result, formAction] = useActionState(
+    async (
+      previous: { state: CorrectionActionState; submissionId: string },
+      formData: FormData
+    ) => ({
+      state: await saveGestaoCorrection(previous.state, formData),
+      submissionId: String(formData.get("submissionId") ?? ""),
+    }),
+    { state: initialState, submissionId: "" }
+  );
+  useEffect(() => {
+    if (result.state.status === "success" && result.state.href) {
+      router.replace(result.state.href);
+    }
+  }, [router, result]);
+  return (
+    <CorrectionFeedbackFields
+      {...properties}
+      formAction={formAction}
+      key={properties.submissionId}
+      state={
+        result.submissionId === properties.submissionId
+          ? result.state
+          : initialState
+      }
+    />
   );
 };

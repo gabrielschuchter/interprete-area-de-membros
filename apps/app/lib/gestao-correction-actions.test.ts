@@ -25,6 +25,9 @@ vi.mock("@repo/member-domain", () => ({
 }));
 vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidate }));
 vi.mock("next/navigation", () => ({
+  redirect: (href: string) => {
+    throw new Error(`REDIRECT:${href}`);
+  },
   forbidden: () => {
     throw new Error("forbidden");
   },
@@ -176,10 +179,7 @@ test("publishes only after commit, invalidates the overview, and never deletes a
     throw new Error("Commit barrier was not installed");
   }
   commit();
-  await expect(result).resolves.toMatchObject({
-    status: "success",
-    code: "feedback-enviado",
-  });
+  await expect(result).rejects.toThrow("REDIRECT:/gestao/alunos/correcoes?");
   expect(transaction.activityFeedbackDraft.deleteMany).not.toHaveBeenCalled();
   expect(mocks.revalidate).toHaveBeenCalledWith("/gestao");
   expect(mocks.enqueue).toHaveBeenCalledWith(

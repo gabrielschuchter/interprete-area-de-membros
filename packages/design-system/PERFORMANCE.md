@@ -474,3 +474,8 @@ on a server request.
   Existing pending transitions acknowledge submit locally; no optimistic
   membership or new client request/cache is added. T2 uses existing forms and
   confirmations; full visual/accessibility acceptance remains separate.
+
+- A2 correction form identity follows submission id, so switching recipients
+  clears previous notes/scores while draft saves keep the success navigation
+  mounted. Existing SingleFlightSubmit reports pending locally and success
+  follows persistence. No new prefetch, request loop, motion or dependency.

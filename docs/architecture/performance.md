@@ -1066,3 +1066,13 @@ Roster queries retain database pagination. Membership removal only ends the
 membership and records the existing domain event; independent grants and
 submissions remain untouched. Success labels update after the persisted result.
 Local 1440/390/320 browser checks do not establish latency percentiles.
+
+A2 correction continuation chooses the next pending submission inside the same
+serializable write transaction, with the fresh actor role, shared recipient
+scope and current activity/cohort/search filters. The query selects only id,
+orders by submittedAt/id and takes one row (findFirst); no roster or rubric
+collection is loaded for navigation. Sending resets pagination to the start
+of the remaining pending queue. Draft saves add no next-submission query.
+Existing pending feedback and invalidation of Main, correction queue, activity
+and student learning routes remain; no identity cache, pool or index change.
+Local QA uses an isolated distDir/port to preserve the interactive preview.

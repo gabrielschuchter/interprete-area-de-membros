@@ -3,16 +3,20 @@
 import { ActivitySubmissionStatus, database, Prisma } from "@repo/database";
 import { enqueueNotificationBatch } from "@repo/member-domain";
 import { revalidatePath } from "next/cache";
-import { forbidden } from "next/navigation";
+import { forbidden, redirect } from "next/navigation";
 import { parseActivityReview } from "@/lib/gestao-activity-review-domain";
 import { requireGestaoAction } from "@/lib/gestao-authorization";
 import type { CorrectionActionState } from "@/lib/gestao-correction-contract";
-import { getGestaoCorrectionRecipientScope } from "@/lib/gestao-correction-scope";
+import {
+  correctionNavigation,
+  correctionResultPath,
+} from "@/lib/gestao-correction-navigation";
+import {
+  getGestaoCorrectionRecipientScope,
+  getGestaoCorrectionSubmissionScope,
+} from "@/lib/gestao-correction-scope";
 import { consumeMutationRateLimit } from "@/lib/mutation-reliability";
 import { dispatchPendingNotifications } from "@/lib/notification-outbox-dispatch";
-
-const activityCorrectionReturnPattern =
-  /^\/gestao\/ensino\/atividades\/[A-Za-z0-9_-]+\/entregas(?:\?|$)/;
 
 const stringValue = (formData: FormData, name: string) => {
   const value = formData.get(name);
@@ -22,29 +26,6 @@ const stringValue = (formData: FormData, name: string) => {
 const readVersion = (formData: FormData, name: string) => {
   const value = Number(stringValue(formData, name));
   return Number.isInteger(value) && value >= 0 ? value : null;
-};
-
-const correctionReturnPath = (formData: FormData) => {
-  const candidate = stringValue(formData, "returnTo");
-  if (
-    candidate.startsWith("/gestao/alunos/correcoes") ||
-    activityCorrectionReturnPattern.test(candidate)
-  ) {
-    return candidate;
-  }
-  return "/gestao/alunos/correcoes";
-};
-
-const resultPath = (path: string, result: string, submissionId?: string) => {
-  const url = new URL(path, "http://gestao.local");
-  url.searchParams.set("resultado", result);
-  if (result === "feedback-enviado") {
-    url.searchParams.set("estado", "REVIEWED");
-  }
-  if (submissionId) {
-    url.searchParams.set("entrega", submissionId);
-  }
-  return `${url.pathname}${url.search}`;
 };
 
 type ReviewTransaction = Prisma.TransactionClient;
@@ -329,7 +310,7 @@ const prepareCorrection = async (
 ): Promise<PrepareCorrectionResult> => {
   const submissionId = stringValue(formData, "submissionId");
   const intent = stringValue(formData, "intent");
-  const returnTo = correctionReturnPath(formData);
+  const returnTo = correctionNavigation(stringValue(formData, "returnTo")).path;
   const loadedSubmittedAt = stringValue(formData, "submittedAt");
   const loadedUpdatedAt = stringValue(formData, "submissionUpdatedAt");
   const draftVersion = readVersion(formData, "draftVersion");
@@ -445,9 +426,9 @@ export const saveGestaoCorrection = async (
   const input = prepared.value;
   const now = new Date();
 
-  let outcome: "saved" | "sent";
+  let completed: { outcome: "saved" | "sent"; nextSubmissionId?: string };
   try {
-    outcome = await database.$transaction(
+    completed = await database.$transaction(
       async (transaction) => {
         const currentMember = await transaction.member.findUnique({
           where: { id: actor.userId },
@@ -474,7 +455,7 @@ export const saveGestaoCorrection = async (
           ...input.parsed.scores,
         };
         if (input.intent === "draft") {
-          return saveCorrectionDraft({
+          await saveCorrectionDraft({
             transaction,
             submission: context.submission,
             draft: context.draft,
@@ -484,8 +465,9 @@ export const saveGestaoCorrection = async (
             content: input.parsed.content,
             criteriaScores,
           });
+          return { outcome: "saved" as const };
         }
-        return sendCorrectionFeedback({
+        await sendCorrectionFeedback({
           transaction,
           context,
           submissionId: input.submissionId,
@@ -496,6 +478,22 @@ export const saveGestaoCorrection = async (
           criteriaScores,
           now,
         });
+        const navigation = correctionNavigation(input.returnTo);
+        const next = await transaction.activitySubmission.findFirst({
+          where: {
+            AND: [
+              getGestaoCorrectionSubmissionScope(
+                { ...actor, role: currentMember.role },
+                navigation.filters
+              ),
+              { status: ActivitySubmissionStatus.SUBMITTED },
+              { id: { not: input.submissionId } },
+            ],
+          },
+          orderBy: [{ submittedAt: "asc" }, { id: "asc" }],
+          select: { id: true },
+        });
+        return { outcome: "sent" as const, nextSubmissionId: next?.id };
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
     );
@@ -506,6 +504,7 @@ export const saveGestaoCorrection = async (
     return correctionActionError("conflito");
   }
 
+  const { outcome, nextSubmissionId } = completed;
   if (outcome === "sent") {
     await dispatchPendingNotifications();
     revalidatePath(["/atividades", input.preview.activity.slug].join("/"));
@@ -521,9 +520,14 @@ export const saveGestaoCorrection = async (
     )
   );
   const code = outcome === "sent" ? "feedback-enviado" : "rascunho-salvo";
-  return {
-    status: "success",
+  const href = correctionResultPath(
+    input.returnTo,
     code,
-    href: resultPath(input.returnTo, code, input.submissionId),
-  };
+    input.submissionId,
+    nextSubmissionId
+  );
+  if (outcome === "sent") {
+    redirect(href);
+  }
+  return { status: "success", code, href };
 };
