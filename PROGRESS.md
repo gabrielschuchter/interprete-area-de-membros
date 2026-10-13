@@ -889,3 +889,52 @@ antes de encerrar Main. Atualizar restrições da topbar junto das dependências
 reais, sem botões decorativos. Permanecem0/101aceitos,42em andamento/59pendentes.
 Identificar fechamento por feat(gestao): connect overview feedback to scoped correction queue.
 `95c8aea` é o SHA da unidade Main/feedback; registro compacto resolvido no fechamento documental seguinte.
+
+### Unidade em execução — Main, números da semana (quadros 23–25/T8)
+
+Requisito: Esta semana deve mostrar turmas ativas, entregas/corrigidas,
+aulas concluídas e tempo médio reais, filtrados pela turma e pelo escopo do
+professor. A investigação de Próximos encontros mostrou a dependência ainda
+aberta da agenda/editor editorial; não apontar Agenda para placeholder nem
+abrir outro catálogo antes de Main. Preservar esse requisito pendente.
+
+Arquivos: gestao-overview-week.ts, page.tsx/gestao.css, testes de projeção e
+harness local. Critério: métricas SQL autorizadas sem materializar IDs de
+alunos no app; deduplicar multiturma e intervalos sobrepostos; semana de
+segunda-feira em São Paulo, comparação de aulas com o mesmo intervalo da
+semana anterior; zero/denominador vazio explícitos. Filtro/reload, quatro
+papéis e professor sem turma, seis larguras/dois movimentos, referência e
+gates. Nenhuma escrita é necessária para a leitura. QA adicional usa apenas
+fixtures locais explícitas e aditivas caso falte um caso representativo.
+
+Evidência existente: study-dashboard usa união de intervalos por aluno;
+study-periods define início da semana segunda-feira em São Paulo. Respostas
+corrigidas existem no QA (não resetar); LessonProgress não tem relação
+Prisma com Member, então EXISTS SQL é necessário para evitar lista limitada
+de IDs. Main/feedback fornece seleção validada antes de consultar o bloco.
+
+### Fechamento Main/semana e prioridade MVP — 13/10/2026
+
+Diff inteiro de nove arquivos preservado e revisado; unidade útil ao MVP por
+exibir indicadores reais com filtro e escopo, sem ampliar outros blocos do Main.
+Inspecionados JSON e logs de output/gestao-overview-week: 102/102 no harness,
+48 capturas/quatro perfis/seis larguras/dois movimentos; nove testes focados.
+Isso é evidência funcional local anterior, sem comparação dos quadros/Clerk real.
+
+Reexecutados no estado atual check930, typecheck16/16, boundaries865,
+691app/17domínio/9API, 32scripts aprovados/1ignorado, build8/8,
+performance:check e git diff --check. Logs novos: output/gestao-mvp-week.
+Build usa URLs QA locais/TLS validado, flags de autenticação QA desligadas,
+SKIP_ENV_VALIDATION=true; não comprova serviço externo ou produção.
+Uma tentativa de performance durante build não tinha artefatos completos;
+resultado final é somente a execução após build bem-sucedido.
+
+Prioridade do usuário registrada em GOAL/DECISIONS/STATUS/handoff: MVP funcional
+local antes de acabamento e 101 comparações; preservar critérios de contrato e
+nenhuma promoção de fase/quadro. Próxima unidade vertical: atividade publicada
+para turma → envio por aluno autorizado → correção com rubrica → reload e
+negação fora do escopo. Encontrado fallback global para atividades sem curso,
+mesmo com destinatários; corrigir antes de chamar a jornada MVP verificada.
+Feedback anterior de student_04 e fixtures semanais preservados. Sem remoto,
+push/merge/deploy/migration/exclusão. Preview foi pausado para build; a próxima
+rodada local assume runtime e restaura admin visual ao terminar.

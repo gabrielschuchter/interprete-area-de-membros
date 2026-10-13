@@ -1,5 +1,18 @@
 # Handoff — finalizar a Nova Gestão do Interprete
 
+## Prioridade atualizada em 13/10/2026
+
+A instrução mais recente é avançar para **MVP funcional local**, sem esperar
+aceite visual integral do Main ou dos 101 quadros. O texto copiado abaixo é
+histórico; para prioridade/estado corrente, leia STATUS.md e o final de
+PROGRESS.md. Permanecem 0/101 aceitos, 42 em andamento e 59 pendentes.
+Fechar a unidade semanal preservada e escolher a jornada vertical mínima:
+turma/conteúdo → aluno autorizado envia atividade → professor corrige → reload,
+incluindo negação fora do perfil. Não reenviar o feedback QA de student_04.
+Fidelidade/acabamento, Clerk/YouTube reais e cobertura completa são backlog
+identificado, salvo bloqueio do MVP. Nenhuma fase promovida, nenhum push,
+merge, deploy, banco remoto ou exclusão de dados autorizado.
+
 ## Texto para colar no próximo chat
 
 ```text

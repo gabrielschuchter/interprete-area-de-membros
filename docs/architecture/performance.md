@@ -1035,3 +1035,14 @@ Feedback success follows the serializable commit, fresh transactional Member
 and recipient scope, and durable notification outbox. It invalidates /gestao
 along with queue/student routes. Local browser/SQL evidence is not production
 percentile or representative concurrency evidence.
+
+Gestão weekly overview adds one parameterized SQL aggregate in parallel with
+the attention projection, after fresh staff authorization. SQL scopes cohorts
+and members, counts distinct members and unions study intervals per member;
+only aggregate totals leave the database. The UTC timestamp comparisons use
+the São Paulo Monday boundary and equal elapsed previous-week windows. There
+is no shared identity/permission cache, new index, pool increase, mutation or
+secondary job. No list is materialized or paginated for this aggregate; cohort
+selection retains ten database options per page. Reload/filter navigation reads
+fresh data and existing correction writes invalidate /gestao. Main retains its
+225 KiB gzip budget. Local fixture checks are not production latency percentiles.

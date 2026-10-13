@@ -458,3 +458,9 @@ on a server request.
   predicate, rather than counting a capped array. Six widths/two motion modes
   cover the current partial card/filter; other Main blocks and visual fidelity
   remain open. The 225 KiB route budget applies without relaxation.
+
+- Weekly overview is a server-rendered definition list with aggregate totals,
+  no new client fetch, motion, prefetch or dependency. Empty audience displays
+  an explicit missing average, while measured zero remains zero. Scope/search
+  feedback uses the existing filter. Six widths/two motion modes have local
+  functional evidence; full visual acceptance remains separate from MVP.

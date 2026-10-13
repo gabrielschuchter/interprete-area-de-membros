@@ -2,6 +2,21 @@
 
 **Leia este arquivo antes do diário histórico. O produto está incompleto.**
 
+## Prioridade vigente: MVP funcional local
+
+Instrução de 13/10/2026 substitui a prioridade de fechar todo o Main/shell
+visualmente antes de continuar. Entregar em unidades verticais: gestão de
+turma/conteúdo → acesso autorizado do aluno → envio de atividade → correção
+→ resultado após reload, com negação real fora do perfil. Reutilizar código
+e fixtures já comprovados; não abrir outro catálogo antes de fechar a unidade.
+
+**MVP funcional** exige persistência, permissões server-side, desktop/mobile
+sem overflow, controles operacionais e gates aplicáveis. **Backlog de contrato**:
+101 comparações visuais, acabamento, Clerk/YouTube reais, matriz integral,
+percentis e dispositivos. Se um item bloquear a jornada MVP, volta ao caminho
+crítico. Nenhum quadro/fase é promovido por essa mudança de prioridade.
+Limites mantidos: somente local, sem push/merge/deploy/banco remoto/exclusão.
+
 ## Resultado da auditoria
 
 - Worktree autorizado: `C:\Users\gabsc\.codex\worktrees\interprete-gestao\interprete-area-de-membros`, branch `gestao-v2`.
@@ -56,6 +71,20 @@ que já têm evidência e sem chamar gates verdes de conclusão do produto.**
 - `pg_hba.conf` recebeu regras temporárias `hostssl/trust` só para os dois bancos QA, usuário postgres e loopback. Ao **encerrar** o preview, restaurar `%TEMP%\interprete-gestao-qa-20261012\pg_hba.before-live-preview-20261012.conf` sobre `postgres-data\pg_hba.conf` e executar `pg_ctl reload` no data-dir correto. Procedimento em `DECISIONS.md`.
 
 ## Qualidade e capturas
+
+- Main/semana preservado e fechado como unidade local de MVP em 13/10:
+  agregado SQL por papel/turma, alunos únicos, união de intervalos, segunda
+  em São Paulo, comparação com período equivalente e denominador vazio.
+  Logs anteriores inspecionados: 102/102 verificações, 48 capturas em quatro
+  perfis/seis larguras/dois movimentos; JSON em `overview-week`, logs em
+  `output/gestao-overview-week`. Não se repetiu seed nem feedback anterior.
+  Gates finais no diff corrente: check 930, typecheck 16/16, boundaries 865,
+  691 app/17 domínio/9 API, 32 scripts aprovados/1 ignorado; build 8/8,
+  performance e diff aprovados em `output/gestao-mvp-week`. Build local com
+  flags QA desligadas e TLS/URL de banco local, sem validação externa de env.
+  MVP do bloco não é aceite visual, Clerk real ou conclusão de Main/fase.
+  Próxima unidade: atividade com rubrica, corrigindo fallback global indevido
+  para conteúdo sem curso com destinatários e provando envio/correção/reload.
 
 - Main/feedback parcial (`95c8aea`): matriz com admin, dois professores, membro e professor
   visual sem vínculo; count/filtro/reload iguais ao SQL e à fila, turma alheia
@@ -134,6 +163,6 @@ que já têm evidência e sem chamar gates verdes de conclusão do produto.**
 
 1. Ler `HANDOFF-PROXIMO-CHAT.md`, este estado, `GOAL.md`, `DECISIONS.md` e o trecho relevante do diário.
 2. Escolher uma unidade vertical com critério de saída e casos de teste nomeados. Não reauditar todo o repositório a cada pequeno ajuste.
-3. Fechar o aceite da Fase 1; depois T1–T8/C1–C5 da Fase 2. Reutilizar o código e as fixtures existentes. A aparência do quadro 41 continua divergente.
+3. Fechar a unidade semanal preservada; depois verificar a menor jornada turma/atividade/aluno/correção com rubrica, reload e negação fora do escopo. A aparência do quadro 41 continua no backlog.
 4. Atualizar este resumo, adicionar uma linha em `EXECUTION-LOG.md`, anexar a evidência e commitar. Nenhum `[x]` sem os 8 requisitos.
-5. Só depois avançar o aceite das fases seguintes. Os números de fases são os de `GOAL.md`, não os do roadmap geral 1–10.
+5. Manter aceite integral separado do MVP. Os números de fases são os de `GOAL.md`, não os do roadmap geral 1–10.

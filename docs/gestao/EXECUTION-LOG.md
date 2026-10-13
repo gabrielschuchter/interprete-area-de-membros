@@ -28,6 +28,8 @@ O resumo vigente fica em `STATUS.md`. Não registrar segredos ou dados pessoais.
 
 ## Formato das próximas entradas
 
+| 13/10/2026 | Main/semana, identificar por `feat(gestao): add scoped weekly overview for functional MVP` | Preservado diff de nove arquivos, agregado semanal real e prioridade MVP separada do contrato visual | 102/102 e 48 capturas anteriores auditadas; gates atualizados em output/gestao-mvp-week: check930/typecheck16/boundaries865/691app/build8/performance/diff | 0/101 aceitos; próximo ciclo atividade com rubrica e isolamento, sem bloquear por acabamento do Main; somente local |
+
 `Data | SHA | escopo e requisito fechado | teste/captura/log | pendências exatas`.
 
 Antes de iniciar uma unidade, registrar no diário: requisito, arquivos principais,

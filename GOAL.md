@@ -4,6 +4,22 @@
 
 ## 1. Missão
 
+### Prioridade vigente — 13/10/2026
+
+Por instrução do usuário, a próxima entrega é um **MVP funcional local**:
+professor/admin gerencia turma e conteúdo, aluno acessa somente o autorizado
+e envia uma atividade, professor corrige e o resultado permanece após reload.
+Escolher uma unidade vertical por vez, reutilizando fluxos e fixtures existentes.
+Persistência, autorização fresca, negação fora do perfil, desktop/mobile sem
+overflow e controles com ação são requisitos dessa entrega.
+
+O contrato completo abaixo permanece como backlog de aceite. Comparação dos
+101 quadros, acabamento, Clerk real, YouTube real e cobertura integral ficam
+identificados separadamente, salvo quando bloquearem o MVP. Não é necessário
+encerrar o visual do Main para verificar a jornada seguinte. Gates verdes,
+capturas e MVP local não promovem fases nem quadros sem seus critérios originais.
+Continuam proibidos banco remoto/Production, push, merge, deploy e exclusão.
+
 Entregar a **Gestão** descrita no handoff, **funcionando de verdade e visualmente idêntica aos quadros**, sem ajuda humana. O resultado final será avaliado como se fosse produto: não basta existir a tela; cada botão, filtro, regra de turma, envio, calendário, vídeo do YouTube, medalha e permissão precisa funcionar.
 
 **Quem executa é você, sozinho.** Ninguém responde perguntas durante a execução. Você mesmo decide, contorna e verifica.

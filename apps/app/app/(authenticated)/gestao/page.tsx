@@ -2,7 +2,9 @@ import { InboxIcon } from "lucide-react";
 import Link from "next/link";
 import { forbidden } from "next/navigation";
 import { getGestaoOverviewAttention } from "@/lib/gestao-overview";
+import { getGestaoOverviewWeek } from "@/lib/gestao-overview-week";
 import { OverviewCohortFilter } from "./overview-cohort-filter";
+import { OverviewWeek } from "./overview-week";
 
 const memberNameWhitespacePattern = /\s+/;
 
@@ -31,11 +33,14 @@ const GestaoOverviewPage = async ({ searchParams }: OverviewPageProperties) => {
   if (Array.isArray(params.turma)) {
     forbidden();
   }
-  const overview = await getGestaoOverviewAttention({
-    cohortId: params.turma,
-    cohortQuery: typeof params.qTurmas === "string" ? params.qTurmas : "",
-    cohortPage: Number(params.paginaTurmas),
-  });
+  const [overview, week] = await Promise.all([
+    getGestaoOverviewAttention({
+      cohortId: params.turma,
+      cohortQuery: typeof params.qTurmas === "string" ? params.qTurmas : "",
+      cohortPage: Number(params.paginaTurmas),
+    }),
+    getGestaoOverviewWeek({ cohortId: params.turma }),
+  ]);
   const displayName =
     overview.actor.displayName?.trim().split(memberNameWhitespacePattern)[0] ||
     "professor";
@@ -100,6 +105,9 @@ const GestaoOverviewPage = async ({ searchParams }: OverviewPageProperties) => {
             </div>
           )}
         </section>
+        <aside className="go-sidebar">
+          <OverviewWeek week={week} />
+        </aside>
       </div>
     </section>
   );

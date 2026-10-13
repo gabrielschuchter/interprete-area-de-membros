@@ -18,6 +18,10 @@ import {
   sendOverviewFeedback,
   verifyStudentFeedback,
 } from "./gestao-overview-feedback-write.mjs";
+import {
+  readWeekExpected,
+  verifyWeek,
+} from "./gestao-overview-week-checks.mjs";
 
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Sequential actor matrix owns and restores one local server; explicit branches keep denial assertions reviewable.
 await test("N1: persisted local actors and server denials", async () => {
@@ -56,6 +60,7 @@ await test("N1: persisted local actors and server denials", async () => {
   await client.connect();
   let cohorts;
   const overviewExpected = new Map();
+  const weekExpected = new Map();
   try {
     const tls = await client.query(
       "SELECT current_database() AS db, ssl FROM pg_stat_ssl WHERE pid = pg_backend_pid()"
@@ -74,6 +79,12 @@ await test("N1: persisted local actors and server denials", async () => {
       for (const actor of ["admin", "teacher_1", "teacher_2"]) {
         const id = `gestao_qa_functional_${actor}`;
         overviewExpected.set(id, await readOverviewExpected(client, id));
+      }
+    }
+    if (process.env.QA_OVERVIEW_WEEK === "true") {
+      for (const actor of ["admin", "teacher_1", "teacher_2"]) {
+        const id = `gestao_qa_functional_${actor}`;
+        weekExpected.set(id, await readWeekExpected(client, id));
       }
     }
   } finally {
@@ -234,6 +245,12 @@ await test("N1: persisted local actors and server denials", async () => {
           .click();
         await page.waitForURL(`${base}/estudar`);
       } else {
+        if (process.env.QA_OVERVIEW_WEEK === "true") {
+          await verifyWeek(
+            page,
+            weekExpected.get(`gestao_qa_functional_${actor}`)
+          );
+        }
         if (process.env.QA_OVERVIEW_FEEDBACK === "true") {
           await verifyOverviewFeedback(
             page,
@@ -378,6 +395,7 @@ await test("N1: persisted local actors and server denials", async () => {
       });
       await visualClient.connect();
       let emptyTeacher;
+      let emptyWeek;
       try {
         const tls = await visualClient.query(
           "SELECT current_database() AS db, ssl FROM pg_stat_ssl WHERE pid=pg_backend_pid()"
@@ -389,6 +407,12 @@ await test("N1: persisted local actors and server denials", async () => {
           "gestao_qa_visual_teacher_1"
         );
         assert.equal(emptyTeacher.cohorts.length, 0);
+        if (process.env.QA_OVERVIEW_WEEK === "true") {
+          emptyWeek = await readWeekExpected(
+            visualClient,
+            "gestao_qa_visual_teacher_1"
+          );
+        }
       } finally {
         await visualClient.end();
       }
@@ -405,6 +429,9 @@ await test("N1: persisted local actors and server denials", async () => {
       );
       const page = await context.newPage();
       await verifyOverviewFeedback(page, emptyTeacher);
+      if (emptyWeek) {
+        await verifyWeek(page, emptyWeek);
+      }
       await context.close();
       await stop(owned);
       owned = null;
