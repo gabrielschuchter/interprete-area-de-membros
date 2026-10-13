@@ -1,6 +1,60 @@
 # Gestão — estado atual atualizado em 13/10/2026
 
+## Estratégia vigente — base local → QA integrado → produção (13/10/2026)
+
+A instrução mais recente do usuário substitui as proibições históricas de
+publicação **somente após** duas condições: toda a base funcional local estar
+concluída e o QA integrado estar aprovado tecnicamente. Até lá, nenhum push,
+merge, deploy ou alteração remota. Depois, integração/publicação autorizadas
+pelo fluxo do repositório, com preflight Clerk/Supabase/Vercel, migrations
+aditivas, integridade e smoke real. Bloqueio crítico impede a publicação.
+Nunca transportar fixtures de QA nem executar operações destrutivas.
+
+O goal ativo cobre a entrega inteira até produção; fechar uma unidade MVP
+não encerra o objetivo final. Preview localhost:3000 permanece ativo; runtimes de QA
+usam porta e distDir próprios, sem matar processos alheios. Banco, fixtures e
+histórico são preservados. Evidência funcional local, integração real e aceite
+visual são registros distintos. Os 101 quadros permanecem referência; nenhum
+quadro/fase muda de status por gate verde ou pela prioridade de MVP.
+
+Sequência e critérios de saída em `docs/gestao/MVP.md`. Checkpoints anteriores
+abaixo são históricos quando divergirem desta instrução.
+
+
 **Leia este arquivo antes do diário histórico. O produto está incompleto.**
+
+## Unidade mais recente — A2 funcional local verificada
+
+Rascunho parcial salvo → sair/reload/retomar → aluno sem payload privado →
+professor alheio403 → validação preserva comentário → envio/próxima pendente
+filtrada com campos limpos → última entrega/fila vazia → aluno/reload.
+Browser rodada2 passou1/1 em621s (compilação/troca de perfis incluídas).
+Pós-build, retomada sem reenviar passou1/1 em191s, pageErrors=[] e
+consoleErrors=[]; notas7/9 e8/8, Feedback v1, API privada de notificações com
+registro próprio e sem o do outro aluno, dois jobs SUCCEEDED/attemptCount1.
+Histórico externo à nova atividade idêntico antes/depois. Capturas1440/390/320
+sem overflow são funcionais, não comparações com quadros.
+
+Correções: comentário controlado sobrevive a erro; campos reiniciam por entrega;
+redirect servidor após commit abre próxima/última mesmo com formulário desmontado.
+Primeira fixture A2 com texto anterior enviado durante descoberta do bug está
+preservada; não reenviar/sobrescrever. Rodada2 usa
+`gestao-qa-mvp-a2-20261013-2`. Detalhes/fixtures em MVP.md.
+
+Gates finais: check939, typecheck16/16, boundaries871;727app/17domínio/9API,
+32scripts aprovados/1ignorado; build8/8, performance/diff. Main214,6KiB,
+Correções215,4KiB, Calendário223,8KiB, Planejamento224,5KiB (teto225).
+Logs em output/gestao-mvp-a2; JSON/capturas em
+output/playwright/gestao-v2/mvp-a2-round2. Build isolado no D: com QA auth
+false; browser pós-build é runtime dev de QA, não Clerk/produção reais.
+
+Preview3000 e PG55433 permanecem ativos; somente QA3002 é encerrado pelo
+harness. Caches/builds no D: por junctions locais ignoradas, processos ocultos;
+cache corrompido e logs anteriores preservados. Guia em gestao-implementacao.md.
+Sem migration, push, merge, deploy ou escrita remota. Sem promover fase/quadro:
+0/101 aceitos,42 em andamento,59 pendentes. A2 não encerra matriz integral,
+worker contínuo ou QA de todas as seções. Próxima unidade: item2 de MVP.md,
+turma/cronograma/encontro → Aprender/calendário; goal integral continua ativo.
 
 ## Prioridade vigente: MVP funcional local
 

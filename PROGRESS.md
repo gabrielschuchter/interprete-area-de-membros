@@ -1062,3 +1062,97 @@ T2 cumpridos; registrar commit focado antes de concluir a meta. Próximo A2:
 rascunho privado/reload/retomada e próxima entrega, usando novas fixtures.
 Sem push/merge/deploy/remoto/migration/exclusão;0/101aceitos,42em andamento,
 59pendentes. Identificar por fix(gestao): validate cohort membership MVP and fresh mutation roles.
+
+### 13/10/2026 — A2 em execução; QA discreto e cache no D:
+
+Base058516e preservada; nenhuma unidade nova encerrada/commitada ainda.
+Estratégia vigente em GOAL/STATUS/MVP: base funcional inteira local → QA
+integrado/correções → preflight/publicação autorizada condicionalmente. Goal
+integral permanece ativo; nenhum push/merge/deploy/remoto nesta retomada.
+
+A2 acrescenta seleção transacional da próxima pendente pelos filtros e papel
+fresco. Formulário separa controlador de ação/campos por entrega, evitando
+transportar notas/texto ou cancelar navegação quando o servidor troca a seleção.
+23 testes focados de ação/navegação e3 de formulário passaram (inclui navegação
+com props alteradas antes da resposta). Check938, boundaries870 e teste geral
+723app/17domínio/9API passaram antes da última alteração do formulário; precisam
+ser relidos/atualizados para o diff final. Typecheck anterior16/16 passou;
+retentativa concorrente teve OOM emAPI/storybook. Build/performance ainda não
+rodados neste diff; não registrar todos os gates como fechados.
+
+Fixture A2 adicional slug gestao-qa-mvp-a2-20261013, atividade
+cmv70flfx0000noypmsq4njxd, duas respostas novas04/02. Primeira resposta04
+cmv70gke10000n0ypxkv6lr99 tem rascunho privado ainda não enviado. Um fill antes
+da hidratação duplicou o texto do rascunho; harness passou a esperar props React
+antes de editar e só retoma as duas formas exatas conhecidas desse rascunho
+inacabado. Não resetar fixtures nem reenviar feedbacks concluídos. Browser A2
+não aprovado: houve timeout, saída de runtime e ENOSPC; logs preservados em
+output/gestao-mvp-a2. Rodada corrente browser-d-cache.log usa porta3002,
+Webpack, windowsHide e processo sem detached; preview3000 independente.
+
+Usuário relatou CMDs visíveis: wrapper passou a ocultar seu filho Next; QA A2
+usa Webpack para evitar subprocessos Turbopack. Não encerrar CMDs alheios.
+C: quase cheio; D: local NTFS saudável,25GiB livres e escrita confirmada.
+Cache gerado1,08GB movido integralmente com caminhos absolutos verificados,
+sem exclusão, para D:/CodexCache/interprete-gestao-20261013/next-a2-preserved.
+Junction apps/app/.next-local-a2 mantém o caminho lógico/cache e novas escritas
+no D:. .next-local-a2-d também aponta ao diretório preparado next-a2 (somente
+marcador). C: recuperou de0,78GB para1,60GB; banco, fixtures, código e checkout
+original não foram movidos. Preview3000 PID12524 (reinício automático do Next
+por config), pai original35340; PG55433 PID7732 continuam ativos.
+
+Próximo: concluir browser A2/histórico/privacidade/próxima e última entrega;
+rodar gates finais sequencialmente, preferindo build isolado no D: com diretório
+local validado e INTERPRETE_NEXT_DIST_DIR correspondente para performance.
+Atualizar evidência/limitações e commit focado antes da unidade2 de MVP.md.
+
+A primeira partida do cache no D: revelou resolução de módulos pelo caminho
+físico, sem encontrar React. Foi criada junction node_modules no diretório
+exclusivo D:/CodexCache/interprete-gestao-20261013 apontando às dependências
+existentes de apps/app (sem copiar/reinstalar). Prova via createRequire do
+caminho D: resolve react/jsx-runtime, next e @repo/database. QA retomado em
+browser-d-resolved.log; isso ainda não comprova todo A2. Cache e dependências
+continuam ignorados pelo Git. Não excluir recursivamente diretórios de junction.
+
+### 13/10/2026 — A2: validação preserva comentário; rodada adicional explícita
+
+Browser d-resolved comprovou rascunho parcial/reload, HTML do aluno sem
+rascunho e POST alheio403/registro intacto. Ao tentar enviar sem todas as notas,
+React resetou textarea não controlado para o rascunho anterior; depois o ensaio
+enviou esse texto salvo em vez do novo comentário. É um bug de preservação
+de campos após validação, não prova de bypass. O feedback já gravado na primeira
+fixture A2 permanece preservado, sem reenviar/sobrescrever. Teste do componente
+reproduziu exatamente saved first no lugar do texto novo (vermelho); textarea
+controlado o corrigiu. Quatro testes de componente e23 de ações/navegação
+passaram após o ajuste. Envio final agora usa redirect servidor após commit,
+para continuar mesmo quando a última entrega desmonta o formulário da fila.
+
+Nova fixture explícita de QA rodada2: gestao-qa-mvp-a2-20261013-2, atividade
+cmv71ileu0000y0yp67ck1bwy. Harness espera hidratação antes de editar, verifica
+que comentário sobrevive à validação e compara snapshots de todos os feedbacks
+fora dessa nova atividade. Rodada atual browser-round2.log ainda em execução.
+O cache webpack corrompido por ENOSPC foi movido, não apagado, para
+D:/CodexCache/interprete-gestao-20261013/next-a2-preserved/dev/cache/webpack-before-enospc-20261013.
+Logs/capturas da primeira A2 foram movidos ao D:/CodexCache/interprete-gestao-20261013/a2-first-logs;
+junction no caminho anterior preserva referências. Novo cache é gerado no D:.
+Typecheck serial16/16 passou; gates ainda precisam ser fechados no diff final.
+
+### 13/10/2026 — A2 funcional local fechada, goal integral ativo
+
+Browser rodada2 passou1/1/621s: rascunho parcial/reload/privacidade,403 alheio,
+comentário preservado em validação, próxima pendente filtrada/campos limpos,
+última/fila vazia e aluno/reload. Pós-build passou1/1/191s sem reenviar;
+pageErrors=[]/consoleErrors=[], notas7/9 e8/8/Feedback v1 confirmados. API privada
+mostrou só notificação própria; dois jobs SUCCEEDED/attemptCount1. Snapshots
+preservam todos os feedbacks fora da nova atividade, incluindo a primeira A2.
+Gates: check939, type16/16, boundaries871,727app/17domínio/9API,
+32scripts/1ignorado,build8/8/performance/diff. Main214,6KiB/Correções215,4KiB,
+Calendário223,8KiB/Planejamento224,5KiB (teto225). Logs output/gestao-mvp-a2;
+auditorias/capturas output/playwright/gestao-v2/mvp-a2-round2.
+
+Sem migration/remoto/publicação. Preview3000 e PG preservados; QA3002 encerrado.
+Build/cache no D: e processos ocultos. Não reenviar feedbacks/limpar fixtures.
+Nenhum quadro/fase promovido; A2 integral/worker contínuo/Clerk/QA de toda a
+Gestão não concluídos. Próximo item2 em MVP.md; objetivo inteiro até publicação
+permanece ativo. Commits focados: runtime local406dd2d; correção A2 em347ba84; documentação
+de estratégia/evidências. Não usar fechamento desta unidade como aceite do produto.

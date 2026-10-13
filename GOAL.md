@@ -1,5 +1,32 @@
 # GOAL · Implementar a Gestão do Interprete (execução autônoma)
 
+## Estratégia vigente — base local → QA integrado → produção (13/10/2026)
+
+A instrução mais recente do usuário substitui as proibições históricas de
+publicação **somente após** duas condições: toda a base funcional local estar
+concluída e o QA integrado estar aprovado tecnicamente. Até lá, nenhum push,
+merge, deploy ou alteração remota. Depois, integração/publicação autorizadas
+pelo fluxo do repositório, com preflight Clerk/Supabase/Vercel, migrations
+aditivas, integridade e smoke real. Bloqueio crítico impede a publicação.
+Nunca transportar fixtures de QA nem executar operações destrutivas.
+
+O goal ativo cobre a entrega inteira até produção; fechar uma unidade MVP
+não encerra o objetivo final. Preview localhost:3000 permanece ativo; runtimes de QA
+usam porta e distDir próprios, sem matar processos alheios. Banco, fixtures e
+histórico são preservados. Evidência funcional local, integração real e aceite
+visual são registros distintos. Os 101 quadros permanecem referência; nenhum
+quadro/fase muda de status por gate verde ou pela prioridade de MVP.
+
+A2 funcional local foi verificada (rascunho/retomada/privacidade/validação,
+próxima/última, notificação interna, gates e smoke). Próxima unidade: item2
+de MVP.md, turma/cronograma/encontro → Aprender/calendário. Isso não encerra
+a base inteira nem o goal; acabamento/101 comparações não bloqueiam o MVP,
+e integrações reais necessárias à produção entram no preflight.
+
+Sequência e critérios de saída em `docs/gestao/MVP.md`. Checkpoints anteriores
+abaixo são históricos quando divergirem desta instrução.
+
+
 > Coloque este arquivo na **raiz do repositório** (junto com `PROGRESS.md` e `DECISIONS.md`) e a pasta `interprete-gestao-handoff/` em um caminho conhecido (ex.: `docs/gestao-handoff/`). A meta do `/goal` aponta para cá. **Releia este arquivo ao começar e depois de qualquer compactação de contexto.**
 
 ## 1. Missão

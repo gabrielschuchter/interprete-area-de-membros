@@ -5,6 +5,33 @@ funcional de aceite integral; não substitui os critérios dos 101 quadros.
 Estado e gates vigentes: [STATUS.md](STATUS.md). Histórico: EXECUTION-LOG.md
 e PROGRESS.md. Tudo no worktree `interprete-gestao`, branch `gestao-v2`.
 
+## Sequência objetiva da base funcional
+
+Reaproveitar os serviços/ações canônicos; arquivo ou rota existente não vale
+como aceite. A auditoria atual encontrou CRUDs de Ensino e resolvers de turma,
+mas lacunas de ligação e destinos que ainda caem no placeholder genérico.
+Executar uma unidade vertical por vez nesta ordem; dividir por jornada quando
+necessário, sem abrir novos editores antes de fechar a unidade corrente.
+
+| Ordem | Unidade / reaproveitamento | Critério de saída funcional |
+|---|---|---|
+| 1 | A2 funcional local verificada: fila, rascunhos e feedback existentes | Salvar privado, sair/reload, retomar notas/texto, negar outro professor, enviar e abrir próxima pendente filtrada sem carregar notas da anterior; aluno vê apenas enviado |
+| 2 | Turma → cronograma/encontro → Aprender/calendário | Fechar publicação/liberação e políticas de entrada/saída integradas, encontro publicado visível e rascunho oculto; reaproveitar T2 e calendário comprovados |
+| 3 | Ensino → aluno: cursos/aulas, exercícios, biblioteca/coleções | Criar/editar/publicar/atribuir e consumir autorizado; validar upload/playback no ambiente disponível, sem refazer CRUD existente; erro real explícito para integração indisponível |
+| 4 | Envios e acompanhamento | Destaque/pendência/aviso chega ao aluno correto; conclusão reflete no acompanhamento após reload; outbox/worker e notificação interna recuperáveis |
+| 5 | Comunidade | Conectar publicações/moderação, grupos, avisos e agenda editorial aos domínios existentes, com público e permissões reais; eliminar placeholders essenciais |
+| 6 | Administração | Conectar membros/papéis, origens de acesso, gravações, personalização, medalhas e auditoria existentes; mudança de papel/revogação efetiva na próxima requisição |
+| 7 | Integração do shell | Busca, notificações, navegação e prévia contextual somente leitura operacionais; nenhuma rota anunciada termina em placeholder/404 nem controle sem ação |
+| 8 | QA integrado + correções | Matriz de todas as seções/controles e jornadas cruzadas, perfis, vazio/erro/conflito/reload, desktop/mobile; registrar resultado e reparar sem reescrever checkpoints |
+| 9 | Preflight e publicação | Somente após 1–8: verificar ambiente, Clerk real, migrations aditivas/RLS/origens, Vercel/Supabase e fluxo Git; publicar e fazer smoke real; bloquear se houver risco crítico |
+
+Esta sequência não aceita antecipadamente todas as funcionalidades de uma
+linha. A passagem exige evidência do comportamento, gates aplicáveis e commit.
+Acabamento/pixel comparison dos101 quadros, movimentos detalhados e dispositivos
+físicos ficam separados. Clerk real e integrações necessárias deixam de ser
+backlog ao chegar ao preflight: devem ser verificadas ou registradas como
+bloqueio da publicação. QA local com adaptador não satisfaz esse critério.
+
 ## Unidade vertical: atividade de turma com rubrica
 
 Escopo: reutilizar turma funcional existente com responsável e alunos, criar
@@ -92,6 +119,44 @@ três memberships REMOVED e uma origem DIRECT ao12. Elas alteram contagens de
 QA; não apagar/resetar para restaurar os totais antigos. Turmas anteriores e
 feedbacks das unidades anteriores foram preservados.
 
+## A2 — rascunho privado e continuidade da fila (local)
+
+Fluxo da rodada2 aprovado em `output/gestao-mvp-a2/browser-round2.log`
+(1/1,621s incluindo compilação e troca de perfis). Capturas1440/390/320 e
+snapshot de histórico em `output/playwright/gestao-v2/mvp-a2-round2`.
+
+| Critério | Evidência local |
+|---|---|
+| Salvar e retomar | Professor1 salvou comentário e uma nota parcial, saiu para Main, voltou/recarregou e leu os mesmos valores |
+| Privacidade | HTML/DOM do aluno04 após reload sem rascunho; status continuou SUBMITTED, sem Feedback publicado |
+| Escopo fresco | Ação válida do professor2 alterada no POST serializado recebeu403; rascunho/status/version permaneceram iguais |
+| Validação | Comentário obrigatório/notas completas; texto novo preservado após erro, sem substituir pelo rascunho salvo |
+| Próxima entrega | Envio abre a próxima SUBMITTED na mesma atividade/turma/busca, limpa notas/texto e volta à primeira página |
+| Última entrega | Segundo envio retorna à fila pendente vazia, sem selecionar novamente a corrigida |
+| Persistência/resultado | Dois Feedback v1, notas7/9 e8/8, autor correto, rascunhos consumidos; aluno vê resultado após reload |
+| Notificação interna | SQL TLS verificou duas FEEDBACK_RECEIVED com dedupe v1 e dois jobs notifications.create.v1 SUCCEEDED/attemptCount1; não comprova worker contínuo ou canal externo |
+| Histórico/preview | Todos os feedbacks fora da atividade nova idênticos antes/depois; preview3000 permaneceu independente do QA3002 |
+
+Correções: textarea controlado preserva comentário em erro; campos por entrega
+reiniciam ao trocar aluno sem desmontar o controlador do rascunho; envio usa
+redirect servidor após commit, inclusive na última entrega. Seleção seguinte
+usa projeção id/findFirst na transação, autorização fresca, ordem submittedAt/id
+e os filtros existentes. Sem migration, índice, cache de identidade ou provider.
+
+Fixtures não devem ser resetadas: primeira atividade A2
+`gestao-qa-mvp-a2-20261013` mantém o feedback gravado com texto do rascunho durante
+a descoberta do bug (React resetava campo não controlado após validação).
+Não reenviar/sobrescrever para limpar evidência. Rodada2 usa slug
+`gestao-qa-mvp-a2-20261013-2`, duas entregas corrigidas, comentários exatos e
+Feedback v1. Ambos os conjuntos são dados explícitos de QA, nunca de produção.
+
+27 testes focados passaram, incluindo regressão vermelha→verde da preservação
+do comentário. Retomada pós-build1/1/191s sem reenviar, pageErrors=[]/consoleErrors=[]; API
+privada de notificações confirmou o feedback próprio sem o do outro aluno.
+Gates finais check939/type16/boundaries871/727app/build8/performance/diff em STATUS; o fluxo acima
+não aceita toda a matriz A2, Clerk real, fase ou quadro. Próxima unidade da
+sequência: turma/cronograma/encontro → Aprender/calendário, reutilizando T2.
+
 ## Isolamento de atividades
 
 Atividade sem curso e com destinatários caía no fallback global. Agora lista,
@@ -104,13 +169,12 @@ quatro falharam antes da correção; oito passaram depois.
 
 ## Backlog separado
 
-- T2 funcional local comprovado na unidade acima. Próxima unidade MVP: A2,
-  rascunho privado de correção → sair/reload → retomar sem expor ao aluno e
-  próxima entrega após envio, reutilizando fila e novas fixtures explícitas.
-  Criação/CSV/movimentação/duplicação de turma não recebem aceite integral.
-- A1/A2 integrais: pesos inválidos na publicação real, rascunho privado/reload,
-  próxima entrega automática e notificações com worker contínuo não recebem
-  aceite por esse ciclo. Outbox não equivale a entrega externa comprovada.
+- T2 e a unidade local A2 têm evidência acima. Próxima unidade: item2 da
+  sequência. Criação/CSV/movimentação/duplicação de turma não recebem aceite
+  integral por T2; A2 não encerra a matriz de todas as ações/perfis.
+- A1: pesos inválidos na publicação real e versões completas continuam abertos.
+  Worker contínuo/canais externos também; notificações internas desta A2 têm
+  persistência e job concluído, não prova de entrega externa.
 - Upload, curso/aula/playback e YouTube real; Clerk real; todas as ações/perfis,
   concorrência representativa, percentis e dispositivos físicos permanecem
   não verificados por essa unidade.
@@ -122,14 +186,22 @@ quatro falharam antes da correção; oito passaram depois.
 
 ## Reexecutar e reverter
 
-Pare somente o preview pertencente a este worktree antes do harness. Configure
-`QA_MVP_ACTIVITY_WRITE=true`, `QA_PLAYWRIGHT_MODULE` para o Playwright instalado
-e, se necessário, `QA_CHROMIUM_EXECUTABLE` para um Chromium local compatível.
-Execute `node scripts/qa/gestao-mvp-activity-local.mjs` na raiz. O destino QA,
-loopback/55433 e CA TLS são fixos e validados; o processo restaura admin visual.
-Não inventar chave Clerk. `/health` pode ter 503 com auth missing mesmo com
-database ok no adaptador QA; isso não comprova autenticação Clerk.
+Para A2, mantenha preview3000 ativo e confirme que3002 está livre. Configure
+`QA_MVP_A2_WRITE=true`, `QA_PLAYWRIGHT_MODULE` e `QA_CHROMIUM_EXECUTABLE` para
+as instalações locais existentes. Execute `node scripts/qa/gestao-mvp-a2-local.mjs`.
+O harness usa somente QA funcional/loopback55433/TLS validado, cria fixtures
+aditivas se ausentes e retoma Feedback v1 concluído sem reenviar. Ele encerra
+somente seus processos3002, com windowsHide, sem detached e com Webpack.
+
+`INTERPRETE_LOCAL_DIST_DIR` aceita somente .next-local-<nome>, fora da Vercel;
+padrão do harness .next-local-a2. Junction local para D: é configuração da
+máquina, não parte do Git. Guia de cache/build isolado em
+`docs/gestao-implementacao.md`. Os harnesses antigos que alternam preview3000
+são evidência histórica; não reexecutá-los derrubando o preview atual.
+QA auth não é Clerk; /health auth missing não demonstra autenticação real.
 
 Reversão de código preserva fixtures e schema. Desligar `GESTAO_V2_ENABLED`
 oculta a Gestão; não reabrir o fallback de acesso para simular reversão.
-Nenhum push/merge/deploy, banco remoto ou exclusão está autorizado.
+Durante a base local e QA integrado, nenhum push/merge/deploy ou alteração remota.
+Após aprovação técnica, aplicar a estratégia vigente em GOAL/STATUS. Operações
+destrutivas e transporte de fixtures para produção continuam proibidos.

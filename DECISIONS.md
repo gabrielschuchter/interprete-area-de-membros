@@ -75,3 +75,17 @@
 | 13/10/2026 | Atividade sem curso com destinatários caía no fallback global | Consultar contagens de origens no banco para distinguir atividade legada global de atividade direcionada. Alvo inexistente para o aluno, expirado, revogado ou FROM_JOIN anterior não abre conteúdo. Preservar concessões individuais/curso e staff como fontes independentes. | Fecha vazamento em lista, detalhe e guard de envio sem migration/backfill; somente atividade que nunca teve destinatários mantém compatibilidade global. Oito regressões cobrem as origens. |
 
 | 13/10/2026 | Goal solicitado para continuidade do MVP/T2 | Meta binária: matrícula → acesso/reload → remoção → revogação só da turma, preservando concessão direta/histórico; QA local, gates e commit. Revalidar papel/ativação dentro da transação antes de lookup/replay; mudança de papel falha fechada e exige nova requisição. | O vínculo era fresco, mas o papel podia vir da leitura anterior à transação. A turma nova isola o ensaio e não altera as matrículas anteriores. MVP não promove fases/quadros. |
+
+| 13/10/2026 | Usuário definiu sequência definitiva e autorizou publicação condicionada | Base funcional local completa → QA integrado de toda a Gestão → corrigir → preflight/integração/publicação/smoke. Goal cobre o conjunto, A2 inicia a sequência em MVP.md. Preview3000 contínuo, QA em porta/distDir próprios. | Substitui a proibição histórica absoluta de publicação, sem autorizar antecipação: nenhum push/merge/deploy até QA aprovado, sem operações destrutivas nem fixtures em produção. |
+
+| 13/10/2026 | Usuário relatou janelas CMD vazias durante QA | O wrapper do Next passa windowsHide:true ao filho; QA A2 deixa de usar detached e roda --webpack em3002/distDir isolado. Suspender novas inicializações até aplicar o ajuste. | Evita console visível no spawn e subprocessos Turbopack no ensaio; preview3000/PG preservados. Não encerrar CMDs de outros aplicativos. |
+
+| 13/10/2026 | C: quase cheio, usuário indicou D: | Verificados D: local/NTFS/saudável e25GiB livres; escrita confirmada em D:/CodexCache/interprete-gestao-20261013/next-a2. Junction local .next-local-a2-d permite cache Next nesse volume; harness aceita QA_MVP_A2_DIST_DIR explícito. | Somente artefatos gerados; banco, fixtures, código, checkout original e preview3000 permanecem no lugar. Cache anterior comprimido sem exclusão. QA/build ainda precisam terminar; não confundir teste de escrita com aceite do fluxo. |
+
+Cache anterior do A2 foi movido integralmente, sem exclusão, para
+D:/CodexCache/interprete-gestao-20261013/next-a2-preserved, com os dois caminhos
+absolutos verificados e runtime3002 parado. Junction .next-local-a2 mantém o
+caminho lógico anterior, reutiliza o cache e direciona novas escritas ao D:.
+C: passou de0,78GB a1,60GB livres; nenhum arquivo de banco/fixture foi movido.
+
+| 13/10/2026 | Validação React restaurava comentário salvo; última entrega desmonta formulário | Manter comentário controlado, campos por entrega e controlador de rascunho estável. Envio navega por redirect servidor após commit para próxima SUBMITTED autorizada/filtrada; última fica na fila vazia. | Regressão vermelha→verde;27 testes focados, ciclo UI e pós-build passaram. Feedback errado da primeira fixture A2 preservado; rodada2 adicional comprova correção sem sobrescrevê-lo. Notificação interna/API/job comprovados, worker contínuo e Clerk real não. |

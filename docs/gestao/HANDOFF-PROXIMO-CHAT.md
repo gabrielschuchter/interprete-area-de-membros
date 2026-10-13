@@ -1,5 +1,42 @@
 # Handoff — finalizar a Nova Gestão do Interprete
 
+## Estratégia vigente — base local → QA integrado → produção (13/10/2026)
+
+A instrução mais recente do usuário substitui as proibições históricas de
+publicação **somente após** duas condições: toda a base funcional local estar
+concluída e o QA integrado estar aprovado tecnicamente. Até lá, nenhum push,
+merge, deploy ou alteração remota. Depois, integração/publicação autorizadas
+pelo fluxo do repositório, com preflight Clerk/Supabase/Vercel, migrations
+aditivas, integridade e smoke real. Bloqueio crítico impede a publicação.
+Nunca transportar fixtures de QA nem executar operações destrutivas.
+
+O goal ativo cobre a entrega inteira até produção; fechar uma unidade MVP
+não encerra o objetivo final. Preview localhost:3000 permanece ativo; runtimes de QA
+usam porta e distDir próprios, sem matar processos alheios. Banco, fixtures e
+histórico são preservados. Evidência funcional local, integração real e aceite
+visual são registros distintos. Os 101 quadros permanecem referência; nenhum
+quadro/fase muda de status por gate verde ou pela prioridade de MVP.
+
+Sequência e critérios de saída em `docs/gestao/MVP.md`. Checkpoints anteriores
+abaixo são históricos quando divergirem desta instrução.
+
+
+## Última unidade e próximo passo
+
+A2 funcional local verificada; leitura autoritativa em STATUS/MVP e Git.
+Dois Feedback v1 da rodada2, rascunho privado/reload, validação, próxima/última,
+403 alheio, notificações internas/API e histórico preservado. Não reenviar os
+feedbacks das duas atividades A2; a primeira preserva o desvio que revelou o
+bug do comentário resetado. Gates completos e retomada pós-build passaram;
+nenhum quadro/fase promovido. Próxima unidade é item2 da sequência de MVP.md,
+turma/cronograma/encontro → Aprender/calendário, reutilizando evidência T2/C2.
+
+Preview3000/PG55433 continuam ativos. QA3002 é independente, oculto/sem detached,
+com Webpack. Caches/build no D: configurados por junctions locais; dependências
+continuam no worktree C:. Não mover banco/fixtures nem limpar histórico/cache
+preservado. Guia e caminhos em gestao-implementacao.md/DECISIONS. Goal completo
+permanece ativo até base, QA integrado, publicação e smoke reais concluídos.
+
 ## Prioridade atualizada em 13/10/2026
 
 A instrução mais recente é avançar para **MVP funcional local**, sem esperar
