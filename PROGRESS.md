@@ -888,3 +888,4 @@ Institucional/atalhos e comparação completa23–25; não abrir outro catálogo
 antes de encerrar Main. Atualizar restrições da topbar junto das dependências
 reais, sem botões decorativos. Permanecem0/101aceitos,42em andamento/59pendentes.
 Identificar fechamento por feat(gestao): connect overview feedback to scoped correction queue.
+`95c8aea` é o SHA da unidade Main/feedback; registro compacto resolvido no fechamento documental seguinte.

@@ -57,7 +57,7 @@ que já têm evidência e sem chamar gates verdes de conclusão do produto.**
 
 ## Qualidade e capturas
 
-- Main/feedback parcial: matriz com admin, dois professores, membro e professor
+- Main/feedback parcial (`95c8aea`): matriz com admin, dois professores, membro e professor
   visual sem vínculo; count/filtro/reload iguais ao SQL e à fila, turma alheia
   403, busca vazia preservando contagem. 48 capturas de filtro em seis larguras
   e dois movimentos, sem overflow/pageerror. Feedback real de student_04
