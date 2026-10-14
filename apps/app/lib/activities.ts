@@ -225,6 +225,43 @@ export const getPublishedActivities = async (
   return activities.filter((activity) => canReadActivity(activity, scope));
 };
 
+export const lessonActivitySelect = (memberId: string) =>
+  ({
+    id: true,
+    title: true,
+    slug: true,
+    dueAt: true,
+    courseId: true,
+    _count: { select: { assignments: true, cohortTargets: true } },
+    assignments: {
+      where: currentMemberAssignmentWhere(memberId),
+      select: { dueAt: true },
+      take: 1,
+    },
+    cohortTargets: currentMemberCohortTargets(memberId),
+    lesson: {
+      select: {
+        id: true,
+        module: { select: { id: true, courseId: true } },
+      },
+    },
+  }) as const;
+
+export const filterAccessibleLessonActivities = <
+  T extends ActivityAccessContext & {
+    readonly dueAt: Date | null;
+    readonly id: string;
+    readonly slug: string;
+    readonly title: string;
+  },
+>(
+  activities: readonly T[],
+  accessScope: LearningAccessScope
+) =>
+  activities
+    .filter((activity) => canReadActivity(activity, accessScope))
+    .map(({ id, slug, title, dueAt }) => ({ id, slug, title, dueAt }));
+
 export const getPublishedActivity = async (slug: string, memberId: string) => {
   const [scope, activity] = await Promise.all([
     getLearningAccessScope(memberId),

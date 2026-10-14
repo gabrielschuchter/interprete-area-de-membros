@@ -2,13 +2,22 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 
 const {
   database,
+  filterAccessibleLessonActivities,
+  lessonActivitySelect,
   getLearningAccessScope,
   hasCourseAccess,
   hasFullCourseAccess,
   hasLessonAccess,
   hasModuleAccess,
 } = vi.hoisted(() => ({
-  database: { course: { findMany: vi.fn() } },
+  database: { course: { findMany: vi.fn() }, lesson: { findFirst: vi.fn() } },
+  filterAccessibleLessonActivities: vi.fn(),
+  lessonActivitySelect: vi.fn(() => ({
+    id: true,
+    title: true,
+    slug: true,
+    dueAt: true,
+  })),
   getLearningAccessScope: vi.fn(),
   hasCourseAccess: vi.fn(),
   hasFullCourseAccess: vi.fn(),
@@ -37,11 +46,15 @@ vi.mock("./content-access", () => ({
   hasLessonAccess,
   hasModuleAccess,
 }));
+vi.mock("./activities", () => ({
+  filterAccessibleLessonActivities,
+  lessonActivitySelect,
+}));
 vi.mock("./learning-assignments", () => ({
   markLearningAssignmentStarted: vi.fn(),
 }));
 
-import { getMemberCourseProgress } from "./learning";
+import { getMemberCourseProgress, getPublishedLesson } from "./learning";
 
 const makeScope = (overrides: Record<string, unknown> = {}) => ({
   assetIds: new Set<string>(),
@@ -145,5 +158,77 @@ describe("member course progress", () => {
     expect(progress.size).toBe(0);
     expect(database.course.findMany).not.toHaveBeenCalled();
     expect(getLearningAccessScope).not.toHaveBeenCalled();
+  });
+
+  test("returns only activities filtered by the member access resolver", async () => {
+    const visibleActivity = {
+      id: "activity-authorized",
+      title: "Prática autorizada",
+      slug: "pratica-autorizada",
+      dueAt: null,
+    };
+    const lesson = {
+      id: "lesson-1",
+      title: "Aula",
+      slug: "aula",
+      description: null,
+      content: null,
+      kind: "LESSON",
+      resources: [],
+      assets: [],
+      progress: [],
+      activities: [
+        {
+          id: "activity-raw",
+          title: "Prática",
+          slug: "pratica",
+          dueAt: null,
+        },
+      ],
+      module: {
+        id: "module-1",
+        title: "Módulo",
+        slug: "modulo",
+        course: {
+          id: "course-1",
+          title: "Curso",
+          slug: "curso",
+          modules: [
+            {
+              id: "module-1",
+              title: "Módulo",
+              slug: "modulo",
+              lessons: [
+                {
+                  id: "lesson-1",
+                  title: "Aula",
+                  slug: "aula",
+                  position: 0,
+                  progress: [],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    };
+    database.lesson.findFirst.mockResolvedValue(lesson);
+    filterAccessibleLessonActivities.mockReturnValue([visibleActivity]);
+    const result = await getPublishedLesson("curso", "aula", "member-1");
+
+    expect(lessonActivitySelect).toHaveBeenCalledWith("member-1");
+    expect(filterAccessibleLessonActivities).toHaveBeenCalledWith(
+      lesson.activities,
+      expect.any(Object)
+    );
+    expect(result?.activities).toEqual([visibleActivity]);
+    expect(
+      database.lesson.findFirst.mock.calls[0]?.[0].select.activities
+    ).toEqual(
+      expect.objectContaining({
+        where: { status: "PUBLISHED" },
+        select: { id: true, title: true, slug: true, dueAt: true },
+      })
+    );
   });
 });

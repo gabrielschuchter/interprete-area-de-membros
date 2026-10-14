@@ -7,6 +7,10 @@ import {
   LearningAssignmentTargetType,
   ProgressStatus,
 } from "@repo/database";
+import {
+  filterAccessibleLessonActivities,
+  lessonActivitySelect,
+} from "./activities";
 import { requireSession } from "./authorization";
 import {
   filterAccessibleAssets,
@@ -431,14 +435,14 @@ export const getPublishedLesson = async (
             position: true,
           },
         },
-        activities: {
-          where: { status: ContentStatus.PUBLISHED },
-          orderBy: [{ position: "asc" }, { title: "asc" }],
-          select: { id: true, title: true, slug: true, dueAt: true },
-        },
         progress: {
           where: { memberId },
           select: { status: true, completedAt: true },
+        },
+        activities: {
+          where: { status: ContentStatus.PUBLISHED },
+          orderBy: [{ position: "asc" }, { title: "asc" }],
+          select: lessonActivitySelect(memberId),
         },
         module: {
           select: {
@@ -495,6 +499,8 @@ export const getPublishedLesson = async (
     return null;
   }
 
+  const activities = filterAccessibleLessonActivities(lesson.activities, scope);
+
   await Promise.all([
     markLearningAssignmentStarted(
       memberId,
@@ -520,6 +526,7 @@ export const getPublishedLesson = async (
 
   return {
     ...lessonData,
+    activities,
     assets: filterAccessibleAssets(assets, scope, memberId),
     module: {
       ...moduleRelation,

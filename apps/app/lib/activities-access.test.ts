@@ -28,8 +28,10 @@ vi.mock("@/lib/learning-assignments", () => ({
 
 import {
   canAccessPublishedActivity,
+  filterAccessibleLessonActivities,
   getPublishedActivities,
   getPublishedActivity,
+  lessonActivitySelect,
 } from "./activities";
 
 const activity = {
@@ -133,4 +135,47 @@ test("course entitlement and staff access keep their independent authorization",
   );
   mocks.scope.mockResolvedValue({ fullAccess: true, fullCourseIds: new Set() });
   expect(await canAccessPublishedActivity("activity", "staff")).toBe(true);
+});
+
+test("lesson links include only activities authorized for the member", () => {
+  const restricted = {
+    ...activity,
+    id: "restricted",
+    title: "Restrita",
+    slug: "restrita",
+    dueAt: null,
+  };
+  const legacy = {
+    ...activity,
+    id: "legacy",
+    title: "Global legada",
+    slug: "global-legada",
+    dueAt: null,
+    _count: { assignments: 0, cohortTargets: 0 },
+  };
+  const visible = filterAccessibleLessonActivities([restricted, legacy], {
+    assetIds: new Set(),
+    courseIds: new Set(),
+    fullAccess: false,
+    fullCourseIds: new Set(),
+    lessonIds: new Set(),
+    moduleIds: new Set(),
+    recordingIds: new Set(),
+  });
+
+  expect(visible).toEqual([
+    {
+      id: "legacy",
+      slug: "global-legada",
+      title: "Global legada",
+      dueAt: null,
+    },
+  ]);
+  const select = lessonActivitySelect("outsider");
+  expect(select.assignments.where).toEqual(
+    expect.objectContaining({ memberId: "outsider" })
+  );
+  expect(select.cohortTargets.where.cohort.is.memberships.some.memberId).toBe(
+    "outsider"
+  );
 });
