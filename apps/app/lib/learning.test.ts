@@ -54,7 +54,11 @@ vi.mock("./learning-assignments", () => ({
   markLearningAssignmentStarted: vi.fn(),
 }));
 
-import { getMemberCourseProgress, getPublishedLesson } from "./learning";
+import {
+  getMemberCourseProgress,
+  getPublishedLesson,
+  getPublishedStandaloneCourses,
+} from "./learning";
 
 const makeScope = (overrides: Record<string, unknown> = {}) => ({
   assetIds: new Set<string>(),
@@ -158,6 +162,66 @@ describe("member course progress", () => {
     expect(progress.size).toBe(0);
     expect(database.course.findMany).not.toHaveBeenCalled();
     expect(getLearningAccessScope).not.toHaveBeenCalled();
+  });
+
+  test("lists only authorized published courses without a learning path", async () => {
+    const scope = makeScope({
+      courseIds: new Set(["standalone-course"]),
+      fullCourseIds: new Set(["standalone-course"]),
+    });
+    getLearningAccessScope.mockResolvedValue(scope);
+    database.course.findMany.mockResolvedValue([
+      {
+        id: "standalone-course",
+        title: "Curso independente",
+        slug: "curso-independente",
+        coverUrl: null,
+        description: "Acesso individual autorizado",
+        modules: [
+          {
+            id: "module-1",
+            title: "Módulo",
+            slug: "modulo",
+            lessons: [
+              {
+                id: "lesson-1",
+                title: "Aula",
+                slug: "aula",
+                description: null,
+                progress: [{ status: "COMPLETED" }],
+              },
+            ],
+          },
+        ],
+      },
+      {
+        id: "unassigned-course",
+        title: "Outro curso",
+        slug: "outro-curso",
+        coverUrl: null,
+        description: null,
+        modules: [],
+      },
+    ]);
+
+    const courses = await getPublishedStandaloneCourses("member-1");
+
+    expect(database.course.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          learningPathId: null,
+          status: "PUBLISHED",
+          experience: "ASYNC",
+        }),
+      })
+    );
+    expect(courses).toEqual([
+      expect.objectContaining({
+        id: "standalone-course",
+        title: "Curso independente",
+        progress: { completedLessons: 1, percentage: 100, totalLessons: 1 },
+      }),
+    ]);
   });
 
   test("returns only activities filtered by the member access resolver", async () => {

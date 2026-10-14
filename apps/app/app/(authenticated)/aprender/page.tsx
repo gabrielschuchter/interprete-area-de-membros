@@ -11,6 +11,7 @@ import {
 import {
   getMemberCourseProgress,
   getPublishedLearningPaths,
+  getPublishedStandaloneCourses,
 } from "@/lib/learning";
 import { getReceivedLearningAssignments } from "@/lib/learning-assignments";
 import { getMemberLearningBookmarkKeys } from "@/lib/library";
@@ -167,14 +168,16 @@ const LearnPage = async () => {
     bookmarkKeys,
   ] = await tracePerformance("member.route.learn.primary-data", () => {
     const pathsPromise = getPublishedLearningPaths(memberId);
+    const standaloneCoursesPromise = getPublishedStandaloneCourses(memberId);
     const collectionsPromise = getPublishedCollectionsForMember(memberId);
     const learningDataPromise = Promise.all([
       pathsPromise,
       collectionsPromise,
-    ]).then(async ([paths, collections]) => {
+      standaloneCoursesPromise,
+    ]).then(async ([paths, collections, standaloneCourses]) => {
       const courseProgressById = new Map(
-        paths.flatMap((path) =>
-          path.courses.map((course) => [course.id, course.progress] as const)
+        [...paths.flatMap((path) => path.courses), ...standaloneCourses].map(
+          (course) => [course.id, course.progress] as const
         )
       );
       const collectionCourseIds = [
@@ -196,7 +199,7 @@ const LearnPage = async () => {
       for (const [courseId, progress] of additionalCourseProgress) {
         courseProgressById.set(courseId, progress);
       }
-      return { collections, courseProgressById, paths };
+      return { collections, courseProgressById, paths, standaloneCourses };
     });
 
     return Promise.all([
@@ -210,7 +213,8 @@ const LearnPage = async () => {
       getMemberLearningBookmarkKeys(memberId),
     ]);
   });
-  const { collections, courseProgressById, paths } = learningData;
+  const { collections, courseProgressById, paths, standaloneCourses } =
+    learningData;
 
   const assignmentCards = assignments.map((assignment) => {
     const isScheduled = Boolean(
@@ -320,6 +324,34 @@ const LearnPage = async () => {
     headingId: `learning-path-${path.id}`,
     title: path.title,
   }));
+  const standaloneCourseCards = standaloneCourses.map((course) => {
+    const lessons = course.modules.flatMap((module) => module.lessons);
+    const nextLesson = lessons.find(
+      (lesson) => !lesson.progress.some(({ status }) => status === "COMPLETED")
+    );
+
+    return {
+      bookmark: {
+        targetId: course.id,
+        targetType: "COURSE" as const,
+        saved: bookmarkKeys.has(`COURSE:${course.id}`),
+      },
+      coverUrl: course.coverUrl,
+      description: course.description,
+      href:
+        course.progress.percentage > 0 && course.progress.percentage < 100
+          ? `/aprender/cursos/${course.slug}/${nextLesson?.slug ?? ""}`
+          : `/aprender/cursos/${course.slug}`,
+      label: "Curso",
+      meta: `${course.progress.completedLessons}/${course.progress.totalLessons} aulas · ${course.progress.percentage}%`,
+      progress: course.progress.percentage,
+      title: course.title,
+    };
+  });
+  const courseCards = [
+    ...pathRails.flatMap((rail) => rail.cards),
+    ...standaloneCourseCards,
+  ];
 
   const collectionRails = collections.map((collection) => ({
     cards: collection.items.flatMap((item) => {
@@ -339,12 +371,12 @@ const LearnPage = async () => {
   const hasContent =
     assignmentCards.length > 0 ||
     resumeCards.length > 0 ||
-    pathRails.some((rail) => rail.cards.length > 0) ||
+    courseCards.length > 0 ||
     collectionRails.some((rail) => rail.cards.length > 0);
 
   return (
     <LearningPageFrame
-      description="Suas aulas, trilhas e gravações."
+      description="Suas aulas, cursos, trilhas e gravações."
       eyebrow="Estudar · Aprender"
       title="Aprender"
       variant="catalog"
@@ -364,23 +396,19 @@ const LearnPage = async () => {
           title="Continue assistindo"
         />
         <LearningCatalog
-          cards={pathRails
-            .flatMap((rail) => rail.cards)
-            .filter((card) => card.progress > 0 && card.progress < 100)}
+          cards={courseCards.filter(
+            (card) => card.progress > 0 && card.progress < 100
+          )}
           headingId="learning-in-progress"
           title="Em andamento"
         />
         <LearningCatalog
-          cards={pathRails
-            .flatMap((rail) => rail.cards)
-            .filter((card) => card.progress === 0)}
+          cards={courseCards.filter((card) => card.progress === 0)}
           headingId="learning-available"
           title="Disponíveis"
         />
         <LearningCatalog
-          cards={pathRails
-            .flatMap((rail) => rail.cards)
-            .filter((card) => card.progress === 100)}
+          cards={courseCards.filter((card) => card.progress === 100)}
           headingId="learning-completed"
           title="Concluídos"
         />
@@ -400,8 +428,8 @@ const LearnPage = async () => {
               Ainda não há conteúdo liberado para esta conta.
             </h2>
             <p className="mt-4 max-w-2xl text-muted-foreground leading-7">
-              Quando uma trilha for publicada ou um professor enviar uma aula,
-              ela aparecerá aqui automaticamente.
+              Quando uma trilha ou curso for liberado ou um professor enviar
+              conteúdo, ele aparecerá aqui automaticamente.
             </p>
           </section>
         )}
