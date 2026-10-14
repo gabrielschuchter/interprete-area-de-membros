@@ -9,7 +9,7 @@ import { ArrowLeftIcon } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getAdminMemberDetail } from "@/lib/admin-students";
-import { requireStaff } from "@/lib/authorization";
+import { requireAdmin } from "@/lib/authorization";
 import { communityPostHref } from "@/lib/community";
 
 interface AdminMemberDetailPageProperties {
@@ -42,7 +42,7 @@ const date = (value: Date | null, timezone = "America/Sao_Paulo") =>
 const AdminMemberDetailPage = async ({
   params,
 }: AdminMemberDetailPageProperties) => {
-  await requireStaff();
+  await requireAdmin();
   const { id } = await params;
   const member = await getAdminMemberDetail(id);
 

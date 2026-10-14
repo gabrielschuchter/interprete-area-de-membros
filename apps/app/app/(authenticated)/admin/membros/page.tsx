@@ -6,6 +6,7 @@ import {
 import { Badge } from "@repo/design-system/components/ui/badge";
 import { Button } from "@repo/design-system/components/ui/button";
 import Link from "next/link";
+import { requireAdmin } from "@/lib/authorization";
 import { getStaffMembers } from "@/lib/profile";
 import { setMemberRole } from "../actions";
 
@@ -25,6 +26,7 @@ const initials = (name: string | null) =>
     .toUpperCase();
 
 const AdminMembersPage = async () => {
+  await requireAdmin();
   const members = await getStaffMembers();
 
   return (
@@ -37,8 +39,10 @@ const AdminMembersPage = async () => {
             Quem está na escola.
           </h1>
           <p className="mt-5 text-muted-foreground leading-7">
-            Consulte a identidade pública e ajuste papéis de acesso sem expor
-            dados privados na comunidade.
+            Os papéis vêm do cadastro interno do membro: Membro acessa a área de
+            estudo, Professor acessa os fluxos de gestão sob seu escopo e Admin
+            administra papéis e acessos. Rotas e ações validam o papel atual no
+            servidor.
           </p>
         </div>
         <Button asChild variant="outline">

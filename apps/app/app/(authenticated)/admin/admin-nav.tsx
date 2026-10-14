@@ -28,10 +28,6 @@ const groups = [
       ["Comunidade", "/admin/community"],
     ],
   },
-  {
-    label: "Pessoas",
-    items: [["Membros", "/admin/membros"]],
-  },
 ] as const;
 
 const isActive = (pathname: string, href: string) =>
@@ -84,33 +80,56 @@ export const AdminNav = ({ isAdmin }: { readonly isAdmin: boolean }) => {
         );
       })}
       {isAdmin && (
-        <div className="min-w-0">
-          <p className="brand-eyebrow mb-1 whitespace-nowrap px-2">Admin</p>
-          <div className="flex flex-wrap gap-1">
-            {[
-              ["Acessos", "/admin/acessos"],
-              ["Personalização", "/admin/personalizacao"],
-            ].map(([label, href]) => {
-              const active = isActive(pathname, href);
-
-              return (
-                <Button
-                  asChild
-                  key={href}
-                  size="sm"
-                  variant={active ? "secondary" : "ghost"}
+        <>
+          <div className="min-w-0">
+            <p className="brand-eyebrow mb-1 whitespace-nowrap px-2">Pessoas</p>
+            <div className="flex flex-wrap gap-1">
+              <Button
+                asChild
+                size="sm"
+                variant={
+                  isActive(pathname, "/admin/membros") ? "secondary" : "ghost"
+                }
+              >
+                <IntentLink
+                  aria-current={
+                    isActive(pathname, "/admin/membros") ? "page" : undefined
+                  }
+                  href="/admin/membros"
                 >
-                  <IntentLink
-                    aria-current={active ? "page" : undefined}
-                    href={href}
-                  >
-                    {label}
-                  </IntentLink>
-                </Button>
-              );
-            })}
+                  Membros
+                </IntentLink>
+              </Button>
+            </div>
           </div>
-        </div>
+          <div className="min-w-0">
+            <p className="brand-eyebrow mb-1 whitespace-nowrap px-2">Admin</p>
+            <div className="flex flex-wrap gap-1">
+              {[
+                ["Acessos", "/admin/acessos"],
+                ["Personalização", "/admin/personalizacao"],
+              ].map(([label, href]) => {
+                const active = isActive(pathname, href);
+
+                return (
+                  <Button
+                    asChild
+                    key={href}
+                    size="sm"
+                    variant={active ? "secondary" : "ghost"}
+                  >
+                    <IntentLink
+                      aria-current={active ? "page" : undefined}
+                      href={href}
+                    >
+                      {label}
+                    </IntentLink>
+                  </Button>
+                );
+              })}
+            </div>
+          </div>
+        </>
       )}
     </nav>
   );
