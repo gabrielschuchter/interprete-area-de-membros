@@ -2851,6 +2851,7 @@
   background: #8c1535;
 }
 .ge-course-table-scroll {
+  position: relative;
   overflow-x: auto;
   background: #fff;
   border: 1px solid #e2d6d1;
