@@ -51,6 +51,7 @@ import { BrandWordmark } from "@/components/brand/brand-mark";
 import { withGestaoReturnPath } from "@/lib/gestao-navigation";
 import { IntentLink } from "./intent-link";
 import { isSidebarPathActive } from "./member-section";
+import { MemberSidebarControl } from "./member-sidebar-control";
 
 interface MemberAreaSidebarProperties {
   readonly avatarUrl: string | null;
@@ -295,32 +296,41 @@ const MemberAreaSidebarView = ({
         variant="sidebar"
       >
         <SidebarHeader className="border-sidebar-border border-b px-4 py-5 group-data-[collapsible=icon]:px-2">
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                className="h-11 rounded-sm px-2 hover:bg-sidebar-accent"
-                size="lg"
-                tooltip="Interprete."
-              >
-                <IntentLink href="/" onNavigationStart={handleNavigationStart}>
-                  <BrandWordmark
-                    className="w-[7.25rem] group-data-[collapsible=icon]:hidden"
-                    tone="branco"
-                  />
-                  <Image
-                    alt=""
-                    aria-hidden="true"
-                    className="hidden h-7 w-4 group-data-[collapsible=icon]:block"
-                    height={896}
-                    src="/brand/meta/interprete-mark.svg"
-                    width={520}
-                  />
-                  <span className="sr-only">Interprete.</span>
-                </IntentLink>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
+          <div className="flex min-w-0 items-center gap-1 group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:gap-0">
+            <SidebarMenu className="min-w-0 flex-1 group-data-[collapsible=icon]:flex-none">
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  className="h-11 rounded-sm px-2 hover:bg-sidebar-accent"
+                  size="lg"
+                  tooltip="Interprete."
+                >
+                  <IntentLink
+                    href="/"
+                    onNavigationStart={handleNavigationStart}
+                  >
+                    <BrandWordmark
+                      className="w-[7.25rem] group-data-[collapsible=icon]:hidden"
+                      tone="branco"
+                    />
+                    <Image
+                      alt=""
+                      aria-hidden="true"
+                      className="hidden h-7 w-4 group-data-[collapsible=icon]:block"
+                      height={896}
+                      src="/brand/meta/interprete-mark.svg"
+                      width={520}
+                    />
+                    <span className="sr-only">Interprete.</span>
+                  </IntentLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+            <MemberSidebarControl
+              className="size-11 shrink-0 rounded-sm p-0"
+              mode={sidebarIsOffCanvas ? "drawer" : "sidebar"}
+            />
+          </div>
           <SidebarGroup
             aria-label="Minhas gravações"
             className="px-2 pt-1 pb-0 group-data-[collapsible=icon]:px-0"

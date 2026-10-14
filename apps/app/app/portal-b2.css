@@ -35,6 +35,12 @@
   overflow: hidden;
   pointer-events: none;
   background:
+    url("/portal/noise-64.png") 0 0 / 64px 64px repeat,
+    radial-gradient(
+      ellipse at 50% 46%,
+      rgb(8 0 6 / 0%) 56%,
+      rgb(8 0 6 / 60%) 100%
+    ),
     radial-gradient(ellipse at 50% 62%, rgb(255 196 120 / 10%), transparent 55%),
     radial-gradient(ellipse at 50% 40%, #3a0f28 0%, #1e0318 55%, #0e0109 100%);
 }
@@ -50,18 +56,6 @@
     #1e0318 url("/portal/art-lqip-ba0554aaa3.webp") center / cover no-repeat;
   transform: translate(-50%, -50%);
   transform-origin: center;
-}
-
-.portal-stage-layer__art::after {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  content: "";
-  background: radial-gradient(
-    ellipse at 50% 46%,
-    transparent 56%,
-    rgb(8 0 6 / 58%) 100%
-  );
 }
 
 .portal-stage-layer__image {

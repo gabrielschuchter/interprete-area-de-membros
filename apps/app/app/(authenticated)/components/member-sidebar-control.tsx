@@ -7,6 +7,7 @@ import {
 
 interface MemberSidebarControlProperties {
   readonly className?: string;
+  readonly hideWhenExpanded?: boolean;
   readonly mode?: "drawer" | "sidebar";
 }
 
@@ -23,11 +24,16 @@ const actionLabel = (
 
 export const MemberSidebarControl = ({
   className,
+  hideWhenExpanded = false,
   mode = "sidebar",
 }: MemberSidebarControlProperties) => {
   const { isMobile, open, openMobile } = useSidebar();
   const expanded = isMobile ? openMobile : open;
   const label = actionLabel(mode, isMobile, expanded);
+
+  if (hideWhenExpanded && expanded) {
+    return null;
+  }
 
   return (
     <SidebarTrigger

@@ -249,7 +249,11 @@ export const PortalView = () => {
     >
       <header className="portal-header">
         <div className="portal-header__brand">
-          <MemberSidebarControl className="portal-header__menu" mode="drawer" />
+          <MemberSidebarControl
+            className="portal-header__menu"
+            hideWhenExpanded
+            mode="drawer"
+          />
           <span className="portal-header__wordmark">Interprete.</span>
         </div>
         {navigation?.memberId ? (

@@ -74,3 +74,15 @@ test("uses drawer wording for the B2 portal at desktop sizes", () => {
   fireEvent.click(close);
   expect(screen.getByRole("button", { name: "Abrir menu" })).toBeTruthy();
 });
+
+test("can hide the external drawer trigger while the drawer is open", () => {
+  render(
+    <SidebarProvider defaultOpen>
+      <MemberSidebarControl hideWhenExpanded mode="drawer" />
+      <State />
+    </SidebarProvider>
+  );
+
+  expect(screen.queryByRole("button", { name: "Fechar menu" })).toBeNull();
+  expect(screen.getByTestId("open-state").textContent).toBe("true");
+});

@@ -123,7 +123,11 @@ export const MemberHeader = ({
       <div
         className={`${mobileExerciseHeader || mobileShellHeaderHidden || mobileNoteEditorHeader ? "hidden md:flex" : "flex"} min-w-0 flex-1 items-center gap-3`}
       >
-        <MemberSidebarControl className="-ml-2" />
+        <MemberSidebarControl
+          className="-ml-2 min-[1250px]:hidden"
+          hideWhenExpanded
+          mode="drawer"
+        />
         {mobileShellTitle ? (
           <p className="truncate font-display font-semibold text-lg md:hidden">
             {mobileShellTitle}
