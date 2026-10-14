@@ -52,7 +52,7 @@ Production terminada em `/cron/outbox` e `interprete_member_outbox_secret` com o
 mesmo valor de `CRON_SECRET` configurado na API. Execute
 [`supabase-outbox-cron.sql`](supabase-outbox-cron.sql) no SQL Editor; o script
 valida os pré-requisitos, substitui somente o job com nome
-`interprete-member-outbox` e agenda a chamada a cada minuto. Ele lê os segredos
+`interprete-member-outbox` e agenda a chamada a cada cinco minutos. Ele lê os segredos
 do Vault durante cada execução e não grava seus valores no comando agendado.
 
 Depois da configuração, confirme `POST /cron/outbox` autenticado, a linha do

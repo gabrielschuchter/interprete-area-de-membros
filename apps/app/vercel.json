@@ -8,7 +8,7 @@
     },
     {
       "path": "/api/cron/gestao-video-upload-cleanup",
-      "schedule": "0 * * * *"
+      "schedule": "0 13 * * *"
     }
   ]
 }
