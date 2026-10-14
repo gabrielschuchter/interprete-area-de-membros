@@ -120,6 +120,13 @@ export const startExerciseSession = async (formData: FormData) => {
     if (!list || list.items.length === 0) {
       redirect("/exercicios?estado=lista-indisponivel");
     }
+    await markLearningAssignmentStarted(
+      memberId,
+      LearningAssignmentTargetType.EXERCISE_LIST,
+      list.id,
+      new Date(),
+      transaction
+    );
     const activeSession = await transaction.exerciseSession.findFirst({
       where: {
         memberId,
@@ -144,13 +151,6 @@ export const startExerciseSession = async (formData: FormData) => {
         position,
       })),
     });
-    await markLearningAssignmentStarted(
-      memberId,
-      LearningAssignmentTargetType.EXERCISE_LIST,
-      list.id,
-      new Date(),
-      transaction
-    );
     return session.id;
   });
   revalidatePath("/exercicios");

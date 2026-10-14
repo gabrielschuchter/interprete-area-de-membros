@@ -361,6 +361,13 @@ test("reuses an active attempt for the same member and list", async () => {
 
   expect(mocks.transaction.$queryRaw).toHaveBeenCalledTimes(1);
   expect(mocks.transaction.exerciseSession.create).not.toHaveBeenCalled();
+  expect(mocks.markLearningAssignmentStarted).toHaveBeenCalledWith(
+    "student_1",
+    "EXERCISE_LIST",
+    "list_1",
+    expect.any(Date),
+    mocks.transaction
+  );
   expect(mocks.transaction.exerciseList.findFirst).toHaveBeenCalledWith(
     expect.objectContaining({
       where: expect.objectContaining({
