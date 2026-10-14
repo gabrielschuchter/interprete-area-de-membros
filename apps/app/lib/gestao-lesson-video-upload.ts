@@ -38,7 +38,7 @@ const storageConfiguration = () => {
     supabaseHostnamePattern,
     ".storage.supabase.co"
   );
-  const tusEndpoint = new URL("/storage/v1/upload/resumable", url);
+  const tusEndpoint = new URL("/storage/v1/upload/resumable/sign", url);
   tusEndpoint.hostname = hostname;
   const publishableKey =
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??

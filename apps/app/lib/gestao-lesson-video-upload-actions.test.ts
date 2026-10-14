@@ -109,7 +109,7 @@ describe("Gestão lesson video upload idempotency", () => {
     mocks.createUploadToken.mockReset().mockResolvedValue({
       bucket: "learning-assets",
       endpoint:
-        "https://example.storage.supabase.co/storage/v1/upload/resumable",
+        "https://example.storage.supabase.co/storage/v1/upload/resumable/sign",
       publishableKey: "public-key",
       token: "signed-token",
     });
