@@ -169,23 +169,32 @@ const MobilePortalCard = ({
   );
 };
 
-const ShortcutRail = () => (
-  <nav aria-label="Atalhos do portal" className="portal-shortcut-rail">
+const ShortcutRail = ({
+  items,
+  label,
+  side,
+}: {
+  readonly items: readonly PortalShortcut[];
+  readonly label: string;
+  readonly side: "left" | "right";
+}) => (
+  <nav
+    aria-label={`Atalhos para ${label}`}
+    className={`portal-shortcut-rail portal-shortcut-rail--${side}`}
+  >
     <ul>
-      {[...studyShortcuts, ...communityShortcuts].map(
-        ({ href, icon: Icon, label }) => (
-          <li key={href}>
-            <IntentLink
-              className="portal-shortcut"
-              data-portal-shortcut="true"
-              href={href}
-            >
-              <Icon aria-hidden="true" className="portal-shortcut__icon" />
-              <span>{label}</span>
-            </IntentLink>
-          </li>
-        )
-      )}
+      {items.map(({ href, icon: Icon, label: itemLabel }) => (
+        <li key={href}>
+          <IntentLink
+            className="portal-shortcut"
+            data-portal-shortcut="true"
+            href={href}
+          >
+            <Icon aria-hidden="true" className="portal-shortcut__icon" />
+            <span>{itemLabel}</span>
+          </IntentLink>
+        </li>
+      ))}
     </ul>
   </nav>
 );
@@ -289,7 +298,6 @@ export const PortalView = () => {
         ) : null}
 
         <section aria-label="Escolha um caminho" className="portal-discovery">
-          <ShortcutRail />
           <div className="portal-stage" data-art-failed={String(imageFailed)}>
             <PortalArc>
               <PortalArcLabel label="Estudar" />
@@ -298,6 +306,7 @@ export const PortalView = () => {
               <PortalArcLabel label="Comunidade" />
             </PortalArc>
           </div>
+          <ShortcutRail items={studyShortcuts} label="Estudar" side="left" />
           <div
             className="portal-mobile-cards"
             data-art-failed={String(imageFailed)}
@@ -320,6 +329,11 @@ export const PortalView = () => {
             <ShortcutGroup items={studyShortcuts} label="Estudar" />
             <ShortcutGroup items={communityShortcuts} label="Comunidade" />
           </div>
+          <ShortcutRail
+            items={communityShortcuts}
+            label="Comunidade"
+            side="right"
+          />
           {imageFailed ? (
             <p className="portal-art-fallback">
               A arte não carregou. Os caminhos continuam disponíveis.

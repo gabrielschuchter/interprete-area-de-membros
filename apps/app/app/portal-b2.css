@@ -409,6 +409,15 @@
   transform: translateY(-50%);
 }
 
+.portal-shortcut-rail ul {
+  gap: 10px;
+}
+
+.portal-shortcut-rail--right {
+  right: max(40px, calc(50% - var(--portal-stage-w) / 2 - 192px));
+  left: auto;
+}
+
 .portal-shortcut-rail ul,
 .portal-shortcut-group__list {
   display: grid;
@@ -889,11 +898,13 @@
   }
 
   .portal-mobile-card:first-child .portal-arc {
-    min-height: calc(var(--portal-art-study) + 58px);
+    height: var(--portal-art-study);
+    min-height: var(--portal-art-study);
   }
 
   .portal-mobile-card:last-child .portal-arc {
-    min-height: calc(var(--portal-art-community) + 58px);
+    height: var(--portal-art-community);
+    min-height: var(--portal-art-community);
   }
 
   .portal-mobile-card .portal-arc::before {
@@ -910,37 +921,92 @@
     width: 100%;
     height: var(--portal-art-study);
     object-fit: cover;
-    object-position: center 45%;
+    object-position: center 30%;
     background:
       #1e0318 url("/portal/art-lqip-ba0554aaa3.webp") center / cover no-repeat;
   }
 
   .portal-arc--community .portal-arc__mobile-art {
     height: var(--portal-art-community);
+    object-position: center 40%;
+  }
+
+  .portal-mobile-card .portal-arc::after {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    content: "";
+    background: linear-gradient(
+      180deg,
+      transparent 48%,
+      rgb(27 5 20 / 94%) 100%
+    );
+    box-shadow: inset 0 0 30px rgb(14 1 9 / 60%);
   }
 
   .portal-mobile-card .portal-arc__content {
-    position: relative;
-    bottom: auto;
+    position: absolute;
+    right: auto;
+    bottom: 10px;
+    left: 20px;
+    z-index: 2;
     flex-direction: row;
     gap: 10px;
-    justify-content: center;
-    min-height: 58px;
-    padding: 8px 12px;
+    justify-content: flex-start;
+    min-height: 0;
+    padding: 0;
   }
 
   .portal-mobile-card .portal-arc__title {
     font-size: 30px;
-    text-shadow: none;
+    font-weight: 600;
+    text-shadow: 0 2px 10px rgb(0 0 0 / 50%);
   }
 
   .portal-mobile-card .portal-arc__rule {
-    flex: none;
-    width: 20px;
+    display: none;
   }
 
   .portal-mobile-card .portal-shortcut-group {
     padding: 0 14px 14px;
+    margin-top: 14px;
+  }
+
+  .portal-mobile-card .portal-shortcut-group__list {
+    gap: 8px;
+  }
+
+  .portal-mobile-card .portal-shortcut-group {
+    padding-bottom: 12px;
+  }
+
+  .portal-mobile-cards[data-art-failed="true"] .portal-mobile-card .portal-arc {
+    height: 140px;
+    min-height: 140px;
+  }
+
+  .portal-mobile-cards[data-art-failed="true"]
+    .portal-mobile-card
+    .portal-arc::after {
+    display: none;
+  }
+
+  .portal-mobile-cards[data-art-failed="true"]
+    .portal-mobile-card
+    .portal-arc__content {
+    position: relative;
+    inset: auto;
+    justify-content: center;
+    width: 100%;
+    min-height: 140px;
+    padding: 0 12px;
+  }
+
+  .portal-mobile-cards[data-art-failed="true"]
+    .portal-mobile-card
+    .portal-shortcut-group {
+    margin-top: 0;
   }
 
   .portal-mobile-card:first-child .portal-shortcut-group__list {
@@ -979,8 +1045,13 @@
     padding: 5px 3px;
     font-size: 12px;
     text-align: center;
-    overflow-wrap: anywhere;
+    overflow-wrap: normal;
     border-radius: 12px;
+  }
+
+  .portal-mobile-card:last-child .portal-shortcut[href="/comunidade"] span {
+    font-size: 11px;
+    white-space: nowrap;
   }
 
   .portal-shortcut__icon {
