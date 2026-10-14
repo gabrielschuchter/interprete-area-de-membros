@@ -2,5 +2,11 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "bunVersion": "1.x",
   "regions": ["gru1"],
-  "ignoreCommand": "node scripts/skip-ci.js"
+  "ignoreCommand": "node scripts/skip-ci.js",
+  "crons": [
+    {
+      "path": "/cron/outbox",
+      "schedule": "* * * * *"
+    }
+  ]
 }
