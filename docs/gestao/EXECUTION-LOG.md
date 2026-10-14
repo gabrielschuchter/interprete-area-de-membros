@@ -1,8 +1,8 @@
 # Registro compacto de execução — Gestão
 
-Este registro complementa o Git e o diário histórico. Acrescentar uma linha por
-unidade; não reescrever checkpoints antigos como se fossem estado atual.
-O resumo vigente fica em `STATUS.md`. Não registrar segredos ou dados pessoais.
+> **Histórico congelado.** Não acrescente novas entradas. Para estado atual consulte `STATUS.md`; critérios e estratégia ficam em `MVP.md` e `GOAL.md`.
+
+Registro preservado para rastreabilidade; as instruções de atualização acima foram substituídas. Não contém segredos ou dados pessoais.
 
 | Data | Commit/unidade | Mudança concreta | Evidência | Limitação / próximo passo |
 |---|---|---|---|---|

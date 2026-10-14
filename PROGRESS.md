@@ -1,6 +1,6 @@
 # PROGRESS · Gestão do Interprete
 
-> Diário de execução. **Atualize a cada unidade concluída**, com evidência. Releia ao começar e depois de qualquer compactação de contexto. Estado confiável = este arquivo + o Git.
+> Instrução histórica substituída: atualizações operacionais agora ficam somente em STATUS.md; evidências antigas permanecem abaixo.
 
 ## Estado geral
 

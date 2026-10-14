@@ -1,6 +1,6 @@
-# DECISIONS · padrões já decididos e registro de novas decisões
+# DECISIONS · padrões de produto e histórico
 
-> **Não pergunte ao usuário.** Para cada decisão pendente do `HANDOFF.md §6`, use o padrão abaixo. Registre qualquer decisão nova no fim, com data, contexto, opção escolhida e motivo.
+> As decisões abaixo preservam escolhas de produto. Consulte a decisão relevante quando necessário. Instruções operacionais antigas são contexto histórico; o estado e a sequência atuais ficam em `GOAL.md` e `docs/gestao/STATUS.md`.
 
 ## Padrões adotados (pode implementar já)
 | # | Tema | Padrão |

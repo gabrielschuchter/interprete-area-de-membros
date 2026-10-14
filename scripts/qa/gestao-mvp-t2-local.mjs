@@ -1,18 +1,17 @@
 // Explicit loopback QA; creates one cohort and preserves ended memberships.
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
-import { closeSync, openSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { test } from "node:test";
-import { setTimeout as delay } from "node:timers/promises";
 import { pathToFileURL } from "node:url";
+import { createGestaoLocalRuntime } from "./gestao-local-runtime.mjs";
 
 const cohortPathPattern = /\/gestao\/alunos\/turmas\/(?!nova$)[^/?]+$/;
 await test("T2 local: membership access, removal, independent grant and preserved history", async () => {
   assert.equal(process.platform, "win32");
   assert.equal(process.env.QA_MVP_T2_WRITE, "true");
-  const base = "http://localhost:3000";
+  const base = "http://127.0.0.1:3002";
   const output = resolve("output/playwright/gestao-v2/mvp-t2");
   await mkdir(output, { recursive: true });
   const ca = resolve(
@@ -80,97 +79,16 @@ await test("T2 local: membership access, removal, independent grant and preserve
   assert(initialHistory.length >= 2);
   const results = [],
     errors = [];
-  let owned, actorNow, browser, page;
-  const stop = async () => {
-    if (!owned) {
-      return;
-    }
-    const pid = owned.pid;
-    owned = null;
-    actorNow = null;
-    await new Promise((done, reject) => {
-      const child = spawn("taskkill.exe", ["/PID", String(pid), "/T", "/F"], {
-        windowsHide: true,
-        stdio: "ignore",
-      });
-      child.on("exit", done);
-      child.on("error", reject);
-    });
-  };
-  const start = async (actor, profile = "functional") => {
-    assert(
-      ["admin", "teacher_1", "teacher_2", "student_11", "student_12"].includes(
-        actor
-      )
-    );
-    assert(["functional", "visual"].includes(profile));
-    if (actorNow === `${profile}:${actor}`) {
-      return;
-    }
-    await stop();
-    try {
-      await fetch(`${base}/health`, { signal: AbortSignal.timeout(1000) });
-      throw new Error("Existing preview must be stopped explicitly");
-    } catch (error) {
-      if (error.message.startsWith("Existing preview")) {
-        throw error;
-      }
-    }
-    const db =
-      profile === "visual"
-        ? "interprete_gestao_visual_qa_20261012"
-        : "interprete_gestao_qa_20261012";
-    const url = `postgresql://postgres@127.0.0.1:55433/${db}?connection_limit=2`;
-    const fd = openSync(`${output}/${profile}-${actor}.log`, "a");
-    owned = spawn(
-      resolve(process.env.USERPROFILE, ".bun/bin/bun.exe"),
-      ["run", "--cwd", "apps/app", "dev", "--hostname", "127.0.0.1"],
-      {
-        cwd: process.cwd(),
-        windowsHide: true,
-        detached: true,
-        stdio: ["ignore", fd, fd],
-        env: {
-          ...process.env,
-          NODE_ENV: "development",
-          NODE_OPTIONS: "--use-system-ca",
-          SKIP_ENV_VALIDATION: "true",
-          DATABASE_URL: url,
-          DIRECT_URL: url,
-          DATABASE_CA_CERT_PATH: ca,
-          GESTAO_DEV_AUTH: "true",
-          NEXT_PUBLIC_GESTAO_DEV_AUTH: "true",
-          GESTAO_DEV_AUTH_USER_ID: `gestao_qa_${profile}_${actor}`,
-          GESTAO_V2_ENABLED: "true",
-          NEXT_PUBLIC_APP_URL: base,
-          NEXT_PUBLIC_API_URL: "http://localhost:3001",
-        },
-      }
-    );
-    closeSync(fd);
-    actorNow = `${profile}:${actor}`;
-    const deadline = Date.now() + 60_000;
-    while (Date.now() < deadline) {
-      assert.equal(owned.exitCode, null);
-      try {
-        if (
-          (
-            await (
-              await fetch(`${base}/health`, {
-                signal: AbortSignal.timeout(1000),
-              })
-            ).json()
-          ).checks?.database === "ok"
-        ) {
-          return;
-        }
-      } catch {
-        /* Starting owned runtime. */
-      }
-      await delay(500);
-    }
-    throw new Error("Owned QA not ready");
-  };
+  const runtime = createGestaoLocalRuntime({
+    origin: base,
+    distDir: process.env.GESTAO_QA_DIST_DIR ?? ".next-local-a2",
+    caPath: ca,
+    outputDirectory: output,
+  });
+  const start = (actor, profile = "functional") =>
+    runtime.start(actor, profile, `${output}/${profile}-${actor}.log`);
+  const stop = () => runtime.stop();
+  let browser, page;
   const visit = async (actor, path) => {
     await page?.context().close();
     await start(actor);
@@ -470,13 +388,10 @@ await test("T2 local: membership access, removal, independent grant and preserve
     await browser?.close();
     await stop();
     await client.end();
-    await start("admin", "visual");
-    const restoredPreviewPid = owned.pid;
-    owned.unref();
     await writeFile(
       `${output}/results.json`,
-      JSON.stringify({ results, errors, restoredPreviewPid }, null, 2)
+      JSON.stringify({ results, errors }, null, 2)
     );
-    console.log(JSON.stringify({ results, errors, restoredPreviewPid }));
+    console.log(JSON.stringify({ results, errors }));
   }
 });

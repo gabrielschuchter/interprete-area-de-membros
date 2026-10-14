@@ -1,12 +1,11 @@
 // Explicit local UI journey. Additive fixture; resume never resubmits feedback.
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
-import { closeSync, openSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { test } from "node:test";
-import { setTimeout as delay } from "node:timers/promises";
 import { pathToFileURL } from "node:url";
+import { createGestaoLocalRuntime } from "./gestao-local-runtime.mjs";
 
 const savedPattern = /resultado=salva/;
 const publishedPattern = /resultado=publicada/;
@@ -15,7 +14,7 @@ const feedbackPattern = /resultado=feedback-enviado/;
 await test("MVP local: publish, submit, correct, reload and deny foreign access", async () => {
   assert.equal(process.platform, "win32");
   assert.equal(process.env.QA_MVP_ACTIVITY_WRITE, "true");
-  const base = "http://localhost:3000";
+  const base = "http://127.0.0.1:3002";
   const output = resolve("output/playwright/gestao-v2/mvp-activity");
   const slug = "gestao-qa-mvp-atividade-20261013";
   const title = "QA local — jornada MVP de atividade 20261013";
@@ -28,6 +27,12 @@ await test("MVP local: publish, submit, correct, reload and deny foreign access"
     process.env.TEMP,
     "interprete-gestao-qa-20261012/local-qa-ca.crt"
   );
+  const runtime = createGestaoLocalRuntime({
+    origin: base,
+    distDir: process.env.GESTAO_QA_DIST_DIR ?? ".next-local-a2",
+    caPath: ca,
+    outputDirectory: output,
+  });
   const { default: pg } = await import(
     pathToFileURL(resolve("packages/database/node_modules/pg/lib/index.js"))
       .href
@@ -81,7 +86,6 @@ await test("MVP local: publish, submit, correct, reload and deny foreign access"
     ).rows[0];
   const results = [];
   const pageErrors = [];
-  let owned;
   let browser;
   let page;
   const start = async (actor, profile = "functional") => {
@@ -91,84 +95,9 @@ await test("MVP local: publish, submit, correct, reload and deny foreign access"
       )
     );
     assert(["functional", "visual"].includes(profile));
-    if (owned) {
-      await stop();
-    }
-    try {
-      await fetch(`${base}/health`, { signal: AbortSignal.timeout(1000) });
-      throw new Error(
-        "Stop existing preview before QA; do not kill unowned processes"
-      );
-    } catch (error) {
-      if (error.message.startsWith("Stop existing")) {
-        throw error;
-      }
-    }
-    const fd = openSync(`${output}/${profile}-${actor}.log`, "a");
-    const db =
-      profile === "functional"
-        ? "interprete_gestao_qa_20261012"
-        : "interprete_gestao_visual_qa_20261012";
-    const databaseUrl = `postgresql://postgres@127.0.0.1:55433/${db}?connection_limit=2`;
-    owned = spawn(
-      resolve(process.env.USERPROFILE, ".bun/bin/bun.exe"),
-      ["run", "--cwd", "apps/app", "dev", "--hostname", "127.0.0.1"],
-      {
-        cwd: process.cwd(),
-        windowsHide: true,
-        detached: true,
-        stdio: ["ignore", fd, fd],
-        env: {
-          ...process.env,
-          NODE_ENV: "development",
-          NODE_OPTIONS: "--use-system-ca",
-          SKIP_ENV_VALIDATION: "true",
-          DATABASE_URL: databaseUrl,
-          DIRECT_URL: databaseUrl,
-          DATABASE_CA_CERT_PATH: ca,
-          GESTAO_DEV_AUTH: "true",
-          NEXT_PUBLIC_GESTAO_DEV_AUTH: "true",
-          GESTAO_DEV_AUTH_USER_ID: `gestao_qa_${profile}_${actor}`,
-          GESTAO_V2_ENABLED: "true",
-          NEXT_PUBLIC_APP_URL: base,
-          NEXT_PUBLIC_API_URL: "http://localhost:3001",
-        },
-      }
-    );
-    closeSync(fd);
-    const deadline = Date.now() + 60_000;
-    while (Date.now() < deadline) {
-      assert.equal(owned.exitCode, null);
-      try {
-        const health = await fetch(`${base}/health`, {
-          signal: AbortSignal.timeout(1000),
-        });
-        if ((await health.json()).checks?.database === "ok") {
-          return;
-        }
-      } catch {
-        /* Starting owned local runtime. */
-      }
-      await delay(500);
-    }
-    throw new Error("Owned QA server not ready");
+    await runtime.start(actor, profile, `${output}/${profile}-${actor}.log`);
   };
-  const stop = async () => {
-    if (!owned) {
-      return;
-    }
-    const child = owned;
-    owned = null;
-    await new Promise((done, reject) => {
-      const killer = spawn(
-        "taskkill.exe",
-        ["/PID", String(child.pid), "/T", "/F"],
-        { windowsHide: true, stdio: "ignore" }
-      );
-      killer.on("error", reject);
-      killer.on("exit", done);
-    });
-  };
+  const stop = runtime.stop;
   const visit = async (actor, path) => {
     await page?.context().close();
     await start(actor);
@@ -431,13 +360,10 @@ await test("MVP local: publish, submit, correct, reload and deny foreign access"
     await browser?.close();
     await stop();
     await client.end();
-    await start("admin", "visual");
-    const restoredPreviewPid = owned.pid;
-    owned.unref();
     await writeFile(
       `${output}/results.json`,
-      JSON.stringify({ results, pageErrors, restoredPreviewPid }, null, 2)
+      JSON.stringify({ results, pageErrors }, null, 2)
     );
-    console.log(JSON.stringify({ results, restoredPreviewPid }));
+    console.log(JSON.stringify({ results }));
   }
 });

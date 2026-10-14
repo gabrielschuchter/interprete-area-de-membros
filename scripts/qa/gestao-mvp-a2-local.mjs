@@ -1,12 +1,11 @@
 // Explicit local UI journey. Additive fixture; resume never resubmits feedback.
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
-import { closeSync, openSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { test } from "node:test";
-import { setTimeout as delay } from "node:timers/promises";
 import { pathToFileURL } from "node:url";
+import { createGestaoLocalRuntime } from "./gestao-local-runtime.mjs";
 
 const savedPattern = /resultado=salva/;
 const publishedPattern = /resultado=publicada/;
@@ -17,7 +16,9 @@ const qaDistDir = process.env.QA_MVP_A2_DIST_DIR ?? ".next-local-a2";
 await test("A2 local: private draft, resume and next filtered pending submission", async () => {
   assert.equal(process.platform, "win32");
   assert.equal(process.env.QA_MVP_A2_WRITE, "true");
-  const base = "http://localhost:3002";
+  const base = "http://127.0.0.1:3002";
+  const previewBefore = await fetch("http://127.0.0.1:3000/gestao").catch(() => null);
+  const previewBeforeStatus = previewBefore?.status ?? null;
   const output = resolve("output/playwright/gestao-v2/mvp-a2-round2");
   const slug = "gestao-qa-mvp-a2-20261013-2";
   const title = "QA local — A2 correção contínua 20261013 rodada 2";
@@ -85,116 +86,17 @@ await test("A2 local: private draft, resume and next filtered pending submission
   const results = [];
   const pageErrors = [];
   const consoleErrors = [];
-  let owned;
-  let actorNow;
+  const runtime = createGestaoLocalRuntime({
+    origin: base,
+    distDir: qaDistDir,
+    caPath: ca,
+    outputDirectory: output,
+  });
+  const start = (actor, profile = "functional") =>
+    runtime.start(actor, profile, `${output}/${profile}-${actor}.log`);
+  const stop = () => runtime.stop();
   let browser;
   let page;
-  const start = async (actor, profile = "functional") => {
-    assert(
-      [
-        "teacher_1",
-        "teacher_2",
-        "student_04",
-        "student_02",
-        "student_12",
-        "admin",
-      ].includes(actor)
-    );
-    assert(["functional", "visual"].includes(profile));
-    if (owned && actorNow === actor) {
-      return;
-    }
-    if (owned) {
-      await stop();
-    }
-    try {
-      await fetch(`${base}/health`, { signal: AbortSignal.timeout(1000) });
-      throw new Error(
-        "Stop existing preview before QA; do not kill unowned processes"
-      );
-    } catch (error) {
-      if (error.message.startsWith("Stop existing")) {
-        throw error;
-      }
-    }
-    const fd = openSync(`${output}/${profile}-${actor}.log`, "a");
-    const db =
-      profile === "functional"
-        ? "interprete_gestao_qa_20261012"
-        : "interprete_gestao_visual_qa_20261012";
-    const databaseUrl = `postgresql://postgres@127.0.0.1:55433/${db}?connection_limit=2`;
-    owned = spawn(
-      process.execPath,
-      [
-        "scripts/run-next-with-system-ca.mjs",
-        "dev",
-        "--webpack",
-        "-p",
-        "3002",
-        "--hostname",
-        "127.0.0.1",
-      ],
-      {
-        cwd: resolve("apps/app"),
-        windowsHide: true,
-        detached: false,
-        stdio: ["ignore", fd, fd],
-        env: {
-          ...process.env,
-          INTERPRETE_LOCAL_DIST_DIR: qaDistDir,
-          NODE_ENV: "development",
-          NODE_OPTIONS: "--use-system-ca",
-          SKIP_ENV_VALIDATION: "true",
-          DATABASE_URL: databaseUrl,
-          DIRECT_URL: databaseUrl,
-          DATABASE_CA_CERT_PATH: ca,
-          GESTAO_DEV_AUTH: "true",
-          NEXT_PUBLIC_GESTAO_DEV_AUTH: "true",
-          GESTAO_DEV_AUTH_USER_ID: `gestao_qa_${profile}_${actor}`,
-          GESTAO_V2_ENABLED: "true",
-          NEXT_PUBLIC_APP_URL: base,
-          NEXT_PUBLIC_API_URL: "http://localhost:3001",
-        },
-      }
-    );
-    closeSync(fd);
-    actorNow = actor;
-    const deadline = Date.now() + 60_000;
-    while (Date.now() < deadline) {
-      assert.equal(owned.exitCode, null);
-      try {
-        const health = await fetch(`${base}/health`, {
-          signal: AbortSignal.timeout(1000),
-        });
-        if ((await health.json()).checks?.database === "ok") {
-          return;
-        }
-      } catch {
-        /* Starting owned local runtime. */
-      }
-      await delay(500);
-    }
-    throw new Error("Owned QA server not ready");
-  };
-  const stop = async () => {
-    if (!owned) {
-      return;
-    }
-    const child = owned;
-    owned = null;
-    if (child.exitCode !== null || child.signalCode !== null) {
-      return;
-    }
-    await new Promise((done, reject) => {
-      const killer = spawn(
-        "taskkill.exe",
-        ["/PID", String(child.pid), "/T", "/F"],
-        { windowsHide: true, stdio: "ignore" }
-      );
-      killer.on("error", reject);
-      killer.on("exit", done);
-    });
-  };
   const visit = async (actor, path) => {
     await page?.context().close();
     await start(actor);
@@ -634,10 +536,16 @@ await test("A2 local: private draft, resume and next filtered pending submission
     );
     assert.deepEqual(pageErrors, []);
     assert.deepEqual(consoleErrors, []);
-    const preview = await fetch("http://localhost:3000/gestao");
-    assert.equal(preview.status, 200);
-    assert((await preview.text()).includes("Esta semana"));
-    results.push("original-preview3000-and-history-preserved");
+    const preview = await fetch("http://127.0.0.1:3000/gestao").catch(() => null);
+    if (previewBeforeStatus === null) {
+      assert.equal(preview, null, "QA must not start or occupy the preview port");
+      results.push("preview3000-was-stopped-and-remained-unused");
+    } else {
+      assert.equal(preview?.status, previewBeforeStatus);
+      assert.equal(preview?.status, 200);
+      assert((await preview.text()).includes("Esta semana"));
+      results.push("original-preview3000-preserved");
+    }
   } catch (error) {
     console.error(error);
     throw error;

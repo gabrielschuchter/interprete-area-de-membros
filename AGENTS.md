@@ -1,65 +1,31 @@
 # AGENTS.md
 
-## Objetivo
+## Propósito
 
-Este repositório é o produto da área de membros do Interprete. A fundação next-forge já existe e deve ser preservada. O desenvolvimento de produto é sequencial e a fonte de verdade da ordem é `docs/implementation/roadmap.md`. Uma fase em `IN PROGRESS` precisa ser validada antes de receber `DONE`.
+Este repositório mantém a área de membros do Interprete sobre a fundação next-forge. Use Bun e os comandos do Turborepo. O roadmap organiza o produto em geral; a sequência atual da Gestão V2 e o estado de trabalho ficam em `docs/gestao/STATUS.md`.
 
-## Regras de escopo
+## Produto e dados
 
-- Leia a especificação mestre antes de ampliar o trabalho.
-- Implemente as fases do roadmap em ordem; não marque uma fase como concluída sem persistência real, autorização, responsividade e os checks do monorepo.
-- Ao implementar uma fase autorizada pelo roadmap, prefira o menor modelo e fluxo que cubra o aceite; não crie features fora dele.
-- Não use dados falsos embutidos no frontend. Seeds de desenvolvimento devem ser explícitos, resetáveis e nunca usados como produção.
-- Fixtures opcionais usam `SEED_DEVELOPMENT_DATA=true`; não são evidência de dados de produção.
-- Cada fase precisa funcionar ponta a ponta, persistir dados reais, ter autorização adequada e passar os checks antes de avançar.
-- Preserve o design system e a arquitetura do next-forge quando não houver conflito com as decisões do projeto.
-- Não reintroduza conceitos de SaaS B2B, como organização, workspace, billing, projetos, teams ou demo data, na navegação da área de membros.
+- Reutilize modelos, serviços e interfaces existentes antes de criar outros.
+- Antes de ampliar o contrato de produto, consulte o trecho relevante do pacote de referência `interprete-gestao-handoff/`.
+- Preserve as fronteiras atuais: `apps/app` para a área autenticada, `apps/api` para infraestrutura/webhooks, `packages/database` como acesso Prisma/Supabase e os pacotes compartilhados para auth, design system e observabilidade.
+- Não adicione conceitos de SaaS B2B à navegação dos membros.
+- Não embuta dados de demonstração na aplicação. Seeds devem ser explícitas, locais, protegidas contra destinos remotos e preservadas após o ensaio.
+- Supabase PostgreSQL é a fonte oficial. Runtime usa `DATABASE_URL` no pooler de transação (6543, `pgbouncer=true`, limite explícito); Prisma CLI usa `DIRECT_URL` no pooler de sessão (5432). Preserve verificação TLS.
+- Clerk é a fonte de identidade. Professor e administrador são autorizados por `Member.role` associado ao usuário Clerk; nunca por e-mail, metadata pública ou controles escondidos.
+- Mantenha RLS habilitado e não crie policies permissivas para acesso que acontece por Prisma server-side.
+- Identidade, papel, grants e dados pessoais não entram em cache persistente compartilhado; mantenha telemetria sanitizada.
+- Migrations de produto são aditivas. Não apague dados, registros ou fixtures para reiniciar uma jornada.
+- Nunca versione arquivos `.env`, senhas, tokens ou chaves.
 
-## Stack e dados
+## Segurança e qualidade
 
-- Use Bun e scripts do Turborepo na raiz.
-- O PostgreSQL oficial é o Supabase. Não adicione Neon ou outro banco.
-- Runtime usa `DATABASE_URL` com pooler de transação Supabase (`6543`, `pgbouncer=true`, limite de conexão explícito).
-- Prisma CLI usa `DIRECT_URL` para o pooler de sessão Supavisor (`5432`).
-- Mantenha SSL com verificação de certificado. Nunca desabilite TLS para contornar a CA local.
-- Clerk é a fonte inicial de identidade. Não crie autenticação paralela.
-- Não versione `.env`, senhas, tokens ou chaves.
+Autorização server-side, isolamento de dados, persistência, resposta correta após reload e suporte utilizável a desktop e mobile são requisitos de produto. Trabalho que altera papel, grants, publicações, dados privados, migrations ou worker deve verificar os controles e fluxos que toca antes de seguir. Mantenha os contratos de desempenho em `docs/architecture/performance.md` e `packages/design-system/PERFORMANCE.md` quando uma mudança os afetar.
 
-## Organização
+Use verificações proporcionais à mudança: validação estática e testes focados durante implementação; navegador quando precisa comprovar uma jornada real; conjunto completo do monorepo e QA integrado uma vez sobre a versão candidata. Reexecute somente os checks e jornadas afetados por correções posteriores. Build executa a suíte de testes e a checagem de orçamento; não repita esses comandos sobre os mesmos artefatos sem mudança pertinente.
 
-- `apps/app`: área autenticada e entrada Clerk.
-- `apps/api`: endpoints e webhooks de infraestrutura, sem configurar provedores futuros.
-- `packages/database`: único ponto de acesso Prisma/Supabase.
-- `packages/auth`, `packages/design-system`, `packages/observability`: fundações compartilhadas.
-- `docs/implementation/roadmap.md`: status, escopo e gates das fases de produto.
-- Documentação arquitetural fica em `docs/architecture/`; documentação de domínio entra em `docs/product/` somente quando a fase começar.
-- Professor/admin é autorizado por `Member.role` (`TEACHER`/`ADMIN`) associado ao `userId` do Clerk; nunca por e-mail, metadata pública ou esconder links.
-- Todo domínio público mantém RLS habilitado no Supabase e nenhuma policy anon/authenticated permissiva enquanto o acesso for exclusivamente Prisma server-side.
+## Gestão V2
 
-## Performance permanente
+`docs/gestao/STATUS.md` é a única fonte de estado, evidências reutilizáveis, lacunas e próximo passo. `docs/gestao/MVP.md` define o contrato de primeira publicação. Consulte decisões específicas em `DECISIONS.md` quando necessário. Os documentos históricos e o handoff original não governam a sequência atual.
 
-- Performance é requisito de aceite de toda rota, componente e ação. Declare o caminho crítico, o orçamento, a projeção mínima, a paginação e a invalidação.
-- Responda visualmente a cada clique/toque/submit em até 100 ms. Sucesso só aparece após persistência; UI otimista exige reconciliação, rollback, prevenção de duplicidade e teste de concorrência.
-- Não bloqueie a navegação por Clerk Backend API ou por árvore/progresso completo quando `Member`/`Profile` e uma projeção `EXISTS` autorizada atendem o caso.
-- Mantenha autorização fresca. `React.cache` deduplica dentro da requisição; cache persistente compartilhado nunca contém papel, identidade, grant, revogação, grupo privado ou dado pessoal.
-- Paginação e projeções acontecem no banco. Índices e aumento do pool exigem plano SQL, dados representativos e ensaio de concorrência; mantenha Supavisor de transação e TLS validado.
-- Trabalho secundário usa o outbox transacional existente, consumidores idempotentes e worker de recuperação ativo. `after()` e promises soltas não substituem persistência ou retry durável.
-- Prefetch é intencional, limitado e sem mutações. Respeite rede restrita/economia de dados; conteúdo disponível não começa oculto por animação e movimento reduzido é respeitado.
-- Busca, autocomplete, feeds, trilhos de aprendizagem e listas grandes de cards dinâmicos não fazem prefetch automático de cada destino visível; antecipe somente destinos alcançados por intenção de ponteiro/teclado, usando o orçamento compartilhado por rota.
-- Telemetria é amostrada e sanitizada; nunca envie IDs, títulos, conteúdo pessoal, corpo de requisição, cookies, tokens, cabeçalhos de autorização ou URLs assinadas.
-- Preserve e atualize `docs/architecture/performance.md` e `packages/design-system/PERFORMANCE.md`. A fase 10 continua aberta até evidência de autorização, responsividade, percentis, mobile, persistência, isolamento de cache e deployment.
-
-## Checks obrigatórios
-
-Antes de entregar mudanças relevantes, rode:
-
-```powershell
-bun run check
-bun run typecheck
-bun run boundaries
-bun run test
-bun run build
-bun run performance:check
-```
-
-Se uma verificação precisar de credencial externa, registre claramente o bloqueio e valide tudo que for possível sem inventar valores.
+A ordem de entrega é: base funcional local → QA integrado → correções → preflight/publicação → smoke real. O critério da primeira publicação é funcionalidade completa, segurança e qualidade visual essencial; comparações exaustivas dos 101 quadros permanecem backlog separado. Não marque uma capacidade como concluída enquanto seus caminhos essenciais estiverem em placeholder, sem persistência ou sem autorização.
