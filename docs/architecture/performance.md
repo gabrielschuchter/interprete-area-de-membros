@@ -1081,3 +1081,29 @@ of the remaining pending queue. Draft saves add no next-submission query.
 Existing pending feedback and invalidation of Main, correction queue, activity
 and student learning routes remain; no identity cache, pool or index change.
 Local QA uses an isolated distDir/port to preserve the interactive preview.
+
+# Início B2 (2026-10-14)
+
+The portal component adds no content or planner query. The authenticated layout
+continues to resolve identity, the existing profile projection, role and
+product configuration; the Início consumes that result. Only the art for the
+active viewport band is requested: the desktop/tablet stage image, or the two
+mobile/low-landscape card images. Shared LQIP and reserved card geometry cover
+the image wait and error fallback. Portal shortcuts keep the existing intent
+prefetch budget of two destinations per route and its save-data/slow-network
+guards; mounting the Início does not prefetch all twelve links.
+
+Navigation keeps one mounted route tree and the existing shell controller.
+Portal traversals/returns use 520 ms, shortcuts 360 ms, internal route entry
+220 ms, technical fade 120 ms, and mobile card exit 300 ms before commit. The
+existing route skeleton boundary handles slow destinations; feedback appears
+after 120 ms, and the shared retry boundary returns failures to Início. A
+navigation timeout remains at eight seconds. No persistent identity/role cache,
+API, schema, pool, or index change is introduced.
+
+Acceptance budgets are unchanged: click/tap acknowledgement within 100 ms,
+CLS <= 0.02, Início-only JS <= 15 KiB gzip, CSS <= 6 KiB gzip, fonts <= 90 KiB,
+and transition review with 4x CPU slowdown. This checkout cannot produce the
+Next build artifact because its isolated environment has no `DATABASE_URL`; no
+bundle, CLS, CPU-throttled, device, or real p75 measurements are claimed here.
+Those deployment/runtime measurements remain open, as does roadmap phase 10.

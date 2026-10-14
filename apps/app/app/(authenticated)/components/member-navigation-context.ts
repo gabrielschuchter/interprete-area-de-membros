@@ -1,43 +1,35 @@
 "use client";
 
 import { createContext, useContext } from "react";
-
-export interface PortalTransitionGeometry {
-  readonly dx: number;
-  readonly dy: number;
-  readonly offsetX: number;
-  readonly scale: number;
-}
+import type { MemberNavigationKind, PortalSide } from "./member-navigation";
 
 export interface PortalTransition {
-  readonly corridor: "estudar" | "comunidade" | null;
+  readonly corridor: PortalSide | null;
   readonly direction: "enter" | "return";
-  readonly geometry: PortalTransitionGeometry | null;
+  readonly durationMs: number;
+  readonly exitDurationMs: number;
+  readonly href: string;
   readonly id: number;
-  readonly minimumElapsed: boolean;
-  readonly mode: "corridor" | "direct";
-  readonly phase:
-    | "camera"
-    | "fade"
-    | "direct"
-    | "return-prep"
-    | "returning"
-    | "return-direct"
-    | "waiting";
+  readonly kind: MemberNavigationKind;
+  readonly phase: "committing" | "entering" | "leaving";
+  readonly startedAt: number;
   readonly targetPath: string;
+  readonly vector: { readonly x: number; readonly y: number } | null;
 }
 
-export type MemberRouteTransitionPhase = "entering" | "leaving";
+export type MemberRouteTransitionPhase = PortalTransition["phase"];
 
 export interface MemberNavigationContextValue {
   readonly displayName: string;
+  readonly imageFailed: boolean;
+  readonly imageReady: boolean;
   readonly memberId: string;
   readonly navigate: (href: string) => void;
   readonly navigateShell?: (href: string) => void;
-  readonly onPortalReady: (
-    transitionId: number,
-    geometry: PortalTransitionGeometry
-  ) => void;
+  readonly navigationFailure: string | null;
+  readonly onPortalImageError: () => void;
+  readonly onPortalImageReady: (imageId: string) => void;
+  readonly retryNavigation: () => void;
   readonly showLearnNavigation: boolean;
   readonly transition: PortalTransition | null;
 }

@@ -42,6 +42,7 @@ import {
   type ReactNode,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
 } from "react";
@@ -212,9 +213,9 @@ const MemberAreaSidebarView = ({
     setPendingHref(null);
   }, [pathname]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const tabletViewport = window.matchMedia(
-      "(min-width: 48rem) and (max-width: 63.999rem)"
+      "(min-width: 48rem) and (max-width: 78.0625rem)"
     );
     const syncSidebar = () => {
       const isTablet = tabletViewport.matches;

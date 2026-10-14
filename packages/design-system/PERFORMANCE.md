@@ -479,3 +479,21 @@ on a server request.
   clears previous notes/scores while draft saves keep the success navigation
   mounted. Existing SingleFlightSubmit reports pending locally and success
   follows persistence. No new prefetch, request loop, motion or dependency.
+
+# Início B2 (2026-10-14)
+
+The Interprete portal reuses the authenticated shell and its fresh Member role,
+profile and product configuration. It adds no content query or shared
+identity/permission cache. The page preloads only the active viewport art set;
+the existing intent prefetcher remains capped at two destinations per route
+and observes save-data/slow-network preferences. Its interaction timings are
+520 ms for portal traversal/return, 360 ms for shortcuts, 220 ms for internal
+entry, 120 ms for technical fades, and a 300 ms mobile card exit before route
+commit. Stable route loading/error boundaries continue to provide retry and a
+return to Início.
+
+The established 100 ms acknowledgement, CLS <= 0.02, 15 KiB gzip route JS,
+6 KiB gzip CSS, and 90 KiB font budgets still apply. Local Next build and browser
+measurements are pending because this isolated worktree lacks the required
+`DATABASE_URL`; no p75, device, CPU-throttled, or bundle result is inferred.
+This record does not close the performance roadmap phase.
