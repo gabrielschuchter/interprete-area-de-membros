@@ -197,7 +197,7 @@ const LessonPage = async ({ params }: LessonPageProperties) => {
           </article>
 
           {lesson.assets.length > 0 && (
-            <section className="border-y py-7 sm:py-8">
+            <section className="border-y py-7 sm:py-8" id="materiais">
               <div className="flex items-start gap-3">
                 <PaperclipIcon
                   aria-hidden="true"
