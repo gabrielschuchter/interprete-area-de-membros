@@ -274,7 +274,7 @@ export const resolveLearningAssignmentTargets = async (
       LearningAssignmentTargetType.MODULE,
       item.id,
       item.title,
-      `/aprender/cursos/${item.course.slug}`
+      `/aprender/cursos/${item.course.slug}?module=${encodeURIComponent(item.id)}#module-${encodeURIComponent(item.id)}`
     );
   }
   for (const item of lessons) {

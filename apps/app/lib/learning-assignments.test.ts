@@ -123,6 +123,15 @@ const makeTransaction = () => {
       ]),
     },
     libraryItem: { findMany: vi.fn().mockResolvedValue([]) },
+    module: {
+      findMany: vi.fn().mockResolvedValue([
+        {
+          id: "module_1",
+          title: "Módulo 1",
+          course: { slug: "curso" },
+        },
+      ]),
+    },
     activityAssignment: { createMany },
     learningAssignmentBatch: {
       create: createBatch,
@@ -271,6 +280,22 @@ test("exercise-list assignments resolve only to published exercise lists", async
       }),
     })
   );
+});
+
+test("module assignments open and identify the assigned module", async () => {
+  const { tx } = makeTransaction();
+  const resolved = await resolveLearningAssignmentTarget(
+    tx,
+    LearningAssignmentTargetType.MODULE,
+    "module_1"
+  );
+
+  expect(resolved).toEqual({
+    href: "/aprender/cursos/curso?module=module_1#module-module_1",
+    id: "module_1",
+    title: "Módulo 1",
+    type: "MODULE",
+  });
 });
 
 test("recording assignments resolve to one playable recording asset", async () => {

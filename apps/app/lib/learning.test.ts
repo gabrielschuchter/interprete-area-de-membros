@@ -9,8 +9,12 @@ const {
   hasFullCourseAccess,
   hasLessonAccess,
   hasModuleAccess,
+  markLearningAssignmentStarted,
 } = vi.hoisted(() => ({
-  database: { course: { findMany: vi.fn() }, lesson: { findFirst: vi.fn() } },
+  database: {
+    course: { findFirst: vi.fn(), findMany: vi.fn() },
+    lesson: { findFirst: vi.fn() },
+  },
   filterAccessibleLessonActivities: vi.fn(),
   lessonActivitySelect: vi.fn(() => ({
     id: true,
@@ -23,6 +27,7 @@ const {
   hasFullCourseAccess: vi.fn(),
   hasLessonAccess: vi.fn(),
   hasModuleAccess: vi.fn(),
+  markLearningAssignmentStarted: vi.fn(),
 }));
 
 vi.mock("server-only", () => ({}));
@@ -51,12 +56,13 @@ vi.mock("./activities", () => ({
   lessonActivitySelect,
 }));
 vi.mock("./learning-assignments", () => ({
-  markLearningAssignmentStarted: vi.fn(),
+  markLearningAssignmentStarted,
 }));
 
 import {
   getHomeLearningSummary,
   getMemberCourseProgress,
+  getPublishedCourse,
   getPublishedLesson,
   getPublishedStandaloneCourses,
 } from "./learning";
@@ -271,6 +277,63 @@ describe("member course progress", () => {
       percentage: 0,
       totalLessons: 1,
     });
+  });
+
+  test("starts only the assigned module visible to the member", async () => {
+    const scope = makeScope({
+      courseIds: new Set(["course-1"]),
+      moduleIds: new Set(["module-1"]),
+    });
+    getLearningAccessScope.mockResolvedValue(scope);
+    database.course.findFirst.mockResolvedValue({
+      id: "course-1",
+      title: "Curso",
+      slug: "curso",
+      experience: "ASYNC",
+      description: null,
+      learningPath: null,
+      modules: [
+        {
+          id: "module-1",
+          title: "Módulo atribuído",
+          slug: "modulo-1",
+          lessons: [
+            {
+              id: "lesson-1",
+              title: "Aula",
+              slug: "aula",
+              description: null,
+              kind: "LESSON",
+              progress: [],
+            },
+          ],
+        },
+        {
+          id: "module-2",
+          title: "Módulo vizinho",
+          slug: "modulo-2",
+          lessons: [],
+        },
+      ],
+    });
+
+    await getPublishedCourse("curso", "member-1", "module-1");
+
+    expect(markLearningAssignmentStarted).toHaveBeenCalledWith(
+      "member-1",
+      "COURSE",
+      "course-1"
+    );
+    expect(markLearningAssignmentStarted).toHaveBeenCalledWith(
+      "member-1",
+      "MODULE",
+      "module-1"
+    );
+    expect(markLearningAssignmentStarted).not.toHaveBeenCalledWith(
+      "member-1",
+      "MODULE",
+      "module-2"
+    );
   });
 
   test("returns only activities filtered by the member access resolver", async () => {

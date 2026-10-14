@@ -19,16 +19,25 @@ export const dynamic = "force-dynamic";
 
 interface CoursePageProperties {
   readonly params: Promise<{ slug: string }>;
+  readonly searchParams?: Promise<{ readonly module?: string | string[] }>;
 }
 
-const CoursePage = async ({ params }: CoursePageProperties) => {
-  const { slug } = await params;
-  const memberId = await requireMemberId();
+const CoursePage = async ({ params, searchParams }: CoursePageProperties) => {
+  const [{ slug }, memberId, routeSearchParams] = await Promise.all([
+    params,
+    requireMemberId(),
+    searchParams ??
+      Promise.resolve<{ readonly module?: string | string[] }>({}),
+  ]);
   const courseExperience = await getCourseExperience(slug);
   if (courseExperience?.experience === "RECORDING_ARCHIVE") {
     redirect("/encontros/gravacoes");
   }
-  const course = await getPublishedCourse(slug, memberId);
+  const assignedModuleId =
+    typeof routeSearchParams.module === "string"
+      ? routeSearchParams.module
+      : undefined;
+  const course = await getPublishedCourse(slug, memberId, assignedModuleId);
 
   if (!course) {
     notFound();
@@ -137,7 +146,9 @@ const CoursePage = async ({ params }: CoursePageProperties) => {
               return (
                 <section
                   className="border-b pb-8 last:border-b-0"
+                  id={`module-${module.id}`}
                   key={module.id}
+                  tabIndex={-1}
                 >
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="flex items-start gap-4">

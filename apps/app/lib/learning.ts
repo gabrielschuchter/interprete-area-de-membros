@@ -376,7 +376,11 @@ export const getPublishedLearningPath = async (
   return path ?? null;
 };
 
-export const getPublishedCourse = async (slug: string, memberId: string) => {
+export const getPublishedCourse = async (
+  slug: string,
+  memberId: string,
+  assignedModuleId?: string
+) => {
   const [scope, course] = await Promise.all([
     getLearningAccessScope(memberId),
     database.course.findFirst({
@@ -422,13 +426,24 @@ export const getPublishedCourse = async (slug: string, memberId: string) => {
     return null;
   }
 
-  await markLearningAssignmentStarted(
-    memberId,
-    LearningAssignmentTargetType.COURSE,
-    course.id
-  );
-
   const visibleCourse = filterCourse(course, scope);
+  await Promise.all([
+    markLearningAssignmentStarted(
+      memberId,
+      LearningAssignmentTargetType.COURSE,
+      course.id
+    ),
+    ...(assignedModuleId &&
+    visibleCourse.modules.some(({ id }) => id === assignedModuleId)
+      ? [
+          markLearningAssignmentStarted(
+            memberId,
+            LearningAssignmentTargetType.MODULE,
+            assignedModuleId
+          ),
+        ]
+      : []),
+  ]);
   const lessons = visibleCourse.modules.flatMap((module) => module.lessons);
 
   return {
