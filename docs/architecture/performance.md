@@ -1103,9 +1103,15 @@ API, schema, pool, or index change is introduced. The approved no-reduced-motion
 detection decision is scoped to Início; existing global and Gestão behavior
 remains intact.
 
-Acceptance budgets are unchanged: click/tap acknowledgement within 100 ms,
-CLS <= 0.02, Início-only JS <= 15 KiB gzip, CSS <= 6 KiB gzip, fonts <= 90 KiB,
-and transition review with 4x CPU slowdown. This checkout cannot produce the
-Next build artifact because its isolated environment has no `DATABASE_URL`; no
-bundle, CLS, CPU-throttled, device, or real p75 measurements are claimed here.
-Those deployment/runtime measurements remain open, as does roadmap phase 10.
+Acceptance budgets remain: click/tap acknowledgement <= 100 ms, CLS <= 0.02,
+Início-only JS <= 15 KiB gzip, CSS <= 6 KiB gzip, fonts <= 90 KiB, and transition
+review at 4x CPU slowdown. The Vercel App build for a92ad73 passed the existing
+route budget: home 210.4 KiB gzip across 16 chunks (225 KiB budget). This does
+not measure the handoff-specific JS/CSS budgets. The local root build and
+performance:check cannot produce artifacts in this worktree without
+DATABASE_URL; Vercel built the app project only. The Preview serves the main
+art asset (200, 228,994 bytes), but the authenticated / request returns 500:
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY is configured for Production, not Preview.
+No Clerk configuration or production alias was changed. Visual comparison,
+authenticated MEMBER/TEACHER/ADMIN journeys, CLS, 4x CPU, physical-device and
+real p75 evidence remain open; roadmap phase 10 remains open.

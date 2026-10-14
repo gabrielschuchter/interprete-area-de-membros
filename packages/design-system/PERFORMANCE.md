@@ -494,7 +494,11 @@ return to Início. The no-reduced-motion detection decision applies only to
 this portal; existing app and Gestão behavior stays intact.
 
 The established 100 ms acknowledgement, CLS <= 0.02, 15 KiB gzip route JS,
-6 KiB gzip CSS, and 90 KiB font budgets still apply. Local Next build and browser
-measurements are pending because this isolated worktree lacks the required
-`DATABASE_URL`; no p75, device, CPU-throttled, or bundle result is inferred.
-This record does not close the performance roadmap phase.
+6 KiB gzip CSS, 90 KiB fonts, and 4x CPU transition budgets remain. The Vercel
+App build for a92ad73 passed the existing home route budget at 210.4 KiB gzip
+across 16 chunks (225 KiB budget). The Preview serves the art asset but its
+authenticated / request returns 500 because the Clerk publishable key is only
+configured for Production. The isolated worktree also lacks DATABASE_URL, so
+local build artifacts and the separate handoff JS/CSS budgets remain unmeasured.
+No authenticated role, visual, CLS, device, CPU-throttled, or p75 result is
+claimed; the performance roadmap phase stays open.
