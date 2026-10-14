@@ -6,7 +6,6 @@ const route = vi.hoisted(() => ({
   pathname: "/exercicios/listas/biostatistica",
   searchParams: new URLSearchParams(),
 }));
-
 vi.mock("next/navigation", () => ({
   usePathname: () => route.pathname,
   useSearchParams: () => route.searchParams,
@@ -24,8 +23,8 @@ vi.mock("next/link", () => ({
   ),
 }));
 
-vi.mock("@repo/design-system/components/ui/sidebar", () => ({
-  SidebarTrigger: () => <button type="button">Menu</button>,
+vi.mock("./member-sidebar-control", () => ({
+  MemberSidebarControl: () => <button type="button">Menu</button>,
 }));
 
 vi.mock("@repo/design-system/components/ui/separator", () => ({

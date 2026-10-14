@@ -153,6 +153,18 @@ describe("member sidebar drawer entry", () => {
     fireEvent.click(screen.getByRole("button", { name: "Toggle QA" }));
     expect(screen.getByTestId("state").textContent).toBe("true");
   });
+  it("collapses the wide-screen sidebar to an accessible icon rail", () => {
+    setup();
+    render(content(false));
+
+    fireEvent.click(screen.getByRole("button", { name: "Toggle QA" }));
+
+    expect(
+      document.querySelector('[data-slot="sidebar"][data-collapsible="icon"]')
+    ).not.toBeNull();
+    expect(screen.getByRole("link", { name: "Estudar" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Comunidade" })).toBeTruthy();
+  });
   it("allows a tablet drawer to stay open", () => {
     viewport.tablet = true;
     setup();

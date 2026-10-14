@@ -1,7 +1,6 @@
 "use client";
 
 import { Button } from "@repo/design-system/components/ui/button";
-import { SidebarTrigger } from "@repo/design-system/components/ui/sidebar";
 import {
   BookOpen,
   CalendarDays,
@@ -20,6 +19,7 @@ import { type ReactNode, useEffect, useState } from "react";
 import { IntentLink } from "@/app/(authenticated)/components/intent-link";
 import { MemberHeaderControls } from "@/app/(authenticated)/components/member-header-controls";
 import { useMemberNavigation } from "@/app/(authenticated)/components/member-navigation-context";
+import { MemberSidebarControl } from "@/app/(authenticated)/components/member-sidebar-control";
 import { usePortalViewport } from "@/app/(authenticated)/components/use-portal-viewport";
 
 interface PortalShortcut {
@@ -249,10 +249,7 @@ export const PortalView = () => {
     >
       <header className="portal-header">
         <div className="portal-header__brand">
-          <SidebarTrigger
-            aria-label="Abrir menu"
-            className="portal-header__menu"
-          />
+          <MemberSidebarControl className="portal-header__menu" mode="drawer" />
           <span className="portal-header__wordmark">Interprete.</span>
         </div>
         {navigation?.memberId ? (
