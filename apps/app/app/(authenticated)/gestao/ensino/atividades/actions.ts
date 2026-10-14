@@ -3,6 +3,7 @@
 import { createHash } from "node:crypto";
 import {
   ActivityDeliveryKind,
+  ActivitySubmissionStatus,
   ContentStatus,
   database,
   LearningAssignmentStatus,
@@ -12,7 +13,8 @@ import {
 } from "@repo/database";
 import { enqueueNotificationBatch } from "@repo/member-domain";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { selectActivityCohortRecipientIds } from "@/lib/activity-cohort-access";
 import { listGestaoActivityMemberOptions } from "@/lib/gestao-activities";
 import type { ActivityRubricInput } from "@/lib/gestao-activity-domain";
 import {
@@ -356,7 +358,15 @@ const enqueuePublishedActivityNotifications = async (
       id: true,
       cohortId: true,
       assignedAt: true,
-      cohort: { select: { lateJoinPolicy: true } },
+      cohort: {
+        select: {
+          archivedAt: true,
+          endsAt: true,
+          lateJoinPolicy: true,
+          readAfterEndDays: true,
+          startsAt: true,
+        },
+      },
     },
   });
   if (!targets.length) {
@@ -371,19 +381,10 @@ const enqueuePublishedActivityNotifications = async (
     },
     select: { memberId: true, cohortId: true, joinedAt: true },
   });
-  const eligibleIds = new Set(
-    memberships
-      .filter((membership) => {
-        const target = targets.find(
-          ({ cohortId }) => cohortId === membership.cohortId
-        );
-        return Boolean(
-          target &&
-            (target.cohort.lateJoinPolicy === "ALL_ACTIVE" ||
-              membership.joinedAt <= target.assignedAt)
-        );
-      })
-      .map(({ memberId }) => memberId)
+  const eligibleIds = selectActivityCohortRecipientIds(
+    targets,
+    memberships,
+    input.publishedAt
   );
   for (const assignment of assignments) {
     eligibleIds.delete(assignment.memberId);
@@ -892,6 +893,151 @@ export const setGestaoActivityStatus = async (formData: FormData) => {
   revalidatePath(`/atividades/${updated.slug}`);
   revalidatePath("/estudar");
   redirect("/gestao/ensino/atividades?resultado=estado-atualizado");
+};
+
+export const remindGestaoActivityCohort = async (formData: FormData) => {
+  const { actor } = await requireGestaoAction("assignments.manage");
+  await consumeMutationRateLimit({
+    action: "activity.mutation",
+    memberId: actor.userId,
+  });
+
+  const activityId = value(formData, "activityId");
+  const cohortId = value(formData, "cohortId");
+  const idempotencyKey = readIdempotencyKey(formData.get("idempotencyKey"));
+  if (!(activityId && cohortId && idempotencyKey)) {
+    redirect(resultPath(activityId || null, "dados-invalidos"));
+  }
+
+  let result: "sent" | "empty" | "missing" | "limit";
+  try {
+    result = await database.$transaction(
+      async (transaction) => {
+        const target = await transaction.activityCohortTarget.findFirst({
+          where: {
+            activityId,
+            cohortId,
+            activeKey: { not: null },
+            revokedAt: null,
+            activity: { is: { status: ContentStatus.PUBLISHED } },
+            cohort: { is: cohortScope(actor) },
+          },
+          select: {
+            assignedAt: true,
+            cohortId: true,
+            cohort: {
+              select: {
+                archivedAt: true,
+                endsAt: true,
+                lateJoinPolicy: true,
+                readAfterEndDays: true,
+                startsAt: true,
+              },
+            },
+            activity: { select: { id: true, slug: true, title: true } },
+          },
+        });
+        if (!target) {
+          return "missing";
+        }
+
+        const memberships = await transaction.cohortMembership.findMany({
+          where: {
+            cohortId,
+            status: "ACTIVE",
+            leftAt: null,
+            member: { is: managedMemberScope(actor) },
+          },
+          orderBy: { memberId: "asc" },
+          take: 10_001,
+          select: { cohortId: true, joinedAt: true, memberId: true },
+        });
+        if (memberships.length > 10_000) {
+          return "limit";
+        }
+
+        const eligibleIds = selectActivityCohortRecipientIds(
+          [target],
+          memberships
+        );
+        if (eligibleIds.size === 0) {
+          return "empty";
+        }
+
+        const submittedMembers = await transaction.activitySubmission.findMany({
+          where: {
+            activityId,
+            memberId: { in: [...eligibleIds] },
+            status: {
+              in: [
+                ActivitySubmissionStatus.SUBMITTED,
+                ActivitySubmissionStatus.REVIEWED,
+              ],
+            },
+            submittedAt: { not: null },
+          },
+          select: { memberId: true },
+        });
+        const submittedIds = new Set(
+          submittedMembers.map(({ memberId }) => memberId)
+        );
+        const recipientIds = [...eligibleIds].filter(
+          (memberId) => !submittedIds.has(memberId)
+        );
+        if (recipientIds.length === 0) {
+          return "empty";
+        }
+
+        const occurredAt = new Date();
+        await enqueueNotificationBatch(transaction, {
+          actorId: actor.userId,
+          aggregateType: "activity.reminder",
+          aggregateId: activityId,
+          idempotencyKey: `activity-reminder:${cohortId}:${idempotencyKey}`,
+          occurredAt,
+          notifications: recipientIds.map((recipientId) => ({
+            recipientId,
+            type: "ACTIVITY_DEADLINE",
+            entityType: "ACTIVITY",
+            entityId: target.activity.id,
+            dedupeKey: `activity-reminder:${idempotencyKey}:${cohortId}:${recipientId}`,
+            title: "Lembrete: atividade ainda não enviada",
+            body: target.activity.title,
+            href: `/atividades/${target.activity.slug}`,
+          })),
+        });
+        return "sent";
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+    );
+  } catch (error) {
+    if (isUniqueConstraintError(error)) {
+      result = "sent";
+    } else if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      error.code === "P2034"
+    ) {
+      redirect(resultPath(activityId, "conflito"));
+    } else {
+      throw error;
+    }
+  }
+
+  if (result === "missing") {
+    notFound();
+  }
+  if (result === "limit") {
+    redirect(resultPath(activityId, "limite-lembrete"));
+  }
+  if (result === "empty") {
+    redirect(resultPath(activityId, "sem-pendentes"));
+  }
+
+  await dispatchPendingNotifications();
+  revalidatePath(activityPath(activityId));
+  redirect(resultPath(activityId, "lembretes-enviados"));
 };
 
 export const searchGestaoActivityMembers = async (

@@ -10,6 +10,18 @@ export interface ActivityCohortTargetForMember {
   };
 }
 
+export interface ActivityCohortRecipientTarget {
+  readonly assignedAt: Date;
+  readonly cohort: Omit<ActivityCohortTargetForMember["cohort"], "memberships">;
+  readonly cohortId: string;
+}
+
+export interface ActivityCohortRecipientMembership {
+  readonly cohortId: string;
+  readonly joinedAt: Date;
+  readonly memberId: string;
+}
+
 export const hasActivityCohortAccess = (
   targets: readonly ActivityCohortTargetForMember[],
   now = new Date()
@@ -30,3 +42,37 @@ export const hasActivityCohortAccess = (
       ? true
       : membership.joinedAt.getTime() <= target.assignedAt.getTime();
   });
+
+export const selectActivityCohortRecipientIds = (
+  targets: readonly ActivityCohortRecipientTarget[],
+  memberships: readonly ActivityCohortRecipientMembership[],
+  now = new Date()
+) => {
+  const targetByCohortId = new Map(
+    targets.map((target) => [target.cohortId, target])
+  );
+  const recipientIds = new Set<string>();
+
+  for (const membership of memberships) {
+    const target = targetByCohortId.get(membership.cohortId);
+    if (
+      target &&
+      hasActivityCohortAccess(
+        [
+          {
+            assignedAt: target.assignedAt,
+            cohort: {
+              ...target.cohort,
+              memberships: [{ joinedAt: membership.joinedAt }],
+            },
+          },
+        ],
+        now
+      )
+    ) {
+      recipientIds.add(membership.memberId);
+    }
+  }
+
+  return recipientIds;
+};

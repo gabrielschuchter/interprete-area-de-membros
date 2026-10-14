@@ -10,7 +10,11 @@ import {
   SingleFlightSubmit,
 } from "@/components/mutations/single-flight-form";
 import { getGestaoActivityEditorData } from "@/lib/gestao-activities";
-import { saveGestaoActivity, setGestaoActivityStatus } from "./actions";
+import {
+  remindGestaoActivityCohort,
+  saveGestaoActivity,
+  setGestaoActivityStatus,
+} from "./actions";
 import { ActivityMemberPicker, RubricCriteriaEditor } from "./activity-editors";
 
 type EditorData = Awaited<ReturnType<typeof getGestaoActivityEditorData>>;
@@ -41,6 +45,11 @@ const resultMessages: Record<string, string> = {
     "Outra alteração foi salva primeiro. Atualize a página e revise a versão atual.",
   "dados-invalidos": "Revise os campos e tente novamente.",
   criteria: "Os pesos dos critérios precisam somar 100%.",
+  "lembretes-enviados":
+    "Lembrete enviado a quem ainda não entregou nesta turma.",
+  "sem-pendentes": "Todos os alunos elegíveis desta turma já entregaram.",
+  "limite-lembrete":
+    "Esta turma excede o limite de envio; nenhum lembrete foi enviado.",
   "due-date": "Informe um prazo futuro para publicar.",
   "destinatarios-invalidos":
     "Escolha ao menos uma turma, aluno ou conteúdo com acesso definido.",
@@ -398,6 +407,47 @@ export const GestaoActivityEditor = async ({
           <ActivityEditorActions activity={activity} />
         </aside>
       </SingleFlightForm>
+
+      {activity?.status === "PUBLISHED" && activity.cohortTargets.length ? (
+        <section
+          aria-labelledby="activity-reminders-title"
+          className="ga-form-card"
+        >
+          <h2 id="activity-reminders-title">Lembretes por turma</h2>
+          <p>
+            O lembrete vai somente para alunos elegíveis desta turma que ainda
+            não enviaram a atividade.
+          </p>
+          {activity.cohortTargets.map(({ cohortId }) => {
+            const cohort = data.cohorts.find((item) => item.id === cohortId);
+            if (!cohort) {
+              return null;
+            }
+            return (
+              <SingleFlightForm
+                action={remindGestaoActivityCohort}
+                className="ga-activity-actions"
+                key={cohortId}
+              >
+                <input name="activityId" type="hidden" value={activity.id} />
+                <input name="cohortId" type="hidden" value={cohortId} />
+                <input
+                  name="idempotencyKey"
+                  type="hidden"
+                  value={randomUUID()}
+                />
+                <span>{cohort.name}</span>
+                <SingleFlightSubmit
+                  pendingLabel="Enviando lembrete…"
+                  variant="outline"
+                >
+                  Lembrar pendentes
+                </SingleFlightSubmit>
+              </SingleFlightForm>
+            );
+          })}
+        </section>
+      ) : null}
 
       {activity?.status === "PUBLISHED" ? (
         <SingleFlightForm
