@@ -1,6 +1,9 @@
 import { forbidden, notFound, redirect } from "next/navigation";
 import { requireGestaoActor } from "@/lib/gestao-authorization";
-import { gestaoCommunityDestination } from "@/lib/gestao-navigation";
+import {
+  gestaoAdministrationDestination,
+  gestaoCommunityDestination,
+} from "@/lib/gestao-navigation";
 import {
   canPerformGestaoAction,
   type GestaoAction,
@@ -34,6 +37,14 @@ const GestaoPendingRoute = async ({
     if (destination) {
       redirect(destination);
     }
+  }
+
+  if (slug[0] === "administracao" && slug.length > 1) {
+    const destination = gestaoAdministrationDestination(slug.slice(1));
+    if (destination) {
+      redirect(destination);
+    }
+    notFound();
   }
 
   return (

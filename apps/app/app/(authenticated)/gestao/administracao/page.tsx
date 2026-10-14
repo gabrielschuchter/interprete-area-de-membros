@@ -8,8 +8,6 @@ const adminAreas = [
   ["Gravações históricas", "/gestao/administracao/gravacoes-historicas"],
   ["Personalização", "/gestao/administracao/personalizacao"],
   ["Medalhas", "/gestao/administracao/medalhas"],
-  ["Integrações", "/gestao/administracao/integracoes"],
-  ["Registro de atividades", "/gestao/administracao/auditoria"],
 ] as const;
 
 const GestaoAdministrationPage = async () => {

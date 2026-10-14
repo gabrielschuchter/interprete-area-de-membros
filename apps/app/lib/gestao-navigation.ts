@@ -45,6 +45,18 @@ const gestaoCommunityDestinations: Record<string, string> = {
 export const gestaoCommunityDestination = (pathSegments: readonly string[]) =>
   gestaoCommunityDestinations[pathSegments.join("/")] ?? null;
 
+const gestaoAdministrationDestinations: Record<string, string> = {
+  membros: "/admin/membros",
+  acessos: "/admin/acessos",
+  "gravacoes-historicas": "/admin/gravacoes",
+  personalizacao: "/admin/personalizacao",
+  medalhas: "/admin/badges",
+};
+
+export const gestaoAdministrationDestination = (
+  pathSegments: readonly string[]
+) => gestaoAdministrationDestinations[pathSegments.join("/")] ?? null;
+
 export type RedirectSearchParams = Record<
   string,
   string | string[] | undefined

@@ -26,7 +26,9 @@ As evidências são locais e preservam fixtures mutáveis. Consultá-las antes d
 
 **Comunidade — rotas operacionais conectadas.** `/gestao/comunidade`, `/publicacoes`, `/avisos` e `/encontros` deixam de cair no placeholder e encaminham para os fluxos staff existentes em `/admin/community`, `/admin/avisos` e `/admin/meetings`. O redirecionamento exige `community.moderate`; páginas e mutações de destino continuam exigindo papel staff. O teste de navegação cobre destinos conhecidos e rejeita subcaminhos não mapeados (6 testes passaram). Validação de interface e reload fica para a candidata.
 
-**Próxima capacidade: Administração.** Confrontar os destinos anunciados com as telas staff existentes e implementar apenas o que ainda não opera, preservando o limite admin-only de membros, acessos, gravações e integrações.
+**Administração — destinos essenciais conectados.** Membros, acessos, gravações, personalização e medalhas encaminham apenas para telas existentes. As rotas da Gestão exigem admin; cada destino mantém sua própria guarda e mutações de papéis/acessos continuam restritas a admin. “Integrações” e “Registro de atividades” saíram da lista porque não têm uma tela operacional. Destinos desconhecidos retornam 404. A navegação tem 7 testes focados; typecheck e Biome passaram. Persistência por interface e reload continuam para a candidata.
+
+**Próxima capacidade: shell — busca, notificações e prévia.** Rotas anunciadas devem operar ou informar indisponibilidade claramente; sem ações simuladas.
 
 ## Release e verificação
 
@@ -46,4 +48,5 @@ Ao concluir as duas próximas capacidades, registrar aqui somente tempo até pro
 |---|---|
 | Ensino → aluno | Implementação local concluída; QA integrado da candidata pendente |
 | Comunidade | Rotas conectadas a fluxos staff existentes; QA integrado da candidata pendente |
-| Administração | Próxima capacidade |
+| Administração | Destinos essenciais conectados; QA integrado da candidata pendente |
+| Shell | Próxima capacidade |
