@@ -122,6 +122,7 @@ const makeTransaction = () => {
         },
       ]),
     },
+    libraryItem: { findMany: vi.fn().mockResolvedValue([]) },
     activityAssignment: { createMany },
     learningAssignmentBatch: {
       create: createBatch,
@@ -299,4 +300,56 @@ test("recording assignments resolve to one playable recording asset", async () =
       }),
     })
   );
+});
+
+test("library-item assignments resolve only when the linked learning path is published", async () => {
+  const { tx } = makeTransaction();
+  vi.mocked(tx.libraryItem.findMany).mockResolvedValue([
+    { id: "library_item_1", title: "Material complementar" },
+  ] as never);
+
+  const resolved = await resolveLearningAssignmentTarget(
+    tx,
+    LearningAssignmentTargetType.LIBRARY_ITEM,
+    "library_item_1"
+  );
+
+  expect(resolved).toEqual({
+    href: "/biblioteca/library_item_1",
+    id: "library_item_1",
+    title: "Material complementar",
+    type: "LIBRARY_ITEM",
+  });
+  expect(tx.libraryItem.findMany).toHaveBeenCalledWith({
+    where: {
+      id: { in: ["library_item_1"] },
+      status: "PUBLISHED",
+      OR: [
+        { lessonId: null },
+        {
+          lesson: {
+            is: {
+              status: "PUBLISHED",
+              module: {
+                is: {
+                  status: "PUBLISHED",
+                  course: {
+                    is: {
+                      status: "PUBLISHED",
+                      experience: "ASYNC",
+                      OR: [
+                        { learningPathId: null },
+                        { learningPath: { is: { status: "PUBLISHED" } } },
+                      ],
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      ],
+    },
+    select: { id: true, title: true },
+  });
 });

@@ -230,6 +230,7 @@ export const resolveLearningAssignmentTargets = async (
           where: {
             id: { in: ids(LearningAssignmentTargetType.LIBRARY_ITEM) },
             status: ContentStatus.PUBLISHED,
+            OR: [{ lessonId: null }, { lesson: { is: publishedLessonWhere } }],
           },
           select: { id: true, title: true },
         })
