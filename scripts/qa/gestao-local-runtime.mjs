@@ -163,7 +163,13 @@ export function createGestaoLocalRuntime({
           const response = await fetch(`${origin}/health`, {
             signal: AbortSignal.timeout(1000),
           });
-          if (response.ok && (await response.json()).checks?.database === "ok") {
+          const health = await response.json();
+          const localAuthOnlyIsMissing =
+            response.status === 503 && health.checks?.auth === "missing";
+          if (
+            health.checks?.database === "ok" &&
+            (response.ok || localAuthOnlyIsMissing)
+          ) {
             return owned;
           }
         } catch {
