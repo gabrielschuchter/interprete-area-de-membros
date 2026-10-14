@@ -39,6 +39,7 @@ const legacyAdminRoutesByPath: Record<string, string> = {
 const gestaoCommunityDestinations: Record<string, string> = {
   publicacoes: "/admin/community",
   avisos: "/admin/avisos",
+  "avisos/novo": "/admin/avisos",
   encontros: "/admin/meetings",
 };
 

@@ -31,6 +31,9 @@ describe("Gestão navigation", () => {
       "/admin/community"
     );
     expect(gestaoCommunityDestination(["avisos"])).toBe("/admin/avisos");
+    expect(gestaoCommunityDestination(["avisos", "novo"])).toBe(
+      "/admin/avisos"
+    );
     expect(gestaoCommunityDestination(["encontros"])).toBe("/admin/meetings");
     expect(gestaoCommunityDestination(["desconhecido"])).toBeNull();
     expect(gestaoCommunityDestination(["publicacoes", "post"])).toBeNull();

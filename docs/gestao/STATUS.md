@@ -24,11 +24,11 @@ As evidências são locais e preservam fixtures mutáveis. Consultá-las antes d
 
 **Ensino → aluno — implementação funcional local concluída.** Cursos, aulas, exercícios, biblioteca e coleções reutilizam os serviços existentes e aplicam publicação, escopo de acesso, atribuição e liberação no servidor. A evidência focada previamente registrada (36 testes em 5 arquivos) continua válida; nesta continuação, o caso de retomar sessão de exercícios já aberta foi corrigido em `apps/app/app/(authenticated)/exercicios/actions.ts` e coberto pelo teste de ações (11 testes passaram). Falta validar a jornada cruzada autenticada e reload sobre a candidata; Clerk, Storage e YouTube reais também não foram sondados nesta etapa.
 
-**Comunidade — rotas operacionais conectadas.** `/gestao/comunidade`, `/publicacoes`, `/avisos` e `/encontros` deixam de cair no placeholder e encaminham para os fluxos staff existentes em `/admin/community`, `/admin/avisos` e `/admin/meetings`. O redirecionamento exige `community.moderate`; páginas e mutações de destino continuam exigindo papel staff. O teste de navegação cobre destinos conhecidos e rejeita subcaminhos não mapeados (6 testes passaram). Validação de interface e reload fica para a candidata.
+**Comunidade — rotas operacionais conectadas.** `/gestao/comunidade`, `/publicacoes`, `/avisos`, `/avisos/novo` e `/encontros` encaminham para os fluxos staff existentes em `/admin/community`, `/admin/avisos` e `/admin/meetings`. O redirecionamento exige `community.moderate`; páginas e mutações de destino continuam exigindo papel staff. O teste de navegação cobre destinos conhecidos e rejeita subcaminhos não mapeados (7 testes passaram). Validação de interface e reload fica para a candidata.
 
 **Administração — destinos essenciais conectados.** Membros, acessos, gravações, personalização e medalhas encaminham apenas para telas existentes. As rotas da Gestão exigem admin; cada destino mantém sua própria guarda e mutações de papéis/acessos continuam restritas a admin. “Integrações” e “Registro de atividades” saíram da lista porque não têm uma tela operacional. Destinos desconhecidos retornam 404. A navegação tem 7 testes focados; typecheck e Biome passaram. Persistência por interface e reload continuam para a candidata.
 
-**Próxima capacidade: shell — busca, notificações e prévia.** Rotas anunciadas devem operar ou informar indisponibilidade claramente; sem ações simuladas.
+**Shell — busca, notificações e prévia disponíveis no código local.** Gestão reutiliza a busca global e o popover de notificações do membro; prévias de atividade, coleção e curso já têm rotas próprias. O atalho “Novo aviso” foi conectado ao formulário operacional; QA integrado de interação/reload segue para a candidata.
 
 ## Release e verificação
 
@@ -49,4 +49,4 @@ Ao concluir as duas próximas capacidades, registrar aqui somente tempo até pro
 | Ensino → aluno | Implementação local concluída; QA integrado da candidata pendente |
 | Comunidade | Rotas conectadas a fluxos staff existentes; QA integrado da candidata pendente |
 | Administração | Destinos essenciais conectados; QA integrado da candidata pendente |
-| Shell | Próxima capacidade |
+| Shell | Implementação local existente; QA integrado da candidata pendente |
