@@ -46,8 +46,10 @@ const resultMessages: Record<string, string> = {
   "dados-invalidos": "Revise os campos e tente novamente.",
   criteria: "Os pesos dos critérios precisam somar 100%.",
   "lembretes-enviados":
-    "Lembrete enviado a quem ainda não entregou nesta turma.",
+    "Lembrete registrado para envio aos alunos pendentes desta turma.",
   "sem-pendentes": "Todos os alunos elegíveis desta turma já entregaram.",
+  "sem-elegiveis":
+    "Nenhum aluno desta turma tem acesso vigente para receber o lembrete.",
   "limite-lembrete":
     "Esta turma excede o limite de envio; nenhum lembrete foi enviado.",
   "due-date": "Informe um prazo futuro para publicar.",

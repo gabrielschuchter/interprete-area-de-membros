@@ -295,4 +295,22 @@ describe("Gestão activity publication and reminders", () => {
     expect(mocks.enqueue).not.toHaveBeenCalled();
     expect(mocks.dispatch).not.toHaveBeenCalled();
   });
+
+  it("distinguishes a cohort with no current activity access from completed submissions", async () => {
+    mocks.cohortTarget.mockResolvedValue({
+      ...publishedTarget,
+      cohort: {
+        ...publishedTarget.cohort,
+        startsAt: new Date("2026-10-15T00:00:00Z"),
+      },
+    });
+
+    await expect(remindGestaoActivityCohort(reminderForm())).rejects.toThrow(
+      `REDIRECT:/gestao/ensino/atividades/${activity.id}?resultado=sem-elegiveis`
+    );
+
+    expect(mocks.submissions).not.toHaveBeenCalled();
+    expect(mocks.enqueue).not.toHaveBeenCalled();
+    expect(mocks.dispatch).not.toHaveBeenCalled();
+  });
 });

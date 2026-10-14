@@ -909,7 +909,7 @@ export const remindGestaoActivityCohort = async (formData: FormData) => {
     redirect(resultPath(activityId || null, "dados-invalidos"));
   }
 
-  let result: "sent" | "empty" | "missing" | "limit";
+  let result: "sent" | "all-submitted" | "no-eligible" | "missing" | "limit";
   try {
     result = await database.$transaction(
       async (transaction) => {
@@ -961,7 +961,7 @@ export const remindGestaoActivityCohort = async (formData: FormData) => {
           memberships
         );
         if (eligibleIds.size === 0) {
-          return "empty";
+          return "no-eligible";
         }
 
         const submittedMembers = await transaction.activitySubmission.findMany({
@@ -985,7 +985,7 @@ export const remindGestaoActivityCohort = async (formData: FormData) => {
           (memberId) => !submittedIds.has(memberId)
         );
         if (recipientIds.length === 0) {
-          return "empty";
+          return "all-submitted";
         }
 
         const occurredAt = new Date();
@@ -1031,7 +1031,10 @@ export const remindGestaoActivityCohort = async (formData: FormData) => {
   if (result === "limit") {
     redirect(resultPath(activityId, "limite-lembrete"));
   }
-  if (result === "empty") {
+  if (result === "no-eligible") {
+    redirect(resultPath(activityId, "sem-elegiveis"));
+  }
+  if (result === "all-submitted") {
     redirect(resultPath(activityId, "sem-pendentes"));
   }
 
