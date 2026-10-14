@@ -490,8 +490,10 @@ and observes save-data/slow-network preferences. Its interaction timings are
 520 ms for portal traversal/return, 360 ms for shortcuts, 220 ms for internal
 entry, 120 ms for technical fades, and a 300 ms mobile card exit before route
 commit. Stable route loading/error boundaries continue to provide retry and a
-return to Início. The no-reduced-motion detection decision applies only to
-this portal; existing app and Gestão behavior stays intact.
+return to Início. The approved no-reduced-motion decision applies across the
+product: CSS media queries and JavaScript detection are absent, including the
+previously inherited shell and Gestão rules. Fade remains a technical fallback
+for hidden tabs, viewport-band changes, and interrupted navigation only.
 
 The established 100 ms acknowledgement, CLS <= 0.02, 15 KiB gzip route JS,
 6 KiB gzip CSS, 90 KiB fonts, and 4x CPU transition budgets remain. The Vercel

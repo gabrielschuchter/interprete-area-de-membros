@@ -126,11 +126,10 @@ await test("N2/N3: entry, source session, reload, return, offline and fallback",
     for (const width of process.env.QA_WIDTH
       ? [Number(process.env.QA_WIDTH)]
       : [1440, 1280, 1024, 820, 390, 320]) {
-      for (const reducedMotion of ["no-preference", "reduce"]) {
-        await test(`N2/N3 ${width}px ${reducedMotion}`, async () => {
+      for (const motionMode of ["standard"]) {
+        await test(`N2/N3 ${width}px ${motionMode}`, async () => {
           const context = await browser.newContext({
             viewport: { width, height: 900 },
-            reducedMotion,
           });
           await context.addInitScript(() => {
             localStorage.setItem(
@@ -141,7 +140,7 @@ await test("N2/N3: entry, source session, reload, return, offline and fallback",
           const page = await context.newPage();
           page.setDefaultTimeout(15_000);
           page.on("close", () =>
-            process.stdout.write(`Finished ${width}/${reducedMotion}\n`)
+            process.stdout.write(`Finished ${width}/${motionMode}\n`)
           );
           page.on("pageerror", (error) => errors.push(error.message));
           await page.goto(new URL(origin, base).href);
@@ -246,7 +245,7 @@ await test("N2/N3: entry, source session, reload, return, offline and fallback",
             .waitFor()
             .catch(async (error) => {
               await page.screenshot({
-                path: `${output}/${width}-${reducedMotion}-failure.png`,
+                path: `${output}/${width}-${motionMode}-failure.png`,
               });
               await writeFile(
                 `${output}/failure.json`,
@@ -295,12 +294,9 @@ await test("N2/N3: entry, source session, reload, return, offline and fallback",
             timing.feedbackMs !== null && timing.feedbackMs <= 100,
             `Feedback ${timing.feedbackMs} ms`
           );
-          assert.equal(
-            timing.animationDuration,
-            reducedMotion === "reduce" ? "0.12s" : "0.4s"
-          );
+          assert.equal(timing.animationDuration, "0.4s");
           await page.screenshot({
-            path: `${output}/${width}-${reducedMotion}-arrival.png`,
+            path: `${output}/${width}-${motionMode}-arrival.png`,
           });
 
           // Navigate through the shell, then through a content link without `from`.
@@ -361,7 +357,7 @@ await test("N2/N3: entry, source session, reload, return, offline and fallback",
           await assertNoOverflow(page);
           results.push({
             width,
-            reducedMotion,
+            motionMode,
             sourceAfterReload: origin,
             entryAndReturn: "PASS",
             timing,

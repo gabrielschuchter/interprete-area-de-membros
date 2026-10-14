@@ -280,9 +280,8 @@ export const verifyWeek = async (page, oracle) =>
     }
     await page.goto(`${base}/gestao`);
     for (const width of [1440, 1280, 1024, 820, 390, 320]) {
-      for (const reducedMotion of ["no-preference", "reduce"]) {
+      for (const motionMode of ["standard"]) {
         await page.setViewportSize({ width, height: 900 });
-        await page.emulateMedia({ reducedMotion });
         await assertMetrics(page, oracle.cases[0].expected);
         assert(
           await page.evaluate(
@@ -290,7 +289,7 @@ export const verifyWeek = async (page, oracle) =>
           )
         );
         await page.screenshot({
-          path: `${output}/${oracle.actorId}-${width}-${reducedMotion}.png`,
+          path: `${output}/${oracle.actorId}-${width}-${motionMode}.png`,
         });
       }
     }

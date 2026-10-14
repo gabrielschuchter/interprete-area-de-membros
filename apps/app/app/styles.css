@@ -3827,17 +3827,3 @@ html[data-shell-fallback][data-shell-arrival="return"] .member-route-page {
     transform: translateY(0);
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  html[data-shell-transition] {
-    --shell-duration: 120ms;
-  }
-  html[data-shell-transition]::view-transition-new(main-content),
-  html[data-shell-transition]::view-transition-new(app-sidebar),
-  html[data-shell-fallback][data-shell-arrival] .gestao-page-content,
-  html[data-shell-fallback][data-shell-arrival] .member-route-page {
-    animation: shell-fade-in 120ms linear both;
-  }
-  html[data-shell-transition]::view-transition-old(app-sidebar) {
-    animation-duration: 120ms;
-  }
-}

@@ -337,16 +337,15 @@ await test("N1: persisted local actors and server denials", async () => {
           "No administrative page payload"
         );
         for (const width of [1440, 1280, 1024, 820, 390, 320]) {
-          for (const reducedMotion of ["no-preference", "reduce"]) {
+          for (const motionMode of ["standard"]) {
             await page.setViewportSize({ width, height: 900 });
-            await page.emulateMedia({ reducedMotion });
             assert(
               await page.evaluate(
                 () => document.documentElement.scrollWidth <= innerWidth
               )
             );
             await page.screenshot({
-              path: `${output}/${actor}-${width}-${reducedMotion}.png`,
+              path: `${output}/${actor}-${width}-${motionMode}.png`,
             });
           }
         }

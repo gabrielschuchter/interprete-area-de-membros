@@ -31,11 +31,10 @@ await test("R1/R3: local Gestão rail and modal drawer", async () => {
 
   try {
     for (const width of [1440, 1280, 1024, 820, 390, 320]) {
-      for (const reducedMotion of ["no-preference", "reduce"]) {
+      for (const motionMode of ["standard"]) {
         const context = await browser.newContext({
           viewport: { width, height: 900 },
           hasTouch: width === 1024,
-          reducedMotion,
         });
         const page = await context.newPage();
         page.on("pageerror", (error) => errors.push(error.message));
@@ -70,7 +69,7 @@ await test("R1/R3: local Gestão rail and modal drawer", async () => {
             .waitFor();
           await finishMotion(page.getByRole("menu"));
           await page.screenshot({
-            path: `${output}/${width}-${reducedMotion}-rail.png`,
+            path: `${output}/${width}-${motionMode}-rail.png`,
           });
           await page.mouse.move(700, 700);
           await page.getByRole("menu").waitFor({ state: "hidden" });
@@ -169,7 +168,7 @@ await test("R1/R3: local Gestão rail and modal drawer", async () => {
             );
           }
           await page.screenshot({
-            path: `${output}/${width}-${reducedMotion}-drawer.png`,
+            path: `${output}/${width}-${motionMode}-drawer.png`,
           });
           await page.keyboard.press("Escape");
           await drawer.waitFor({ state: "hidden" });
@@ -256,7 +255,7 @@ await test("R1/R3: local Gestão rail and modal drawer", async () => {
             origin
           );
           await page.screenshot({
-            path: `${output}/${width}-${reducedMotion}-desktop.png`,
+            path: `${output}/${width}-${motionMode}-desktop.png`,
           });
         }
         assert.equal(
@@ -266,7 +265,7 @@ await test("R1/R3: local Gestão rail and modal drawer", async () => {
           true,
           "Horizontal overflow"
         );
-        results.push({ width, reducedMotion, passed: true });
+        results.push({ width, motionMode, passed: true });
         await context.close();
       }
     }
