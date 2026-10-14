@@ -24,4 +24,6 @@ Antes de publicar, validar Clerk e cada serviço indispensável, banco/migration
 
 ## Backlog fora do bloqueio funcional inicial
 
+Por decisão do usuário em 14/10/2026, a configuração e validação da integração YouTube ficam adiadas e não bloqueiam esta publicação. Preservar a implementação e a recusa explícita de publicar vídeos YouTube sem validação server-side; não apresentar a integração como validada. Upload e playback privado por Storage continuam no fechamento previsto.
+
 A comparação pixel a pixel de todos os 101 quadros, movimentos detalhados, dispositivos físicos e medições de percentis podem continuar após a publicação inicial. Integrações reais deixam de ser backlog quando forem indispensáveis a uma capacidade acima; se não puderem ser validadas, bloquear a publicação e registrar o motivo.
