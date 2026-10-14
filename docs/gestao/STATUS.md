@@ -1,13 +1,13 @@
 # Gestão V2 — estado operacional
 
-Atualizado após a correção de navegação em 13/10/2026. Fonte única para retomada; decisões de produto ficam em `DECISIONS.md`, critérios de primeira publicação em `MVP.md`, e o contrato visual/funcional completo no pacote de referência.
+Atualizado em 14/10/2026 após fechar a jornada local Ensino → aluno. Fonte única para retomada; decisões de produto ficam em `DECISIONS.md`, critérios de primeira publicação em `MVP.md`, e o contrato visual/funcional completo no pacote de referência.
 
 ## Git e ambiente
 
-- Worktree: `C:\Users\gabsc\.codex\worktrees\interprete-gestao\interprete-area-de-membros`; branch `gestao-v2`; base desta intervenção `1f2a046` (`feat(gestao): edit and publish cohort meetings`).
-- A correção de autorização da lista de atividades da aula está separada em `c5fb778`; a simplificação operacional e o runtime QA compartilhado estão em `a26d0f4`. Os ajustes funcionais seguintes foram registrados em commits focados. O único diff local fora dos commits é o ajuste CSS preexistente de cinco linhas responsivas em `apps/app/app/(authenticated)/gestao/gestao.css`; preserve-o. O checkout original em `Documents\Codex\interprete-area-de-membros` contém alterações de outro trabalho; não o use para esta frente.
-- Não há processo escutando nas portas 3000, 3002 ou 55433 na última sondagem. Preview e PostgreSQL QA precisam ser verificados e iniciados explicitamente antes de uso.
-- Nesta sondagem: aproximadamente 17 GiB livres em C, 16 GiB em D e 3,3 GiB de memória física livre. É uma amostra, não garantia de capacidade. Junctions locais existentes direcionam `.next-local-a2`, `.next-local-a2-d`, `.next-local-build-d`, `.next-local-item2-d` e `.next-local-preview3000-d` para D; preservá-las e verificar o destino antes do próximo processo pesado.
+- Worktree: `C:\Users\gabsc\.codex\worktrees\interprete-gestao\interprete-area-de-membros`; branch `gestao-v2`; última entrega funcional `46c1d59`, sobre a base `1f2a046`.
+- A autorização da lista de atividades está em `c5fb778`; simplificação operacional/runtime compartilhado em `a26d0f4`; prontidão do runtime frio em `28c9096`; escopo de atribuição em `46c1d59`. O único diff local é o ajuste CSS preexistente de cinco linhas responsivas em `apps/app/app/(authenticated)/gestao/gestao.css`; preserve-o. O checkout original em `Documents\Codex\interprete-area-de-membros` contém alterações de outro trabalho; não o use para esta frente.
+- Após os smoke locais, as portas 3000 e 3002 estão sem listener; PostgreSQL QA segue no loopback `127.0.0.1:55433`. Confira ambos antes de reutilizar e preserve a base e as fixtures existentes.
+- Sondagem de recursos de 13/10: aproximadamente 17 GiB livres em C, 16 GiB em D e 3,3 GiB de memória física livre; é uma amostra, não garantia. Junctions existentes direcionam `.next-local-a2`, `.next-local-a2-d`, `.next-local-build-d`, `.next-local-item2-d` e `.next-local-preview3000-d` para D; preserve-as e confira o destino se um processo pesado voltar a ser necessário.
 
 ## Capacidades comprovadas que podem ser reutilizadas
 
@@ -22,9 +22,9 @@ As evidências são locais e preservam fixtures mutáveis. Consultá-las antes d
 
 ## Estado e próxima entrega funcional
 
-**Ensino → aluno — implementação funcional local concluída.** Cursos, aulas, exercícios, biblioteca e coleções reutilizam os serviços existentes e aplicam publicação, escopo de acesso, atribuição e liberação no servidor. A evidência focada previamente registrada (36 testes em 5 arquivos) continua válida; nesta continuação, o caso de retomar sessão de exercícios já aberta foi corrigido em `apps/app/app/(authenticated)/exercicios/actions.ts` e coberto pelo teste de ações (11 testes passaram). Falta validar a jornada cruzada autenticada e reload sobre a candidata; Clerk, Storage e YouTube reais também não foram sondados nesta etapa.
+**Ensino → aluno — funcional local concluído.** Cursos, aulas, exercícios, biblioteca e coleções reutilizam os serviços existentes e aplicam publicação, escopo de acesso, atribuição e liberação no servidor; os 36 testes previamente registrados continuam válidos. Nesta rodada, o admin criou e publicou um curso, módulo e aula pela interface, atribuiu o curso a `gestao_qa_visual_student_01` (perfil fora do diretório público) e a aluna encontrou o envio e abriu o texto da aula após reload. Outro membro recebeu 404 no curso; a API de busca privada de destinatários retornou 403 para membro. Os dois testes focados desta rodada passaram (15/15), assim como typecheck do app e Biome nos sete arquivos funcionais alterados. Evidência é local com dev auth; Clerk, Storage/upload/playback e YouTube reais seguem sem prova. QA integrado dos cinco contextos e visual essencial fica para a candidata.
 
-**Comunidade — rotas operacionais conectadas.** `/gestao/comunidade`, `/publicacoes`, `/avisos`, `/avisos/novo` e `/encontros` encaminham para os fluxos staff existentes em `/admin/community`, `/admin/avisos` e `/admin/meetings`. O redirecionamento exige `community.moderate`; páginas e mutações de destino continuam exigindo papel staff. O teste de navegação cobre destinos conhecidos e rejeita subcaminhos não mapeados (7 testes passaram). Validação de interface e reload fica para a candidata.
+**Comunidade — próxima capacidade funcional.** `/gestao/comunidade`, `/publicacoes`, `/avisos`, `/avisos/novo` e `/encontros` encaminham para os fluxos staff existentes em `/admin/community`, `/admin/avisos` e `/admin/meetings`. O redirecionamento exige `community.moderate`; páginas e mutações de destino continuam exigindo papel staff. Os sete testes de navegação permanecem válidos. Falta provar as ações essenciais pela interface, persistência após reload e visibilidade para ator permitido/negado; corrigir apenas lacunas concretas antes da candidata.
 
 **Administração — destinos essenciais conectados.** Membros, acessos, gravações, personalização e medalhas encaminham apenas para telas existentes. As rotas da Gestão exigem admin; cada destino mantém sua própria guarda e mutações de papéis/acessos continuam restritas a admin. “Integrações” e “Registro de atividades” saíram da lista porque não têm uma tela operacional. Destinos desconhecidos retornam 404. A navegação tem 7 testes focados; typecheck e Biome passaram. Persistência por interface e reload continuam para a candidata.
 
@@ -46,7 +46,7 @@ Ao concluir as duas próximas capacidades, registrar aqui somente tempo até pro
 
 | Capacidade | Registro |
 |---|---|
-| Ensino → aluno | Implementação local concluída; QA integrado da candidata pendente |
-| Comunidade | Rotas conectadas a fluxos staff existentes; QA integrado da candidata pendente |
+| Ensino → aluno | Curso criado/publicado/atribuído, leitura após reload e negação a outro membro; QA integrado da candidata pendente |
+| Comunidade | Próxima capacidade funcional; ações pela interface e reload ainda sem prova |
 | Administração | Destinos essenciais conectados; QA integrado da candidata pendente |
 | Shell | Implementação local existente; QA integrado da candidata pendente |
