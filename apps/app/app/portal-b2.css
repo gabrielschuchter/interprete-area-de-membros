@@ -621,7 +621,7 @@
 }
 
 .member-route-page[data-route-transition-kind="back"][data-route-transition-phase="leaving"] {
-  animation-duration: 300ms;
+  animation-duration: var(--member-transition-duration, 160ms);
 }
 
 .portal-arc:active,
