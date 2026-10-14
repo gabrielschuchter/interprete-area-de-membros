@@ -1,4 +1,3 @@
-import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { closeSync, openSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
@@ -11,6 +10,15 @@ const qaDatabases = {
   visual: "interprete_gestao_visual_qa_20261012",
 };
 
+const localDistDirPattern = /^\.next-local-[a-z0-9-]+$/;
+const localActorPattern = /^(?:admin|teacher_[12]|student_\d{2})$/;
+
+const requireCondition = (condition, message) => {
+  if (!condition) {
+    throw new Error(message);
+  }
+};
+
 const isLoopbackHost = (hostname) =>
   hostname === "localhost" || hostname === "127.0.0.1";
 
@@ -19,15 +27,19 @@ async function assertPortAvailable(hostname, port) {
     const socket = createConnection({ host: hostname, port });
     const timeout = setTimeout(() => {
       socket.destroy();
-      rejectPort(new Error(`Não foi possível verificar com segurança a porta QA ${port}.`));
+      rejectPort(
+        new Error(
+          `Não foi possível verificar com segurança a porta QA ${port}.`
+        )
+      );
     }, 1500);
     socket.once("connect", () => {
       clearTimeout(timeout);
       socket.destroy();
       rejectPort(
         new Error(
-          `A porta QA ${port} já está em uso. Preserve o processo existente e escolha outra porta/distDir isolados.`,
-        ),
+          `A porta QA ${port} já está em uso. Preserve o processo existente e escolha outra porta/distDir isolados.`
+        )
       );
     });
     socket.once("error", (error) => {
@@ -37,9 +49,41 @@ async function assertPortAvailable(hostname, port) {
         resolvePort();
         return;
       }
-      rejectPort(new Error(`Não foi possível verificar com segurança a porta QA ${port}.`, { cause: error }));
+      rejectPort(
+        new Error(
+          `Não foi possível verificar com segurança a porta QA ${port}.`,
+          { cause: error }
+        )
+      );
     });
   });
+}
+
+async function waitForRuntime(owned, origin) {
+  const deadline = Date.now() + 120_000;
+  while (Date.now() < deadline) {
+    if (owned.exitCode !== null || owned.signalCode !== null) {
+      throw new Error("Owned QA runtime exited during startup");
+    }
+    try {
+      const response = await fetch(`${origin}/health`, {
+        signal: AbortSignal.timeout(30_000),
+      });
+      const health = await response.json();
+      const localAuthOnlyIsMissing =
+        response.status === 503 && health.checks?.auth === "missing";
+      if (
+        health.checks?.database === "ok" &&
+        (response.ok || localAuthOnlyIsMissing)
+      ) {
+        return owned;
+      }
+    } catch {
+      // Poll only the runtime this harness started.
+    }
+    await delay(500);
+  }
+  throw new Error("Owned QA runtime did not become ready within 60 seconds");
 }
 
 export function createGestaoLocalRuntime({
@@ -48,14 +92,26 @@ export function createGestaoLocalRuntime({
   caPath,
   outputDirectory,
 }) {
-  assert.equal(process.platform, "win32", "Gestão QA runtime currently targets Windows");
+  requireCondition(
+    process.platform === "win32",
+    "Gestão QA runtime currently targets Windows"
+  );
   const base = new URL(origin);
-  assert.equal(base.protocol, "http:");
-  assert(isLoopbackHost(base.hostname), "QA must bind to a loopback address");
-  assert.equal(base.port, "3002", "The application preview owns port 3000");
-  assert.match(distDir, /^\.next-local-[a-z0-9-]+$/);
-  assert(caPath, "The verified local database CA path is required");
-  assert(outputDirectory, "A per-run output directory is required");
+  requireCondition(base.protocol === "http:", "QA must use local HTTP");
+  requireCondition(
+    isLoopbackHost(base.hostname),
+    "QA must bind to a loopback address"
+  );
+  requireCondition(
+    base.port === "3002",
+    "The application preview owns port 3000"
+  );
+  requireCondition(
+    localDistDirPattern.test(distDir),
+    "QA must use an isolated local Next.js directory"
+  );
+  requireCondition(caPath, "The verified local database CA path is required");
+  requireCondition(outputDirectory, "A per-run output directory is required");
 
   const appRoot = resolve("apps/app");
   let child;
@@ -77,13 +133,15 @@ export function createGestaoLocalRuntime({
       const killer = spawn(
         "taskkill.exe",
         ["/PID", String(current.pid), "/T", "/F"],
-        { windowsHide: true, stdio: "ignore" },
+        { windowsHide: true, stdio: "ignore" }
       );
       killer.once("error", rejectStop);
       killer.once("exit", (code) => {
         if (code !== 0 && current.exitCode === null) {
           rejectStop(
-            new Error(`Não foi possível encerrar o runtime QA próprio (${current.pid}).`),
+            new Error(
+              `Não foi possível encerrar o runtime QA próprio (${current.pid}).`
+            )
           );
           return;
         }
@@ -93,9 +151,15 @@ export function createGestaoLocalRuntime({
   };
 
   const start = async (actor, profile, logPath) => {
-    assert.match(actor, /^(?:admin|teacher_[12]|student_\d{2})$/);
-    assert(Object.hasOwn(qaDatabases, profile), "Select an explicit local QA profile");
-    assert(logPath, "A per-actor QA log path is required");
+    requireCondition(
+      localActorPattern.test(actor),
+      "Select an explicit local QA actor"
+    );
+    requireCondition(
+      Object.hasOwn(qaDatabases, profile),
+      "Select an explicit local QA profile"
+    );
+    requireCondition(logPath, "A per-actor QA log path is required");
 
     const nextActorKey = `${profile}:${actor}`;
     if (child && actorKey === nextActorKey) {
@@ -140,7 +204,7 @@ export function createGestaoLocalRuntime({
             NEXT_PUBLIC_APP_URL: origin,
             NEXT_PUBLIC_API_URL: "http://localhost:3001",
           },
-        },
+        }
       );
     } finally {
       closeSync(logFd);
@@ -155,29 +219,8 @@ export function createGestaoLocalRuntime({
       }
     });
 
-    const deadline = Date.now() + 120_000;
     try {
-      while (Date.now() < deadline) {
-        assert.equal(owned.exitCode, null, "Owned QA runtime exited during startup");
-        try {
-          const response = await fetch(`${origin}/health`, {
-            signal: AbortSignal.timeout(30_000),
-          });
-          const health = await response.json();
-          const localAuthOnlyIsMissing =
-            response.status === 503 && health.checks?.auth === "missing";
-          if (
-            health.checks?.database === "ok" &&
-            (response.ok || localAuthOnlyIsMissing)
-          ) {
-            return owned;
-          }
-        } catch {
-          // Poll only the runtime this harness started.
-        }
-        await delay(500);
-      }
-      throw new Error("Owned QA runtime did not become ready within 60 seconds");
+      return await waitForRuntime(owned, origin);
     } catch (error) {
       await stop();
       throw error;

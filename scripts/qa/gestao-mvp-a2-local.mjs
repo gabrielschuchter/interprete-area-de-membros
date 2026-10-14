@@ -13,11 +13,32 @@ const draftPattern = /resultado=rascunho-salvo/;
 const expectedDeniedResource = /Failed to load resource.*(?:403|404)/;
 const qaDistDir = process.env.QA_MVP_A2_DIST_DIR ?? ".next-local-a2";
 
+const assertPreviewWasPreserved = async (beforeStatus, preview, results) => {
+  if (beforeStatus === null) {
+    if (preview !== null) {
+      throw new Error("QA must not start or occupy the preview port");
+    }
+    results.push("preview3000-was-stopped-and-remained-unused");
+    return;
+  }
+
+  if (
+    preview?.status !== beforeStatus ||
+    preview.status !== 200 ||
+    !(await preview.text()).includes("Esta semana")
+  ) {
+    throw new Error("The original preview on port 3000 changed during QA");
+  }
+  results.push("original-preview3000-preserved");
+};
+
 await test("A2 local: private draft, resume and next filtered pending submission", async () => {
   assert.equal(process.platform, "win32");
   assert.equal(process.env.QA_MVP_A2_WRITE, "true");
   const base = "http://127.0.0.1:3002";
-  const previewBefore = await fetch("http://127.0.0.1:3000/gestao").catch(() => null);
+  const previewBefore = await fetch("http://127.0.0.1:3000/gestao").catch(
+    () => null
+  );
   const previewBeforeStatus = previewBefore?.status ?? null;
   const output = resolve("output/playwright/gestao-v2/mvp-a2-round2");
   const slug = "gestao-qa-mvp-a2-20261013-2";
@@ -536,16 +557,10 @@ await test("A2 local: private draft, resume and next filtered pending submission
     );
     assert.deepEqual(pageErrors, []);
     assert.deepEqual(consoleErrors, []);
-    const preview = await fetch("http://127.0.0.1:3000/gestao").catch(() => null);
-    if (previewBeforeStatus === null) {
-      assert.equal(preview, null, "QA must not start or occupy the preview port");
-      results.push("preview3000-was-stopped-and-remained-unused");
-    } else {
-      assert.equal(preview?.status, previewBeforeStatus);
-      assert.equal(preview?.status, 200);
-      assert((await preview.text()).includes("Esta semana"));
-      results.push("original-preview3000-preserved");
-    }
+    const preview = await fetch("http://127.0.0.1:3000/gestao").catch(
+      () => null
+    );
+    await assertPreviewWasPreserved(previewBeforeStatus, preview, results);
   } catch (error) {
     console.error(error);
     throw error;
