@@ -19,6 +19,7 @@ import {
   hasLessonAccess,
   hasModuleAccess,
 } from "@/lib/content-access";
+import { buildLibraryItemAccessWhere } from "@/lib/library";
 
 export type GlobalSearchResultType =
   | "path"
@@ -388,11 +389,16 @@ export const searchGlobal = async (memberId: string, rawQuery: string) => {
       tracePerformance("member.search.library", () =>
         database.libraryItem.findMany({
           where: {
-            ...published,
-            OR: [
-              { title: contains(query) },
-              { description: contains(query) },
-              { category: contains(query) },
+            AND: [
+              published,
+              buildLibraryItemAccessWhere(scope),
+              {
+                OR: [
+                  { title: contains(query) },
+                  { description: contains(query) },
+                  { category: contains(query) },
+                ],
+              },
             ],
           },
           orderBy: [{ position: "asc" }, { createdAt: "desc" }],

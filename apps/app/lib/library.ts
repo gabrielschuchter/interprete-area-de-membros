@@ -98,7 +98,7 @@ const buildLibraryWhere = ({
   return { normalizedQuery, where };
 };
 
-const buildLessonAccessWhere = (
+export const buildLibraryItemAccessWhere = (
   scope: LibraryAccessScope
 ): Prisma.LibraryItemWhereInput => {
   const publishedLesson: Prisma.LessonWhereInput = {
@@ -207,7 +207,7 @@ export const getLibraryItems = async ({
   const pageOffset = (currentPage - 1) * PAGE_SIZE;
   const rowLimit: number =
     normalizedSort === "relevant" ? MAX_RELEVANCE_CANDIDATES : PAGE_SIZE + 1;
-  const lessonAccessWhere = buildLessonAccessWhere(scope);
+  const lessonAccessWhere = buildLibraryItemAccessWhere(scope);
   const filteredWhere = { AND: [where, lessonAccessWhere] };
   const [rows, totalCount] = await Promise.all([
     tracePerformance("member.library.items-query", () =>
