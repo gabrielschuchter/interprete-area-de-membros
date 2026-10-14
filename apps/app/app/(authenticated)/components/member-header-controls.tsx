@@ -2,17 +2,46 @@
 
 import { Button } from "@repo/design-system/components/ui/button";
 import { toast } from "@repo/design-system/lib/toast";
-import { BookmarkIcon, SearchIcon } from "lucide-react";
+import { BellIcon, BookmarkIcon, SearchIcon } from "lucide-react";
 import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { IntentLink } from "./intent-link";
-import { NotificationRealtime } from "./notification-realtime";
-import { NotificationsPopover } from "./notifications-popover";
 
 const GlobalSearch = dynamic(
   () => import("./global-search").then((module) => module.GlobalSearch),
   { ssr: false }
+);
+
+const NotificationRealtime = dynamic(
+  () =>
+    import("./notification-realtime").then(
+      (module) => module.NotificationRealtime
+    ),
+  { ssr: false }
+);
+
+const NotificationsPopover = dynamic(
+  () =>
+    import("./notifications-popover").then(
+      (module) => module.NotificationsPopover
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <Button
+        aria-busy="true"
+        aria-label="Carregando notificações"
+        className="size-10 rounded-full"
+        disabled
+        size="icon-sm"
+        type="button"
+        variant="ghost"
+      >
+        <BellIcon aria-hidden="true" />
+      </Button>
+    ),
+  }
 );
 
 type ActiveOverlay = "search" | "notifications" | null;

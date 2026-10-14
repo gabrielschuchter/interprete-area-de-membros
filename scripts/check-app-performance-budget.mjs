@@ -9,7 +9,9 @@ const leadingSlashesPattern = /^[/\\]+/u;
 const appRoot = join(repositoryRoot, "apps", "app");
 const outputDirectory = resolve(
   appRoot,
-  process.env.INTERPRETE_NEXT_DIST_DIR ?? ".next"
+  process.env.INTERPRETE_LOCAL_DIST_DIR ??
+    process.env.INTERPRETE_NEXT_DIST_DIR ??
+    ".next"
 );
 const budget = JSON.parse(
   await readFile(join(appRoot, "performance-budget.json"), "utf8")

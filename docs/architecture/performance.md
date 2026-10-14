@@ -5,6 +5,11 @@ the work on the critical path first; use visual feedback and speculative work
 to shorten perceived waits only after authorization, persistence, and delivery
 are correct.
 
+The notification popover and Realtime connection load in asynchronous chunks
+after header hydration. The loading bell is explicit; the existing summary,
+polling, authorization, and durable notification delivery remain in place.
+Local bundle checks read the same isolated output directory as the Next build.
+
 ## Budgets
 
 These are acceptance targets, not claims about current production. Measure on a

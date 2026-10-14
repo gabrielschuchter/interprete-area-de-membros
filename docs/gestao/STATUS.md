@@ -71,6 +71,8 @@ As evidências são locais e preservam fixtures mutáveis. Consultá-las antes d
 
 ## Release e verificação
 
+**Deployment14/10 — correção do gate real em andamento:** main recebeu0b9ac4b. API publicada READY em dpl_GMYkbMHrtgCif22GpKte76xLpT1B, alias oficial preservado. App dpl_2j6adizfT6H9jjALJDe5U2vysT2U terminou ERROR somente no orçamento JS: calendário233.749B, editor231.717B, planner233.276B, ferramentas231.583B para teto230.400B; compilação, testes e TypeScript passaram. O app anterior permanece publicado. O verificador local lia .next antigo quando Next gerava .next-local-build-d; seleção de diretório corrigida, sem aumentar orçamento. Popover/Realtime de notificações passam a chunks assíncronos, preservando estado explícito de carregamento, resumo/polling e autorização. Build novo passou com artefato correto: calendário219,7KiB, editor217,8KiB, planner219,5KiB, ferramentas217,8KiB. Falta gate Vercel e smoke do app; não repetir migrations nem reconstruir jornadas encerradas.
+
 YouTube adiado pelo usuário em 14/10/2026: chave ausente deixa de bloquear o release. Não solicitar novamente nem contornar a validação de publicação do vídeo. Retomar configuração em etapa futura; Storage, Clerk e demais gates seguem necessários.
 
 A primeira publicação exige as capacidades de `MVP.md`, autorização fresca em rotas e ações, persistência, QA integrado nos cinco contextos de acesso, fluxos Gestão → aluno, interface essencial utilizável em desktop/mobile e ausência de risco crítico. Clerk e demais integrações indispensáveis precisam de prova real no preflight. Comparação exaustiva dos 101 quadros é backlog separado.
