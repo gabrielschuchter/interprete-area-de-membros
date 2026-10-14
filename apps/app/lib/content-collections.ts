@@ -129,6 +129,20 @@ const collectionItemSelect = {
       kind: true,
       status: true,
       url: true,
+      lesson: {
+        select: {
+          id: true,
+          status: true,
+          moduleId: true,
+          module: {
+            select: {
+              status: true,
+              courseId: true,
+              course: { select: { status: true } },
+            },
+          },
+        },
+      },
     },
   },
 } as const;
@@ -337,6 +351,33 @@ type CollectionWithItems = Prisma.ContentCollectionGetPayload<{
 const resolveLegacyRecording = (item: CollectionWithItems["items"][number]) =>
   item.recording ?? item.asset?.importedRecording ?? null;
 
+const canReadLibraryItem = (
+  item: CollectionWithItems["items"][number],
+  fullAccess: boolean,
+  scope: Awaited<ReturnType<typeof getLearningAccessScope>>
+) => {
+  const libraryItem = item.libraryItem;
+  if (!libraryItem || libraryItem.status !== ContentStatus.PUBLISHED) {
+    return false;
+  }
+  const lesson = libraryItem.lesson;
+  if (!lesson) {
+    return true;
+  }
+  if (
+    lesson.status !== ContentStatus.PUBLISHED ||
+    lesson.module.status !== ContentStatus.PUBLISHED ||
+    lesson.module.course.status !== ContentStatus.PUBLISHED
+  ) {
+    return false;
+  }
+  return (
+    fullAccess ||
+    scope.libraryItemIds.has(libraryItem.id) ||
+    hasLessonAccess(scope, lesson.module.courseId, lesson.moduleId, lesson.id)
+  );
+};
+
 export const collectionItemHref = (
   item: CollectionWithItems["items"][number]
 ) => {
@@ -418,10 +459,9 @@ export const canReadCollectionItem = (
     );
   }
 
-  return (
-    item.itemType === "LIBRARY_ITEM" &&
-    item.libraryItem?.status === ContentStatus.PUBLISHED
-  );
+  return item.itemType === "LIBRARY_ITEM"
+    ? canReadLibraryItem(item, fullAccess, scope)
+    : false;
 };
 
 const filterCollectionForMember = (

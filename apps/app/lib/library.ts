@@ -119,6 +119,12 @@ const buildLessonAccessWhere = (
   const accessibleLessons: Prisma.LibraryItemWhereInput[] = [
     { lessonId: null },
   ];
+  if (scope.libraryItemIds.size > 0) {
+    accessibleLessons.push({
+      id: { in: [...scope.libraryItemIds] },
+      lesson: { is: publishedLesson },
+    });
+  }
   if (scope.lessonIds.size > 0) {
     accessibleLessons.push({
       lesson: {
@@ -159,6 +165,7 @@ const buildLessonAccessWhere = (
 };
 
 const hasLinkedLessonAccess = (
+  itemId: string,
   lesson: {
     id: string;
     moduleId: string;
@@ -174,7 +181,8 @@ const hasLinkedLessonAccess = (
   lesson.status === ContentStatus.PUBLISHED &&
   lesson.module.status === ContentStatus.PUBLISHED &&
   lesson.module.course.status === ContentStatus.PUBLISHED &&
-  hasLessonAccess(scope, lesson.module.courseId, lesson.moduleId, lesson.id);
+  (scope.libraryItemIds.has(itemId) ||
+    hasLessonAccess(scope, lesson.module.courseId, lesson.moduleId, lesson.id));
 
 export const getLibraryItems = async ({
   query,
@@ -262,7 +270,7 @@ export const getLibraryItems = async ({
     ),
   ]);
   const accessibleRows = rows.filter(
-    (row) => !row.lesson || hasLinkedLessonAccess(row.lesson, scope)
+    (row) => !row.lesson || hasLinkedLessonAccess(row.id, row.lesson, scope)
   );
   const repeatViews =
     normalizedSort === "relevant" && accessibleRows.length > 0
@@ -392,12 +400,13 @@ export const getPublishedLibraryItem = async (id: string, memberId: string) => {
         lesson.status === ContentStatus.PUBLISHED &&
         lesson.module.status === ContentStatus.PUBLISHED &&
         lesson.module.course.status === ContentStatus.PUBLISHED &&
-        hasLessonAccess(
-          scope,
-          lesson.module.courseId,
-          lesson.moduleId,
-          lesson.id
-        )
+        (scope.libraryItemIds.has(item.id) ||
+          hasLessonAccess(
+            scope,
+            lesson.module.courseId,
+            lesson.moduleId,
+            lesson.id
+          ))
       )
     ) {
       return null;
@@ -450,11 +459,9 @@ export const hasPublishedLibraryItemAccess = async (
     return false;
   }
   const scope = await getLearningAccessScope(memberId);
-  return hasLessonAccess(
-    scope,
-    lesson.module.courseId,
-    lesson.moduleId,
-    lesson.id
+  return (
+    scope.libraryItemIds.has(item.id) ||
+    hasLessonAccess(scope, lesson.module.courseId, lesson.moduleId, lesson.id)
   );
 };
 
@@ -649,11 +656,14 @@ const itemBookmarkCard = (
     (lesson.status !== ContentStatus.PUBLISHED ||
       lesson.module.status !== ContentStatus.PUBLISHED ||
       lesson.module.course.status !== ContentStatus.PUBLISHED ||
-      !hasLessonAccess(
-        scope,
-        lesson.module.courseId,
-        lesson.moduleId,
-        lesson.id
+      !(
+        scope.libraryItemIds.has(item.id) ||
+        hasLessonAccess(
+          scope,
+          lesson.module.courseId,
+          lesson.moduleId,
+          lesson.id
+        )
       ))
   ) {
     return null;

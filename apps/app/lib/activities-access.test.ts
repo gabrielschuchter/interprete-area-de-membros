@@ -158,6 +158,7 @@ test("lesson links include only activities authorized for the member", () => {
     courseIds: new Set(),
     fullAccess: false,
     fullCourseIds: new Set(),
+    libraryItemIds: new Set(),
     lessonIds: new Set(),
     moduleIds: new Set(),
     recordingIds: new Set(),

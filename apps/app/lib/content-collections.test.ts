@@ -24,7 +24,21 @@ vi.mock("./content-access", () => ({
   getLearningAccessScope: vi.fn(),
   hasCourseAccess: (value: { courseIds: Set<string> }, id: string) =>
     value.courseIds.has(id),
-  hasLessonAccess: vi.fn(),
+  hasLessonAccess: (
+    value: {
+      courseIds: Set<string>;
+      fullCourseIds: Set<string>;
+      lessonIds: Set<string>;
+      moduleIds: Set<string>;
+    },
+    courseId: string,
+    moduleId: string,
+    lessonId: string
+  ) =>
+    value.courseIds.has(courseId) ||
+    value.fullCourseIds.has(courseId) ||
+    value.moduleIds.has(moduleId) ||
+    value.lessonIds.has(lessonId),
 }));
 
 import {
@@ -38,6 +52,7 @@ const scope = {
   courseIds: new Set<string>(),
   fullAccess: false,
   fullCourseIds: new Set<string>(),
+  libraryItemIds: new Set<string>(),
   lessonIds: new Set<string>(),
   moduleIds: new Set<string>(),
   recordingIds: new Set<string>(),
@@ -56,6 +71,29 @@ const collectionItem = (overrides: Record<string, unknown> = {}) =>
     libraryItem: null,
     ...overrides,
   }) as Parameters<typeof canReadCollectionItem>[0];
+
+const linkedLibraryItem = (id: string, parentCourseStatus = "PUBLISHED") =>
+  collectionItem({
+    itemType: "LIBRARY_ITEM",
+    libraryItem: {
+      id,
+      title: `Material ${id}`,
+      description: null,
+      kind: "ARTICLE",
+      status: "PUBLISHED",
+      url: null,
+      lesson: {
+        id: "lesson-1",
+        status: "PUBLISHED",
+        moduleId: "module-1",
+        module: {
+          status: "PUBLISHED",
+          courseId: "course-1",
+          course: { status: parentCourseStatus },
+        },
+      },
+    },
+  });
 
 describe("published collection authorization", () => {
   test("labels member-visible recordings without exposing a legacy student's name", () => {
@@ -149,6 +187,37 @@ describe("published collection authorization", () => {
     });
 
     expect(canReadCollectionItem(item, "member-1", false, scope)).toBe(false);
+  });
+
+  test("requires lesson access for linked library items unless the exact item is assigned", () => {
+    const assigned = linkedLibraryItem("assigned-item");
+    const sibling = linkedLibraryItem("sibling-item");
+    const exactItemScope = {
+      ...scope,
+      libraryItemIds: new Set(["assigned-item"]),
+    };
+
+    expect(canReadCollectionItem(assigned, "member-1", false, scope)).toBe(
+      false
+    );
+    expect(
+      canReadCollectionItem(assigned, "member-1", false, exactItemScope)
+    ).toBe(true);
+    expect(
+      canReadCollectionItem(sibling, "member-1", false, exactItemScope)
+    ).toBe(false);
+    expect(canReadCollectionItem(assigned, "admin-1", true, scope)).toBe(true);
+  });
+
+  test("does not let an item assignment bypass an unpublished parent", () => {
+    const item = linkedLibraryItem("assigned-item", "DRAFT");
+
+    expect(
+      canReadCollectionItem(item, "member-1", false, {
+        ...scope,
+        libraryItemIds: new Set(["assigned-item"]),
+      })
+    ).toBe(false);
   });
 
   test("only exposes a published async course when the member has access", () => {

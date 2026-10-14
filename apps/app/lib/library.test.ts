@@ -53,6 +53,7 @@ describe("library lesson access", () => {
       courseIds: new Set(),
       fullAccess: true,
       fullCourseIds: new Set(),
+      libraryItemIds: new Set(),
       lessonIds: new Set(),
       moduleIds: new Set(),
       recordingIds: new Set(),
@@ -148,6 +149,43 @@ describe("library lesson access", () => {
     });
   });
 
+  test("filters directly assigned catalog items and counts by published parent", async () => {
+    getLearningAccessScope.mockResolvedValue({
+      assetIds: new Set(),
+      courseIds: new Set(),
+      fullAccess: false,
+      fullCourseIds: new Set(),
+      libraryItemIds: new Set(["assigned-library-item"]),
+      lessonIds: new Set(),
+      moduleIds: new Set(),
+      recordingIds: new Set(),
+    });
+
+    await getLibraryItems({ memberId: "member-1" });
+
+    const listWhere = database.libraryItem.findMany.mock.calls[0]?.[0].where;
+    const countWhere = database.libraryItem.count.mock.calls[0]?.[0].where;
+    const itemGrant = listWhere.AND[1].OR.find(
+      (condition: { id?: { in?: string[] } }) => condition.id?.in
+    );
+
+    expect(itemGrant).toEqual({
+      id: { in: ["assigned-library-item"] },
+      lesson: {
+        is: {
+          status: "PUBLISHED",
+          module: {
+            is: {
+              status: "PUBLISHED",
+              course: { is: { status: "PUBLISHED" } },
+            },
+          },
+        },
+      },
+    });
+    expect(countWhere).toEqual(listWhere);
+  });
+
   test("starts a library assignment only after linked-lesson access succeeds", async () => {
     const item = {
       id: "assigned-library-item",
@@ -167,6 +205,7 @@ describe("library lesson access", () => {
       courseIds: new Set(["course-1"]),
       fullAccess: false,
       fullCourseIds: new Set(),
+      libraryItemIds: new Set(),
       lessonIds: new Set(["lesson-1"]),
       moduleIds: new Set(),
       recordingIds: new Set(),
@@ -187,6 +226,51 @@ describe("library lesson access", () => {
     markLearningAssignmentStarted.mockClear();
     await expect(
       getPublishedLibraryItem(item.id, "member-1")
+    ).resolves.toBeNull();
+    expect(markLearningAssignmentStarted).not.toHaveBeenCalled();
+  });
+
+  test("opens the assigned library item without granting its lesson", async () => {
+    const item = {
+      id: "assigned-library-item",
+      lesson: {
+        id: "lesson-1",
+        status: "PUBLISHED",
+        moduleId: "module-1",
+        module: {
+          status: "PUBLISHED",
+          courseId: "course-1",
+          course: { status: "PUBLISHED" },
+        },
+      },
+    };
+    getLearningAccessScope.mockResolvedValue({
+      assetIds: new Set(),
+      courseIds: new Set(),
+      fullAccess: false,
+      fullCourseIds: new Set(),
+      libraryItemIds: new Set([item.id]),
+      lessonIds: new Set(),
+      moduleIds: new Set(),
+      recordingIds: new Set(),
+    });
+    database.libraryItem.findFirst.mockResolvedValue(item);
+    hasLessonAccess.mockReturnValue(false);
+
+    await expect(getPublishedLibraryItem(item.id, "member-1")).resolves.toBe(
+      item
+    );
+    expect(markLearningAssignmentStarted).toHaveBeenCalledWith(
+      "member-1",
+      "LIBRARY_ITEM",
+      item.id
+    );
+
+    const sibling = { ...item, id: "sibling-library-item" };
+    database.libraryItem.findFirst.mockResolvedValue(sibling);
+    markLearningAssignmentStarted.mockClear();
+    await expect(
+      getPublishedLibraryItem(sibling.id, "member-1")
     ).resolves.toBeNull();
     expect(markLearningAssignmentStarted).not.toHaveBeenCalled();
   });

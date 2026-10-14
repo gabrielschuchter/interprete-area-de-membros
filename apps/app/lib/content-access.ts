@@ -40,6 +40,7 @@ export interface LearningAccessScope {
   readonly fullAccess: boolean;
   readonly fullCourseIds: ReadonlySet<string>;
   readonly lessonIds: ReadonlySet<string>;
+  readonly libraryItemIds: ReadonlySet<string>;
   readonly moduleIds: ReadonlySet<string>;
   readonly origins?: readonly LearningAccessOrigin[];
   readonly readOnlyCourseIds?: ReadonlySet<string>;
@@ -51,6 +52,7 @@ const emptyScope = (): LearningAccessScope => ({
   fullAccess: false,
   fullCourseIds: new Set(),
   courseIds: new Set(),
+  libraryItemIds: new Set(),
   cohortIds: new Set(),
   cohortMemberships: new Map(),
   moduleIds: new Set(),
@@ -68,6 +70,7 @@ interface MutableAccessScope {
   fullAccess: false;
   fullCourseIds: Set<string>;
   lessonIds: Set<string>;
+  libraryItemIds: Set<string>;
   moduleIds: Set<string>;
   origins: LearningAccessOrigin[];
   readOnlyCourseIds: Set<string>;
@@ -100,6 +103,9 @@ const addResourceAccess = (
       break;
     case LearningAssignmentTargetType.RECORDING:
       scope.recordingIds.add(resourceId);
+      break;
+    case LearningAssignmentTargetType.LIBRARY_ITEM:
+      scope.libraryItemIds.add(resourceId);
       break;
     default:
       return;
@@ -179,6 +185,7 @@ const buildScopedResources = (
     moduleIds: new Set(),
     unavailableLessonIds: new Set(),
     lessonIds: new Set(),
+    libraryItemIds: new Set(),
     recordingIds: new Set(),
     assetIds: new Set(),
     origins: [],
@@ -603,6 +610,7 @@ const getLearningAccessScopeUncached = async (
     ),
     moduleIds: scope.moduleIds,
     unavailableLessonIds: scope.unavailableLessonIds,
+    libraryItemIds: scope.libraryItemIds,
     lessonIds: scope.lessonIds,
     assetIds: scope.assetIds,
     recordingIds: scope.recordingIds,

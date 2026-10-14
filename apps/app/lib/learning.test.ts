@@ -66,6 +66,7 @@ const makeScope = (overrides: Record<string, unknown> = {}) => ({
   courseIds: new Set<string>(),
   fullAccess: false,
   fullCourseIds: new Set<string>(),
+  libraryItemIds: new Set<string>(),
   lessonIds: new Set<string>(),
   moduleIds: new Set<string>(),
   recordingIds: new Set<string>(),

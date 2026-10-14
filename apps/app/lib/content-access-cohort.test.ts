@@ -30,6 +30,7 @@ vi.mock("@repo/database", () => ({
     LESSON: "LESSON",
     ASSET: "ASSET",
     RECORDING: "RECORDING",
+    LIBRARY_ITEM: "LIBRARY_ITEM",
   },
   MemberRole: { ADMIN: "ADMIN", TEACHER: "TEACHER", MEMBER: "MEMBER" },
   database: databaseMock,
@@ -207,6 +208,23 @@ describe("cohort-backed learning access", () => {
     const scope = await getLearningAccessScope("member-a");
 
     expect(hasCourseAccess(scope, "course-a")).toBe(false);
+  });
+
+  it("keeps a library-item assignment scoped to that exact item", async () => {
+    databaseMock.activityAssignment.findMany.mockResolvedValue([
+      {
+        id: "assignment-item-1",
+        targetType: "LIBRARY_ITEM",
+        targetId: "library-item-1",
+      },
+    ]);
+
+    const scope = await getLearningAccessScope("member-a");
+
+    expect(scope.libraryItemIds).toEqual(new Set(["library-item-1"]));
+    expect(scope.lessonIds.size).toBe(0);
+    expect(scope.moduleIds.size).toBe(0);
+    expect(scope.courseIds.size).toBe(0);
   });
 
   it("lets an independent enrollment keep a cohort course writable", async () => {

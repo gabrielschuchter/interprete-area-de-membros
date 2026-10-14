@@ -44,6 +44,7 @@ const accessScope = (
     courseIds: string[];
     fullAccess: boolean;
     fullCourseIds: string[];
+    libraryItemIds: string[];
     lessonIds: string[];
     moduleIds: string[];
     recordingIds: string[];
@@ -53,6 +54,7 @@ const accessScope = (
   courseIds: new Set(input.courseIds ?? []),
   fullAccess: input.fullAccess ?? false,
   fullCourseIds: new Set(input.fullCourseIds ?? []),
+  libraryItemIds: new Set(input.libraryItemIds ?? []),
   lessonIds: new Set(input.lessonIds ?? []),
   moduleIds: new Set(input.moduleIds ?? []),
   recordingIds: new Set(input.recordingIds ?? []),
