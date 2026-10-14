@@ -838,6 +838,7 @@
 
   .portal-intro {
     width: 100%;
+    transform: translateY(-6px);
   }
 
   .portal-greeting {
@@ -858,7 +859,7 @@
 
   .portal-discovery {
     width: 100%;
-    margin-top: 22px;
+    margin-top: 13px;
   }
 
   .portal-stage {
@@ -1038,9 +1039,11 @@
   }
 
   .portal-shortcut {
+    box-sizing: border-box;
     flex-direction: column;
     gap: 4px;
     justify-content: center;
+    height: 56px;
     min-height: 56px;
     padding: 5px 3px;
     font-size: 12px;
