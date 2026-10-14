@@ -9,7 +9,6 @@ Concluir a base funcional da Gestão V2 no worktree `interprete-gestao`, fazer Q
 - `docs/gestao/STATUS.md` é a única fonte do estado, das evidências reutilizáveis, das lacunas e do próximo passo.
 - `docs/gestao/MVP.md` define as capacidades e os critérios da primeira publicação.
 - Ordem: completar lacunas funcionais locais → QA integrado → corrigir → preflight/publicação → smoke real.
-- Próxima área funcional: Ensino → aluno. Reaproveite os CRUDs existentes e feche o acesso e o consumo pelo aluno; não repita jornadas comprovadas sem uma mudança que as afete.
 
 ## Critério da primeira publicação
 
