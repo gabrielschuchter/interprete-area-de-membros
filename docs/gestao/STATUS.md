@@ -4,7 +4,7 @@ Atualizado em 14/10/2026 após fechar localmente Ensino → aluno, Comunidade, A
 
 ## Git e ambiente
 
-- Worktree: `C:\Users\gabsc\.codex\worktrees\interprete-gestao\interprete-area-de-membros`; branch `gestao-v2`; commits desta rodada: `f3a7298` (dados de membros restritos a Admin) e `62aba27` (origem, efeito e validade da concessão direta).
+- Worktree: `C:\Users\gabsc\.codex\worktrees\interprete-gestao\interprete-area-de-membros`; branch `gestao-v2`; commit adicional desta rodada: `d4be4db` (lint e complexidade do runtime QA, sem mudar comportamento). Os commits anteriores desta rodada são `f3a7298` (dados de membros restritos a Admin) e `62aba27` (origem, efeito e validade da concessão direta).
 - A autorização da lista de atividades está em `c5fb778`; simplificação operacional/runtime compartilhado em `a26d0f4`; prontidão do runtime frio em `28c9096`; escopo de atribuição em `46c1d59`. O único diff de código local é o ajuste CSS preexistente de cinco linhas responsivas em `apps/app/app/(authenticated)/gestao/gestao.css`; preserve-o. O checkout original em `Documents\Codex\interprete-area-de-membros` contém alterações de outro trabalho; não o use para esta frente.
 - Após os smoke locais, as portas 3000 e 3002 estão sem listener; PostgreSQL QA segue no loopback `127.0.0.1:55433`. Confira ambos antes de reutilizar e preserve a base e as fixtures existentes.
 - Sondagem de recursos de 13/10: aproximadamente 17 GiB livres em C, 16 GiB em D e 3,3 GiB de memória física livre; é uma amostra, não garantia. Junctions existentes direcionam `.next-local-a2`, `.next-local-a2-d`, `.next-local-build-d`, `.next-local-item2-d` e `.next-local-preview3000-d` para D; preserve-as e confira o destino se um processo pesado voltar a ser necessário.
@@ -30,7 +30,9 @@ As evidências são locais e preservam fixtures mutáveis. Consultá-las antes d
 
 **Shell — funcional local concluído.** Busca global retornou resultados e o popover abriu com estado vazio explícito; os destinos de navegação, aviso, atribuição e prévias mantêm as rotas existentes e oito testes de mapeamento. As páginas administrativas alteradas não tiveram overflow a 320 px. O endpoint de realtime retornou `503` no runtime local de dev auth (`auth: missing`, banco `ok`); não comprova Clerk/realtime publicado. Veja o registro local acima.
 
-**Próximo:** congelar a candidata local e executar o QA integrado final previsto em `MVP.md`, reutilizando as evidências ainda válidas. Build/suíte integral não foram executados nesta rodada; publicação segue depois do QA e do preflight real de Clerk, banco, Storage/YouTube indispensáveis e Vercel.
+**Fechamento técnico da candidata (14/10):** `bun run check` passou em 945 arquivos; `bun run typecheck` passou em 16 pacotes; `bun run boundaries` passou em 876 arquivos/19 pacotes. Um único `bun run build --concurrency=1` usou `INTERPRETE_LOCAL_DIST_DIR=.next-local-build-d` (junction para D) e `SKIP_ENV_VALIDATION=true`: 8 tarefas concluíram, os testes do app passaram (155 arquivos/757 testes) e os 26 orçamentos de performance ficaram abaixo de 225 KiB. O build prova compilação e gates locais, não autenticação Clerk nem Storage/YouTube reais.
+
+**Próximo:** QA integrado autenticado da candidata, cruzando Gestão → aluno e os cinco contextos, com as evidências A2/T2, calendário, Administração e Shell reutilizadas onde não houve mudança; repetir somente cenários que faltarem ou forem afetados. Depois, preflight real de Clerk, banco/migrations/RLS, Storage/YouTube indispensáveis e Vercel, seguido de publicação e smoke real. Item Ensino → aluno segue fechado localmente; nenhuma implementação funcional foi reconstruída nesta rodada.
 
 ## Release e verificação
 
