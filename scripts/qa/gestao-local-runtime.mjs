@@ -155,13 +155,13 @@ export function createGestaoLocalRuntime({
       }
     });
 
-    const deadline = Date.now() + 60_000;
+    const deadline = Date.now() + 120_000;
     try {
       while (Date.now() < deadline) {
         assert.equal(owned.exitCode, null, "Owned QA runtime exited during startup");
         try {
           const response = await fetch(`${origin}/health`, {
-            signal: AbortSignal.timeout(1000),
+            signal: AbortSignal.timeout(30_000),
           });
           const health = await response.json();
           const localAuthOnlyIsMissing =
