@@ -60,6 +60,8 @@ const claimOutboxJobs = (
     return Promise.resolve([]);
   }
 
+  // Prisma DateTime columns are UTC-naive PostgreSQL timestamps; do not let
+  // the connection's session timezone shift outbox eligibility or leases.
   return database.$queryRaw<ClaimedJob[]>(Prisma.sql`
     WITH candidates AS (
       SELECT "id"
@@ -71,11 +73,11 @@ const claimOutboxJobs = (
               'PENDING'::"public"."OutboxJobStatus",
               'RETRY'::"public"."OutboxJobStatus"
             )
-            AND "availableAt" <= CURRENT_TIMESTAMP
+            AND "availableAt" <= timezone('UTC', CURRENT_TIMESTAMP)
           )
           OR (
             "status" = 'PROCESSING'::"public"."OutboxJobStatus"
-            AND "leaseExpiresAt" <= CURRENT_TIMESTAMP
+            AND "leaseExpiresAt" <= timezone('UTC', CURRENT_TIMESTAMP)
           )
         )
       ORDER BY "availableAt" ASC, "createdAt" ASC, "id" ASC
@@ -87,10 +89,10 @@ const claimOutboxJobs = (
       "status" = 'PROCESSING'::"public"."OutboxJobStatus",
       "attemptCount" = job."attemptCount" + 1,
       "leaseOwner" = ${options.workerId},
-      "leaseExpiresAt" = CURRENT_TIMESTAMP +
+      "leaseExpiresAt" = timezone('UTC', CURRENT_TIMESTAMP) +
         (${options.leaseMilliseconds} * INTERVAL '1 millisecond'),
       "lastError" = NULL,
-      "updatedAt" = CURRENT_TIMESTAMP
+      "updatedAt" = timezone('UTC', CURRENT_TIMESTAMP)
     FROM candidates
     WHERE job."id" = candidates."id"
     RETURNING
