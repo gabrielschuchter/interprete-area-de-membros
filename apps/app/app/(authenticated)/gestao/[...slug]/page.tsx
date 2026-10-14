@@ -3,18 +3,18 @@ import { requireGestaoActor } from "@/lib/gestao-authorization";
 import {
   gestaoAdministrationDestination,
   gestaoCommunityDestination,
+  gestaoStudentDestination,
 } from "@/lib/gestao-navigation";
 import {
   canPerformGestaoAction,
   type GestaoAction,
 } from "@/lib/gestao-permissions";
-import { GestaoPageHeading } from "../gestao-shell";
 
-const areaBySlug: Record<string, { action: GestaoAction; label: string }> = {
-  ensino: { action: "content.manage", label: "Ensino" },
-  alunos: { action: "students.read", label: "Alunos" },
-  comunidade: { action: "community.moderate", label: "Comunidade" },
-  administracao: { action: "members.manage", label: "Administração" },
+const actionByArea: Record<string, GestaoAction> = {
+  ensino: "content.manage",
+  alunos: "students.read",
+  comunidade: "community.moderate",
+  administracao: "members.manage",
 };
 
 const GestaoPendingRoute = async ({
@@ -23,12 +23,12 @@ const GestaoPendingRoute = async ({
   readonly params: Promise<{ readonly slug: string[] }>;
 }) => {
   const [{ slug }, actor] = await Promise.all([params, requireGestaoActor()]);
-  const area = areaBySlug[slug[0] ?? ""];
-  if (!area) {
+  const action = actionByArea[slug[0] ?? ""];
+  if (!action) {
     notFound();
   }
 
-  if (!canPerformGestaoAction(actor.role, area.action)) {
+  if (!canPerformGestaoAction(actor.role, action)) {
     forbidden();
   }
 
@@ -47,22 +47,14 @@ const GestaoPendingRoute = async ({
     notFound();
   }
 
-  return (
-    <section>
-      <GestaoPageHeading
-        description="A tela ficará disponível quando suas validações, permissões e gravações estiverem prontas."
-        eyebrow={`Gestão · ${area.label}`}
-        title="Este fluxo está sendo conectado"
-      />
-      <div className="gestao-empty-state">
-        <h2>{area.label}</h2>
-        <p>
-          Esta rota já usa o shell e a autorização da Gestão. A implementação
-          funcional deste fluxo ainda está em andamento.
-        </p>
-      </div>
-    </section>
-  );
+  if (slug[0] === "alunos") {
+    const destination = gestaoStudentDestination(slug.slice(1));
+    if (destination) {
+      redirect(destination);
+    }
+  }
+
+  notFound();
 };
 
 export default GestaoPendingRoute;

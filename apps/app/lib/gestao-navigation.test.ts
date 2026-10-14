@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   gestaoAdministrationDestination,
   gestaoCommunityDestination,
+  gestaoStudentDestination,
   isGestaoShellPath,
   professorDestination,
   safeGestaoReturnPath,
@@ -52,6 +53,19 @@ describe("Gestão navigation", () => {
     expect(gestaoAdministrationDestination(["integracoes"])).toBeNull();
     expect(gestaoAdministrationDestination(["auditoria"])).toBeNull();
     expect(gestaoAdministrationDestination(["membros", "member-1"])).toBeNull();
+  });
+
+  it("routes assignment and study shortcuts to existing staff workflows", () => {
+    expect(gestaoStudentDestination(["atribuicoes"])).toBe(
+      "/admin/atribuicoes"
+    );
+    expect(gestaoStudentDestination(["atribuicoes", "nova"])).toBe(
+      "/admin/atribuicoes"
+    );
+    expect(gestaoStudentDestination(["tarefas"])).toBe("/admin/estudo");
+    expect(gestaoStudentDestination(["atribuicoes", "desconhecida"])).toBe(
+      null
+    );
   });
 
   it("rejects external, management, and malformed return destinations", () => {

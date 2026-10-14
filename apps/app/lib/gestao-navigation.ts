@@ -58,6 +58,15 @@ export const gestaoAdministrationDestination = (
   pathSegments: readonly string[]
 ) => gestaoAdministrationDestinations[pathSegments.join("/")] ?? null;
 
+const gestaoStudentDestinations: Record<string, string> = {
+  atribuicoes: "/admin/atribuicoes",
+  "atribuicoes/nova": "/admin/atribuicoes",
+  tarefas: "/admin/estudo",
+};
+
+export const gestaoStudentDestination = (pathSegments: readonly string[]) =>
+  gestaoStudentDestinations[pathSegments.join("/")] ?? null;
+
 export type RedirectSearchParams = Record<
   string,
   string | string[] | undefined

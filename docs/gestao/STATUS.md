@@ -1,6 +1,6 @@
 # Gestão V2 — estado operacional
 
-Atualizado durante a intervenção de simplificação em 13/10/2026. Fonte única para retomada; decisões de produto ficam em `DECISIONS.md`, critérios de primeira publicação em `MVP.md`, e o contrato visual/funcional completo no pacote de referência.
+Atualizado após a correção de navegação em 13/10/2026. Fonte única para retomada; decisões de produto ficam em `DECISIONS.md`, critérios de primeira publicação em `MVP.md`, e o contrato visual/funcional completo no pacote de referência.
 
 ## Git e ambiente
 
@@ -28,7 +28,7 @@ As evidências são locais e preservam fixtures mutáveis. Consultá-las antes d
 
 **Administração — destinos essenciais conectados.** Membros, acessos, gravações, personalização e medalhas encaminham apenas para telas existentes. As rotas da Gestão exigem admin; cada destino mantém sua própria guarda e mutações de papéis/acessos continuam restritas a admin. “Integrações” e “Registro de atividades” saíram da lista porque não têm uma tela operacional. Destinos desconhecidos retornam 404. A navegação tem 7 testes focados; typecheck e Biome passaram. Persistência por interface e reload continuam para a candidata.
 
-**Shell — busca, notificações e prévia disponíveis no código local.** Gestão reutiliza a busca global e o popover de notificações do membro; prévias de atividade, coleção e curso já têm rotas próprias. O atalho “Novo aviso” foi conectado ao formulário operacional; QA integrado de interação/reload segue para a candidata.
+**Shell — busca, notificações e prévia disponíveis no código local.** Gestão reutiliza a busca global e o popover de notificações do membro; prévias de atividade, coleção e curso já têm rotas próprias. “Novo aviso” abre o fluxo operacional; “Atribuir conteúdo” e aliases de atribuição/tarefas agora encaminham para as telas staff existentes, com suas guardas preservadas. Rotas sem destino operacional retornam 404 em vez de mostrar um placeholder. O mapeamento tem 8 testes focados; QA integrado de interação/reload segue para a candidata.
 
 ## Release e verificação
 
