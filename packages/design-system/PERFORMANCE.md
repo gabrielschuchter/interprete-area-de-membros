@@ -490,7 +490,8 @@ and observes save-data/slow-network preferences. Its interaction timings are
 520 ms for portal traversal/return, 360 ms for shortcuts, 220 ms for internal
 entry, 120 ms for technical fades, and a 300 ms mobile card exit before route
 commit. Stable route loading/error boundaries continue to provide retry and a
-return to Início.
+return to Início. The no-reduced-motion detection decision applies only to
+this portal; existing app and Gestão behavior stays intact.
 
 The established 100 ms acknowledgement, CLS <= 0.02, 15 KiB gzip route JS,
 6 KiB gzip CSS, and 90 KiB font budgets still apply. Local Next build and browser

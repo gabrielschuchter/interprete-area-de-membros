@@ -832,6 +832,12 @@
     both;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .gestao-drawer[data-slot="dialog-content"][data-state] {
+    animation: none;
+  }
+}
+
 .gestao-drawer-overlay {
   background: rgb(25 8 19 / 54%);
 }
@@ -873,6 +879,16 @@
   .gestao-dashboard-card-body {
     padding-right: 16px;
     padding-left: 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gestao-shell,
+  .gestao-navigation-link,
+  .gestao-sidebar {
+    scroll-behavior: auto;
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
   }
 }
 
@@ -1436,6 +1452,17 @@
     align-items: flex-start;
   }
 }
+@media (prefers-reduced-motion: reduce) {
+  .gt-page *,
+  .gt-page *::before,
+  .gt-page *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
 .gt-detail-heading {
   display: flex;
   gap: 20px;
@@ -3766,6 +3793,12 @@
     min-width: 850px;
   }
 }
+@media (prefers-reduced-motion: reduce) {
+  .ge-courses-page * {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
 .gestao-navigation-group {
   display: flex;
   flex-direction: column;
@@ -5953,6 +5986,14 @@
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .gc-queue-row,
+  .gc-queue-tabs a {
+    scroll-behavior: auto;
+    transition: none;
+  }
+}
+
 .gl-page {
   max-width: 1200px;
 }
@@ -8097,6 +8138,12 @@
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .gco-cover-dropzone {
+    transition: none;
+  }
+}
+
 .gl-lesson-page {
   box-sizing: border-box;
   width: min(100%, 1176px);
@@ -8870,6 +8917,12 @@
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .gl-lesson-source-switch button {
+    scroll-behavior: auto;
+  }
+}
+
 .gl-playlist-dialog {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
@@ -9252,6 +9305,14 @@
   .gl-playlist-dialog-footer button {
     flex: 1;
     min-width: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gl-playlist-video-row,
+  .gl-playlist-dialog button {
+    scroll-behavior: auto;
+    transition-duration: 0.01ms;
   }
 }
 

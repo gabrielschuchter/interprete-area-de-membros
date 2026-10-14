@@ -92,7 +92,7 @@ const ShortcutGroup = ({
 }) => (
   <nav
     aria-label={card ? `Atalhos para ${label}` : label}
-    className={`portal-shortcut-group${card ? " portal-shortcut-group--card" : ""}`}
+    className="portal-shortcut-group"
   >
     <ul className="portal-shortcut-group__list">
       {items.map(({ href, icon: Icon, label: itemLabel }) => (

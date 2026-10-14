@@ -1099,7 +1099,9 @@ Portal traversals/returns use 520 ms, shortcuts 360 ms, internal route entry
 existing route skeleton boundary handles slow destinations; feedback appears
 after 120 ms, and the shared retry boundary returns failures to Início. A
 navigation timeout remains at eight seconds. No persistent identity/role cache,
-API, schema, pool, or index change is introduced.
+API, schema, pool, or index change is introduced. The approved no-reduced-motion
+detection decision is scoped to Início; existing global and Gestão behavior
+remains intact.
 
 Acceptance budgets are unchanged: click/tap acknowledgement within 100 ms,
 CLS <= 0.02, Início-only JS <= 15 KiB gzip, CSS <= 6 KiB gzip, fonts <= 90 KiB,
