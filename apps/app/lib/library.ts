@@ -3,6 +3,7 @@ import "server-only";
 import {
   ContentStatus,
   database,
+  LearningAssignmentTargetType,
   LibraryBookmarkTargetType,
   LibraryItemDifficulty,
   LibraryItemKind,
@@ -15,6 +16,7 @@ import {
   hasLessonAccess,
   hasModuleAccess,
 } from "./content-access";
+import { markLearningAssignmentStarted } from "./learning-assignments";
 import { LIBRARY_PAGE_SIZE, pageLibraryRows } from "./library-pagination";
 import { libraryPopularityScore, librarySearchScore } from "./library-ranking";
 
@@ -379,17 +381,34 @@ export const getPublishedLibraryItem = async (id: string, memberId: string) => {
       bookmarks: { where: { memberId }, select: { id: true } },
     },
   });
-  if (!item?.lesson) {
-    return item;
+  if (!item) {
+    return null;
   }
-  const lesson = item.lesson;
-  const scope = await getLearningAccessScope(memberId);
-  return lesson.status === ContentStatus.PUBLISHED &&
-    lesson.module.status === ContentStatus.PUBLISHED &&
-    lesson.module.course.status === ContentStatus.PUBLISHED &&
-    hasLessonAccess(scope, lesson.module.courseId, lesson.moduleId, lesson.id)
-    ? item
-    : null;
+  if (item.lesson) {
+    const lesson = item.lesson;
+    const scope = await getLearningAccessScope(memberId);
+    if (
+      !(
+        lesson.status === ContentStatus.PUBLISHED &&
+        lesson.module.status === ContentStatus.PUBLISHED &&
+        lesson.module.course.status === ContentStatus.PUBLISHED &&
+        hasLessonAccess(
+          scope,
+          lesson.module.courseId,
+          lesson.moduleId,
+          lesson.id
+        )
+      )
+    ) {
+      return null;
+    }
+  }
+  await markLearningAssignmentStarted(
+    memberId,
+    LearningAssignmentTargetType.LIBRARY_ITEM,
+    item.id
+  );
+  return item;
 };
 
 export const hasPublishedLibraryItemAccess = async (

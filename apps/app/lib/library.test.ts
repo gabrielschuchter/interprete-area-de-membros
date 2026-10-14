@@ -1,11 +1,18 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-const { database, getLearningAccessScope } = vi.hoisted(() => ({
+const {
+  database,
+  getLearningAccessScope,
+  hasLessonAccess,
+  markLearningAssignmentStarted,
+} = vi.hoisted(() => ({
   database: {
-    libraryItem: { count: vi.fn(), findMany: vi.fn() },
+    libraryItem: { count: vi.fn(), findFirst: vi.fn(), findMany: vi.fn() },
     libraryItemView: { groupBy: vi.fn() },
   },
   getLearningAccessScope: vi.fn(),
+  hasLessonAccess: vi.fn(),
+  markLearningAssignmentStarted: vi.fn(),
 }));
 
 vi.mock("server-only", () => ({}));
@@ -20,16 +27,22 @@ vi.mock("@repo/database", () => ({
   },
   LibraryItemDifficulty: { ADVANCED: "ADVANCED", BEGINNER: "BEGINNER" },
   LibraryItemKind: { ARTICLE: "ARTICLE", GUIDE: "GUIDE", PDF: "PDF" },
+  LearningAssignmentTargetType: { LIBRARY_ITEM: "LIBRARY_ITEM" },
   database,
 }));
 vi.mock("./content-access", () => ({
   getLearningAccessScope,
   hasCourseAccess: vi.fn(),
-  hasLessonAccess: vi.fn(),
+  hasLessonAccess,
   hasModuleAccess: vi.fn(),
 }));
+vi.mock("./learning-assignments", () => ({ markLearningAssignmentStarted }));
 
-import { getLibraryItems, getStaffLibraryItems } from "./library";
+import {
+  getLibraryItems,
+  getPublishedLibraryItem,
+  getStaffLibraryItems,
+} from "./library";
 
 describe("library lesson access", () => {
   beforeEach(() => {
@@ -133,5 +146,48 @@ describe("library lesson access", () => {
       skip: 24,
       take: 25,
     });
+  });
+
+  test("starts a library assignment only after linked-lesson access succeeds", async () => {
+    const item = {
+      id: "assigned-library-item",
+      lesson: {
+        id: "lesson-1",
+        status: "PUBLISHED",
+        moduleId: "module-1",
+        module: {
+          status: "PUBLISHED",
+          courseId: "course-1",
+          course: { status: "PUBLISHED" },
+        },
+      },
+    };
+    getLearningAccessScope.mockResolvedValue({
+      assetIds: new Set(),
+      courseIds: new Set(["course-1"]),
+      fullAccess: false,
+      fullCourseIds: new Set(),
+      lessonIds: new Set(["lesson-1"]),
+      moduleIds: new Set(),
+      recordingIds: new Set(),
+    });
+    database.libraryItem.findFirst.mockResolvedValue(item);
+    hasLessonAccess.mockReturnValue(true);
+
+    await expect(getPublishedLibraryItem(item.id, "member-1")).resolves.toBe(
+      item
+    );
+    expect(markLearningAssignmentStarted).toHaveBeenCalledWith(
+      "member-1",
+      "LIBRARY_ITEM",
+      item.id
+    );
+
+    hasLessonAccess.mockReturnValue(false);
+    markLearningAssignmentStarted.mockClear();
+    await expect(
+      getPublishedLibraryItem(item.id, "member-1")
+    ).resolves.toBeNull();
+    expect(markLearningAssignmentStarted).not.toHaveBeenCalled();
   });
 });
