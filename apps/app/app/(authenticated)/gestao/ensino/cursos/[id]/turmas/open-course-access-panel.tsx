@@ -50,7 +50,7 @@ export const OpenCourseAccessPanel = ({
               ? "Fechar acesso para todos os membros"
               : "Abrir curso para todos os membros"
           }
-          className={`gca-switch${openAccess ? "is-on" : ""}`}
+          className={openAccess ? "gca-switch is-on" : "gca-switch"}
           disabled={
             !isAdmin || mutation.pending || courseStatus !== "PUBLISHED"
           }

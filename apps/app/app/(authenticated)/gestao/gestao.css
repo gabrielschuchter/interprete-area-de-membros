@@ -8043,7 +8043,7 @@
 
   .gco-editor-actions > a,
   .gco-editor-actions > button {
-    flex: 1 1 42%;
+    flex: 1 1 100%;
   }
 
   .gco-saved-at {
