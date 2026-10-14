@@ -5,6 +5,8 @@ node_modules
 **/node_modules
 .next
 **/.next
+.next-local-*
+**/.next-local-*
 .turbo
 **/.turbo
 dist
