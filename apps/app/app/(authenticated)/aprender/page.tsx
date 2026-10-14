@@ -14,6 +14,7 @@ import {
   getPublishedStandaloneCourses,
 } from "@/lib/learning";
 import { getReceivedLearningAssignments } from "@/lib/learning-assignments";
+import { getDirectlyAssignedCourseIds } from "@/lib/learning-catalog-domain";
 import { getMemberLearningBookmarkKeys } from "@/lib/library";
 import { getMemberContinueWatching } from "@/lib/recordings";
 import { resolveStudentFeed } from "@/lib/student-feed";
@@ -215,6 +216,10 @@ const LearnPage = async () => {
   });
   const { collections, courseProgressById, paths, standaloneCourses } =
     learningData;
+  const directlyAssignedCourseIds = getDirectlyAssignedCourseIds(
+    assignments,
+    feedAt
+  );
 
   const assignmentCards = assignments.map((assignment) => {
     const isScheduled = Boolean(
@@ -302,52 +307,63 @@ const LearnPage = async () => {
     title: recording.asset.title,
   }));
 
-  const pathRails = paths.map((path) => ({
-    cards: path.courses.map((course) => ({
-      bookmark: {
-        targetId: course.id,
-        targetType: "COURSE" as const,
-        saved: bookmarkKeys.has(`COURSE:${course.id}`),
-      },
-      coverUrl: course.coverUrl ?? path.coverUrl,
-      description: course.description ?? path.description,
-      href:
-        course.progress.percentage > 0 && course.progress.percentage < 100
-          ? `/aprender/cursos/${course.slug}/${course.modules.flatMap((module) => module.lessons).find((lesson) => !lesson.progress.some((progress) => progress.status === "COMPLETED"))?.slug ?? ""}`
-          : `/aprender/cursos/${course.slug}`,
-      label: "Curso",
-      meta: `${course.progress.completedLessons}/${course.progress.totalLessons} aulas · ${course.progress.percentage}%`,
-      progress: course.progress.percentage,
-      title: course.title,
-    })),
-    description: path.description,
-    headingId: `learning-path-${path.id}`,
-    title: path.title,
-  }));
-  const standaloneCourseCards = standaloneCourses.map((course) => {
-    const lessons = course.modules.flatMap((module) => module.lessons);
-    const nextLesson = lessons.find(
-      (lesson) => !lesson.progress.some(({ status }) => status === "COMPLETED")
-    );
+  const pathRails = paths
+    .map((path) => ({
+      cards: path.courses.map((course) => ({
+        bookmark: {
+          targetId: course.id,
+          targetType: "COURSE" as const,
+          saved: bookmarkKeys.has(`COURSE:${course.id}`),
+        },
+        coverUrl: course.coverUrl ?? path.coverUrl,
+        description: course.description ?? path.description,
+        href:
+          course.progress.percentage > 0 && course.progress.percentage < 100
+            ? `/aprender/cursos/${course.slug}/${course.modules.flatMap((module) => module.lessons).find((lesson) => !lesson.progress.some((progress) => progress.status === "COMPLETED"))?.slug ?? ""}`
+            : `/aprender/cursos/${course.slug}`,
+        label: "Curso",
+        meta: `${course.progress.completedLessons}/${course.progress.totalLessons} aulas · ${course.progress.percentage}%`,
+        progress: course.progress.percentage,
+        title: course.title,
+      })),
+      description: path.description,
+      headingId: `learning-path-${path.id}`,
+      title: path.title,
+    }))
+    .map((rail) => ({
+      ...rail,
+      cards: rail.cards.filter(
+        (card) => !directlyAssignedCourseIds.has(card.bookmark.targetId)
+      ),
+    }))
+    .filter((rail) => rail.cards.length > 0);
+  const standaloneCourseCards = standaloneCourses
+    .map((course) => {
+      const lessons = course.modules.flatMap((module) => module.lessons);
+      const nextLesson = lessons.find(
+        (lesson) =>
+          !lesson.progress.some(({ status }) => status === "COMPLETED")
+      );
 
-    return {
-      bookmark: {
-        targetId: course.id,
-        targetType: "COURSE" as const,
-        saved: bookmarkKeys.has(`COURSE:${course.id}`),
-      },
-      coverUrl: course.coverUrl,
-      description: course.description,
-      href:
-        course.progress.percentage > 0 && course.progress.percentage < 100
-          ? `/aprender/cursos/${course.slug}/${nextLesson?.slug ?? ""}`
-          : `/aprender/cursos/${course.slug}`,
-      label: "Curso",
-      meta: `${course.progress.completedLessons}/${course.progress.totalLessons} aulas · ${course.progress.percentage}%`,
-      progress: course.progress.percentage,
-      title: course.title,
-    };
-  });
+      return {
+        bookmark: {
+          targetId: course.id,
+          targetType: "COURSE" as const,
+          saved: bookmarkKeys.has(`COURSE:${course.id}`),
+        },
+        coverUrl: course.coverUrl,
+        description: course.description,
+        href:
+          course.progress.percentage > 0 && course.progress.percentage < 100
+            ? `/aprender/cursos/${course.slug}/${nextLesson?.slug ?? ""}`
+            : `/aprender/cursos/${course.slug}`,
+        label: "Curso",
+        meta: `${course.progress.completedLessons}/${course.progress.totalLessons} aulas · ${course.progress.percentage}%`,
+        progress: course.progress.percentage,
+        title: course.title,
+      };
+    })
+    .filter((card) => !directlyAssignedCourseIds.has(card.bookmark.targetId));
   const courseCards = [
     ...pathRails.flatMap((rail) => rail.cards),
     ...standaloneCourseCards,
