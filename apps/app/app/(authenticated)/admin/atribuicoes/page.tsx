@@ -5,6 +5,7 @@ import {
   database,
   LearningAssignmentTargetType,
   LessonAssetMediaProvider,
+  MemberRole,
 } from "@repo/database";
 import { Badge } from "@repo/design-system/components/ui/badge";
 import { Button } from "@repo/design-system/components/ui/button";
@@ -50,8 +51,8 @@ const dateLabel = (date: Date | null) =>
 const AdminAssignmentsPage = async ({
   searchParams,
 }: AdminAssignmentsPageProperties) => {
+  const { userId, role } = await requireStaff();
   const [
-    { userId },
     query,
     activities,
     courses,
@@ -64,7 +65,6 @@ const AdminAssignmentsPage = async ({
     groups,
     batches,
   ] = await Promise.all([
-    requireStaff(),
     searchParams,
     database.activity.findMany({
       where: { status: ContentStatus.PUBLISHED },
@@ -177,7 +177,10 @@ const AdminAssignmentsPage = async ({
       take: 500,
     }),
     database.communitySpace.findMany({
-      where: { status: ContentStatus.PUBLISHED },
+      where: {
+        status: ContentStatus.PUBLISHED,
+        ...(role === MemberRole.ADMIN ? {} : { ownerId: userId }),
+      },
       orderBy: { title: "asc" },
       select: { id: true, title: true },
       take: 500,
@@ -347,7 +350,9 @@ const AdminAssignmentsPage = async ({
                 <option value="INDIVIDUAL">Um aluno</option>
                 <option value="SELECTED_MEMBERS">Alunos selecionados</option>
                 <option value="GROUP">Membros de um grupo de estudo</option>
-                <option value="ALL_MEMBERS">Todos os alunos</option>
+                {role === MemberRole.ADMIN ? (
+                  <option value="ALL_MEMBERS">Todos os alunos</option>
+                ) : null}
               </select>
             </label>
 
@@ -357,6 +362,7 @@ const AdminAssignmentsPage = async ({
               fieldName="memberIds"
               label="Alunos destinatários"
               maxSelected={200}
+              searchEndpoint="/api/admin/assignment-recipients"
               studentsOnly
             />
 

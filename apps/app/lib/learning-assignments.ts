@@ -14,6 +14,7 @@ import {
 } from "@repo/database";
 import { enqueueNotificationBatch } from "@repo/member-domain";
 import { isAppWriteFreezeEnabled } from "@repo/security/write-freeze";
+import { getLearningAssignmentRecipientScope } from "./learning-assignment-scope";
 
 type AssignmentClient = typeof database | Prisma.TransactionClient;
 
@@ -65,6 +66,11 @@ const publishedLessonWhere = {
 
 const targetKey = (type: LearningAssignmentTargetType, id: string) =>
   `${type}:${id}`;
+
+const isLearningAssignmentStaffRole = (
+  role: MemberRole
+): role is "ADMIN" | "TEACHER" =>
+  role === MemberRole.ADMIN || role === MemberRole.TEACHER;
 
 export const resolveLearningAssignmentTargets = async (
   client: AssignmentClient,
@@ -333,8 +339,17 @@ export const resolveLearningAssignmentTarget = async (
 
 const resolveAssignmentMemberIds = async (
   transaction: Prisma.TransactionClient,
-  input: CreateLearningAssignmentInput
+  input: CreateLearningAssignmentInput,
+  actor: {
+    readonly id: string;
+    readonly role: MemberRole;
+  }
 ) => {
+  const scope = getLearningAssignmentRecipientScope({
+    role: actor.role === MemberRole.ADMIN ? "ADMIN" : "TEACHER",
+    userId: actor.id,
+  });
+
   if (input.audienceType === LearningAssignmentAudienceType.GROUP) {
     if (!input.audienceSpaceId) {
       return [];
@@ -343,6 +358,7 @@ const resolveAssignmentMemberIds = async (
       where: {
         id: input.audienceSpaceId,
         status: ContentStatus.PUBLISHED,
+        ...(actor.role === MemberRole.ADMIN ? {} : { ownerId: actor.id }),
       },
       select: {
         id: true,
@@ -357,7 +373,7 @@ const resolveAssignmentMemberIds = async (
       ...(group.ownerId ? [group.ownerId] : []),
       ...group.members.map(({ memberId }) => memberId),
     ];
-    const members = await transaction.member.findMany({
+    const candidateStudents = await transaction.member.findMany({
       where: {
         id: { in: [...new Set(candidates)] },
         role: MemberRole.MEMBER,
@@ -366,14 +382,34 @@ const resolveAssignmentMemberIds = async (
       orderBy: [{ displayName: "asc" }, { id: "asc" }],
       select: { id: true },
     });
-    return members.map(({ id }) => id);
+    if (actor.role === MemberRole.ADMIN) {
+      return candidateStudents.map(({ id }) => id);
+    }
+    const scopedStudents = await transaction.member.findMany({
+      where: {
+        id: { in: candidateStudents.map(({ id }) => id) },
+        ...scope,
+      },
+      orderBy: [{ displayName: "asc" }, { id: "asc" }],
+      select: { id: true },
+    });
+    if (scopedStudents.length !== candidateStudents.length) {
+      return [];
+    }
+    return scopedStudents.map(({ id }) => id);
+  }
+
+  if (
+    input.audienceType === LearningAssignmentAudienceType.ALL_MEMBERS &&
+    actor.role !== MemberRole.ADMIN
+  ) {
+    return [];
   }
 
   const selectedIds = [...new Set(input.memberIds)];
   const members = await transaction.member.findMany({
     where: {
-      role: MemberRole.MEMBER,
-      deactivatedAt: null,
+      ...scope,
       ...(input.audienceType === LearningAssignmentAudienceType.ALL_MEMBERS
         ? {}
         : { id: { in: selectedIds } }),
@@ -381,6 +417,12 @@ const resolveAssignmentMemberIds = async (
     orderBy: [{ displayName: "asc" }, { id: "asc" }],
     select: { id: true },
   });
+  if (
+    input.audienceType !== LearningAssignmentAudienceType.ALL_MEMBERS &&
+    members.length !== selectedIds.length
+  ) {
+    return [];
+  }
   return members.map(({ id }) => id);
 };
 
@@ -398,6 +440,18 @@ export const createLearningAssignmentBatch = async (
   transaction: Prisma.TransactionClient,
   input: CreateLearningAssignmentInput
 ) => {
+  const actor = await transaction.member.findFirst({
+    where: {
+      id: input.assignedByMemberId,
+      deactivatedAt: null,
+      role: { in: [MemberRole.ADMIN, MemberRole.TEACHER] },
+    },
+    select: { id: true, role: true },
+  });
+  if (!(actor && isLearningAssignmentStaffRole(actor.role))) {
+    return null;
+  }
+
   const existingBatch = await transaction.learningAssignmentBatch.findFirst({
     where: {
       createdByMemberId: input.assignedByMemberId,
@@ -424,7 +478,11 @@ export const createLearningAssignmentBatch = async (
   if (!target) {
     return null;
   }
-  const recipientIds = await resolveAssignmentMemberIds(transaction, input);
+  const recipientIds = await resolveAssignmentMemberIds(
+    transaction,
+    input,
+    actor
+  );
   if (recipientIds.length === 0) {
     return null;
   }

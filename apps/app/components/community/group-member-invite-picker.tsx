@@ -23,6 +23,7 @@ interface GroupMemberInvitePickerProperties {
   readonly fieldName?: string;
   readonly label?: string;
   readonly maxSelected?: number;
+  readonly searchEndpoint?: string;
   readonly studentsOnly?: boolean;
 }
 
@@ -32,6 +33,7 @@ export const GroupMemberInvitePicker = ({
   fieldName = "inviteeIds",
   label = "Convidar pessoas",
   maxSelected = 50,
+  searchEndpoint = "/api/members/search",
   studentsOnly = false,
 }: GroupMemberInvitePickerProperties) => {
   const [query, setQuery] = useState("");
@@ -50,7 +52,7 @@ export const GroupMemberInvitePicker = ({
     const controller = new AbortController();
     const timeout = window.setTimeout(() => {
       setLoading(true);
-      fetch(`/api/members/search?q=${encodeURIComponent(normalizedQuery)}`, {
+      fetch(`${searchEndpoint}?q=${encodeURIComponent(normalizedQuery)}`, {
         signal: controller.signal,
         headers: { Accept: "application/json" },
       })
@@ -87,7 +89,7 @@ export const GroupMemberInvitePicker = ({
       window.clearTimeout(timeout);
       controller.abort();
     };
-  }, [currentMemberId, query, selected, studentsOnly]);
+  }, [currentMemberId, query, searchEndpoint, selected, studentsOnly]);
 
   const addCandidate = (candidate: InviteCandidate) => {
     if (selected.length >= maxSelected) {

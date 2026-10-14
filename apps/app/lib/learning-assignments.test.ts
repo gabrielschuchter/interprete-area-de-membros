@@ -34,7 +34,7 @@ vi.mock("@repo/database", () => ({
     LIBRARY_ITEM: "LIBRARY_ITEM",
     EXERCISE_LIST: "EXERCISE_LIST",
   },
-  MemberRole: { MEMBER: "MEMBER" },
+  MemberRole: { ADMIN: "ADMIN", MEMBER: "MEMBER", TEACHER: "TEACHER" },
   database: {
     activityAssignment: { updateMany: databaseAssignmentUpdateManyMock },
   },
@@ -69,7 +69,7 @@ const makeInput = (overrides: Record<string, unknown> = {}) => ({
   dueAt: null,
   expiresAt: null,
   idempotencyKey: "assignment-key-1",
-  memberIds: ["student_1", "student_2", "student_1", "teacher_1"],
+  memberIds: ["student_1", "student_2", "student_1"],
   message: "Leia antes do próximo encontro.",
   targetId: "activity_1",
   targetType: LearningAssignmentTargetType.ACTIVITY,
@@ -92,6 +92,13 @@ const makeTransaction = () => {
   const createMany = vi.fn().mockResolvedValue({ count: 2 });
   const createBatch = vi.fn().mockResolvedValue({ id: "batch_1" });
   const findExistingBatch = vi.fn().mockResolvedValue(null);
+  const findActor = vi
+    .fn()
+    .mockResolvedValue({ id: "teacher_1", role: "TEACHER" });
+  const findGroup = vi.fn().mockResolvedValue(null);
+  const findMembers = vi
+    .fn()
+    .mockResolvedValue([{ id: "student_1" }, { id: "student_2" }]);
   const tx = {
     activity: {
       findMany: vi.fn().mockResolvedValue([
@@ -132,18 +139,25 @@ const makeTransaction = () => {
         },
       ]),
     },
+    communitySpace: { findFirst: findGroup },
     activityAssignment: { createMany },
     learningAssignmentBatch: {
       create: createBatch,
       findFirst: findExistingBatch,
     },
     member: {
-      findMany: vi
-        .fn()
-        .mockResolvedValue([{ id: "student_1" }, { id: "student_2" }]),
+      findFirst: findActor,
+      findMany: findMembers,
     },
   } as unknown as Prisma.TransactionClient;
-  return { createBatch, createMany, findExistingBatch, tx };
+  return {
+    createBatch,
+    createMany,
+    findActor,
+    findExistingBatch,
+    findMembers,
+    tx,
+  };
 };
 
 beforeEach(() => {
@@ -219,6 +233,26 @@ test("creates an idempotent target-specific batch and durable notices together",
       }),
     ]),
   });
+  expect(tx.member.findMany).toHaveBeenCalledWith(
+    expect.objectContaining({
+      where: expect.objectContaining({
+        role: "MEMBER",
+        deactivatedAt: null,
+        cohortMemberships: {
+          some: {
+            status: "ACTIVE",
+            leftAt: null,
+            cohort: {
+              is: {
+                archivedAt: null,
+                teachers: { some: { memberId: "teacher_1" } },
+              },
+            },
+          },
+        },
+      }),
+    })
+  );
   expect(enqueueNotificationBatchMock).toHaveBeenCalledWith(
     tx,
     expect.objectContaining({
@@ -236,6 +270,66 @@ test("creates an idempotent target-specific batch and durable notices together",
       ]),
     })
   );
+});
+
+test("rejects an assignment after the actor loses staff access", async () => {
+  const { createBatch, createMany, findActor, tx } = makeTransaction();
+  findActor.mockResolvedValue(null);
+
+  await expect(createLearningAssignmentBatch(tx, makeInput())).resolves.toBe(
+    null
+  );
+  expect(createBatch).not.toHaveBeenCalled();
+  expect(createMany).not.toHaveBeenCalled();
+});
+
+test("teachers cannot assign to every student across the platform", async () => {
+  const { createBatch, createMany, tx } = makeTransaction();
+
+  await expect(
+    createLearningAssignmentBatch(
+      tx,
+      makeInput({
+        audienceType: LearningAssignmentAudienceType.ALL_MEMBERS,
+        memberIds: [],
+      })
+    )
+  ).resolves.toBe(null);
+  expect(createBatch).not.toHaveBeenCalled();
+  expect(createMany).not.toHaveBeenCalled();
+});
+
+test("admins can assign to all active students", async () => {
+  const { createMany, findActor, tx } = makeTransaction();
+  findActor.mockResolvedValue({ id: "admin_1", role: "ADMIN" });
+
+  const result = await createLearningAssignmentBatch(
+    tx,
+    makeInput({
+      assignedByMemberId: "admin_1",
+      audienceType: LearningAssignmentAudienceType.ALL_MEMBERS,
+      memberIds: [],
+    })
+  );
+
+  expect(result).toMatchObject({ created: true, recipientCount: 2 });
+  expect(tx.member.findMany).toHaveBeenCalledWith(
+    expect.objectContaining({
+      where: { role: "MEMBER", deactivatedAt: null },
+    })
+  );
+  expect(createMany).toHaveBeenCalled();
+});
+
+test("rejects the full teacher selection if a recipient is outside current cohorts", async () => {
+  const { createBatch, createMany, findMembers, tx } = makeTransaction();
+  findMembers.mockResolvedValueOnce([{ id: "student_1" }]);
+
+  await expect(createLearningAssignmentBatch(tx, makeInput())).resolves.toBe(
+    null
+  );
+  expect(createBatch).not.toHaveBeenCalled();
+  expect(createMany).not.toHaveBeenCalled();
 });
 
 test("replaying a batch key returns the saved count without writing twice", async () => {
