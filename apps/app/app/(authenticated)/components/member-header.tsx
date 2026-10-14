@@ -1,7 +1,6 @@
 "use client";
 
 import { Separator } from "@repo/design-system/components/ui/separator";
-import { SidebarTrigger } from "@repo/design-system/components/ui/sidebar";
 import { ArrowLeftIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -11,6 +10,7 @@ import {
   memberBreadcrumbForPathname,
   memberSectionForPathname,
 } from "./member-section";
+import { MemberSidebarControl } from "./member-sidebar-control";
 
 interface MemberHeaderProperties {
   readonly chromeVisible?: boolean;
@@ -123,7 +123,11 @@ export const MemberHeader = ({
       <div
         className={`${mobileExerciseHeader || mobileShellHeaderHidden || mobileNoteEditorHeader ? "hidden md:flex" : "flex"} min-w-0 flex-1 items-center gap-3`}
       >
-        <SidebarTrigger aria-label="Abrir menu" className="-ml-2 lg:hidden" />
+        <MemberSidebarControl
+          className="-ml-2 min-[1250px]:hidden"
+          hideWhenExpanded
+          mode="drawer"
+        />
         {mobileShellTitle ? (
           <p className="truncate font-display font-semibold text-lg md:hidden">
             {mobileShellTitle}

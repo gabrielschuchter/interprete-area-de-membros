@@ -148,10 +148,33 @@ describe("member sidebar drawer entry", () => {
     expect(screen.getByTestId("state").textContent).toBe("false");
     fireEvent.click(screen.getByRole("button", { name: "Toggle QA" }));
     expect(screen.getByTestId("state").textContent).toBe("true");
-    fireEvent.click(screen.getByRole("button", { name: "Fechar menu" }));
+    const close = document.querySelector<HTMLButtonElement>(
+      '[data-slot="sidebar-trigger"][aria-label="Fechar menu"]'
+    );
+    expect(close).not.toBeNull();
+    fireEvent.click(close as HTMLButtonElement);
     expect(screen.getByTestId("state").textContent).toBe("false");
     fireEvent.click(screen.getByRole("button", { name: "Toggle QA" }));
     expect(screen.getByTestId("state").textContent).toBe("true");
+  });
+  it("collapses the wide-screen sidebar to an accessible icon rail", () => {
+    setup();
+    render(content(false));
+
+    const collapse = screen.getByRole("button", {
+      name: "Recolher barra lateral",
+    });
+    const sidebar = collapse.closest<HTMLElement>('[data-slot="sidebar"]');
+    expect(sidebar).not.toBeNull();
+
+    fireEvent.click(collapse);
+
+    expect(sidebar?.getAttribute("data-state")).toBe("collapsed");
+    expect(
+      screen.getByRole("button", { name: "Expandir barra lateral" })
+    ).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Estudar" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Comunidade" })).toBeTruthy();
   });
   it("allows a tablet drawer to stay open", () => {
     viewport.tablet = true;

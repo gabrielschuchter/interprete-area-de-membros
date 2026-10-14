@@ -479,3 +479,28 @@ on a server request.
   clears previous notes/scores while draft saves keep the success navigation
   mounted. Existing SingleFlightSubmit reports pending locally and success
   follows persistence. No new prefetch, request loop, motion or dependency.
+
+# Início B2 (2026-10-14)
+
+The Interprete portal reuses the authenticated shell and its fresh Member role,
+profile and product configuration. It adds no content query or shared
+identity/permission cache. The page preloads only the active viewport art set;
+the existing intent prefetcher remains capped at two destinations per route
+and observes save-data/slow-network preferences. Its interaction timings are
+520 ms for portal traversal/return, 360 ms for shortcuts, 220 ms for internal
+entry, 120 ms for technical fades, and a 300 ms mobile card exit before route
+commit. Stable route loading/error boundaries continue to provide retry and a
+return to Início. The approved no-reduced-motion decision applies across the
+product: CSS media queries and JavaScript detection are absent, including the
+previously inherited shell and Gestão rules. Fade remains a technical fallback
+for hidden tabs, viewport-band changes, and interrupted navigation only.
+
+The established 100 ms acknowledgement, CLS <= 0.02, 15 KiB gzip route JS,
+6 KiB gzip CSS, 90 KiB fonts, and 4x CPU transition budgets remain. The Vercel
+App build for a92ad73 passed the existing home route budget at 210.4 KiB gzip
+across 16 chunks (225 KiB budget). The Preview serves the art asset but its
+authenticated / request returns 500 because the Clerk publishable key is only
+configured for Production. The isolated worktree also lacks DATABASE_URL, so
+local build artifacts and the separate handoff JS/CSS budgets remain unmeasured.
+No authenticated role, visual, CLS, device, CPU-throttled, or p75 result is
+claimed; the performance roadmap phase stays open.

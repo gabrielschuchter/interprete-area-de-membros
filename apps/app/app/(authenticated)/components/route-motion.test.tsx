@@ -39,39 +39,32 @@ describe("RouteMotion", () => {
     expect(screen.getAllByRole("main")).toHaveLength(1);
   });
 
-  test("marks the destination page for the handoff's internal entrance", () => {
+  test("marks the active route without retaining a second route tree", () => {
     const { container } = render(
-      <RouteMotion routeTransitionPhase="entering">
+      <RouteMotion
+        transition={{
+          corridor: null,
+          direction: "enter",
+          durationMs: 220,
+          exitDurationMs: 0,
+          href: "/ferramentas",
+          id: 1,
+          kind: "std",
+          phase: "entering",
+          startedAt: Date.now(),
+          targetPath: "/ferramentas",
+          vector: null,
+        }}
+      >
         <main>Conteúdo da página</main>
       </RouteMotion>
     );
 
     expect(
       container.querySelector(
-        '.member-route-page__content[data-route-transition-phase="entering"]'
+        '.member-route-page[data-route-transition-kind="std"][data-route-transition-phase="entering"]'
       )
     ).not.toBeNull();
-  });
-
-  test("keeps the previous route inert beneath the entering destination", () => {
-    const { container } = render(
-      <RouteMotion
-        outgoingRoute={{
-          pathname: "/planejamento",
-          children: <main>Planejamento anterior</main>,
-        }}
-        routeTransitionPhase="entering"
-      >
-        <main>Ferramentas</main>
-      </RouteMotion>
-    );
-
-    const outgoing = container.querySelector(".member-route-page--outgoing");
-    const incoming = container.querySelector(".member-route-page--incoming");
-
-    expect(outgoing?.getAttribute("aria-hidden")).toBe("true");
-    expect(outgoing?.hasAttribute("inert")).toBe(true);
-    expect(outgoing?.textContent).toContain("Planejamento anterior");
-    expect(incoming?.textContent).toContain("Ferramentas");
+    expect(container.querySelectorAll(".member-route-page")).toHaveLength(1);
   });
 });

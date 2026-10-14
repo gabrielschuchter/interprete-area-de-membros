@@ -71,11 +71,10 @@ const verifyCount = (page, expected, hasCohorts) =>
   });
 
 const captureMatrix = (page, output, actorId) =>
-  test("overview picker across six widths and two motion modes", async () => {
+  test("overview picker across six widths with standard motion", async () => {
     for (const width of [1440, 1280, 1024, 820, 390, 320]) {
-      for (const reducedMotion of ["no-preference", "reduce"]) {
+      for (const motionMode of ["standard"]) {
         await page.setViewportSize({ width, height: 900 });
-        await page.emulateMedia({ reducedMotion });
         const summary = page.locator(".go-cohort-filter summary");
         await summary.click();
         await page.locator(".go-cohort-filter[open]").waitFor();
@@ -86,7 +85,7 @@ const captureMatrix = (page, output, actorId) =>
           )
         );
         await page.screenshot({
-          path: `${output}/${actorId}-${width}-${reducedMotion}.png`,
+          path: `${output}/${actorId}-${width}-${motionMode}.png`,
         });
         await page.keyboard.press("Escape");
         await page.locator(".go-cohort-filter:not([open])").waitFor();

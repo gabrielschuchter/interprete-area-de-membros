@@ -19,6 +19,7 @@ afterEach(() => {
 
 describe("NavigationFeedback", () => {
   test("keeps feedback when the client router prevents native navigation", () => {
+    vi.useFakeTimers();
     render(
       <>
         <NavigationFeedback />
@@ -31,6 +32,8 @@ describe("NavigationFeedback", () => {
     fireEvent.pointerDown(screen.getByRole("link", { name: "Abrir destino" }));
     fireEvent.click(screen.getByRole("link", { name: "Abrir destino" }));
 
+    expect(screen.queryByText("Abrindo conteúdo")).toBeNull();
+    act(() => vi.advanceTimersByTime(120));
     expect(screen.getByText("Abrindo conteúdo")).toBeTruthy();
   });
 
@@ -51,7 +54,28 @@ describe("NavigationFeedback", () => {
     expect(screen.queryByText("Abrindo conteúdo")).toBeNull();
   });
 
+  test("releases stalled navigation feedback at the eight second limit", () => {
+    vi.useFakeTimers();
+    render(
+      <>
+        <NavigationFeedback />
+        <a href="/destino">Abrir destino</a>
+      </>
+    );
+
+    fireEvent.pointerDown(screen.getByRole("link", { name: "Abrir destino" }));
+    act(() => vi.advanceTimersByTime(120));
+    expect(screen.getByText("Abrindo conteúdo")).toBeTruthy();
+
+    act(() => vi.advanceTimersByTime(7879));
+    expect(screen.getByText("Abrindo conteúdo")).toBeTruthy();
+
+    act(() => vi.advanceTimersByTime(1));
+    expect(screen.queryByText("Abrindo conteúdo")).toBeNull();
+  });
+
   test("acknowledges a keyboard-generated internal link click", () => {
+    vi.useFakeTimers();
     render(
       <>
         <NavigationFeedback />
@@ -65,6 +89,8 @@ describe("NavigationFeedback", () => {
       detail: 0,
     });
 
+    expect(screen.queryByText("Abrindo conteúdo")).toBeNull();
+    act(() => vi.advanceTimersByTime(120));
     expect(screen.getByText("Abrindo conteúdo")).toBeTruthy();
   });
 
@@ -78,6 +104,7 @@ describe("NavigationFeedback", () => {
     );
 
     fireEvent.pointerDown(screen.getByRole("link", { name: "Abrir destino" }));
+    act(() => vi.advanceTimersByTime(120));
     navigationState.pathname = "/destino";
     rerender(
       <>
@@ -89,8 +116,12 @@ describe("NavigationFeedback", () => {
     expect(screen.getByText("Abrindo conteúdo")).toBeTruthy();
 
     act(() => {
-      vi.advanceTimersByTime(150);
+      vi.advanceTimersByTime(149);
     });
+
+    expect(screen.getByText("Abrindo conteúdo")).toBeTruthy();
+
+    act(() => vi.advanceTimersByTime(1));
 
     expect(screen.queryByText("Abrindo conteúdo")).toBeNull();
   });

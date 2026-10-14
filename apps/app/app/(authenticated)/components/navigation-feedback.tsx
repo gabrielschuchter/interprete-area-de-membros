@@ -4,7 +4,8 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 
-const NAVIGATION_TIMEOUT = 12_000;
+const NAVIGATION_TIMEOUT = 8000;
+const PROGRESS_DELAY = 120;
 const MINIMUM_FEEDBACK_DURATION = 150;
 
 const getInternalDestination = (target: EventTarget | null) => {
@@ -70,7 +71,9 @@ export const NavigationFeedback = () => {
   const routeKey = `${pathname}?${searchParams.toString()}`;
   const [pending, setPending] = useState(false);
   const timeoutRef = useRef<number | null>(null);
+  const showTimerRef = useRef<number | null>(null);
   const pendingSinceRef = useRef<number | null>(null);
+  const visibleSinceRef = useRef<number | null>(null);
   const previousRouteKey = useRef(routeKey);
 
   useEffect(() => {
@@ -83,16 +86,21 @@ export const NavigationFeedback = () => {
       window.clearTimeout(timeoutRef.current);
       timeoutRef.current = null;
     }
+    if (showTimerRef.current !== null) {
+      window.clearTimeout(showTimerRef.current);
+      showTimerRef.current = null;
+    }
 
-    const pendingSince = pendingSinceRef.current;
+    const visibleSince = visibleSinceRef.current;
     const remainingFeedback =
-      pendingSince === null
+      visibleSince === null
         ? 0
-        : MINIMUM_FEEDBACK_DURATION - (Date.now() - pendingSince);
+        : MINIMUM_FEEDBACK_DURATION - (Date.now() - visibleSince);
 
     if (remainingFeedback > 0) {
       timeoutRef.current = window.setTimeout(() => {
         pendingSinceRef.current = null;
+        visibleSinceRef.current = null;
         setPending(false);
         timeoutRef.current = null;
       }, remainingFeedback);
@@ -100,6 +108,7 @@ export const NavigationFeedback = () => {
     }
 
     pendingSinceRef.current = null;
+    visibleSinceRef.current = null;
     setPending(false);
   }, [routeKey]);
 
@@ -113,16 +122,24 @@ export const NavigationFeedback = () => {
 
       if (pendingSinceRef.current === null) {
         pendingSinceRef.current = Date.now();
-        // Commit the acknowledgement during capture, before Next handles the
-        // same activation and starts its route transition.
-        flushSync(() => setPending(true));
+        showTimerRef.current = window.setTimeout(() => {
+          showTimerRef.current = null;
+          visibleSinceRef.current = Date.now();
+          // Commit before Next changes the route after the approved 120 ms delay.
+          flushSync(() => setPending(true));
+        }, PROGRESS_DELAY);
       }
       if (timeoutRef.current !== null) {
         window.clearTimeout(timeoutRef.current);
       }
       timeoutRef.current = window.setTimeout(() => {
         pendingSinceRef.current = null;
+        visibleSinceRef.current = null;
         setPending(false);
+        if (showTimerRef.current !== null) {
+          window.clearTimeout(showTimerRef.current);
+          showTimerRef.current = null;
+        }
         timeoutRef.current = null;
       }, NAVIGATION_TIMEOUT);
     };
@@ -137,6 +154,9 @@ export const NavigationFeedback = () => {
       document.removeEventListener("click", begin, true);
       if (timeoutRef.current !== null) {
         window.clearTimeout(timeoutRef.current);
+      }
+      if (showTimerRef.current !== null) {
+        window.clearTimeout(showTimerRef.current);
       }
     };
   }, []);

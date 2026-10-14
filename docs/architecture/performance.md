@@ -1081,3 +1081,39 @@ of the remaining pending queue. Draft saves add no next-submission query.
 Existing pending feedback and invalidation of Main, correction queue, activity
 and student learning routes remain; no identity cache, pool or index change.
 Local QA uses an isolated distDir/port to preserve the interactive preview.
+
+# Início B2 (2026-10-14)
+
+The portal component adds no content or planner query. The authenticated layout
+continues to resolve identity, the existing profile projection, role and
+product configuration; the Início consumes that result. Only the art for the
+active viewport band is requested: the desktop/tablet stage image, or the two
+mobile/low-landscape card images. Shared LQIP and reserved card geometry cover
+the image wait and error fallback. Portal shortcuts keep the existing intent
+prefetch budget of two destinations per route and its save-data/slow-network
+guards; mounting the Início does not prefetch all twelve links.
+
+Navigation keeps one mounted route tree and the existing shell controller.
+Portal traversals/returns use 520 ms, shortcuts 360 ms, internal route entry
+220 ms, technical fade 120 ms, and mobile card exit 300 ms before commit. The
+existing route skeleton boundary handles slow destinations; feedback appears
+after 120 ms, and the shared retry boundary returns failures to Início. A
+navigation timeout remains at eight seconds. No persistent identity/role cache,
+API, schema, pool, or index change is introduced. The approved motion decision
+applies across the product: no system motion preference is read by CSS or
+JavaScript. The shell and Gestão reduced-motion CSS and QA emulation paths were
+removed; Fade remains only a technical fallback for hidden tabs, viewport-band
+changes, and interrupted navigation.
+
+Acceptance budgets remain: click/tap acknowledgement <= 100 ms, CLS <= 0.02,
+Início-only JS <= 15 KiB gzip, CSS <= 6 KiB gzip, fonts <= 90 KiB, and transition
+review at 4x CPU slowdown. The Vercel App build for a92ad73 passed the existing
+route budget: home 210.4 KiB gzip across 16 chunks (225 KiB budget). This does
+not measure the handoff-specific JS/CSS budgets. The local root build and
+performance:check cannot produce artifacts in this worktree without
+DATABASE_URL; Vercel built the app project only. The Preview serves the main
+art asset (200, 228,994 bytes), but the authenticated / request returns 500:
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY is configured for Production, not Preview.
+No Clerk configuration or production alias was changed. Visual comparison,
+authenticated MEMBER/TEACHER/ADMIN journeys, CLS, 4x CPU, physical-device and
+real p75 evidence remain open; roadmap phase 10 remains open.

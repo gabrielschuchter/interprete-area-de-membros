@@ -37,11 +37,13 @@ import {
   UserRoundIcon,
   VideoIcon,
 } from "lucide-react";
+import Image from "next/image";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
   type ReactNode,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
 } from "react";
@@ -49,6 +51,7 @@ import { BrandWordmark } from "@/components/brand/brand-mark";
 import { withGestaoReturnPath } from "@/lib/gestao-navigation";
 import { IntentLink } from "./intent-link";
 import { isSidebarPathActive } from "./member-section";
+import { MemberSidebarControl } from "./member-sidebar-control";
 
 interface MemberAreaSidebarProperties {
   readonly avatarUrl: string | null;
@@ -101,11 +104,14 @@ const ManagementSidebarEntry = ({
         >
           <IntentLink
             aria-current={active ? "page" : undefined}
+            aria-label={label}
             href={href}
             onNavigationStart={onNavigationStart}
           >
             <BookOpenIcon aria-hidden="true" />
-            <span>{label}</span>
+            <span className="group-data-[collapsible=icon]:hidden">
+              {label}
+            </span>
           </IntentLink>
         </SidebarMenuButton>
       </SidebarMenuItem>
@@ -212,9 +218,9 @@ const MemberAreaSidebarView = ({
     setPendingHref(null);
   }, [pathname]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const tabletViewport = window.matchMedia(
-      "(min-width: 48rem) and (max-width: 63.999rem)"
+      "(min-width: 48rem) and (max-width: 78.0625rem)"
     );
     const syncSidebar = () => {
       const isTablet = tabletViewport.matches;
@@ -264,7 +270,7 @@ const MemberAreaSidebarView = ({
   };
 
   const collapsible =
-    portalMode || tabletDrawer || isMobile ? "offcanvas" : "none";
+    portalMode || tabletDrawer || isMobile ? "offcanvas" : "icon";
   const sidebarIsOffCanvas = collapsible === "offcanvas";
 
   return (
@@ -289,24 +295,45 @@ const MemberAreaSidebarView = ({
         data-portal-mode={String(portalMode)}
         variant="sidebar"
       >
-        <SidebarHeader className="border-sidebar-border border-b px-4 py-5">
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                className="h-11 rounded-sm px-2 hover:bg-sidebar-accent"
-                size="lg"
-                tooltip="Interprete."
-              >
-                <IntentLink href="/" onNavigationStart={handleNavigationStart}>
-                  <BrandWordmark className="w-[7.25rem]" tone="branco" />
-                </IntentLink>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
+        <SidebarHeader className="border-sidebar-border border-b px-4 py-5 group-data-[collapsible=icon]:px-2">
+          <div className="flex min-w-0 items-center gap-1 group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:gap-0">
+            <SidebarMenu className="min-w-0 flex-1 group-data-[collapsible=icon]:flex-none">
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  className="h-11 rounded-sm px-2 hover:bg-sidebar-accent"
+                  size="lg"
+                  tooltip="Interprete."
+                >
+                  <IntentLink
+                    href="/"
+                    onNavigationStart={handleNavigationStart}
+                  >
+                    <BrandWordmark
+                      className="w-[7.25rem] group-data-[collapsible=icon]:hidden"
+                      tone="branco"
+                    />
+                    <Image
+                      alt=""
+                      aria-hidden="true"
+                      className="hidden h-7 w-4 group-data-[collapsible=icon]:block"
+                      height={896}
+                      src="/brand/meta/interprete-mark.svg"
+                      width={520}
+                    />
+                    <span className="sr-only">Interprete.</span>
+                  </IntentLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+            <MemberSidebarControl
+              className="size-11 shrink-0 rounded-sm p-0"
+              mode={sidebarIsOffCanvas ? "drawer" : "sidebar"}
+            />
+          </div>
           <SidebarGroup
             aria-label="Minhas gravações"
-            className="px-2 pt-1 pb-0"
+            className="px-2 pt-1 pb-0 group-data-[collapsible=icon]:px-0"
             role="group"
           >
             <SidebarMenu>
@@ -321,11 +348,14 @@ const MemberAreaSidebarView = ({
                     aria-current={
                       isActivePath("/encontros/gravacoes") ? "page" : undefined
                     }
+                    aria-label="Minhas gravações"
                     href="/encontros/gravacoes"
                     onNavigationStart={handleNavigationStart}
                   >
                     <VideoIcon aria-hidden="true" />
-                    <span>Minhas gravações</span>
+                    <span className="group-data-[collapsible=icon]:hidden">
+                      Minhas gravações
+                    </span>
                   </IntentLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -348,11 +378,14 @@ const MemberAreaSidebarView = ({
                       aria-current={
                         isActivePath(item.href) ? "page" : undefined
                       }
+                      aria-label={item.label}
                       href={item.href}
                       onNavigationStart={handleNavigationStart}
                     >
                       <item.icon aria-hidden="true" />
-                      <span>{item.label}</span>
+                      <span className="group-data-[collapsible=icon]:hidden">
+                        {item.label}
+                      </span>
                     </IntentLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -385,7 +418,7 @@ const MemberAreaSidebarView = ({
                     {initialsFor(displayName)}
                   </AvatarFallback>
                 </Avatar>
-                <span className="min-w-0 flex-1 truncate text-left text-sm">
+                <span className="min-w-0 flex-1 truncate text-left text-sm group-data-[collapsible=icon]:hidden">
                   {displayName}
                 </span>
               </SidebarMenuButton>

@@ -304,3 +304,5 @@ skills-lock.json
 
 # Isolated local Next QA runtimes; preserve the preview on port 3000.
 .next-local-*/
+
+.env*
