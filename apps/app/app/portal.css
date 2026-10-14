@@ -1,3 +1,7 @@
+body:has(.portal) [data-slot="sidebar-inset"] {
+  background-color: transparent;
+}
+
 body:has(.portal) [data-sidebar="sidebar"][data-mobile="true"] {
   z-index: 75 !important;
 }
