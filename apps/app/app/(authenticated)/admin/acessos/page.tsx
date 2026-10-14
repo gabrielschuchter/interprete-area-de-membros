@@ -5,11 +5,46 @@ import { getAccessAdminOverview } from "@/lib/access-admin";
 import { requireAdmin } from "@/lib/authorization";
 import { removeAccessGrant, setAccessGrant } from "../actions";
 
-const resourceTypeLabel: Record<string, string> = {
-  COURSE: "curso",
-  MODULE: "módulo",
-  LESSON: "aula",
-  ASSET: "material/gravação",
+const accessGrantOrigin = (grant: {
+  sourcePlatform: string | null;
+  sourceId: string | null;
+}) => {
+  if (grant.sourcePlatform) {
+    return `Importada de ${grant.sourcePlatform}${grant.sourceId ? ` · ref. ${grant.sourceId}` : ""}`;
+  }
+  if (grant.sourceId) {
+    return `Registro externo · ref. ${grant.sourceId}`;
+  }
+  return "Concessão direta · sem origem externa registrada";
+};
+
+const accessGrantValidity = (expiresAt: Date | null, now: Date) => {
+  if (!expiresAt) {
+    return "Sem expiração";
+  }
+  const formatted = expiresAt.toLocaleString("pt-BR", {
+    dateStyle: "short",
+    timeStyle: "short",
+    timeZone: "America/Sao_Paulo",
+  });
+  return expiresAt.getTime() <= now.getTime()
+    ? `Expirada em ${formatted}`
+    : `Expira em ${formatted}`;
+};
+
+const accessGrantEffect = (resourceType: string) => {
+  switch (resourceType) {
+    case "COURSE":
+      return "Leitura do curso e dos conteúdos descendentes";
+    case "MODULE":
+      return "Leitura do módulo e dos conteúdos descendentes";
+    case "LESSON":
+      return "Leitura da aula e dos materiais descendentes";
+    case "ASSET":
+      return "Leitura deste material";
+    default:
+      return "Leitura do recurso";
+  }
 };
 
 const AccessAdminPage = async () => {
@@ -21,6 +56,7 @@ const AccessAdminPage = async () => {
       resource.label,
     ])
   );
+  const now = new Date();
 
   return (
     <main className="mx-auto w-full max-w-[1280px] px-5 py-10 sm:px-8 lg:px-12 lg:py-14">
@@ -32,9 +68,9 @@ const AccessAdminPage = async () => {
             Quem pode estudar o quê.
           </h1>
           <p className="mt-5 text-muted-foreground leading-7">
-            Conceda acesso por curso, módulo, aula ou material. O acesso ao pai
-            é herdado pelos descendentes, e as gravações individuais continuam
-            restritas ao membro autorizado.
+            Esta tela administra concessões diretas por curso, módulo, aula ou
+            material. Matrículas, atribuições e grupos mantêm suas próprias
+            origens e são gerenciados nos respectivos fluxos.
           </p>
         </div>
         <Button asChild variant="outline">
@@ -123,7 +159,7 @@ const AccessAdminPage = async () => {
       <section aria-labelledby="members-access-heading" className="mt-10">
         <div className="flex items-end justify-between border-border border-b pb-3">
           <h2 className="font-display text-3xl" id="members-access-heading">
-            Acessos atuais
+            Concessões diretas registradas
           </h2>
           <span className="font-data text-muted-foreground text-xs">
             {members.length.toString().padStart(2, "0")}
@@ -161,13 +197,14 @@ const AccessAdminPage = async () => {
 
                 {member.accessGrants.length === 0 ? (
                   <p className="mt-5 border-border border-t pt-4 text-muted-foreground text-sm">
-                    Nenhum acesso direto. Membros sem concessão não recebem o
-                    conteúdo importado.
+                    Nenhuma concessão direta. Matrículas, atribuições ou grupos
+                    podem conceder acesso em seus próprios fluxos.
                   </p>
                 ) : (
                   <ul className="mt-5 grid gap-2 border-border border-t pt-4">
                     {member.accessGrants.map((grant) => {
                       const key = `${grant.resourceType}:${grant.resourceId}`;
+                      const resourceLabel = resourceLabels.get(key);
                       return (
                         <li
                           className="flex flex-col justify-between gap-3 border-border border-b pb-2 last:border-b-0 sm:flex-row sm:items-center"
@@ -175,12 +212,20 @@ const AccessAdminPage = async () => {
                         >
                           <div>
                             <p className="text-sm">
-                              {resourceLabels.get(key) ?? "Recurso removido"}
+                              {resourceLabel ?? "Recurso removido"}
                             </p>
                             <p className="text-muted-foreground text-xs">
-                              {resourceTypeLabel[grant.resourceType] ??
-                                grant.resourceType}{" "}
-                              · {grant.permission.toLowerCase()}
+                              Origem · {accessGrantOrigin(grant)}
+                            </p>
+                            <p className="text-muted-foreground text-xs">
+                              Efeito ·{" "}
+                              {resourceLabel
+                                ? accessGrantEffect(grant.resourceType)
+                                : "Sem efeito; o recurso foi removido"}
+                            </p>
+                            <p className="text-muted-foreground text-xs">
+                              Validade ·{" "}
+                              {accessGrantValidity(grant.expiresAt, now)}
                             </p>
                           </div>
                           <form action={removeAccessGrant}>
