@@ -4481,7 +4481,12 @@
   }
 
   .gestao-exercise-pagination {
+    flex-wrap: wrap;
     align-items: flex-start;
+  }
+
+  .gestao-exercise-pagination > div {
+    flex-wrap: wrap;
   }
 
   .gestao-exercise-metrics {
