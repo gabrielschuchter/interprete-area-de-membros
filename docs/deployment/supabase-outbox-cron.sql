@@ -55,7 +55,7 @@ BEGIN
 
   PERFORM cron.schedule(
     'interprete-member-outbox',
-    '* * * * *',
+    '*/5 * * * *',
     $job$
       SELECT net.http_post(
         url := (
