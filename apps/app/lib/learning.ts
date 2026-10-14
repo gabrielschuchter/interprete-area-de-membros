@@ -321,11 +321,7 @@ export const getHomeLearningSummary = async (
     ? Promise.resolve(accessScope)
     : getLearningAccessScope(memberId);
   const coursesPromise = database.course.findMany({
-    where: {
-      ...published,
-      experience: CourseExperience.ASYNC,
-      learningPath: { is: published },
-    },
+    where: publishedCourse,
     orderBy: [{ position: "asc" }, { title: "asc" }],
     select: {
       id: true,

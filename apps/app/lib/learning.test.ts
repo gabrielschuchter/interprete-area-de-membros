@@ -55,6 +55,7 @@ vi.mock("./learning-assignments", () => ({
 }));
 
 import {
+  getHomeLearningSummary,
   getMemberCourseProgress,
   getPublishedLesson,
   getPublishedStandaloneCourses,
@@ -222,6 +223,53 @@ describe("member course progress", () => {
         progress: { completedLessons: 1, percentage: 100, totalLessons: 1 },
       }),
     ]);
+  });
+
+  test("includes authorized standalone courses in the home study overview", async () => {
+    database.course.findMany.mockResolvedValue([
+      {
+        id: "course-1",
+        title: "Curso independente",
+        slug: "curso-independente",
+        experience: "ASYNC",
+        description: null,
+        modules: [
+          {
+            id: "module-1",
+            lessons: [
+              {
+                id: "lesson-1",
+                title: "Aula",
+                slug: "aula",
+                description: null,
+                progress: [],
+              },
+            ],
+          },
+        ],
+      },
+    ]);
+
+    const courses = await getHomeLearningSummary("member-1");
+
+    expect(database.course.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          status: "PUBLISHED",
+          experience: "ASYNC",
+          OR: [
+            { learningPathId: null },
+            { learningPath: { is: { status: "PUBLISHED" } } },
+          ],
+        },
+      })
+    );
+    expect(courses.map(({ id }) => id)).toEqual(["course-1"]);
+    expect(courses[0]?.progress).toEqual({
+      completedLessons: 0,
+      percentage: 0,
+      totalLessons: 1,
+    });
   });
 
   test("returns only activities filtered by the member access resolver", async () => {
