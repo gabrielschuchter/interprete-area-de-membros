@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 
 const {
   database,
+  filterAccessibleAssets,
   filterAccessibleLessonActivities,
   lessonActivitySelect,
   getLearningAccessScope,
@@ -15,6 +16,7 @@ const {
     course: { findFirst: vi.fn(), findMany: vi.fn() },
     lesson: { findFirst: vi.fn() },
   },
+  filterAccessibleAssets: vi.fn(),
   filterAccessibleLessonActivities: vi.fn(),
   lessonActivitySelect: vi.fn(() => ({
     id: true,
@@ -38,13 +40,14 @@ vi.mock("@repo/database", () => ({
     COURSE: "COURSE",
     LESSON: "LESSON",
     MODULE: "MODULE",
+    ASSET: "ASSET",
   },
   ProgressStatus: { COMPLETED: "COMPLETED" },
   database,
 }));
 vi.mock("./authorization", () => ({ requireSession: vi.fn() }));
 vi.mock("./content-access", () => ({
-  filterAccessibleAssets: vi.fn(),
+  filterAccessibleAssets,
   getLearningAccessScope,
   hasCourseAccess,
   hasFullCourseAccess,
@@ -336,7 +339,7 @@ describe("member course progress", () => {
     );
   });
 
-  test("returns only activities filtered by the member access resolver", async () => {
+  test("filters lesson activities and starts an assigned asset after access", async () => {
     const visibleActivity = {
       id: "activity-authorized",
       title: "Prática autorizada",
@@ -351,7 +354,13 @@ describe("member course progress", () => {
       content: null,
       kind: "LESSON",
       resources: [],
-      assets: [],
+      assets: [
+        {
+          id: "asset-assigned",
+          scope: "PRIVATE",
+          ownerMemberId: null,
+        },
+      ],
       progress: [],
       activities: [
         {
@@ -388,8 +397,15 @@ describe("member course progress", () => {
         },
       },
     };
+    const scope = makeScope({
+      assetIds: new Set(["asset-assigned"]),
+      courseIds: new Set(["course-1"]),
+      lessonIds: new Set(["lesson-1"]),
+    });
+    getLearningAccessScope.mockResolvedValue(scope);
     database.lesson.findFirst.mockResolvedValue(lesson);
     filterAccessibleLessonActivities.mockReturnValue([visibleActivity]);
+    filterAccessibleAssets.mockImplementation((assets) => assets);
     const result = await getPublishedLesson("curso", "aula", "member-1");
 
     expect(lessonActivitySelect).toHaveBeenCalledWith("member-1");
@@ -398,6 +414,11 @@ describe("member course progress", () => {
       expect.any(Object)
     );
     expect(result?.activities).toEqual([visibleActivity]);
+    expect(markLearningAssignmentStarted).toHaveBeenCalledWith(
+      "member-1",
+      "ASSET",
+      "asset-assigned"
+    );
     expect(
       database.lesson.findFirst.mock.calls[0]?.[0].select.activities
     ).toEqual(

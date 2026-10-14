@@ -567,6 +567,11 @@ export const getPublishedLesson = async (
   }
 
   const activities = filterAccessibleLessonActivities(lesson.activities, scope);
+  const accessibleAssets = filterAccessibleAssets(
+    lesson.assets,
+    scope,
+    memberId
+  );
 
   await Promise.all([
     markLearningAssignmentStarted(
@@ -584,17 +589,26 @@ export const getPublishedLesson = async (
       LearningAssignmentTargetType.LESSON,
       lesson.id
     ),
+    ...accessibleAssets
+      .filter(({ id }) => scope.assetIds.has(id))
+      .map(({ id }) =>
+        markLearningAssignmentStarted(
+          memberId,
+          LearningAssignmentTargetType.ASSET,
+          id
+        )
+      ),
   ]);
 
   const visibleModules = filterCourse(lesson.module.course, scope).modules;
   const siblings = visibleModules.flatMap((module) => module.lessons);
   const currentIndex = siblings.findIndex(({ id }) => id === lesson.id);
-  const { module: moduleRelation, assets, ...lessonData } = lesson;
+  const { module: moduleRelation, ...lessonData } = lesson;
 
   return {
     ...lessonData,
     activities,
-    assets: filterAccessibleAssets(assets, scope, memberId),
+    assets: accessibleAssets,
     module: {
       ...moduleRelation,
       course: {
