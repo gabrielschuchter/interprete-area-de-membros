@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  gestaoCommunityDestination,
   isGestaoShellPath,
   professorDestination,
   safeGestaoReturnPath,
@@ -22,6 +23,16 @@ describe("Gestão navigation", () => {
   it("keeps legacy staff routes available while the feature flag is off", () => {
     expect(professorDestination(["conteudo"], false)).toBe("/admin/learning");
     expect(professorDestination(["rota-desconhecida"], false)).toBe("/admin");
+  });
+
+  it("maps Gestão community sections to existing staff workflows only", () => {
+    expect(gestaoCommunityDestination(["publicacoes"])).toBe(
+      "/admin/community"
+    );
+    expect(gestaoCommunityDestination(["avisos"])).toBe("/admin/avisos");
+    expect(gestaoCommunityDestination(["encontros"])).toBe("/admin/meetings");
+    expect(gestaoCommunityDestination(["desconhecido"])).toBeNull();
+    expect(gestaoCommunityDestination(["publicacoes", "post"])).toBeNull();
   });
 
   it("rejects external, management, and malformed return destinations", () => {

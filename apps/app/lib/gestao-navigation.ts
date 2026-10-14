@@ -36,6 +36,15 @@ const legacyAdminRoutesByPath: Record<string, string> = {
   personalizacao: "/admin/personalizacao",
 };
 
+const gestaoCommunityDestinations: Record<string, string> = {
+  publicacoes: "/admin/community",
+  avisos: "/admin/avisos",
+  encontros: "/admin/meetings",
+};
+
+export const gestaoCommunityDestination = (pathSegments: readonly string[]) =>
+  gestaoCommunityDestinations[pathSegments.join("/")] ?? null;
+
 export type RedirectSearchParams = Record<
   string,
   string | string[] | undefined

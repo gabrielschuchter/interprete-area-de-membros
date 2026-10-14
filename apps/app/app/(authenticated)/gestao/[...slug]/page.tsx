@@ -1,5 +1,6 @@
-import { forbidden, notFound } from "next/navigation";
+import { forbidden, notFound, redirect } from "next/navigation";
 import { requireGestaoActor } from "@/lib/gestao-authorization";
+import { gestaoCommunityDestination } from "@/lib/gestao-navigation";
 import {
   canPerformGestaoAction,
   type GestaoAction,
@@ -26,6 +27,13 @@ const GestaoPendingRoute = async ({
 
   if (!canPerformGestaoAction(actor.role, area.action)) {
     forbidden();
+  }
+
+  if (slug[0] === "comunidade") {
+    const destination = gestaoCommunityDestination(slug.slice(1));
+    if (destination) {
+      redirect(destination);
+    }
   }
 
   return (

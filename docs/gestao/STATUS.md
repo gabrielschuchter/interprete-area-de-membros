@@ -20,13 +20,13 @@ Atualizado durante a intervenção de simplificação em 13/10/2026. Fonte únic
 
 As evidências são locais e preservam fixtures mutáveis. Consultá-las antes de reexecutar escrita. Reexecutar apenas se a alteração em análise atingir a jornada ou o controle que a evidência prova.
 
-## Próxima entrega funcional
+## Estado e próxima entrega funcional
 
-**Ensino → aluno.** Reaproveitar cursos, aulas, exercícios, biblioteca e coleções existentes; fechar o caminho publicado/atribuído até o aluno autorizado consumir o conteúdo e retornar após reload. Identificar o caminho exato e a lacuna em uma leitura curta dos serviços/telas relevantes antes de alterar. Não criar outro catálogo nem tratar presença de rota ou catálogo como aceite. Separar limitações reais de Storage, YouTube e Clerk da implementação.
+**Ensino → aluno — implementação funcional local concluída.** Cursos, aulas, exercícios, biblioteca e coleções reutilizam os serviços existentes e aplicam publicação, escopo de acesso, atribuição e liberação no servidor. A evidência focada previamente registrada (36 testes em 5 arquivos) continua válida; nesta continuação, o caso de retomar sessão de exercícios já aberta foi corrigido em `apps/app/app/(authenticated)/exercicios/actions.ts` e coberto pelo teste de ações (11 testes passaram). Falta validar a jornada cruzada autenticada e reload sobre a candidata; Clerk, Storage e YouTube reais também não foram sondados nesta etapa.
 
-Correções parciais nesta capacidade: links de atividades relacionados à aula agora passam pelo mesmo resolvedor de destinatários do detalhe da atividade; a página não revela título/prazo de uma atividade direcionada a outro público. Atribuições de material já apontavam para `#materiais`; a seção agora fornece essa âncora para abrir o ponto correto da aula. Cursos publicados sem percurso agora entram no catálogo e no resumo “Seu próximo passo” somente quando o escopo server-side autoriza o curso; antes eram acessíveis por rota/atribuição, mas ausentes do índice e do resumo. Abrir um material atribuído só o marca “Em andamento” após confirmar acesso. A atribuição de um LibraryItem agora concede acesso apenas ao item exato, respeita publicação da aula/curso pai no catálogo, na busca global, em coleções, na biblioteca pessoal e no registro de estudo, e não expõe itens vizinhos nem contagens de itens sem pai publicado. O resolvedor de atribuições também recusa material vinculado a conteúdo não publicado. Atribuições de módulo abrem o curso ancoradas no módulo escolhido e só passam a “Em andamento” se esse módulo constar no escopo visível ao aluno. Atribuições de asset iniciam ao abrir a aula autorizada, limitadas aos assets no escopo. `learning.test.ts` cobre catálogo, resumo, início do módulo e asset autorizado; `library.test.ts` cobre listagem, detalhe, acesso exato, início da atribuição e o predicado compartilhado da busca; `learning-assignments.test.ts` cobre elegibilidade de material e destino do módulo atribuído. Os testes focados de acesso, coleções, catálogo e atribuições passaram (36 casos em 5 arquivos); typecheck do app, Biome e diff-check também passaram. A jornada completa Ensino → aluno continua aberta; browser, reload autenticado e integração real não foram revalidados nesta mudança.
+**Comunidade — rotas operacionais conectadas.** `/gestao/comunidade`, `/publicacoes`, `/avisos` e `/encontros` deixam de cair no placeholder e encaminham para os fluxos staff existentes em `/admin/community`, `/admin/avisos` e `/admin/meetings`. O redirecionamento exige `community.moderate`; páginas e mutações de destino continuam exigindo papel staff. O teste de navegação cobre destinos conhecidos e rejeita subcaminhos não mapeados (6 testes passaram). Validação de interface e reload fica para a candidata.
 
-Depois, fechar as ligações essenciais de acompanhamento/envios, Comunidade, Administração e shell/prévia. Há rotas no catch-all `apps/app/app/(authenticated)/gestao/[...slug]/page.tsx` que ainda mostram “Este fluxo está sendo conectado”; substituir por comportamento real apenas nas capacidades da primeira publicação.
+**Próxima capacidade: Administração.** Confrontar os destinos anunciados com as telas staff existentes e implementar apenas o que ainda não opera, preservando o limite admin-only de membros, acessos, gravações e integrações.
 
 ## Release e verificação
 
@@ -44,5 +44,6 @@ Ao concluir as duas próximas capacidades, registrar aqui somente tempo até pro
 
 | Capacidade | Registro |
 |---|---|
-| Ensino → aluno | Pendente |
-| Capacidade seguinte | Pendente |
+| Ensino → aluno | Implementação local concluída; QA integrado da candidata pendente |
+| Comunidade | Rotas conectadas a fluxos staff existentes; QA integrado da candidata pendente |
+| Administração | Próxima capacidade |
