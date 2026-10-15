@@ -668,6 +668,14 @@
     [data-slot="sidebar-container"] {
     transition: none !important;
   }
+
+  .member-app-shell[data-returning-to-portal="true"]:has(.portal)
+    [data-slot="sidebar"],
+  .member-app-shell[data-returning-to-portal="true"]:has(.portal)
+    [data-slot="sidebar-gap"] {
+    width: 0 !important;
+    transition: none !important;
+  }
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -1370,7 +1378,7 @@
 @keyframes portal-stage-return {
   from {
     opacity: 0.15;
-    transform: translate(-50%, -50%) scale(1.08);
+    transform: translate(-50%, -50%) scale(1.42);
   }
   to {
     opacity: 1;
