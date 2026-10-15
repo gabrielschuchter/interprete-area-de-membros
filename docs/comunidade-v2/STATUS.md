@@ -1,9 +1,9 @@
 # Comunidade V2 — status da auditoria
 
-**Estado:** Estágio 00 concluído; Estágio 01 em andamento. Backup GREEN e overrides Preview da branch estão verificados; falta validar um deployment criado com esses overrides e comprovar uma sessão humana Clerk.
-**Atualizado:** 15/10/2026 15:20 UTC.
+**Estado:** Estágio 00 concluído; Estágio 01 em andamento. Backup GREEN e overrides Preview da branch estão verificados. O primeiro build do app com esses overrides falhou em um teste sensível a `APP_WRITE_FREEZE`; o isolamento foi corrigido e a suíte do app passou localmente (779/779) sob a flag ativa. Falta publicar essa correção no Preview, validar o deployment e comprovar uma sessão humana Clerk.
+**Atualizado:** 15/10/2026 15:37 UTC.
 **Branch e base:** `codex/comunidade-v2`, a partir de `origin/main` em `b6028a37a358c0ff1d45d19297c5454318c799a3`; branch remota publicada.
-**Próximo passo:** disparar e validar o deployment atualizado da branch, testar proteção Vercel e obter sessão de membro existente no Clerk Development. Não iniciar QA mutável.
+**Próximo passo:** publicar a correção do teste e aguardar o app Preview ficar `READY`; abrir a URL protegida para o usuário concluir o login Clerk, validar leitura autenticada e confirmar o bloqueio de escrita. Não iniciar QA mutável.
 
 ## Escopo e integridade
 
@@ -14,7 +14,7 @@
   SHA-256: F9C6D5E4F657D320BA856D97DC31F489425FE3546B6E2BB303DE81CFC46C62E
 - AGENTS.md, schema Prisma, código da main, Gestao V2, Inicio B2, editor, notificações, uploads, perfil, timers e consultas de estudo foram auditados. A fonte de implementação parte da main; o checkout original estava atrás da main.
 - O checkout original permanece inalterado: branch `codex/interprete-member-area-release-2026-10-04`, HEAD `a4b68b81dc084d6de4648c488a0442e14cfb0539`, com 8 arquivos rastreados modificados e 9 não rastreados preexistentes. Nenhum foi copiado, limpo ou sobrescrito.
-- O worktree V2 parte de `b6028a3`. Até agora só foram alterados os quatro documentos desta auditoria; não houve mudança funcional, migration, escrita no GREEN, alteração de configuração Production ou publicação.
+- O worktree V2 parte de `b6028a3`. Os quatro documentos desta auditoria estão gravados. Foi adicionada uma correção exclusivamente de isolamento ambiental em `apps/app/lib/write-freeze.test.ts`; nenhuma lógica de produto mudou. Não houve migration, escrita no GREEN, alteração de configuração Production ou publicação Production.
 
 ## Fontes verificadas na main
 
@@ -72,7 +72,7 @@ A alegação do handoff de vazamento de rascunho no feed não foi confirmada na 
 
 ## Estágio 01: preparação do Preview
 
-**Estado:** backup e isolamento de ambiente concluídos; deployment e autenticação humana ainda aguardam prova. Nenhuma migration ou escrita no GREEN foi feita.
+**Estado:** backup e isolamento de ambiente concluídos. API Preview do SHA `84fb480` está `READY`; app Preview do mesmo SHA ficou `ERROR` durante os testes. O teste do flag já foi isolado e os 779 testes do app passaram localmente com `APP_WRITE_FREEZE=true`; a nova implantação e autenticação humana ainda aguardam prova. Nenhuma migration ou escrita no GREEN foi feita.
 
 ### Backup manual GREEN
 
@@ -85,7 +85,7 @@ A alegação do handoff de vazamento de rascunho no feed não foi confirmada na 
 - A branch `codex/comunidade-v2` está publicada. Os projetos app (`prj_bwG8vDd4x2flyPaRMq8HEvi7t5Lj`) e API (`prj_LzsMnY95oPtOdp6KUwUaPRQ5lfh6`) têm 43 overrides cada, todos com `target=[preview]` e `gitBranch=codex/comunidade-v2`.
 - `vercel env pull` buscou os valores efetivos da branch; os 43 valores de cada projeto coincidiram com o plano esperado. Ambos apontam ao GREEN e ao par Clerk Development. `APP_WRITE_FREEZE=true`, `CRON_SECRET` vazio, seed e webhook desligados, uploads pausados e credenciais de e-mail/terceiros em branco. URLs canônicas verificados: app `https://interprete-area-de-membro-git-553be9-gabrielschuchters-projects.vercel.app`; API `https://interprete-area-de-membro-git-afba70-gabrielschuchters-projects.vercel.app`.
 - Fingerprints de Production permaneceram idênticos: app `1beb15676657ebe3f7f2e6b61fbb4eabbcddacd04d9f8d692e1e8e6a18ab7b67`, API `d740ee06ecab8cbe8c1c7c035ec52c0e5840a7b2319a7f6bf3271136f50a41a9`; IDs de deployment Production também não mudaram.
-- Há uma implantação do app (`dpl_3uEVkqA3r7ojbArNvUyHuiKZh8Hi`) criada antes dos overrides, estado `READY`. Ela não comprova o ambiente da V2 e não deve ser usada. A implantação API daquela tentativa foi cancelada. A próxima atualização de branch deve criar deployments com os overrides já verificados; o SSO Vercel e a autenticação Clerk devem ser testados separadamente. Nenhum bypass foi usado.
+- A implantação do app (`dpl_3uEVkqA3r7ojbArNvUyHuiKZh8Hi`) criada antes dos overrides está `READY`, mas não comprova o ambiente da V2 e não deve ser usada. O app `dpl_3vYbK1TmMm7CJyjxSSHKj5Df9CM8` do SHA `84fb480` falhou porque `apps/app/lib/write-freeze.test.ts` esperava que `undefined` ignorasse o `APP_WRITE_FREEZE=true` efetivo no Preview. O teste agora fixa temporariamente a variável vazia; os 779 testes passaram localmente com freeze ativo. A API `dpl_kqzqZCXDmAPKHxDLUabbaYpaJaqy` do mesmo SHA está `READY`. Nenhum bypass Vercel foi usado. Uma nova atualização da branch precisa deixar o app `READY`; SSO Vercel e Clerk devem ser validados separadamente.
 - Clerk Development tem 5 usuários; GREEN tem 7 `Member`; somente 1 identidade coincide e tem papel `MEMBER`. Nenhuma coincide com `TEACHER` ou `ADMIN`. Não foram criados usuários, papéis ou sessões. A sessão humana Clerk ainda não foi comprovada; validação positiva de staff continua pendente para o QA por papel.
 
 ### Isolamento de jobs
@@ -106,12 +106,13 @@ A alegação do handoff de vazamento de rascunho no feed não foi confirmada na 
 - O resolvedor de @todos foi executado isoladamente com banco falso em memória; nenhum dado externo foi alterado.
 - Oito arquivos focados, total de 22 testes, passaram pelo entrypoint Node/Vitest no checkout auditado. O checkout de teste estava em a4b68b8, não em b6028a3; isso não prova a suíte da main nem runtime autenticado.
 - Uma tentativa usando Bun direto falhou em dois arquivos por interoperabilidade de import Zod no executor. A execução Node/Vitest passou; nenhuma mudança foi feita para contornar esse comportamento.
-- Não foram executados os seis checks completos, testes de banco com escrita, percentis, comparação real de screenshots da aplicação ou jornadas Clerk autenticadas. Não declarar esses gates concluídos.
+- No worktree V2, `bun run check` passou (958 arquivos), `bun run typecheck` passou (16 tarefas), `bun run boundaries` passou (887 arquivos) e `APP_WRITE_FREEZE=true bun run test` passou no monorepo: app 779 testes, API 9, domínio de membro 18 e scripts de guarda. A geração do Prisma Client foi local e não conectou ao banco.
+- `bun run performance:check` não pôde rodar localmente porque exige os manifests produzidos por `next build`, ausentes neste worktree. O build local integral não foi iniciado sem as variáveis de branch; o próximo Preview remoto é o gate de build. Testes de banco com escrita, percentis, comparação real de screenshots e jornadas Clerk autenticadas continuam pendentes.
 
 ## Bloqueios e riscos que permanecem
 
 1. A integridade dos backups foi verificada, mas a restauração completa não foi ensaiada; os artefatos dependem do DPAPI do perfil Windows local.
-2. A branch agora tem variáveis GREEN/Clerk Development corretas, mas o deployment app atual foi criado antes delas. O próximo deployment precisa ficar `READY` com os valores verificados antes do teste de login.
+2. A branch tem variáveis GREEN/Clerk Development corretas; a primeira implantação com elas falhou no teste de ambiente descrito acima. A correção foi validada sob `APP_WRITE_FREEZE=true`; o próximo deployment precisa ficar `READY` antes do teste de login.
 3. A sessão Clerk Development humana não foi comprovada. Há uma identidade `MEMBER` compartilhada com o banco, mas não foi validado o acesso interativo; nenhum usuário Clerk Development corresponde a `TEACHER`/`ADMIN`.
 4. GREEN é compartilhado. A escrita permanece congelada até definir identidades e escopo de QA autorizados e impedir que o worker Production reivindique outbox originado no Preview.
 5. O consumer imediato no app e o cron global podem disputar a mesma chave de outbox. Desligar apenas o cron do Preview não é suficiente; antes de menções, convites ou avisos mutáveis, a origem precisa ser isolada nos produtores e consumidores.
@@ -122,4 +123,4 @@ A alegação do handoff de vazamento de rascunho no feed não foi confirmada na 
 
 ## Próximo passo
 
-Atualizar e publicar este registro para disparar um novo deployment da branch; aguardar `READY`, verificar SSO Vercel e autenticar com o membro Clerk Development existente. Confirmar que a página lê o GREEN e que a escrita continua bloqueada, sem alterar dados. O Estágio 01 só fecha após essas provas. Não iniciar migrations ou QA mutável até existir isolamento de escrita e outbox.
+Publicar a correção do teste e este registro para disparar um novo deployment da branch; aguardar `READY`, abrir o SSO Vercel e deixar o usuário autenticar com o membro Clerk Development existente. Confirmar que a página lê o GREEN e que a escrita continua bloqueada, sem alterar dados. O Estágio 01 só fecha após essas provas. Não iniciar migrations ou QA mutável até existir isolamento de escrita e outbox.
