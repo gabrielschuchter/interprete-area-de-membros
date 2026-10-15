@@ -1,0 +1,68 @@
+name: Community V2 Preview outbox recovery
+
+on:
+  schedule:
+    # Offset away from the top of the hour; GitHub scheduling remains best-effort.
+    - cron: "3-58/5 * * * *"
+
+permissions:
+  contents: none
+
+jobs:
+  recover-preview-outbox:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'schedule'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    environment: community-v2-preview
+    concurrency:
+      group: community-v2-preview-outbox
+      cancel-in-progress: false
+    permissions:
+      contents: none
+      id-token: write
+    steps:
+      - name: Process the Preview outbox
+        shell: bash
+        env:
+          PREVIEW_OUTBOX_CRON_SECRET: ${{ secrets.PREVIEW_OUTBOX_CRON_SECRET }}
+          API_PREVIEW_HOST: interprete-area-de-membro-git-afba70-gabrielschuchters-projects.vercel.app
+        run: |
+          set -euo pipefail
+
+          [[ "$GITHUB_REPOSITORY" == "gabrielschuchter/interprete-area-de-membros" ]]
+          [[ "$GITHUB_REF" == "refs/heads/main" ]]
+          [[ "$GITHUB_EVENT_NAME" == "schedule" ]]
+          [[ "$API_PREVIEW_HOST" == "interprete-area-de-membro-git-afba70-gabrielschuchters-projects.vercel.app" ]]
+          : "${PREVIEW_OUTBOX_CRON_SECRET:?Configure this secret in the community-v2-preview environment}"
+          : "${ACTIONS_ID_TOKEN_REQUEST_URL:?GitHub OIDC is unavailable for this job}"
+          : "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:?GitHub OIDC is unavailable for this job}"
+
+          oidc_response="$(curl \
+            --fail \
+            --silent \
+            --show-error \
+            --connect-timeout 10 \
+            --max-time 20 \
+            --header "Authorization: Bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=https%3A%2F%2Fgithub.com%2Fgabrielschuchter")"
+          oidc_token="$(printf '%s' "$oidc_response" | jq --exit-status --raw-output '.value')"
+          unset oidc_response
+          printf '::add-mask::%s\n' "$oidc_token"
+
+          api_url="https://${API_PREVIEW_HOST}/cron/outbox"
+          http_status="$(curl \
+            --fail \
+            --silent \
+            --show-error \
+            --connect-timeout 10 \
+            --max-time 70 \
+            --retry 2 \
+            --retry-delay 1 \
+            --output /dev/null \
+            --write-out '%{http_code}' \
+            --request POST \
+            --header "Authorization: Bearer ${PREVIEW_OUTBOX_CRON_SECRET}" \
+            --header "x-vercel-trusted-oidc-idp-token: ${oidc_token}" \
+            "$api_url")"
+          [[ "$http_status" == "200" ]]
+          printf 'Preview outbox request completed with HTTP %s.\n' "$http_status"
