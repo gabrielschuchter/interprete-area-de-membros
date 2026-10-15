@@ -1,9 +1,9 @@
 # Comunidade V2 — status da auditoria
 
-**Estado:** auditoria e documentação do Estágio 00 concluídas; etapa funcional não iniciada. A fase 7 do roadmap permanece IN PROGRESS.
-**Data de corte:** 15/10/2026.
-**Branch e base:** codex/comunidade-v2, criada a partir de origin/main em b6028a37a358c0ff1d45d19297c5454318c799a3.
-**Próximo passo:** revisar estes quatro documentos; não iniciar etapa funcional antes dos gates do Estágio 01.
+**Estado:** Estágio 00 concluído; Estágio 01 em andamento. Backup GREEN e overrides Preview da branch estão verificados; falta validar um deployment criado com esses overrides e comprovar uma sessão humana Clerk.
+**Atualizado:** 15/10/2026 15:20 UTC.
+**Branch e base:** `codex/comunidade-v2`, a partir de `origin/main` em `b6028a37a358c0ff1d45d19297c5454318c799a3`; branch remota publicada.
+**Próximo passo:** disparar e validar o deployment atualizado da branch, testar proteção Vercel e obter sessão de membro existente no Clerk Development. Não iniciar QA mutável.
 
 ## Escopo e integridade
 
@@ -13,8 +13,8 @@
 - Protocolo de decisões: D:/roteiro-codex-comunidade-v2.md
   SHA-256: F9C6D5E4F657D320BA856D97DC31F489425FE3546B6E2BB303DE81CFC46C62E
 - AGENTS.md, schema Prisma, código da main, Gestao V2, Inicio B2, editor, notificações, uploads, perfil, timers e consultas de estudo foram auditados. A fonte de implementação parte da main; o checkout original estava atrás da main.
-- O checkout original permanece inalterado: branch codex/interprete-member-area-release-2026-10-04, HEAD a4b68b81dc084d6de4648c488a0442e14cfb0539, com 8 arquivos rastreados modificados e 9 não rastreados já existentes. Nenhum deles foi copiado, limpo ou sobrescrito.
-- O worktree desta entrega está limpo antes da documentação e parte de b6028a3. Nenhuma alteração funcional, migration, escrita de dados, backup, publicação, deploy ou configuração de credenciais foi feita nesta auditoria.
+- O checkout original permanece inalterado: branch `codex/interprete-member-area-release-2026-10-04`, HEAD `a4b68b81dc084d6de4648c488a0442e14cfb0539`, com 8 arquivos rastreados modificados e 9 não rastreados preexistentes. Nenhum foi copiado, limpo ou sobrescrito.
+- O worktree V2 parte de `b6028a3`. Até agora só foram alterados os quatro documentos desta auditoria; não houve mudança funcional, migration, escrita no GREEN, alteração de configuração Production ou publicação.
 
 ## Fontes verificadas na main
 
@@ -70,14 +70,35 @@ O GREEN atual é compartilhado por Preview e produção. O BLUE legado permanece
 
 A alegação do handoff de vazamento de rascunho no feed não foi confirmada na consulta estática da main: a consulta atual exige status publicado e deletedAt nulo. Os dez rascunhos vazios são dados reais e continuam preservados. O documento anterior de domínio registra criação do rascunho ao iniciar o composer; o contrato 20C muda esse gatilho. O roadmap registra que Salvos global já reuniu bookmarks da Comunidade, mas a página atual em apps/app/(authenticated)/salvos/page.tsx não consulta esses bookmarks; a integração precisa ser implementada e verificada.
 
-## Preview e runtime
+## Estágio 01: preparação do Preview
 
-- Preview Vercel encontrado está protegido por SSO; a URL de deployment observada redirecionou para login Vercel e respondeu HTML 200. Isso não prova execução de /health nem autenticação Clerk.
-- A produção respondeu 200 no health da aplicação e API contra GREEN.
-- Valores de ambiente Vercel são criptografados; não foram decriptados nem usados para afirmar qual banco ou par de chaves um Preview específico usa.
-- Os ambientes locais tinham URLs BLUE, Clerk de desenvolvimento e TLS com verificação de certificado. Não havia runtime da aplicação ou PostgreSQL local ativo nas portas verificadas.
-- Para começar a execução: criar variável específica da branch apontada para GREEN; validar par Clerk Development apenas em Preview; manter Clerk Production/proxy; provar separadamente proteção Vercel e sessão humana Clerk.
-- A infraestrutura de outbox existe e está ativa. A estratégia de consumidores V2 precisa ser demonstrada para evitar que worker legado reivindique job com semântica incompatível.
+**Estado:** backup e isolamento de ambiente concluídos; deployment e autenticação humana ainda aguardam prova. Nenhuma migration ou escrita no GREEN foi feita.
+
+### Backup manual GREEN
+
+- PostgreSQL: `%LOCALAPPDATA%\Codex\migrations\interprete-supabase\green-prechange-20261015T145641Z.pgdump.aesgcm`, 570.583 bytes, SHA-256 `d8796d123d962d0ae39ecc5b2152e26f78938a300523ed7440ef1b8a8f149046`. O manifesto registra os schemas `public` e `supabase_migrations`; AES-GCM e DPAPI CurrentUser foram verificados, o conteúdo descriptografado passou `pg_restore --list`, e o destino foi confirmado como GREEN com TLS `verify-full`. Nenhuma escrita ocorreu.
+- Storage privado `learning-assets`: `%LOCALAPPDATA%\Codex\migrations\interprete-supabase\green-storage-prechange-20261015T150238088Z.aesgcm`, 4 objetos/11.092 bytes, SHA-256 `579a626b59993346e7b8e826f8cc3c5c1170ad67b9924449cc313dba56ac53b9`; inventário de metadados SHA-256 `c4b1350156dbf11c532f537baa68b7a5ed103e1b7513dad0d34f378e84dc498c`. Metadados foram comparados antes/depois da leitura, cada objeto foi conferido por tamanho e SHA-256 e o arquivo criptografado foi descriptografado e verificado em memória. Chave e manifesto usam DPAPI CurrentUser e ACL local.
+- Os artefatos ficam fora do repositório. A restauração não foi ensaiada. O procedimento é: recuperar a chave DPAPI no mesmo perfil Windows; validar hash e autenticação AES-GCM; restaurar PostgreSQL 17 em um projeto Supabase isolado e vazio com TLS `verify-full`; reidratar os objetos no bucket privado sem sobrescrever nomes; conferir checksums do ledger, dados/RLS e contagens. Nunca usar o GREEN compartilhado como alvo de ensaio. Como a chave DPAPI depende do perfil Windows local, uma cópia fora desta máquina ainda é necessária para recuperação de desastre.
+
+### Vercel e Clerk
+
+- A branch `codex/comunidade-v2` está publicada. Os projetos app (`prj_bwG8vDd4x2flyPaRMq8HEvi7t5Lj`) e API (`prj_LzsMnY95oPtOdp6KUwUaPRQ5lfh6`) têm 43 overrides cada, todos com `target=[preview]` e `gitBranch=codex/comunidade-v2`.
+- `vercel env pull` buscou os valores efetivos da branch; os 43 valores de cada projeto coincidiram com o plano esperado. Ambos apontam ao GREEN e ao par Clerk Development. `APP_WRITE_FREEZE=true`, `CRON_SECRET` vazio, seed e webhook desligados, uploads pausados e credenciais de e-mail/terceiros em branco. URLs canônicas verificados: app `https://interprete-area-de-membro-git-553be9-gabrielschuchters-projects.vercel.app`; API `https://interprete-area-de-membro-git-afba70-gabrielschuchters-projects.vercel.app`.
+- Fingerprints de Production permaneceram idênticos: app `1beb15676657ebe3f7f2e6b61fbb4eabbcddacd04d9f8d692e1e8e6a18ab7b67`, API `d740ee06ecab8cbe8c1c7c035ec52c0e5840a7b2319a7f6bf3271136f50a41a9`; IDs de deployment Production também não mudaram.
+- Há uma implantação do app (`dpl_3uEVkqA3r7ojbArNvUyHuiKZh8Hi`) criada antes dos overrides, estado `READY`. Ela não comprova o ambiente da V2 e não deve ser usada. A implantação API daquela tentativa foi cancelada. A próxima atualização de branch deve criar deployments com os overrides já verificados; o SSO Vercel e a autenticação Clerk devem ser testados separadamente. Nenhum bypass foi usado.
+- Clerk Development tem 5 usuários; GREEN tem 7 `Member`; somente 1 identidade coincide e tem papel `MEMBER`. Nenhuma coincide com `TEACHER` ou `ADMIN`. Não foram criados usuários, papéis ou sessões. A sessão humana Clerk ainda não foi comprovada; validação positiva de staff continua pendente para o QA por papel.
+
+### Isolamento de jobs
+
+- O Preview está somente leitura: o proxy bloqueia métodos mutáveis por `APP_WRITE_FREEZE`, cron não recebe segredo e o webhook Clerk está desligado. Isso evita novos jobs das rotas bloqueadas durante a preparação.
+- O worker de Production continua ativo. O consumidor atual reivindica jobs elegíveis por uma chave compartilhada, e `dispatchPendingNotifications` no app também pode executar o consumidor. Portanto, desligar cron no Preview não isolaria jobs criados por mutações do app. Antes de liberar escrita Preview que produza outbox, será obrigatório adicionar discriminação de origem/ambiente e provar que os dois caminhos não reivindicam jobs do outro ambiente.
+
+## Preview e runtime no corte do Estágio 00
+
+- Na auditoria original, o Preview redirecionava para SSO Vercel e respondia HTML 200; isso não provava `/health` nem Clerk autenticado.
+- A produção respondeu 200 nos health checks da aplicação e da API contra GREEN.
+- Naquele corte, as variáveis Vercel não tinham sido lidas; os ambientes locais apontavam para BLUE e não serviam para Preview V2. A configuração específica da branch e a comparação de valores estão agora registradas acima.
+- A infraestrutura de outbox existe e está ativa; permanece a incompatibilidade potencial entre eventos de Preview e o consumidor global de Production, que bloqueia QA mutável.
 
 ## Verificações executadas e limites
 
@@ -89,14 +110,16 @@ A alegação do handoff de vazamento de rascunho no feed não foi confirmada na 
 
 ## Bloqueios e riscos que permanecem
 
-1. Backup GREEN verificado e procedimento de restauração documentados ainda não existem.
-2. Preview Clerk autenticado não foi comprovado; os envs locais auditados apontam para BLUE.
-3. GREEN compartilhado faz com que dados de QA/migrations afetem o ambiente em desenvolvimento; testes precisam de escopo, conta e cleanup aditivo explícitos.
-4. Enum novo pode dificultar rollback a código antigo; usar flags compatíveis e não gravar MODERATOR antes dos consumidores atualizados.
-5. Tokens, notificações privadas, REST legado, OG e caches devem revalidar permissão após revogação.
-6. Backup PostgreSQL não restaura objetos de Storage; não apagar objetos antigos na primeira implementação.
-7. A combinação entre o índice atual de título por proprietário e o board de criação com nome repetido precisa ser preservada/explicada antes de qualquer mudança do índice.
+1. A integridade dos backups foi verificada, mas a restauração completa não foi ensaiada; os artefatos dependem do DPAPI do perfil Windows local.
+2. A branch agora tem variáveis GREEN/Clerk Development corretas, mas o deployment app atual foi criado antes delas. O próximo deployment precisa ficar `READY` com os valores verificados antes do teste de login.
+3. A sessão Clerk Development humana não foi comprovada. Há uma identidade `MEMBER` compartilhada com o banco, mas não foi validado o acesso interativo; nenhum usuário Clerk Development corresponde a `TEACHER`/`ADMIN`.
+4. GREEN é compartilhado. A escrita permanece congelada até definir identidades e escopo de QA autorizados e impedir que o worker Production reivindique outbox originado no Preview.
+5. O consumer imediato no app e o cron global podem disputar a mesma chave de outbox. Desligar apenas o cron do Preview não é suficiente; antes de menções, convites ou avisos mutáveis, a origem precisa ser isolada nos produtores e consumidores.
+6. Enum novo pode dificultar rollback a código antigo; usar flags compatíveis e não gravar `MODERATOR` antes de todos os consumidores estarem compatíveis.
+7. Tokens, notificações privadas, REST legado, OG e caches devem revalidar permissão após revogação.
+8. Os bytes de Storage estão incluídos no backup; a reidratação deles também não foi ensaiada. Não apagar objetos antigos na primeira implementação.
+9. A unicidade de título atual por proprietário e o board de criação com nome repetido precisam ser reconciliados antes de alterar índice/dados.
 
 ## Próximo passo
 
-Revisar PLAN.md, DECISIONS.md e BOARDS.md. Depois iniciar o Estágio 01: inventário/backup GREEN legível, configuração de Preview específica da branch e prova de Clerk autenticado. Nenhuma migration de produto ou QA mutável até esses três gates serem evidenciados.
+Atualizar e publicar este registro para disparar um novo deployment da branch; aguardar `READY`, verificar SSO Vercel e autenticar com o membro Clerk Development existente. Confirmar que a página lê o GREEN e que a escrita continua bloqueada, sem alterar dados. O Estágio 01 só fecha após essas provas. Não iniciar migrations ou QA mutável até existir isolamento de escrita e outbox.
