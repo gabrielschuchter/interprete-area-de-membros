@@ -54,6 +54,7 @@
 - **Banco para Preview:** usar o GREEN atual, compartilhado com produção; não criar ambiente de homologação separado. A configuração de branch deve apontar ao GREEN após backup verificável.
 - **Backup:** fazer cópia manual verificável como estado inicial antes de qualquer escrita/migration. Registrar como ler e recuperar. O backup do Postgres não inclui objetos do Storage.
 - **Movimento:** não criar lógica prefers-reduced-motion para esta entrega, conforme protocolo aprovado.
+- **Agendador da V2 Preview:** em 15/10/2026, o usuário autorizou revisar a regra contra scheduler paralelo e preparar um workflow GitHub Actions com OIDC para recuperação somente do namespace `preview.*` no API Preview. O GREEN cron de Production permanece intocado. O acesso deve exigir claims exatas de issuer/audience, repositório, `main`, evento `schedule`, ambiente GitHub e `workflow_ref`, com Trusted Source aplicado somente a Preview e Vercel SSO mantido. O workflow usa segredo de rota restrito ao Preview em ambiente Actions limitado a `main`; cadência GitHub é best-effort e só contará como gate após observação repetida e recuperação real. PR #10 está aberto; a autorização não equivale a merge nem a validação concluída.
 
 ## Prevalência e exceções visuais autorizadas
 
