@@ -1,9 +1,9 @@
 # Comunidade V2 — status da auditoria
 
-**Estado:** Estágio 00 concluído; Estágio 01 em andamento. Backup GREEN restaurado e reconciliado em PostgreSQL local com TLS. Isolamento de fila implementado e exercitado com retry, crash e concorrência reais. O Preview autenticado permanece congelado. Quatro contas QA Development já têm vínculos MEMBER/MEMBER/TEACHER/ADMIN persistidos no GREEN após autorização explícita; os sete Members e sete Profiles anteriores permaneceram intactos. A validação de papéis no browser está em execução.
-**Atualizado:** 15/10/2026 17:29 UTC.
+**Estado:** Estágio 00 concluído; Estágio 01 em andamento. Backup GREEN restaurado e reconciliado em PostgreSQL local com TLS. Isolamento de fila implementado e exercitado com retry, crash e concorrência reais. O deployment `b747ed8` dos dois projetos está READY; o override efetivo da branch mudou apenas no App para APP_WRITE_FREEZE=false e precisa de novo deployment para ativar o login Clerk. A API permanece congelada. Quatro contas QA Development já têm vínculos MEMBER/MEMBER/TEACHER/ADMIN persistidos no GREEN após autorização explícita; os sete Members e sete Profiles anteriores permaneceram intactos. A validação de papéis no browser está em execução.
+**Atualizado:** 15/10/2026 21:20 UTC.
 **Branch e base:** `codex/comunidade-v2`, a partir de `origin/main` em `b6028a37a358c0ff1d45d19297c5454318c799a3`; branch remota publicada.
-**Próximo passo:** publicar e conferir o commit de isolamento no Preview; comprovar os papéis, a entrega e a recuperação no Preview com os quatro vínculos QA autorizados antes de liberar escrita.
+**Próximo passo:** publicar o App com o override efetivo de freeze false, comprovar login/roles Clerk e então configurar a recuperação namespaced Preview pelo cron GREEN existente.
 
 ## Escopo e integridade
 
@@ -132,7 +132,7 @@ A alegação do handoff de vazamento de rascunho no feed não foi confirmada na 
 2. Os quatro vínculos QA já existem com autorização explícita. A prova autenticada de TEACHER/ADMIN, dois alunos e visitante no Preview está em execução.
 3. O worker foi exercitado com falha e concorrência reais em PostgreSQL local. Faltam processamento, entrega e recuperação no Preview protegido usando a infraestrutura existente.
 4. GREEN e Notification são compartilhados. A lista explícita QA já é validada pelo produtor/consumidor e foi exercitada em PostgreSQL real. Manter freeze até essa versão estar publicada e a entrega ser comprovada.
-5. O namespace está implementado/testado localmente e tem configuração exclusiva de branch, mas a nova versão ainda precisa ser publicada/conferida no Preview. Nunca voltar um Preview gravável a código que usa a chave legada.
+5. O namespace e a proteção de destinatários estão publicados nos deployments `b747ed8` App/API `READY`. A alteração recente de `APP_WRITE_FREEZE=false` exige novo deployment App para ativar login. Nunca voltar um Preview gravável a código que usa a chave legada.
 6. Enum novo pode dificultar rollback; não gravar MODERATOR antes de todos os consumidores estarem compatíveis. Nenhum schema V2 foi antecipado.
 7. Tokens, notificações privadas, REST legado, OG e caches precisam revalidar permissão após revogação.
 8. Preservar os bytes de Storage anteriores; o ensaio de reidratação no bucket continua pendente.
@@ -140,8 +140,8 @@ A alegação do handoff de vazamento de rascunho no feed não foi confirmada na 
 
 ## Próximo passo
 
-Conferir o isolamento publicado no Preview protegido e manter APP_WRITE_FREEZE=true. Os quatro vínculos QA foram autorizados/persistidos e a restrição de destinatários foi implementada/testada. Concluir a validação aluno/professor/admin/visitante e a entrega/recuperação no Preview. Etapa 01 permanece IN PROGRESS; nenhuma funcionalidade visual V2 ou migration começa antes dos gates.
+O isolamento está publicado em App/API. O novo override App false aguarda deployment. Concluir login/papéis, ativar e validar a recuperação preview pelo worker existente, e em seguida restaurar o freeze até haver execução controlada da próxima etapa. Etapa 01 permanece IN PROGRESS; nenhuma funcionalidade visual V2 ou migration começa antes dos gates.
 
 ### Diagnóstico da ativação de sessão com freeze
 
-O browser de QA alcançou o Preview protegido usando OIDC temporário do mesmo projeto e carregou Clerk Development. O helper oficial criou a tentativa de sessão, mas a ativação ficou esperando o POST de invalidateCacheAction do SDK Next.js, respondido com 503 pelo freeze. O código instalado confirma que esse callback espera o Server Action sem tratar sua rejeição. A leitura humana com sessão já ativa continua sendo evidência válida; o fluxo de login novo durante manutenção não foi comprovado. Não abrir exceção genérica de POST em /sign-in, pois Server Actions de produto também podem ser despachadas por essa rota. Publicar/conferir primeiro namespace e audiência QA; preparar depois uma janela controlada de QA com a configuração de escrita apropriada, mantendo Production intacta. A restrição temporária da revisão automática de permissões foi revalidada e a leitura seguinte executou normalmente.
+O browser de QA alcançou o Preview protegido usando OIDC temporário do mesmo projeto e carregou Clerk Development. No deployment ainda configurado com freeze, o helper oficial criou a tentativa de sessão, mas a ativação ficou esperando o POST de invalidateCacheAction do SDK Next.js, respondido com 503. O override da branch App foi então alterado para `APP_WRITE_FREEZE=false`; o novo deployment ainda não foi criado. API continua freeze true. O código instalado confirma que esse callback espera o Server Action sem tratar sua rejeição. A leitura humana com sessão já ativa continua sendo evidência válida; o fluxo de login novo durante manutenção não foi comprovado. Não abrir exceção genérica de POST em /sign-in, pois Server Actions de produto também podem ser despachadas por essa rota. Publicar/conferir primeiro namespace e audiência QA; preparar depois uma janela controlada de QA com a configuração de escrita apropriada, mantendo Production intacta. A restrição temporária da revisão automática de permissões foi revalidada e a leitura seguinte executou normalmente.
