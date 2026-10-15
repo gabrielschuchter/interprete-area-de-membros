@@ -1,9 +1,9 @@
 # Comunidade V2 — status da auditoria
 
-**Estado:** Estágio 00 concluído; Estágio 01 em andamento. O backup GREEN foi restaurado e reconciliado localmente com TLS; o isolamento do outbox passou ensaios reais de retry, crash e concorrência. App e API da branch `codex/comunidade-v2` foram autenticados e os quatro papéis QA validados; uma chamada manual API Preview entregou uma Notification QA persistente após reload. O usuário autorizou a exceção de scheduler GitHub OIDC para o namespace Preview. O PR workflow-only #10 foi integrado por squash em `main` no commit `90aa250`; os três checks passaram e não houve conflito. O Trusted Source externo e o ambiente Actions foram configurados e verificados em 15/10/2026; o PR #10 foi integrado por squash no commit `90aa250`; ainda não houve execução agendada observável. Nenhuma migration ou escrita de conteúdo V2 ocorreu. O merge autorizado em `main` acionou deployments Production automáticos App/API do commit `90aa250`, ambos `Ready`; o diff contém workflow e documentação, sem mudança de código de produto ou schema. Fixtures e uma Notification QA continuam no GREEN. O cron GREEN permanece inalterado.
-**Atualizado:** 2026-10-15 23:28 UTC.
+**Estado:** Estágio 00 concluído; Estágio 01 ACEITA PARA AVANÇO COM PENDÊNCIAS. Backup GREEN restaurado e reconciliado localmente com TLS; isolamento do outbox, quatro papéis Clerk no Preview e worker manual com Notification QA persistente estão comprovados. A recuperação periódica Preview e Broadcast/badge não foram comprovados e ficam transferidos para OPS-01. OPS-01 só bloqueia jornadas dependentes de entrega/recuperação periódica, Broadcast/badge e o preflight de release; não bloqueia a Etapa 02. Nenhuma migration ou escrita de conteúdo V2 foi feita até este checkpoint. O cron GREEN permanece inalterado.
+**Atualizado:** 2026-10-15 — correção de rumo e transferência de OPS-01.
 **Branch e base:** `codex/comunidade-v2`, a partir de `origin/main` em `b6028a37a358c0ff1d45d19297c5454318c799a3`; branch remota publicada.
-**Próximo passo:** observar execuções periódicas do workflow #10 integrado e comprovar recuperação real de job `preview.*`. Até essas evidências, manter Preview protegido, cron GREEN sem alteração, sem migrations e Estágio 01 `IN PROGRESS`.
+**Próximo passo:** iniciar a Etapa 02 — Navegação e Explorar na branch codex/comunidade-v2; OPS-01 não é dependência de navegação, feed de leitura, Salvos ou Encontros.
 
 ## Escopo e integridade
 
@@ -72,7 +72,7 @@ A alegação do handoff de vazamento de rascunho no feed não foi confirmada na 
 
 ## Estágio 01: preparação do Preview
 
-**Estado:** backup GREEN verificado por restore local; isolamento, leitura autenticada e teste manual do worker concluídos no Preview. Os aliases App e API da branch permaneceram `READY` depois do push documental `8c39070`. Vercel SSO e Clerk Development funcionam em sessões novas. Uma Notification QA foi gravada pelo fluxo de outbox e reaparece após reload. Nenhuma migration ou escrita de conteúdo V2 ocorreu. O merge em `main` acionou deployments Production automáticos App/API do commit `90aa250`, ambos `Ready`; o diff não alterou código de produto ou schema. A recuperação automática periódica permanece aberta.
+**Estado:** ACEITA PARA AVANÇO COM PENDÊNCIAS. Backup GREEN verificado por restore local; isolamento, leitura autenticada e teste manual do worker concluídos no Preview. Os aliases App/API da branch foram READY; Clerk Development e quatro papéis QA foram comprovados. Uma Notification QA persistiu após reload. Nenhuma migration ou escrita de conteúdo V2 ocorreu até o checkpoint documental. Recuperação periódica Preview e Broadcast/badge continuam sem comprovação e estão em OPS-01; isso não bloqueia a Etapa 02. O cron GREEN e Production permanecem inalterados.
 
 ### Backup manual GREEN
 
@@ -132,7 +132,9 @@ A alegação do handoff de vazamento de rascunho no feed não foi confirmada na 
 - O primeiro build com variáveis Preview detectou uma expectativa ambiental implícita em events.test.ts; o teste agora fixa o ambiente Production antes de cada caso e testa Preview explicitamente. A repetição completa do build passou.
 - O gate mediu Comunidade em 213,4 KiB gzip sob o teto de 225 KiB. O ensaio CLI local passou no runner Bun contra PostgreSQL real, cobrindo nove invariantes. O build final da branch passou 8/8 tarefas; check, typecheck, boundaries, test, build e performance:check estão registrados. O teste browser separado provou visitante, dois alunos, professor e admin reais no Preview. Percentis, QA visual e Broadcast permanecem abertos.
 
-## Bloqueios e riscos que permanecem
+## Bloqueios e riscos por gate
+
+Os itens abaixo são dependências de jornadas futuras ou do preflight de release; não formam bloqueio global para a Etapa 02. OPS-01 registra a recuperação periódica Preview e Broadcast/badge com seus gatilhos de retomada em docs/comunidade-v2/BACKLOG.md.
 
 1. A restauração de domínio foi verificada localmente. A recuperação em outra máquina depende de chave recuperável fora do DPAPI deste perfil; Storage/Realtime/cron da plataforma não foram reidratados no ensaio local.
 2. Os quatro vínculos QA e papéis já foram provados. Clerk MEMBER B abriu `/notificacoes`; a Notification criada pelo worker ficou visível após reload. Broadcast e badge não foram comprovados.
@@ -150,7 +152,7 @@ A alegação do handoff de vazamento de rascunho no feed não foi confirmada na 
 
 ## Próximo passo
 
-App e API dos aliases da branch estão `READY` após o push documental `8c39070`; o Preview autenticado para quatro papéis e o smoke manual do worker foram comprovados. Para fechar o Estágio 01, falta recuperação periódica que preserve SSO e tenha cadência observável. O usuário autorizou o workflow agendado GitHub OIDC restrito ao API Preview. Em 15/10/2026, o Trusted Source foi configurado para Preview apenas, `Require Log In` permaneceu ativo, o ambiente Actions foi limitado a `main` com segredo vindo do API Preview e o PR #10 foi integrado após checks verdes. O cron GREEN permanece intacto. O repositório é público, `main` não tem proteção de branch e schedule pode atrasar ou descartar execuções. Às 23:28 UTC, a API ainda não listava run schedule e a página do workflow mostrava zero execuções. Falta confirmar execuções repetidas e recuperação real. Estágio 01 segue `IN PROGRESS`; não começam migrations nem funcionalidades visuais V2.
+Iniciar a Etapa 02 — Navegação e Explorar. As evidências do Estágio 01 permitem o avanço com pendências transferidas; não declarar recovery periódico como validado. OPS-01 só será retomado quando a primeira jornada depender de recuperação/Broadcast/badge ou no preflight de release. Até lá, preservar Vercel SSO, o cron GREEN, credenciais, Production e dados existentes.
 
 ### Diagnóstico da ativação de sessão com freeze
 
