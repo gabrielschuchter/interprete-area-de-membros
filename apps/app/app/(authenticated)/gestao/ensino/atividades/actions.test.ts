@@ -301,7 +301,7 @@ describe("Gestão activity publication and reminders", () => {
       ...publishedTarget,
       cohort: {
         ...publishedTarget.cohort,
-        startsAt: new Date("2026-10-15T00:00:00Z"),
+        startsAt: new Date("2099-10-15T00:00:00Z"),
       },
     });
 

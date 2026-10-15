@@ -649,6 +649,9 @@ const MemberShellView = ({
     <MemberNavigationContext.Provider value={contextValue}>
       <div
         className="member-app-shell relative flex min-h-svh w-full min-w-0"
+        data-returning-to-portal={String(
+          transition?.kind === "back" && transition.targetPath === "/"
+        )}
         onClickCapture={handleNavigationCapture}
       >
         <PortalStageLayer />
