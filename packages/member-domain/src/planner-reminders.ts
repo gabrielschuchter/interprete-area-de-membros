@@ -4,7 +4,7 @@ import type {
   PlannerTaskStatus as PlannerTaskStatusType,
   Prisma,
 } from "@repo/database";
-import { enqueueDomainEvent } from "./events";
+import { enqueueDomainEvent, resolveOutboxConsumerKey } from "./events";
 import { notificationOutboxConsumerKey } from "./notifications";
 import {
   firstPlannerOccurrenceOnOrAfter as firstOccurrenceOnOrAfter,
@@ -85,7 +85,10 @@ const enqueuePlannerReminder = async (
     },
   });
   await transaction.outboxJob.updateMany({
-    where: { eventId: event.id, consumerKey: notificationOutboxConsumerKey },
+    where: {
+      eventId: event.id,
+      consumerKey: resolveOutboxConsumerKey(notificationOutboxConsumerKey),
+    },
     data: { availableAt: reminderAt },
   });
   await transaction.plannerReminder.create({

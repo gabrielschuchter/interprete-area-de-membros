@@ -1,9 +1,9 @@
 # Comunidade V2 — status da auditoria
 
-**Estado:** Estágio 00 concluído; Estágio 01 em andamento. Backups GREEN, overrides e builds do Preview estão verificados. A sessão humana passou por Vercel SSO e Clerk Development; `/comunidade` renderizou dados existentes do GREEN e o papel MEMBER foi barrado em `/admin/avisos`. Os endpoints de cron falharam em modo fechado (`WRITE_FREEZE`). Ainda faltam prova positiva de staff, ensaio de recuperação de jobs e isolamento do outbox para qualquer QA mutável.
-**Atualizado:** 15/10/2026 15:52 UTC.
+**Estado:** Estágio 00 concluído; Estágio 01 em andamento. Backup GREEN restaurado e reconciliado em PostgreSQL local com TLS. Isolamento de fila implementado e exercitado com retry, crash e concorrência reais. O Preview autenticado permanece congelado. Quatro contas QA Development já têm vínculos MEMBER/MEMBER/TEACHER/ADMIN persistidos no GREEN após autorização explícita; os sete Members e sete Profiles anteriores permaneceram intactos. A validação de papéis no browser está em execução.
+**Atualizado:** 15/10/2026 17:29 UTC.
 **Branch e base:** `codex/comunidade-v2`, a partir de `origin/main` em `b6028a37a358c0ff1d45d19297c5454318c799a3`; branch remota publicada.
-**Próximo passo:** preservar o Preview como leitura autenticada; resolver uma identidade staff Development existente e ensaiar recuperação segura sem atingir o GREEN compartilhado. Implementar isolamento de origem do outbox antes de liberar escrita ou testar menções, convites e avisos com efeitos colaterais.
+**Próximo passo:** publicar e conferir o commit de isolamento no Preview; comprovar os papéis, a entrega e a recuperação no Preview com os quatro vínculos QA autorizados antes de liberar escrita.
 
 ## Escopo e integridade
 
@@ -14,7 +14,7 @@
   SHA-256: F9C6D5E4F657D320BA856D97DC31F489425FE3546B6E2BB303DE81CFC46C62E
 - AGENTS.md, schema Prisma, código da main, Gestao V2, Inicio B2, editor, notificações, uploads, perfil, timers e consultas de estudo foram auditados. A fonte de implementação parte da main; o checkout original estava atrás da main.
 - O checkout original permanece inalterado: branch `codex/interprete-member-area-release-2026-10-04`, HEAD `a4b68b81dc084d6de4648c488a0442e14cfb0539`, com 8 arquivos rastreados modificados e 9 não rastreados preexistentes. Nenhum foi copiado, limpo ou sobrescrito.
-- O worktree V2 parte de `b6028a3`. Os quatro documentos desta auditoria estão gravados. Foi adicionada uma correção exclusivamente de isolamento ambiental em `apps/app/lib/write-freeze.test.ts`; nenhuma lógica de produto mudou. Não houve migration, escrita no GREEN, alteração de configuração Production ou publicação Production.
+- O worktree V2 parte de b6028a3. Além dos documentos e da correção ambiental de write-freeze.test.ts, esta etapa implementou namespace do outbox em produtores, consumidores e atualizações de lembrete. Não houve migration, alteração de configuração Production, publicação Production ou escrita funcional V2 no GREEN. A única escrita GREEN desta etapa criou quatro Members/Profiles QA e um evento de auditoria, com autorização explícita; a instância Clerk Production não mudou.
 
 ## Fontes verificadas na main
 
@@ -72,21 +72,21 @@ A alegação do handoff de vazamento de rascunho no feed não foi confirmada na 
 
 ## Estágio 01: preparação do Preview
 
-**Estado:** backup, isolamento de ambiente, build e leitura autenticada do Preview concluídos. App e API do SHA `4c032bb` estão `READY`. A sessão humana foi validada separadamente após Vercel SSO e Clerk Development. Nenhuma migration, mutação ou escrita no GREEN foi feita por esta auditoria. O Preview continua somente leitura.
+**Estado:** backup, isolamento de ambiente, build e leitura autenticada do Preview concluídos. App e API do SHA `4c032bb` estão `READY`. A sessão humana foi validada separadamente após Vercel SSO e Clerk Development. Nenhuma migration foi aplicada. O Preview continua somente leitura; os vínculos QA aditivos autorizados foram inseridos depois desse corte, conforme registro abaixo.
 
 ### Backup manual GREEN
 
 - PostgreSQL: `%LOCALAPPDATA%\Codex\migrations\interprete-supabase\green-prechange-20261015T145641Z.pgdump.aesgcm`, 570.583 bytes, SHA-256 `d8796d123d962d0ae39ecc5b2152e26f78938a300523ed7440ef1b8a8f149046`. O manifesto registra os schemas `public` e `supabase_migrations`; AES-GCM e DPAPI CurrentUser foram verificados, o conteúdo descriptografado passou `pg_restore --list`, e o destino foi confirmado como GREEN com TLS `verify-full`. Nenhuma escrita ocorreu.
 - Storage privado `learning-assets`: `%LOCALAPPDATA%\Codex\migrations\interprete-supabase\green-storage-prechange-20261015T150238088Z.aesgcm`, 4 objetos/11.092 bytes, SHA-256 `579a626b59993346e7b8e826f8cc3c5c1170ad67b9924449cc313dba56ac53b9`; inventário de metadados SHA-256 `c4b1350156dbf11c532f537baa68b7a5ed103e1b7513dad0d34f378e84dc498c`. Metadados foram comparados antes/depois da leitura, cada objeto foi conferido por tamanho e SHA-256 e o arquivo criptografado foi descriptografado e verificado em memória. Chave e manifesto usam DPAPI CurrentUser e ACL local.
-- Os artefatos ficam fora do repositório. A restauração não foi ensaiada. O procedimento é: recuperar a chave DPAPI no mesmo perfil Windows; validar hash e autenticação AES-GCM; restaurar PostgreSQL 17 em um projeto Supabase isolado e vazio com TLS `verify-full`; reidratar os objetos no bucket privado sem sobrescrever nomes; conferir checksums do ledger, dados/RLS e contagens. Nunca usar o GREEN compartilhado como alvo de ensaio. Como a chave DPAPI depende do perfil Windows local, uma cópia fora desta máquina ainda é necessária para recuperação de desastre.
+- Ensaio concluído em PostgreSQL 17.11 local, loopback 127.0.0.1:54325, banco interprete_community_v2_qa, ACL do usuário Windows, senha DPAPI e TLS 1.3 com verificação do certificado. O arquivo foi descriptografado somente em memória e restaurado com pg_restore --single-transaction --no-owner, preservando ACL e RLS. As 106 tabelas e 1.486 linhas conferiram por hashes por linha com o COPY do arquivo; os 65 checksums do ledger conferiram com a branch; 104/104 tabelas de domínio mantiveram RLS. A comparação usa timezone UTC para não confundir serialização de timestamptz com diferença de dados. O helper auth.jwt oficial foi provisionado como dependência de plataforma; Realtime/Storage/API Supabase não fazem parte desse servidor local. Evidência privada: C:/Users/gabsc/AppData/Local/Codex/qa/community-v2-foundation-20261015/restore-report.json. Nenhuma conexão ao GREEN foi usada nesse ensaio. A recuperação fora do perfil Windows e a reidratação em Storage Supabase continuam sem ensaio.
 
 ### Vercel e Clerk
 
-- A branch `codex/comunidade-v2` está publicada. Os projetos app (`prj_bwG8vDd4x2flyPaRMq8HEvi7t5Lj`) e API (`prj_LzsMnY95oPtOdp6KUwUaPRQ5lfh6`) têm 43 overrides cada, todos com `target=[preview]` e `gitBranch=codex/comunidade-v2`.
+- A branch `codex/comunidade-v2` está publicada. Os projetos app (`prj_bwG8vDd4x2flyPaRMq8HEvi7t5Lj`) e API (`prj_LzsMnY95oPtOdp6KUwUaPRQ5lfh6`) tinham 43 overrides iniciais cada, todos exclusivos de Preview/branch. Foi acrescentado OUTBOX_QUEUE_NAMESPACE=preview nos dois projetos, e acrescentado OUTBOX_PREVIEW_MEMBER_IDS com somente as quatro identidades QA, totalizando 45 overrides de branch. O pull efetivo do app confirmou novamente GREEN, Clerk Development, namespace preview e freeze antes do build local.
 - `vercel env pull` buscou os valores efetivos da branch; os 43 valores de cada projeto coincidiram com o plano esperado. Ambos apontam ao GREEN e ao par Clerk Development. `APP_WRITE_FREEZE=true`, `CRON_SECRET` vazio, seed e webhook desligados, uploads pausados e credenciais de e-mail/terceiros em branco. URLs canônicas verificados: app `https://interprete-area-de-membro-git-553be9-gabrielschuchters-projects.vercel.app`; API `https://interprete-area-de-membro-git-afba70-gabrielschuchters-projects.vercel.app`.
 - Fingerprints de Production permaneceram idênticos: app `1beb15676657ebe3f7f2e6b61fbb4eabbcddacd04d9f8d692e1e8e6a18ab7b67`, API `d740ee06ecab8cbe8c1c7c035ec52c0e5840a7b2319a7f6bf3271136f50a41a9`; IDs de deployment Production também não mudaram.
 - A implantação do app `dpl_3uEVkqA3r7ojbArNvUyHuiKZh8Hi`, criada antes dos overrides, não comprova o ambiente da V2. O app `dpl_3vYbK1TmMm7CJyjxSSHKj5Df9CM8` do SHA `84fb480` falhou porque o teste de `write-freeze` dependia de `APP_WRITE_FREEZE` estar ausente; o teste agora fixa temporariamente a variável vazia. O app `dpl_G1Q1VrYg1kjxvRFvYtFdFYdLmofB` e a API `dpl_6nkPwL1xUoUzGwiXcTjQktChHER3` do SHA `4c032bb` estão `READY`; a suíte local passou com freeze ativo. Após o commit documental `222b211`, os deployments do app (`interprete-area-de-membros-bycqkpa9m-gabrielschuchters-projects.vercel.app`) e da API (`interprete-area-de-membros-k5ety59rb-gabrielschuchters-projects.vercel.app`) também ficaram `READY`. A recarga do alias de branch autenticado continuou mostrando os registros existentes. Nenhum bypass Vercel foi usado.
-- Clerk Development tem 5 usuários; GREEN tem 7 `Member`; somente 1 identidade coincide e tem papel `MEMBER`. A sessão humana dessa identidade foi concluída pelo usuário no navegador. `/comunidade` carregou conteúdo existente após autenticação (publicações, grupo, aviso e comentários), comprovando leitura do Preview conectado ao GREEN. A tentativa de `/admin/avisos` redirecionou para `/`, confirmando a negação ao papel MEMBER nesse caminho. Nenhuma identidade Clerk Development coincide com `TEACHER`/`ADMIN`; não foram criados usuários nem alterados papéis. A jornada positiva de staff segue sem prova.
+- No inventário anterior ao provisionamento QA, Clerk Development tinha 5 usuários; GREEN tem 7 `Member`; somente 1 identidade coincide e tem papel `MEMBER`. A sessão humana dessa identidade foi concluída pelo usuário no navegador. `/comunidade` carregou conteúdo existente após autenticação (publicações, grupo, aviso e comentários), comprovando leitura do Preview conectado ao GREEN. A tentativa de `/admin/avisos` redirecionou para `/`, confirmando a negação ao papel MEMBER nesse caminho. Naquele corte, nenhuma identidade Clerk Development coincidia com `TEACHER`/`ADMIN`; nenhum usuário ou papel havia sido criado naquele corte. Os quatro vínculos QA foram adicionados depois, conforme registro abaixo; a jornada positiva de staff aguarda o resultado do browser.
 
 ### Provas autenticadas e fail-closed
 
@@ -96,16 +96,25 @@ A alegação do handoff de vazamento de rascunho no feed não foi confirmada na 
 
 ### Isolamento de jobs
 
-- O Preview está somente leitura: o proxy bloqueia métodos mutáveis por `APP_WRITE_FREEZE`, cron não recebe segredo e o webhook Clerk está desligado. Os dois GETs de verificação descritos acima retornaram `WRITE_FREEZE`; isso confirma que os endpoints consultados não iniciaram processamento.
-- O worker de Production continua ativo. O consumidor atual reivindica jobs elegíveis por uma chave compartilhada, e `dispatchPendingNotifications` no app também pode executar o consumidor. Portanto, desligar cron no Preview não isolaria jobs criados por mutações do app. Antes de liberar escrita Preview que produza outbox, será obrigatório adicionar discriminação de origem/ambiente e provar que os dois caminhos não reivindicam jobs do outro ambiente.
-- Recuperação não foi ensaiada: no snapshot de auditoria, não havia job pendente ou em estado de erro e o Preview permaneceu congelado. Um teste que force retry no GREEN ou entregue notificação real não seria seguro como prova inicial. A recuperação precisa ser demonstrada em alvo isolado/reversível e, antes da escrita Preview, combinada ao particionamento do outbox.
+- O Preview continua com APP_WRITE_FREEZE=true, sem segredo de cron e com webhook desligado. Os endpoints consultados retornaram WRITE_FREEZE. O código novo ainda precisa ser publicado e conferido no Preview antes de ser considerado evidência remota.
+- Produtores e worker usam resolveOutboxConsumerKey: Production preserva notifications.create.v1; Preview usa preview.notifications.create.v1. VERCEL_ENV=preview ativa o namespace por segurança, mesmo sem a variável explícita. Configurar namespace de Preview em Production falha antes de persistir ou reivindicar jobs.
+- Ajustes/cancelamentos de lembretes filtram também a chave do consumidor, para não atingir jobs do outro ambiente quando um DomainEvent idempotente é compartilhado. Nenhuma tabela, enum ou índice novo foi criado.
+- O ensaio opt-in scripts/community-v2/outbox-postgres.test.mjs rodou contra o PostgreSQL restaurado, sem mocks: claims separados, rollback dos efeitos transacionais, retry após availableAt, processo encerrado após claim durável e recuperação após lease expirar, enqueue duplicado e dois processos concorrentes com SKIP LOCKED. Todos passaram, incluindo a recusa de destinatário fora da lista antes da persistência e um job adulterado levado a DEAD sem gravar Notification. Os registros de ensaio permanecem apenas nesse banco local.
+- Isso comprova o mecanismo do worker em PostgreSQL real. Não comprova entrega de notificação, Broadcast, execução periódica ou recuperação HTTP no Preview protegido.
+- Notification continua compartilhada. O namespace de fila é acompanhado de validação fail-closed de ator e destinatários em OUTBOX_PREVIEW_MEMBER_IDS no produtor e no consumidor. A lista vazia também bloqueia; Production preserva a semântica anterior. Manter freeze da aplicação até publicar a proteção e verificar a entrega autenticada.
+
+### Identidades QA e revisão automática
+
+- O usuário delegou a escolha/preparação das contas de teste. Foram criadas quatro identidades exclusivas no Clerk Development ins_3Jn11qozddvhARaPkPLdQR6eAoo, com external_id community-v2-qa-20261015-{member-a,member-b,teacher,admin}, e-mails de teste +clerk_test@example.com e metadata privada de fixture. Nenhuma mensagem/e-mail foi solicitado e nenhuma conta existente ou instância Production foi alterada.
+- A revisão automática inicialmente bloqueou o vínculo GREEN. Após o usuário autorizar explicitamente essas inserções, a transação serializável criou/verificou quatro Members (MEMBER, MEMBER, TEACHER, ADMIN), quatro Profiles com showInDirectory=false e um DomainEvent de auditoria. Os hashes dos sete Members e sete Profiles preexistentes conferiram antes/depois. Nenhum job de notificação foi criado e nenhum papel real mudou. Evidência privada: green-qa-provision-report.json no diretório QA.
+- Ledger privado das identidades criadas: C:/Users/gabsc/AppData/Local/Codex/qa/community-v2-foundation-20261015/clerk-qa-ledger.json. Os papéis acima estão persistidos em Member; metadata Clerk não concede autoridade.
 
 ## Preview e runtime no corte do Estágio 00
 
 - Na auditoria original, o Preview redirecionava para SSO Vercel e respondia HTML 200; isso não provava `/health` nem Clerk autenticado.
 - A produção respondeu 200 nos health checks da aplicação e da API contra GREEN.
 - Naquele corte, as variáveis Vercel não tinham sido lidas; os ambientes locais apontavam para BLUE e não serviam para Preview V2. A configuração específica da branch e a comparação de valores estão agora registradas acima.
-- A infraestrutura de outbox existe e está ativa; permanece a incompatibilidade potencial entre eventos de Preview e o consumidor global de Production, que bloqueia QA mutável.
+- A infraestrutura de outbox existe e está ativa. O isolamento foi implementado/testado localmente nesta etapa; QA mutável continua condicionado à publicação desse código, restrição de destinatários e identidades QA autorizadas.
 
 ## Verificações executadas e limites
 
@@ -113,21 +122,26 @@ A alegação do handoff de vazamento de rascunho no feed não foi confirmada na 
 - O resolvedor de @todos foi executado isoladamente com banco falso em memória; nenhum dado externo foi alterado.
 - Oito arquivos focados, total de 22 testes, passaram pelo entrypoint Node/Vitest no checkout auditado. O checkout de teste estava em a4b68b8, não em b6028a3; isso não prova a suíte da main nem runtime autenticado.
 - Uma tentativa usando Bun direto falhou em dois arquivos por interoperabilidade de import Zod no executor. A execução Node/Vitest passou; nenhuma mudança foi feita para contornar esse comportamento.
-- No worktree V2, `bun run check` passou (958 arquivos), `bun run typecheck` passou (16 tarefas), `bun run boundaries` passou (887 arquivos) e `APP_WRITE_FREEZE=true bun run test` passou no monorepo: app 779 testes, API 9, domínio de membro 18 e scripts de guarda. A geração do Prisma Client foi local e não conectou ao banco.
-- `bun run performance:check` não pôde rodar localmente porque exige os manifests produzidos por `next build`, ausentes neste worktree. O deployment Vercel `READY` do app executou o build configurado e o gate de performance. Testes de banco com escrita, percentis, comparação real de screenshots e jornadas de staff/dois membros permanecem pendentes; a sessão Clerk MEMBER foi comprovada somente em leitura.
+- No código atual do worktree V2, passaram check, typecheck (16 tarefas), boundaries (888 arquivos), test (app 779, API 9, domínio 24, scripts 32 com 1 skip), build completo (8 tarefas) e performance:check. O build local usou exclusivamente o ambiente efetivo da branch Preview, guardado para GREEN, Clerk Development, namespace preview e freeze. A geração do Prisma Client não aplica migrations.
+- O primeiro build com variáveis Preview detectou uma expectativa ambiental implícita em events.test.ts; o teste agora fixa o ambiente Production antes de cada caso e testa Preview explicitamente. A repetição completa do build passou.
+- O gate mediu Comunidade em 213,4 KiB gzip sob o teto de 225 KiB. O novo ensaio CLI local permanece opt-in e valida seu alvo loopback/TLS antes de conectar; sua versão final passou no runner Bun contra PostgreSQL real, cobrindo nove invariantes. O build final com a proteção de audiência passou em sequência (8/8 tarefas); os timeouts anteriores ocorreram durante suítes concorrentes e não exigiram aumentar limites de testes. Percentis reais, QA visual, Broadcast e papéis staff no Preview não foram comprovados por esses checks.
 
 ## Bloqueios e riscos que permanecem
 
-1. A integridade dos backups foi verificada, mas a restauração completa não foi ensaiada; os artefatos dependem do DPAPI do perfil Windows local.
-2. A leitura autenticada por MEMBER e a negação da rota staff estão comprovadas; não há usuário Clerk Development correspondente a `TEACHER`/`ADMIN` para provar a jornada positiva de staff. Não criar usuário/papel ou trocar o ambiente Clerk sem identidade autorizada.
-3. As respostas `WRITE_FREEZE` provam bloqueio de cron, não recuperação segura de falha. Não há jobs pendentes no snapshot para ensaio natural; a prova precisa de ambiente isolado e reversível.
-4. GREEN é compartilhado. A escrita permanece congelada até definir identidades e escopo de QA autorizados e impedir que o worker Production reivindique outbox originado no Preview.
-5. O consumer imediato no app e o cron global podem disputar a mesma chave de outbox. Desligar apenas o cron do Preview não é suficiente; antes de menções, convites ou avisos mutáveis, a origem precisa ser isolada nos produtores e consumidores.
-6. Enum novo pode dificultar rollback a código antigo; usar flags compatíveis e não gravar `MODERATOR` antes de todos os consumidores estarem compatíveis.
-7. Tokens, notificações privadas, REST legado, OG e caches devem revalidar permissão após revogação.
-8. Os bytes de Storage estão incluídos no backup; a reidratação deles também não foi ensaiada. Não apagar objetos antigos na primeira implementação.
-9. A unicidade de título atual por proprietário e o board de criação com nome repetido precisam ser reconciliados antes de alterar índice/dados.
+1. A restauração de domínio foi verificada localmente. A recuperação em outra máquina depende de chave recuperável fora do DPAPI deste perfil; Storage/Realtime/cron da plataforma não foram reidratados no ensaio local.
+2. Os quatro vínculos QA já existem com autorização explícita. A prova autenticada de TEACHER/ADMIN, dois alunos e visitante no Preview está em execução.
+3. O worker foi exercitado com falha e concorrência reais em PostgreSQL local. Faltam processamento, entrega e recuperação no Preview protegido usando a infraestrutura existente.
+4. GREEN e Notification são compartilhados. A lista explícita QA já é validada pelo produtor/consumidor e foi exercitada em PostgreSQL real. Manter freeze até essa versão estar publicada e a entrega ser comprovada.
+5. O namespace está implementado/testado localmente e tem configuração exclusiva de branch, mas a nova versão ainda precisa ser publicada/conferida no Preview. Nunca voltar um Preview gravável a código que usa a chave legada.
+6. Enum novo pode dificultar rollback; não gravar MODERATOR antes de todos os consumidores estarem compatíveis. Nenhum schema V2 foi antecipado.
+7. Tokens, notificações privadas, REST legado, OG e caches precisam revalidar permissão após revogação.
+8. Preservar os bytes de Storage anteriores; o ensaio de reidratação no bucket continua pendente.
+9. Reconciliar a unicidade de título por proprietário com o board de nomes repetidos antes de alterar índices/dados.
 
 ## Próximo passo
 
-Manter o deployment `READY` e a proteção Vercel ativa. A sessão e leitura autenticadas foram comprovadas; o próximo gate é obter, por via autorizada, identidade Clerk Development ligada a um `TEACHER`/`ADMIN` existente e definir uma prova reversível de recuperação de jobs sem escrita no GREEN compartilhado. Para qualquer QA mutável, concluir primeiro isolamento de origem do outbox em produtores e consumidores, então validar que worker Production não reivindica jobs do Preview. Não iniciar migrations ou QA mutável antes desses gates.
+Conferir o isolamento publicado no Preview protegido e manter APP_WRITE_FREEZE=true. Os quatro vínculos QA foram autorizados/persistidos e a restrição de destinatários foi implementada/testada. Concluir a validação aluno/professor/admin/visitante e a entrega/recuperação no Preview. Etapa 01 permanece IN PROGRESS; nenhuma funcionalidade visual V2 ou migration começa antes dos gates.
+
+### Diagnóstico da ativação de sessão com freeze
+
+O browser de QA alcançou o Preview protegido usando OIDC temporário do mesmo projeto e carregou Clerk Development. O helper oficial criou a tentativa de sessão, mas a ativação ficou esperando o POST de invalidateCacheAction do SDK Next.js, respondido com 503 pelo freeze. O código instalado confirma que esse callback espera o Server Action sem tratar sua rejeição. A leitura humana com sessão já ativa continua sendo evidência válida; o fluxo de login novo durante manutenção não foi comprovado. Não abrir exceção genérica de POST em /sign-in, pois Server Actions de produto também podem ser despachadas por essa rota. Publicar/conferir primeiro namespace e audiência QA; preparar depois uma janela controlada de QA com a configuração de escrita apropriada, mantendo Production intacta. A restrição temporária da revisão automática de permissões foi revalidada e a leitura seguinte executou normalmente.

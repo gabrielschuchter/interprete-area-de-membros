@@ -7,6 +7,7 @@ export {
   isOutboxJobClaimable,
   makeOutboxIdempotencyKey,
   nextOutboxRetryAt,
+  resolveOutboxConsumerKey,
   withMemberIdentityLock,
 } from "./src/events";
 export {

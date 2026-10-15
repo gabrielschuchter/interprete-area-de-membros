@@ -23,10 +23,14 @@ export const env = createEnv({
   server: {
     CRON_SECRET: z.string().min(32).optional(),
     APP_WRITE_FREEZE: z.enum(["true", "false"]).default("false"),
+    OUTBOX_QUEUE_NAMESPACE: z.enum(["preview"]).optional(),
+    OUTBOX_PREVIEW_MEMBER_IDS: z.string().optional(),
   },
   client: {},
   runtimeEnv: {
     CRON_SECRET: process.env.CRON_SECRET,
     APP_WRITE_FREEZE: process.env.APP_WRITE_FREEZE,
+    OUTBOX_QUEUE_NAMESPACE: process.env.OUTBOX_QUEUE_NAMESPACE,
+    OUTBOX_PREVIEW_MEMBER_IDS: process.env.OUTBOX_PREVIEW_MEMBER_IDS,
   },
 });

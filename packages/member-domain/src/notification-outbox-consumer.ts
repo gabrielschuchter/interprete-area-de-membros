@@ -1,4 +1,5 @@
 import type { Prisma } from "@repo/database";
+import { assertPreviewNotificationAudience } from "./events";
 import {
   notificationPreferenceForType,
   notificationPriority,
@@ -668,6 +669,10 @@ export const notificationOutboxConsumer: OutboxConsumer = {
     }
 
     const { notifications } = parseNotificationOutboxPayload(event.payload);
+    assertPreviewNotificationAudience(
+      event.actorId,
+      notifications.map(({ recipientId }) => recipientId)
+    );
     const requests = notifications.filter(
       (notification) => notification.recipientId !== event.actorId
     );

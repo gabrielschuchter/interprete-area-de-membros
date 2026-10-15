@@ -1,7 +1,15 @@
 import type { Prisma } from "@repo/database";
-import { expect, test, vi } from "vitest";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { notificationOutboxConsumer } from "../lib/notification-outbox-consumer";
 
+beforeEach(() => {
+  vi.stubEnv("VERCEL_ENV", "production");
+  vi.stubEnv("OUTBOX_QUEUE_NAMESPACE", "");
+  vi.stubEnv("OUTBOX_PREVIEW_MEMBER_IDS", "");
+});
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 test("batches active recipients, honors preferences, and excludes the actor", async () => {
   const notificationCreateMany = vi.fn().mockResolvedValue({ count: 1 });
   const tx = {

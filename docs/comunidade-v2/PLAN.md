@@ -2,7 +2,7 @@
 
 ## Escopo e fontes de verdade
 
-Este plano organiza a implementação da Comunidade V2 a partir da main em b6028a3, preservando a fundação next-forge e os módulos existentes. O Estágio 00 documental está concluído e o Estágio 01 de isolamento/Preview está em andamento. A autorização vigente cobre preparação operacional e documentação; não inclui funcionalidades V2, migrations ou escritas no GREEN.
+Este plano organiza a implementação da Comunidade V2 a partir da main em b6028a3, preservando a fundação next-forge e os módulos existentes. O Estágio 00 documental está concluído e o Estágio 01 de isolamento/Preview está em andamento. A autorização vigente cobre preparação operacional, isolamento do worker, testes reais e documentação; não inclui funcionalidades visuais V2 ou migrations. O usuário autorizou explicitamente os quatro vínculos QA no GREEN; a inserção aditiva foi concluída e verificada, preservando as contas existentes.
 
 Precedência:
 
@@ -77,13 +77,13 @@ Nenhuma migration é executada antecipadamente. Cada mudança deve documentar al
 
 ## Preview, backup e rollout
 
-- GREEN é compartilhado pelo Preview V2 e produção. Usar apenas contas existentes autorizadas e fixtures aditivas identificadas; sem reset, identidade inventada ou escrita ampla. O Preview permanece somente leitura enquanto não houver isolamento de escrita e de jobs.
+- GREEN é compartilhado pelo Preview V2 e produção. Usar identidades Clerk Development exclusivas de QA e fixtures aditivas identificadas, conforme escolha delegada pelo usuário. Os quatro vínculos MEMBER/TEACHER/ADMIN foram autorizados explicitamente e persistidos no GREEN; não atualizar contas reais, resetar dados ou fazer escrita ampla. O Preview permanece somente leitura enquanto não houver isolamento de escrita e de jobs.
 - Antes de qualquer escrita/migration, manter backup manual verificável do schema, dados e ledger, além dos bytes de Storage. Guardar ambos fora do repositório, com criptografia e chave recuperável; documentar como restaurar para um projeto isolado. Não testar restauração no GREEN compartilhado.
 - Vercel Preview exige SSO e Clerk humano separado. Validar o ambiente efetivo da branch com `vercel env pull --environment=preview --git-branch=codex/comunidade-v2`, sem imprimir segredos. Preservar o proxy Clerk Production e usar chaves Clerk Development somente no Preview; não usar bypass de proteção para simular login Clerk.
 - Para a fase somente leitura, definir `APP_WRITE_FREEZE=true`, omitir `CRON_SECRET`, desativar seed e webhooks e deixar integrações externas de escrita sem credenciais, sempre em overrides exclusivos da branch. Não usar o deployment criado antes desses overrides.
-- O worker de produção reivindica todos os jobs elegíveis da chave de consumidor compartilhada, e `dispatchPendingNotifications` executa o consumidor também no app. Antes de liberar mutações que criem jobs no Preview, separar a origem/ambiente no contrato do outbox e em ambos os consumidores; comprovar idempotência, recuperação e não reivindicação cruzada. Só desabilitar o cron do Preview não isola jobs que o próprio app enfileira.
+- O worker de produção reivindica todos os jobs elegíveis da chave de consumidor compartilhada, e `dispatchPendingNotifications` executa o consumidor também no app. O namespace do consumerKey agora separa produtores e consumidores, com ensaio real de idempotência, retry, crash e não reivindicação cruzada em PostgreSQL local. Antes de liberar mutações no Preview, conferir a versão publicada, restringir destinatários QA também no consumidor e provar entrega/recuperação no ambiente protegido. Só desabilitar o cron do Preview não isola jobs que o próprio app enfileira.
 - Flags precisam ser exclusivas da branch/Preview e desligadas em produção. Rollback primário desliga UI/rotas V2 numa versão compatível; backup completo é último recurso pois pode apagar escritas posteriores.
-- Não criar banco de homologação, serviço ou cron paralelo. Não apagar objetos de Storage substituídos no editor até existir política de retenção segura e reconciliação comprovada.
+- Não criar banco remoto de homologação, serviço ou cron paralelo. Um PostgreSQL temporário local, somente loopback e com TLS verificado, pode ensaiar restauração/falha sem conectar ou escrever no GREEN. Não apagar objetos de Storage substituídos no editor até existir política de retenção segura e reconciliação comprovada.
 - Não apagar objetos de Storage substituídos no editor até existir política de retenção segura e reconciliação comprovada.
 
 ## Critérios de aceite e checks
@@ -107,3 +107,10 @@ Cada jornada deve persistir após reload e cobrir dois alunos, professor/admin e
 ## Próxima ação
 
 O Estágio 00 materializou estes quatro artefatos. O Estágio 01 permanece aberto até existir deployment da branch com os overrides já validados, acesso Vercel protegido, sessão humana Clerk de membro comprovada, procedimento de recuperação documentado e limite seguro para QA. Nenhuma migration ou escrita de produto foi iniciada.
+
+### Compatibilidade e reversão da fundação
+
+- Production mantém as chaves canônicas legadas. A nova versão não exige migration e continua consumindo os jobs atuais; Preview usa somente o prefixo preview.
+- Preview deve permanecer congelado ao reverter deployment. Não retirar OUTBOX_QUEUE_NAMESPACE nem reativar código antigo enquanto houver possibilidade de produzir ou consumir jobs Preview com chave legada.
+- Ao voltar ao commit-base 9018ae3, manter freeze, webhook/cron desligados e integrações sem escrita. Os jobs namespaced persistem para retomada por uma versão compatível; não converter, apagar ou liberar essas linhas para o consumidor Production.
+- Backup de domínio foi restaurado/reconciliado localmente (106 tabelas, 1.486 linhas e 65 migrations). Recuperação real deve congelar o alvo, preservar escritas posteriores e reidratar Storage separadamente; não restaurar sobre GREEN como teste.

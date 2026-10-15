@@ -19,6 +19,7 @@ import {
   plannerDateFromZonedParts as fromZonedParts,
   notificationOutboxConsumerKey,
   plannerZonedParts as partsAt,
+  resolveOutboxConsumerKey,
   isPlannerSeriesOccurrence as withinSeries,
 } from "@repo/member-domain";
 import { z } from "zod";
@@ -157,7 +158,10 @@ const schedulePlannerReminder = async (
     consumers: [notificationOutboxConsumerKey],
   });
   await transaction.outboxJob.updateMany({
-    where: { eventId: event.id, consumerKey: notificationOutboxConsumerKey },
+    where: {
+      eventId: event.id,
+      consumerKey: resolveOutboxConsumerKey(notificationOutboxConsumerKey),
+    },
     data: { availableAt: reminderAt },
   });
   await transaction.plannerReminder.create({
@@ -200,6 +204,7 @@ const cancelPlannerReminders = async (
   await transaction.outboxJob.updateMany({
     where: {
       eventId: { in: reminders.map(({ domainEventId }) => domainEventId) },
+      consumerKey: resolveOutboxConsumerKey(notificationOutboxConsumerKey),
       status: { in: ["PENDING", "RETRY"] },
     },
     data: { status: "SUCCEEDED", completedAt: now },
@@ -238,6 +243,7 @@ const cancelPlannerOccurrenceReminder = async (
   await transaction.outboxJob.updateMany({
     where: {
       eventId: { in: reminders.map((reminder) => reminder.domainEventId) },
+      consumerKey: resolveOutboxConsumerKey(notificationOutboxConsumerKey),
       status: { in: ["PENDING", "RETRY"] },
     },
     data: { status: "SUCCEEDED", completedAt: now },

@@ -94,3 +94,11 @@ Estas não reabrem decisões de produto; são verificações que condicionam mig
 5. Confirmar limites de tamanho/tipo e referências de coverUrl para grupo sem apagar objetos antigos.
 6. Definir fronteira de janela/timezone da campanha usando BRT explicitamente e testar sessões sobrepostas/fonte manual.
 7. Comprovar proteção Vercel e login Clerk separadamente no Preview da branch.
+
+## Preparação operacional da Etapa 01 — 15/10/2026
+
+- O usuário delegou a escolha das contas para QA. Foram criadas quatro identidades explícitas somente no Clerk Development; não há autoridade de staff em metadata Clerk.
+- Atribuições autorizadas e persistidas exclusivamente em novos Members de QA: community-v2-qa-20261015-member-a → MEMBER; member-b → MEMBER; teacher → TEACHER; admin → ADMIN. Profiles ficam fora do diretório público. Não elevar, trocar identidade ou atualizar papel de conta real.
+- Após a rejeição inicial da revisão automática, o usuário respondeu explicitamente Autorizar essas inserções QA no GREEN. Foram inseridos quatro Members, quatro Profiles ocultos e um DomainEvent, em transação serializável; os hashes dos sete Members e sete Profiles anteriores conferiram antes/depois. Nenhum job/notificação foi criado, nenhum papel existente foi alterado e Clerk Production permaneceu intacto. Isso não altera as 25 decisões de produto.
+- A fila usa consumerKey com prefixo preview no Preview e mantém as chaves Production. A reversão exige freeze e preservação dos jobs namespaced; não reenfileirar em chave legada.
+- Namespace não isola as linhas de Notification. O produtor e o consumidor agora recusam ator/destinatários fora de OUTBOX_PREVIEW_MEMBER_IDS no Preview; a lista tem somente as quatro identidades QA autorizadas e existe apenas nos overrides da branch. A entrega/recuperação no Preview ainda precisa ser comprovada.

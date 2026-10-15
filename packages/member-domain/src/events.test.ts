@@ -1,15 +1,51 @@
 import type { Prisma } from "@repo/database";
-import { describe, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import {
   enqueueDomainEvent,
   isOutboxJobClaimable,
   makeOutboxIdempotencyKey,
   nextOutboxRetryAt,
+  resolveOutboxConsumerKey,
 } from "./events";
 import { enqueueNotificationBatch } from "./notifications";
 
 describe("member domain outbox primitives", () => {
   const now = new Date("2026-10-03T15:00:00.000Z");
+
+  beforeEach(() => {
+    vi.stubEnv("VERCEL_ENV", "production");
+    vi.stubEnv("OUTBOX_QUEUE_NAMESPACE", "");
+    vi.stubEnv(
+      "OUTBOX_PREVIEW_MEMBER_IDS",
+      "member_preview_1,member_preview_2"
+    );
+  });
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  test("uses a Preview queue namespace and keeps Production on legacy keys", () => {
+    vi.stubEnv("VERCEL_ENV", "production");
+    vi.stubEnv("OUTBOX_QUEUE_NAMESPACE", "");
+    vi.stubEnv(
+      "OUTBOX_PREVIEW_MEMBER_IDS",
+      "member_preview_1,member_preview_2"
+    );
+    expect(resolveOutboxConsumerKey("notifications.create.v1")).toBe(
+      "notifications.create.v1"
+    );
+
+    vi.stubEnv("VERCEL_ENV", "preview");
+    expect(resolveOutboxConsumerKey("notifications.create.v1")).toBe(
+      "preview.notifications.create.v1"
+    );
+
+    vi.stubEnv("VERCEL_ENV", "production");
+    vi.stubEnv("OUTBOX_QUEUE_NAMESPACE", "preview");
+    expect(() => resolveOutboxConsumerKey("notifications.create.v1")).toThrow(
+      "Preview outbox namespace cannot be used in Production."
+    );
+  });
 
   test("claims pending work only when it is due", () => {
     expect(
@@ -117,6 +153,88 @@ describe("member domain outbox primitives", () => {
     });
   });
 
+  test("enqueues Preview jobs without changing the persisted event contract", async () => {
+    vi.stubEnv("VERCEL_ENV", "preview");
+    vi.stubEnv("OUTBOX_QUEUE_NAMESPACE", "");
+    vi.stubEnv(
+      "OUTBOX_PREVIEW_MEMBER_IDS",
+      "member_preview_1,member_preview_2"
+    );
+    const persistedEvent = {
+      id: "event_preview_1",
+      eventType: "notifications.batch_requested",
+      schemaVersion: 1,
+      actorId: "member_preview_1",
+      aggregateType: "community_post",
+      aggregateId: "post_preview_1",
+      idempotencyKey: "post_preview_1:comment:1",
+      payload: { notifications: [{ recipientId: "member_preview_2" }] },
+      occurredAt: now,
+      createdAt: now,
+    };
+    const tx = {
+      domainEvent: { upsert: vi.fn().mockResolvedValue(persistedEvent) },
+      outboxJob: { createMany: vi.fn().mockResolvedValue({ count: 1 }) },
+    } as unknown as Prisma.TransactionClient;
+
+    await enqueueDomainEvent(tx, {
+      eventType: persistedEvent.eventType,
+      actorId: persistedEvent.actorId,
+      aggregateType: persistedEvent.aggregateType,
+      aggregateId: persistedEvent.aggregateId,
+      idempotencyKey: persistedEvent.idempotencyKey,
+      payload: persistedEvent.payload,
+      occurredAt: now,
+      consumers: ["notifications.create.v1"],
+    });
+
+    expect(tx.domainEvent.upsert).toHaveBeenCalledOnce();
+    expect(tx.outboxJob.createMany).toHaveBeenCalledWith({
+      data: [
+        {
+          eventId: "event_preview_1",
+          consumerKey: "preview.notifications.create.v1",
+          idempotencyKey: "event_preview_1:preview.notifications.create.v1",
+        },
+      ],
+      skipDuplicates: true,
+    });
+  });
+
+  test("rejects Preview notification recipients before any event is persisted", async () => {
+    vi.stubEnv("VERCEL_ENV", "preview");
+    vi.stubEnv("OUTBOX_PREVIEW_MEMBER_IDS", "qa_actor,qa_recipient");
+    const tx = {
+      domainEvent: { upsert: vi.fn() },
+      outboxJob: { createMany: vi.fn() },
+    } as unknown as Prisma.TransactionClient;
+    const input = {
+      eventType: "notifications.batch_requested",
+      actorId: "qa_actor",
+      aggregateType: "qa.foundation",
+      aggregateId: "qa_1",
+      idempotencyKey: "qa.notification:1",
+      payload: { notifications: [{ recipientId: "production_member" }] },
+      occurredAt: now,
+      consumers: ["notifications.create.v1"],
+    };
+    await expect(enqueueDomainEvent(tx, input)).rejects.toThrow(
+      "Preview notifications require an authorized QA audience."
+    );
+    expect(tx.domainEvent.upsert).not.toHaveBeenCalled();
+    expect(tx.outboxJob.createMany).not.toHaveBeenCalled();
+
+    vi.stubEnv("OUTBOX_PREVIEW_MEMBER_IDS", "");
+    await expect(
+      enqueueDomainEvent(tx, {
+        ...input,
+        payload: { notifications: [{ recipientId: "qa_recipient" }] },
+      })
+    ).rejects.toThrow(
+      "Preview notifications require an authorized QA audience."
+    );
+    expect(tx.domainEvent.upsert).not.toHaveBeenCalled();
+  });
   test("rejects reusing an event key for a different fact", async () => {
     const tx = {
       domainEvent: {

@@ -7,6 +7,56 @@ const keySchema = z
   .min(1)
   .max(160)
   .regex(/^[a-zA-Z0-9][a-zA-Z0-9._:-]*$/);
+const outboxNamespaceSchema = z.enum(["preview"]);
+
+/** Keep Vercel Preview work separate while preserving existing Production keys. */
+export const resolveOutboxConsumerKey = (consumerKey: string) => {
+  const safeConsumerKey = keySchema.parse(consumerKey);
+  const configuredNamespace = process.env.OUTBOX_QUEUE_NAMESPACE?.trim();
+  const namespace =
+    configuredNamespace ||
+    (process.env.VERCEL_ENV === "preview" ? "preview" : undefined);
+
+  if (process.env.VERCEL_ENV === "production" && namespace) {
+    throw new Error("Preview outbox namespace cannot be used in Production.");
+  }
+
+  const safeNamespace = outboxNamespaceSchema.optional().parse(namespace);
+  return safeNamespace
+    ? keySchema.parse(`${safeNamespace}.${safeConsumerKey}`)
+    : safeConsumerKey;
+};
+
+const notificationRecipientsSchema = z
+  .array(z.object({ recipientId: z.string().min(1).max(255) }))
+  .min(1)
+  .max(100);
+
+export const assertPreviewNotificationAudience = (
+  actorId: string | null,
+  recipientIds: readonly string[]
+) => {
+  if (
+    resolveOutboxConsumerKey("notifications.create.v1") ===
+    "notifications.create.v1"
+  ) {
+    return;
+  }
+  const allowedIds = new Set(
+    (process.env.OUTBOX_PREVIEW_MEMBER_IDS ?? "")
+      .split(",")
+      .map((id) => id.trim())
+      .filter(Boolean)
+  );
+  if (
+    allowedIds.size === 0 ||
+    allowedIds.size > 50 ||
+    (actorId !== null && !allowedIds.has(actorId)) ||
+    recipientIds.some((id) => !allowedIds.has(id))
+  ) {
+    throw new Error("Preview notifications require an authorized QA audience.");
+  }
+};
 
 const eventSchema = z.object({
   eventType: keySchema,
@@ -89,7 +139,19 @@ export const enqueueDomainEvent = async (
   input: DomainEventInput
 ) => {
   const event = eventSchema.parse(input);
-  const { consumers, ...eventData } = event;
+  if (event.eventType === "notifications.batch_requested") {
+    const recipients = notificationRecipientsSchema.parse(
+      event.payload.notifications
+    );
+    assertPreviewNotificationAudience(
+      event.actorId,
+      recipients.map(({ recipientId }) => recipientId)
+    );
+  }
+  const { consumers: requestedConsumers, ...eventData } = event;
+  const consumers = [
+    ...new Set(requestedConsumers.map(resolveOutboxConsumerKey)),
+  ];
   const persisted = await transaction.domainEvent.upsert({
     where: { idempotencyKey: eventData.idempotencyKey },
     create: {
