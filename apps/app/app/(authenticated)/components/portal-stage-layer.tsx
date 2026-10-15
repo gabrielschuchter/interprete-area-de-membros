@@ -26,7 +26,10 @@ export const PortalStageLayer = () => {
     return null;
   }
 
+  const transitionDuration =
+    transition?.kind === "back" ? 520 : (transition?.durationMs ?? 520);
   const style = {
+    "--member-transition-duration": `${transitionDuration}ms`,
     "--portal-dx": `${transition?.vector?.x ?? 0}px`,
     "--portal-dy": `${transition?.vector?.y ?? 0}px`,
   } as CSSProperties;
@@ -39,6 +42,7 @@ export const PortalStageLayer = () => {
       data-kind={transition?.kind}
       data-phase={transition?.phase}
       data-portal-stage="true"
+      data-side={transition?.corridor ?? undefined}
       style={style}
     >
       <div className="portal-stage-layer__art">

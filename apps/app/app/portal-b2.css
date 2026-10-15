@@ -86,7 +86,7 @@
   transition: transform 520ms cubic-bezier(0.5, 0, 0.2, 1);
 }
 
-.portal-stage-layer[data-active-transition="true"] {
+.portal-stage-layer[data-active-transition="true"]:not([data-kind="back"]) {
   z-index: 80;
 }
 
@@ -101,7 +101,18 @@
 }
 
 .portal-stage-layer[data-kind="back"] .portal-stage-layer__art {
-  animation: portal-stage-return 520ms cubic-bezier(0.22, 0.8, 0.26, 1) both;
+  animation: portal-stage-return var(--member-transition-duration, 520ms)
+    cubic-bezier(0.22, 0.8, 0.26, 1) both;
+}
+
+.portal-stage-layer[data-kind="back"][data-side="estudar"]
+  .portal-stage-layer__art {
+  transform-origin: 26.2% 55%;
+}
+
+.portal-stage-layer[data-kind="back"][data-side="comunidade"]
+  .portal-stage-layer__art {
+  transform-origin: 73.2% 55%;
 }
 
 .portal-stage-layer[data-kind="fade"] {
@@ -555,11 +566,6 @@
   pointer-events: none;
 }
 
-.portal[data-transition-kind="back"][data-transition-phase="entering"] {
-  animation: portal-technical-fade var(--member-transition-duration, 220ms)
-    ease-out both;
-}
-
 .member-navigation-error,
 .member-area-error {
   position: fixed;
@@ -634,6 +640,15 @@
     ease-out both;
 }
 
+.member-route-page[data-route-transition-kind="back"][data-route-transition-phase="committing"] {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
+.member-route-page[data-route-transition-kind="back"][data-route-transition-phase="entering"] {
+  animation-name: member-route-back-enter;
+}
+
 .member-route-page[data-route-transition-kind="back"][data-route-transition-phase="leaving"] {
   animation-duration: var(--member-transition-duration, 160ms);
 }
@@ -645,6 +660,14 @@
 
 .member-area-sidebar[data-portal-mode="true"] {
   z-index: 75;
+}
+
+@media (min-width: 1250px) {
+  .member-app-shell[data-returning-to-portal="true"] [data-slot="sidebar"],
+  .member-app-shell[data-returning-to-portal="true"]
+    [data-slot="sidebar-container"] {
+    transition: none !important;
+  }
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -1106,10 +1129,6 @@
     transition: none;
   }
 
-  .portal[data-transition-kind="back"][data-transition-phase="entering"] {
-    animation-duration: 220ms;
-  }
-
   .portal-status,
   .portal-error {
     margin-top: 12px;
@@ -1118,6 +1137,10 @@
 }
 
 @media (max-width: 359px) {
+  .portal-header__wordmark {
+    font-size: 20px;
+  }
+
   .portal-main {
     padding-right: 20px;
     padding-left: 20px;
@@ -1401,6 +1424,17 @@
   from {
     opacity: 0;
     transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes member-route-back-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
   }
   to {
     opacity: 1;
