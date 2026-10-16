@@ -156,13 +156,13 @@ O código da Etapa 02 está implementado e passou os gates locais listados na se
 
 ### Etapa 02 — implementação e validação local 15/10/2026
 
-- A branch de trabalho codex/comunidade-v2 preserva o checkpoint documental 191c8f1 e a base de código recebida; o checkout original não foi alterado.
+- A branch de trabalho codex/comunidade-v2 preserva o checkpoint documental 191c8f1 e recebeu o commit de implementação 1d71ef1, enviado ao origin. O checkout original não foi alterado.
 - Implementados os cinco destinos de navegação, filtros reais na URL, paginação por cursor, preservação segura da origem/retorno, rotas canônicas de grupos/publicações, integração de CommunityBookmark no Salvos global e wrappers de Encontros/Gravações que reutilizam autorização e dados existentes. Nenhuma migration, fixture de produção ou mutação externa foi criada.
 - Referências visuais consultadas para a Etapa 02: boards 02, 03, 03b, 08, 09, 11, 19, 32, 33, 35, 37, 38, 43 e 50. Os recortes responsivos foram implementados para desktop/tablet/mobile; a navegação móvel mantém o drawer e carrega sua implementação fora do bundle inicial.
 - Evidência local: bun run check, bun run typecheck, bun run boundaries, bun run test e bun run performance:check aprovados nesta revisão; 782 testes do app passaram, além das suítes de API, domínio e guards. Build de apps/app aprovado com SKIP_ENV_VALIDATION=true e NEXT_PUBLIC_APP_URL=http://localhost:3000; bundle da rota Comunidade em 210,8 KiB gzip (limite 225 KiB). Esses valores são de compilação local.
 - A tentativa de graphify update . não pôde ser executada porque o binário graphify não está instalado neste ambiente; graphify-out/graph.json também não existe no worktree.
 - Limite: não havia variáveis locais de Clerk/Supabase/PostgreSQL no worktree. Não foram importadas credenciais, acessado Preview/Production nem escritas linhas. Portanto não há evidência de sessão autenticada, renderização com dados persistidos reais, isolamento entre membros ou interação no navegador autenticado.
-- Estado: código pronto para checkpoint na branch; Etapa 02 continua IN PROGRESS até o runtime QA autenticado demonstrar os fluxos acima. Não transferir esse limite para OPS-01 nem usar credenciais/cron de produção para removê-lo.
+- Estado: checkpoint de código enviado em 1d71ef1; Etapa 02 continua IN PROGRESS até o runtime QA autenticado demonstrar os fluxos acima. Não transferir esse limite para OPS-01 nem usar credenciais/cron de produção para removê-lo.
 
 ### Diagnóstico da ativação de sessão com freeze
 

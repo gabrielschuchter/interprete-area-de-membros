@@ -2,6 +2,7 @@
 
 Branch: codex/comunidade-v2, worktree dedicado C:\Users\gabsc\.codex\worktrees\comunidade-v2\interprete-area-de-membros.
 Checkpoint documental: 191c8f1 — correção de rumo e transferência de OPS-01 para backlog.
+Checkpoint de implementação da Etapa 02: 1d71ef1, enviado a origin/codex/comunidade-v2.
 Etapa ativa: 02 — Navegação e Explorar.
 Estado: implementação da etapa concluída no código e validada por gates locais; permanece IN PROGRESS até validar runtime autenticado com dados reais de QA. Não declarar persistência/autorização fim a fim a partir de build ou testes unitários.
 
@@ -34,4 +35,4 @@ O worktree não contém configuração local de Clerk, Supabase ou PostgreSQL. N
 
 ## Preservar
 
-Manter o commit documental 191c8f1, os dados existentes, o cron GREEN, Vercel SSO, credenciais, Preview/Production e o checkout original sem alterações. OPS-01 permanece backlog independente para recuperação periódica, Broadcast/badge e preflight de release.
+Manter os commits 191c8f1 e 1d71ef1, os dados existentes, o cron GREEN, Vercel SSO, credenciais, Preview/Production e o checkout original sem alterações. OPS-01 permanece backlog independente para recuperação periódica, Broadcast/badge e preflight de release.
