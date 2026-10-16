@@ -319,10 +319,12 @@ const revalidateCommunity = (
 ) => {
   revalidatePath("/comunidade");
   revalidatePath("/comunidade/meus-topicos");
+  revalidatePath("/comunidade/minhas-publicacoes");
   revalidatePath("/comunidade/salvos");
   revalidatePath("/membros");
   if (spaceSlug) {
     revalidatePath(`/comunidade/${spaceSlug}`);
+    revalidatePath(`/comunidade/grupos/${spaceSlug}`);
   }
   if (spaceSlug && postId) {
     revalidatePath(`/comunidade/${spaceSlug}/${postId}`);
@@ -896,7 +898,7 @@ export const updatePost = async (formData: FormData) => {
   revalidateCommunity(post.space?.slug, post.id, slug ?? undefined);
   revalidateCommunity(space?.slug, post.id, slug ?? undefined);
   redirect(
-    slug ? `/comunidade/publicacoes/${slug}` : "/comunidade/meus-topicos"
+    slug ? `/comunidade/publicacoes/${slug}` : "/comunidade/minhas-publicacoes"
   );
 };
 
@@ -1021,7 +1023,7 @@ export const setPostStatus = async (formData: FormData) => {
     redirect("/comunidade");
   }
   if (requestedStatus === ContentStatus.DRAFT) {
-    redirect("/comunidade/meus-topicos");
+    redirect("/comunidade/minhas-publicacoes");
   }
   redirect(`/comunidade/publicacoes/${slug}`);
 };
@@ -1060,6 +1062,7 @@ export const toggleBookmark = async (formData: FormData) => {
     });
   }
   revalidateCommunity(post.space?.slug, postId, post.slug ?? undefined);
+  revalidatePath("/salvos");
   return { ok: true as const };
 };
 
@@ -1382,7 +1385,9 @@ export const softDeletePost = async (formData: FormData) => {
     data: { deletedAt: new Date(), status: ContentStatus.ARCHIVED },
   });
   revalidateCommunity(post.space?.slug, postId, post.slug ?? undefined);
-  redirect(post.space ? `/comunidade/${post.space.slug}` : "/comunidade");
+  redirect(
+    post.space ? `/comunidade/grupos/${post.space.slug}` : "/comunidade"
+  );
 };
 
 export const softDeleteComment = async (formData: FormData) => {
@@ -1690,7 +1695,7 @@ export const createStudyGroup = async (formData: FormData) => {
       await dispatchPendingNotifications();
       revalidatePath("/comunidade");
       revalidatePath("/perfil");
-      redirect(`/comunidade/${result.slug}`);
+      redirect(`/comunidade/grupos/${result.slug}`);
     } catch (error) {
       if (!isUniqueConstraintError(error)) {
         throw error;
@@ -1780,7 +1785,7 @@ export const inviteStudyGroupMembers = async (formData: FormData) => {
   if (invitations.length > 0) {
     await dispatchPendingNotifications();
     revalidatePath("/perfil");
-    revalidatePath(`/comunidade/${group.slug}`);
+    revalidatePath(`/comunidade/grupos/${group.slug}`);
   }
 };
 
@@ -1810,7 +1815,7 @@ export const joinPublicStudyGroup = async (formData: FormData) => {
     create: { spaceId: group.id, memberId },
     update: {},
   });
-  revalidatePath(`/comunidade/${group.slug}`);
+  revalidatePath(`/comunidade/grupos/${group.slug}`);
 };
 
 export const createSpace = async (formData: FormData) => {
@@ -1889,7 +1894,7 @@ export const updateSpace = async (formData: FormData) => {
   });
   revalidatePath("/admin/community");
   revalidatePath("/comunidade");
-  revalidatePath(`/comunidade/${slug}`);
+  revalidatePath(`/comunidade/grupos/${slug}`);
 };
 
 export const toggleSpaceComments = async (formData: FormData) => {
@@ -1915,5 +1920,5 @@ export const toggleSpaceComments = async (formData: FormData) => {
     data: { commentsClosed: desired === "on" },
   });
   revalidatePath("/admin/community");
-  revalidatePath(`/comunidade/${space.slug}`);
+  revalidatePath(`/comunidade/grupos/${space.slug}`);
 };

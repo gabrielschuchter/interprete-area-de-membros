@@ -101,7 +101,7 @@ export const GlobalSidebar = ({
   const knownHrefs = [
     ...navigation.map((item) => item.href),
     ...personalContentNavigation.map((item) => item.href),
-    "/comunidade/meus-topicos",
+    "/comunidade/minhas-publicacoes",
     "/configuracoes",
     "/perfil",
     ...(canManageContent ? ["/admin"] : []),
@@ -283,21 +283,21 @@ export const GlobalSidebar = ({
               <SidebarMenuButton
                 asChild
                 className="rounded-sm"
-                isActive={isActivePath("/comunidade/meus-topicos")}
-                tooltip="Meus tópicos"
+                isActive={isActivePath("/comunidade/minhas-publicacoes")}
+                tooltip="Minhas publicações"
               >
                 <IntentLink
                   aria-current={
-                    isActivePath("/comunidade/meus-topicos")
+                    isActivePath("/comunidade/minhas-publicacoes")
                       ? "page"
                       : undefined
                   }
-                  href="/comunidade/meus-topicos"
+                  href="/comunidade/minhas-publicacoes"
                   onNavigationStart={handleNavigationStart}
                 >
                   <MessageCircleIcon />
                   <span className="group-data-[collapsible=icon]:hidden">
-                    Meus tópicos
+                    Minhas publicações
                   </span>
                 </IntentLink>
               </SidebarMenuButton>

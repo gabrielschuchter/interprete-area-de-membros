@@ -30,6 +30,7 @@ export interface CalendarMeeting {
 
 interface MeetingsCalendarProperties {
   readonly meetings: readonly CalendarMeeting[];
+  readonly recordingsBasePath?: string;
 }
 
 const kindLabels: Record<string, string> = {
@@ -79,7 +80,10 @@ const meetingStateClass = (isSelected: boolean, isPast: boolean) => {
   return "border-brand-structural/40 bg-accent/70 hover:bg-accent";
 };
 
-export const MeetingsCalendar = ({ meetings }: MeetingsCalendarProperties) => {
+export const MeetingsCalendar = ({
+  meetings,
+  recordingsBasePath = "/encontros/gravacoes",
+}: MeetingsCalendarProperties) => {
   const today = new Date();
   const [view, setView] = useState<"month" | "week">("month");
   const [anchor, setAnchor] = useState(
@@ -341,7 +345,13 @@ export const MeetingsCalendar = ({ meetings }: MeetingsCalendarProperties) => {
             ) : null}
             {selected.recordings.map((recording) => (
               <Button asChild key={recording.id} size="sm" variant="outline">
-                <a href={`/encontros/gravacoes?asset=${recording.assetId}`}>
+                <a
+                  href={
+                    recordingsBasePath +
+                    "?asset=" +
+                    encodeURIComponent(recording.assetId)
+                  }
+                >
                   {recording.title}
                 </a>
               </Button>

@@ -305,7 +305,9 @@ export function CommunityPostView({
           <Link
             href={
               backHref ??
-              (post.space ? `/comunidade/${post.space.slug}` : "/comunidade")
+              (post.space
+                ? `/comunidade/grupos/${post.space.slug}`
+                : "/comunidade")
             }
           >
             <ArrowLeftIcon aria-hidden="true" />{" "}
@@ -318,7 +320,7 @@ export function CommunityPostView({
               {post.space && (
                 <Link
                   className="community-post-group"
-                  href={`/comunidade/${post.space.slug}`}
+                  href={`/comunidade/grupos/${post.space.slug}`}
                 >
                   {post.space.title}
                 </Link>

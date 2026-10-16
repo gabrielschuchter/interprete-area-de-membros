@@ -1,9 +1,9 @@
 # Comunidade V2 — status da auditoria
 
-**Estado:** Estágio 00 concluído; Estágio 01 ACEITA PARA AVANÇO COM PENDÊNCIAS. Backup GREEN restaurado e reconciliado localmente com TLS; isolamento do outbox, quatro papéis Clerk no Preview e worker manual com Notification QA persistente estão comprovados. A recuperação periódica Preview e Broadcast/badge não foram comprovados e ficam transferidos para OPS-01. OPS-01 só bloqueia jornadas dependentes de entrega/recuperação periódica, Broadcast/badge e o preflight de release; não bloqueia a Etapa 02. Nenhuma migration ou escrita de conteúdo V2 foi feita até este checkpoint. O cron GREEN permanece inalterado.
-**Atualizado:** 2026-10-15 — correção de rumo e transferência de OPS-01.
+**Estado:** Estágio 00 concluído; Estágio 01 ACEITA PARA AVANÇO COM PENDÊNCIAS. Etapa 02 — Navegação e Explorar implementada no código do worktree; check, typecheck, boundaries, testes, build e orçamento de bundle passaram localmente. Runtime autenticado e persistência com dados reais ainda não foram validados nesta sessão, então a etapa permanece IN PROGRESS. A recuperação periódica Preview e Broadcast/badge seguem no OPS-01 e não bloqueiam Etapa 02. O cron GREEN, dados de produção e esquema não foram alterados.
+**Atualizado:** 2026-10-15 — correção de rumo, transferência de OPS-01 e execução local da Etapa 02.
 **Branch e base:** `codex/comunidade-v2`, a partir de `origin/main` em `b6028a37a358c0ff1d45d19297c5454318c799a3`; branch remota publicada.
-**Próximo passo:** iniciar a Etapa 02 — Navegação e Explorar na branch codex/comunidade-v2; OPS-01 não é dependência de navegação, feed de leitura, Salvos ou Encontros.
+**Próximo passo:** concluir o checkpoint de código e evidências da Etapa 02 na branch codex/comunidade-v2. Antes de marcar aceite, executar as jornadas autenticadas de leitura, filtros, paginação, Salvos e Encontros com os dados reais do Preview; OPS-01 não é dependência dessas jornadas.
 
 ## Escopo e integridade
 
@@ -152,7 +152,17 @@ Os itens abaixo são dependências de jornadas futuras ou do preflight de releas
 
 ## Próximo passo
 
-Iniciar a Etapa 02 — Navegação e Explorar. As evidências do Estágio 01 permitem o avanço com pendências transferidas; não declarar recovery periódico como validado. OPS-01 só será retomado quando a primeira jornada depender de recuperação/Broadcast/badge ou no preflight de release. Até lá, preservar Vercel SSO, o cron GREEN, credenciais, Production e dados existentes.
+O código da Etapa 02 está implementado e passou os gates locais listados na seção seguinte. O runtime QA autenticado continua necessário para demonstrar persistência após reload, autorização por membro e comportamento responsivo com os dados reais. As evidências do Estágio 01 permitem esse avanço com pendências transferidas; não declarar recovery periódico como validado. OPS-01 só será retomado quando a primeira jornada depender de recuperação/Broadcast/badge ou no preflight de release. Até lá, preservar Vercel SSO, o cron GREEN, credenciais, Production e dados existentes.
+
+### Etapa 02 — implementação e validação local 15/10/2026
+
+- A branch de trabalho codex/comunidade-v2 preserva o checkpoint documental 191c8f1 e a base de código recebida; o checkout original não foi alterado.
+- Implementados os cinco destinos de navegação, filtros reais na URL, paginação por cursor, preservação segura da origem/retorno, rotas canônicas de grupos/publicações, integração de CommunityBookmark no Salvos global e wrappers de Encontros/Gravações que reutilizam autorização e dados existentes. Nenhuma migration, fixture de produção ou mutação externa foi criada.
+- Referências visuais consultadas para a Etapa 02: boards 02, 03, 03b, 08, 09, 11, 19, 32, 33, 35, 37, 38, 43 e 50. Os recortes responsivos foram implementados para desktop/tablet/mobile; a navegação móvel mantém o drawer e carrega sua implementação fora do bundle inicial.
+- Evidência local: bun run check, bun run typecheck, bun run boundaries, bun run test e bun run performance:check aprovados nesta revisão; 782 testes do app passaram, além das suítes de API, domínio e guards. Build de apps/app aprovado com SKIP_ENV_VALIDATION=true e NEXT_PUBLIC_APP_URL=http://localhost:3000; bundle da rota Comunidade em 210,8 KiB gzip (limite 225 KiB). Esses valores são de compilação local.
+- A tentativa de graphify update . não pôde ser executada porque o binário graphify não está instalado neste ambiente; graphify-out/graph.json também não existe no worktree.
+- Limite: não havia variáveis locais de Clerk/Supabase/PostgreSQL no worktree. Não foram importadas credenciais, acessado Preview/Production nem escritas linhas. Portanto não há evidência de sessão autenticada, renderização com dados persistidos reais, isolamento entre membros ou interação no navegador autenticado.
+- Estado: código pronto para checkpoint na branch; Etapa 02 continua IN PROGRESS até o runtime QA autenticado demonstrar os fluxos acima. Não transferir esse limite para OPS-01 nem usar credenciais/cron de produção para removê-lo.
 
 ### Diagnóstico da ativação de sessão com freeze
 

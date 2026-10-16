@@ -1,5 +1,8 @@
 interface RecordingArchiveHrefOptions {
   readonly asset?: string;
+  readonly basePath?:
+    | "/encontros/gravacoes"
+    | "/comunidade/encontros/gravacoes";
   readonly cursor?: string;
   readonly query?: string;
   readonly year?: string;
@@ -7,6 +10,7 @@ interface RecordingArchiveHrefOptions {
 
 export const recordingArchiveHref = ({
   asset,
+  basePath = "/encontros/gravacoes",
   cursor,
   query,
   year,
@@ -28,7 +32,7 @@ export const recordingArchiveHref = ({
   }
 
   const search = parameters.toString();
-  return `/encontros/gravacoes${search ? `?${search}` : ""}`;
+  return search ? `${basePath}?${search}` : basePath;
 };
 
 export const resolveRecordingPlaybackSelection = <

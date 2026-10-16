@@ -41,7 +41,11 @@ const communityShortcuts: readonly PortalShortcut[] = [
   { href: "/comunidade", icon: MessageCircle, label: "Discussões" },
   { href: "/encontros", icon: CalendarDays, label: "Encontros" },
   { href: "/comunidade/grupos", icon: UsersRound, label: "Grupos de estudo" },
-  { href: "/comunidade/meus-topicos", icon: UserRound, label: "Meus tópicos" },
+  {
+    href: "/comunidade/minhas-publicacoes",
+    icon: UserRound,
+    label: "Minhas publicações",
+  },
 ];
 
 const whitespacePattern = /\s+/;

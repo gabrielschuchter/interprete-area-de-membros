@@ -3,6 +3,7 @@ import { Input } from "@repo/design-system/components/ui/input";
 import { Textarea } from "@repo/design-system/components/ui/textarea";
 import { ArrowLeftIcon, UsersRoundIcon } from "lucide-react";
 import Link from "next/link";
+import { CommunityNavigation } from "@/components/community/community-navigation";
 import { GroupMemberInvitePicker } from "@/components/community/group-member-invite-picker";
 import {
   SingleFlightForm,
@@ -32,6 +33,7 @@ const NewStudyGroupPage = async ({
   return (
     <div className="min-h-svh bg-background">
       <main className="mx-auto w-full max-w-[960px] px-5 py-8 sm:px-8 lg:px-12 lg:py-14">
+        <CommunityNavigation active="groups" />
         <Button asChild className="-ml-3" variant="ghost">
           <Link href="/comunidade">
             <ArrowLeftIcon aria-hidden="true" /> Voltar para a comunidade

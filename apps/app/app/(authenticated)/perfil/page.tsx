@@ -327,7 +327,7 @@ const ProfilePage = async ({ searchParams }: ProfilePageProperties) => {
           <li>
             <Link
               className="flex min-h-[60px] items-center justify-between gap-3 text-sm"
-              href="/comunidade/meus-topicos"
+              href="/comunidade/minhas-publicacoes"
             >
               <span>Meus tópicos</span>
               <span className="flex items-center gap-2 text-muted-foreground">
@@ -366,7 +366,7 @@ const ProfilePage = async ({ searchParams }: ProfilePageProperties) => {
                         <div className="min-w-0">
                           <Link
                             className="font-medium hover:underline"
-                            href={`/comunidade/${invitation.space.slug}`}
+                            href={`/comunidade/grupos/${invitation.space.slug}`}
                           >
                             {invitation.space.title}
                           </Link>

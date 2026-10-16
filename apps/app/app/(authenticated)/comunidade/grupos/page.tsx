@@ -11,7 +11,7 @@ const StudyGroupsPage = async () => {
 
   return (
     <main className="community-groups-page mx-auto w-full max-w-[1080px] px-5 py-8 sm:px-8 lg:py-12">
-      <CommunityNavigation active="explore" mobileView="groups" />
+      <CommunityNavigation active="groups" />
       <header className="mt-7 flex flex-col gap-4 border-border border-b pb-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="font-display text-3xl leading-tight sm:text-4xl">
@@ -38,7 +38,7 @@ const StudyGroupsPage = async () => {
             <li key={space.id}>
               <Link
                 className="community-groups-page__item"
-                href={"/comunidade/".concat(space.slug)}
+                href={"/comunidade/grupos/".concat(space.slug)}
               >
                 <span className="min-w-0">
                   <span className="block truncate font-medium text-sm">

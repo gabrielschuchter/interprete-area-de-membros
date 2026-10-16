@@ -4,15 +4,18 @@ import {
   BookOpenIcon,
   FileTextIcon,
   ListChecksIcon,
+  MessageCircleIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { toggleLearningBookmark } from "@/app/(authenticated)/biblioteca/actions";
 import { IntentLink } from "@/app/(authenticated)/components/intent-link";
+import { toggleBookmark } from "@/app/(authenticated)/comunidade/actions";
 import { ExerciseFavoriteControl } from "@/components/exercises/exercise-favorite-control";
 import {
   SingleFlightForm,
   SingleFlightSubmit,
 } from "@/components/mutations/single-flight-form";
+import { communityPostHref, getSavedCommunityPosts } from "@/lib/community";
 import { getMemberExerciseFavorites } from "@/lib/exercises";
 import { requireMemberId } from "@/lib/learning";
 import { getPersonalLibraryItems } from "@/lib/library";
@@ -32,16 +35,80 @@ interface SavedRow {
   readonly href: string;
   readonly id: string;
   readonly label: string;
+  readonly postId?: string;
   readonly questionId?: string;
   readonly savedAt: Date;
   readonly source: string;
+  readonly spaceSlug?: string;
   readonly targetId?: string;
   readonly targetType?: string;
   readonly title: string;
 }
 
+const SavedRowBookmarkAction = ({ row }: { readonly row: SavedRow }) => {
+  if (row.questionId) {
+    return (
+      <ExerciseFavoriteControl
+        className="h-11 px-3 text-[#8C1535] text-sm"
+        initialBookmarked
+        questionId={row.questionId}
+        savedLabel="Salvo"
+      />
+    );
+  }
+
+  if (row.postId) {
+    return (
+      <SingleFlightForm action={toggleBookmark} className="shrink-0">
+        <input name="postId" type="hidden" value={row.postId} />
+        <input name="spaceSlug" type="hidden" value={row.spaceSlug ?? ""} />
+        <input name="desired" type="hidden" value="off" />
+        <SingleFlightSubmit
+          aria-label={`Remover ${row.title} dos salvos`}
+          className="h-11 px-3 text-[#8C1535] text-sm"
+          pendingLabel="Removendo…"
+          size="sm"
+          variant="ghost"
+        >
+          <BookmarkIcon
+            aria-hidden="true"
+            className="size-[18px]"
+            fill="currentColor"
+          />
+          Salvo
+        </SingleFlightSubmit>
+      </SingleFlightForm>
+    );
+  }
+
+  return (
+    <SingleFlightForm action={toggleLearningBookmark} className="shrink-0">
+      <input name="targetType" type="hidden" value={row.targetType} />
+      <input name="targetId" type="hidden" value={row.targetId} />
+      <input name="desired" type="hidden" value="off" />
+      <SingleFlightSubmit
+        aria-label={`Remover ${row.title} dos salvos`}
+        className="h-11 px-3 text-[#8C1535] text-sm"
+        pendingLabel="Salvando…"
+        size="sm"
+        variant="ghost"
+      >
+        <BookmarkIcon
+          aria-hidden="true"
+          className="size-[18px]"
+          fill="currentColor"
+        />
+        Salvo
+      </SingleFlightSubmit>
+    </SingleFlightForm>
+  );
+};
+
 const savedFilter = (value: string | undefined): SavedContentFilter =>
-  value === "aulas" || value === "materiais" || value === "questoes"
+  value === "aulas" ||
+  value === "materiais" ||
+  value === "questoes" ||
+  value === "comunidade"
     ? value
     : "todos";
 
@@ -50,13 +117,15 @@ const SavedPage = async ({ searchParams }: SavedPageProperties) => {
     requireMemberId(),
     searchParams,
   ]);
-  const [libraryItems, favorites] = await Promise.all([
+  const [libraryItems, favorites, communitySaved] = await Promise.all([
     getPersonalLibraryItems(memberId),
     getMemberExerciseFavorites(memberId, undefined, "after", 20),
+    getSavedCommunityPosts(memberId, { take: 12 }),
   ]);
   const selected = savedFilter(query.tipo);
   const counts = {
-    todos: libraryItems.length + favorites.totalCount,
+    todos:
+      libraryItems.length + favorites.totalCount + communitySaved.totalCount,
     aulas: libraryItems.filter(
       (item) =>
         item.targetType === "COURSE" ||
@@ -68,6 +137,7 @@ const SavedPage = async ({ searchParams }: SavedPageProperties) => {
         item.targetType === "LIBRARY_ITEM" || item.targetType === "ASSET"
     ).length,
     questoes: favorites.totalCount,
+    comunidade: communitySaved.totalCount,
   } satisfies Record<SavedContentFilter, number>;
 
   const libraryRows: SavedRow[] = libraryItems.map((item) => ({
@@ -100,7 +170,22 @@ const SavedPage = async ({ searchParams }: SavedPageProperties) => {
         "Esta questão não está mais disponível.",
     };
   });
-  const rows = [...libraryRows, ...questionRows]
+  const savedReturnTo =
+    selected === "todos"
+      ? "/salvos"
+      : `/salvos?tipo=${encodeURIComponent(selected)}`;
+  const communityRows: SavedRow[] = communitySaved.posts.map((post) => ({
+    category: "comunidade",
+    href: communityPostHref(post, savedReturnTo),
+    id: `community:${post.id}`,
+    label: "Publicação",
+    postId: post.id,
+    savedAt: post.savedAt,
+    source: `Comunidade · ${post.space?.title ?? "Feed geral"}`,
+    title: post.title,
+    spaceSlug: post.space?.slug ?? "",
+  }));
+  const rows = [...libraryRows, ...questionRows, ...communityRows]
     .filter((row) => selected === "todos" || row.category === selected)
     .sort((left, right) => right.savedAt.getTime() - left.savedAt.getTime());
   const totalCount = counts[selected];
@@ -169,7 +254,8 @@ const SavedPage = async ({ searchParams }: SavedPageProperties) => {
           Salvos
         </h1>
         <p className="mt-3 text-muted-foreground leading-7">
-          Aulas, materiais e questões que você guardou ficam juntos aqui.
+          Aulas, materiais, questões e publicações da Comunidade ficam juntos
+          aqui.
         </p>
       </header>
 
@@ -189,6 +275,7 @@ const SavedPage = async ({ searchParams }: SavedPageProperties) => {
                 aulas: BookOpenIcon,
                 materiais: FileTextIcon,
                 questoes: ListChecksIcon,
+                comunidade: MessageCircleIcon,
               }[row.category];
               return (
                 <li key={row.id}>
@@ -220,45 +307,7 @@ const SavedPage = async ({ searchParams }: SavedPageProperties) => {
                       >
                         <IntentLink href={row.href}>Abrir</IntentLink>
                       </Button>
-                      {row.questionId ? (
-                        <ExerciseFavoriteControl
-                          className="h-11 px-3 text-[#8C1535] text-sm"
-                          initialBookmarked
-                          questionId={row.questionId}
-                          savedLabel="Salvo"
-                        />
-                      ) : (
-                        <SingleFlightForm
-                          action={toggleLearningBookmark}
-                          className="shrink-0"
-                        >
-                          <input
-                            name="targetType"
-                            type="hidden"
-                            value={row.targetType}
-                          />
-                          <input
-                            name="targetId"
-                            type="hidden"
-                            value={row.targetId}
-                          />
-                          <input name="desired" type="hidden" value="off" />
-                          <SingleFlightSubmit
-                            aria-label={`Remover ${row.title} dos salvos`}
-                            className="h-11 px-3 text-[#8C1535] text-sm"
-                            pendingLabel="Salvando…"
-                            size="sm"
-                            variant="ghost"
-                          >
-                            <BookmarkIcon
-                              aria-hidden="true"
-                              className="size-[18px]"
-                              fill="currentColor"
-                            />
-                            Salvo
-                          </SingleFlightSubmit>
-                        </SingleFlightForm>
-                      )}
+                      <SavedRowBookmarkAction row={row} />
                     </div>
                   </article>
                 </li>
@@ -268,6 +317,17 @@ const SavedPage = async ({ searchParams }: SavedPageProperties) => {
         ) : (
           emptyState
         )}
+
+        {communitySaved.hasMore &&
+        (selected === "comunidade" || selected === "todos") ? (
+          <div className="mt-5 flex justify-center">
+            <Button asChild variant="outline">
+              <Link href="/comunidade/salvos">
+                Ver todos os salvos da Comunidade
+              </Link>
+            </Button>
+          </div>
+        ) : null}
 
         {favorites.hasNext &&
         selected !== "aulas" &&

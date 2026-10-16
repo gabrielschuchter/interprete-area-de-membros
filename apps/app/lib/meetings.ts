@@ -67,21 +67,28 @@ const attachAuthorizedRecordings = async <T extends { readonly id: string }>(
       id: true,
       meetingId: true,
       originalTitle: true,
+      thumbnailPath: true,
       asset: { select: { id: true, title: true, kind: true } },
     },
   });
 
   return meetings.map((meeting) => ({
     ...meeting,
-    recordings: recordings.filter(
-      (recording) => recording.meetingId === meeting.id
-    ),
+    recordings: recordings
+      .filter((recording) => recording.meetingId === meeting.id)
+      .map(({ thumbnailPath, ...recording }) => ({
+        ...recording,
+        thumbnailUrl: thumbnailPath
+          ? `/api/learning/recordings/${recording.id}/thumbnail`
+          : null,
+      })),
   }));
 };
 
 export const getMeetings = async (
   memberId: string,
-  accessScope?: LearningAccessScope | Promise<LearningAccessScope>
+  accessScope?: LearningAccessScope | Promise<LearningAccessScope>,
+  options: { readonly includeCalendar?: boolean } = {}
 ) => {
   const now = new Date();
   const calendarStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
@@ -110,16 +117,18 @@ export const getMeetings = async (
       take: 48,
       select: memberMeetingSelection(memberId),
     }),
-    database.meeting.findMany({
-      where: {
-        status: ContentStatus.PUBLISHED,
-        demoKey: null,
-        startsAt: { gte: calendarStart, lt: calendarEnd },
-      },
-      orderBy: [{ startsAt: "asc" }, { position: "asc" }],
-      take: 120,
-      select: memberMeetingSelection(memberId),
-    }),
+    options.includeCalendar === false
+      ? Promise.resolve([])
+      : database.meeting.findMany({
+          where: {
+            status: ContentStatus.PUBLISHED,
+            demoKey: null,
+            startsAt: { gte: calendarStart, lt: calendarEnd },
+          },
+          orderBy: [{ startsAt: "asc" }, { position: "asc" }],
+          take: 120,
+          select: memberMeetingSelection(memberId),
+        }),
   ]);
   const [scope, role, [upcoming, past, calendar]] = await Promise.all([
     scopePromise,

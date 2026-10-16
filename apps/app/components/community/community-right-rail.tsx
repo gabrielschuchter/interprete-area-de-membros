@@ -1,8 +1,6 @@
 import { Button } from "@repo/design-system/components/ui/button";
-import { ArrowRightIcon, PlusIcon, SearchIcon } from "lucide-react";
+import { ArrowRightIcon, PlusIcon } from "lucide-react";
 import { IntentLink } from "@/app/(authenticated)/components/intent-link";
-import { FilterForm } from "@/components/navigation/filter-form";
-import type { CommunitySort } from "@/lib/community-query";
 import { CommunityDisclosure } from "./community-disclosure";
 import {
   CommunityPresence,
@@ -30,9 +28,6 @@ interface CommunityRightRailProperties {
   readonly memberId: string;
   readonly presenceProfiles?: readonly CommunityPresenceProfile[];
   readonly profile: CommunityPresenceProfile | null;
-  readonly query?: string;
-  readonly sort?: CommunitySort;
-  readonly spaceSlug?: string;
   readonly spaces: readonly CommunitySpaceSummary[];
 }
 
@@ -74,43 +69,9 @@ export const CommunityRightRail = ({
   memberId,
   profile,
   presenceProfiles,
-  query,
-  sort = "recent",
-  spaceSlug,
   spaces,
 }: CommunityRightRailProperties) => (
   <aside aria-label="Contexto da comunidade" className="community-right-rail">
-    <section
-      aria-label="Buscar na comunidade"
-      className="community-rail__search"
-    >
-      <FilterForm action="/comunidade" className="community-search">
-        <label className="community-search__field">
-          <span className="sr-only">Buscar na comunidade</span>
-          <SearchIcon aria-hidden="true" className="community-search__icon" />
-          <input
-            aria-label="Buscar na comunidade"
-            defaultValue={query ?? ""}
-            name="q"
-            placeholder="Buscar na comunidade"
-          />
-        </label>
-        <input name="sort" type="hidden" value={sort} />
-        {spaceSlug ? (
-          <input name="space" type="hidden" value={spaceSlug} />
-        ) : null}
-        <Button
-          aria-label="Buscar"
-          className="community-search__submit"
-          size="icon"
-          type="submit"
-          variant="ghost"
-        >
-          <SearchIcon aria-hidden="true" />
-        </Button>
-      </FilterForm>
-    </section>
-
     <CommunityDisclosure
       className="community-rail__context--about"
       label="Sobre a comunidade"
@@ -159,7 +120,7 @@ export const CommunityRightRail = ({
           {spaces.map((space) => (
             <IntentLink
               className="community-rail__space group"
-              href={`/comunidade/${space.slug}`}
+              href={`/comunidade/grupos/${space.slug}`}
               key={space.id}
             >
               <span className="min-w-0 truncate font-medium text-sm group-hover:text-brand-structural">

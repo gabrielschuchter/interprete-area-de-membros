@@ -84,7 +84,7 @@ describe("CommunityRightRail", () => {
     );
     expect(
       screen.getByRole("link", { name: clinicalSpaceName }).getAttribute("href")
-    ).toBe("/comunidade/pratica-clinica");
+    ).toBe("/comunidade/grupos/pratica-clinica");
     expect(
       screen.getByRole("link", { name: announcementName }).getAttribute("href")
     ).toBe("/encontros");

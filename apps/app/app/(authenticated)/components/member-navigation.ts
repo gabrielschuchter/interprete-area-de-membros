@@ -26,7 +26,7 @@ export const portalShortcutPaths: Readonly<Record<string, PortalSide>> = {
   "/comunidade": "comunidade",
   "/encontros": "comunidade",
   "/comunidade/grupos": "comunidade",
-  "/comunidade/meus-topicos": "comunidade",
+  "/comunidade/minhas-publicacoes": "comunidade",
 };
 
 export const portalSideForPath = (pathname: string): PortalSide =>

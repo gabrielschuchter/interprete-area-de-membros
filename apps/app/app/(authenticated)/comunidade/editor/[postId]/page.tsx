@@ -43,7 +43,7 @@ const CommunityEditorPage = async ({
   const backHref =
     post.status === "PUBLISHED"
       ? communityPostHref(post)
-      : "/comunidade/meus-topicos";
+      : "/comunidade/minhas-publicacoes";
 
   if (filters.preview === "1") {
     return (

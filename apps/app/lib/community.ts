@@ -1,6 +1,7 @@
 import "server-only";
 
 import {
+  type CommunityPostKind,
   ContentStatus,
   database,
   MemberRole,
@@ -19,7 +20,7 @@ import {
 } from "@/lib/community-space-rules";
 import { getProfilesByClerkIds } from "@/lib/profile";
 
-const POST_PAGE_SIZE = 20;
+const POST_PAGE_SIZE = 10;
 const COMMENT_PAGE_SIZE = 40;
 const POPULARITY_CANDIDATE_LIMIT = 200;
 const wordPattern = /\s+/;
@@ -30,20 +31,30 @@ const readingMinutes = (content: string) =>
     Math.ceil(content.trim().split(wordPattern).filter(Boolean).length / 180)
   );
 
-export const communityPostHref = (post: {
-  readonly id: string;
-  readonly slug: string | null;
-  readonly space?: { readonly slug: string } | null;
-}) => {
-  if (post.slug) {
-    return `/comunidade/publicacoes/${post.slug}`;
-  }
-
+export const communityPostHref = (
+  post: {
+    readonly id: string;
+    readonly slug: string | null;
+    readonly space?: { readonly slug: string } | null;
+  },
+  returnTo?: string
+) => {
+  let path = `/comunidade/publicacoes/${post.id}`;
   if (post.space) {
-    return `/comunidade/${post.space.slug}/${post.id}`;
+    path = `/comunidade/${post.space.slug}/${post.id}`;
   }
-
-  return `/comunidade/publicacoes/${post.id}`;
+  if (post.slug) {
+    path = `/comunidade/publicacoes/${post.slug}`;
+  }
+  const isSafeReturnPath =
+    returnTo === "/salvos" ||
+    returnTo === "/comunidade" ||
+    returnTo?.startsWith("/comunidade/") === true;
+  if (!isSafeReturnPath) {
+    return path;
+  }
+  const params = new URLSearchParams({ from: returnTo });
+  return `${path}?${params.toString()}`;
 };
 
 type ProfileMap = Awaited<ReturnType<typeof getProfilesByClerkIds>>;
@@ -135,7 +146,8 @@ export const getLatestCommunityPost = async () =>
   });
 
 interface CommunityFeedOptions {
-  readonly page?: number;
+  readonly cursor?: string;
+  readonly kind?: CommunityPostKind;
   readonly query?: string;
   readonly sort?: "recent" | "popular" | "unanswered";
   readonly spaceSlug?: string;
@@ -155,6 +167,7 @@ const communityFeedSelect = (memberId: string) =>
     status: true,
     isPinned: true,
     isFeatured: true,
+    kind: true,
     publishedAt: true,
     createdAt: true,
     space: { select: { title: true, slug: true } },
@@ -166,9 +179,6 @@ const communityFeedSelect = (memberId: string) =>
   }) as const;
 
 type CommunityFeedSort = NonNullable<CommunityFeedOptions["sort"]>;
-
-const normalizeCommunityPage = (page: number | undefined) =>
-  Number.isInteger(page) && (page ?? 1) > 0 ? (page ?? 1) : 1;
 
 const normalizeCommunitySort = (
   sort: CommunityFeedOptions["sort"]
@@ -199,6 +209,7 @@ const communityFeedWhere = ({
   memberId,
   query,
   sort,
+  kind,
   spaceSlug,
 }: {
   readonly authorIds?: string[];
@@ -206,6 +217,7 @@ const communityFeedWhere = ({
   readonly memberId: string;
   readonly query: string;
   readonly sort: CommunityFeedSort;
+  readonly kind?: CommunityPostKind;
   readonly spaceSlug?: string;
 }): Prisma.CommunityPostWhereInput => ({
   status: ContentStatus.PUBLISHED,
@@ -214,6 +226,7 @@ const communityFeedWhere = ({
     ? {}
     : communityPostAudienceWhere(memberId, canModeratePrivateGroups)),
   ...(sort === "unanswered" ? { comments: { none: { deletedAt: null } } } : {}),
+  ...(kind ? { kind } : {}),
   ...(spaceSlug
     ? {
         space: {
@@ -259,7 +272,7 @@ const communityFeedWhere = ({
 
 const getPopularCommunityPosts = async (
   memberId: string,
-  page: number,
+  cursor: string | undefined,
   where: Prisma.CommunityPostWhereInput
 ) => {
   // Keep the ranking bounded: interactions seed the candidate pool, then the
@@ -326,18 +339,24 @@ const getPopularCommunityPosts = async (
       const leftDate = (left.post.publishedAt ?? left.post.createdAt).getTime();
       return rightDate - leftDate || left.post.id.localeCompare(right.post.id);
     });
-  const start = (page - 1) * POST_PAGE_SIZE;
+  const cursorIndex = cursor
+    ? rankedPosts.findIndex(({ post }) => post.id === cursor)
+    : -1;
+  const start = cursorIndex >= 0 ? cursorIndex + 1 : 0;
+  const visiblePosts = rankedPosts
+    .slice(start, start + POST_PAGE_SIZE)
+    .map(({ post }) => post);
+  const hasMore = rankedPosts.length > start + POST_PAGE_SIZE;
   return {
-    hasMore: rankedPosts.length > start + POST_PAGE_SIZE,
-    visiblePosts: rankedPosts
-      .slice(start, start + POST_PAGE_SIZE)
-      .map(({ post }) => post),
+    hasMore,
+    nextCursor: hasMore ? visiblePosts.at(-1)?.id : undefined,
+    visiblePosts,
   };
 };
 
 const getChronologicalCommunityPosts = async (
   memberId: string,
-  page: number,
+  cursor: string | undefined,
   where: Prisma.CommunityPostWhereInput
 ) => {
   const posts = await database.communityPost.findMany({
@@ -349,13 +368,16 @@ const getChronologicalCommunityPosts = async (
       { createdAt: "desc" },
       { id: "asc" },
     ],
-    skip: (page - 1) * POST_PAGE_SIZE,
+    ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
     take: POST_PAGE_SIZE + 1,
     select: communityFeedSelect(memberId),
   });
+  const visiblePosts = posts.slice(0, POST_PAGE_SIZE);
+  const hasMore = posts.length > POST_PAGE_SIZE;
   return {
-    hasMore: posts.length > POST_PAGE_SIZE,
-    visiblePosts: posts.slice(0, POST_PAGE_SIZE),
+    hasMore,
+    nextCursor: hasMore ? visiblePosts.at(-1)?.id : undefined,
+    visiblePosts,
   };
 };
 
@@ -363,7 +385,7 @@ export const getCommunityFeed = async (
   memberId: string,
   options: CommunityFeedOptions = {}
 ) => {
-  const page = normalizeCommunityPage(options.page);
+  const cursor = options.cursor?.trim().slice(0, 100) || undefined;
   const query = options.query?.trim().slice(0, 100) ?? "";
   const sort = normalizeCommunitySort(options.sort);
   const [authorIds, role] = await tracePerformance(
@@ -381,12 +403,13 @@ export const getCommunityFeed = async (
     memberId,
     query,
     sort,
+    kind: options.kind,
     spaceSlug: options.spaceSlug,
   });
   const feed = await tracePerformance("member.community.feed-query", () =>
     sort === "popular"
-      ? getPopularCommunityPosts(memberId, page, where)
-      : getChronologicalCommunityPosts(memberId, page, where)
+      ? getPopularCommunityPosts(memberId, cursor, where)
+      : getChronologicalCommunityPosts(memberId, cursor, where)
   );
 
   const enrichedPosts = await tracePerformance(
@@ -402,7 +425,7 @@ export const getCommunityFeed = async (
       media: extractCommunityMedia(post.contentJson),
       readingMinutes: readingMinutes(post.excerpt ?? ""),
     })),
-    page,
+    nextCursor: feed.nextCursor,
     hasMore: feed.hasMore,
     query,
     sort,
@@ -778,50 +801,89 @@ export const getMyCommunityPosts = async (memberId: string) => {
   );
 };
 
-export const getSavedCommunityPosts = async (memberId: string) => {
+export const getSavedCommunityPosts = async (
+  memberId: string,
+  options: {
+    readonly cursor?: string;
+    readonly kind?: CommunityPostKind;
+    readonly query?: string;
+    readonly take?: number;
+  } = {}
+) => {
   const role = await getMemberRole(memberId);
-  const bookmarks = await database.communityBookmark.findMany({
-    where: {
-      memberId,
-      post: {
+  const pageSize = options.take ?? 100;
+  const query = options.query?.trim().slice(0, 100) ?? "";
+  const authorIds = await findMatchingCommunityAuthorIds(query);
+  const where: Prisma.CommunityBookmarkWhereInput = {
+    memberId,
+    post: {
+      is: {
         status: ContentStatus.PUBLISHED,
         deletedAt: null,
         ...communityPostAudienceWhere(
           memberId,
           role === MemberRole.ADMIN || role === MemberRole.TEACHER
         ),
+        ...(options.kind ? { kind: options.kind } : {}),
+        ...(query
+          ? {
+              OR: [
+                { title: { contains: query, mode: "insensitive" } },
+                { subtitle: { contains: query, mode: "insensitive" } },
+                { excerpt: { contains: query, mode: "insensitive" } },
+                { tags: { has: query.toLowerCase() } },
+                ...(authorIds?.length ? [{ authorId: { in: authorIds } }] : []),
+              ],
+            }
+          : {}),
       },
     },
-    orderBy: { createdAt: "desc" },
-    take: 100,
-    select: {
-      createdAt: true,
-      post: {
-        select: {
-          id: true,
-          title: true,
-          subtitle: true,
-          slug: true,
-          excerpt: true,
-          tags: true,
-          publishedAt: true,
-          createdAt: true,
-          authorId: true,
-          space: { select: { title: true, slug: true } },
-          _count: {
-            select: { comments: { where: { deletedAt: null } }, votes: true },
+  };
+  const [bookmarks, totalCount] = await Promise.all([
+    database.communityBookmark.findMany({
+      where,
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      ...(options.cursor ? { cursor: { id: options.cursor }, skip: 1 } : {}),
+      take: pageSize + 1,
+      select: {
+        id: true,
+        createdAt: true,
+        post: {
+          select: {
+            id: true,
+            kind: true,
+            title: true,
+            subtitle: true,
+            slug: true,
+            excerpt: true,
+            tags: true,
+            coverUrl: true,
+            publishedAt: true,
+            createdAt: true,
+            authorId: true,
+            space: { select: { title: true, slug: true } },
+            _count: {
+              select: { comments: { where: { deletedAt: null } }, votes: true },
+            },
           },
         },
       },
-    },
-  });
-
-  const posts = bookmarks.map(({ createdAt: savedAt, post }) => ({
+    }),
+    database.communityBookmark.count({ where }),
+  ]);
+  const visibleBookmarks = bookmarks.slice(0, pageSize);
+  const posts = visibleBookmarks.map(({ createdAt: savedAt, post }) => ({
     ...post,
     excerpt: post.excerpt ?? "",
     savedAt,
   }));
-  return enrichAuthors(posts);
+  return {
+    posts: await enrichAuthors(posts),
+    hasMore: bookmarks.length > pageSize,
+    totalCount,
+    nextCursor:
+      bookmarks.length > pageSize ? visibleBookmarks.at(-1)?.id : undefined,
+  };
 };
 
 export const getStaffCommunitySpaces = async () =>
