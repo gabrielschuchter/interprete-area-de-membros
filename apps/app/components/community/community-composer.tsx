@@ -423,6 +423,7 @@ export function CommunityComposer({
       updateSnapshot({ coverUrl: payload.url });
       setCoverUploadPercent(100);
     } catch (uploadError) {
+      setCoverPreviewUrl(null);
       setErrorMessage(
         uploadError instanceof Error
           ? uploadError.message

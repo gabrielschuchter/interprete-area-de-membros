@@ -425,6 +425,12 @@ it("reports a cover network failure without saving an empty asset URL", async ()
     await Promise.resolve();
   });
   expect(screen.getByRole("alert").textContent).toContain("Falha de conexão.");
+  expect(
+    screen.queryByRole("img", { name: "Capa: Rascunho sem título" })
+  ).toBeNull();
+  expect(MockURL.revokeObjectURL).toHaveBeenCalledWith(
+    "blob:community-cover-failed"
+  );
   expect(actions.updateDraft).not.toHaveBeenCalled();
 });
 
