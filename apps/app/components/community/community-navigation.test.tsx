@@ -124,9 +124,15 @@ describe("CommunityNavigation", () => {
       })
     );
 
-    expect(
-      screen.getByRole("heading", { name: "Escolha uma visão" })
-    ).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Comunidade" })).toBeTruthy();
     expect(screen.getAllByRole("link").length).toBe(5);
+    expect(screen.getByText("Feed da comunidade")).toBeTruthy();
+    expect(screen.getByText("Meus grupos e descoberta")).toBeTruthy();
+    expect(screen.getByText("Próximos e gravações")).toBeTruthy();
+    expect(screen.getByText("Só da Comunidade")).toBeTruthy();
+    expect(screen.getByText("Publicadas, rascunhos e arquivadas")).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "Fechar visões da comunidade" })
+    ).toBeTruthy();
   });
 });

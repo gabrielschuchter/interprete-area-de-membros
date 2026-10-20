@@ -17,6 +17,7 @@ import {
   FileTextIcon,
   type LucideIcon,
   UsersRoundIcon,
+  XIcon,
 } from "lucide-react";
 import { IntentLink } from "@/app/(authenticated)/components/intent-link";
 import type { CommunityView } from "./community-views";
@@ -49,7 +50,16 @@ const CommunityViewPicker = ({
       </DrawerTrigger>
       <DrawerContent className="community-view-sheet">
         <DrawerHeader className="community-view-sheet__header">
-          <DrawerTitle>Escolha uma visão</DrawerTitle>
+          <DrawerTitle>Comunidade</DrawerTitle>
+          <DrawerClose asChild>
+            <button
+              aria-label="Fechar visões da comunidade"
+              className="community-view-sheet__close"
+              type="button"
+            >
+              <XIcon aria-hidden="true" className="size-6" />
+            </button>
+          </DrawerClose>
         </DrawerHeader>
         <div className="community-view-sheet__options">
           {communityViews.map((view) => {
@@ -62,8 +72,13 @@ const CommunityViewPicker = ({
                   className="community-view-sheet__option"
                   href={view.href}
                 >
-                  <Icon aria-hidden="true" className="size-5" />
-                  <span>{view.label}</span>
+                  <span className="community-view-sheet__icon">
+                    <Icon aria-hidden="true" className="size-5" />
+                  </span>
+                  <span className="community-view-sheet__copy">
+                    <span>{view.label}</span>
+                    <span>{view.description}</span>
+                  </span>
                   {selected ? (
                     <CheckIcon
                       aria-hidden="true"

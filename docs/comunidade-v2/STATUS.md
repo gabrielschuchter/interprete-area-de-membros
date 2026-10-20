@@ -205,3 +205,20 @@ O primeiro teste de login com freeze retornou 503 no Server Action interno Clerk
 - O workflow permanece `active` em `main`, branch default pública. As consultas GitHub Actions às 23:23 e 23:28 UTC não encontraram nenhum run `schedule`; a página do workflow mostra zero execuções. O Status do GitHub reportava os sistemas operacionais na consulta. Portanto, OIDC e a rota ainda não foram exercitados por este scheduler.
 - O status permanece `IN PROGRESS`; não houve claim de job nem escrita nova no GREEN. Os deployments Production `Ready` do commit `90aa250` permanecem o efeito automático já descrito; sem alterações de produto ou schema.
 - A documentação oficial diz que `schedule` pode atrasar ou ter execuções descartadas sob carga. Fonte: [eventos que acionam workflows](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows).
+
+### Etapa 02 — ajuste do seletor mobile, 20/10/2026
+
+**Estado:** `IN PROGRESS`. O ajuste de interface foi implementado e passou os gates locais. Ainda não foi commitado/publicado; a QA autenticada descrita abaixo pertence ao predecessor `19a0257`, sem essa correção. Desktop/tablet e screenshots do código atual seguem pendentes.
+
+- Comparação visual autenticada do predecessor `19a0257` no Preview `9HWDPbjRmvDcNUyRoe7N27GoKy1N`, com a identidade QA existente e dados GREEN reais, sem mutações. Em 390 px e após hidratação, foram conferidos Explorar, Salvos, grupos, Encontros e Gravações.
+- Explorar mostrou publicações reais, busca/filtros, presença e grupo no rail. `window.innerWidth=390`, `document.documentElement.scrollWidth=375`: sem overflow horizontal nessa tela.
+- Salvos mostrou 1 item real com filtro de tipo e atalho global. Grupos mostrou Meus grupos vazio e o público `Nerds da Bioestatística` com 2 membros. Encontros não tinha eventos futuros nem anteriores; Gravações tinha 0 itens e informava que o acesso é controlado.
+- Comparação com boards 37/38/43/44/50 registrou diferenças de conteúdo decorrentes dos dados reais; não se criaram fixtures. O seletor do board 38 tinha descrições, título `Comunidade` e ação explícita de fechar, ausentes no predecessor.
+- Correção local: seletor mobile com as descrições do board, botão fechar acessível, ícones em círculos e linhas maiores; destinos e URLs permaneceram iguais. O teste existente de navegação agora verifica esses elementos.
+- `check` passou (978 arquivos), `typecheck` (16/16), `boundaries` (906), teste focado (3/3), `build` (8/8 tarefas; App 787 testes/162 arquivos, API 9, domínio 24), `performance:check` (Comunidade 213,8 KiB gzip / teto 225 KiB), Biome focado e `git diff --check` passaram.
+- `graphify update .` concluiu e atualizou o grafo local. A regra `/graphify-out/` no `.gitignore` preserva os artefatos no worktree e evita commit acidental.
+- O build leu os `.env.local` do Preview existentes; checagem segura confirmou arquivos presentes, `NEXT_PUBLIC_APP_URL` e ausência de marcador BLUE. Nenhum valor de ambiente foi exibido.
+- A capability de viewport foi aplicada à aba existente com pedido de 1440 px, mas a página permaneceu em 390 CSS px. A tentativa de abrir outra aba após aplicar a capability encerrou a conexão browser. Nenhum screenshot de 1440/820 px foi obtido para o novo código.
+- O estado de carregamento apareceu apenas durante a navegação e desapareceu após hidratação. Estado de erro não ocorreu naturalmente; não foi induzido com dados artificiais. Nenhuma escrita foi feita no GREEN.
+
+**Próxima etapa recomendada:** commit/push do candidato, confirmar o Preview Ready no novo SHA e concluir a QA autenticada nesse host. Registrar screenshots hidratadas do código atual em 1440/820/390 px e destinos de Etapa 02; manter `IN PROGRESS` até evidência desktop/tablet e análise visual completa.

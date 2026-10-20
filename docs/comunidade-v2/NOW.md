@@ -2,42 +2,46 @@
 
 - **Branch:** `codex/comunidade-v2`
 - **Worktree:** `C:\Users\gabsc\.codex\worktrees\comunidade-v2\interprete-area-de-membros`
-- **Candidato atual:** `6329c70` (`feat(comunidade): concluir diretório de grupos da etapa 02`), enviado a `origin/codex/comunidade-v2`.
+- **Candidato de código em validação:** ajuste local do seletor mobile sobre `19a0257`; o novo commit e Preview ainda não foram gerados.
 - **Etapa ativa:** 02 — Navegação e Explorar.
-- **Estado:** `IN PROGRESS`. Código, gates locais e deployments Preview estão validados; faltam sessão QA autenticada e comparação visual do candidato com os boards. A prova autenticada 18/18 anterior às últimas mudanças não vale como aceite desta versão.
+- **Estado:** `IN PROGRESS`. Os gates locais passaram para o ajuste do seletor. O runtime autenticado anterior confirma as rotas em 390 px no commit `19a0257`, mas não prova o novo código nem desktop/tablet. A evidência 18/18 anterior à correção CSS continua inválida como aceite final.
 
 ## Implementado
 
-- Cinco destinos da Comunidade, navegação responsiva e seletor móvel.
+- Cinco destinos da Comunidade, navegação responsiva e seletor mobile; o seletor agora segue o board 38 com título, botão de fechar, ícones em círculos e descrições dos cinco destinos.
 - Explorar conectado às consultas reais, com busca, filtros, URL preservada, paginação por cursor e retorno contextual.
 - Salvos da Comunidade integrado à listagem global de Salvos.
-- Wrappers de Encontros e Gravações sobre a infraestrutura existente.
-- Diretório real de grupos, com Meus grupos e descoberta pública, busca, filtros e paginação.
-- Estados vazios e de erro; ajustes de layout da comparação anterior. Sem migration, dados falsos de produto ou funcionalidades de etapas posteriores.
+- Wrappers de Encontros e Gravações sobre autorização e dados existentes.
+- Diretório real de grupos com Meus grupos e descoberta pública, busca, filtros e paginação.
+- Estados vazios e de erro; correções anteriores de responsividade para tooltip de presença, ordem do rail mobile e altura da capa tablet.
+- Sem migration, fixture de produto ou implementação de funcionalidades de etapas futuras.
 
-## Evidências do candidato
+## Gates locais do código atual
 
 - `bun run check`: passou, 978 arquivos.
-- `bun run typecheck`: passou, 16/16.
+- `bun run typecheck`: passou, 16/16 tarefas.
 - `bun run boundaries`: passou, 906 arquivos.
-- Testes direcionados de grupos: 2 arquivos, 5 testes aprovados.
-- `bun run build`, com ambiente Preview recuperado para `codex/comunidade-v2`: passou. O build também executou a suíte da aplicação (787 testes em 162 arquivos), além de API (9 testes) e domínio de membros (24 testes).
-- `bun run performance:check`: passou; bundle da Comunidade 213,7 KiB gzip, limite 225 KiB.
-- App Preview e API Preview: `READY`, ambos no commit `6329c7088c21ee9fd6b061589d2ad7ad227867a2`.
-- `graphify-out/` foi preservado; `biome.jsonc` exclui os artefatos gerados do check de formatação.
-- Os arquivos locais `apps/app/.env.local` e `apps/api/.env.local`, usados para o build Preview, continuam ignorados e fora do Git. A limpeza desses dois arquivos foi bloqueada pela política do ambiente; seus valores não foram exibidos nem registrados.
+- `bun run --cwd apps/app test -- components/community/community-navigation.test.tsx`: passou, 3/3 testes.
+- `bun run build`: 8/8 tarefas. Incluiu 787 testes do App em 162 arquivos, 9 testes da API e 24 do domínio de membros; compilação do App e API concluída.
+- `bun run performance:check`: passou; Comunidade 213,8 KiB gzip, abaixo do teto de 225 KiB.
+- `bunx biome check` nos quatro arquivos alterados e `git diff --check`: passaram.
+- `graphify update .` concluiu; o grafo local foi atualizado. `/graphify-out/` em `.gitignore` mantém os mapas e caches fora dos commits sem removê-los.
+- Build carregou os `.env.local` já vinculados ao Preview. Checagem segura confirmou os arquivos e `NEXT_PUBLIC_APP_URL` sem exibir valores; nenhum marcador BLUE foi encontrado.
 
-## QA visual e runtime
+## Preview e QA visual
 
-- O Preview App protegido foi acessado pelo OIDC da branch e redirecionou para `/sign-in`. O contexto Playwright usado estava sem sessão autenticada; os envs recuperados não continham senha QA.
-- Não redefini senha, criei usuário ou alterei dados. Nenhuma ação de escrita foi executada.
-- Os boards relevantes foram identificados (09, 11, 19, 20, 32, 33, 35, 37, 38, 43, 44 e 50), mas screenshots autenticadas do candidato não foram capturadas nem comparadas.
-- Persistência, autorização e jornadas de navegação após login continuam sem prova nesta versão.
+- Preview autenticado do predecessor `19a0257` confirmado Ready no deployment `9HWDPbjRmvDcNUyRoe7N27GoKy1N`. Essa versão foi aberta com Clerk QA e dados reais do GREEN, somente leitura.
+- Na viewport CSS de 390 px e após hidratação, Explorar mostrou publicações, filtros, presença e grupos; a medição `documentElement.scrollWidth=375` com `innerWidth=390` não indicou overflow horizontal.
+- Salvos exibiu 1 publicação real e o atalho para Salvos global; Grupos exibiu Meus grupos vazio e um grupo público real com 2 membros; Encontros mostrou zero próximos/anteriores; Gravações mostrou zero itens e o aviso de acesso controlado.
+- Comparações do predecessor com os boards 37/38/43/44/50: os conteúdos reais diferem dos boards populados; não foram criados dados para preencher as telas. O board 38 revelou a falta de descrições, título e fechar no seletor, corrigida localmente neste candidato.
+- Uma tentativa de aplicar viewport 1440 px manteve `innerWidth=390`. A tentativa seguinte de abrir uma nova aba encerrou a conexão do browser. Portanto não há screenshots autenticadas do código atual, nem prova desktop/tablet. Os boards 09/35/37/38/43/44/50 foram consultados; o board 33 descreve estados de Encontros.
+- A navegação imediata exibiu carregamento transitório antes dos dados reais. Não houve estado de erro natural; skeleton não foi tratado como layout final.
+- Nenhuma ação de salvar/remover, entrar em grupo, criar publicação/grupo ou escrever no GREEN foi executada.
 
 ## Próximo passo
 
-Usar uma sessão/credencial existente da identidade Clerk QA em meio seguro e repetir, em modo somente leitura, as capturas e comparações dos boards em desktop, tablet e mobile. Corrigir somente diferenças comprovadas, repetir os gates afetados e atualizar este estado. Manter Etapa 02 `IN PROGRESS` até essa evidência; OPS-01 não bloqueia esta validação.
+Fazer commit/push do candidato e confirmar App Preview Ready no SHA novo. No host desse deployment, reabrir a sessão Clerk QA para conferir o seletor corrigido e capturar Explorar em 1440/820/390 px, além de Salvos, grupos, Encontros e Gravações. Atualizar `NOW.md` e `STATUS.md` com as evidências finais; manter Etapa 02 `IN PROGRESS` até essa validação.
 
 ## Preservar
 
-O checkout original permanece intocado. Manter `graphify-out/` no worktree sem incluí-lo no commit. Não executar escrita no GREEN nem avançar para etapas posteriores antes do aceite da Etapa 02.
+O checkout original em `C:\Users\gabsc\Documents\Codex\interprete-area-de-membros` permanece intocado. Preview e Production compartilham GREEN: continuar somente em leitura, sem criar dados QA. Não remover artefatos Graphify nem implementar etapas futuras.
