@@ -4153,10 +4153,10 @@ html[data-shell-fallback][data-shell-arrival="return"] .member-route-page {
   .community-content-grid--explore {
     grid-template-areas:
       "hero"
-      "presence"
       "filters"
       "composer"
       "feed"
+      "presence"
       "spaces"
       "about"
       "notices";
