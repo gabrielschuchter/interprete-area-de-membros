@@ -1,17 +1,14 @@
 import { resolve } from "node:path";
 import { defineConfig } from "@playwright/test";
+import {
+  adminStatePath,
+  authDirectory,
+  memberStatePath,
+} from "./e2e/community-v2/auth-state-paths";
 
-const authDirectory =
-  process.env.COMMUNITY_QA_AUTH_DIR ??
-  resolve(
-    process.env.LOCALAPPDATA ?? process.env.TEMP ?? ".",
-    "Codex/qa/community-v2-foundation-20261015/playwright"
-  );
 const outputDirectory =
   process.env.COMMUNITY_QA_OUTPUT_DIR ??
   resolve(authDirectory, "results", process.env.COMMUNITY_QA_RUN_ID ?? "local");
-const memberState = resolve(authDirectory, "community-v2-member.json");
-const adminState = resolve(authDirectory, "community-v2-admin.json");
 const baseURL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3101";
 
 const localUse = {
@@ -37,32 +34,39 @@ export default defineConfig({
   use: localUse,
   projects: [
     {
+      name: "clerk-setup",
+      testMatch: /clerk\.setup\.ts$/,
+      use: localUse,
+    },
+    {
       name: "member-auth",
       testMatch: /member\.auth\.setup\.ts$/,
-      use: { ...localUse, storageState: memberState },
+      dependencies: ["clerk-setup"],
+      use: { ...localUse, storageState: memberStatePath },
     },
     {
       name: "admin-auth",
       testMatch: /admin\.auth\.setup\.ts$/,
-      use: { ...localUse, storageState: adminState },
+      dependencies: ["clerk-setup"],
+      use: { ...localUse, storageState: adminStatePath },
     },
     {
       name: "community-member",
       testMatch: /member-flow\.spec\.ts$/,
       dependencies: ["member-auth"],
-      use: { ...localUse, storageState: memberState },
+      use: { ...localUse, storageState: memberStatePath },
     },
     {
       name: "community-admin-recovery",
       testMatch: /admin-recovery\.spec\.ts$/,
       dependencies: ["admin-auth", "community-member"],
-      use: { ...localUse, storageState: adminState },
+      use: { ...localUse, storageState: adminStatePath },
     },
     {
       name: "community-member-recovery",
       testMatch: /member-recovery\.spec\.ts$/,
       dependencies: ["community-admin-recovery"],
-      use: { ...localUse, storageState: memberState },
+      use: { ...localUse, storageState: memberStatePath },
     },
   ],
   webServer: {

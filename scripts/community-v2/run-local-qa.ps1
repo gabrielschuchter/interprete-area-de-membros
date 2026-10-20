@@ -70,24 +70,7 @@ $icacls = Join-Path $env:SystemRoot "System32\icacls.exe"
 if ($LASTEXITCODE -ne 0) {
   throw "Could not restrict access to the local Clerk storageState directory."
 }
-foreach ($stateName in @("community-v2-member-local.json", "community-v2-admin.json")) {
-  $statePath = Join-Path $authDirectory $stateName
-  if (!(Test-Path -LiteralPath $statePath)) {
-    [IO.File]::WriteAllText(
-      $statePath,
-      '{"cookies":[],"origins":[]}',
-      [Text.UTF8Encoding]::new($false)
-    )
-  }
-  & $icacls $statePath /inheritance:r /grant:r "*${currentUserSid}:F" "*S-1-5-18:F" /Q | Out-Null
-  if ($LASTEXITCODE -ne 0) {
-    throw "Could not restrict access to a local Clerk storageState file."
-  }
-}
-& $icacls $authDirectory /inheritance:r /grant:r "${currentUser}:(OI)(CI)F" "*S-1-5-18:(OI)(CI)F" /T /Q | Out-Null
-if ($LASTEXITCODE -ne 0) {
-  throw "Could not restrict access to the local Clerk storageState files."
-}
+# Playwright creates the member/admin state files under this protected directory.
 
 $savedEnvironment = @{}
 $environmentNames = @(
@@ -187,14 +170,23 @@ try {
       } else {
         "community-member-recovery"
       }
+      $authProjects = @(
+        "--project=clerk-setup",
+        "--project=member-auth",
+        "--project=admin-auth"
+      )
+      $authProjects += "--project=$project"
+      $authProjects += "--no-deps"
       if ($Suite -eq "admin-pin") {
-        bun run community-v2:e2e "--project=$project" --no-deps --grep="concurrent staff pin requests"
-      } else {
-        bun run community-v2:e2e "--project=$project" --no-deps
+        $authProjects += "--grep=initialize Clerk Testing token|reuse or initialize the existing Clerk Development .* session|concurrent staff pin requests"
       }
+      bun run community-v2:e2e @authProjects
     }
     if ($LASTEXITCODE -ne 0) {
       throw "The Community V2 local Playwright journey failed."
+    }
+    if ($Suite -ne "full") {
+      Write-Output "Community V2 authentication state was reused or refreshed before the isolated recovery journey."
     }
   } finally {
     Pop-Location
