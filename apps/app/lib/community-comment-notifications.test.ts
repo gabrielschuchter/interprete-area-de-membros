@@ -1,8 +1,26 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 const { databaseMock, enqueueNotificationBatchMock, state } = vi.hoisted(() => {
-  const state = { privateSpace: false };
+  const state = {
+    privateSpace: false,
+    actorRole: "MEMBER",
+    activeMemberIds: [
+      "member-mentioned",
+      "member-follower",
+      "member-author",
+      "member-owner",
+    ],
+    commentAuthors: [] as string[],
+    unmutedFollowerIds: ["member-follower", "member-author"],
+    mutedFollowerIds: [] as string[],
+    spaceMemberIds: ["member-mentioned"],
+  };
   const databaseMock = {
+    communityComment: {
+      findMany: vi.fn(() =>
+        state.commentAuthors.map((authorId) => ({ authorId }))
+      ),
+    },
     communityPost: {
       findUnique: vi.fn(() =>
         state.privateSpace
@@ -17,23 +35,38 @@ const { databaseMock, enqueueNotificationBatchMock, state } = vi.hoisted(() => {
       ),
     },
     communitySpaceMember: {
-      findMany: vi.fn(() => [{ memberId: "member-mentioned" }]),
+      findMany: vi.fn(() =>
+        state.spaceMemberIds.map((memberId) => ({ memberId }))
+      ),
     },
     member: {
-      findMany: vi.fn(() => [{ id: "member-mentioned" }]),
-      findUnique: vi.fn(() => ({ role: "MEMBER" })),
+      findMany: vi.fn((args?: { where?: { id?: { in?: string[] } } }) => {
+        const requestedIds = args?.where?.id?.in;
+        if (requestedIds) {
+          return requestedIds
+            .filter((id) => state.activeMemberIds.includes(id))
+            .map((id) => ({ id }));
+        }
+        return [{ id: "member-mentioned" }];
+      }),
+      findUnique: vi.fn(() => ({ role: state.actorRole })),
     },
     mention: {
-      createMany: vi.fn(() => ({ count: 1 })),
+      createMany: vi.fn(
+        (_args?: { data: Array<{ mentionedUserId: string }> }) => ({ count: 1 })
+      ),
     },
     profile: {
       findMany: vi.fn(() => []),
     },
     topicFollow: {
-      findMany: vi.fn(() => [
-        { userId: "member-follower" },
-        { userId: "member-author" },
-      ]),
+      findMany: vi.fn((args?: { where?: { mutedAt?: unknown } }) => {
+        const mutedAt = args?.where?.mutedAt;
+        if (mutedAt && typeof mutedAt === "object") {
+          return state.mutedFollowerIds.map((userId) => ({ userId }));
+        }
+        return state.unmutedFollowerIds.map((userId) => ({ userId }));
+      }),
     },
   };
   const enqueueNotificationBatchMock = vi.fn(() => Promise.resolve([]));
@@ -71,7 +104,17 @@ import { notifyCommunityComment } from "./notifications";
 const transaction = databaseMock as never;
 const occurredAt = new Date("2026-10-20T12:00:00.000Z");
 
-const notify = () =>
+const notify = (
+  document: unknown = {
+    type: "doc",
+    content: [
+      {
+        type: "mention",
+        attrs: { id: "member-mentioned" },
+      },
+    ],
+  }
+) =>
   notifyCommunityComment({
     actorId: "member-author",
     postId: "post-1",
@@ -82,15 +125,7 @@ const notify = () =>
     parentCommentId: null,
     parentAuthorId: null,
     href: "/comunidade/publicacoes/discussao",
-    document: {
-      type: "doc",
-      content: [
-        {
-          type: "mention",
-          attrs: { id: "member-mentioned" },
-        },
-      ],
-    },
+    document,
     occurredAt,
     idempotencyKey: "community-comment:comment-1:created",
     transaction,
@@ -99,6 +134,17 @@ const notify = () =>
 describe("community comment notification outbox", () => {
   beforeEach(() => {
     state.privateSpace = false;
+    state.actorRole = "MEMBER";
+    state.activeMemberIds = [
+      "member-mentioned",
+      "member-follower",
+      "member-author",
+      "member-owner",
+    ];
+    state.commentAuthors = [];
+    state.unmutedFollowerIds = ["member-follower", "member-author"];
+    state.mutedFollowerIds = [];
+    state.spaceMemberIds = ["member-mentioned"];
     vi.clearAllMocks();
   });
 
@@ -173,5 +219,129 @@ describe("community comment notification outbox", () => {
     expect(
       event.notifications.map(({ recipientId }) => recipientId)
     ).not.toContain("member-follower");
+  });
+
+  test.each(["ADMIN", "TEACHER"])(
+    "%s @todos only reaches active, unmuted participants and followers of this post",
+    async (role) => {
+      state.actorRole = role;
+      state.commentAuthors = [
+        "member-participant",
+        "member-muted",
+        "member-inactive",
+      ];
+      state.unmutedFollowerIds = ["member-follower", "member-author"];
+      state.mutedFollowerIds = ["member-muted"];
+      state.activeMemberIds = [
+        "member-participant",
+        "member-muted",
+        "member-follower",
+        "member-author",
+        "member-owner",
+      ];
+
+      await notify({
+        type: "doc",
+        content: [
+          {
+            type: "mention",
+            attrs: { id: "group:ALL", kind: "GROUP", username: "todos" },
+          },
+        ],
+      });
+
+      expect(databaseMock.communityComment.findMany).toHaveBeenCalledWith({
+        where: { postId: "post-1", deletedAt: null },
+        select: { authorId: true },
+      });
+      expect(databaseMock.topicFollow.findMany).toHaveBeenCalledWith({
+        where: { topicId: "post-1", mutedAt: { not: null } },
+        select: { userId: true },
+      });
+      const mentionedIds = databaseMock.mention.createMany.mock.calls[0]?.[0]
+        ?.data.map(({ mentionedUserId }) => mentionedUserId);
+      expect(mentionedIds).toEqual(
+        expect.arrayContaining([
+          "member-participant",
+          "member-follower",
+          "member-owner",
+        ])
+      );
+      expect(mentionedIds).not.toEqual(
+        expect.arrayContaining([
+          "member-muted",
+          "member-inactive",
+          "member-author",
+        ])
+      );
+      expect(mentionedIds).toHaveLength(3);
+    }
+  );
+
+  test("does not expand @todos for a regular member", async () => {
+    state.commentAuthors = ["member-participant"];
+    state.unmutedFollowerIds = [];
+
+    await notify({
+      type: "doc",
+      content: [
+        {
+          type: "mention",
+          attrs: { id: "group:ALL", kind: "GROUP", username: "todos" },
+        },
+      ],
+    });
+
+    expect(databaseMock.communityComment.findMany).not.toHaveBeenCalled();
+    expect(databaseMock.mention.createMany).not.toHaveBeenCalled();
+    expect(enqueueNotificationBatchMock).toHaveBeenCalledTimes(1);
+    const [, event] = enqueueNotificationBatchMock.mock.calls[0] as unknown as [
+      unknown,
+      { notifications: Array<{ type: string }> },
+    ];
+    expect(event.notifications.some(({ type }) => type === "MENTION")).toBe(
+      false
+    );
+  });
+
+  test("filters private @todos recipients to current group members and owner", async () => {
+    state.privateSpace = true;
+    state.actorRole = "ADMIN";
+    state.commentAuthors = [
+      "member-private-participant",
+      "member-private-outsider",
+    ];
+    state.unmutedFollowerIds = ["member-private-follower", "member-author"];
+    state.activeMemberIds = [
+      "member-private-participant",
+      "member-private-outsider",
+      "member-private-follower",
+      "member-author",
+      "member-owner",
+    ];
+    state.spaceMemberIds = ["member-private-participant"];
+
+    await notify({
+      type: "doc",
+      content: [
+        {
+          type: "mention",
+          attrs: { id: "group:ALL", kind: "GROUP", username: "todos" },
+        },
+      ],
+    });
+
+    const mentionedIds = databaseMock.mention.createMany.mock.calls[0]?.[0]
+      ?.data.map(({ mentionedUserId }) => mentionedUserId);
+    expect(mentionedIds).toEqual(
+      expect.arrayContaining(["member-private-participant", "member-owner"])
+    );
+    expect(mentionedIds).not.toEqual(
+      expect.arrayContaining([
+        "member-private-outsider",
+        "member-private-follower",
+      ])
+    );
+    expect(mentionedIds).toHaveLength(2);
   });
 });

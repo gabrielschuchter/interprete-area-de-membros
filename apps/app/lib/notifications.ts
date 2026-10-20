@@ -545,7 +545,6 @@ const groupWhereForMention = (
 ): Prisma.MemberWhereInput[] => {
   if (role === MemberRole.ADMIN) {
     return [
-      ...(groupIds.includes("group:ALL") ? [{}] : []),
       ...(groupIds.includes("group:STAFF")
         ? [{ role: { in: [MemberRole.ADMIN, MemberRole.TEACHER] } }]
         : []),
@@ -562,7 +561,12 @@ const groupWhereForMention = (
 const expandMentionGroups = async (
   actorId: string,
   ids: Set<string>,
-  transaction: Prisma.TransactionClient = database
+  transaction: Prisma.TransactionClient = database,
+  context?: {
+    readonly postId?: string;
+    readonly postAuthorId?: string;
+    readonly unmutedFollowerIds?: readonly string[];
+  }
 ) => {
   const groupIds = groupIdsFromMentionIds(ids);
   if (groupIds.length === 0) {
@@ -573,15 +577,40 @@ const expandMentionGroups = async (
     select: { role: true },
   });
   const groupWhere = groupWhereForMention(actor?.role, groupIds);
-  if (groupWhere.length === 0) {
-    return;
+  if (groupWhere.length > 0) {
+    const groupMembers = await transaction.member.findMany({
+      where: { AND: [{ deactivatedAt: null }, { OR: groupWhere }] },
+      select: { id: true },
+    });
+    for (const member of groupMembers) {
+      ids.add(member.id);
+    }
   }
-  const groupMembers = await transaction.member.findMany({
-    where: { OR: groupWhere },
-    select: { id: true },
-  });
-  for (const member of groupMembers) {
-    ids.add(member.id);
+
+  const canMentionAll =
+    actor?.role === MemberRole.ADMIN || actor?.role === MemberRole.TEACHER;
+  if (canMentionAll && groupIds.includes("group:ALL") && context?.postId) {
+    const [comments, mutedFollows] = await Promise.all([
+      transaction.communityComment.findMany({
+        where: { postId: context.postId, deletedAt: null },
+        select: { authorId: true },
+      }),
+      transaction.topicFollow.findMany({
+        where: { topicId: context.postId, mutedAt: { not: null } },
+        select: { userId: true },
+      }),
+    ]);
+    const mutedIds = new Set(mutedFollows.map(({ userId }) => userId));
+    const currentParticipants = new Set([
+      ...comments.map(({ authorId }) => authorId),
+      ...(context.postAuthorId ? [context.postAuthorId] : []),
+      ...(context.unmutedFollowerIds ?? []),
+    ]);
+    for (const memberId of currentParticipants) {
+      if (!mutedIds.has(memberId)) {
+        ids.add(memberId);
+      }
+    }
   }
 };
 
@@ -592,7 +621,7 @@ const resolveMentionTargets = async (
 ) => {
   if (ids.size > 0) {
     const members = await transaction.member.findMany({
-      where: { id: { in: [...ids] } },
+      where: { id: { in: [...ids] }, deactivatedAt: null },
       select: { id: true },
     });
     const validIds = new Set(members.map((member) => member.id));
@@ -618,15 +647,23 @@ export const resolveMentionedMemberIds = async (input: {
   readonly actorId: string;
   readonly content?: string;
   readonly document?: unknown;
+  readonly postId?: string;
+  readonly postAuthorId?: string;
+  readonly unmutedFollowerIds?: readonly string[];
   readonly transaction?: Prisma.TransactionClient;
 }) => {
   const transaction = input.transaction ?? database;
   const ids = new Set(extractMentionIdsFromDocument(input.document));
-  const hasGroupMention = groupIdsFromMentionIds(ids).length > 0;
-  for (const groupId of groupIdsFromMentionIds(ids)) {
+  const groupIds = groupIdsFromMentionIds(ids);
+  const hasGroupMention = groupIds.length > 0;
+  await expandMentionGroups(input.actorId, ids, transaction, {
+    postId: input.postId,
+    postAuthorId: input.postAuthorId,
+    unmutedFollowerIds: input.unmutedFollowerIds,
+  });
+  for (const groupId of groupIds) {
     ids.delete(groupId);
   }
-  await expandMentionGroups(input.actorId, ids, transaction);
   const usernames = extractMentionUsernames(input.content ?? "");
   await resolveMentionTargets(ids, usernames, transaction);
   ids.delete(input.actorId);
@@ -707,10 +744,17 @@ export const notifyCommunityComment = async (input: {
   readonly idempotencyKey: string;
   readonly transaction: Prisma.TransactionClient;
 }) => {
+  const follows = await input.transaction.topicFollow.findMany({
+    where: { topicId: input.postId, mutedAt: null },
+    select: { userId: true },
+  });
   const mentionedIds = await resolveMentionedMemberIds({
     actorId: input.actorId,
     content: input.commentContent,
     document: input.document,
+    postId: input.postId,
+    postAuthorId: input.postAuthorId,
+    unmutedFollowerIds: follows.map(({ userId }) => userId),
     transaction: input.transaction,
   });
   const recipientCandidates: {
@@ -731,10 +775,6 @@ export const notifyCommunityComment = async (input: {
     });
   }
 
-  const follows = await input.transaction.topicFollow.findMany({
-    where: { topicId: input.postId, mutedAt: null },
-    select: { userId: true },
-  });
   for (const { userId } of follows) {
     recipientCandidates.push({
       memberId: userId,
