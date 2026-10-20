@@ -8,7 +8,7 @@ import {
   type Prisma,
 } from "@repo/database";
 import { tracePerformance } from "@repo/observability/performance";
-import { getMemberRole } from "@/lib/authorization";
+import { getMemberRole, requireStaff } from "@/lib/authorization";
 import {
   extractCommunityMedia,
   normalizeCommunityCoverUrl,
@@ -851,9 +851,16 @@ export const getCommunityEditorPost = async (
   };
 };
 
-export const getMyCommunityPosts = async (memberId: string) => {
+export const getMyCommunityPosts = async (
+  memberId: string,
+  status?: ContentStatus
+) => {
   const posts = await database.communityPost.findMany({
-    where: { authorId: memberId, deletedAt: null },
+    where: {
+      authorId: memberId,
+      deletedAt: null,
+      ...(status ? { status } : {}),
+    },
     orderBy: { updatedAt: "desc" },
     take: 100,
     select: {
@@ -887,6 +894,24 @@ export const getMyCommunityPosts = async (memberId: string) => {
       readingMinutes: readingMinutes(post.excerpt ?? ""),
     }))
   );
+};
+
+export const getStaffDeletedCommunityPosts = async () => {
+  await requireStaff();
+  const recoverableSince = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  return database.communityPost.findMany({
+    where: { deletedAt: { gte: recoverableSince, lte: new Date() } },
+    orderBy: { deletedAt: "desc" },
+    take: 50,
+    select: {
+      id: true,
+      title: true,
+      authorId: true,
+      status: true,
+      deletedAt: true,
+      space: { select: { title: true, slug: true } },
+    },
+  });
 };
 
 export const getSavedCommunityPosts = async (

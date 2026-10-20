@@ -11,8 +11,10 @@ const whitespacePattern = /\s+/;
 
 export const CommunityComposerPrompt = async ({
   memberId,
+  returnTo = "/comunidade",
 }: {
   readonly memberId: string;
+  readonly returnTo?: string;
 }) => {
   const profile = await getOrCreateProfile(memberId);
   const composerInitials = (profile?.displayName ?? "Você")
@@ -33,6 +35,7 @@ export const CommunityComposerPrompt = async ({
       </h2>
       <CommunityDraftStarter
         className="community-composer__prompt group"
+        returnTo={returnTo}
         variant="ghost"
       >
         <Avatar className="size-8 shrink-0">

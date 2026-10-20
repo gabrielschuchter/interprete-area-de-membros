@@ -23,7 +23,14 @@ import {
   plainTextFromDocument,
   sanitizeRichDocument,
 } from "@/lib/community-content";
+import {
+  type CommunityDraftSnapshot,
+  communityDraftSnapshotsEqual,
+  hasCommunityDraftContent,
+  nextCommunityPostVersion,
+} from "@/lib/community-draft-contract";
 import { createCommunityComment } from "@/lib/community-mutations";
+import { safeCommunityReturnPath } from "@/lib/community-return-path";
 import {
   communityPostMutationAudienceWhere,
   communitySpaceMemberAudienceWhere,
@@ -356,114 +363,36 @@ export const startDraft = async (formData: FormData) => {
   const userId = await currentUserId();
   const idempotencyKey = readIdempotencyKeyFromForm(formData);
   if (!(userId && idempotencyKey)) {
-    return;
+    redirect("/comunidade");
   }
-  const { space } = await spaceData(formData, userId);
+  const { spaceId } = await spaceData(formData, userId);
+  const returnTo = safeCommunityReturnPath(textValue(formData.get("returnTo")));
   const existing = await database.communityPost.findUnique({
     where: {
       authorId_idempotencyKey: { authorId: userId, idempotencyKey },
     },
-    select: { id: true, space: { select: { slug: true } } },
+    select: { id: true, deletedAt: true, slug: true, status: true },
   });
   if (existing) {
-    await ensureTopicFollow(userId, existing.id);
-    redirect(`/comunidade/editor/${existing.id}`);
-  }
-  await consumeMutationRateLimit({
-    action: "community.post.create",
-    memberId: userId,
-  });
-  await getOrCreateProfile(userId);
-  let post: { id: string };
-  try {
-    post = await database.communityPost.create({
-      data: {
-        spaceId: space?.id ?? null,
-        authorId: userId,
-        idempotencyKey,
-        kind: "DISCUSSION",
-        title: draftTitle,
-        content: "",
-        excerpt: "",
-        contentJson: emptyDocument as Prisma.InputJsonValue,
-        status: ContentStatus.DRAFT,
-        tags: [],
-      },
-      select: { id: true },
-    });
-  } catch (error) {
-    if (!isUniqueConstraintError(error)) {
-      throw error;
+    if (existing.deletedAt) {
+      redirect("/comunidade/minhas-publicacoes");
     }
-    post = (await database.communityPost.findUniqueOrThrow({
-      where: {
-        authorId_idempotencyKey: { authorId: userId, idempotencyKey },
-      },
-      select: { id: true },
-    })) as { id: string };
-  }
-  await ensureTopicFollow(userId, post.id);
-  revalidateCommunity(space?.slug, post.id);
-  redirect(`/comunidade/editor/${post.id}`);
-};
-
-export const createDraft = async (formData: FormData) => {
-  const userId = await currentUserId();
-  const idempotencyKey = readIdempotencyKeyFromForm(formData);
-  if (!(userId && idempotencyKey)) {
-    return { ok: false as const };
-  }
-  const { space } = await spaceData(formData, userId);
-  const existing = await database.communityPost.findUnique({
-    where: {
-      authorId_idempotencyKey: { authorId: userId, idempotencyKey },
-    },
-    select: { id: true, space: { select: { slug: true } } },
-  });
-  if (existing) {
-    await ensureTopicFollow(userId, existing.id);
-    return {
-      ok: true as const,
-      postId: existing.id,
-      spaceSlug: existing.space?.slug ?? "",
-    };
-  }
-  await consumeMutationRateLimit({
-    action: "community.post.create",
-    memberId: userId,
-  });
-  await getOrCreateProfile(userId);
-  let post: { id: string };
-  try {
-    post = await database.communityPost.create({
-      data: {
-        spaceId: space?.id ?? null,
-        authorId: userId,
-        idempotencyKey,
-        kind: "DISCUSSION",
-        title: draftTitle,
-        content: "",
-        excerpt: "",
-        contentJson: emptyDocument as Prisma.InputJsonValue,
-        status: ContentStatus.DRAFT,
-        tags: [],
-      },
-      select: { id: true },
-    });
-  } catch (error) {
-    if (!isUniqueConstraintError(error)) {
-      throw error;
+    if (existing.status === ContentStatus.PUBLISHED && existing.slug) {
+      redirect(`/comunidade/publicacoes/${existing.slug}`);
     }
-    post = (await database.communityPost.findUniqueOrThrow({
-      where: {
-        authorId_idempotencyKey: { authorId: userId, idempotencyKey },
-      },
-      select: { id: true },
-    })) as { id: string };
+    const editorQuery = returnTo
+      ? `?${new URLSearchParams({ from: returnTo }).toString()}`
+      : "";
+    redirect(`/comunidade/editor/${existing.id}${editorQuery}`);
   }
-  await ensureTopicFollow(userId, post.id);
-  revalidateCommunity(space?.slug, post.id);
-  return { ok: true as const, postId: post.id, spaceSlug: space?.slug ?? "" };
+  const search = new URLSearchParams({ idempotencyKey });
+  if (spaceId) {
+    search.set("spaceId", spaceId);
+  }
+  if (returnTo) {
+    search.set("returnTo", returnTo);
+  }
+  redirect(`/comunidade/novo?${search.toString()}`);
 };
 
 export const createPost = async (formData: FormData) => {
@@ -590,18 +519,204 @@ export const createPost = async (formData: FormData) => {
   redirect(communityHref(post));
 };
 
-export const updateDraft = async (formData: FormData) => {
-  const userId = await currentUserId();
-  const postId = textValue(formData.get("postId"));
-  if (!(userId && postId)) {
-    return { ok: false as const, error: "Rascunho indisponível." };
-  }
-  await consumeMutationRateLimit({
-    action: "community.mutation",
-    memberId: userId,
+interface CommunityWriteError {
+  readonly code: "conflict" | "unavailable";
+  readonly currentPostId?: string;
+  readonly currentUpdatedAt?: string;
+  readonly error: string;
+  readonly ok: false;
+}
+
+type CommunityDraftSaveResult =
+  | {
+      readonly ok: true;
+      readonly postId: string | null;
+      readonly saved: boolean;
+      readonly spaceSlug: string;
+      readonly updatedAt: string | null;
+    }
+  | CommunityWriteError;
+
+const draftSaveConflict = (
+  updatedAt?: Date,
+  postId?: string
+): CommunityWriteError => ({
+  code: "conflict",
+  ...(updatedAt ? { currentUpdatedAt: updatedAt.toISOString() } : {}),
+  ...(postId ? { currentPostId: postId } : {}),
+  error:
+    "Este rascunho mudou em outra aba. Recarregue a versão salva ou escolha manter esta versão.",
+  ok: false,
+});
+
+const communityDraftSnapshotFromPost = (post: {
+  content: string;
+  contentJson: unknown;
+  coverUrl: string | null;
+  spaceId: string | null;
+  subtitle: string | null;
+  tags: string[];
+  title: string;
+}): CommunityDraftSnapshot => ({
+  content: post.content,
+  contentJson: post.contentJson,
+  coverUrl: post.coverUrl,
+  spaceId: post.spaceId,
+  subtitle: post.subtitle,
+  tags: post.tags,
+  title: post.title,
+});
+
+const communityDraftRecordSelect = {
+  id: true,
+  authorId: true,
+  content: true,
+  contentJson: true,
+  coverUrl: true,
+  deletedAt: true,
+  spaceId: true,
+  status: true,
+  subtitle: true,
+  tags: true,
+  title: true,
+  updatedAt: true,
+  space: { select: { slug: true } },
+} satisfies Prisma.CommunityPostSelect;
+
+type CommunityDraftRecord = Prisma.CommunityPostGetPayload<{
+  select: typeof communityDraftRecordSelect;
+}>;
+
+const findDraftByIdempotencyKey = (authorId: string, idempotencyKey: string) =>
+  database.communityPost.findUnique({
+    where: { authorId_idempotencyKey: { authorId, idempotencyKey } },
+    select: communityDraftRecordSelect,
   });
-  const { spaceId, space } = await spaceData(formData, userId);
-  const { document, plainText } = contentFromForm(formData);
+
+const unavailableDraft = (error: string): CommunityWriteError => ({
+  code: "unavailable",
+  error,
+  ok: false,
+});
+
+const existingDraftSaveResult = async (
+  userId: string,
+  snapshot: CommunityDraftSnapshot,
+  post: CommunityDraftRecord,
+  spaceSlug: string
+): Promise<CommunityDraftSaveResult> => {
+  if (
+    post.authorId !== userId ||
+    post.deletedAt ||
+    post.status !== ContentStatus.DRAFT
+  ) {
+    return unavailableDraft(
+      "Este rascunho não está mais disponível para edição."
+    );
+  }
+  if (
+    !communityDraftSnapshotsEqual(
+      snapshot,
+      communityDraftSnapshotFromPost(post)
+    )
+  ) {
+    return draftSaveConflict(post.updatedAt, post.id);
+  }
+  await ensureTopicFollow(userId, post.id);
+  return {
+    ok: true,
+    postId: post.id,
+    saved: true,
+    spaceSlug: spaceSlug || post.space?.slug || "",
+    updatedAt: post.updatedAt.toISOString(),
+  };
+};
+
+const saveNewCommunityDraft = async ({
+  idempotencyKey,
+  snapshot,
+  spaceSlug,
+  userId,
+}: {
+  readonly idempotencyKey: string;
+  readonly snapshot: CommunityDraftSnapshot;
+  readonly spaceSlug: string;
+  readonly userId: string;
+}): Promise<CommunityDraftSaveResult> => {
+  const existing = await findDraftByIdempotencyKey(userId, idempotencyKey);
+  if (existing) {
+    return existingDraftSaveResult(userId, snapshot, existing, spaceSlug);
+  }
+
+  await getOrCreateProfile(userId);
+  try {
+    const post = await database.communityPost.create({
+      data: {
+        spaceId: snapshot.spaceId,
+        authorId: userId,
+        idempotencyKey,
+        kind: "DISCUSSION",
+        title: snapshot.title,
+        subtitle: snapshot.subtitle,
+        coverUrl: snapshot.coverUrl,
+        content: snapshot.content,
+        excerpt: excerptFrom(snapshot.content),
+        contentJson: snapshot.contentJson as Prisma.InputJsonValue,
+        tags: [...snapshot.tags],
+        status: ContentStatus.DRAFT,
+      },
+      select: {
+        id: true,
+        updatedAt: true,
+        space: { select: { slug: true } },
+      },
+    });
+    await ensureTopicFollow(userId, post.id);
+    revalidateCommunity(spaceSlug, post.id);
+    return {
+      ok: true,
+      postId: post.id,
+      saved: true,
+      spaceSlug: spaceSlug || post.space?.slug || "",
+      updatedAt: post.updatedAt.toISOString(),
+    };
+  } catch (error) {
+    if (!isUniqueConstraintError(error)) {
+      throw error;
+    }
+    const racedPost = await findDraftByIdempotencyKey(userId, idempotencyKey);
+    if (!racedPost) {
+      return draftSaveConflict();
+    }
+    return existingDraftSaveResult(userId, snapshot, racedPost, spaceSlug);
+  }
+};
+
+const savedExistingDraftResult = (
+  postId: string,
+  updatedAt: Date,
+  spaceSlug: string
+): CommunityDraftSaveResult => ({
+  ok: true,
+  postId,
+  saved: true,
+  spaceSlug,
+  updatedAt: updatedAt.toISOString(),
+});
+
+const updateExistingCommunityDraft = async ({
+  expectedUpdatedAtText,
+  postId,
+  snapshot,
+  spaceSlug,
+  userId,
+}: {
+  readonly expectedUpdatedAtText: string;
+  readonly postId: string;
+  readonly snapshot: CommunityDraftSnapshot;
+  readonly spaceSlug: string;
+  readonly userId: string;
+}): Promise<CommunityDraftSaveResult> => {
   const post = await database.communityPost.findFirst({
     where: {
       id: postId,
@@ -609,55 +724,172 @@ export const updateDraft = async (formData: FormData) => {
       status: ContentStatus.DRAFT,
       deletedAt: null,
     },
-    select: {
-      id: true,
-      coverUrl: true,
-      contentJson: true,
-      space: { select: { slug: true } },
-    },
+    select: communityDraftRecordSelect,
   });
   if (!post) {
-    return { ok: false as const, error: "Você não pode editar este rascunho." };
+    return unavailableDraft("Você não pode editar este rascunho.");
   }
-  const title = textValue(formData.get("title")) || draftTitle;
-  await database.communityPost.update({
-    where: { id: post.id },
+
+  const expectedUpdatedAt = new Date(expectedUpdatedAtText);
+  if (
+    !(expectedUpdatedAtText && Number.isFinite(expectedUpdatedAt.getTime()))
+  ) {
+    return draftSaveConflict(post.updatedAt, post.id);
+  }
+  if (post.updatedAt.getTime() !== expectedUpdatedAt.getTime()) {
+    return communityDraftSnapshotsEqual(
+      snapshot,
+      communityDraftSnapshotFromPost(post)
+    )
+      ? savedExistingDraftResult(post.id, post.updatedAt, spaceSlug)
+      : draftSaveConflict(post.updatedAt, post.id);
+  }
+
+  const updatedAt = nextCommunityPostVersion(expectedUpdatedAt);
+  const result = await database.communityPost.updateMany({
+    where: {
+      id: post.id,
+      authorId: userId,
+      status: ContentStatus.DRAFT,
+      deletedAt: null,
+      updatedAt: expectedUpdatedAt,
+    },
     data: {
-      spaceId,
-      title: title.slice(0, 180),
-      subtitle: textValue(formData.get("subtitle")).slice(0, 1000) || null,
-      coverUrl: safeImageUrl(textValue(formData.get("coverUrl")), userId),
-      content: plainText.slice(0, 40_000),
-      excerpt: excerptFrom(plainText),
-      contentJson: document as Prisma.InputJsonValue | undefined,
-      tags: parseTags(formData.get("tags")),
+      ...snapshot,
+      contentJson: snapshot.contentJson as Prisma.InputJsonValue,
+      tags: [...snapshot.tags],
+      updatedAt,
     },
   });
-  const nextCoverUrl = safeImageUrl(
-    textValue(formData.get("coverUrl")),
-    userId
-  );
+  if (result.count !== 1) {
+    const latest = await database.communityPost.findFirst({
+      where: { id: post.id, authorId: userId, deletedAt: null },
+      select: communityDraftRecordSelect,
+    });
+    if (
+      latest?.status === ContentStatus.DRAFT &&
+      communityDraftSnapshotsEqual(
+        snapshot,
+        communityDraftSnapshotFromPost(latest)
+      )
+    ) {
+      return savedExistingDraftResult(latest.id, latest.updatedAt, spaceSlug);
+    }
+    return draftSaveConflict(latest?.updatedAt, latest?.id);
+  }
+
   await cleanupRemovedAssets({
     memberId: userId,
     previousCoverUrl: post.coverUrl,
     previousContentJson: post.contentJson,
-    nextCoverUrl,
-    nextContentJson: document,
+    nextCoverUrl: snapshot.coverUrl,
+    nextContentJson: snapshot.contentJson,
   });
   revalidateCommunity(post.space?.slug, post.id);
-  revalidateCommunity(space?.slug, post.id);
+  revalidateCommunity(spaceSlug, post.id);
+  return savedExistingDraftResult(post.id, updatedAt, spaceSlug);
+};
+
+const communityDraftSnapshotFromForm = async (
+  formData: FormData,
+  userId: string
+): Promise<
+  | {
+      readonly ok: true;
+      readonly snapshot: CommunityDraftSnapshot;
+      readonly spaceSlug: string;
+    }
+  | CommunityWriteError
+> => {
+  const { spaceId, space } = await spaceData(formData, userId);
+  const { document, plainText } = contentFromForm(formData);
+  const rawDocument =
+    textValue(formData.get("contentJson")) ||
+    textValue(formData.get("contentDocument"));
+  if (rawDocument && !document) {
+    return unavailableDraft(
+      "O conteúdo do editor não pôde ser lido. Tente novamente."
+    );
+  }
   return {
-    ok: true as const,
-    savedAt: new Date().toISOString(),
+    ok: true,
+    snapshot: {
+      content: plainText.slice(0, 40_000),
+      contentJson: (document ?? emptyDocument) as Prisma.InputJsonValue,
+      coverUrl: safeImageUrl(textValue(formData.get("coverUrl")), userId),
+      spaceId,
+      subtitle: textValue(formData.get("subtitle")).slice(0, 1000) || null,
+      tags: parseTags(formData.get("tags")),
+      title: (textValue(formData.get("title")) || draftTitle).slice(0, 180),
+    },
     spaceSlug: space?.slug ?? "",
   };
 };
 
-export const publishPost = async (formData: FormData) => {
+export const updateDraft = async (
+  formData: FormData
+): Promise<CommunityDraftSaveResult> => {
+  const userId = await currentUserId();
+  const postId = textValue(formData.get("postId"));
+  const idempotencyKey = readIdempotencyKeyFromForm(formData);
+  if (!(userId && (postId || idempotencyKey))) {
+    return unavailableDraft("Rascunho indisponível.");
+  }
+  const prepared = await communityDraftSnapshotFromForm(formData, userId);
+  if (!prepared.ok) {
+    return prepared;
+  }
+  const { snapshot, spaceSlug } = prepared;
+  if (!(postId || hasCommunityDraftContent(snapshot, draftTitle))) {
+    return {
+      ok: true,
+      postId: null,
+      saved: false,
+      spaceSlug,
+      updatedAt: null,
+    };
+  }
+  if (!(postId || idempotencyKey)) {
+    return unavailableDraft(
+      "A chave de criação expirou. Abra uma nova publicação."
+    );
+  }
+  await consumeMutationRateLimit({
+    action: postId ? "community.mutation" : "community.post.create",
+    memberId: userId,
+  });
+  if (postId) {
+    return updateExistingCommunityDraft({
+      expectedUpdatedAtText: textValue(formData.get("expectedUpdatedAt")),
+      postId,
+      snapshot,
+      spaceSlug,
+      userId,
+    });
+  }
+  return saveNewCommunityDraft({
+    idempotencyKey: idempotencyKey as string,
+    snapshot,
+    spaceSlug,
+    userId,
+  });
+};
+
+export const createDraft = async (formData: FormData) => updateDraft(formData);
+
+export const publishPost = async (
+  formData: FormData
+): Promise<
+  { readonly ok: true; readonly href: string } | CommunityWriteError
+> => {
   const userId = await currentUserId();
   const postId = textValue(formData.get("postId"));
   if (!(userId && postId)) {
-    return { ok: false as const, error: "Não foi possível publicar agora." };
+    return {
+      code: "unavailable",
+      error: "Não foi possível publicar agora.",
+      ok: false,
+    };
   }
   await consumeMutationRateLimit({
     action: "community.mutation",
@@ -670,8 +902,9 @@ export const publishPost = async (formData: FormData) => {
     textValue(formData.get("confirmGroupMention")) !== "1"
   ) {
     return {
-      ok: false as const,
+      code: "unavailable",
       error: "Confirme que deseja notificar o grupo antes de publicar.",
+      ok: false,
     };
   }
   const parsed = postInput.safeParse({
@@ -680,8 +913,9 @@ export const publishPost = async (formData: FormData) => {
   });
   if (!parsed.success) {
     return {
-      ok: false as const,
+      code: "unavailable",
       error: "Adicione um título e algum conteúdo antes de publicar.",
+      ok: false,
     };
   }
   const post = await database.communityPost.findFirst({
@@ -696,6 +930,11 @@ export const publishPost = async (formData: FormData) => {
       slug: true,
       title: true,
       content: true,
+      subtitle: true,
+      tags: true,
+      spaceId: true,
+      publishedAt: true,
+      updatedAt: true,
       coverUrl: true,
       contentJson: true,
       space: { select: { slug: true } },
@@ -703,31 +942,35 @@ export const publishPost = async (formData: FormData) => {
   });
   if (!post) {
     return {
-      ok: false as const,
+      code: "unavailable",
       error: "Você não pode publicar este rascunho.",
+      ok: false,
     };
   }
   if (post.status === ContentStatus.PUBLISHED && post.slug) {
-    await ensureTopicFollow(userId, post.id);
-    await notifyCommunityPost({
-      actorId: userId,
-      postId: post.id,
-      postTitle: post.title,
-      commentContent: post.content,
-      document: post.contentJson,
-      href: communityHref(post),
-    });
-    redirect(communityHref(post));
+    return { ok: true, href: communityHref(post) };
   }
-  if (post.status !== ContentStatus.DRAFT) {
+  if (
+    post.status !== ContentStatus.DRAFT &&
+    post.status !== ContentStatus.ARCHIVED
+  ) {
     return {
-      ok: false as const,
+      code: "unavailable",
       error: "Você não pode publicar este conteúdo agora.",
+      ok: false,
     };
   }
+  const expectedUpdatedAtText = textValue(formData.get("expectedUpdatedAt"));
+  const expectedUpdatedAt = new Date(expectedUpdatedAtText);
+  if (
+    !(expectedUpdatedAtText && Number.isFinite(expectedUpdatedAt.getTime())) ||
+    post.updatedAt.getTime() !== expectedUpdatedAt.getTime()
+  ) {
+    return draftSaveConflict(post.updatedAt, post.id);
+  }
   const persistedDocument = await enrichCommunityArticleMetadata(document);
-  const slug = await uniquePostSlug(parsed.data.title, post.id);
-  const publishedAt = new Date();
+  const slug = post.slug ?? (await uniquePostSlug(parsed.data.title, post.id));
+  const publishedAt = post.publishedAt ?? new Date();
   const role = await getMemberRole(userId);
   const updatedPost = await database.$transaction(async (transaction) => {
     if (
@@ -741,10 +984,17 @@ export const publishPost = async (formData: FormData) => {
         select: { id: true },
       }))
     ) {
-      return null;
+      return { conflict: false as const, inaccessible: true as const };
     }
-    const published = await transaction.communityPost.update({
-      where: { id: post.id },
+    const updatedAt = nextCommunityPostVersion(expectedUpdatedAt);
+    const published = await transaction.communityPost.updateMany({
+      where: {
+        id: post.id,
+        authorId: userId,
+        deletedAt: null,
+        status: post.status,
+        updatedAt: expectedUpdatedAt,
+      },
       data: {
         spaceId,
         title: parsed.data.title,
@@ -757,15 +1007,18 @@ export const publishPost = async (formData: FormData) => {
         slug,
         status: ContentStatus.PUBLISHED,
         publishedAt,
+        updatedAt,
       },
-      select: { id: true, slug: true, space: { select: { slug: true } } },
     });
+    if (published.count !== 1) {
+      return { conflict: true as const, inaccessible: false as const };
+    }
     if (space) {
       await enqueueCommunityGroupPostNotifications(transaction, {
         actorId: userId,
         groupId: space.id,
         occurredAt: publishedAt,
-        postId: published.id,
+        postId: post.id,
         href: `/comunidade/publicacoes/${slug}`,
       });
     }
@@ -773,19 +1026,27 @@ export const publishPost = async (formData: FormData) => {
       criteria: [BadgeCriterion.COMMUNITY_PUBLICATIONS],
       force: true,
     });
-    return published;
+    return { conflict: false as const, inaccessible: false as const };
   });
-  if (!updatedPost) {
+  if (updatedPost.inaccessible) {
     return {
-      ok: false as const,
+      code: "unavailable",
       error: "Você não pode publicar neste grupo.",
+      ok: false,
     };
   }
+  if (updatedPost.conflict) {
+    const latest = await database.communityPost.findFirst({
+      where: { id: post.id, authorId: userId, deletedAt: null },
+      select: { id: true, updatedAt: true },
+    });
+    return draftSaveConflict(latest?.updatedAt, latest?.id);
+  }
   await dispatchPendingNotifications();
-  await ensureTopicFollow(userId, updatedPost.id);
+  await ensureTopicFollow(userId, post.id);
   await notifyCommunityPost({
     actorId: userId,
-    postId: updatedPost.id,
+    postId: post.id,
     postTitle: parsed.data.title,
     commentContent: parsed.data.content,
     document: persistedDocument,
@@ -804,14 +1065,127 @@ export const publishPost = async (formData: FormData) => {
   });
   revalidateCommunity(post.space?.slug, post.id, slug);
   revalidateCommunity(space?.slug, post.id, slug);
-  redirect(`/comunidade/publicacoes/${slug}`);
+  return { ok: true, href: `/comunidade/publicacoes/${slug}` };
 };
 
-export const updatePost = async (formData: FormData) => {
+const editableCommunityPostSelect = {
+  id: true,
+  authorId: true,
+  slug: true,
+  status: true,
+  coverUrl: true,
+  contentJson: true,
+  spaceId: true,
+  title: true,
+  subtitle: true,
+  tags: true,
+  content: true,
+  updatedAt: true,
+  space: { select: { slug: true } },
+} satisfies Prisma.CommunityPostSelect;
+
+type EditableCommunityPost = Prisma.CommunityPostGetPayload<{
+  select: typeof editableCommunityPostSelect;
+}>;
+
+const persistCommunityPostUpdate = async ({
+  expectedUpdatedAt,
+  post,
+  snapshot,
+  spaceSlug,
+  userId,
+}: {
+  readonly expectedUpdatedAt: Date;
+  readonly post: EditableCommunityPost;
+  readonly snapshot: CommunityDraftSnapshot;
+  readonly spaceSlug: string;
+  readonly userId: string;
+}): Promise<
+  { readonly ok: true; readonly updatedAt: string } | CommunityWriteError
+> => {
+  const savedSnapshot = communityDraftSnapshotFromPost(post);
+  if (post.updatedAt.getTime() !== expectedUpdatedAt.getTime()) {
+    return communityDraftSnapshotsEqual(snapshot, savedSnapshot)
+      ? { ok: true, updatedAt: post.updatedAt.toISOString() }
+      : draftSaveConflict(post.updatedAt, post.id);
+  }
+
+  const slug =
+    post.status === ContentStatus.PUBLISHED
+      ? (post.slug ?? (await uniquePostSlug(snapshot.title, post.id)))
+      : post.slug;
+  const updatedAt = nextCommunityPostVersion(expectedUpdatedAt);
+  const result = await database.communityPost.updateMany({
+    where: {
+      id: post.id,
+      updatedAt: expectedUpdatedAt,
+      deletedAt: null,
+      status: post.status,
+    },
+    data: {
+      ...snapshot,
+      contentJson: snapshot.contentJson as Prisma.InputJsonValue,
+      tags: [...snapshot.tags],
+      excerpt: excerptFrom(snapshot.content),
+      slug,
+      updatedAt,
+      editedAt: new Date(),
+    },
+  });
+  if (result.count !== 1) {
+    const latest = await database.communityPost.findFirst({
+      where: { id: post.id, authorId: post.authorId, deletedAt: null },
+      select: editableCommunityPostSelect,
+    });
+    if (
+      latest &&
+      communityDraftSnapshotsEqual(
+        snapshot,
+        communityDraftSnapshotFromPost(latest)
+      )
+    ) {
+      return { ok: true, updatedAt: latest.updatedAt.toISOString() };
+    }
+    return draftSaveConflict(latest?.updatedAt, latest?.id);
+  }
+
+  if (post.status === ContentStatus.PUBLISHED) {
+    await notifyCommunityPost({
+      actorId: userId,
+      postId: post.id,
+      postTitle: snapshot.title,
+      commentContent: snapshot.content,
+      document: snapshot.contentJson,
+      href: slug
+        ? `/comunidade/publicacoes/${slug}`
+        : `/comunidade/publicacoes/${post.id}`,
+    });
+  }
+  await cleanupRemovedAssets({
+    memberId: userId,
+    previousCoverUrl: post.coverUrl,
+    previousContentJson: post.contentJson,
+    nextCoverUrl: snapshot.coverUrl,
+    nextContentJson: snapshot.contentJson,
+  });
+  revalidateCommunity(post.space?.slug, post.id, slug ?? undefined);
+  revalidateCommunity(spaceSlug, post.id, slug ?? undefined);
+  return { ok: true, updatedAt: updatedAt.toISOString() };
+};
+
+export const updatePost = async (
+  formData: FormData
+): Promise<
+  { readonly ok: true; readonly updatedAt: string } | CommunityWriteError
+> => {
   const userId = await currentUserId();
   const postId = textValue(formData.get("postId"));
   if (!(userId && postId)) {
-    return;
+    return {
+      code: "unavailable",
+      error: "Esta publicação não está disponível para edição.",
+      ok: false,
+    };
   }
   await consumeMutationRateLimit({
     action: "community.mutation",
@@ -823,145 +1197,113 @@ export const updatePost = async (formData: FormData) => {
     documentHasGroupMention(document) &&
     textValue(formData.get("confirmGroupMention")) !== "1"
   ) {
-    return;
+    return {
+      code: "unavailable",
+      error: "Confirme que deseja notificar o grupo antes de salvar.",
+      ok: false,
+    };
   }
   const parsed = postInput.safeParse({
     title: textValue(formData.get("title")),
     content: plainText,
   });
   if (!parsed.success) {
-    return;
+    return {
+      code: "unavailable",
+      error: "Adicione um título e algum conteúdo antes de salvar.",
+      ok: false,
+    };
   }
   const role = await getMemberRole(userId);
   const post = await database.communityPost.findFirst({
     where: { id: postId, deletedAt: null },
-    select: {
-      id: true,
-      authorId: true,
-      slug: true,
-      status: true,
-      coverUrl: true,
-      contentJson: true,
-      space: { select: { slug: true } },
-    },
+    select: editableCommunityPostSelect,
   });
   if (
     !post ||
     (post.authorId !== userId &&
       !(post.status === ContentStatus.PUBLISHED && canModerate(role)))
   ) {
-    return;
+    return {
+      code: "unavailable",
+      error: "Você não pode editar esta publicação.",
+      ok: false,
+    };
+  }
+  const expectedUpdatedAtText = textValue(formData.get("expectedUpdatedAt"));
+  const expectedUpdatedAt = new Date(expectedUpdatedAtText);
+  if (
+    !(expectedUpdatedAtText && Number.isFinite(expectedUpdatedAt.getTime()))
+  ) {
+    return draftSaveConflict(post.updatedAt, post.id);
   }
   const persistedDocument = await enrichCommunityArticleMetadata(document);
-  const slug =
-    post.status === ContentStatus.PUBLISHED
-      ? (post.slug ?? (await uniquePostSlug(parsed.data.title, post.id)))
-      : post.slug;
-  await database.communityPost.update({
-    where: { id: post.id },
-    data: {
-      spaceId,
-      title: parsed.data.title,
-      subtitle: textValue(formData.get("subtitle")).slice(0, 1000) || null,
-      coverUrl: safeImageUrl(textValue(formData.get("coverUrl")), userId),
-      content: parsed.data.content,
-      excerpt: excerptFrom(parsed.data.content),
-      contentJson: persistedDocument as Prisma.InputJsonValue | undefined,
-      tags: parseTags(formData.get("tags")),
-      slug,
-      editedAt: new Date(),
-    },
+  const snapshot: CommunityDraftSnapshot = {
+    content: parsed.data.content,
+    contentJson: persistedDocument,
+    coverUrl: safeImageUrl(textValue(formData.get("coverUrl")), userId),
+    spaceId,
+    subtitle: textValue(formData.get("subtitle")).slice(0, 1000) || null,
+    tags: parseTags(formData.get("tags")),
+    title: parsed.data.title,
+  };
+  return persistCommunityPostUpdate({
+    expectedUpdatedAt,
+    post,
+    snapshot,
+    spaceSlug: space?.slug ?? "",
+    userId,
   });
-  if (post.status === ContentStatus.PUBLISHED) {
-    await notifyCommunityPost({
-      actorId: userId,
-      postId: post.id,
-      postTitle: parsed.data.title,
-      commentContent: parsed.data.content,
-      document: persistedDocument,
-      href: slug
-        ? `/comunidade/publicacoes/${slug}`
-        : `/comunidade/publicacoes/${post.id}`,
-    });
-  }
-  const nextCoverUrl = safeImageUrl(
-    textValue(formData.get("coverUrl")),
-    userId
-  );
-  await cleanupRemovedAssets({
-    memberId: userId,
-    previousCoverUrl: post.coverUrl,
-    previousContentJson: post.contentJson,
-    nextCoverUrl,
-    nextContentJson: document,
-  });
-  revalidateCommunity(post.space?.slug, post.id, slug ?? undefined);
-  revalidateCommunity(space?.slug, post.id, slug ?? undefined);
-  redirect(
-    slug ? `/comunidade/publicacoes/${slug}` : "/comunidade/minhas-publicacoes"
-  );
 };
 
-export const setPostStatus = async (formData: FormData) => {
-  const userId = await currentUserId();
-  const postId = textValue(formData.get("postId"));
-  const spaceSlug = textValue(formData.get("spaceSlug"));
-  const requestedStatus = textValue(formData.get("status"));
-  if (
-    !(
-      userId &&
-      postId &&
-      Object.values(ContentStatus).includes(requestedStatus as ContentStatus)
-    )
-  ) {
-    return {
-      ok: false as const,
-      error: "Não foi possível atualizar esta publicação.",
-    };
-  }
-  await consumeMutationRateLimit({
-    action: "community.mutation",
-    memberId: userId,
-  });
-  const post = await database.communityPost.findFirst({
-    where: {
-      id: postId,
-      deletedAt: null,
-      ...(spaceSlug ? { space: { is: { slug: spaceSlug } } } : {}),
-    },
-    select: {
-      authorId: true,
-      status: true,
-      title: true,
-      content: true,
-      contentJson: true,
-      slug: true,
-      publishedAt: true,
-      space: { select: { id: true, slug: true } },
-    },
-  });
-  const role = await getMemberRole(userId);
-  if (
-    !(
-      post &&
+interface CommunityPostStatusTarget {
+  readonly authorId: string;
+  readonly content: string;
+  readonly contentJson: Prisma.JsonValue;
+  readonly publishedAt: Date | null;
+  readonly slug: string | null;
+  readonly space: { readonly id: string; readonly slug: string } | null;
+  readonly status: ContentStatus;
+  readonly title: string;
+}
+
+const canChangePostStatus = (
+  post: CommunityPostStatusTarget | null,
+  userId: string,
+  role: string,
+  requestedStatus: ContentStatus
+): post is CommunityPostStatusTarget =>
+  Boolean(
+    post &&
       (post.authorId === userId ||
         (requestedStatus === ContentStatus.ARCHIVED && canModerate(role)))
-    )
-  ) {
-    return {
-      ok: false as const,
-      error: "Você não pode alterar esta publicação.",
-    };
+  );
+
+const redirectAfterPostStatusChange = (
+  status: ContentStatus,
+  slug: string | null,
+  postId: string
+): never => {
+  if (status === ContentStatus.ARCHIVED) {
+    redirect("/comunidade/minhas-publicacoes?status=archived");
   }
-  if (
-    requestedStatus === ContentStatus.PUBLISHED &&
-    !publishRequestIsValid(post, formData)
-  ) {
-    return {
-      ok: false as const,
-      error: publishStatusError(post, formData),
-    };
+  if (status === ContentStatus.DRAFT) {
+    redirect("/comunidade/minhas-publicacoes?status=drafts");
   }
+  redirect(`/comunidade/publicacoes/${slug ?? postId}`);
+};
+
+const persistCommunityPostStatus = async ({
+  post,
+  postId,
+  requestedStatus,
+  userId,
+}: {
+  readonly post: CommunityPostStatusTarget;
+  readonly postId: string;
+  readonly requestedStatus: ContentStatus;
+  readonly userId: string;
+}) => {
   const slug =
     requestedStatus === ContentStatus.PUBLISHED
       ? (post.slug ?? (await uniquePostSlug(post.title, postId)))
@@ -971,7 +1313,10 @@ export const setPostStatus = async (formData: FormData) => {
     await transaction.communityPost.update({
       where: { id: postId },
       data: {
-        status: requestedStatus as ContentStatus,
+        status: requestedStatus,
+        ...(requestedStatus === ContentStatus.ARCHIVED
+          ? { isPinned: false }
+          : {}),
         ...(requestedStatus === ContentStatus.PUBLISHED
           ? { publishedAt, slug }
           : {}),
@@ -979,7 +1324,7 @@ export const setPostStatus = async (formData: FormData) => {
     });
     if (
       requestedStatus === ContentStatus.PUBLISHED &&
-      post.space?.id &&
+      post.space &&
       post.publishedAt === null
     ) {
       await enqueueCommunityGroupPostNotifications(transaction, {
@@ -1004,8 +1349,6 @@ export const setPostStatus = async (formData: FormData) => {
   });
   if (requestedStatus === ContentStatus.PUBLISHED) {
     await dispatchPendingNotifications();
-  }
-  if (requestedStatus === ContentStatus.PUBLISHED) {
     await ensureTopicFollow(post.authorId, postId);
     await notifyCommunityPost({
       actorId: userId,
@@ -1013,19 +1356,78 @@ export const setPostStatus = async (formData: FormData) => {
       postTitle: post.title,
       commentContent: post.content,
       document: post.contentJson,
-      href: slug
-        ? `/comunidade/publicacoes/${slug}`
-        : `/comunidade/publicacoes/${postId}`,
+      href: `/comunidade/publicacoes/${slug ?? postId}`,
     });
   }
+  return slug;
+};
+
+export const setPostStatus = async (formData: FormData) => {
+  const userId = await currentUserId();
+  const postId = textValue(formData.get("postId"));
+  const spaceSlug = textValue(formData.get("spaceSlug"));
+  const requestedStatus = textValue(formData.get("status"));
+  if (
+    !(
+      userId &&
+      postId &&
+      Object.values(ContentStatus).includes(requestedStatus as ContentStatus)
+    )
+  ) {
+    return {
+      ok: false as const,
+      error: "Não foi possível atualizar esta publicação.",
+    };
+  }
+  await consumeMutationRateLimit({
+    action: "community.mutation",
+    memberId: userId,
+  });
+  const nextStatus = requestedStatus as ContentStatus;
+  const post = await database.communityPost.findFirst({
+    where: {
+      id: postId,
+      deletedAt: null,
+      ...(spaceSlug ? { space: { is: { slug: spaceSlug } } } : {}),
+    },
+    select: {
+      authorId: true,
+      status: true,
+      title: true,
+      content: true,
+      contentJson: true,
+      slug: true,
+      publishedAt: true,
+      space: { select: { id: true, slug: true } },
+    },
+  });
+  const role = await getMemberRole(userId);
+  if (!canChangePostStatus(post, userId, role, nextStatus)) {
+    return {
+      ok: false as const,
+      error: "Você não pode alterar esta publicação.",
+    };
+  }
+  if (post.status === nextStatus) {
+    redirectAfterPostStatusChange(nextStatus, post.slug, postId);
+  }
+  if (
+    nextStatus === ContentStatus.PUBLISHED &&
+    !publishRequestIsValid(post, formData)
+  ) {
+    return {
+      ok: false as const,
+      error: publishStatusError(post, formData),
+    };
+  }
+  const slug = await persistCommunityPostStatus({
+    post,
+    postId,
+    requestedStatus: nextStatus,
+    userId,
+  });
   revalidateCommunity(post.space?.slug, postId, slug ?? undefined);
-  if (requestedStatus === ContentStatus.ARCHIVED) {
-    redirect("/comunidade");
-  }
-  if (requestedStatus === ContentStatus.DRAFT) {
-    redirect("/comunidade/minhas-publicacoes");
-  }
-  redirect(`/comunidade/publicacoes/${slug}`);
+  redirectAfterPostStatusChange(nextStatus, slug, postId);
 };
 
 export const toggleBookmark = async (formData: FormData) => {
@@ -1361,6 +1763,7 @@ export const softDeletePost = async (formData: FormData) => {
   const userId = await currentUserId();
   const postId = textValue(formData.get("postId"));
   const spaceSlug = textValue(formData.get("spaceSlug"));
+  const returnTo = textValue(formData.get("returnTo"));
   if (!(userId && postId)) {
     return;
   }
@@ -1382,12 +1785,74 @@ export const softDeletePost = async (formData: FormData) => {
   }
   await database.communityPost.update({
     where: { id: postId },
-    data: { deletedAt: new Date(), status: ContentStatus.ARCHIVED },
+    data: { deletedAt: new Date(), isPinned: false },
   });
   revalidateCommunity(post.space?.slug, postId, post.slug ?? undefined);
-  redirect(
-    post.space ? `/comunidade/grupos/${post.space.slug}` : "/comunidade"
-  );
+  revalidatePath("/comunidade/minhas-publicacoes");
+  revalidatePath("/admin/community");
+  const adminReturn = returnTo === "/admin/community" && canModerate(role);
+  const communityReturn = safeCommunityReturnPath(returnTo);
+  if (adminReturn) {
+    redirect("/admin/community");
+  }
+  if (communityReturn) {
+    redirect(communityReturn);
+  }
+  if (post.space) {
+    redirect(`/comunidade/grupos/${post.space.slug}`);
+  }
+  redirect("/comunidade");
+};
+
+export const restoreCommunityPost = async (formData: FormData) => {
+  const { userId } = await requireStaff();
+  const postId = textValue(formData.get("postId"));
+  if (!postId) {
+    return {
+      ok: false as const,
+      error: "Esta publicação não pode ser recuperada.",
+    };
+  }
+  await consumeMutationRateLimit({
+    action: "community.moderation",
+    memberId: userId,
+  });
+  const now = new Date();
+  const recoverableSince = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const post = await database.communityPost.findFirst({
+    where: {
+      id: postId,
+      deletedAt: { gte: recoverableSince, lte: now },
+    },
+    select: {
+      id: true,
+      slug: true,
+      space: { select: { slug: true } },
+    },
+  });
+  if (!post) {
+    return {
+      ok: false as const,
+      error: "O prazo de recuperação terminou ou a publicação já voltou.",
+    };
+  }
+  const restored = await database.communityPost.updateMany({
+    where: {
+      id: postId,
+      deletedAt: { gte: recoverableSince, lte: now },
+    },
+    data: { deletedAt: null, isPinned: false },
+  });
+  if (restored.count !== 1) {
+    return {
+      ok: false as const,
+      error: "A publicação foi alterada por outra pessoa. Atualize a lista.",
+    };
+  }
+  revalidateCommunity(post.space?.slug, post.id, post.slug ?? undefined);
+  revalidatePath("/comunidade/minhas-publicacoes");
+  revalidatePath("/admin/community");
+  redirect("/admin/community");
 };
 
 export const softDeleteComment = async (formData: FormData) => {
@@ -1445,17 +1910,57 @@ export const togglePostPin = async (formData: FormData) => {
     select: {
       id: true,
       slug: true,
-      space: { select: { slug: true } },
+      space: { select: { id: true, slug: true } },
     },
   });
   if (!post) {
     return;
   }
-  await database.communityPost.update({
-    where: { id: postId },
-    data: { isPinned: desired === "on" },
-  });
+  try {
+    const pinned = await database.$transaction(
+      async (transaction) => {
+        const target = await transaction.communityPost.updateMany({
+          where: {
+            id: postId,
+            status: ContentStatus.PUBLISHED,
+            deletedAt: null,
+          },
+          data: { isPinned: desired === "on" },
+        });
+        if (target.count !== 1) {
+          return false;
+        }
+        if (desired === "on") {
+          await transaction.communityPost.updateMany({
+            where: {
+              id: { not: postId },
+              spaceId: post.space?.id ?? null,
+              status: ContentStatus.PUBLISHED,
+              deletedAt: null,
+              isPinned: true,
+            },
+            data: { isPinned: false },
+          });
+        }
+        return true;
+      },
+      { isolationLevel: "Serializable" }
+    );
+    if (!pinned) {
+      return {
+        ok: false as const,
+        error: "Esta publicação não pode mais ser fixada. Atualize a lista.",
+      };
+    }
+  } catch {
+    return {
+      ok: false as const,
+      error:
+        "A fixação foi alterada ao mesmo tempo. Atualize e tente novamente.",
+    };
+  }
   revalidateCommunity(post.space?.slug, postId, post.slug ?? undefined);
+  return { ok: true as const };
 };
 
 export const togglePostFeatured = async (formData: FormData) => {

@@ -2,6 +2,8 @@ import { Badge } from "@repo/design-system/components/ui/badge";
 import { Input } from "@repo/design-system/components/ui/input";
 import { Textarea } from "@repo/design-system/components/ui/textarea";
 import Link from "next/link";
+import { CommunityAdminDeletePostButton } from "@/components/community/community-admin-delete-post-button";
+import { CommunityRestorePostButton } from "@/components/community/community-restore-post-button";
 import {
   SingleFlightForm,
   SingleFlightSubmit,
@@ -10,11 +12,11 @@ import {
   communityPostHref,
   getStaffCommunityPosts,
   getStaffCommunitySpaces,
+  getStaffDeletedCommunityPosts,
 } from "@/lib/community";
 import {
   createSpace,
   setSpaceStatus,
-  softDeletePost,
   togglePostFeatured,
   togglePostPin,
   toggleSpaceComments,
@@ -63,13 +65,10 @@ const AdminPostActions = ({ post }: { readonly post: AdminCommunityPost }) => (
         </SingleFlightForm>
       </>
     )}
-    <SingleFlightForm action={softDeletePost}>
-      <input name="postId" type="hidden" value={post.id} />
-      <input name="spaceSlug" type="hidden" value={post.space?.slug ?? ""} />
-      <SingleFlightSubmit size="sm" variant="outline">
-        Remover
-      </SingleFlightSubmit>
-    </SingleFlightForm>
+    <CommunityAdminDeletePostButton
+      postId={post.id}
+      spaceSlug={post.space?.slug ?? ""}
+    />
   </div>
 );
 
@@ -101,9 +100,10 @@ const AdminCommunityPostRow = ({
 );
 
 const AdminCommunityPage = async () => {
-  const [spaces, posts] = await Promise.all([
+  const [spaces, posts, deletedPosts] = await Promise.all([
     getStaffCommunitySpaces(),
     getStaffCommunityPosts(),
+    getStaffDeletedCommunityPosts(),
   ]);
 
   return (
@@ -142,6 +142,47 @@ const AdminCommunityPage = async () => {
           <div className="divide-y border-border border-b">
             {posts.map((post) => (
               <AdminCommunityPostRow key={post.id} post={post} />
+            ))}
+          </div>
+        )}
+      </section>
+      <section className="paper-surface mt-6 border p-6 sm:p-8">
+        <div className="flex flex-wrap items-end justify-between gap-3 border-border border-b pb-4">
+          <div>
+            <p className="brand-eyebrow">Recuperação · 30 dias</p>
+            <h2 className="mt-2 font-display text-3xl">
+              Publicações excluídas
+            </h2>
+          </div>
+          <span className="font-data text-muted-foreground text-xs">
+            {deletedPosts.length} recuperáveis
+          </span>
+        </div>
+        {deletedPosts.length === 0 ? (
+          <p className="py-6 text-muted-foreground">
+            Não há publicações excluídas dentro do prazo de recuperação.
+          </p>
+        ) : (
+          <div className="divide-y border-border border-b">
+            {deletedPosts.map((post) => (
+              <div
+                className="flex flex-wrap items-center justify-between gap-4 py-4"
+                key={post.id}
+              >
+                <div className="min-w-0">
+                  <div className="flex flex-wrap gap-2 text-muted-foreground text-xs">
+                    <Badge variant="outline">{post.status}</Badge>
+                    <span>{post.space?.title ?? "Feed geral"}</span>
+                    {post.deletedAt ? (
+                      <time dateTime={post.deletedAt.toISOString()}>
+                        Excluída em {post.deletedAt.toLocaleDateString("pt-BR")}
+                      </time>
+                    ) : null}
+                  </div>
+                  <p className="mt-2 font-medium">{post.title}</p>
+                </div>
+                <CommunityRestorePostButton postId={post.id} />
+              </div>
             ))}
           </div>
         )}
@@ -245,21 +286,10 @@ const AdminCommunityPage = async () => {
                                 : "Membro"}
                             </p>
                           </div>
-                          <SingleFlightForm action={softDeletePost}>
-                            <input
-                              name="postId"
-                              type="hidden"
-                              value={post.id}
-                            />
-                            <input
-                              name="spaceSlug"
-                              type="hidden"
-                              value={space.slug}
-                            />
-                            <SingleFlightSubmit size="sm" variant="outline">
-                              Remover
-                            </SingleFlightSubmit>
-                          </SingleFlightForm>
+                          <CommunityAdminDeletePostButton
+                            postId={post.id}
+                            spaceSlug={space.slug}
+                          />
                         </div>
                       ))
                     )}

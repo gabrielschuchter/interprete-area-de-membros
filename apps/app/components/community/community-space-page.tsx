@@ -111,7 +111,10 @@ const CommunitySpacePage = async ({
               </SingleFlightForm>
             ) : null}
             {isMember || canManageGroup ? (
-              <CommunityDraftStarter spaceId={space.id}>
+              <CommunityDraftStarter
+                returnTo={`/comunidade/grupos/${space.slug}`}
+                spaceId={space.id}
+              >
                 <PlusIcon aria-hidden="true" /> Criar aqui
               </CommunityDraftStarter>
             ) : null}

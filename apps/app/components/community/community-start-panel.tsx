@@ -44,6 +44,7 @@ export const CommunityStartPanel = ({
   <section className="paper-surface mt-10 border p-6 sm:p-8">
     <SingleFlightForm action={startDraft} className="grid gap-5">
       <input name="idempotencyKey" type="hidden" value={randomUUID()} />
+      <input name="returnTo" type="hidden" value="/comunidade" />
       <div className="flex items-start gap-4">
         <FileTextIcon
           aria-hidden="true"

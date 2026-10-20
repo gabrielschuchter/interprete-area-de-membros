@@ -26,8 +26,9 @@ interface CommunityPostMenuProperties {
   readonly isFeatured: boolean;
   readonly isPinned: boolean;
   readonly postId: string;
+  readonly returnTo?: string;
   readonly spaceSlug: string;
-  readonly status?: "DRAFT" | "PUBLISHED";
+  readonly status?: "DRAFT" | "PUBLISHED" | "ARCHIVED";
 }
 
 export function CommunityPostMenu({
@@ -35,6 +36,7 @@ export function CommunityPostMenu({
   isFeatured,
   isPinned,
   postId,
+  returnTo,
   status = "PUBLISHED",
   spaceSlug,
 }: CommunityPostMenuProperties) {
@@ -133,7 +135,7 @@ export function CommunityPostMenu({
                 Excluir publicação?
               </p>
               <p className="community-post-menu__confirmation-copy">
-                Essa ação não pode ser desfeita.
+                A publicação poderá ser recuperada pela equipe por até 30 dias.
               </p>
               <div className="community-post-menu__confirmation-actions">
                 <Button
@@ -151,6 +153,11 @@ export function CommunityPostMenu({
                   onSettled={() => close()}
                 >
                   <input name="postId" type="hidden" value={postId} />
+                  <input
+                    name="returnTo"
+                    type="hidden"
+                    value={returnTo ?? "/comunidade"}
+                  />
                   <input name="spaceSlug" type="hidden" value={spaceSlug} />
                   <SingleFlightSubmit
                     className="community-post-menu__confirm-delete"
@@ -167,7 +174,11 @@ export function CommunityPostMenu({
             <>
               <Link
                 className="community-post-menu__item"
-                href={`/comunidade/editor/${postId}`}
+                href={
+                  returnTo
+                    ? `/comunidade/editor/${postId}?from=${encodeURIComponent(returnTo)}`
+                    : `/comunidade/editor/${postId}`
+                }
                 onClick={() => close()}
                 role="menuitem"
                 tabIndex={0}

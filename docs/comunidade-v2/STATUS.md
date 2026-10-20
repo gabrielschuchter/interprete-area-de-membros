@@ -1,10 +1,12 @@
 # Comunidade V2 — status da auditoria
 
-**Estado atual:** Estágio 00 concluído; Estágio 01 ACEITA PARA AVANÇO COM PENDÊNCIAS; implementação e gates locais da Etapa 02 concluídos no candidato de código `ecc1dca`. QA autenticado, após hidratação e somente de leitura, comparou Explorar em 390/820/1280 px e os destinos de Comunidade em mobile. A Etapa 02 permanece `IN PROGRESS` até haver prova visual do erro em runtime; nenhuma falha ocorreu naturalmente nem foi injetada. A fase 7 da Comunidade continua `IN PROGRESS`.
-**Atualizado:** 2026-10-20 — candidato de código `ecc1dca`; registro GitHub de deployment App Preview `7199735169` ficou `success` no SHA exato; API `Skipped - Not affected`.
-**Branch e candidato:** `codex/comunidade-v2`, `ecc1dcaf67d3a0fd8275606ede564da994395230`, enviado a `origin/codex/comunidade-v2`.
-**Pendência externa:** não ocorreu erro natural no Preview. A sessão CUA oferece leitura/DOM/screenshot, sem interceptação de requests ou modo offline, e não expõe janela nativa do Edge/DevTools. Não há mecanismo isolado autorizado para induzir a falha nessa sessão.
-**Próximo passo:** capturar o erro somente quando houver ocorrência natural ou controle de falha isolado disponível. Até então, não avançar para Etapa 03. OPS-01 e a validação integral da fase 7 continuam separadas.
+**Estado atual:** Etapa 02 `ACEITA PARA AVANÇO`; isso não declara QA integral concluído. A captura autenticada do estado de erro em runtime permanece pendente para o QA integrado e não bloqueia a Etapa 03. Etapa 03 `IN PROGRESS` na branch `codex/comunidade-v2`.
+**Atualizado:** 2026-10-20 — ciclo de rascunho/publicação e recuperação administrativa implementados sobre `CommunityPost`/TipTap; alterações locais aguardam commit/push.
+**Branch e base:** `codex/comunidade-v2`, partindo de `ecc1dcaf67d3a0fd8275606ede564da994395230`.
+**QA de autenticação:** perfil Edge autorizado continuou autenticado no alias estável; requisição anônima redirecionou para o SSO Vercel e a página autenticada carregou via Clerk. Vercel CLI sem sessão na worktree; não houve extração de cookies/senhas.
+**Gates locais:** `check`, `typecheck` (16/16), `boundaries`, `test` (807 App, 9 API, 24 domínio), `build` e `performance:check` passaram; Comunidade em 213,8 KiB gzip / 225 KiB.
+**Limites atuais da Etapa 03:** não há Postgres local isolado. O ambiente local aponta a banco externo e não recebeu escrita; não houve fixture nem mutação no GREEN e nenhuma migration remota. Boards HTML 04/16b/17/18 não estão no workspace. Persistência end-to-end e fidelidade visual da Etapa 03 seguem sem prova.
+**Próximo passo:** commit/push, confirmar o SHA do Preview e QA autenticado somente de leitura. Não declarar persistência end-to-end ou QA visual completo sem prova separada. OPS-01 e Etapas 04–12 continuam fora do escopo.
 
 ## Retomada da Etapa 02 — evidências de 2026-10-19
 
