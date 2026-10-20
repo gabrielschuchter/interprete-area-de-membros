@@ -1815,6 +1815,7 @@ export const joinPublicStudyGroup = async (formData: FormData) => {
     create: { spaceId: group.id, memberId },
     update: {},
   });
+  revalidatePath("/comunidade/grupos");
   revalidatePath(`/comunidade/grupos/${group.slug}`);
 };
 

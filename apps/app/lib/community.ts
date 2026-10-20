@@ -15,15 +15,21 @@ import {
 } from "@/lib/community-media";
 import { communityPopularityScore } from "@/lib/community-ranking";
 import {
+  type CommunitySpaceDirectorySection,
+  communitySpaceDirectoryWhere,
+} from "@/lib/community-space-directory";
+import {
   communityPostAudienceWhere,
   communitySpaceAudienceWhere,
 } from "@/lib/community-space-rules";
 import { getProfilesByClerkIds } from "@/lib/profile";
 
 const POST_PAGE_SIZE = 10;
+export const COMMUNITY_SPACE_DIRECTORY_PAGE_SIZE = 6;
 const COMMENT_PAGE_SIZE = 40;
 const POPULARITY_CANDIDATE_LIMIT = 200;
 const wordPattern = /\s+/;
+const communitySpaceDirectoryCursorPattern = /^[A-Za-z0-9_-]{1,64}$/;
 
 const readingMinutes = (content: string) =>
   Math.max(
@@ -113,6 +119,88 @@ export const getCommunitySpaces = async (memberId: string) => {
     })
   );
 };
+
+export const getCommunitySpaceDirectoryPage = async (
+  memberId: string,
+  {
+    cursor,
+    query,
+    section,
+  }: {
+    readonly cursor?: string;
+    readonly query?: string;
+    readonly section: CommunitySpaceDirectorySection;
+  }
+) => {
+  const role = await getMemberRole(memberId);
+  const where = communitySpaceDirectoryWhere({
+    canModeratePrivateGroups:
+      role === MemberRole.ADMIN || role === MemberRole.TEACHER,
+    memberId,
+    query,
+    section,
+  });
+  const requestedCursor =
+    cursor && communitySpaceDirectoryCursorPattern.test(cursor)
+      ? cursor
+      : undefined;
+  const cursorSpace = requestedCursor
+    ? await tracePerformance("member.community.space-directory.cursor", () =>
+        database.communitySpace.findFirst({
+          where: { AND: [where, { id: requestedCursor }] },
+          select: { id: true },
+        })
+      )
+    : null;
+  const result = await tracePerformance(
+    "member.community.space-directory",
+    () =>
+      database.communitySpace.findMany({
+        where,
+        orderBy: [{ position: "asc" }, { title: "asc" }, { id: "asc" }],
+        take: COMMUNITY_SPACE_DIRECTORY_PAGE_SIZE + 1,
+        ...(cursorSpace ? { cursor: { id: cursorSpace.id }, skip: 1 } : {}),
+        select: {
+          id: true,
+          title: true,
+          slug: true,
+          description: true,
+          icon: true,
+          coverUrl: true,
+          visibility: true,
+          ownerId: true,
+          members: {
+            where: { memberId },
+            select: { role: true },
+            take: 1,
+          },
+          _count: {
+            select: {
+              members: true,
+              posts: {
+                where: { status: ContentStatus.PUBLISHED, deletedAt: null },
+              },
+            },
+          },
+        },
+      })
+  );
+  const hasMore = result.length > COMMUNITY_SPACE_DIRECTORY_PAGE_SIZE;
+  const spaces = result.slice(0, COMMUNITY_SPACE_DIRECTORY_PAGE_SIZE);
+  const lastSpace = spaces.at(-1);
+
+  return {
+    spaces,
+    hasMore,
+    nextCursor: hasMore ? lastSpace?.id : undefined,
+  };
+};
+
+export type CommunitySpaceDirectoryPage = Awaited<
+  ReturnType<typeof getCommunitySpaceDirectoryPage>
+>;
+export type CommunitySpaceDirectoryItem =
+  CommunitySpaceDirectoryPage["spaces"][number];
 
 export const getCommunityPresenceProfiles = (memberId: string) =>
   tracePerformance("member.community.presence-profiles", () =>
