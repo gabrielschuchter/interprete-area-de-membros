@@ -1,38 +1,43 @@
 # Comunidade V2 — estado para continuidade
 
-Branch: codex/comunidade-v2, worktree dedicado C:\Users\gabsc\.codex\worktrees\comunidade-v2\interprete-area-de-membros.
-Checkpoint documental: 191c8f1 — correção de rumo e transferência de OPS-01 para backlog.
-Checkpoint de implementação da Etapa 02: 1d71ef1, enviado a origin/codex/comunidade-v2.
-Etapa ativa: 02 — Navegação e Explorar.
-Estado: implementação da etapa concluída no código e validada por gates locais; permanece IN PROGRESS até validar runtime autenticado com dados reais de QA. Não declarar persistência/autorização fim a fim a partir de build ou testes unitários.
+- **Branch:** `codex/comunidade-v2`
+- **Worktree:** `C:\Users\gabsc\.codex\worktrees\comunidade-v2\interprete-area-de-membros`
+- **Candidato atual:** `6329c70` (`feat(comunidade): concluir diretório de grupos da etapa 02`), enviado a `origin/codex/comunidade-v2`.
+- **Etapa ativa:** 02 — Navegação e Explorar.
+- **Estado:** `IN PROGRESS`. Código, gates locais e deployments Preview estão validados; faltam sessão QA autenticada e comparação visual do candidato com os boards. A prova autenticada 18/18 anterior às últimas mudanças não vale como aceite desta versão.
 
-## Entregue no código
+## Implementado
 
-- Cinco destinos da Comunidade, navegação desktop e seletor móvel; Explorar com busca, grupo, tipo e ordenação refletidos na URL e paginação por cursor.
-- Origem e retorno seguros entre feed, detalhe e edição; rotas canônicas para grupos e publicações próprias.
-- CommunityBookmark real integrado à listagem global de Salvos, com busca, filtro, paginação e remoção autorizada.
-- Encontros e Gravações conectados aos serviços existentes, incluindo estado de inscrição, janela de entrada e miniatura autorizada da gravação.
-- Estados vazios/erro e layouts responsivos para os boards da matriz Etapa 02. Nenhum schema/migration, dado fake de produto ou fixture persistente foi adicionado.
+- Cinco destinos da Comunidade, navegação responsiva e seletor móvel.
+- Explorar conectado às consultas reais, com busca, filtros, URL preservada, paginação por cursor e retorno contextual.
+- Salvos da Comunidade integrado à listagem global de Salvos.
+- Wrappers de Encontros e Gravações sobre a infraestrutura existente.
+- Diretório real de grupos, com Meus grupos e descoberta pública, busca, filtros e paginação.
+- Estados vazios e de erro; ajustes de layout da comparação anterior. Sem migration, dados falsos de produto ou funcionalidades de etapas posteriores.
 
-## Evidência local
+## Evidências do candidato
 
-- bun run check, bun run typecheck, bun run boundaries, bun run test e bun run performance:check passaram.
-- A suíte do app passou com 782 testes; as suítes API, domínio e guards também passaram.
-- Build direto de apps/app passou com SKIP_ENV_VALIDATION=true e URL local http://localhost:3000.
-- Bundle inicial de Comunidade: 210,8 KiB gzip, limite 225 KiB.
-- Boards consultados: 02, 03, 03b, 08, 09, 11, 19, 32, 33, 35, 37, 38, 43 e 50.
-- graphify update . foi tentado, mas o binário não está instalado e graphify-out/graph.json não existe neste worktree.
+- `bun run check`: passou, 978 arquivos.
+- `bun run typecheck`: passou, 16/16.
+- `bun run boundaries`: passou, 906 arquivos.
+- Testes direcionados de grupos: 2 arquivos, 5 testes aprovados.
+- `bun run build`, com ambiente Preview recuperado para `codex/comunidade-v2`: passou. O build também executou a suíte da aplicação (787 testes em 162 arquivos), além de API (9 testes) e domínio de membros (24 testes).
+- `bun run performance:check`: passou; bundle da Comunidade 213,7 KiB gzip, limite 225 KiB.
+- App Preview e API Preview: `READY`, ambos no commit `6329c7088c21ee9fd6b061589d2ad7ad227867a2`.
+- `graphify-out/` foi preservado; `biome.jsonc` exclui os artefatos gerados do check de formatação.
+- Os arquivos locais `apps/app/.env.local` e `apps/api/.env.local`, usados para o build Preview, continuam ignorados e fora do Git. A limpeza desses dois arquivos foi bloqueada pela política do ambiente; seus valores não foram exibidos nem registrados.
 
-## Bloqueio real restante
+## QA visual e runtime
 
-O worktree não contém configuração local de Clerk, Supabase ou PostgreSQL. Nenhuma credencial foi copiada e nenhum Preview/Production foi acessado. Ainda faltam jornadas no navegador autenticado com dados reais: feed e filtros, paginação, retorno, Salvos entre Comunidade/global, e Encontros/Gravações, incluindo autorização e persistência após reload. Manter Etapa 02 IN PROGRESS até essa evidência; OPS-01 não bloqueia esta etapa.
+- O Preview App protegido foi acessado pelo OIDC da branch e redirecionou para `/sign-in`. O contexto Playwright usado estava sem sessão autenticada; os envs recuperados não continham senha QA.
+- Não redefini senha, criei usuário ou alterei dados. Nenhuma ação de escrita foi executada.
+- Os boards relevantes foram identificados (09, 11, 19, 20, 32, 33, 35, 37, 38, 43, 44 e 50), mas screenshots autenticadas do candidato não foram capturadas nem comparadas.
+- Persistência, autorização e jornadas de navegação após login continuam sem prova nesta versão.
 
-## Próximas 3 ações
+## Próximo passo
 
-1. Configurar um runtime Preview/QA autenticado e autorizado para a branch, preservando Clerk/Supabase e os limites de dados existentes.
-2. Percorrer as jornadas acima no desktop, tablet e mobile, capturar screenshots dos boards e registrar resultados de autorização/persistência.
-3. Corrigir achados, repetir os gates e só então promover a Etapa 02 a aceita; não iniciar trabalho de Etapa 03 antes desse aceite.
+Usar uma sessão/credencial existente da identidade Clerk QA em meio seguro e repetir, em modo somente leitura, as capturas e comparações dos boards em desktop, tablet e mobile. Corrigir somente diferenças comprovadas, repetir os gates afetados e atualizar este estado. Manter Etapa 02 `IN PROGRESS` até essa evidência; OPS-01 não bloqueia esta validação.
 
 ## Preservar
 
-Manter os commits 191c8f1 e 1d71ef1, os dados existentes, o cron GREEN, Vercel SSO, credenciais, Preview/Production e o checkout original sem alterações. OPS-01 permanece backlog independente para recuperação periódica, Broadcast/badge e preflight de release.
+O checkout original permanece intocado. Manter `graphify-out/` no worktree sem incluí-lo no commit. Não executar escrita no GREEN nem avançar para etapas posteriores antes do aceite da Etapa 02.

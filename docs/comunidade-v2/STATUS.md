@@ -1,9 +1,21 @@
 # Comunidade V2 — status da auditoria
 
-**Estado:** Estágio 00 concluído; Estágio 01 ACEITA PARA AVANÇO COM PENDÊNCIAS. Etapa 02 — Navegação e Explorar implementada no código do worktree; check, typecheck, boundaries, testes, build e orçamento de bundle passaram localmente. Runtime autenticado e persistência com dados reais ainda não foram validados nesta sessão, então a etapa permanece IN PROGRESS. A recuperação periódica Preview e Broadcast/badge seguem no OPS-01 e não bloqueiam Etapa 02. O cron GREEN, dados de produção e esquema não foram alterados.
-**Atualizado:** 2026-10-15 — correção de rumo, transferência de OPS-01 e execução local da Etapa 02.
-**Branch e base:** `codex/comunidade-v2`, a partir de `origin/main` em `b6028a37a358c0ff1d45d19297c5454318c799a3`; branch remota publicada.
-**Próximo passo:** concluir o checkpoint de código e evidências da Etapa 02 na branch codex/comunidade-v2. Antes de marcar aceite, executar as jornadas autenticadas de leitura, filtros, paginação, Salvos e Encontros com os dados reais do Preview; OPS-01 não é dependência dessas jornadas.
+**Estado atual:** Estágio 00 concluído; Estágio 01 ACEITA PARA AVANÇO COM PENDÊNCIAS. Etapa 02 permanece `IN PROGRESS`: commit funcional, gates locais e deployments Preview estão validados, mas falta QA autenticado e comparação visual desta versão com os boards. OPS-01 não bloqueia Etapa 02. Não houve escrita no GREEN nem alteração de Production nesta retomada.
+**Atualizado:** 2026-10-19 — commit candidato `6329c70` em `codex/comunidade-v2`.
+**Branch e candidato:** `codex/comunidade-v2`, `6329c7088c21ee9fd6b061589d2ad7ad227867a2`, enviado a `origin/codex/comunidade-v2`.
+**Próximo passo:** concluir as capturas autenticadas somente de leitura e comparação de boards em desktop/tablet/mobile com uma sessão existente da identidade Clerk QA. Não avançar para Etapa 03 antes desse aceite.
+
+## Retomada da Etapa 02 — evidências de 2026-10-19
+
+- Diretório de grupos concluído com consultas reais, separação Meus grupos/Descobrir grupos públicos, busca, filtros e paginação; commit funcional `6329c70`.
+- `bun run check` passou (978 arquivos); `bun run typecheck` (16/16); `bun run boundaries` (906 arquivos); testes direcionados de grupos (2 arquivos, 5 testes).
+- `bun run build` passou usando o ambiente Preview da branch. O build executou 787 testes da aplicação em 162 arquivos, mais 9 testes de API e 24 de domínio de membros.
+- `bun run performance:check` passou: bundle Comunidade 213,7 KiB gzip, orçamento 225 KiB.
+- Deployments App Preview e API Preview estão `READY` no mesmo SHA `6329c7088c21ee9fd6b061589d2ad7ad227867a2`.
+- O acesso protegido ao App Preview funcionou via OIDC e chegou ao formulário `/sign-in`, que requer senha. O contexto Playwright usado estava sem sessão autenticada; os envs recuperados não continham senha QA. Nenhuma senha foi redefinida, usuário criado ou ação de escrita executada.
+- Boards relevantes identificados: 09, 11, 19, 20, 32, 33, 35, 37, 38, 43, 44 e 50. Não foram capturadas nem comparadas screenshots autenticadas do candidato. Layout real após hidratação, overflow, estado dos dados e jornadas autenticadas permanecem sem validação nesta retomada.
+- `graphify-out/` foi mantido intacto e fora do commit; `biome.jsonc` exclui os artefatos gerados da formatação.
+- `apps/app/.env.local` e `apps/api/.env.local` foram usados para o build Preview, permanecem ignorados e fora do Git. A limpeza desses arquivos foi bloqueada pela política do ambiente; nenhum valor foi exibido ou registrado.
 
 ## Escopo e integridade
 
