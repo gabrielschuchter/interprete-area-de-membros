@@ -2,11 +2,11 @@
 
 - **Branch:** `codex/comunidade-v2`
 - **Worktree:** `C:\Users\gabsc\.codex\worktrees\comunidade-v2\interprete-area-de-membros`
-- **Candidato funcional:** `a1d87b0` (`fix(comunidade): alinhar grupos mobile e filtros`), enviado a `origin/codex/comunidade-v2`.
-- **Preview App:** deployment sem cache `6PuY9Ej6wXsCwZX82etnW8b7D2x7` ficou `Ready` no SHA exato `a1d87b0`; o alias autenticado é `interprete-area-de-membro-git-553be9-gabrielschuchters-projects.vercel.app`.
-- **Etapa 02:** gates locais e QA autenticado de leitura concluídos para Explorar (390/820/1280 CSS px), seletor mobile, Grupos, Salvos, Encontros e Gravações. O layout foi comparado aos boards após hidratação. A etapa permanece `IN PROGRESS` porque não ocorreu erro natural no Preview; nenhum erro foi fabricado.
+- **Candidato de código:** `ecc1dcaf67d3a0fd8275606ede564da994395230` (`fix(comunidade): alinhar estados vazios e de erro`), enviado a `origin/codex/comunidade-v2`.
+- **Preview App:** registro de deployment `7199735169` (ambiente App Preview) ficou `success` no SHA exato `ecc1dca`; o App concluiu e a API foi `Skipped - Not affected`. O alias autenticado é `interprete-area-de-membro-git-553be9-gabrielschuchters-projects.vercel.app`.
+- **Etapa 02:** gates locais e QA autenticado de leitura foram concluídos no candidato atual para Explorar em 390/820/1280 CSS px, seletor mobile, Grupos, Salvos, Encontros e Gravações. As telas hidratadas foram comparadas aos boards 09, 11, 35, 37, 38, 43, 44 e 50. A etapa permanece `IN PROGRESS` porque não ocorreu erro natural no Preview; nenhuma falha foi injetada.
 - **Segurança:** nenhuma escrita no GREEN, fixture, migration, alteração de Production ou mudança no checkout original. Nenhum segredo foi exibido.
-- **Próximo passo:** comprovar o estado de erro por um cenário Preview isolado e somente de leitura; concluir a Etapa 02 antes de iniciar a Etapa 03. OPS-01 e etapas futuras permanecem fora do escopo.
+- **Próximo passo:** obter prova visual do estado de erro por ocorrência natural ou mecanismo isolado e não mutável no Preview. Até essa evidência, manter a Etapa 02 `IN PROGRESS` e não iniciar a Etapa 03. OPS-01 e etapas futuras permanecem fora do escopo.
 
 ## Implementado
 
@@ -52,6 +52,17 @@
 - Próxima unidade prevista no plano: Etapa 03 — Rascunhos e publicações, quando autorizada. OPS-01 continua sendo dependência apenas das jornadas e do release que a exigem.
 
 O checkout original `C:\Users\gabsc\Documents\Codex\interprete-area-de-membros` permanece intocado.
+
+## Candidato atual `ecc1dca` — 20/10/2026
+
+- O registro GitHub de deployment App Preview `7199735169` ficou `success` para o SHA exato `ecc1dcaf67d3a0fd8275606ede564da994395230`; o App concluiu, a API foi `Skipped - Not affected` e o alias autenticado serviu a aplicação da branch.
+- Após hidratação, Explorar foi capturado em 390, 820 e 1280 CSS px. O documento mediu 375, 805 e 1265 px, respectivamente, sem overflow horizontal. O seletor mobile exibiu os cinco destinos.
+- Comparações autenticadas de leitura: boards 09/35/37 (Explorar), 38 (seletor), 11 (busca sem resultados), 43 (Salvos), 44 (Grupos) e 50 (Encontros/Gravações). O GREEN exibiu Meus grupos vazio, um grupo público com dois membros, um salvo, nenhum encontro futuro e nenhuma gravação. Nenhuma fixture ou ação de escrita foi usada.
+- O ajuste atual da busca vazia corresponde ao card centralizado do board 11, com termo na mensagem e ação para limpar filtros. Os boundaries de erro foram ajustados e têm testes focados; erro real não ocorreu naturalmente no Preview. Os boards de erro 11/33 foram consultados como referência, mas a captura de runtime de erro segue pendente.
+- Gates do candidato: `bun run check` 980 arquivos; `bun run typecheck` 16/16 pacotes; `bun run boundaries` 908 arquivos; testes focados 5/5; `bun run build` 8/8 tarefas, App 793 testes/164 arquivos, API 9/3 arquivos e domínio 24/5 arquivos; `bun run performance:check` 213,8 KiB gzip / orçamento 225 KiB. Ambiente Preview foi verificado sem imprimir valores, sem marcador BLUE e com seeds desabilitadas.
+- `graphify update .` concluiu com 7.834 nós, 20.366 arestas e 340 comunidades; 67 arquivos SQL foram ignorados por ausência do extrator `tree_sitter_sql`. `graphify-out/` foi confirmado como ignorado pelo Git e preservado; nenhum artefato gerado foi adicionado nem houve refatoração do tooling.
+- O QA foi somente leitura. Não houve escrita no GREEN, migration, mudança em Production ou alteração do checkout original. O `performance:check` mede orçamento de bundle, não LCP/INP/CLS ou percentis.
+- Estado de encerramento: implementação, gates locais, deployment e comparações de estados de dados estão comprovados; a Etapa 02 permanece `IN PROGRESS` até existir captura autenticada do erro em runtime. Próxima ação recomendada: registrar essa ocorrência sem fabricar dados nem afetar o GREEN.
 
 ## Fechamento visual do candidato `a1d87b0` — 20/10/2026
 
