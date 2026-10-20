@@ -2,22 +2,22 @@
 
 - **Branch:** `codex/comunidade-v2`
 - **Worktree:** `C:\Users\gabsc\.codex\worktrees\comunidade-v2\interprete-area-de-membros`
-- **Implementação da Etapa 03:** commit `b5dbe4a8fc44da40a4372b7c092996f9e53b3025` (`feat(comunidade): completar ciclo de publicacoes`) enviado a `origin/codex/comunidade-v2`.
-- **Preview App/API:** ambos os deployments ficaram `success` no SHA exato `b5dbe4a8fc44da40a4372b7c092996f9e53b3025` (App `9FLijbgQQx1ggAM9fYKV24s37MmJ`; API `4JSEMKXp2yX4nRPRoPRC4D4adaTx`). Alias estável: `interprete-area-de-membro-git-553be9-gabrielschuchters-projects.vercel.app`.
+- **Implementação desta retomada:** commit `551673e2a9aa8abc92577cd2c0ac5aa3da09b310` enviado a `origin/codex/comunidade-v2`, sobre a base `b5dbe4a`.
+- **Preview:** no SHA `551673e2a9aa8abc92577cd2c0ac5aa3da09b310`, API `7P8CkYJg6jcAGro7tmygMZJP1mgz` concluiu `success`; App `5msZxJzJwjmNASnCBR8CRzKbQJUW` continua `pending` no último status consultado. Alias estável: `interprete-area-de-membro-git-553be9-gabrielschuchters-projects.vercel.app`.
 - **Etapa 02:** `ACEITA PARA AVANÇO`. Gates locais e QA visual autenticado dos estados reais foram concluídos no candidato `ecc1dca`; a captura autenticada do estado de erro em runtime continua pendente no QA integrado. Essa evidência complementar não bloqueia a Etapa 03 e não significa QA integral concluído.
-- **Segurança:** nenhuma escrita no GREEN, fixture, migration, alteração de Production ou mudança no checkout original. Nenhum segredo foi exibido.
+- **Segurança:** migration aplicada apenas ao Postgres local QA isolado. Nenhuma migration remota, fixture ou mutação no GREEN, alteração de Production ou mudança no checkout original. Credenciais e `storageState` permanecem locais, protegidos e ignorados pelo Git.
 - **Pendência integrada:** a captura autenticada do estado de erro em runtime segue aberta para o QA integrado. Não fabricar falhas nem bloquear a etapa atual por essa captura.
-- **Etapa 03:** `IN PROGRESS` em `codex/comunidade-v2`. Não criar fixtures nem executar mutações de QA no GREEN compartilhado; migrations, se necessárias, serão preparadas e validadas somente em banco local isolado.
-- **Autenticação e smoke do Preview:** sessão Clerk já autenticada no perfil Edge autorizado foi reutilizada no alias estável. Acesso anônimo redirecionou separadamente para Vercel SSO (`/sso-api`). A rota `/comunidade/novo` carregou autenticada; a verificação desktop foi somente de leitura e a aba voltou a `/comunidade`. Nenhum rascunho foi criado. O CLI Vercel desta worktree não está autenticado; nenhuma credencial/cookie foi extraída.
+- **Etapa 03:** permanece `IN PROGRESS` até gates de release e integração remota. O ciclo local de publicação, recuperação administrativa, persistência e concorrência foi validado sem escrita no GREEN.
+- **Autenticação QA:** testes usam `@clerk/testing` com as identidades Clerk Development existentes e `storageState` local reutilizado. Proteção Vercel e sessão Clerk são verificadas separadamente; não houve extração de senha/cookie nem alteração de credenciais Production.
 
 ## Etapa 03 — checkpoint atual
 
-- Editor novo sem escrita ao abrir; primeira edição cria uma linha canônica com chave de criação estável. Autosave serializado, idempotente por chave/versão, com tentativas de rede, estados de falha e resolução explícita de conflito entre abas.
-- `Minhas publicações` filtra Publicadas, Rascunhos e Arquivadas; salvar/editar/publicar mantém uma publicação. Fixação única por escopo é serializada no banco. Exclusão preserva o status e pode ser recuperada por staff por 30 dias.
-- Nenhuma migration foi necessária; não existe Postgres local isolado disponível. Banco local apontado pelo ambiente é externo, então não foi usado para escrita. Sem fixtures ou mutações de QA no GREEN.
-- Boards HTML 04/16b/17/18 não estão no workspace; fidelidade visual ainda precisa de comparação com os artefatos originais quando acessíveis. O smoke não comprova persistência/publicação remota, jornadas de edição/arquivo/restauração, responsividade mobile nem captura do estado de erro.
-- Gates locais passaram em 2026-10-20: check, typecheck (16/16), boundaries, testes (807 App, 9 API, 24 domínio), build e performance. Comunidade: 213,8 KiB gzip de 225 KiB.
-- **Próximo passo:** validar persistência e concorrência em banco local isolado quando disponível, e comparar desktop/mobile com os boards originais quando acessíveis. Manter Etapa 03 `IN PROGRESS` até evidências correspondentes.
+- Editor sem linha vazia ao abrir; primeira edição cria uma publicação canônica. Autosave serializado e idempotente cobre estados de rede, retries e conflitos de edição entre abas.
+- `Minhas publicações` inclui Publicadas, Rascunhos e Arquivadas; publicar/editar mantém a mesma publicação. Fixação única é aplicada por escopo; exclusão lógica preserva histórico e staff pode recuperar por 30 dias.
+- Migration `20261020190000_community_publication_ux` validada apenas em Postgres local QA isolado. E2E autenticado: 5/5, cobrindo salvar/recarregar, publicar, editar, arquivar, excluir/desfazer e recuperação de staff/autor. Sem mutation de QA no GREEN.
+- Comparação das capturas desktop/mobile com boards 16b, 17, 41b e 42: editor e lista de publicações; os estados de upload/erro de capa e de saída pendente ainda não têm captura autenticada no Preview.
+- Gates em 2026-10-20: `check` (1.001 arquivos), `typecheck` (16/16), `boundaries` (929 arquivos), `test` (811 App, 9 API, 24 domínio; 32 infra, 1 harness aposentado), build serializado (8/8) e `performance:check` (Comunidade 213,9 KiB gzip / 225 KiB).
+- **Próximo passo:** aguardar o status final do App Preview e validar a jornada integrada após uma migration autorizada em ambiente isolado; manter a Etapa 03 `IN PROGRESS` até esses gates.
 
 ## Implementado
 
@@ -55,7 +55,9 @@
 - Não foram copiados cookies, tokens ou credenciais entre origens. Nenhuma tentativa de login com senha/OTP, acesso a GREEN ou mutação foi realizada nesta atualização.
 - Portanto, as comparações autenticadas registradas acima continuam válidas somente para `04aeebb`; não comprovam a aparência/runtime do SHA `f04a7bb`. O estado da página de login não é evidência da tela Comunidade nem foi comparado aos boards.
 
-## Limites comprovados e próxima etapa
+## Limites registrados antes da retomada da Etapa 03
+
+Este snapshot descreve o corte anterior; o estado operacional atual está no topo deste documento.
 
 - A medição de `performance:check` comprova o orçamento de JavaScript da rota. Percentis de navegação, LCP, INP e CLS não foram medidos neste gate e não são reivindicados.
 - As capturas do candidato `f04a7bb` registradas na atualização abaixo não comprovam o SHA atual. A conclusão visual da etapa exige autenticação QA no host 5072ee1 e novas capturas hidratadas em 390 e 820 px, incluindo o seletor mobile e rotas Salvos, Grupos, Encontros e Gravações.

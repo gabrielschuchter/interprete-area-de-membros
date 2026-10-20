@@ -1,12 +1,13 @@
 # Comunidade V2 — status da auditoria
 
 **Estado atual:** Etapa 02 `ACEITA PARA AVANÇO`; isso não declara QA integral concluído. A captura autenticada do estado de erro em runtime permanece pendente para o QA integrado e não bloqueia a Etapa 03. Etapa 03 `IN PROGRESS` na branch `codex/comunidade-v2`.
-**Atualizado:** 2026-10-20 — Etapa 03 implementada no commit `b5dbe4a8fc44da40a4372b7c092996f9e53b3025` e enviada à branch.
-**Branch e Preview:** `codex/comunidade-v2`; deployments App (`9FLijbgQQx1ggAM9fYKV24s37MmJ`) e API (`4JSEMKXp2yX4nRPRoPRC4D4adaTx`) `success` no mesmo SHA `b5dbe4a8fc44da40a4372b7c092996f9e53b3025`.
-**QA de autenticação:** sessão Clerk do perfil Edge autorizado foi reutilizada no alias estável. Acesso anônimo redirecionou separadamente ao SSO Vercel. Smoke desktop autenticado e somente de leitura abriu `/comunidade/novo`; não houve rascunho ou outra mutação. A aba foi restaurada para `/comunidade`. Vercel CLI sem sessão na worktree; não houve extração de cookies/senhas.
-**Gates locais:** `check`, `typecheck` (16/16), `boundaries`, `test` (807 App, 9 API, 24 domínio), `build` e `performance:check` passaram; Comunidade em 213,8 KiB gzip / 225 KiB.
-**Limites atuais da Etapa 03:** não há Postgres local isolado. O ambiente local aponta a banco externo e não recebeu escrita; não houve fixture ou mutação no GREEN nem migration remota. Boards HTML 04/16b/17/18 não estão no workspace. Persistência/publicação end-to-end, edição/arquivo/restauração, mobile e fidelidade visual seguem sem prova.
-**Próximo passo:** validar persistência e conflitos em banco local isolado quando disponível e comparar desktop/mobile com os boards originais quando acessíveis. OPS-01 e Etapas 04–12 continuam fora do escopo.
+**Atualizado:** 2026-10-20 — commit `551673e2a9aa8abc92577cd2c0ac5aa3da09b310` enviado; jornada local da Etapa 03, autenticação e comparação visual revalidadas.
+**Preview:** no SHA `551673e2a9aa8abc92577cd2c0ac5aa3da09b310`, API `7P8CkYJg6jcAGro7tmygMZJP1mgz` concluiu `success`; App `5msZxJzJwjmNASnCBR8CRzKbQJUW` continua `pending` no último status consultado. Alias estável preservado.
+**QA de autenticação:** `@clerk/testing` com identidades QA Clerk Development existentes e `storageState` local protegido reutilizado; proteção Vercel e sessão Clerk tratadas separadamente. Nenhuma senha/cookie foi extraída e nenhuma credencial de Production foi alterada.
+**Gates locais:** `check` (1.001 arquivos), `typecheck` (16/16), `boundaries` (929 arquivos), `test` (811 App, 9 API, 24 domínio; 32 infra, 1 harness aposentado), build serializado (8/8) e `performance:check` passaram. Bundle Comunidade: 213,9 KiB gzip / 225 KiB.
+**Etapa 03:** editor/autosave idempotente, filtros de publicações, pin único, exclusão lógica e recuperação em 30 dias validados no Postgres local QA isolado; migration local `20261020190000_community_publication_ux`. E2E autenticado passou 5/5. Boards 16b/17/41b/42 comparados com capturas locais desktop/mobile.
+**Limites:** sem migration remota ou escrita no GREEN. Estados de upload/erro de capa e saída pendente não foram capturados em Preview; QA integrado de erro real da Etapa 02 continua aberto e não bloqueante. Percentis LCP/INP/CLS não foram medidos.
+**Próximo passo:** aguardar o status final do App Preview; validar a jornada integrada após migration autorizada em ambiente isolado, sem mutações no GREEN. OPS-01 e Etapas 04–12 continuam fora do escopo.
 
 ## Retomada da Etapa 02 — evidências de 2026-10-19
 
