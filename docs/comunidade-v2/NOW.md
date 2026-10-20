@@ -3,21 +3,22 @@
 - **Branch:** `codex/comunidade-v2`
 - **Worktree:** `C:\Users\gabsc\.codex\worktrees\comunidade-v2\interprete-area-de-membros`
 - **Implementação desta retomada:** commit `551673e2a9aa8abc92577cd2c0ac5aa3da09b310` enviado a `origin/codex/comunidade-v2`, sobre a base `b5dbe4a`.
-- **Preview:** no SHA `551673e2a9aa8abc92577cd2c0ac5aa3da09b310`, API `7P8CkYJg6jcAGro7tmygMZJP1mgz` concluiu `success`; App `5msZxJzJwjmNASnCBR8CRzKbQJUW` continua `pending` no último status consultado. Alias estável: `interprete-area-de-membro-git-553be9-gabrielschuchters-projects.vercel.app`.
+- **Preview:** App `5msZxJzJwjmNASnCBR8CRzKbQJUW` e API `7P8CkYJg6jcAGro7tmygMZJP1mgz` concluíram `success` no SHA de código `551673e2a9aa8abc92577cd2c0ac5aa3da09b310`. O commit documental anterior `9b8ad22bb4b2346ccbc6d5ee3d92490a5579662c` também teve App `HTmALT2aAuE8hymQXL5WU5qeU1zL` e API `4x8ur5jsAUE7pCwQQE1rvCAZfw2G` `success`. Alias estável: `interprete-area-de-membro-git-553be9-gabrielschuchters-projects.vercel.app`.
 - **Etapa 02:** `ACEITA PARA AVANÇO`. Gates locais e QA visual autenticado dos estados reais foram concluídos no candidato `ecc1dca`; a captura autenticada do estado de erro em runtime continua pendente no QA integrado. Essa evidência complementar não bloqueia a Etapa 03 e não significa QA integral concluído.
 - **Segurança:** migration aplicada apenas ao Postgres local QA isolado. Nenhuma migration remota, fixture ou mutação no GREEN, alteração de Production ou mudança no checkout original. Credenciais e `storageState` permanecem locais, protegidos e ignorados pelo Git.
 - **Pendência integrada:** a captura autenticada do estado de erro em runtime segue aberta para o QA integrado. Não fabricar falhas nem bloquear a etapa atual por essa captura.
-- **Etapa 03:** permanece `IN PROGRESS` até gates de release e integração remota. O ciclo local de publicação, recuperação administrativa, persistência e concorrência foi validado sem escrita no GREEN.
-- **Autenticação QA:** testes usam `@clerk/testing` com as identidades Clerk Development existentes e `storageState` local reutilizado. Proteção Vercel e sessão Clerk são verificadas separadamente; não houve extração de senha/cookie nem alteração de credenciais Production.
+- **Etapa 03:** permanece `IN PROGRESS` até gates de release e integração remota. O ciclo local de publicação, edição, arquivamento, exclusão lógica e recuperação administrativa foi validado sem escrita no GREEN. A fixação única tem lock transacional e índices únicos no banco; a corrida concorrente não foi comprovada por E2E nesta retomada.
+- **Autenticação QA:** testes locais usam `@clerk/testing` com identidades Clerk Development existentes e `storageState` protegido reutilizado. No Preview, a sessão QA já aberta no Edge autorizado acessou o alias estável; a página autenticada identificou a conta QA. Não houve extração de senha/cookie nem alteração de credenciais Production.
 
 ## Etapa 03 — checkpoint atual
 
 - Editor sem linha vazia ao abrir; primeira edição cria uma publicação canônica. Autosave serializado e idempotente cobre estados de rede, retries e conflitos de edição entre abas.
 - `Minhas publicações` inclui Publicadas, Rascunhos e Arquivadas; publicar/editar mantém a mesma publicação. Fixação única é aplicada por escopo; exclusão lógica preserva histórico e staff pode recuperar por 30 dias.
-- Migration `20261020190000_community_publication_ux` validada apenas em Postgres local QA isolado. E2E autenticado: 5/5, cobrindo salvar/recarregar, publicar, editar, arquivar, excluir/desfazer e recuperação de staff/autor. Sem mutation de QA no GREEN.
-- Comparação das capturas desktop/mobile com boards 16b, 17, 41b e 42: editor e lista de publicações; os estados de upload/erro de capa e de saída pendente ainda não têm captura autenticada no Preview.
+- Migration `20261020190000_community_publication_ux` validada apenas em Postgres local QA isolado. E2E autenticado anterior: 5/5, cobrindo salvar/recarregar, publicar, editar, arquivar, excluir/desfazer e recuperação de staff/autor. A tentativa complementar de corrida de pin parou durante a criação dos posts por rate limit local `community.post.create` (5 por janela de 10 min); o limite não foi limpo nem reiniciado. Sem mutation de QA no GREEN.
+- Vitest focado do composer passou 9/9, incluindo progresso, autosave da URL/texto alternativo da capa e falha de rede sem salvar URL vazia. O upload usa transporte simulado; não prova gravação real no Storage.
+- Comparação das capturas desktop/mobile com boards 16b, 17, 41b e 42: editor e lista de publicações. No Preview autenticado, entrar no editor pelo botão e sair sem digitar deixou as contagens iguais (1 publicada, 1 rascunho, 0 arquivadas); nenhuma gravação foi executada. Upload/erro de capa e diálogo de saída com alterações ainda não têm captura no Preview.
 - Gates em 2026-10-20: `check` (1.001 arquivos), `typecheck` (16/16), `boundaries` (929 arquivos), `test` (811 App, 9 API, 24 domínio; 32 infra, 1 harness aposentado), build serializado (8/8) e `performance:check` (Comunidade 213,9 KiB gzip / 225 KiB).
-- **Próximo passo:** aguardar o status final do App Preview e validar a jornada integrada após uma migration autorizada em ambiente isolado; manter a Etapa 03 `IN PROGRESS` até esses gates.
+- **Próximo passo:** em ambiente local isolado com schema compatível, validar a corrida concorrente de pin após a janela natural do rate limit e comprovar upload no Storage isolado; manter a Etapa 03 `IN PROGRESS` até esses gates. Nenhuma migration remota foi aplicada nesta execução.
 
 ## Implementado
 
