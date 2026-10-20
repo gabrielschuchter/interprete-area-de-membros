@@ -120,7 +120,11 @@ const CommunityFeedContent = async ({
   return (
     <div data-route-content-ready="community">
       {feed.posts.length === 0 ? (
-        <CommunityEmptyState hasFilters={hasDiscoveryFilters} sort={sort} />
+        <CommunityEmptyState
+          hasFilters={hasDiscoveryFilters}
+          query={filters.q}
+          sort={sort}
+        />
       ) : (
         <Stagger className="community-feed-list">
           {feed.posts.map((post) => (
