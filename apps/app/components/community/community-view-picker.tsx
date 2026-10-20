@@ -49,7 +49,7 @@ const CommunityViewPicker = ({
         </button>
       </DrawerTrigger>
       <DrawerContent className="community-view-sheet">
-        <DrawerHeader className="community-view-sheet__header">
+        <DrawerHeader className="community-view-sheet__header !flex-row !text-left">
           <DrawerTitle>Comunidade</DrawerTitle>
           <DrawerClose asChild>
             <button

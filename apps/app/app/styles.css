@@ -1001,8 +1001,8 @@
 
   .community-composer {
     overflow: hidden;
-    background: color-mix(in srgb, var(--surface-paper) 96%, transparent);
-    border: 1px solid var(--border-subtle);
+    background: var(--brand-dark-amaranth);
+    border: 1px solid var(--brand-dark-amaranth);
     box-shadow: var(--shadow-paper);
   }
 
@@ -1029,17 +1029,21 @@
   }
 
   .community-composer__prompt {
+    color: var(--primary-foreground);
     transition:
       background-color var(--motion-duration-fast) var(--motion-ease-out),
       color var(--motion-duration-fast) var(--motion-ease-out);
   }
 
   .community-composer__prompt:hover {
-    background: color-mix(
-      in srgb,
-      var(--brand-classic-crimson) 5%,
-      transparent
-    );
+    background: color-mix(in srgb, var(--brand-dark-amaranth) 88%, black);
+  }
+
+  .community-composer__prompt .text-muted-foreground,
+  .community-composer__prompt > svg,
+  .community-composer__prompt:hover .text-muted-foreground,
+  .community-composer__prompt:hover > svg {
+    color: var(--primary-foreground);
   }
 
   .community-post-card {
@@ -1067,7 +1071,7 @@
     padding-left: clamp(0.85rem, 2vw, 1.5rem);
     background: color-mix(
       in srgb,
-      var(--brand-classic-crimson) 4%,
+      var(--brand-classic-crimson) 8%,
       transparent
     );
     box-shadow: inset 2px 0 0
@@ -1845,8 +1849,8 @@
     grid-area: composer;
     min-height: 64px;
     overflow: visible;
-    background: var(--surface-paper);
-    border: 1px solid var(--line-soft);
+    background: var(--brand-dark-amaranth);
+    border: 1px solid var(--brand-dark-amaranth);
     border-radius: 8px;
     box-shadow: none;
   }
@@ -1864,7 +1868,7 @@
   }
 
   .community-composer__prompt:hover {
-    background: color-mix(in srgb, var(--brand-dark-amaranth) 4%, white);
+    background: color-mix(in srgb, var(--brand-dark-amaranth) 88%, black);
   }
 
   .community-feed-area {

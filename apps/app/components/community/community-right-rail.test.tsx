@@ -104,7 +104,7 @@ describe("CommunityRightRail", () => {
     expect(screen.getByText("Nenhum grupo publicado ainda.")).toBeTruthy();
   });
 
-  test("keeps mobile context disclosures independent and accessible", () => {
+  test("opens approved community guidance by default and keeps notices independent", () => {
     render(
       <CommunityRightRail
         announcements={[]}
@@ -119,11 +119,13 @@ describe("CommunityRightRail", () => {
     });
     const noticesDisclosure = screen.getByRole("button", { name: "Avisos" });
 
-    expect(aboutDisclosure.getAttribute("aria-expanded")).toBe("false");
-    expect(noticesDisclosure.getAttribute("aria-expanded")).toBe("false");
-    fireEvent.click(aboutDisclosure);
     expect(aboutDisclosure.getAttribute("aria-expanded")).toBe("true");
     expect(noticesDisclosure.getAttribute("aria-expanded")).toBe("false");
+    fireEvent.click(aboutDisclosure);
+    expect(aboutDisclosure.getAttribute("aria-expanded")).toBe("false");
+    expect(noticesDisclosure.getAttribute("aria-expanded")).toBe("false");
+    expect(screen.getByText("Respeite quem pensa diferente.")).toBeTruthy();
+    expect(screen.getByText("Como participar")).toBeTruthy();
   });
 
   test("does not turn an unsafe notice URL into a navigable link", () => {

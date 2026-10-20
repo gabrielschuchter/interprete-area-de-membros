@@ -895,12 +895,17 @@ export const getSavedCommunityPosts = async (
     readonly cursor?: string;
     readonly kind?: CommunityPostKind;
     readonly query?: string;
+    readonly sort?: CommunityFeedOptions["sort"];
+    readonly spaceSlug?: string;
     readonly take?: number;
   } = {}
 ) => {
   const role = await getMemberRole(memberId);
+  const canModeratePrivateGroups =
+    role === MemberRole.ADMIN || role === MemberRole.TEACHER;
   const pageSize = options.take ?? 100;
   const query = options.query?.trim().slice(0, 100) ?? "";
+  const sort = normalizeCommunitySort(options.sort);
   const authorIds = await findMatchingCommunityAuthorIds(query);
   const where: Prisma.CommunityBookmarkWhereInput = {
     memberId,
@@ -908,11 +913,25 @@ export const getSavedCommunityPosts = async (
       is: {
         status: ContentStatus.PUBLISHED,
         deletedAt: null,
-        ...communityPostAudienceWhere(
-          memberId,
-          role === MemberRole.ADMIN || role === MemberRole.TEACHER
-        ),
+        ...communityPostAudienceWhere(memberId, canModeratePrivateGroups),
         ...(options.kind ? { kind: options.kind } : {}),
+        ...(sort === "unanswered"
+          ? { comments: { none: { deletedAt: null } } }
+          : {}),
+        ...(options.spaceSlug
+          ? {
+              space: {
+                is: {
+                  slug: options.spaceSlug,
+                  status: ContentStatus.PUBLISHED,
+                  ...communitySpaceAudienceWhere(
+                    memberId,
+                    canModeratePrivateGroups
+                  ),
+                },
+              },
+            }
+          : {}),
         ...(query
           ? {
               OR: [
@@ -930,31 +949,24 @@ export const getSavedCommunityPosts = async (
   const [bookmarks, totalCount] = await Promise.all([
     database.communityBookmark.findMany({
       where,
-      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      orderBy:
+        sort === "popular"
+          ? [
+              { post: { isFeatured: "desc" } },
+              { post: { isPinned: "desc" } },
+              { post: { votes: { _count: "desc" } } },
+              { post: { comments: { _count: "desc" } } },
+              { post: { publishedAt: "desc" } },
+              { post: { createdAt: "desc" } },
+              { id: "asc" },
+            ]
+          : [{ createdAt: "desc" }, { id: "desc" }],
       ...(options.cursor ? { cursor: { id: options.cursor }, skip: 1 } : {}),
       take: pageSize + 1,
       select: {
         id: true,
         createdAt: true,
-        post: {
-          select: {
-            id: true,
-            kind: true,
-            title: true,
-            subtitle: true,
-            slug: true,
-            excerpt: true,
-            tags: true,
-            coverUrl: true,
-            publishedAt: true,
-            createdAt: true,
-            authorId: true,
-            space: { select: { title: true, slug: true } },
-            _count: {
-              select: { comments: { where: { deletedAt: null } }, votes: true },
-            },
-          },
-        },
+        post: { select: communityFeedSelect(memberId) },
       },
     }),
     database.communityBookmark.count({ where }),
@@ -962,7 +974,10 @@ export const getSavedCommunityPosts = async (
   const visibleBookmarks = bookmarks.slice(0, pageSize);
   const posts = visibleBookmarks.map(({ createdAt: savedAt, post }) => ({
     ...post,
+    coverUrl: normalizeCommunityCoverUrl(post.coverUrl),
     excerpt: post.excerpt ?? "",
+    media: extractCommunityMedia(post.contentJson),
+    readingMinutes: readingMinutes(post.excerpt ?? ""),
     savedAt,
   }));
   return {

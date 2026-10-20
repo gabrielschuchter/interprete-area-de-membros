@@ -78,18 +78,28 @@ export const communitySavedHref = ({
   cursor,
   kind,
   query,
+  sort = "recent",
+  spaceSlug,
 }: {
   readonly cursor?: string;
   readonly kind?: CommunityKind;
   readonly query?: string;
-}) => {
+  readonly sort?: CommunitySort;
+  readonly spaceSlug?: string;
+} = {}) => {
   const params = new URLSearchParams();
   const normalizedQuery = query?.trim();
   if (normalizedQuery) {
     params.set("q", normalizedQuery.slice(0, 100));
   }
+  if (spaceSlug) {
+    params.set("space", spaceSlug);
+  }
   if (kind) {
     params.set("tipo", kind);
+  }
+  if (sort !== "recent") {
+    params.set("sort", sort);
   }
   if (cursor) {
     params.set("cursor", cursor);

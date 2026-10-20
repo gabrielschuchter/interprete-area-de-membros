@@ -1,29 +1,119 @@
-import { Badge } from "@repo/design-system/components/ui/badge";
 import { Button } from "@repo/design-system/components/ui/button";
-import { ArrowRightIcon, BookmarkIcon, SearchIcon } from "lucide-react";
-import Link from "next/link";
-import { CommunityNavigation } from "@/components/community/community-navigation";
-import { MemberIdentity } from "@/components/community/member-identity";
 import {
-  SingleFlightForm,
-  SingleFlightSubmit,
-} from "@/components/mutations/single-flight-form";
-import { communityPostHref, getSavedCommunityPosts } from "@/lib/community";
+  ArrowRightIcon,
+  BookmarkIcon,
+  ExternalLinkIcon,
+  SearchIcon,
+} from "lucide-react";
+import Link from "next/link";
+import { CommunityFeedCard } from "@/components/community/community-feed-card";
+import { CommunityNavigation } from "@/components/community/community-navigation";
+import { getCommunitySpaces, getSavedCommunityPosts } from "@/lib/community";
 import {
   COMMUNITY_KIND_OPTIONS,
+  COMMUNITY_SORT_OPTIONS,
   communitySavedHref,
   parseCommunityKind,
+  parseCommunitySort,
 } from "@/lib/community-query";
 import { requireMemberId } from "@/lib/learning";
-import { toggleBookmark } from "../actions";
 
 interface SavedCommunityPageProperties {
   readonly searchParams: Promise<{
     readonly cursor?: string;
     readonly q?: string;
+    readonly sort?: string;
+    readonly space?: string;
     readonly tipo?: string;
   }>;
 }
+
+interface SavedCommunityFiltersProperties {
+  readonly kind: (typeof COMMUNITY_KIND_OPTIONS)[number]["value"] | undefined;
+  readonly query: string;
+  readonly sort: (typeof COMMUNITY_SORT_OPTIONS)[number]["value"];
+  readonly spaceSlug: string | undefined;
+  readonly spaces: readonly { readonly slug: string; readonly title: string }[];
+}
+
+const SavedCommunityFilters = ({
+  kind,
+  query,
+  sort,
+  spaceSlug,
+  spaces,
+}: SavedCommunityFiltersProperties) => (
+  <form
+    className="grid gap-3 md:grid-cols-[minmax(0,1fr)_170px_145px_140px_auto]"
+    method="get"
+  >
+    <label className="relative min-w-0">
+      <span className="sr-only">Buscar nos salvos da comunidade</span>
+      <SearchIcon
+        aria-hidden="true"
+        className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+      />
+      <input
+        aria-label="Buscar nos salvos da comunidade"
+        className="h-11 w-full border bg-background pr-3 pl-10 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        defaultValue={query}
+        name="q"
+        placeholder="Buscar na comunidade"
+        type="search"
+      />
+    </label>
+    <label>
+      <span className="sr-only">Filtrar salvos por grupo</span>
+      <select
+        aria-label="Filtrar salvos por grupo"
+        className="h-11 w-full border bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        defaultValue={spaceSlug ?? ""}
+        name="space"
+      >
+        <option value="">Todos os grupos</option>
+        {spaces.map((space) => (
+          <option key={space.slug} value={space.slug}>
+            {space.title}
+          </option>
+        ))}
+      </select>
+    </label>
+    <label>
+      <span className="sr-only">Filtrar salvos por tipo</span>
+      <select
+        aria-label="Filtrar salvos por tipo"
+        className="h-11 w-full border bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        defaultValue={kind ?? ""}
+        name="tipo"
+      >
+        <option value="">Tudo</option>
+        {COMMUNITY_KIND_OPTIONS.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </label>
+    <label>
+      <span className="sr-only">Ordenar salvos</span>
+      <select
+        aria-label="Ordenar salvos"
+        className="h-11 w-full border bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        defaultValue={sort}
+        name="sort"
+      >
+        {COMMUNITY_SORT_OPTIONS.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </label>
+    <Button className="h-11" type="submit" variant="outline">
+      Buscar
+    </Button>
+  </form>
+);
 
 const SavedCommunityPage = async ({
   searchParams,
@@ -32,163 +122,92 @@ const SavedCommunityPage = async ({
     requireMemberId(),
     searchParams,
   ]);
+  const spaces = await getCommunitySpaces(memberId);
+  const requestedSpaceSlug = filters.space?.trim().slice(0, 100);
+  const spaceSlug = spaces.some((space) => space.slug === requestedSpaceSlug)
+    ? requestedSpaceSlug
+    : undefined;
   const query = filters.q?.trim().slice(0, 100) ?? "";
   const kind = parseCommunityKind(filters.tipo);
+  const sort = parseCommunitySort(filters.sort);
   const saved = await getSavedCommunityPosts(memberId, {
     cursor: filters.cursor,
     kind,
     query,
+    sort,
+    spaceSlug,
     take: 10,
   });
-  const posts = saved.posts;
   const nextHref = saved.nextCursor
     ? communitySavedHref({
         cursor: saved.nextCursor,
         kind,
         query,
+        sort,
+        spaceSlug,
       })
     : null;
   const returnTo = communitySavedHref({
     cursor: filters.cursor,
     kind,
     query,
+    sort,
+    spaceSlug,
   });
+  const savedFilters = (
+    <SavedCommunityFilters
+      kind={kind}
+      query={query}
+      sort={sort}
+      spaceSlug={spaceSlug}
+      spaces={spaces}
+    />
+  );
 
   return (
     <main className="mx-auto min-h-svh w-full max-w-[1120px] px-5 py-8 sm:px-8 lg:px-12 lg:py-10">
       <CommunityNavigation active="saved" />
-      <header className="mt-7 flex flex-col gap-5 border-border border-b pb-5 sm:flex-row sm:items-end sm:justify-between">
+      <header className="mt-7 flex flex-col gap-4 border-border border-b pb-5 sm:flex-row sm:items-end sm:justify-between">
         <div className="max-w-3xl">
-          <p className="brand-eyebrow">Comunidade</p>
-          <h1 className="mt-3 font-display text-4xl leading-none sm:text-5xl">
-            Salvos
+          <h1 className="sr-only font-display text-4xl leading-none sm:text-5xl md:not-sr-only">
+            Salvos da comunidade
           </h1>
-          <p className="mt-3 text-muted-foreground leading-7">
-            Publicações que você guardou ficam aqui.
+          <p className="mt-3 hidden text-muted-foreground leading-7 md:block">
+            O que você guardou aqui, sem sair da Comunidade.
           </p>
         </div>
-        <Button asChild className="min-h-11 shrink-0" variant="outline">
+        <Button
+          asChild
+          className="min-h-11 w-full shrink-0 justify-start sm:w-auto"
+          variant="outline"
+        >
           <Link href="/salvos">
-            Ver salvos de toda a plataforma{" "}
-            <ArrowRightIcon aria-hidden="true" />
+            <BookmarkIcon aria-hidden="true" />
+            Ver salvos de toda a plataforma
+            <ExternalLinkIcon aria-hidden="true" className="ml-auto" />
           </Link>
         </Button>
       </header>
 
+      <details className="mt-4 border-b pb-3 md:hidden">
+        <summary className="cursor-pointer py-2 font-medium text-sm">
+          Buscar e filtrar
+        </summary>
+        <div className="pt-3">{savedFilters}</div>
+      </details>
       <search
         aria-label="Buscar publicações salvas"
-        className="mt-6 border-b pb-5"
+        className="mt-6 hidden border-b pb-5 md:block"
       >
-        <form
-          className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_220px_auto]"
-          method="get"
-        >
-          <label className="relative min-w-0">
-            <span className="sr-only">Buscar nos salvos da comunidade</span>
-            <SearchIcon
-              aria-hidden="true"
-              className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
-            />
-            <input
-              aria-label="Buscar nos salvos da comunidade"
-              className="h-11 w-full border bg-background pr-3 pl-10 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              defaultValue={query}
-              name="q"
-              placeholder="Buscar publicações salvas"
-              type="search"
-            />
-          </label>
-          <label>
-            <span className="sr-only">Filtrar salvos por tipo</span>
-            <select
-              aria-label="Filtrar salvos por tipo"
-              className="h-11 w-full border bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              defaultValue={kind ?? ""}
-              name="tipo"
-            >
-              <option value="">Tudo</option>
-              {COMMUNITY_KIND_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <Button className="h-11" type="submit" variant="outline">
-            Buscar
-          </Button>
-        </form>
+        {savedFilters}
       </search>
 
-      <p
-        aria-live="polite"
-        className="mt-4 text-right font-data text-muted-foreground text-xs uppercase tracking-[.08em]"
-      >
-        {saved.totalCount}{" "}
-        {saved.totalCount === 1 ? "ITEM SALVO" : "ITENS SALVOS"}
-      </p>
-
-      {posts.length > 0 ? (
-        <section aria-label="Publicações salvas" className="mt-8">
-          <ul className="divide-y border-border border-y">
-            {posts.map((post) => (
+      {saved.posts.length > 0 ? (
+        <section aria-label="Publicações salvas" className="mt-5">
+          <ul className="grid gap-4">
+            {saved.posts.map((post) => (
               <li key={post.id}>
-                <article className="py-6">
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2 text-muted-foreground text-xs">
-                        <MemberIdentity
-                          authorId={post.authorId}
-                          compact
-                          profile={post.profile ?? undefined}
-                          showHeadline={false}
-                        />
-                        <span>·</span>
-                        <span>{post.space?.title ?? "Feed geral"}</span>
-                        <span>·</span>
-                        <span>{post._count.comments} respostas</span>
-                      </div>
-                      <h2 className="mt-4 font-display text-2xl">
-                        <Link
-                          className="hover:text-brand-structural"
-                          href={communityPostHref(post, returnTo)}
-                        >
-                          {post.title}
-                        </Link>
-                      </h2>
-                      <p className="mt-2 line-clamp-2 text-muted-foreground leading-7">
-                        {post.subtitle ?? post.excerpt}
-                      </p>
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {post.tags.map((tag) => (
-                          <Badge key={tag} variant="outline">
-                            #{tag}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                    <SingleFlightForm
-                      action={toggleBookmark}
-                      className="shrink-0"
-                    >
-                      <input name="postId" type="hidden" value={post.id} />
-                      <input
-                        name="spaceSlug"
-                        type="hidden"
-                        value={post.space?.slug ?? ""}
-                      />
-                      <input name="desired" type="hidden" value="off" />
-                      <SingleFlightSubmit
-                        pendingLabel="Salvando…"
-                        size="sm"
-                        variant="ghost"
-                      >
-                        <BookmarkIcon aria-hidden="true" fill="currentColor" />
-                        Remover
-                      </SingleFlightSubmit>
-                    </SingleFlightForm>
-                  </div>
-                </article>
+                <CommunityFeedCard post={post} returnTo={returnTo} />
               </li>
             ))}
           </ul>
@@ -200,7 +219,7 @@ const SavedCommunityPage = async ({
             className="size-6 text-brand-action-text"
           />
           <h2 className="mt-5 font-display text-3xl">
-            {query || kind
+            {query || kind || spaceSlug
               ? "Nenhuma publicação corresponde aos filtros."
               : "Você ainda não salvou publicações."}
           </h2>
@@ -216,7 +235,7 @@ const SavedCommunityPage = async ({
         <div className="mt-8 flex justify-center">
           <Button asChild variant="outline">
             <Link href={nextHref}>
-              Carregar mais publicações <ArrowRightIcon aria-hidden="true" />
+              Carregar mais salvos <ArrowRightIcon aria-hidden="true" />
             </Link>
           </Button>
         </div>

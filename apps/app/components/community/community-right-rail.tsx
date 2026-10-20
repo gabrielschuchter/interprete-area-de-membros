@@ -74,6 +74,7 @@ export const CommunityRightRail = ({
   <aside aria-label="Contexto da comunidade" className="community-right-rail">
     <CommunityDisclosure
       className="community-rail__context--about"
+      defaultExpanded
       label="Sobre a comunidade"
     >
       <section
@@ -87,6 +88,22 @@ export const CommunityRightRail = ({
           Um espaço para trocar perguntas, casos e referências sobre
           interpretação.
         </p>
+        <div className="mt-4">
+          <h3 className="font-medium text-sm">Regras</h3>
+          <ul className="mt-2 list-disc space-y-1 pl-4 text-muted-foreground text-sm leading-6">
+            <li>Respeite quem pensa diferente.</li>
+            <li>Cite a fonte ao compartilhar uma evidência.</li>
+            <li>Pergunte com contexto: conte o que você já tentou.</li>
+          </ul>
+        </div>
+        <div className="mt-4">
+          <h3 className="font-medium text-sm">Como participar</h3>
+          <ul className="mt-2 list-disc space-y-1 pl-4 text-muted-foreground text-sm leading-6">
+            <li>Faça uma pergunta ou compartilhe um artigo.</li>
+            <li>Responda com uma leitura, uma dúvida ou uma referência.</li>
+            <li>Entre em um grupo de estudo.</li>
+          </ul>
+        </div>
       </section>
     </CommunityDisclosure>
 

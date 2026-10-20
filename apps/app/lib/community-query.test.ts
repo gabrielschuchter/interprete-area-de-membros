@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 import {
   communityHref,
   communityReturnLabel,
+  communitySavedHref,
   parseCommunityKind,
   parseCommunityReturnTo,
   parseCommunitySort,
@@ -34,6 +35,21 @@ describe("community query state", () => {
   test("omits the default state for a clean explore URL", () => {
     expect(communityHref()).toBe("/comunidade");
     expect(communityHref({ sort: "recent", page: 1 })).toBe("/comunidade");
+  });
+
+  test("preserves saved community filters and cursor in a stable URL", () => {
+    expect(
+      communitySavedHref({
+        cursor: "cursor_1",
+        kind: "QUESTION",
+        query: "  método clínico  ",
+        sort: "popular",
+        spaceSlug: "pratica-clinica",
+      })
+    ).toBe(
+      "/comunidade/salvos?q=m%C3%A9todo+cl%C3%ADnico&space=pratica-clinica&tipo=QUESTION&sort=popular&cursor=cursor_1"
+    );
+    expect(communitySavedHref()).toBe("/comunidade/salvos");
   });
 
   test("allows only internal return locations and labels their destination", () => {
