@@ -1,9 +1,9 @@
 # Comunidade V2 — status da auditoria
 
-**Estado atual:** Estágio 00 concluído; Estágio 01 ACEITA PARA AVANÇO COM PENDÊNCIAS. Etapa 02 permanece `IN PROGRESS`: commit funcional, gates locais e deployments Preview estão validados, mas falta QA autenticado e comparação visual desta versão com os boards. OPS-01 não bloqueia Etapa 02. Não houve escrita no GREEN nem alteração de Production nesta retomada.
-**Atualizado:** 2026-10-19 — commit candidato `6329c70` em `codex/comunidade-v2`.
-**Branch e candidato:** `codex/comunidade-v2`, `6329c7088c21ee9fd6b061589d2ad7ad227867a2`, enviado a `origin/codex/comunidade-v2`.
-**Próximo passo:** concluir as capturas autenticadas somente de leitura e comparação de boards em desktop/tablet/mobile com uma sessão existente da identidade Clerk QA. Não avançar para Etapa 03 antes desse aceite.
+**Estado atual:** Estágio 00 concluído; Estágio 01 ACEITA PARA AVANÇO COM PENDÊNCIAS; Etapa 02 concluída no candidato `04aeebb`. A fase 7 da Comunidade continua `IN PROGRESS`. OPS-01 não bloqueia Etapa 02. QA Preview autenticado permaneceu somente de leitura; sem escrita no GREEN ou alteração de Production.
+**Atualizado:** 2026-10-20 — candidato `04aeebb` em `codex/comunidade-v2`.
+**Branch e candidato:** `codex/comunidade-v2`, `04aeebbce800ce9036938c0fae3bbd82af8de224`, enviado a `origin/codex/comunidade-v2`.
+**Próximo passo:** Etapa 03 — Rascunhos e publicações, conforme o plano, quando autorizada. Manter OPS-01 e a validação integral da fase 7 como trilhas separadas.
 
 ## Retomada da Etapa 02 — evidências de 2026-10-19
 
@@ -206,9 +206,9 @@ O primeiro teste de login com freeze retornou 503 no Server Action interno Clerk
 - O status permanece `IN PROGRESS`; não houve claim de job nem escrita nova no GREEN. Os deployments Production `Ready` do commit `90aa250` permanecem o efeito automático já descrito; sem alterações de produto ou schema.
 - A documentação oficial diz que `schedule` pode atrasar ou ter execuções descartadas sob carga. Fonte: [eventos que acionam workflows](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows).
 
-### Etapa 02 — validação do candidato `3705bfd`, 20/10/2026
+### Etapa 02 — validação anterior à correção tablet (`3705bfd`), 20/10/2026
 
-**Estado:** `IN PROGRESS`. O código candidato está commitado, enviado e implantado em Preview. A versão autenticada foi verificada em leitura após hidratação nas rotas centrais. A prova visual ainda não cobre o código atual em tablet/mobile nem a abertura do seletor mobile; portanto esta etapa não recebe aceite final.
+**Estado naquele corte:** `IN PROGRESS`; substituído pela validação final do candidato `04aeebb` registrada abaixo. O código daquele candidato estava commitado, enviado e implantado em Preview. A versão autenticada foi verificada em leitura após hidratação nas rotas centrais, antes da captura final responsiva.
 
 - Commit de código `3705bfd86517f390ba3ee83a44d9e3b0674d8d38` (`fix(comunidade): alinhar seletor mobile ao board 38`), branch `codex/comunidade-v2`. O painel Vercel confirmou App `Ready` no deployment `22o9mBgbCu2TX1BSEAgUQTNbDGsA`; GitHub confirmou App e API concluídos, incluindo API deployment `B34QC9x1n7TGLCCVsCMV53Bb53yh`.
 - Clerk QA existente autenticou no host exclusivo do candidato, `interprete-area-de-membros-pkok25g17-gabrielschuchters-projects.vercel.app`, com dados GREEN reais e navegação somente leitura.
@@ -220,4 +220,20 @@ O primeiro teste de login com freeze retornou 503 no Server Action interno Clerk
 - QA não acionou salvar/remover, apoiar, publicar, entrar/criar grupo nem qualquer outra escrita no GREEN.
 - Gates do código candidato: `check` 978 arquivos; `typecheck` 16/16; `boundaries` 906; teste focado 3/3; `build` 8/8 tarefas (App 787 testes/162 arquivos, API 9, domínio 24); `performance:check` 213,8 KiB gzip / orçamento 225 KiB; Biome e `git diff --check` passaram. O build consumiu `.env.local` Preview já configurado; presença de `NEXT_PUBLIC_APP_URL` e ausência de BLUE foram verificadas sem imprimir valores. `graphify update .` concluiu; `/graphify-out/` segue ignorado e preservado.
 
-**Próxima etapa recomendada:** concluir capturas hidratadas do SHA candidato em tablet e mobile com larguras verificáveis, incluindo abertura do seletor corrigido, e comparar esses estados com os boards. Se um erro não acontecer naturalmente, registrar a ausência sem fabricar dados. Manter `IN PROGRESS` até essa prova.
+**Próxima etapa recomendada naquele corte:** concluir capturas hidratadas do SHA candidato em tablet/mobile, incluindo abertura do seletor. Essa prova foi concluída e está registrada na validação final abaixo; este corte histórico foi supersedido.
+
+### Etapa 02 — validação final do candidato `04aeebb`, 20/10/2026
+
+**Estado:** Etapa 02 `DONE`. A fase 7 — Comunidade permanece `IN PROGRESS`; nenhuma etapa posterior foi implementada.
+
+- A branch `codex/comunidade-v2` aponta para `04aeebbce800ce9036938c0fae3bbd82af8de224`. O painel Vercel confirmou App Preview `Ready`, deployment `EHM6eGsA2ibP12kTSkjdKpjY9jbh`, com o mesmo SHA e host `interprete-area-de-membros-2g8t98vdq-gabrielschuchters-projects.vercel.app`.
+- Clerk QA existente abriu o host exato do candidato. Explorar e os destinos mobile foram capturados após hidratação; a sessão usou dados GREEN existentes e permaneceu somente de leitura.
+- A matriz `320, 360, 390, 768, 820, 1024, 1280, 1440` foi medida. `documentElement.scrollWidth` foi, respectivamente, `309, 345, 375, 753, 805, 1009, 1265, 1425` px, sem overflow horizontal.
+- Em 820 px, a capa mede 725 px; o feed termina em y=2131 e “Ativo agora” começa em y=2147. A lateral fica abaixo do feed, como pede o board 35. Em 1280 e 1440 px, a lateral fica ao lado do feed; capas/feed medem 609 e 769 px, e cinco destinos aparecem na navegação.
+- A 390 px, o board 37 foi comparado com Explorar hidratado; o board 38 com o seletor aberto e as cinco opções visíveis; o board 43 com Salvos e o atalho global; o board 44 com Meus grupos vazio e descoberta do grupo público existente; e o board 50 com os estados reais de Encontros/Gravações. Também foram comparados o layout desktop ao board 09 e o tablet ao board 35. Contagens/conteúdo são os dados presentes no GREEN, não fixtures.
+- Salvos mostrou um item existente. O grupo público `Nerds da Bioestatística` mostrou dois membros. Encontros mostrou zero próximos e anteriores; Gravações mostrou zero itens e o aviso de acesso controlado. Nenhuma ação de escrita foi executada.
+- Skeletons transitórios foram aguardados até os estados finais. Nenhum erro ocorreu naturalmente; nenhum erro ou dado foi fabricado para a captura.
+- Gates do SHA: `bun run check` passou em 978 arquivos; `typecheck` em 16/16; `boundaries` em 906; teste focado de navegação em 3/3; build em 8/8 tarefas, incluindo App 787 testes/162 arquivos, API 9 e domínio 24; `performance:check` em 213,8 KiB gzip/225 KiB. Ambiente Preview local foi conferido sem imprimir segredos e sem marcador BLUE.
+- `graphify update .` concluiu. `graphify-out/` segue ignorado por `.gitignore` e preservado fora do Git; nenhum artefato gerado foi descartado ou commitado.
+- O gate `performance:check` comprova o orçamento de JavaScript. Percentis de navegação, LCP, INP e CLS não foram medidos nem são reivindicados. O estado de erro também não teve ocorrência natural no Preview.
+- Não houve migration, alteração de Production, mudança de cron/OIDC/SSO, escrita no GREEN ou alteração do checkout original. A próxima unidade prevista é Etapa 03 — Rascunhos e publicações, quando autorizada; OPS-01 permanece separada.
