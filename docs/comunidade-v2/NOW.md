@@ -2,10 +2,10 @@
 
 - **Branch:** `codex/comunidade-v2`
 - **Worktree:** `C:\Users\gabsc\.codex\worktrees\comunidade-v2\interprete-area-de-membros`
-- **Candidato de código:** `f04a7bb6c1034883c5870258598934238d4886bb` (`fix(comunidade): alinhar tablet e seletor mobile`), enviado a `origin/codex/comunidade-v2`.
-- **Preview App:** `Ready`, deployment `DbGqXYbem8TMmi2aURj3cqjQUWEy`, commit `f04a7bb`; host `https://interprete-area-de-membros-7vui07hsh-gabrielschuchters-projects.vercel.app`.
-- **Etapa 02 — Navegação e Explorar:** implementação concluída; validação visual autenticada do candidato `f04a7bb` ainda pendente. As capturas anteriores autenticadas pertencem a `04aeebb`, antes do ajuste CSS final. A fase 7 da Comunidade continua `IN PROGRESS`; as próximas etapas e OPS-01 permanecem separadas.
-- **Segurança:** o host `f04a7bb` solicita novo login Clerk e a sessão QA existente no host anterior não foi reutilizada. Nenhuma escrita no GREEN, alteração de Production ou mudança no checkout original.
+- **Candidato de código:** 5072ee15d5b9058693cb6c422da0a058034cf48e (fix(comunidade): alinhar salvos e detalhes visuais), enviado a origin/codex/comunidade-v2.
+- **Preview App:** Ready, deployment B4uZvEmKgxVZADX8J7ubfCrwnTGb, SHA exato 5072ee15d5b9058693cb6c422da0a058034cf48e; host https://interprete-area-de-membros-pdi4dteli-gabrielschuchters-projects.vercel.app.
+- **Etapa 02 — Navegação e Explorar:** implementação e gates locais concluídos; validação visual autenticada do SHA atual continua pendente. O candidato f04a7bb foi comparado após hidratação em 390, 820 e 1280 CSS px; as alterações posteriores em Salvos, Composer, lateral e seletor ainda não foram comparadas no host 5072ee1. A fase 7 da Comunidade permanece IN PROGRESS.
+- **Segurança:** no host exato do candidato 5072ee1, /comunidade redireciona ao formulário /sign-in. A sessão QA existente está em outro host Preview e não se aplica a esta origem. Nenhuma senha, OTP, cookie ou token foi transferido ou submetido; nenhuma escrita no GREEN, alteração de Production ou mudança no checkout original ocorreu.
 
 ## Implementado
 
@@ -14,6 +14,7 @@
 - Salvos da Comunidade integrado ao Salvos global; wrappers de Encontros e Gravações sobre os serviços e as autorizações existentes.
 - Diretório real com Meus grupos e descoberta pública, busca, filtros e paginação.
 - Estados vazios e de falha, sem migration ou implementação de funcionalidades de etapas posteriores.
+- O candidato 5072ee1 completa Salvos com cards reais da Comunidade, filtros por grupo/tipo/ordem, atalho global e preservação do contexto. Também alinha Composer, destaque de publicação fixada, conteúdo expandido Sobre/Regras/Como participar e cabeçalho do seletor mobile aos boards.
 
 ## Gates locais do candidato `f04a7bb`
 
@@ -45,8 +46,23 @@
 ## Limites comprovados e próxima etapa
 
 - A medição de `performance:check` comprova o orçamento de JavaScript da rota. Percentis de navegação, LCP, INP e CLS não foram medidos neste gate e não são reivindicados.
-- A etapa não deve ser apresentada como visualmente validada no candidato final `f04a7bb` até obter capturas autenticadas após hidratação em 390 e 820 px, incluindo o seletor mobile e rotas Salvos, Grupos, Encontros e Gravações.
+- As capturas do candidato `f04a7bb` registradas na atualização abaixo não comprovam o SHA atual. A conclusão visual da etapa exige autenticação QA no host 5072ee1 e novas capturas hidratadas em 390 e 820 px, incluindo o seletor mobile e rotas Salvos, Grupos, Encontros e Gravações.
 - Não houve escrita de QA em GREEN, migração, mudança em Production, cron, OIDC ou SSO.
 - Próxima unidade prevista no plano: Etapa 03 — Rascunhos e publicações, quando autorizada. OPS-01 continua sendo dependência apenas das jornadas e do release que a exigem.
 
 O checkout original `C:\Users\gabsc\Documents\Codex\interprete-area-de-membros` permanece intocado.
+
+## Atualização do candidato 5072ee1 — 20/10/2026
+
+- O commit 5072ee15d5b9058693cb6c422da0a058034cf48e foi enviado à branch codex/comunidade-v2. O deployment App B4uZvEmKgxVZADX8J7ubfCrwnTGb concluiu Ready e o painel Vercel mostra a branch e o SHA candidato. O status GitHub do App é success; o deployment API foi Skipped - Not affected.
+- Gates executados para o código deste SHA: bun run check (978 arquivos), bun run typecheck (16 tarefas), bun run boundaries (906 arquivos), bun run test (788 testes do App em 162 arquivos; API 9/3 arquivos; domínio 24/5 arquivos; testes internos 32 aprovados e 1 harness aposentado ignorado), bun run build (8/8 tarefas) e bun run performance:check (Comunidade 213,8 KiB gzip, orçamento 225 KiB). git diff --check passou antes do commit.
+- O ambiente efetivo do worktree foi conferido sem mostrar valores: URLs de App/API e configuração de Preview presentes, variáveis necessárias de build/banco presentes, seeds de desenvolvimento desabilitados e nenhum marcador BLUE. graphify update . concluiu após as edições; os arquivos em graphify-out/ continuam ignorados, preservados e fora do commit.
+- A prova visual autenticada do commit f04a7bb foi feita após hidratação e antes das alterações que compõem 5072ee1. Em 390 px, Explorar carregou dados GREEN, cinco destinos e conteúdo real; em 820 px, uma leitura estabilizada mediu documento de 820 px sem overflow e feed acima do rail em duas colunas; em 1280 px, documento de 1265 px sem overflow, feed/capa de 609 px e rail à direita. Comparações: boards 09, 35, 37 e 38. A presença online real foi preservada conforme o escopo vigente.
+- Na prova f04a7bb, Grupos exibiu Meus grupos vazio e um grupo público real com dois membros; Encontros e Gravações exibiram seus estados vazios reais; Salvos exibiu um item real. Essa captura revelou que Salvos não mostrava o card completo/filtros dos boards 19/43 e que Composer, texto expandido Sobre/Regras/Como participar, contraste da fixada e linha de título/fechar do seletor divergiam dos boards. Essas diferenças foram corrigidas no código 5072ee1; ainda não há screenshot autenticado desse novo código.
+- O host do deployment 5072ee1 foi aberto diretamente em /comunidade após Ready; a sessão de outro host Preview não se aplicou e a página exibiu /sign-in. Os campos de login foram verificados visualmente, mas nenhum formulário foi submetido. Não houve acesso adicional ao GREEN nem escrita de QA.
+- Logo, o código e os gates locais do candidato estão comprovados; a inspeção Vercel confirma SHA e Ready; a fidelidade visual/runtime autenticada do SHA atual não está comprovada. Nenhum estado de erro foi fabricado; percentis de navegação, LCP, INP e CLS não foram medidos.
+- Próximo passo recomendado: concluir QA autenticado e somente de leitura no host do SHA 5072ee1, comparar as telas hidratadas com boards 09, 19, 35, 37, 38, 43 e 50, e então atualizar o estado da Etapa 02. Não avançar a Etapa 03 antes desse aceite. OPS-01 e as etapas futuras permanecem fora do escopo.
+
+### Retificação da observação de login do candidato f04a7bb
+
+A seção histórica de f04a7bb acima registra o primeiro estado daquele host, quando /sign-in ainda era exibido. Em seguida, uma sessão QA existente foi autenticada nesse host e as capturas de 390, 820 e 1280 CSS px descritas na atualização 5072ee1 foram realizadas após hidratação. Isso comprova somente o predecessor f04a7bb; no host novo do SHA 5072ee1, /sign-in continua visível.
