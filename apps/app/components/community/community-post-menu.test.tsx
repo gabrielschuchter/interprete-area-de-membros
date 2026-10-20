@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
+import { togglePostPin } from "@/app/(authenticated)/comunidade/actions";
 import { CommunityPostMenu } from "./community-post-menu";
 
 vi.mock("next/link", () => ({
@@ -65,6 +66,37 @@ describe("CommunityPostMenu", () => {
     expect(
       screen.getByRole("menuitem", { name: "Retirar destaque" })
     ).toBeTruthy();
+  });
+
+  test("keeps the menu open and announces a pin conflict", async () => {
+    vi.mocked(togglePostPin).mockResolvedValue({
+      ok: false,
+      error:
+        "A fixação foi alterada ao mesmo tempo. Atualize e tente novamente.",
+    });
+    render(
+      <CommunityPostMenu
+        canModerate
+        isFeatured={false}
+        isPinned={false}
+        postId="post-1"
+        spaceSlug=""
+      />
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Ações da publicação" })
+    );
+    fireEvent.click(screen.getByRole("menuitem", { name: "Fixar" }));
+
+    expect((await screen.findByRole("alert")).textContent).toContain(
+      "A fixação foi alterada ao mesmo tempo. Atualize e tente novamente."
+    );
+    expect(
+      screen
+        .getByRole("button", { name: "Ações da publicação" })
+        .getAttribute("aria-expanded")
+    ).toBe("true");
   });
 
   test("requires confirmation before deleting a draft without published actions", () => {

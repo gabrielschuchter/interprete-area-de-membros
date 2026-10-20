@@ -1,5 +1,5 @@
 param(
-  [ValidateSet("full", "admin-recovery", "member-recovery")]
+  [ValidateSet("full", "admin-recovery", "admin-pin", "member-recovery")]
   [string]$Suite = "full",
   [string]$RunId
 )
@@ -182,12 +182,16 @@ try {
     if ($Suite -eq "full") {
       bun run community-v2:e2e
     } else {
-      $project = if ($Suite -eq "admin-recovery") {
+      $project = if ($Suite -eq "admin-recovery" -or $Suite -eq "admin-pin") {
         "community-admin-recovery"
       } else {
         "community-member-recovery"
       }
-      bun run community-v2:e2e "--project=$project" --no-deps
+      if ($Suite -eq "admin-pin") {
+        bun run community-v2:e2e "--project=$project" --no-deps --grep="concurrent staff pin requests"
+      } else {
+        bun run community-v2:e2e "--project=$project" --no-deps
+      }
     }
     if ($LASTEXITCODE -ne 0) {
       throw "The Community V2 local Playwright journey failed."

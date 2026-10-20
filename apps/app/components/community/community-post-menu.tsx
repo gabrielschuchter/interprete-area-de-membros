@@ -51,6 +51,7 @@ export function CommunityPostMenu({
 }: CommunityPostMenuProperties) {
   const [open, setOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [pinError, setPinError] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
@@ -60,6 +61,26 @@ export function CommunityPostMenu({
       requestAnimationFrame(() => triggerRef.current?.focus());
     }
   }, []);
+
+  const handlePinResult = useCallback(
+    (result: unknown) => {
+      const actionResult =
+        typeof result === "object" && result !== null
+          ? (result as { readonly error?: unknown; readonly ok?: unknown })
+          : null;
+      if (actionResult?.ok === true) {
+        setPinError(null);
+        close();
+        return;
+      }
+      setPinError(
+        typeof actionResult?.error === "string"
+          ? actionResult.error
+          : "Não foi possível atualizar a fixação. Atualize e tente novamente."
+      );
+    },
+    [close]
+  );
 
   useEffect(() => {
     if (!open) {
@@ -112,7 +133,10 @@ export function CommunityPostMenu({
         aria-haspopup="menu"
         aria-label="Ações da publicação"
         className="community-post-menu__trigger"
-        onClick={() => setOpen((current) => !current)}
+        onClick={() => {
+          setPinError(null);
+          setOpen((current) => !current);
+        }}
         ref={triggerRef}
         size="icon"
         type="button"
@@ -144,7 +168,12 @@ export function CommunityPostMenu({
               <SingleFlightForm
                 action={togglePostPin}
                 className="community-post-menu__form"
-                onSettled={() => close()}
+                onActionError={() =>
+                  setPinError(
+                    "Não foi possível atualizar a fixação. Atualize e tente novamente."
+                  )
+                }
+                onResult={handlePinResult}
               >
                 <input name="postId" type="hidden" value={postId} />
                 <input name="spaceSlug" type="hidden" value={spaceSlug} />
@@ -163,6 +192,11 @@ export function CommunityPostMenu({
                   {isPinned ? "Desafixar" : "Fixar"}
                 </SingleFlightSubmit>
               </SingleFlightForm>
+              {pinError ? (
+                <p className="community-post-menu__feedback" role="alert">
+                  {pinError}
+                </p>
+              ) : null}
               <SingleFlightForm
                 action={togglePostFeatured}
                 className="community-post-menu__form"

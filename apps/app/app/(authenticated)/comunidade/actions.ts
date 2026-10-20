@@ -2064,7 +2064,7 @@ export const togglePostPin = async (formData: FormData) => {
         SELECT pg_advisory_xact_lock(
           hashtext('community-post-pin'),
           hashtext(${scopeKey})
-        )
+        )::text AS lock_acquired
       `;
       if (desired === "on") {
         await transaction.communityPost.updateMany({

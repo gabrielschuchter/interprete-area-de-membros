@@ -2945,6 +2945,13 @@
     display: contents;
   }
 
+  .community-post-menu__feedback {
+    padding: 6px 8px;
+    font-size: 12px;
+    line-height: 1.4;
+    color: #8c1535;
+  }
+
   .community-post-menu__item {
     display: flex;
     gap: 10px;
