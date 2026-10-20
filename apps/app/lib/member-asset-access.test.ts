@@ -23,6 +23,8 @@ import { canReadMemberAssetPath } from "./member-asset-access";
 
 const profilePath = "profile-assets/avatars/member-owner/avatar.webp";
 const communityPath = "community-assets/inline/member-owner/inline.webp";
+const communityCoverPath =
+  "community-assets/covers/member-owner/community-cover.webp";
 const communityAttachmentPath =
   "community-assets/attachments/member-owner/reference.pdf";
 const collectionCoverPath =
@@ -67,6 +69,27 @@ describe("member asset read authorization", () => {
 
     await expect(
       canReadMemberAssetPath(communityPath, "member-reader")
+    ).resolves.toBe(true);
+  });
+
+  test("lets the uploader read their cover before its draft reference is saved", async () => {
+    await expect(
+      canReadMemberAssetPath(communityCoverPath, "member-owner")
+    ).resolves.toBe(true);
+    expect(databaseMock.$queryRaw).not.toHaveBeenCalled();
+  });
+
+  test("keeps an unreferenced community cover private from other members", async () => {
+    await expect(
+      canReadMemberAssetPath(communityCoverPath, "member-reader")
+    ).resolves.toBe(false);
+  });
+
+  test("allows the audience to read a cover referenced by a published post", async () => {
+    databaseMock.$queryRaw.mockResolvedValueOnce([{ id: "cover-post" }]);
+
+    await expect(
+      canReadMemberAssetPath(communityCoverPath, "member-reader")
     ).resolves.toBe(true);
   });
 
