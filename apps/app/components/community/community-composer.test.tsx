@@ -293,6 +293,141 @@ it("saves the cover alternative text with the same draft version", async () => {
   );
 });
 
+it("shows cover upload progress and autosaves its URL and alternative text", async () => {
+  const coverUrl =
+    "/api/member-assets?path=community-assets%2Fcovers%2Fqa-local%2Fcover.webp";
+  let finishUpload: (() => void) | undefined;
+
+  class MockXMLHttpRequest {
+    readonly upload: {
+      onprogress: ((event: ProgressEvent) => void) | null;
+    } = { onprogress: null };
+    onerror: (() => void) | null = null;
+    onload: (() => void) | null = null;
+    responseText = "";
+    status = 200;
+    open = vi.fn();
+    send = vi.fn(() => {
+      this.upload.onprogress?.({
+        lengthComputable: true,
+        loaded: 50,
+        total: 100,
+      } as ProgressEvent);
+      finishUpload = () => {
+        this.responseText = JSON.stringify({ url: coverUrl });
+        this.onload?.();
+      };
+    });
+  }
+
+  class MockURL extends URL {
+    static createObjectURL = vi.fn(() => "blob:community-cover");
+    static revokeObjectURL = vi.fn();
+  }
+
+  vi.stubGlobal("XMLHttpRequest", MockXMLHttpRequest);
+  vi.stubGlobal("URL", MockURL);
+  render(
+    <CommunityComposer
+      backHref="/comunidade/minhas-publicacoes?status=drafts"
+      enableCoverAltText
+      idempotencyKey="00000000-0000-4000-8000-000000000003"
+      initialContent={{ type: "doc", content: [{ type: "paragraph" }] }}
+      initialCoverUrl={null}
+      initialSpaceId={null}
+      initialSpaceSlug={null}
+      initialSubtitle={null}
+      initialTags={[]}
+      initialTitle=""
+      initialUpdatedAt={null}
+      postId={null}
+      spaces={[]}
+      status="DRAFT"
+    />
+  );
+
+  const coverInput =
+    document.querySelector<HTMLInputElement>('input[type="file"]');
+  expect(coverInput).toBeTruthy();
+  fireEvent.change(coverInput as HTMLInputElement, {
+    target: {
+      files: [new File(["local-image"], "cover.webp", { type: "image/webp" })],
+    },
+  });
+  expect(screen.getByRole("progressbar").getAttribute("aria-valuenow")).toBe(
+    "50"
+  );
+
+  await act(async () => {
+    finishUpload?.();
+    await Promise.resolve();
+  });
+  expect(
+    screen.getByRole("img", { name: "Capa: Rascunho sem título" })
+  ).toBeTruthy();
+
+  fireEvent.change(
+    screen.getByRole("textbox", { name: "Texto alternativo da capa" }),
+    { target: { value: "Uma capa de estudo" } }
+  );
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(800);
+  });
+  const submittedForm = actions.updateDraft.mock.calls.at(-1)?.[0] as FormData;
+  expect(submittedForm.get("coverUrl")).toBe(coverUrl);
+  expect(submittedForm.get("coverAltText")).toBe("Uma capa de estudo");
+});
+
+it("reports a cover network failure without saving an empty asset URL", async () => {
+  class FailedXMLHttpRequest {
+    readonly upload = { onprogress: null };
+    onerror: (() => void) | null = null;
+    onload: (() => void) | null = null;
+    responseText = "";
+    status = 0;
+    open = vi.fn();
+    send = vi.fn(() => this.onerror?.());
+  }
+
+  class MockURL extends URL {
+    static createObjectURL = vi.fn(() => "blob:community-cover-failed");
+    static revokeObjectURL = vi.fn();
+  }
+
+  vi.stubGlobal("XMLHttpRequest", FailedXMLHttpRequest);
+  vi.stubGlobal("URL", MockURL);
+  render(
+    <CommunityComposer
+      backHref="/comunidade"
+      idempotencyKey="00000000-0000-4000-8000-000000000004"
+      initialContent={{ type: "doc", content: [{ type: "paragraph" }] }}
+      initialCoverUrl={null}
+      initialSpaceId={null}
+      initialSpaceSlug={null}
+      initialSubtitle={null}
+      initialTags={[]}
+      initialTitle=""
+      initialUpdatedAt={null}
+      postId={null}
+      spaces={[]}
+      status="DRAFT"
+    />
+  );
+
+  const coverInput =
+    document.querySelector<HTMLInputElement>('input[type="file"]');
+  fireEvent.change(coverInput as HTMLInputElement, {
+    target: {
+      files: [new File(["local-image"], "cover.webp", { type: "image/webp" })],
+    },
+  });
+  await act(async () => {
+    await Promise.resolve();
+  });
+  expect(screen.getByRole("alert").textContent).toContain("Falha de conexão.");
+  expect(actions.updateDraft).not.toHaveBeenCalled();
+});
+
 it("offers a safe exit and persists a dirty draft before leaving", async () => {
   render(
     <CommunityComposer
