@@ -1,12 +1,12 @@
 # Comunidade V2 — status da auditoria
 
 **Estado atual:** Etapa 02 `ACEITA PARA AVANÇO`; isso não declara QA integral concluído. A captura autenticada do estado de erro em runtime permanece pendente para o QA integrado e não bloqueia a Etapa 03. Etapa 03 `IN PROGRESS` na branch `codex/comunidade-v2`.
-**Atualizado:** 2026-10-20 — ciclo de rascunho/publicação e recuperação administrativa implementados sobre `CommunityPost`/TipTap; alterações locais aguardam commit/push.
-**Branch e base:** `codex/comunidade-v2`, partindo de `ecc1dcaf67d3a0fd8275606ede564da994395230`.
-**QA de autenticação:** perfil Edge autorizado continuou autenticado no alias estável; requisição anônima redirecionou para o SSO Vercel e a página autenticada carregou via Clerk. Vercel CLI sem sessão na worktree; não houve extração de cookies/senhas.
+**Atualizado:** 2026-10-20 — Etapa 03 implementada no commit `b5dbe4a8fc44da40a4372b7c092996f9e53b3025` e enviada à branch.
+**Branch e Preview:** `codex/comunidade-v2`; deployments App (`9FLijbgQQx1ggAM9fYKV24s37MmJ`) e API (`4JSEMKXp2yX4nRPRoPRC4D4adaTx`) `success` no mesmo SHA `b5dbe4a8fc44da40a4372b7c092996f9e53b3025`.
+**QA de autenticação:** sessão Clerk do perfil Edge autorizado foi reutilizada no alias estável. Acesso anônimo redirecionou separadamente ao SSO Vercel. Smoke desktop autenticado e somente de leitura abriu `/comunidade/novo`; não houve rascunho ou outra mutação. A aba foi restaurada para `/comunidade`. Vercel CLI sem sessão na worktree; não houve extração de cookies/senhas.
 **Gates locais:** `check`, `typecheck` (16/16), `boundaries`, `test` (807 App, 9 API, 24 domínio), `build` e `performance:check` passaram; Comunidade em 213,8 KiB gzip / 225 KiB.
-**Limites atuais da Etapa 03:** não há Postgres local isolado. O ambiente local aponta a banco externo e não recebeu escrita; não houve fixture nem mutação no GREEN e nenhuma migration remota. Boards HTML 04/16b/17/18 não estão no workspace. Persistência end-to-end e fidelidade visual da Etapa 03 seguem sem prova.
-**Próximo passo:** commit/push, confirmar o SHA do Preview e QA autenticado somente de leitura. Não declarar persistência end-to-end ou QA visual completo sem prova separada. OPS-01 e Etapas 04–12 continuam fora do escopo.
+**Limites atuais da Etapa 03:** não há Postgres local isolado. O ambiente local aponta a banco externo e não recebeu escrita; não houve fixture ou mutação no GREEN nem migration remota. Boards HTML 04/16b/17/18 não estão no workspace. Persistência/publicação end-to-end, edição/arquivo/restauração, mobile e fidelidade visual seguem sem prova.
+**Próximo passo:** validar persistência e conflitos em banco local isolado quando disponível e comparar desktop/mobile com os boards originais quando acessíveis. OPS-01 e Etapas 04–12 continuam fora do escopo.
 
 ## Retomada da Etapa 02 — evidências de 2026-10-19
 

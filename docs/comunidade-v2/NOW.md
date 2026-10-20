@@ -2,22 +2,22 @@
 
 - **Branch:** `codex/comunidade-v2`
 - **Worktree:** `C:\Users\gabsc\.codex\worktrees\comunidade-v2\interprete-area-de-membros`
-- **Base da Etapa 03:** `ecc1dcaf67d3a0fd8275606ede564da994395230` (`fix(comunidade): alinhar estados vazios e de erro`), enviado a `origin/codex/comunidade-v2`; implementação atual ainda aguarda commit/push.
-- **Preview App:** registro de deployment `7199735169` (ambiente App Preview) ficou `success` no SHA exato `ecc1dca`; o App concluiu e a API foi `Skipped - Not affected`. O alias autenticado é `interprete-area-de-membro-git-553be9-gabrielschuchters-projects.vercel.app`.
+- **Implementação da Etapa 03:** commit `b5dbe4a8fc44da40a4372b7c092996f9e53b3025` (`feat(comunidade): completar ciclo de publicacoes`) enviado a `origin/codex/comunidade-v2`.
+- **Preview App/API:** ambos os deployments ficaram `success` no SHA exato `b5dbe4a8fc44da40a4372b7c092996f9e53b3025` (App `9FLijbgQQx1ggAM9fYKV24s37MmJ`; API `4JSEMKXp2yX4nRPRoPRC4D4adaTx`). Alias estável: `interprete-area-de-membro-git-553be9-gabrielschuchters-projects.vercel.app`.
 - **Etapa 02:** `ACEITA PARA AVANÇO`. Gates locais e QA visual autenticado dos estados reais foram concluídos no candidato `ecc1dca`; a captura autenticada do estado de erro em runtime continua pendente no QA integrado. Essa evidência complementar não bloqueia a Etapa 03 e não significa QA integral concluído.
 - **Segurança:** nenhuma escrita no GREEN, fixture, migration, alteração de Production ou mudança no checkout original. Nenhum segredo foi exibido.
 - **Pendência integrada:** a captura autenticada do estado de erro em runtime segue aberta para o QA integrado. Não fabricar falhas nem bloquear a etapa atual por essa captura.
 - **Etapa 03:** `IN PROGRESS` em `codex/comunidade-v2`. Não criar fixtures nem executar mutações de QA no GREEN compartilhado; migrations, se necessárias, serão preparadas e validadas somente em banco local isolado.
-- **Autenticação de QA:** sessão Clerk do perfil Edge autorizado reutilizada no alias estável do Preview; requisição anônima redirecionou separadamente para Vercel SSO (`/sso-api`). O CLI Vercel desta worktree não está autenticado. Nenhuma credencial/cookie foi extraída.
+- **Autenticação e smoke do Preview:** sessão Clerk já autenticada no perfil Edge autorizado foi reutilizada no alias estável. Acesso anônimo redirecionou separadamente para Vercel SSO (`/sso-api`). A rota `/comunidade/novo` carregou autenticada; a verificação desktop foi somente de leitura e a aba voltou a `/comunidade`. Nenhum rascunho foi criado. O CLI Vercel desta worktree não está autenticado; nenhuma credencial/cookie foi extraída.
 
 ## Etapa 03 — checkpoint atual
 
 - Editor novo sem escrita ao abrir; primeira edição cria uma linha canônica com chave de criação estável. Autosave serializado, idempotente por chave/versão, com tentativas de rede, estados de falha e resolução explícita de conflito entre abas.
 - `Minhas publicações` filtra Publicadas, Rascunhos e Arquivadas; salvar/editar/publicar mantém uma publicação. Fixação única por escopo é serializada no banco. Exclusão preserva o status e pode ser recuperada por staff por 30 dias.
 - Nenhuma migration foi necessária; não existe Postgres local isolado disponível. Banco local apontado pelo ambiente é externo, então não foi usado para escrita. Sem fixtures ou mutações de QA no GREEN.
-- Boards HTML 04/16b/17/18 não estão no workspace; fidelidade visual ainda precisa de comparação com os artefatos originais quando acessíveis. Nenhuma alegação de persistência remota ou QA visual da Etapa 03.
+- Boards HTML 04/16b/17/18 não estão no workspace; fidelidade visual ainda precisa de comparação com os artefatos originais quando acessíveis. O smoke não comprova persistência/publicação remota, jornadas de edição/arquivo/restauração, responsividade mobile nem captura do estado de erro.
 - Gates locais passaram em 2026-10-20: check, typecheck (16/16), boundaries, testes (807 App, 9 API, 24 domínio), build e performance. Comunidade: 213,8 KiB gzip de 225 KiB.
-- **Próximo passo:** commit/push, confirmar o SHA do novo Preview e fazer QA autenticado somente de leitura. Manter a etapa aberta até evidência isolada de persistência e comparação visual com os boards.
+- **Próximo passo:** validar persistência e concorrência em banco local isolado quando disponível, e comparar desktop/mobile com os boards originais quando acessíveis. Manter Etapa 03 `IN PROGRESS` até evidências correspondentes.
 
 ## Implementado
 
