@@ -1,9 +1,9 @@
 # Comunidade V2 — status da auditoria
 
-**Estado atual:** Estágio 00 concluído; Estágio 01 ACEITA PARA AVANÇO COM PENDÊNCIAS; Etapa 02 concluída no candidato `04aeebb`. A fase 7 da Comunidade continua `IN PROGRESS`. OPS-01 não bloqueia Etapa 02. QA Preview autenticado permaneceu somente de leitura; sem escrita no GREEN ou alteração de Production.
-**Atualizado:** 2026-10-20 — candidato `04aeebb` em `codex/comunidade-v2`.
-**Branch e candidato:** `codex/comunidade-v2`, `04aeebbce800ce9036938c0fae3bbd82af8de224`, enviado a `origin/codex/comunidade-v2`.
-**Próximo passo:** Etapa 03 — Rascunhos e publicações, conforme o plano, quando autorizada. Manter OPS-01 e a validação integral da fase 7 como trilhas separadas.
+**Estado atual:** Estágio 00 concluído; Estágio 01 ACEITA PARA AVANÇO COM PENDÊNCIAS; implementação da Etapa 02 concluída no candidato `f04a7bb`, mas a validação visual autenticada desse último candidato permanece pendente. A prova `DONE` de `04aeebb` abaixo foi supersedida pelo refinamento CSS e não comprova o SHA atual. A fase 7 da Comunidade continua `IN PROGRESS`. QA foi somente de leitura; sem escrita no GREEN ou alteração de Production.
+**Atualizado:** 2026-10-20 — candidato de código `f04a7bb` em `codex/comunidade-v2`.
+**Branch e candidato:** `codex/comunidade-v2`, `f04a7bb6c1034883c5870258598934238d4886bb`, enviado a `origin/codex/comunidade-v2`.
+**Próximo passo:** concluir a comparação visual autenticada do SHA `f04a7bb` após hidratação em 390 e 820 px e nos destinos mobile. Depois disso, registrar aceite da Etapa 02 e iniciar Etapa 03 somente quando autorizada. Manter OPS-01 e a validação integral da fase 7 como trilhas separadas.
 
 ## Retomada da Etapa 02 — evidências de 2026-10-19
 
@@ -237,3 +237,15 @@ O primeiro teste de login com freeze retornou 503 no Server Action interno Clerk
 - `graphify update .` concluiu. `graphify-out/` segue ignorado por `.gitignore` e preservado fora do Git; nenhum artefato gerado foi descartado ou commitado.
 - O gate `performance:check` comprova o orçamento de JavaScript. Percentis de navegação, LCP, INP e CLS não foram medidos nem são reivindicados. O estado de erro também não teve ocorrência natural no Preview.
 - Não houve migration, alteração de Production, mudança de cron/OIDC/SSO, escrita no GREEN ou alteração do checkout original. A próxima unidade prevista é Etapa 03 — Rascunhos e publicações, quando autorizada; OPS-01 permanece separada.
+
+### Etapa 02 — atualização do candidato `f04a7bb`, 20/10/2026
+
+**Estado:** implementação concluída; validação visual autenticada final pendente. Esta atualização substitui a conclusão integral registrada acima para fins do SHA atual.
+
+- A branch aponta para `f04a7bb6c1034883c5870258598934238d4886bb`, `fix(comunidade): alinhar tablet e seletor mobile`. O Vercel confirmou App Preview `Ready`, deployment `DbGqXYbem8TMmi2aURj3cqjQUWEy`, com o SHA exato e host `interprete-area-de-membros-7vui07hsh-gabrielschuchters-projects.vercel.app`. O status GitHub do App foi `success` (`Deployment has completed`); API foi `success` (`Skipped - Not affected`).
+- Mudança de produto após `04aeebb`: somente CSS responsivo. Ajustes: recuo horizontal mobile, cabeçalho do bottom sheet na mesma linha, ícones/linhas mais próximos do board 38 e disposição tablet para presença antes dos filtros e rail abaixo do feed em duas colunas.
+- Gates executados neste SHA: `bun run check` (978 arquivos), `bun run build` (8/8 tarefas; App 787 testes/162 arquivos, API 9, domínio 24) e `bun run performance:check` (213,8 KiB gzip/225 KiB). `git diff --check` passou. `typecheck` 16/16 e `boundaries` 906 foram executados no candidato CSS anterior; não foram repetidos após este ajuste somente CSS.
+- `graphify update .` foi executado após a edição. Os artefatos ignorados em `graphify-out/` permaneceram preservados e fora do commit.
+- A sessão Clerk QA do Preview anterior não foi aceita no host `7vui07hsh`; após carregamento, o host exibe o formulário `/sign-in`. Portanto não há captura autenticada hidratada nem comparação com boards no SHA `f04a7bb`. As evidências visuais 390/820 e dos destinos salvos/grupos/encontros/gravações registradas acima pertencem a `04aeebb`, antes do refinamento.
+- Nenhum cookie/token/credencial foi transferido entre origens, nenhum login foi submetido nesta atualização e nenhuma mutação GREEN, migration, mudança Production, alteração do checkout original ou implementação de etapa futura ocorreu.
+- A comparação visual do layout 390/820 e cinco destinos, bem como o aceite final da Etapa 02 nesse SHA, ficam pendentes. Não houve erro natural no Preview e nenhum foi provocado ou fabricado. `performance:check` não mede percentis, LCP, INP ou CLS.
