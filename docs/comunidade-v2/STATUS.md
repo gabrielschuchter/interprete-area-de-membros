@@ -1,9 +1,9 @@
 # Comunidade V2 — status da auditoria
 
-**Estado atual:** Estágio 00 concluído; Estágio 01 ACEITA PARA AVANÇO COM PENDÊNCIAS; implementação da Etapa 02 concluída no candidato `f04a7bb`, mas a validação visual autenticada desse último candidato permanece pendente. A prova `DONE` de `04aeebb` abaixo foi supersedida pelo refinamento CSS e não comprova o SHA atual. A fase 7 da Comunidade continua `IN PROGRESS`. QA foi somente de leitura; sem escrita no GREEN ou alteração de Production.
-**Atualizado:** 2026-10-20 — candidato de código `f04a7bb` em `codex/comunidade-v2`.
-**Branch e candidato:** `codex/comunidade-v2`, `f04a7bb6c1034883c5870258598934238d4886bb`, enviado a `origin/codex/comunidade-v2`.
-**Próximo passo:** concluir a comparação visual autenticada do SHA `f04a7bb` após hidratação em 390 e 820 px e nos destinos mobile. Depois disso, registrar aceite da Etapa 02 e iniciar Etapa 03 somente quando autorizada. Manter OPS-01 e a validação integral da fase 7 como trilhas separadas.
+**Estado atual:** Estágio 00 concluído; Estágio 01 ACEITA PARA AVANÇO COM PENDÊNCIAS; implementação e gates locais da Etapa 02 concluídos no candidato funcional `a1d87b0`. QA autenticado e somente de leitura comparou telas hidratadas em 390, 820 e 1280 px, além dos destinos mobile. A Etapa 02 permanece `IN PROGRESS` até haver prova visual de erro em runtime; nenhum erro natural ocorreu. A fase 7 da Comunidade continua `IN PROGRESS`.
+**Atualizado:** 2026-10-20 — candidato funcional `a1d87b0`; Preview sem cache `6PuY9Ej6wXsCwZX82etnW8b7D2x7` ficou `Ready` no mesmo SHA.
+**Branch e candidato:** `codex/comunidade-v2`, `a1d87b029aa3c50be091913efef947d5eb1cd53d`, enviado a `origin/codex/comunidade-v2`.
+**Próximo passo:** validar o estado de erro por um cenário isolado e somente de leitura no Preview; depois concluir o aceite da Etapa 02. Não avançar para Etapa 03 antes disso. OPS-01 e a validação integral da fase 7 continuam separadas.
 
 ## Retomada da Etapa 02 — evidências de 2026-10-19
 

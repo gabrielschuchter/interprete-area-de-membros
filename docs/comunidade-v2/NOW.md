@@ -2,10 +2,11 @@
 
 - **Branch:** `codex/comunidade-v2`
 - **Worktree:** `C:\Users\gabsc\.codex\worktrees\comunidade-v2\interprete-area-de-membros`
-- **Candidato de código:** 5072ee15d5b9058693cb6c422da0a058034cf48e (fix(comunidade): alinhar salvos e detalhes visuais), enviado a origin/codex/comunidade-v2.
-- **Preview App:** Ready, deployment B4uZvEmKgxVZADX8J7ubfCrwnTGb, SHA exato 5072ee15d5b9058693cb6c422da0a058034cf48e; host https://interprete-area-de-membros-pdi4dteli-gabrielschuchters-projects.vercel.app.
-- **Etapa 02 — Navegação e Explorar:** implementação e gates locais concluídos; validação visual autenticada do SHA atual continua pendente. O candidato f04a7bb foi comparado após hidratação em 390, 820 e 1280 CSS px; as alterações posteriores em Salvos, Composer, lateral e seletor ainda não foram comparadas no host 5072ee1. A fase 7 da Comunidade permanece IN PROGRESS.
-- **Segurança:** no host exato do candidato 5072ee1, /comunidade redireciona ao formulário /sign-in. A sessão QA existente está em outro host Preview e não se aplica a esta origem. Nenhuma senha, OTP, cookie ou token foi transferido ou submetido; nenhuma escrita no GREEN, alteração de Production ou mudança no checkout original ocorreu.
+- **Candidato funcional:** `a1d87b0` (`fix(comunidade): alinhar grupos mobile e filtros`), enviado a `origin/codex/comunidade-v2`.
+- **Preview App:** deployment sem cache `6PuY9Ej6wXsCwZX82etnW8b7D2x7` ficou `Ready` no SHA exato `a1d87b0`; o alias autenticado é `interprete-area-de-membro-git-553be9-gabrielschuchters-projects.vercel.app`.
+- **Etapa 02:** gates locais e QA autenticado de leitura concluídos para Explorar (390/820/1280 CSS px), seletor mobile, Grupos, Salvos, Encontros e Gravações. O layout foi comparado aos boards após hidratação. A etapa permanece `IN PROGRESS` porque não ocorreu erro natural no Preview; nenhum erro foi fabricado.
+- **Segurança:** nenhuma escrita no GREEN, fixture, migration, alteração de Production ou mudança no checkout original. Nenhum segredo foi exibido.
+- **Próximo passo:** comprovar o estado de erro por um cenário Preview isolado e somente de leitura; concluir a Etapa 02 antes de iniciar a Etapa 03. OPS-01 e etapas futuras permanecem fora do escopo.
 
 ## Implementado
 
@@ -51,6 +52,15 @@
 - Próxima unidade prevista no plano: Etapa 03 — Rascunhos e publicações, quando autorizada. OPS-01 continua sendo dependência apenas das jornadas e do release que a exigem.
 
 O checkout original `C:\Users\gabsc\Documents\Codex\interprete-area-de-membros` permanece intocado.
+
+## Fechamento visual do candidato `a1d87b0` — 20/10/2026
+
+- O primeiro deployment `Ready` de `a1d87b0` serviu uma folha CSS sem as regras novas de grupos. Um redeploy Preview sem reutilizar o build cache criou o deployment `6PuY9Ej6wXsCwZX82etnW8b7D2x7`, `Ready`, no mesmo branch e SHA. O navegador confirmou a regra mobile carregada: intro `display:none`, filtros antes do CTA, cartão duplicado `display:none`.
+- Capturas após hidratação e comparação: Explorar 390, 820 e 1280 px; seletor mobile com os cinco destinos; Grupos 390; Salvos 390 com filtros expandidos; Encontros 390; Gravações 390. Boards: 09, 35, 37, 38, 43, 44 e 50. Conteúdo GREEN permaneceu real: um grupo público com dois membros, Meus grupos vazio, um salvo, zero encontros e zero gravações.
+- Largura do documento sem overflow: Explorar 390→375/375, 820→805/805 e 1280→1265/1265 px (viewport/documento); Grupos, Salvos, Encontros e Gravações também mediram 375/375 px no viewport mobile de 390 px. No desktop, capa/feed medem 609 px e a lateral permanece à direita.
+- `bun run check` passou (978 arquivos); `bun run typecheck` (16/16); `bun run boundaries` (906 arquivos); teste focado de navegação (3/3); `bun run build` passou (8/8 tarefas, App 788 testes/162 arquivos, API 9/3 arquivos, domínio de membros 24/5 arquivos); `bun run performance:check` passou (Comunidade 213,8 KiB gzip / 225 KiB). `graphify update .` concluiu; `graphify-out/` segue ignorado e fora do Git.
+- Loading skeletons foram observados em transições e aguardados até hidratação. O console não registrou erros; um estado de erro da aplicação não ocorreu naturalmente e continua sem prova visual de runtime. Percentis LCP/INP/CLS não foram medidos.
+- QA foi somente de leitura: nenhum apoio, salvamento, entrada/criação de grupo ou publicação. Não houve fixture, migration, mutação GREEN, mudança Production, cron, OIDC/SSO ou alteração do checkout original.
 
 ## Atualização do candidato 5072ee1 — 20/10/2026
 
