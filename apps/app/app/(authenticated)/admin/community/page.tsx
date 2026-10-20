@@ -146,11 +146,17 @@ const AdminCommunityPage = async () => {
           </div>
         )}
       </section>
-      <section className="paper-surface mt-6 border p-6 sm:p-8">
+      <section
+        aria-labelledby="community-deleted-publications-heading"
+        className="paper-surface mt-6 border p-6 sm:p-8"
+      >
         <div className="flex flex-wrap items-end justify-between gap-3 border-border border-b pb-4">
           <div>
             <p className="brand-eyebrow">Recuperação · 30 dias</p>
-            <h2 className="mt-2 font-display text-3xl">
+            <h2
+              className="mt-2 font-display text-3xl"
+              id="community-deleted-publications-heading"
+            >
               Publicações excluídas
             </h2>
           </div>
@@ -165,7 +171,7 @@ const AdminCommunityPage = async () => {
         ) : (
           <div className="divide-y border-border border-b">
             {deletedPosts.map((post) => (
-              <div
+              <article
                 className="flex flex-wrap items-center justify-between gap-4 py-4"
                 key={post.id}
               >
@@ -182,7 +188,7 @@ const AdminCommunityPage = async () => {
                   <p className="mt-2 font-medium">{post.title}</p>
                 </div>
                 <CommunityRestorePostButton postId={post.id} />
-              </div>
+              </article>
             ))}
           </div>
         )}

@@ -9,6 +9,7 @@ import {
 const emptySnapshot: CommunityDraftSnapshot = {
   content: "",
   contentJson: { type: "doc", content: [{ type: "paragraph" }] },
+  coverAltText: "",
   coverUrl: null,
   spaceId: null,
   subtitle: null,

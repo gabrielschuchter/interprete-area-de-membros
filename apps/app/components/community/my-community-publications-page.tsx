@@ -1,79 +1,101 @@
 import { ContentStatus } from "@repo/database";
 import { Badge } from "@repo/design-system/components/ui/badge";
+import { Button } from "@repo/design-system/components/ui/button";
 import { FileTextIcon } from "lucide-react";
 import Link from "next/link";
-import { CommunityComposerPrompt } from "@/components/community/community-composer-prompt";
 import { CommunityCoverImage } from "@/components/community/community-cover-image";
+import { CommunityDeleteUndoToast } from "@/components/community/community-delete-undo-toast";
 import { CommunityFeedCard } from "@/components/community/community-feed-card";
-import { CommunityHero } from "@/components/community/community-hero";
 import { CommunityNavigation } from "@/components/community/community-navigation";
 import { CommunityPostMenu } from "@/components/community/community-post-menu";
+import { CommunityPublicationFilters } from "@/components/community/community-publication-filters";
+import { CommunityPublicationViewSelector } from "@/components/community/community-publication-view-selector";
 import { CommunityPublishDraftButton } from "@/components/community/community-publish-draft-button";
-import { CommunityRightRail } from "@/components/community/community-right-rail";
 import { getMemberRole } from "@/lib/authorization";
 import {
-  getCommunityPresenceProfiles,
-  getCommunitySpaces,
-  getMyCommunityPosts,
+  type CommunityPublicationSort,
+  getMyCommunityPublicationCounts,
+  getMyCommunityPublicationPage,
 } from "@/lib/community";
 import { requireMemberId } from "@/lib/learning";
-import { getRecentCommunityAnnouncements } from "@/lib/notifications";
-import { getOrCreateProfile } from "@/lib/profile";
 
-const statusLabel = (status: string) => {
-  if (status === "DRAFT") {
-    return "Rascunho";
-  }
-  if (status === "ARCHIVED") {
-    return "Arquivado";
-  }
-  return "Publicado";
+type PublicationView = "published" | "drafts" | "archived";
+const publicationViewLabels: Record<PublicationView, string> = {
+  archived: "Arquivadas",
+  drafts: "Rascunhos",
+  published: "Publicadas",
 };
-
-const formatDate = (date: Date) =>
-  date.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
+type MyCommunityPost = Awaited<
+  ReturnType<typeof getMyCommunityPublicationPage>
+>["posts"][number];
 
 interface MyCommunityPageProperties {
-  readonly searchParams: Promise<{ status?: string }>;
+  readonly searchParams: Promise<{
+    cursor?: string;
+    q?: string;
+    sort?: string;
+    status?: string;
+    undoPost?: string;
+    undoUntil?: string;
+  }>;
 }
 
-const publicationViews = [
-  { label: "Todas", value: "all" },
-  { label: "Publicadas", value: "published" },
-  { label: "Rascunhos", value: "drafts" },
-  { label: "Arquivadas", value: "archived" },
-] as const;
-
-type PublicationView = (typeof publicationViews)[number]["value"];
-type MyCommunityPost = Awaited<ReturnType<typeof getMyCommunityPosts>>[number];
-
-const isPublicationView = (value?: string): value is PublicationView =>
-  publicationViews.some((view) => view.value === value);
-
-const statusForPublicationView = (view: PublicationView) => {
-  switch (view) {
-    case "published":
-      return ContentStatus.PUBLISHED;
-    case "drafts":
-      return ContentStatus.DRAFT;
-    case "archived":
-      return ContentStatus.ARCHIVED;
-    default:
-      return undefined;
+const statusForView = (view: PublicationView) => {
+  if (view === "drafts") {
+    return ContentStatus.DRAFT;
   }
+  if (view === "archived") {
+    return ContentStatus.ARCHIVED;
+  }
+  return ContentStatus.PUBLISHED;
 };
 
-const emptyPublicationCopy = (view: PublicationView) => {
-  switch (view) {
-    case "published":
-      return "Você ainda não tem publicações publicadas.";
-    case "drafts":
-      return "Você ainda não tem publicações em rascunho.";
-    case "archived":
-      return "Você ainda não tem publicações arquivadas.";
-    default:
-      return "Você ainda não publicou nada.";
+const emptyCopy = (view: PublicationView, query: string) => {
+  if (query) {
+    return "Nenhuma publicação encontrada com esse termo.";
   }
+  if (view === "drafts") {
+    return "Você ainda não tem rascunhos.";
+  }
+  if (view === "archived") {
+    return "Você ainda não tem publicações arquivadas.";
+  }
+  return "Você ainda não tem publicações publicadas.";
+};
+
+const viewHref = (
+  view: PublicationView,
+  query: string,
+  sort: CommunityPublicationSort
+) => {
+  const params = new URLSearchParams({ status: view });
+  if (query) {
+    params.set("q", query);
+  }
+  if (sort !== "recent") {
+    params.set("sort", sort);
+  }
+  return `/comunidade/minhas-publicacoes?${params.toString()}`;
+};
+
+const formatRelativeEditDate = (date: Date) => {
+  const elapsedMs = Math.max(0, Date.now() - date.getTime());
+  if (elapsedMs < 60_000) {
+    return "Editado agora";
+  }
+  const elapsedMinutes = Math.floor(elapsedMs / 60_000);
+  if (elapsedMinutes < 60) {
+    return `Editado há ${elapsedMinutes} min`;
+  }
+  const elapsedHours = Math.floor(elapsedMs / 3_600_000);
+  if (elapsedHours < 24) {
+    return `Editado há ${elapsedHours} ${elapsedHours === 1 ? "hora" : "horas"}`;
+  }
+  const elapsedDays = Math.floor(elapsedMs / 86_400_000);
+  if (elapsedDays === 1) {
+    return "Editado ontem";
+  }
+  return `Editado há ${elapsedDays} dias`;
 };
 
 const MyCommunityPublicationItem = ({
@@ -104,70 +126,83 @@ const MyCommunityPublicationItem = ({
         key={post.id}
         managementActions={postMenu}
         post={post}
+        returnTo={returnTo}
       />
     );
   }
 
   return (
-    <article
-      className="community-post-card community-my-post-card"
-      key={post.id}
-    >
-      <header className="community-post-card__meta">
-        <Badge variant={post.status === "DRAFT" ? "outline" : "default"}>
-          {statusLabel(post.status)}
+    <article className="community-my-publication-card" key={post.id}>
+      <header className="community-my-publication-card__meta">
+        <Badge variant={post.status === "DRAFT" ? "outline" : "secondary"}>
+          {post.status === "DRAFT" ? "Rascunho" : "Arquivada"}
         </Badge>
-        <span aria-hidden="true" className="text-muted-foreground">
+        <span
+          aria-hidden="true"
+          className="community-my-publication-card__meta-separator"
+        >
           ·
         </span>
-        <span className="community-post-card__space">
+        <span className="community-my-publication-card__space">
           {post.space?.title ?? "Feed geral"}
         </span>
-        <span aria-hidden="true" className="text-muted-foreground">
+        <span
+          aria-hidden="true"
+          className="community-my-publication-card__meta-separator community-my-publication-card__meta-separator--space"
+        >
           ·
         </span>
         <time dateTime={post.updatedAt.toISOString()}>
-          {formatDate(post.updatedAt)}
+          {formatRelativeEditDate(post.updatedAt)}
         </time>
       </header>
-      <div className="community-post-card__content">
-        <div className="community-post-card__copy">
-          <h3 className="community-post-card__title">
-            <Link
-              className="focus-visible:underline focus-visible:outline-none"
-              href={editHref}
-            >
-              {post.title}
-            </Link>
-          </h3>
+      <div className="community-my-publication-card__body">
+        <div className="community-my-publication-card__copy">
+          <h2>
+            <Link href={editHref}>{post.title}</Link>
+          </h2>
           {post.subtitle || post.excerpt ? (
-            <p className="community-post-card__excerpt">
-              {post.subtitle || post.excerpt}
-            </p>
+            <p>{post.subtitle || post.excerpt}</p>
+          ) : null}
+          {post.tags.length > 0 ? (
+            <ul
+              aria-label="Assuntos"
+              className="community-my-publication-card__tags"
+            >
+              {post.tags.map((tag) => (
+                <li key={tag}>#{tag}</li>
+              ))}
+            </ul>
           ) : null}
         </div>
         {post.coverUrl ? (
           <CommunityCoverImage
-            alt={`Capa: ${post.title}`}
-            className="community-post-card__media relative z-10"
+            alt={post.coverAltText || `Capa: ${post.title}`}
+            className="community-my-publication-card__cover"
             height={100}
             src={post.coverUrl}
             width={148}
           />
         ) : null}
       </div>
-      <div className="community-post-card__actions">
-        {post.status === "DRAFT" || post.status === "ARCHIVED" ? (
-          <>
-            {postMenu}
-            <CommunityPublishDraftButton
-              confirmGroupMention={post.status === "DRAFT"}
-              editHref={editHref}
-              postId={post.id}
-              spaceSlug={post.space?.slug ?? ""}
-            />
-          </>
-        ) : null}
+      <div className="community-my-publication-card__actions">
+        {post.status === "DRAFT" ? (
+          <Button
+            asChild
+            className="community-my-publication-edit-button"
+            size="sm"
+          >
+            <Link href={editHref}>Continuar editando</Link>
+          </Button>
+        ) : (
+          <CommunityPublishDraftButton
+            buttonLabel="Restaurar"
+            editHref={editHref}
+            postId={post.id}
+            spaceSlug={post.space?.slug ?? ""}
+          />
+        )}
+        {postMenu}
       </div>
     </article>
   );
@@ -175,102 +210,135 @@ const MyCommunityPublicationItem = ({
 
 const MyCommunityPage = async ({ searchParams }: MyCommunityPageProperties) => {
   const filters = await searchParams;
-  const activeView = isPublicationView(filters.status) ? filters.status : "all";
-  const selectedStatus = statusForPublicationView(activeView);
+  const activeView: PublicationView =
+    filters.status === "drafts" || filters.status === "archived"
+      ? filters.status
+      : "published";
+  const sort: CommunityPublicationSort =
+    filters.sort === "oldest" || filters.sort === "title"
+      ? filters.sort
+      : "recent";
+  const query = filters.q?.trim().slice(0, 100) ?? "";
   const memberId = await requireMemberId();
-  const [posts, spaces, profile, announcements, presenceProfiles, role] =
-    await Promise.all([
-      getMyCommunityPosts(memberId, selectedStatus),
-      getCommunitySpaces(memberId),
-      getOrCreateProfile(memberId),
-      getRecentCommunityAnnouncements(memberId),
-      getCommunityPresenceProfiles(memberId),
-      getMemberRole(memberId),
-    ]);
+  const [page, counts, role] = await Promise.all([
+    getMyCommunityPublicationPage(memberId, {
+      cursor: filters.cursor,
+      query,
+      sort,
+      status: statusForView(activeView),
+    }),
+    getMyCommunityPublicationCounts(memberId),
+    getMemberRole(memberId),
+  ]);
   const canModerate = role === "ADMIN" || role === "TEACHER";
+  const returnTo = viewHref(activeView, query, sort);
+  const undoUntil = Number(filters.undoUntil);
+  const showUndo =
+    Boolean(filters.undoPost) &&
+    Number.isFinite(undoUntil) &&
+    undoUntil > Date.now();
 
   return (
     <div className="community-page min-h-svh bg-background">
       <main
-        className="community-shell mx-auto w-full"
+        className="community-shell community-my-publications-shell mx-auto w-full"
         data-route-structure-ready="community"
       >
-        <CommunityHero />
-        <div className="community-content-grid">
-          <div className="community-discovery-toolbar">
-            <CommunityNavigation active="mine" />
-          </div>
-          <CommunityRightRail
-            announcements={announcements}
-            memberId={memberId}
-            presenceProfiles={presenceProfiles}
-            profile={profile}
-            spaces={spaces}
-          />
-          <CommunityComposerPrompt
-            memberId={memberId}
-            returnTo={`/comunidade/minhas-publicacoes?status=${activeView}`}
-          />
-          <section
-            aria-labelledby="my-community-posts-heading"
-            className="community-feed-area min-w-0"
-            data-route-content-ready="community"
-          >
-            <h2 className="sr-only" id="my-community-posts-heading">
-              Minhas publicações
-            </h2>
-            <nav
-              aria-label="Filtrar minhas publicações"
-              className="mb-5 flex flex-wrap gap-2 border-border border-b pb-4"
-            >
-              {publicationViews.map((view) => (
-                <Link
-                  aria-current={activeView === view.value ? "page" : undefined}
-                  className={
-                    activeView === view.value
-                      ? "rounded-full bg-brand-structural px-4 py-2 font-medium text-sm text-white"
-                      : "rounded-full border px-4 py-2 text-muted-foreground text-sm hover:text-foreground"
-                  }
-                  href={
-                    view.value === "all"
-                      ? "/comunidade/minhas-publicacoes"
-                      : `/comunidade/minhas-publicacoes?status=${view.value}`
-                  }
-                  key={view.value}
-                >
-                  {view.label}
-                </Link>
-              ))}
-            </nav>
-            {posts.length === 0 ? (
-              <div className="community-my-posts-empty">
-                <FileTextIcon
-                  aria-hidden="true"
-                  className="size-6 text-brand-action-text"
-                />
-                <h3 className="mt-5 font-display text-3xl">
-                  {emptyPublicationCopy(activeView)}
-                </h3>
-                <p className="mt-3 max-w-xl text-muted-foreground leading-7">
-                  Comece por uma pergunta curta ou escreva uma publicação mais
-                  elaborada.
-                </p>
-              </div>
-            ) : (
-              <div className="community-feed-list">
-                {posts.map((post) => (
-                  <MyCommunityPublicationItem
-                    canModerate={canModerate}
-                    key={post.id}
-                    post={post}
-                    returnTo={`/comunidade/minhas-publicacoes?status=${activeView}`}
-                  />
-                ))}
-              </div>
-            )}
-          </section>
+        <div className="community-my-publications-nav">
+          <CommunityNavigation active="mine" />
         </div>
+        <header className="community-my-publications-header">
+          <div>
+            <h1>Minhas publicações</h1>
+            <p>
+              Tudo o que você escreveu na Comunidade. Rascunhos são só seus: não
+              aparecem no feed, nos grupos nem na busca.
+            </p>
+          </div>
+        </header>
+        <nav
+          aria-label="Situação das publicações"
+          className="community-publications-tabs"
+        >
+          {(
+            [
+              ["published", "Publicadas", counts.published],
+              ["drafts", "Rascunhos", counts.drafts],
+              ["archived", "Arquivadas", counts.archived],
+            ] as const
+          ).map(([view, label, count]) => (
+            <Link
+              aria-current={activeView === view ? "page" : undefined}
+              className={
+                activeView === view
+                  ? "community-publications-tab is-active"
+                  : "community-publications-tab"
+              }
+              href={viewHref(view, query, sort)}
+              key={view}
+            >
+              {label} <span>{count}</span>
+            </Link>
+          ))}
+        </nav>
+        <CommunityPublicationViewSelector
+          activeView={activeView}
+          counts={counts}
+          query={query}
+          sort={sort}
+        />
+        <CommunityPublicationFilters
+          activeView={activeView}
+          query={query}
+          sort={sort}
+        />
+        <section
+          aria-label={publicationViewLabels[activeView]}
+          className="community-my-publications-list"
+          data-route-content-ready="community"
+        >
+          {page.posts.length === 0 ? (
+            <div className="community-my-publications-empty">
+              <FileTextIcon aria-hidden="true" />
+              <h2>{emptyCopy(activeView, query)}</h2>
+              <p>
+                {activeView === "drafts"
+                  ? "Abra uma publicação para continuar escrevendo quando quiser."
+                  : "As publicações e os rascunhos que você criar aparecerão aqui."}
+              </p>
+            </div>
+          ) : (
+            <div className="community-feed-list">
+              {page.posts.map((post) => (
+                <MyCommunityPublicationItem
+                  canModerate={canModerate}
+                  key={post.id}
+                  post={post}
+                  returnTo={returnTo}
+                />
+              ))}
+            </div>
+          )}
+          {page.nextCursor ? (
+            <div className="community-publications-pagination">
+              <Button asChild variant="outline">
+                <Link
+                  href={`${returnTo}&cursor=${encodeURIComponent(page.nextCursor)}`}
+                >
+                  Carregar mais
+                </Link>
+              </Button>
+            </div>
+          ) : null}
+        </section>
       </main>
+      {showUndo ? (
+        <CommunityDeleteUndoToast
+          deletedAt={new Date(undoUntil - 8000).toISOString()}
+          postId={filters.undoPost as string}
+          undoUntil={undoUntil}
+        />
+      ) : null}
     </div>
   );
 };

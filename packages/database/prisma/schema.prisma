@@ -1443,6 +1443,7 @@ model CommunityPost {
   contentJson    Json?
   tags           String[]            @default([])
   coverUrl       String?
+  coverAltText   String?             @db.Text
   status         ContentStatus       @default(PUBLISHED)
   isPinned       Boolean             @default(false)
   isFeatured     Boolean             @default(false)
@@ -1465,6 +1466,7 @@ model CommunityPost {
   @@index([authorId, createdAt])
   @@index([isPinned, status, createdAt])
   @@index([isFeatured, status, createdAt], map: "CommunityPost_isFeatured_status_createdAt_idx")
+  @@index([authorId, status, updatedAt, id], map: "CommunityPost_authorId_status_updatedAt_id_idx")
 }
 
 model CommunityBookmark {

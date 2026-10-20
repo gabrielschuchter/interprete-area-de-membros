@@ -24,6 +24,7 @@ export interface CommunityFeedCardPost {
   readonly _count: { readonly comments: number; readonly votes: number };
   readonly authorId: string;
   readonly bookmarks: readonly { readonly id: string }[];
+  readonly coverAltText?: string | null;
   readonly coverUrl?: string | null;
   readonly createdAt: Date;
   readonly excerpt: string;
@@ -137,7 +138,7 @@ export function CommunityFeedCard({
         </div>
         {coverUrl ? (
           <CommunityCoverImage
-            alt={`Capa: ${post.title}`}
+            alt={post.coverAltText || `Capa: ${post.title}`}
             className="community-post-card__media relative z-10"
             height={100}
             loading="lazy"

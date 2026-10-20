@@ -24,6 +24,11 @@ import {
   sanitizeRichDocument,
 } from "@/lib/community-content";
 import {
+  communityCoverAltEnabled,
+  communityCoverAltSelect,
+  communityCoverAltValue,
+} from "@/lib/community-cover-alt";
+import {
   type CommunityDraftSnapshot,
   communityDraftSnapshotsEqual,
   hasCommunityDraftContent,
@@ -552,6 +557,7 @@ const draftSaveConflict = (
 const communityDraftSnapshotFromPost = (post: {
   content: string;
   contentJson: unknown;
+  coverAltText?: string | null;
   coverUrl: string | null;
   spaceId: string | null;
   subtitle: string | null;
@@ -560,6 +566,7 @@ const communityDraftSnapshotFromPost = (post: {
 }): CommunityDraftSnapshot => ({
   content: post.content,
   contentJson: post.contentJson,
+  coverAltText: post.coverAltText ?? "",
   coverUrl: post.coverUrl,
   spaceId: post.spaceId,
   subtitle: post.subtitle,
@@ -572,6 +579,7 @@ const communityDraftRecordSelect = {
   authorId: true,
   content: true,
   contentJson: true,
+  ...communityCoverAltSelect,
   coverUrl: true,
   deletedAt: true,
   spaceId: true,
@@ -658,6 +666,9 @@ const saveNewCommunityDraft = async ({
         kind: "DISCUSSION",
         title: snapshot.title,
         subtitle: snapshot.subtitle,
+        ...(communityCoverAltEnabled
+          ? { coverAltText: snapshot.coverAltText }
+          : {}),
         coverUrl: snapshot.coverUrl,
         content: snapshot.content,
         excerpt: excerptFrom(snapshot.content),
@@ -755,8 +766,16 @@ const updateExistingCommunityDraft = async ({
       updatedAt: expectedUpdatedAt,
     },
     data: {
-      ...snapshot,
+      content: snapshot.content,
       contentJson: snapshot.contentJson as Prisma.InputJsonValue,
+      excerpt: excerptFrom(snapshot.content),
+      ...(communityCoverAltEnabled
+        ? { coverAltText: snapshot.coverAltText }
+        : {}),
+      coverUrl: snapshot.coverUrl,
+      spaceId: snapshot.spaceId,
+      subtitle: snapshot.subtitle,
+      title: snapshot.title,
       tags: [...snapshot.tags],
       updatedAt,
     },
@@ -816,6 +835,9 @@ const communityDraftSnapshotFromForm = async (
     snapshot: {
       content: plainText.slice(0, 40_000),
       contentJson: (document ?? emptyDocument) as Prisma.InputJsonValue,
+      coverAltText: communityCoverAltValue(
+        textValue(formData.get("coverAltText"))
+      ),
       coverUrl: safeImageUrl(textValue(formData.get("coverUrl")), userId),
       spaceId,
       subtitle: textValue(formData.get("subtitle")).slice(0, 1000) || null,
@@ -936,6 +958,7 @@ export const publishPost = async (
       publishedAt: true,
       updatedAt: true,
       coverUrl: true,
+      ...communityCoverAltSelect,
       contentJson: true,
       space: { select: { slug: true } },
     },
@@ -999,6 +1022,13 @@ export const publishPost = async (
         spaceId,
         title: parsed.data.title,
         subtitle: textValue(formData.get("subtitle")).slice(0, 1000) || null,
+        ...(communityCoverAltEnabled
+          ? {
+              coverAltText: communityCoverAltValue(
+                textValue(formData.get("coverAltText"))
+              ),
+            }
+          : {}),
         coverUrl: safeImageUrl(textValue(formData.get("coverUrl")), userId),
         content: parsed.data.content,
         excerpt: excerptFrom(parsed.data.content),
@@ -1074,6 +1104,7 @@ const editableCommunityPostSelect = {
   slug: true,
   status: true,
   coverUrl: true,
+  ...communityCoverAltSelect,
   contentJson: true,
   spaceId: true,
   title: true,
@@ -1123,7 +1154,14 @@ const persistCommunityPostUpdate = async ({
       status: post.status,
     },
     data: {
-      ...snapshot,
+      content: snapshot.content,
+      ...(communityCoverAltEnabled
+        ? { coverAltText: snapshot.coverAltText }
+        : {}),
+      coverUrl: snapshot.coverUrl,
+      spaceId: snapshot.spaceId,
+      subtitle: snapshot.subtitle,
+      title: snapshot.title,
       contentJson: snapshot.contentJson as Prisma.InputJsonValue,
       tags: [...snapshot.tags],
       excerpt: excerptFrom(snapshot.content),
@@ -1241,6 +1279,9 @@ export const updatePost = async (
   const snapshot: CommunityDraftSnapshot = {
     content: parsed.data.content,
     contentJson: persistedDocument,
+    coverAltText: communityCoverAltValue(
+      textValue(formData.get("coverAltText"))
+    ),
     coverUrl: safeImageUrl(textValue(formData.get("coverUrl")), userId),
     spaceId,
     subtitle: textValue(formData.get("subtitle")).slice(0, 1000) || null,
@@ -1759,6 +1800,53 @@ export const toggleCommentVote = async (formData: FormData) => {
   revalidateCommunity(spaceSlug || undefined, postId);
 };
 
+export const discardCommunityDraft = async (formData: FormData) => {
+  const userId = await currentUserId();
+  const postId = textValue(formData.get("postId"));
+  if (!(userId && postId)) {
+    return { ok: false as const };
+  }
+  await consumeMutationRateLimit({
+    action: "community.mutation",
+    memberId: userId,
+  });
+  const post = await database.communityPost.findFirst({
+    where: {
+      id: postId,
+      authorId: userId,
+      status: ContentStatus.DRAFT,
+      deletedAt: null,
+    },
+    select: {
+      id: true,
+      slug: true,
+      updatedAt: true,
+      space: { select: { slug: true } },
+    },
+  });
+  if (!post) {
+    return { ok: false as const };
+  }
+  const deletedAt = new Date();
+  const deleted = await database.communityPost.updateMany({
+    where: {
+      id: post.id,
+      authorId: userId,
+      status: ContentStatus.DRAFT,
+      deletedAt: null,
+      updatedAt: post.updatedAt,
+    },
+    data: { deletedAt, isPinned: false },
+  });
+  if (deleted.count !== 1) {
+    return { ok: false as const };
+  }
+  revalidateCommunity(post.space?.slug, post.id, post.slug ?? undefined);
+  revalidatePath("/comunidade/minhas-publicacoes");
+  revalidatePath("/admin/community");
+  return { deletedAt: deletedAt.toISOString(), ok: true as const };
+};
+
 export const softDeletePost = async (formData: FormData) => {
   const userId = await currentUserId();
   const postId = textValue(formData.get("postId"));
@@ -1783,10 +1871,14 @@ export const softDeletePost = async (formData: FormData) => {
   if (!(post && canManagePost(post.authorId, userId, role))) {
     return;
   }
-  await database.communityPost.update({
-    where: { id: postId },
-    data: { deletedAt: new Date(), isPinned: false },
+  const deletedAt = new Date();
+  const deleted = await database.communityPost.updateMany({
+    where: { id: postId, deletedAt: null },
+    data: { deletedAt, isPinned: false },
   });
+  if (deleted.count !== 1) {
+    return;
+  }
   revalidateCommunity(post.space?.slug, postId, post.slug ?? undefined);
   revalidatePath("/comunidade/minhas-publicacoes");
   revalidatePath("/admin/community");
@@ -1795,6 +1887,14 @@ export const softDeletePost = async (formData: FormData) => {
   if (adminReturn) {
     redirect("/admin/community");
   }
+  if (communityReturn?.startsWith("/comunidade/minhas-publicacoes")) {
+    const separator = communityReturn.includes("?") ? "&" : "?";
+    const undoState = new URLSearchParams({
+      undoPost: postId,
+      undoUntil: String(deletedAt.getTime() + 8000),
+    });
+    redirect(`${communityReturn}${separator}${undoState.toString()}`);
+  }
   if (communityReturn) {
     redirect(communityReturn);
   }
@@ -1802,6 +1902,47 @@ export const softDeletePost = async (formData: FormData) => {
     redirect(`/comunidade/grupos/${post.space.slug}`);
   }
   redirect("/comunidade");
+};
+
+export const undoSoftDeletedPost = async (formData: FormData) => {
+  const userId = await currentUserId();
+  const postId = textValue(formData.get("postId"));
+  const deletedAtText = textValue(formData.get("deletedAt"));
+  const deletedAt = new Date(deletedAtText);
+  const now = new Date();
+  if (
+    !(userId && postId && Number.isFinite(deletedAt.getTime())) ||
+    now.getTime() - deletedAt.getTime() > 8000 ||
+    deletedAt.getTime() > now.getTime()
+  ) {
+    return { ok: false as const };
+  }
+  await consumeMutationRateLimit({
+    action: "community.mutation",
+    memberId: userId,
+  });
+  const post = await database.communityPost.findFirst({
+    where: { id: postId, authorId: userId, deletedAt },
+    select: {
+      id: true,
+      slug: true,
+      space: { select: { slug: true } },
+    },
+  });
+  if (!post) {
+    return { ok: false as const };
+  }
+  const restored = await database.communityPost.updateMany({
+    where: { id: post.id, authorId: userId, deletedAt },
+    data: { deletedAt: null },
+  });
+  if (restored.count !== 1) {
+    return { ok: false as const };
+  }
+  revalidateCommunity(post.space?.slug, post.id, post.slug ?? undefined);
+  revalidatePath("/comunidade/minhas-publicacoes");
+  revalidatePath("/admin/community");
+  return { ok: true as const };
 };
 
 export const restoreCommunityPost = async (formData: FormData) => {
@@ -1917,35 +2058,37 @@ export const togglePostPin = async (formData: FormData) => {
     return;
   }
   try {
-    const pinned = await database.$transaction(
-      async (transaction) => {
-        const target = await transaction.communityPost.updateMany({
+    const pinned = await database.$transaction(async (transaction) => {
+      const scopeKey = post.space?.id ?? "global-feed";
+      await transaction.$queryRaw`
+        SELECT pg_advisory_xact_lock(
+          hashtext('community-post-pin'),
+          hashtext(${scopeKey})
+        )
+      `;
+      if (desired === "on") {
+        await transaction.communityPost.updateMany({
           where: {
-            id: postId,
+            id: { not: postId },
+            spaceId: post.space?.id ?? null,
             status: ContentStatus.PUBLISHED,
             deletedAt: null,
+            isPinned: true,
           },
-          data: { isPinned: desired === "on" },
+          data: { isPinned: false },
         });
-        if (target.count !== 1) {
-          return false;
-        }
-        if (desired === "on") {
-          await transaction.communityPost.updateMany({
-            where: {
-              id: { not: postId },
-              spaceId: post.space?.id ?? null,
-              status: ContentStatus.PUBLISHED,
-              deletedAt: null,
-              isPinned: true,
-            },
-            data: { isPinned: false },
-          });
-        }
-        return true;
-      },
-      { isolationLevel: "Serializable" }
-    );
+      }
+      const target = await transaction.communityPost.updateMany({
+        where: {
+          id: postId,
+          spaceId: post.space?.id ?? null,
+          status: ContentStatus.PUBLISHED,
+          deletedAt: null,
+        },
+        data: { isPinned: desired === "on" },
+      });
+      return target.count === 1;
+    });
     if (!pinned) {
       return {
         ok: false as const,

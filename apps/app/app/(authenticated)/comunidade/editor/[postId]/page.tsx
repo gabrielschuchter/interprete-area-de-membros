@@ -11,6 +11,7 @@ import {
   getCommunityEditorPost,
   getCommunitySpaces,
 } from "@/lib/community";
+import { communityCoverAltEnabled } from "@/lib/community-cover-alt";
 import { safeCommunityReturnPath } from "@/lib/community-return-path";
 import { requireMemberId } from "@/lib/learning";
 
@@ -95,7 +96,7 @@ const CommunityEditorPage = async ({
             {post.coverUrl && (
               // biome-ignore lint/performance/noImgElement: cover URLs are sanitized user content and may come from hosts not configured for next/image.
               <img
-                alt={`Capa: ${post.title}`}
+                alt={post.coverAltText || `Capa: ${post.title}`}
                 className="community-post-cover"
                 height={630}
                 src={post.coverUrl}
@@ -117,8 +118,10 @@ const CommunityEditorPage = async ({
         <h1 className="sr-only">Escrever publicação</h1>
         <CommunityComposer
           backHref={backHref}
+          enableCoverAltText={communityCoverAltEnabled}
           idempotencyKey=""
           initialContent={document}
+          initialCoverAltText={post.coverAltText ?? ""}
           initialCoverUrl={post.coverUrl}
           initialSpaceId={post.space?.id ?? null}
           initialSpaceSlug={post.space?.slug ?? null}
@@ -127,7 +130,12 @@ const CommunityEditorPage = async ({
           initialTitle={post.title}
           initialUpdatedAt={post.updatedAt.toISOString()}
           postId={post.id}
-          spaces={spaces.map(({ id, slug, title }) => ({ id, slug, title }))}
+          spaces={spaces.map(({ id, slug, title, visibility }) => ({
+            id,
+            slug,
+            title,
+            visibility,
+          }))}
           status={post.status}
         />
       </main>

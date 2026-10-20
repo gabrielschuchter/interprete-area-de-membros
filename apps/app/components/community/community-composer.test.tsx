@@ -29,7 +29,27 @@ const actions = vi.hoisted(() => ({
 }));
 vi.mock("@/app/(authenticated)/comunidade/actions", () => actions);
 vi.mock("next/navigation", () => ({ useRouter: () => actions.router }));
-vi.mock("./topic-editor", () => ({ TopicEditor: () => null }));
+vi.mock("./topic-editor", () => ({
+  TopicEditor: ({
+    onDocumentChange,
+  }: {
+    onDocumentChange: (value: unknown) => void;
+  }) => (
+    <button
+      onClick={() =>
+        onDocumentChange({
+          type: "doc",
+          content: [
+            { type: "paragraph", content: [{ type: "text", text: "Texto" }] },
+          ],
+        })
+      }
+      type="button"
+    >
+      Inserir texto de teste
+    </button>
+  ),
+}));
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -71,6 +91,9 @@ it("keeps autosave and publish active after StrictMode effect replay", async () 
   fireEvent.change(screen.getByRole("textbox", { name: "Título" }), {
     target: { value: "QA local" },
   });
+  fireEvent.click(
+    screen.getByRole("button", { name: "Inserir texto de teste" })
+  );
   await act(async () => {
     await vi.advanceTimersByTimeAsync(800);
   });
@@ -231,4 +254,77 @@ it("retries a transient autosave failure and reports success only after persiste
   expect(
     screen.getByText("Rascunho salvo · visível só para você")
   ).toBeTruthy();
+});
+
+it("saves the cover alternative text with the same draft version", async () => {
+  render(
+    <CommunityComposer
+      backHref="/comunidade/minhas-publicacoes?status=drafts"
+      enableCoverAltText
+      idempotencyKey=""
+      initialContent={{ type: "doc", content: [{ type: "paragraph" }] }}
+      initialCoverAltText="Uma capa antiga"
+      initialCoverUrl="https://media.example/cover.webp"
+      initialSpaceId={null}
+      initialSpaceSlug={null}
+      initialSubtitle={null}
+      initialTags={[]}
+      initialTitle="Publicação existente"
+      initialUpdatedAt="2026-10-20T15:30:00.122Z"
+      postId="qa-local"
+      spaces={[]}
+      status="DRAFT"
+    />
+  );
+
+  fireEvent.change(
+    screen.getByRole("textbox", { name: "Texto alternativo da capa" }),
+    {
+      target: { value: "Uma pessoa estudando ao lado da janela" },
+    }
+  );
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(800);
+  });
+
+  const submittedForm = actions.updateDraft.mock.calls.at(-1)?.[0] as FormData;
+  expect(submittedForm.get("coverAltText")).toBe(
+    "Uma pessoa estudando ao lado da janela"
+  );
+});
+
+it("offers a safe exit and persists a dirty draft before leaving", async () => {
+  render(
+    <CommunityComposer
+      backHref="/comunidade/minhas-publicacoes?status=drafts"
+      idempotencyKey=""
+      initialContent={{ type: "doc", content: [{ type: "paragraph" }] }}
+      initialCoverUrl={null}
+      initialSpaceId={null}
+      initialSpaceSlug={null}
+      initialSubtitle={null}
+      initialTags={[]}
+      initialTitle="Rascunho sem título"
+      initialUpdatedAt="2026-10-20T15:30:00.122Z"
+      postId="qa-local"
+      spaces={[]}
+      status="DRAFT"
+    />
+  );
+  fireEvent.change(screen.getByRole("textbox", { name: "Título" }), {
+    target: { value: "Alteração pendente" },
+  });
+  fireEvent.click(screen.getByRole("link", { name: "Voltar" }));
+  expect(screen.getByRole("alertdialog")).toBeTruthy();
+  fireEvent.click(
+    screen.getByRole("button", { name: "Sair e manter rascunho" })
+  );
+  await act(async () => {
+    await Promise.resolve();
+  });
+
+  expect(actions.updateDraft).toHaveBeenCalledTimes(1);
+  expect(actions.router.push).toHaveBeenCalledWith(
+    "/comunidade/minhas-publicacoes?status=drafts"
+  );
 });

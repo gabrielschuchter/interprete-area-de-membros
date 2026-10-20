@@ -2,7 +2,7 @@
 
 import { ChevronDownIcon, SearchIcon } from "lucide-react";
 import dynamic from "next/dynamic";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { IntentLink } from "@/app/(authenticated)/components/intent-link";
 import {
@@ -17,19 +17,29 @@ import {
 
 import { type CommunityView, communityViews } from "./community-views";
 
-const CommunityViewPickerFallback = () => (
-  <div className="community-view-picker">
-    <button
-      aria-label="Visão da comunidade"
-      className="community-view-trigger"
-      disabled
-      type="button"
-    >
-      <span>Comunidade</span>
-      <ChevronDownIcon aria-hidden="true" className="size-4" />
-    </button>
-  </div>
-);
+const CommunityViewPickerFallback = () => {
+  const pathname = usePathname();
+  const activeView =
+    communityViews.find(
+      (view) =>
+        pathname === view.href ||
+        (view.href !== "/comunidade" && pathname.startsWith(`${view.href}/`))
+    ) ?? communityViews[0];
+
+  return (
+    <div className="community-view-picker">
+      <button
+        aria-label={`Visão da comunidade: ${activeView.label}`}
+        className="community-view-trigger"
+        disabled
+        type="button"
+      >
+        <span>{activeView.label}</span>
+        <ChevronDownIcon aria-hidden="true" className="size-4" />
+      </button>
+    </div>
+  );
+};
 const CommunityViewPicker = dynamic(() => import("./community-view-picker"), {
   loading: CommunityViewPickerFallback,
 });

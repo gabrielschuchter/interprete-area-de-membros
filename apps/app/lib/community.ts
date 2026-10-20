@@ -9,6 +9,7 @@ import {
 } from "@repo/database";
 import { tracePerformance } from "@repo/observability/performance";
 import { getMemberRole, requireStaff } from "@/lib/authorization";
+import { communityCoverAltSelect } from "@/lib/community-cover-alt";
 import {
   extractCommunityMedia,
   normalizeCommunityCoverUrl,
@@ -615,6 +616,7 @@ const communityPostSelect = {
   contentJson: true,
   tags: true,
   coverUrl: true,
+  ...communityCoverAltSelect,
   authorId: true,
   isPinned: true,
   isFeatured: true,
@@ -873,6 +875,7 @@ export const getMyCommunityPosts = async (
       tags: true,
       authorId: true,
       coverUrl: true,
+      ...communityCoverAltSelect,
       isPinned: true,
       isFeatured: true,
       createdAt: true,
@@ -894,6 +897,109 @@ export const getMyCommunityPosts = async (
       readingMinutes: readingMinutes(post.excerpt ?? ""),
     }))
   );
+};
+
+export type CommunityPublicationSort = "recent" | "oldest" | "title";
+
+const MY_PUBLICATIONS_PAGE_SIZE = 20;
+const COMMUNITY_PUBLICATIONS_CURSOR_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
+
+export const getMyCommunityPublicationCounts = async (memberId: string) => {
+  const rows = await database.communityPost.groupBy({
+    by: ["status"],
+    where: { authorId: memberId, deletedAt: null },
+    _count: { _all: true },
+  });
+  const counts = { archived: 0, drafts: 0, published: 0 };
+  for (const row of rows) {
+    if (row.status === ContentStatus.PUBLISHED) {
+      counts.published = row._count._all;
+    } else if (row.status === ContentStatus.DRAFT) {
+      counts.drafts = row._count._all;
+    } else if (row.status === ContentStatus.ARCHIVED) {
+      counts.archived = row._count._all;
+    }
+  }
+  return counts;
+};
+
+export const getMyCommunityPublicationPage = async (
+  memberId: string,
+  options: {
+    readonly cursor?: string;
+    readonly query?: string;
+    readonly sort?: CommunityPublicationSort;
+    readonly status: ContentStatus;
+  }
+) => {
+  const take = MY_PUBLICATIONS_PAGE_SIZE;
+  const cursor = options.cursor?.match(COMMUNITY_PUBLICATIONS_CURSOR_PATTERN)
+    ? options.cursor
+    : undefined;
+  const query = options.query?.trim().slice(0, 100) ?? "";
+  let orderBy: Prisma.CommunityPostOrderByWithRelationInput[];
+  if (options.sort === "title") {
+    orderBy = [{ title: "asc" }, { id: "asc" }];
+  } else if (options.sort === "oldest") {
+    orderBy = [{ updatedAt: "asc" }, { id: "asc" }];
+  } else {
+    orderBy = [{ updatedAt: "desc" }, { id: "desc" }];
+  }
+  const rows = await database.communityPost.findMany({
+    where: {
+      authorId: memberId,
+      deletedAt: null,
+      status: options.status,
+      ...(query
+        ? {
+            OR: [
+              { title: { contains: query, mode: "insensitive" as const } },
+              { subtitle: { contains: query, mode: "insensitive" as const } },
+              { excerpt: { contains: query, mode: "insensitive" as const } },
+            ],
+          }
+        : {}),
+    },
+    orderBy,
+    ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+    take: take + 1,
+    select: {
+      id: true,
+      title: true,
+      subtitle: true,
+      slug: true,
+      excerpt: true,
+      status: true,
+      tags: true,
+      authorId: true,
+      coverUrl: true,
+      ...communityCoverAltSelect,
+      isPinned: true,
+      isFeatured: true,
+      createdAt: true,
+      publishedAt: true,
+      updatedAt: true,
+      space: { select: { title: true, slug: true } },
+      _count: {
+        select: { comments: { where: { deletedAt: null } }, votes: true },
+      },
+      votes: { where: { memberId }, select: { id: true } },
+      bookmarks: { where: { memberId }, select: { id: true } },
+    },
+  });
+  const hasMore = rows.length > take;
+  const pageRows = hasMore ? rows.slice(0, take) : rows;
+  return {
+    nextCursor: hasMore ? (pageRows.at(-1)?.id ?? null) : null,
+    posts: await enrichAuthors(
+      pageRows.map((post) => ({
+        ...post,
+        coverUrl: normalizeCommunityCoverUrl(post.coverUrl),
+        excerpt: post.excerpt ?? "",
+        readingMinutes: readingMinutes(post.excerpt ?? ""),
+      }))
+    ),
+  };
 };
 
 export const getStaffDeletedCommunityPosts = async () => {

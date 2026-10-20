@@ -9,6 +9,7 @@ vi.mock("next/link", () => ({
 
 vi.mock("@/app/(authenticated)/comunidade/actions", () => ({
   setPostStatus: vi.fn(),
+  undoSoftDeletedPost: vi.fn(),
   softDeletePost: vi.fn(),
   togglePostFeatured: vi.fn(),
   togglePostPin: vi.fn(),
@@ -39,12 +40,11 @@ describe("CommunityPostMenu", () => {
     expect(screen.queryByRole("menuitem", { name: "Destacar" })).toBeNull();
 
     fireEvent.click(screen.getByRole("menuitem", { name: "Excluir" }));
-    expect(screen.getByText("Excluir publicação?")).toBeTruthy();
+    expect(screen.getByRole("alertdialog")).toBeTruthy();
     expect(
-      screen.getByRole("menu", { name: "Confirmar exclusão da publicação" })
-        .classList
-    ).toContain("is-confirming-delete");
-    expect(screen.getByRole("menuitem", { name: "Cancelar" })).toBeTruthy();
+      screen.getByRole("heading", { name: "Excluir publicação?" })
+    ).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Cancelar" })).toBeTruthy();
   });
 
   test("adds independent pin and feature actions for moderators", () => {
@@ -89,6 +89,9 @@ describe("CommunityPostMenu", () => {
     expect(screen.queryByRole("menuitem", { name: "Destacar" })).toBeNull();
 
     fireEvent.click(screen.getByRole("menuitem", { name: "Excluir" }));
-    expect(screen.getByText("Excluir publicação?")).toBeTruthy();
+    expect(screen.getByRole("alertdialog")).toBeTruthy();
+    expect(
+      screen.getByRole("heading", { name: "Excluir rascunho?" })
+    ).toBeTruthy();
   });
 });

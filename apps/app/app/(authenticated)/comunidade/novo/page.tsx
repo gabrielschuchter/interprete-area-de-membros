@@ -2,6 +2,7 @@ import type { JSONContent } from "@tiptap/core";
 import { redirect } from "next/navigation";
 import { CommunityComposer } from "@/components/community/community-composer";
 import { getCommunitySpaces } from "@/lib/community";
+import { communityCoverAltEnabled } from "@/lib/community-cover-alt";
 import { safeCommunityReturnPath } from "@/lib/community-return-path";
 import { requireMemberId } from "@/lib/learning";
 import { readIdempotencyKey } from "@/lib/mutation-contract";
@@ -43,8 +44,10 @@ const NewCommunityContentPage = async ({
             returnTo ??
             (space ? `/comunidade/grupos/${space.slug}` : "/comunidade")
           }
+          enableCoverAltText={communityCoverAltEnabled}
           idempotencyKey={idempotencyKey}
           initialContent={emptyDocument}
+          initialCoverAltText=""
           initialCoverUrl={null}
           initialSpaceId={space?.id ?? null}
           initialSpaceSlug={space?.slug ?? null}
@@ -53,7 +56,12 @@ const NewCommunityContentPage = async ({
           initialTitle="Rascunho sem título"
           initialUpdatedAt={null}
           postId={null}
-          spaces={spaces.map(({ id, slug, title }) => ({ id, slug, title }))}
+          spaces={spaces.map(({ id, slug, title, visibility }) => ({
+            id,
+            slug,
+            title,
+            visibility,
+          }))}
           status="DRAFT"
         />
       </main>

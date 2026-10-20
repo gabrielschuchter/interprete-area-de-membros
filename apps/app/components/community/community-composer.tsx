@@ -1,5 +1,14 @@
 "use client";
 
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@repo/design-system/components/ui/alert-dialog";
 import { Button } from "@repo/design-system/components/ui/button";
 import { Input } from "@repo/design-system/components/ui/input";
 import type { JSONContent } from "@tiptap/core";
@@ -21,6 +30,7 @@ import {
   useState,
 } from "react";
 import {
+  discardCommunityDraft,
   publishPost,
   updateDraft,
   updatePost,
@@ -34,12 +44,15 @@ interface ComposerSpace {
   readonly id: string;
   readonly slug: string;
   readonly title: string;
+  readonly visibility: "PUBLIC" | "PRIVATE";
 }
 
 interface CommunityComposerProperties {
   readonly backHref: string;
+  readonly enableCoverAltText?: boolean;
   readonly idempotencyKey: string;
   readonly initialContent: JSONContent;
+  readonly initialCoverAltText?: string;
   readonly initialCoverUrl: string | null;
   readonly initialSpaceId: string | null;
   readonly initialSpaceSlug: string | null;
@@ -69,6 +82,13 @@ const hasLocalDraftContent = (value: {
   Boolean(value.coverUrl.trim()) ||
   Boolean(value.tags.trim()) ||
   JSON.stringify(value.content) !== JSON.stringify(emptyDocument);
+
+const documentHasText = (value: JSONContent): boolean => {
+  if (typeof value.text === "string" && value.text.trim()) {
+    return true;
+  }
+  return value.content?.some(documentHasText) ?? false;
+};
 
 const saveLabel = (state: SaveState) => {
   if (state === "saving") {
@@ -114,7 +134,9 @@ const publishButtonLabel = (status: PostStatus, publishing: boolean) => {
 export function CommunityComposer({
   backHref,
   initialContent,
+  initialCoverAltText = "",
   initialCoverUrl,
+  enableCoverAltText = false,
   initialSpaceId,
   initialSpaceSlug,
   initialSubtitle,
@@ -130,7 +152,9 @@ export function CommunityComposer({
   const [title, setTitle] = useState(initialTitle);
   const [subtitle, setSubtitle] = useState(initialSubtitle ?? "");
   const [coverUrl, setCoverUrl] = useState(initialCoverUrl ?? "");
+  const [coverAltText, setCoverAltText] = useState(initialCoverAltText);
   const [coverPreviewUrl, setCoverPreviewUrl] = useState<string | null>(null);
+  const [coverUploadPercent, setCoverUploadPercent] = useState(0);
   const [spaceId, setSpaceId] = useState(initialSpaceId ?? "");
   const [spaceSlug, setSpaceSlug] = useState(initialSpaceSlug ?? "");
   const [content, setContent] = useState<JSONContent>(
@@ -142,6 +166,7 @@ export function CommunityComposer({
   const [errorMessage, setErrorMessage] = useState("");
   const [publishing, setPublishing] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const [exitDialogOpen, setExitDialogOpen] = useState(false);
   const [savedPostId, setSavedPostId] = useState(postId);
   const [isUploadingCover, setIsUploadingCover] = useState(false);
   const [isUploadingInlineImage, setIsUploadingInlineImage] = useState(false);
@@ -163,6 +188,7 @@ export function CommunityComposer({
   const snapshot = useRef({
     title: initialTitle,
     subtitle: initialSubtitle ?? "",
+    coverAltText: initialCoverAltText,
     coverUrl: initialCoverUrl ?? "",
     tags: initialTags.join(", "),
     spaceId: initialSpaceId ?? "",
@@ -185,6 +211,7 @@ export function CommunityComposer({
     }
     formData.set("title", current.title);
     formData.set("subtitle", current.subtitle);
+    formData.set("coverAltText", current.coverAltText);
     formData.set("coverUrl", current.coverUrl);
     formData.set("tags", current.tags);
     formData.set("spaceId", current.spaceId);
@@ -329,6 +356,9 @@ export function CommunityComposer({
   const updateSnapshot = (patch: Partial<typeof snapshot.current>) => {
     snapshot.current = { ...snapshot.current, ...patch };
     dirtyRef.current = true;
+    if (status !== "DRAFT") {
+      setSaveState("idle");
+    }
     scheduleSave();
   };
 
@@ -348,26 +378,50 @@ export function CommunityComposer({
     coverUploadInFlight.current = true;
     setCoverPreviewUrl(URL.createObjectURL(file));
     setIsUploadingCover(true);
+    setCoverUploadPercent(0);
     setErrorMessage("");
     try {
       const formData = new FormData();
       formData.set("file", file);
       formData.set("assetType", "community-cover");
-      const response = await fetch("/api/member-assets", {
-        method: "POST",
-        body: formData,
-      });
-      const payload = (await response.json()) as {
-        error?: string;
-        url?: string;
-      };
-      if (!(response.ok && payload.url)) {
+      const payload = await new Promise<{ error?: string; url?: string }>(
+        (resolve, reject) => {
+          const request = new XMLHttpRequest();
+          request.open("POST", "/api/member-assets");
+          request.upload.onprogress = (event) => {
+            if (event.lengthComputable) {
+              setCoverUploadPercent(
+                Math.round((event.loaded / event.total) * 100)
+              );
+            }
+          };
+          request.onerror = () => reject(new Error("Falha de conexão."));
+          request.onload = () => {
+            try {
+              const response = JSON.parse(request.responseText) as {
+                error?: string;
+                url?: string;
+              };
+              if (request.status >= 200 && request.status < 300) {
+                resolve(response);
+              } else {
+                reject(new Error(response.error ?? "Falha no envio da capa."));
+              }
+            } catch {
+              reject(new Error("Não foi possível confirmar o envio da capa."));
+            }
+          };
+          request.send(formData);
+        }
+      );
+      if (!payload.url) {
         throw new Error(payload.error ?? "Não foi possível enviar a capa.");
       }
       setCoverUrl(payload.url);
       uploadedCoverUrlRef.current = payload.url;
       setCoverPreviewUrl(null);
       updateSnapshot({ coverUrl: payload.url });
+      setCoverUploadPercent(100);
     } catch (uploadError) {
       setErrorMessage(
         uploadError instanceof Error
@@ -580,26 +634,33 @@ export function CommunityComposer({
     handlePublishedSave().catch(() => undefined);
   };
 
-  const handleLeave = async (event: MouseEvent<HTMLAnchorElement>) => {
+  const requestLeave = (event: MouseEvent<HTMLAnchorElement>) => {
     event.preventDefault();
-    if (leaving) {
+    if (leaving || exitDialogOpen) {
       return;
     }
     if (isUploadingCover || isUploadingInlineImage) {
       setErrorMessage("Aguarde o envio da imagem antes de sair do editor.");
       return;
     }
+    if (!dirtyRef.current) {
+      router.push(backHref);
+      return;
+    }
+    setExitDialogOpen(true);
+  };
+
+  const saveAndLeave = async () => {
+    if (leaving) {
+      return;
+    }
     setLeaving(true);
     try {
-      let canLeave = true;
-      if (status === "DRAFT") {
-        const hasDraftToSave =
-          Boolean(postIdRef.current) || hasLocalDraftContent(snapshot.current);
-        canLeave = !hasDraftToSave || (await flushSave());
-      } else if (dirtyRef.current) {
-        canLeave = await updatePublishedPost();
-      }
-      if (canLeave) {
+      const saved =
+        !dirtyRef.current ||
+        (status === "DRAFT" ? await flushSave() : await updatePublishedPost());
+      if (saved) {
+        setExitDialogOpen(false);
         router.push(backHref);
       }
     } catch {
@@ -609,6 +670,47 @@ export function CommunityComposer({
       setSaveState("error");
     } finally {
       setLeaving(false);
+    }
+  };
+
+  const discardAndLeave = async () => {
+    if (leaving) {
+      return;
+    }
+    setLeaving(true);
+    if (timer.current) {
+      clearTimeout(timer.current);
+      timer.current = null;
+    }
+    try {
+      const currentPostId = postIdRef.current;
+      if (currentPostId) {
+        const formData = new FormData();
+        formData.set("postId", currentPostId);
+        const result = await discardCommunityDraft(formData);
+        if (!result.ok) {
+          setErrorMessage(
+            "Não foi possível descartar este rascunho. Atualize a página e tente novamente."
+          );
+          return;
+        }
+        if (backHref.startsWith("/comunidade/minhas-publicacoes")) {
+          const separator = backHref.includes("?") ? "&" : "?";
+          const undoState = new URLSearchParams({
+            undoPost: currentPostId,
+            undoUntil: String(Date.parse(result.deletedAt) + 8000),
+          });
+          router.push(`${backHref}${separator}${undoState.toString()}`);
+          return;
+        }
+      }
+      await removeTemporaryCover();
+      router.push(backHref);
+    } catch {
+      setErrorMessage("Não foi possível descartar o rascunho agora.");
+    } finally {
+      setLeaving(false);
+      setExitDialogOpen(false);
     }
   };
 
@@ -633,7 +735,7 @@ export function CommunityComposer({
           aria-disabled={leaving}
           className="community-editor-back"
           href={backHref}
-          onClick={(event) => handleLeave(event).catch(() => undefined)}
+          onClick={requestLeave}
         >
           <ArrowLeftIcon aria-hidden="true" />
           <span>{leaving ? "Salvando…" : "Voltar"}</span>
@@ -677,7 +779,11 @@ export function CommunityComposer({
             <Button
               className="community-editor-publish"
               disabled={
-                publishing || isUploadingCover || isUploadingInlineImage
+                publishing ||
+                isUploadingCover ||
+                isUploadingInlineImage ||
+                title.trim().length < 4 ||
+                !documentHasText(content)
               }
               onClick={handlePublish}
               type="button"
@@ -687,6 +793,7 @@ export function CommunityComposer({
           ) : (
             <Button
               className="community-editor-publish"
+              disabled={isUploadingCover || isUploadingInlineImage || leaving}
               onClick={handlePublishedSave}
               type="button"
             >
@@ -856,17 +963,58 @@ export function CommunityComposer({
               // The authenticated media route resolves the private object.
               // biome-ignore lint/performance/noImgElement: this is a small upload preview.
               <img
-                alt="Prévia da capa"
+                alt={coverAltText || `Capa: ${title || draftTitle}`}
                 className="community-editor-cover-preview"
                 height={224}
                 src={coverPreviewUrl ?? coverUrl}
                 width={900}
               />
             ) : null}
+            {isUploadingCover ? (
+              <div
+                aria-label={`Enviando capa: ${coverUploadPercent}%`}
+                aria-valuemax={100}
+                aria-valuemin={0}
+                aria-valuenow={coverUploadPercent}
+                className="community-editor-cover-progress"
+                role="progressbar"
+              >
+                <span style={{ width: `${coverUploadPercent}%` }} />
+              </div>
+            ) : null}
+            {enableCoverAltText && coverUrl ? (
+              <label
+                className="community-editor-cover-alt-label"
+                htmlFor="community-cover-alt"
+              >
+                Texto alternativo
+                <Input
+                  aria-label="Texto alternativo da capa"
+                  id="community-cover-alt"
+                  maxLength={500}
+                  onBlur={() => flushSave().catch(() => undefined)}
+                  onChange={(event) => {
+                    const nextAltText = event.target.value;
+                    setCoverAltText(nextAltText);
+                    updateSnapshot({ coverAltText: nextAltText });
+                  }}
+                  placeholder="Descreva a imagem para quem usa leitor de tela"
+                  value={coverAltText}
+                />
+              </label>
+            ) : null}
             <p className="community-editor-cover-note">
-              JPG, PNG ou WebP · até 5 MB. O upload é salvo junto do rascunho.
+              {isUploadingCover
+                ? `Enviando capa · ${coverUploadPercent}%`
+                : "JPG, PNG ou WebP · até 5 MB. O upload é salvo junto do rascunho."}
             </p>
           </div>
+          {spaces.find((space) => space.id === spaceId)?.visibility ===
+          "PRIVATE" ? (
+            <p className="community-editor-private-notice">
+              Esta publicação ficará visível apenas para membros do grupo.
+            </p>
+          ) : null}
         </div>
 
         <div className="community-editor-body">
@@ -886,6 +1034,51 @@ export function CommunityComposer({
           />
         </div>
       </form>
+      <AlertDialog onOpenChange={setExitDialogOpen} open={exitDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Sair do editor?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {status === "DRAFT"
+                ? "Suas alterações ainda podem estar salvando. Você pode manter o rascunho ou descartá-lo."
+                : "Salve as alterações antes de sair para manter sua publicação atualizada."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={leaving}>
+              Continuar editando
+            </AlertDialogCancel>
+            {status === "DRAFT" ? (
+              <Button
+                disabled={leaving}
+                onClick={() => saveAndLeave().catch(() => undefined)}
+                type="button"
+                variant="outline"
+              >
+                {leaving ? "Salvando…" : "Sair e manter rascunho"}
+              </Button>
+            ) : (
+              <Button
+                disabled={leaving}
+                onClick={() => saveAndLeave().catch(() => undefined)}
+                type="button"
+              >
+                {leaving ? "Salvando…" : "Salvar e sair"}
+              </Button>
+            )}
+            {status === "DRAFT" ? (
+              <Button
+                disabled={leaving}
+                onClick={() => discardAndLeave().catch(() => undefined)}
+                type="button"
+                variant="destructive"
+              >
+                Descartar rascunho
+              </Button>
+            ) : null}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
