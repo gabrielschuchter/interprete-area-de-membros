@@ -8,6 +8,7 @@ import {
   type Prisma,
 } from "@repo/database";
 import {
+  enqueueNotificationBatch,
   notificationPreferenceForType,
   notificationTitleForType,
 } from "@repo/member-domain";
@@ -558,12 +559,16 @@ const groupWhereForMention = (
     : [];
 };
 
-const expandMentionGroups = async (actorId: string, ids: Set<string>) => {
+const expandMentionGroups = async (
+  actorId: string,
+  ids: Set<string>,
+  transaction: Prisma.TransactionClient = database
+) => {
   const groupIds = groupIdsFromMentionIds(ids);
   if (groupIds.length === 0) {
     return;
   }
-  const actor = await database.member.findUnique({
+  const actor = await transaction.member.findUnique({
     where: { id: actorId },
     select: { role: true },
   });
@@ -571,7 +576,7 @@ const expandMentionGroups = async (actorId: string, ids: Set<string>) => {
   if (groupWhere.length === 0) {
     return;
   }
-  const groupMembers = await database.member.findMany({
+  const groupMembers = await transaction.member.findMany({
     where: { OR: groupWhere },
     select: { id: true },
   });
@@ -580,9 +585,13 @@ const expandMentionGroups = async (actorId: string, ids: Set<string>) => {
   }
 };
 
-const resolveMentionTargets = async (ids: Set<string>, usernames: string[]) => {
+const resolveMentionTargets = async (
+  ids: Set<string>,
+  usernames: string[],
+  transaction: Prisma.TransactionClient = database
+) => {
   if (ids.size > 0) {
-    const members = await database.member.findMany({
+    const members = await transaction.member.findMany({
       where: { id: { in: [...ids] } },
       select: { id: true },
     });
@@ -596,7 +605,7 @@ const resolveMentionTargets = async (ids: Set<string>, usernames: string[]) => {
   if (usernames.length === 0) {
     return;
   }
-  const profiles = await database.profile.findMany({
+  const profiles = await transaction.profile.findMany({
     where: { username: { in: usernames } },
     select: { clerkUserId: true },
   });
@@ -609,15 +618,17 @@ export const resolveMentionedMemberIds = async (input: {
   readonly actorId: string;
   readonly content?: string;
   readonly document?: unknown;
+  readonly transaction?: Prisma.TransactionClient;
 }) => {
+  const transaction = input.transaction ?? database;
   const ids = new Set(extractMentionIdsFromDocument(input.document));
   const hasGroupMention = groupIdsFromMentionIds(ids).length > 0;
   for (const groupId of groupIdsFromMentionIds(ids)) {
     ids.delete(groupId);
   }
-  await expandMentionGroups(input.actorId, ids);
+  await expandMentionGroups(input.actorId, ids, transaction);
   const usernames = extractMentionUsernames(input.content ?? "");
-  await resolveMentionTargets(ids, usernames);
+  await resolveMentionTargets(ids, usernames, transaction);
   ids.delete(input.actorId);
   return hasGroupMention ? [...ids] : [...ids].slice(0, 20);
 };
@@ -627,6 +638,7 @@ export const recordMentions = async (input: {
   readonly mentionedUserIds: readonly string[];
   readonly entityType: string;
   readonly entityId: string;
+  readonly transaction?: Prisma.TransactionClient;
 }) => {
   const ids = [...new Set(input.mentionedUserIds)].filter(
     (id) => id && id !== input.actorId
@@ -634,7 +646,7 @@ export const recordMentions = async (input: {
   if (ids.length === 0) {
     return;
   }
-  await database.mention.createMany({
+  await (input.transaction ?? database).mention.createMany({
     data: ids.map((mentionedUserId) => ({
       actorId: input.actorId,
       mentionedUserId,
@@ -647,13 +659,14 @@ export const recordMentions = async (input: {
 
 const filterPrivateCommunityRecipients = async (
   postId: string,
-  recipientIds: readonly string[]
+  recipientIds: readonly string[],
+  transaction: Prisma.TransactionClient = database
 ) => {
   const uniqueIds = [...new Set(recipientIds)];
   if (uniqueIds.length === 0) {
     return uniqueIds;
   }
-  const post = await database.communityPost.findUnique({
+  const post = await transaction.communityPost.findUnique({
     where: { id: postId },
     select: {
       space: {
@@ -664,7 +677,7 @@ const filterPrivateCommunityRecipients = async (
   if (!post?.space || post.space.visibility !== "PRIVATE") {
     return uniqueIds;
   }
-  const members = await database.communitySpaceMember.findMany({
+  const members = await transaction.communitySpaceMember.findMany({
     where: {
       spaceId: post.space.id,
       memberId: { in: uniqueIds },
@@ -690,11 +703,15 @@ export const notifyCommunityComment = async (input: {
   readonly parentAuthorId?: string | null;
   readonly href: string;
   readonly document?: unknown;
+  readonly occurredAt: Date;
+  readonly idempotencyKey: string;
+  readonly transaction: Prisma.TransactionClient;
 }) => {
   const mentionedIds = await resolveMentionedMemberIds({
     actorId: input.actorId,
     content: input.commentContent,
     document: input.document,
+    transaction: input.transaction,
   });
   const recipientCandidates: {
     readonly memberId: string | null | undefined;
@@ -714,7 +731,7 @@ export const notifyCommunityComment = async (input: {
     });
   }
 
-  const follows = await database.topicFollow.findMany({
+  const follows = await input.transaction.topicFollow.findMany({
     where: { topicId: input.postId, mutedAt: null },
     select: { userId: true },
   });
@@ -730,7 +747,8 @@ export const notifyCommunityComment = async (input: {
       input.postId,
       recipientCandidates
         .map(({ memberId }) => memberId)
-        .filter((memberId): memberId is string => Boolean(memberId))
+        .filter((memberId): memberId is string => Boolean(memberId)),
+      input.transaction
     )
   );
   const allowedMentions = mentionedIds.filter((memberId) =>
@@ -741,34 +759,42 @@ export const notifyCommunityComment = async (input: {
     mentionedUserIds: allowedMentions,
     entityType: "COMMENT",
     entityId: input.commentId,
+    transaction: input.transaction,
   });
 
-  await Promise.all(
-    mergeNotificationRecipients(
-      input.actorId,
-      recipientCandidates.filter(({ memberId }) =>
-        memberId ? allowedRecipients.has(memberId) : false
-      )
-    ).map(([recipientId, type]) =>
-      createNotification({
-        recipientId,
-        actorId: input.actorId,
-        type,
-        entityType: "COMMENT",
-        entityId: input.commentId,
-        parentEntityType: input.parentCommentId ? "COMMENT" : "TOPIC",
-        parentEntityId: input.parentCommentId ?? input.postId,
-        groupKey:
-          type === notificationTypes.followedTopicActivity
-            ? `topic:${input.postId}:activity`
-            : undefined,
-        metadata: { postId: input.postId },
-        dedupeKey: `${type}:${recipientId}:${input.commentId}`,
-        body: input.postTitle,
-        href: commentHref(input.href, input.commentId),
-      })
+  const recipients = mergeNotificationRecipients(
+    input.actorId,
+    recipientCandidates.filter(({ memberId }) =>
+      memberId ? allowedRecipients.has(memberId) : false
     )
   );
+  if (recipients.length === 0) {
+    return;
+  }
+  await enqueueNotificationBatch(input.transaction, {
+    actorId: input.actorId,
+    aggregateType: "COMMUNITY_COMMENT",
+    aggregateId: input.commentId,
+    idempotencyKey: input.idempotencyKey,
+    occurredAt: input.occurredAt,
+    notifications: recipients.map(([recipientId, type]) => ({
+      recipientId,
+      type,
+      entityType: "COMMENT",
+      entityId: input.commentId,
+      parentEntityType: input.parentCommentId ? "COMMENT" : "TOPIC",
+      parentEntityId: input.parentCommentId ?? input.postId,
+      groupKey:
+        type === notificationTypes.followedTopicActivity
+          ? `topic:${input.postId}:activity`
+          : undefined,
+      dedupeKey: `${type}:${recipientId}:${input.commentId}`,
+      priority: priorityForType[type],
+      title: titleForType[type],
+      body: input.postTitle,
+      href: commentHref(input.href, input.commentId),
+    })),
+  });
 };
 
 export const notifyCommunityPost = async (input: {

@@ -1657,66 +1657,92 @@ export const updateComment = async (formData: FormData) => {
     action: "community.mutation",
     memberId: userId,
   });
-  const comment = await database.communityComment.findFirst({
-    where: {
-      id: commentId,
-      postId,
-      authorId: userId,
-      deletedAt: null,
-      post: {
-        is: await publishedPostWhere(postId, userId, spaceSlug || undefined),
-      },
-    },
-    select: {
-      id: true,
-      parentId: true,
-      post: {
-        select: {
-          authorId: true,
-          id: true,
-          slug: true,
-          space: { select: { slug: true } },
-          title: true,
+  const updated = await database.$transaction(async (transaction) => {
+    const comment = await transaction.communityComment.findFirst({
+      where: {
+        id: commentId,
+        postId,
+        authorId: userId,
+        deletedAt: null,
+        post: {
+          is: await publishedPostWhere(postId, userId, spaceSlug || undefined),
         },
       },
-    },
+      select: {
+        id: true,
+        parentId: true,
+        content: true,
+        contentJson: true,
+        createdAt: true,
+        updatedAt: true,
+        post: {
+          select: {
+            authorId: true,
+            id: true,
+            slug: true,
+            space: { select: { slug: true } },
+            title: true,
+          },
+        },
+      },
+    });
+    if (!comment) {
+      return false;
+    }
+    if (
+      comment.content === content &&
+      JSON.stringify(comment.contentJson ?? null) ===
+        JSON.stringify(document ?? null)
+    ) {
+      return false;
+    }
+
+    const editedAt = new Date();
+    const write = await transaction.communityComment.updateMany({
+      where: { id: commentId, updatedAt: comment.updatedAt },
+      data: {
+        content,
+        contentJson: document as Prisma.InputJsonValue | undefined,
+        editedAt,
+      },
+    });
+    if (write.count !== 1) {
+      return false;
+    }
+    if (
+      extractMentionIdsFromDocument(document).length > 0 ||
+      extractMentionUsernames(content).length > 0
+    ) {
+      let parentAuthorId: string | null = null;
+      if (comment.parentId) {
+        const parent = await transaction.communityComment.findUnique({
+          where: { id: comment.parentId },
+          select: { authorId: true },
+        });
+        parentAuthorId = parent?.authorId ?? null;
+      }
+      await notifyCommunityComment({
+        actorId: userId,
+        postId: comment.post.id,
+        commentId: comment.id,
+        commentContent: content,
+        postAuthorId: comment.post.authorId,
+        postTitle: comment.post.title,
+        parentCommentId: comment.parentId,
+        parentAuthorId,
+        href: communityHref(comment.post),
+        document,
+        occurredAt: editedAt,
+        idempotencyKey: `community-comment:${comment.id}:edit:${randomUUID()}`,
+        transaction,
+      });
+    }
+    return true;
   });
-  if (!comment) {
+  if (!updated) {
     return;
   }
-  await database.communityComment.update({
-    where: { id: commentId },
-    data: {
-      content,
-      contentJson: document as Prisma.InputJsonValue | undefined,
-      editedAt: new Date(),
-    },
-  });
-  if (
-    extractMentionIdsFromDocument(document).length > 0 ||
-    extractMentionUsernames(content).length > 0
-  ) {
-    let parentAuthorId: string | null = null;
-    if (comment.parentId) {
-      const parent = await database.communityComment.findUnique({
-        where: { id: comment.parentId },
-        select: { authorId: true },
-      });
-      parentAuthorId = parent?.authorId ?? null;
-    }
-    await notifyCommunityComment({
-      actorId: userId,
-      postId: comment.post.id,
-      commentId: comment.id,
-      commentContent: content,
-      postAuthorId: comment.post.authorId,
-      postTitle: comment.post.title,
-      parentCommentId: comment.parentId,
-      parentAuthorId,
-      href: communityHref(comment.post),
-      document,
-    });
-  }
+  await dispatchPendingNotifications();
   revalidateCommunity(spaceSlug || undefined, postId);
 };
 

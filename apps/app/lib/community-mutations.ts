@@ -1,7 +1,6 @@
 import "server-only";
 
 import { ContentStatus, database, type Prisma } from "@repo/database";
-import { getMemberRole } from "@/lib/authorization";
 import {
   communityPostMutationAudienceWhere,
   communitySpaceMemberAudienceWhere,
@@ -13,6 +12,7 @@ import {
   isUniqueConstraintError,
   mutationLog,
 } from "@/lib/mutation-reliability";
+import { dispatchPendingNotifications } from "@/lib/notification-outbox-dispatch";
 import {
   documentHasGroupMention,
   notifyCommunityComment,
@@ -22,10 +22,16 @@ import { getOrCreateProfile } from "@/lib/profile";
 const publishedPostWhere = async (
   postId: string,
   memberId: string,
-  spaceSlug?: string
+  spaceSlug: string | undefined,
+  transaction: Prisma.TransactionClient
 ) => {
-  const role = await getMemberRole(memberId);
-  const canModerate = role === "TEACHER" || role === "ADMIN";
+  const member = await transaction.member.findUnique({
+    where: { id: memberId },
+    select: { role: true, deactivatedAt: true },
+  });
+  const canModerate =
+    member?.deactivatedAt === null &&
+    (member.role === "TEACHER" || member.role === "ADMIN");
   return {
     id: postId,
     status: ContentStatus.PUBLISHED,
@@ -58,14 +64,6 @@ const communityHref = (post: {
   return `/comunidade/publicacoes/${post.id}`;
 };
 
-const ensureTopicFollow = (userId: string, topicId: string) =>
-  database.topicFollow.upsert({
-    where: { userId_topicId: { userId, topicId } },
-    create: { userId, topicId },
-    update: {},
-    select: { id: true },
-  });
-
 export interface CreateCommunityCommentInput {
   readonly actorId: string;
   readonly content: string;
@@ -96,31 +94,44 @@ interface CommentNotificationPost {
 interface CommentNotificationRecord {
   readonly content: string;
   readonly contentJson: unknown;
+  readonly createdAt: Date;
   readonly id: string;
   readonly parentId: string | null;
   readonly postId: string;
 }
 
 const reconcileCommentEffects = async ({
+  transaction,
   actorId,
   document,
+  enqueueNotifications = true,
   post,
   record,
 }: {
+  readonly transaction: Prisma.TransactionClient;
   readonly actorId: string;
   readonly document?: unknown;
+  readonly enqueueNotifications?: boolean;
   readonly post: CommentNotificationPost;
   readonly record: CommentNotificationRecord;
 }) => {
   let parentAuthorId: string | null = null;
   if (record.parentId) {
-    const parent = await database.communityComment.findUnique({
+    const parent = await transaction.communityComment.findUnique({
       where: { id: record.parentId },
       select: { authorId: true },
     });
     parentAuthorId = parent?.authorId ?? null;
   }
-  await ensureTopicFollow(actorId, record.postId);
+  await transaction.topicFollow.upsert({
+    where: { userId_topicId: { userId: actorId, topicId: record.postId } },
+    create: { userId: actorId, topicId: record.postId },
+    update: {},
+    select: { id: true },
+  });
+  if (!enqueueNotifications) {
+    return;
+  }
   await notifyCommunityComment({
     actorId,
     postId: record.postId,
@@ -132,6 +143,9 @@ const reconcileCommentEffects = async ({
     parentAuthorId,
     href: communityHref(post),
     document,
+    occurredAt: record.createdAt,
+    idempotencyKey: `community-comment:${record.id}:created`,
+    transaction,
   });
 };
 
@@ -148,6 +162,7 @@ const validateCommentInput = (input: CreateCommunityCommentInput) => {
 const commentSelect = {
   id: true,
   postId: true,
+  createdAt: true,
   content: true,
   contentJson: true,
   parentId: true,
@@ -162,8 +177,11 @@ const commentSelect = {
   },
 } satisfies Prisma.CommunityCommentSelect;
 
-const loadExistingComment = (input: CreateCommunityCommentInput) =>
-  database.communityComment.findUnique({
+const loadExistingComment = (
+  transaction: Prisma.TransactionClient,
+  input: CreateCommunityCommentInput
+) =>
+  transaction.communityComment.findUnique({
     where: {
       authorId_idempotencyKey: {
         authorId: input.actorId,
@@ -173,87 +191,94 @@ const loadExistingComment = (input: CreateCommunityCommentInput) =>
     select: commentSelect,
   });
 
-const returnExistingComment = async ({
-  existing,
-  input,
-  startedAt,
-}: {
-  readonly existing: Prisma.CommunityCommentGetPayload<{
-    select: typeof commentSelect;
-  }>;
-  readonly input: CreateCommunityCommentInput;
-  readonly startedAt: number;
-}): Promise<CreateCommunityCommentResult> => {
-  await reconcileCommentEffects({
-    actorId: input.actorId,
-    post: existing.post,
-    record: {
-      content: existing.content,
-      contentJson: existing.contentJson,
-      id: existing.id,
-      parentId: existing.parentId,
-      postId: existing.postId,
+const visiblePost = async (
+  transaction: Prisma.TransactionClient,
+  input: CreateCommunityCommentInput,
+  postId = input.postId,
+  spaceSlug = input.spaceSlug
+) =>
+  transaction.communityPost.findFirst({
+    where: await publishedPostWhere(
+      postId,
+      input.actorId,
+      spaceSlug,
+      transaction
+    ),
+    select: {
+      id: true,
+      authorId: true,
+      title: true,
+      slug: true,
+      space: { select: { slug: true, commentsClosed: true } },
     },
-    document: existing.contentJson ?? undefined,
   });
-  mutationLog({
-    action: "community.comment.create",
-    memberId: input.actorId,
-    requestId: input.requestId,
-    idempotencyKey: input.idempotencyKey,
-    resource: existing.id,
-    status: "duplicate",
-    durationMs: Date.now() - startedAt,
+
+const ensureCommentCanBeCreated = async (
+  transaction: Prisma.TransactionClient,
+  input: CreateCommunityCommentInput
+) => {
+  const post = await visiblePost(transaction, input);
+  if (!post || post.space?.commentsClosed) {
+    throw new Error("Esta discussão não está disponível para comentários.");
+  }
+
+  if (input.parentId) {
+    const parent = await transaction.communityComment.findFirst({
+      where: {
+        id: input.parentId,
+        postId: input.postId,
+        parentId: null,
+        deletedAt: null,
+      },
+      select: { id: true },
+    });
+    if (!parent) {
+      throw new Error("A resposta original não está mais disponível.");
+    }
+  }
+
+  return post;
+};
+
+const reconcileExistingComment = async (
+  transaction: Prisma.TransactionClient,
+  input: CreateCommunityCommentInput
+) => {
+  const existing = await loadExistingComment(transaction, input);
+  if (!existing) {
+    return null;
+  }
+  const post = await visiblePost(
+    transaction,
+    input,
+    existing.postId,
+    existing.post.space?.slug ?? undefined
+  );
+  if (!post) {
+    throw new Error("Esta discussão não está disponível para comentários.");
+  }
+  const existingNotificationEvent = await transaction.domainEvent.findFirst({
+    where: {
+      eventType: "notifications.batch_requested",
+      aggregateType: "COMMUNITY_COMMENT",
+      aggregateId: existing.id,
+    },
+    select: { id: true },
+  });
+  await reconcileCommentEffects({
+    transaction,
+    actorId: input.actorId,
+    enqueueNotifications: !existingNotificationEvent,
+    post,
+    record: existing,
+    document: existing.contentJson ?? undefined,
   });
   return {
     commentId: existing.id,
     duplicate: true,
     postId: existing.postId,
-    postHref: communityHref(existing.post),
-  };
-};
-
-const createOrReuseComment = async ({
-  input,
-}: {
-  readonly input: CreateCommunityCommentInput;
-}): Promise<{
-  readonly comment: { readonly id: string };
-  readonly duplicate: boolean;
-}> => {
-  try {
-    return {
-      comment: await database.communityComment.create({
-        data: {
-          postId: input.postId,
-          authorId: input.actorId,
-          idempotencyKey: input.idempotencyKey,
-          content: input.content,
-          contentJson: input.document,
-          parentId: input.parentId,
-        },
-        select: { id: true },
-      }),
-      duplicate: false,
-    };
-  } catch (error) {
-    if (!isUniqueConstraintError(error)) {
-      throw error;
-    }
-    const racedComment = await database.communityComment.findUnique({
-      where: {
-        authorId_idempotencyKey: {
-          authorId: input.actorId,
-          idempotencyKey: input.idempotencyKey,
-        },
-      },
-      select: { id: true },
-    });
-    if (!racedComment) {
-      throw error;
-    }
-    return { comment: racedComment, duplicate: true };
-  }
+    postHref: communityHref(post),
+  } satisfies CreateCommunityCommentResult;
 };
 
 export const createCommunityComment = async (
@@ -264,10 +289,34 @@ export const createCommunityComment = async (
 
   validateCommentInput(input);
 
-  const existing = await loadExistingComment(input);
+  const existing = await database.communityComment.findUnique({
+    where: {
+      authorId_idempotencyKey: {
+        authorId: input.actorId,
+        idempotencyKey: input.idempotencyKey,
+      },
+    },
+    select: { id: true },
+  });
 
   if (existing) {
-    return returnExistingComment({ existing, input, startedAt });
+    const result = await database.$transaction((transaction) =>
+      reconcileExistingComment(transaction, input)
+    );
+    if (!result) {
+      throw new Error("O comentário criado não pôde ser recuperado.");
+    }
+    await dispatchPendingNotifications();
+    mutationLog({
+      action,
+      memberId: input.actorId,
+      requestId: input.requestId,
+      idempotencyKey: input.idempotencyKey,
+      resource: result.commentId,
+      status: "duplicate",
+      durationMs: Date.now() - startedAt,
+    });
+    return result;
   }
 
   try {
@@ -286,106 +335,98 @@ export const createCommunityComment = async (
     throw error;
   }
 
-  const post = await database.communityPost.findFirst({
-    where: await publishedPostWhere(
-      input.postId,
-      input.actorId,
-      input.spaceSlug
-    ),
-    select: {
-      id: true,
-      authorId: true,
-      title: true,
-      slug: true,
-      space: { select: { slug: true, commentsClosed: true } },
-    },
-  });
-
-  if (!post || post.space?.commentsClosed) {
-    throw new Error("Esta discussão não está disponível para comentários.");
-  }
-
-  if (input.parentId) {
-    const parent = await database.communityComment.findFirst({
-      where: {
-        id: input.parentId,
-        postId: input.postId,
-        deletedAt: null,
-      },
-      select: { id: true },
-    });
-    if (!parent) {
-      throw new Error("A resposta original não está mais disponível.");
-    }
-  }
+  await ensureCommentCanBeCreated(database, input);
 
   await getOrCreateProfile(input.actorId);
 
-  let comment: { id: string };
-  let duplicate: boolean;
+  let result: CreateCommunityCommentResult;
   try {
-    ({ comment, duplicate } = await createOrReuseComment({ input }));
-  } catch (error) {
-    mutationLog({
-      action,
-      memberId: input.actorId,
-      requestId: input.requestId,
-      idempotencyKey: input.idempotencyKey,
-      status: "error",
-      durationMs: Date.now() - startedAt,
+    result = await database.$transaction(async (transaction) => {
+      const concurrent = await reconcileExistingComment(transaction, input);
+      if (concurrent) {
+        return concurrent;
+      }
+
+      const post = await ensureCommentCanBeCreated(transaction, input);
+
+      const comment = await transaction.communityComment.create({
+        data: {
+          postId: input.postId,
+          authorId: input.actorId,
+          idempotencyKey: input.idempotencyKey,
+          content: input.content,
+          contentJson: input.document,
+          parentId: input.parentId,
+        },
+        select: { id: true, createdAt: true },
+      });
+      await reconcileCommentEffects({
+        transaction,
+        actorId: input.actorId,
+        post,
+        record: {
+          content: input.content,
+          contentJson: input.document,
+          createdAt: comment.createdAt,
+          id: comment.id,
+          parentId: input.parentId,
+          postId: post.id,
+        },
+        document: input.document,
+      });
+      return {
+        commentId: comment.id,
+        duplicate: false,
+        postId: post.id,
+        postHref: communityHref(post),
+      };
     });
-    throw error;
+  } catch (error) {
+    if (isUniqueConstraintError(error)) {
+      try {
+        const duplicate = await database.$transaction((transaction) =>
+          reconcileExistingComment(transaction, input)
+        );
+        if (duplicate) {
+          result = duplicate;
+        } else {
+          throw error;
+        }
+      } catch (retryError) {
+        mutationLog({
+          action,
+          memberId: input.actorId,
+          requestId: input.requestId,
+          idempotencyKey: input.idempotencyKey,
+          status: "error",
+          durationMs: Date.now() - startedAt,
+        });
+        throw retryError;
+      }
+    } else {
+      mutationLog({
+        action,
+        memberId: input.actorId,
+        requestId: input.requestId,
+        idempotencyKey: input.idempotencyKey,
+        status: "error",
+        durationMs: Date.now() - startedAt,
+      });
+      throw error;
+    }
   }
 
-  if (duplicate) {
-    const canonical = await database.communityComment.findUnique({
-      where: { id: comment.id },
-      select: {
-        id: true,
-        postId: true,
-        content: true,
-        contentJson: true,
-        parentId: true,
-      },
-    });
-    if (!canonical) {
-      throw new Error("O comentário criado não pôde ser recuperado.");
-    }
-    await reconcileCommentEffects({
-      actorId: input.actorId,
-      post,
-      record: canonical,
-      document: canonical.contentJson ?? input.document,
-    });
-  } else {
-    await reconcileCommentEffects({
-      actorId: input.actorId,
-      post,
-      record: {
-        content: input.content,
-        contentJson: input.document,
-        id: comment.id,
-        parentId: input.parentId,
-        postId: post.id,
-      },
-      document: input.document,
-    });
-  }
+  await dispatchPendingNotifications();
 
   mutationLog({
     action,
     memberId: input.actorId,
     requestId: input.requestId,
     idempotencyKey: input.idempotencyKey,
-    resource: comment.id,
-    status: duplicate ? "duplicate" : "success",
+    resource: result.commentId,
+    status: result.duplicate ? "duplicate" : "success",
     durationMs: Date.now() - startedAt,
   });
 
-  return {
-    commentId: comment.id,
-    duplicate,
-    postId: post.id,
-    postHref: communityHref(post),
-  };
+  return result;
 };
