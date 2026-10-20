@@ -6,7 +6,8 @@
 - **Preview App:** registro de deployment `7199735169` (ambiente App Preview) ficou `success` no SHA exato `ecc1dca`; o App concluiu e a API foi `Skipped - Not affected`. O alias autenticado é `interprete-area-de-membro-git-553be9-gabrielschuchters-projects.vercel.app`.
 - **Etapa 02:** gates locais e QA autenticado de leitura foram concluídos no candidato atual para Explorar em 390/820/1280 CSS px, seletor mobile, Grupos, Salvos, Encontros e Gravações. As telas hidratadas foram comparadas aos boards 09, 11, 35, 37, 38, 43, 44 e 50. A etapa permanece `IN PROGRESS` porque não ocorreu erro natural no Preview; nenhuma falha foi injetada.
 - **Segurança:** nenhuma escrita no GREEN, fixture, migration, alteração de Production ou mudança no checkout original. Nenhum segredo foi exibido.
-- **Próximo passo:** obter prova visual do estado de erro por ocorrência natural ou mecanismo isolado e não mutável no Preview. Até essa evidência, manter a Etapa 02 `IN PROGRESS` e não iniciar a Etapa 03. OPS-01 e etapas futuras permanecem fora do escopo.
+- **Pendência externa:** o erro não ocorreu naturalmente. A sessão CUA do Preview não oferece interceptação de requests nem modo offline; a janela nativa do Edge/DevTools também não está disponível nessa sessão. Não há mecanismo isolado disponível para induzir a falha agora. Manter a Etapa 02 `IN PROGRESS`; capturar somente quando houver falha natural ou controle de falha isolado.
+- **Próximo passo:** concluir a prova runtime de erro quando esse cenário estiver disponível; não iniciar Etapa 03 antes disso. OPS-01 e etapas futuras permanecem fora do escopo.
 
 ## Implementado
 
@@ -62,7 +63,7 @@ O checkout original `C:\Users\gabsc\Documents\Codex\interprete-area-de-membros` 
 - Gates do candidato: `bun run check` 980 arquivos; `bun run typecheck` 16/16 pacotes; `bun run boundaries` 908 arquivos; testes focados 5/5; `bun run build` 8/8 tarefas, App 793 testes/164 arquivos, API 9/3 arquivos e domínio 24/5 arquivos; `bun run performance:check` 213,8 KiB gzip / orçamento 225 KiB. Ambiente Preview foi verificado sem imprimir valores, sem marcador BLUE e com seeds desabilitadas.
 - `graphify update .` concluiu com 7.834 nós, 20.366 arestas e 340 comunidades; 67 arquivos SQL foram ignorados por ausência do extrator `tree_sitter_sql`. `graphify-out/` foi confirmado como ignorado pelo Git e preservado; nenhum artefato gerado foi adicionado nem houve refatoração do tooling.
 - O QA foi somente leitura. Não houve escrita no GREEN, migration, mudança em Production ou alteração do checkout original. O `performance:check` mede orçamento de bundle, não LCP/INP/CLS ou percentis.
-- Estado de encerramento: implementação, gates locais, deployment e comparações de estados de dados estão comprovados; a Etapa 02 permanece `IN PROGRESS` até existir captura autenticada do erro em runtime. Próxima ação recomendada: registrar essa ocorrência sem fabricar dados nem afetar o GREEN.
+- Estado de encerramento: implementação, gates locais, deployment e comparações de estados de dados estão comprovados; a Etapa 02 permanece `IN PROGRESS` até existir captura autenticada do erro em runtime. A sessão CUA não tem interceptação/offline e não expõe DevTools nativo; aguardar ocorrência natural ou mecanismo isolado disponível, sem fabricar dados nem afetar o GREEN.
 
 ## Fechamento visual do candidato `a1d87b0` — 20/10/2026
 
