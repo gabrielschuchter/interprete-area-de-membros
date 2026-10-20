@@ -95,9 +95,7 @@ describe("CommunityNavigation", () => {
       screen.getByRole("link", { name: "Encontros" }).getAttribute("href")
     ).toBe("/comunidade/encontros");
     expect(
-      screen
-        .getByRole("link", { name: "Grupos de estudo" })
-        .getAttribute("href")
+      screen.getByRole("link", { name: "Grupos" }).getAttribute("href")
     ).toBe("/comunidade/grupos");
   });
 

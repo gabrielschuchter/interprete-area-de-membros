@@ -138,7 +138,7 @@ export const CommunityFeedNavigation = ({
             value={draftQuery}
           />
         </label>
-        <label className="community-feed-nav__select-wrap">
+        <label className="community-feed-nav__select-wrap community-feed-nav__select-wrap--group">
           <span className="sr-only">Filtrar por grupo de estudo</span>
           <select
             aria-label="Filtrar por grupo de estudo"

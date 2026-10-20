@@ -58,7 +58,10 @@ const MyStudyGroupsSection = ({
   readonly query: string;
   readonly scope: CommunityGroupScope;
 }) => (
-  <section aria-labelledby="my-study-groups" className="mt-8">
+  <section
+    aria-labelledby="my-study-groups"
+    className="community-groups-page__mine"
+  >
     <h2
       className="font-display text-2xl leading-tight sm:text-3xl"
       id="my-study-groups"
@@ -125,7 +128,10 @@ const DiscoverStudyGroupsSection = ({
   readonly query: string;
   readonly scope: CommunityGroupScope;
 }) => (
-  <section aria-labelledby="discover-study-groups" className="mt-10">
+  <section
+    aria-labelledby="discover-study-groups"
+    className="community-groups-page__discover"
+  >
     <header>
       <h2
         className="font-display text-2xl leading-tight sm:text-3xl"
@@ -149,7 +155,7 @@ const DiscoverStudyGroupsSection = ({
           />
         ))}
         <Link
-          className="flex min-h-80 flex-col items-center justify-center rounded-sm border border-brand-structural/40 border-dashed bg-brand-structural/[0.025] px-6 py-10 text-center transition-colors hover:bg-brand-structural/[0.06] focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
+          className="community-groups-page__create-card flex min-h-80 flex-col items-center justify-center rounded-sm border border-brand-structural/40 border-dashed bg-brand-structural/[0.025] px-6 py-10 text-center transition-colors hover:bg-brand-structural/[0.06] focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
           href="/comunidade/grupos/novo"
         >
           <UsersIcon

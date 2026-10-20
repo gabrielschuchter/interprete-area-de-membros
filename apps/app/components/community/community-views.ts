@@ -15,7 +15,7 @@ export const communityViews = [
   {
     description: "Meus grupos e descoberta",
     href: "/comunidade/grupos",
-    label: "Grupos de estudo",
+    label: "Grupos",
     value: "groups",
   },
   {

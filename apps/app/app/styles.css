@@ -1732,6 +1732,10 @@
     transform: translateY(-50%);
   }
 
+  .community-feed-nav__select-wrap--group select {
+    font-size: 0.75rem;
+  }
+
   .community-filter-placeholder {
     display: block;
     width: 9rem;
@@ -2080,6 +2084,18 @@
   .community-presence__avatar-image {
     width: 32px;
     height: 32px;
+  }
+
+  .community-groups-page__filters {
+    margin-top: 1.75rem;
+  }
+
+  .community-groups-page__mine {
+    margin-top: 2rem;
+  }
+
+  .community-groups-page__discover {
+    margin-top: 2.5rem;
   }
 
   .community-groups-page__item {
@@ -4205,6 +4221,47 @@ html[data-shell-fallback][data-shell-arrival="return"] .member-route-page {
 }
 
 @media (max-width: 767px) {
+  .community-groups-page {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .community-groups-page > .community-section-nav {
+    order: 0;
+  }
+
+  .community-groups-page__header {
+    display: contents;
+  }
+
+  .community-groups-page__intro {
+    display: none;
+  }
+
+  .community-groups-page__filters {
+    order: 1;
+    margin-top: 1.25rem;
+  }
+
+  .community-groups-page__create {
+    order: 2;
+    margin-top: 1rem;
+  }
+
+  .community-groups-page__mine {
+    order: 3;
+    margin-top: 1.25rem;
+  }
+
+  .community-groups-page__discover {
+    order: 4;
+    margin-top: 2rem;
+  }
+
+  .community-groups-page__create-card {
+    display: none;
+  }
+
   .community-meetings-page__intro {
     position: absolute;
     width: 1px;

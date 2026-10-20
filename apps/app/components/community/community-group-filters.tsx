@@ -49,7 +49,7 @@ export const CommunityGroupFilters = ({
   };
 
   return (
-    <div className="mt-7">
+    <div className="community-groups-page__filters">
       <form
         aria-label="Buscar e filtrar grupos de estudo"
         className="grid gap-3 md:grid-cols-[minmax(0,1fr)_12rem]"
