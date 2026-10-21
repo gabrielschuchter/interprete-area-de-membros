@@ -221,62 +221,64 @@ describe("community comment notification outbox", () => {
     ).not.toContain("member-follower");
   });
 
-  test.each(["ADMIN", "TEACHER"])(
-    "%s @todos only reaches active, unmuted participants and followers of this post",
-    async (role) => {
-      state.actorRole = role;
-      state.commentAuthors = [
+  test.each([
+    "ADMIN",
+    "TEACHER",
+  ])("%s @todos only reaches active, unmuted participants and followers of this post", async (role) => {
+    state.actorRole = role;
+    state.commentAuthors = [
+      "member-participant",
+      "member-muted",
+      "member-inactive",
+    ];
+    state.unmutedFollowerIds = ["member-follower", "member-author"];
+    state.mutedFollowerIds = ["member-muted"];
+    state.activeMemberIds = [
+      "member-participant",
+      "member-muted",
+      "member-follower",
+      "member-author",
+      "member-owner",
+    ];
+
+    await notify({
+      type: "doc",
+      content: [
+        {
+          type: "mention",
+          attrs: { id: "group:ALL", kind: "GROUP", username: "todos" },
+        },
+      ],
+    });
+
+    expect(databaseMock.communityComment.findMany).toHaveBeenCalledWith({
+      where: { postId: "post-1", deletedAt: null },
+      select: { authorId: true },
+    });
+    expect(databaseMock.topicFollow.findMany).toHaveBeenCalledWith({
+      where: { topicId: "post-1", mutedAt: { not: null } },
+      select: { userId: true },
+    });
+    const mentionedIds =
+      databaseMock.mention.createMany.mock.calls[0]?.[0]?.data.map(
+        ({ mentionedUserId }) => mentionedUserId
+      );
+    expect(mentionedIds).toEqual(
+      expect.arrayContaining([
         "member-participant",
+        "member-follower",
+        "member-owner",
+      ])
+    );
+    expect(mentionedIds).not.toEqual(
+      expect.arrayContaining([
         "member-muted",
         "member-inactive",
-      ];
-      state.unmutedFollowerIds = ["member-follower", "member-author"];
-      state.mutedFollowerIds = ["member-muted"];
-      state.activeMemberIds = [
-        "member-participant",
-        "member-muted",
-        "member-follower",
         "member-author",
-        "member-owner",
-      ];
-
-      await notify({
-        type: "doc",
-        content: [
-          {
-            type: "mention",
-            attrs: { id: "group:ALL", kind: "GROUP", username: "todos" },
-          },
-        ],
-      });
-
-      expect(databaseMock.communityComment.findMany).toHaveBeenCalledWith({
-        where: { postId: "post-1", deletedAt: null },
-        select: { authorId: true },
-      });
-      expect(databaseMock.topicFollow.findMany).toHaveBeenCalledWith({
-        where: { topicId: "post-1", mutedAt: { not: null } },
-        select: { userId: true },
-      });
-      const mentionedIds = databaseMock.mention.createMany.mock.calls[0]?.[0]
-        ?.data.map(({ mentionedUserId }) => mentionedUserId);
-      expect(mentionedIds).toEqual(
-        expect.arrayContaining([
-          "member-participant",
-          "member-follower",
-          "member-owner",
-        ])
-      );
-      expect(mentionedIds).not.toEqual(
-        expect.arrayContaining([
-          "member-muted",
-          "member-inactive",
-          "member-author",
-        ])
-      );
-      expect(mentionedIds).toHaveLength(3);
-    }
-  );
+      ])
+    );
+    expect(mentionedIds).toHaveLength(3);
+  });
 
   test("does not expand @todos for a regular member", async () => {
     state.commentAuthors = ["member-participant"];
@@ -331,8 +333,10 @@ describe("community comment notification outbox", () => {
       ],
     });
 
-    const mentionedIds = databaseMock.mention.createMany.mock.calls[0]?.[0]
-      ?.data.map(({ mentionedUserId }) => mentionedUserId);
+    const mentionedIds =
+      databaseMock.mention.createMany.mock.calls[0]?.[0]?.data.map(
+        ({ mentionedUserId }) => mentionedUserId
+      );
     expect(mentionedIds).toEqual(
       expect.arrayContaining(["member-private-participant", "member-owner"])
     );
