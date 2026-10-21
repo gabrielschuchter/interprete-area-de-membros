@@ -9,6 +9,7 @@ test("reuse or initialize the existing Clerk Development member session", async 
   await prepareClerkStorageState({
     context,
     emailAddress: process.env.COMMUNITY_QA_MEMBER_EMAIL,
+    expectedUserId: process.env.COMMUNITY_QA_MEMBER_ID,
     page,
     storageStatePath: memberStatePath,
   });

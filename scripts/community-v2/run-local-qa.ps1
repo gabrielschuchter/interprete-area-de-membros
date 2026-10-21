@@ -1,5 +1,5 @@
 param(
-  [ValidateSet("full", "admin-recovery", "admin-pin", "member-recovery")]
+  [ValidateSet("full", "admin-recovery", "admin-pin", "member-recovery", "storage-cover")]
   [string]$Suite = "full",
   [string]$RunId
 )
@@ -34,12 +34,6 @@ $configPlain = [Security.Cryptography.ProtectedData]::Unprotect(
 $config = [Text.Encoding]::UTF8.GetString($configPlain) | ConvertFrom-Json
 $ledger = Get-Content -LiteralPath $ledgerPath -Raw | ConvertFrom-Json
 $runIdPattern = '^[0-9]{8}-[0-9]{6}-[a-f0-9]{8}$'
-if (
-  ($Suite -ne "full" -and !$RunId) -or
-  ($RunId -and $RunId -notmatch $runIdPattern)
-) {
-  throw "Recovery-only runs require a valid existing local QA run ID."
-}
 if (
   $config.host -ne "127.0.0.1" -or
   [int]$config.port -ne 54325 -or
@@ -81,9 +75,12 @@ $environmentNames = @(
   "COMMUNITY_QA_OUTPUT_DIR",
   "COMMUNITY_QA_RUN_ID",
   "COMMUNITY_QA_MEMBER_EMAIL",
+  "COMMUNITY_QA_MEMBER_ID",
   "COMMUNITY_QA_ADMIN_EMAIL",
+  "COMMUNITY_QA_ADMIN_ID",
   "COMMUNITY_POST_COVER_ALT_ENABLED",
   "APP_WRITE_FREEZE",
+  "UPLOADS_PAUSED_FOR_ROLLBACK",
   "SEED_DEVELOPMENT_DATA",
   "GESTAO_DEV_AUTH",
   "NEXT_PUBLIC_GESTAO_DEV_AUTH",
@@ -96,6 +93,15 @@ $environmentNames = @(
   "DIRECT_URL",
   "DATABASE_CA_CERT",
   "DATABASE_CA_CERT_PATH",
+  "SUPABASE_URL",
+  "NEXT_PUBLIC_SUPABASE_URL",
+  "SUPABASE_SECRET_KEY",
+  "SUPABASE_SERVICE_ROLE_KEY",
+  "SUPABASE_STORAGE_BUCKET",
+  "SUPABASE_PUBLISHABLE_KEY",
+  "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+  "SUPABASE_ANON_KEY",
+  "NEXT_PUBLIC_SUPABASE_ANON_KEY",
   "PGHOST",
   "PGPORT",
   "PGUSER",
@@ -105,6 +111,12 @@ $environmentNames = @(
   "PGSSLROOTCERT",
   "NODE_USE_SYSTEM_CA"
 )
+
+$recoverySuites = @("admin-recovery", "admin-pin", "member-recovery")
+if (($Suite -in $recoverySuites -and !$RunId) -or ($RunId -and $RunId -notmatch $runIdPattern)) {
+  throw "Recovery-only runs require a valid existing local QA run ID."
+}
+
 foreach ($name in $environmentNames) {
   $savedEnvironment[$name] = [Environment]::GetEnvironmentVariable($name, "Process")
 }
@@ -127,9 +139,12 @@ try {
   $env:COMMUNITY_QA_OUTPUT_DIR = $outputDirectory
   $env:COMMUNITY_QA_RUN_ID = $runId
   $env:COMMUNITY_QA_MEMBER_EMAIL = [string]$member.email
+  $env:COMMUNITY_QA_MEMBER_ID = [string]$member.clerkUserId
   $env:COMMUNITY_QA_ADMIN_EMAIL = [string]$admin.email
+  $env:COMMUNITY_QA_ADMIN_ID = [string]$admin.clerkUserId
   $env:COMMUNITY_POST_COVER_ALT_ENABLED = "true"
   $env:APP_WRITE_FREEZE = "false"
+  $env:UPLOADS_PAUSED_FOR_ROLLBACK = "false"
   $env:SEED_DEVELOPMENT_DATA = "false"
   $env:GESTAO_DEV_AUTH = "false"
   $env:NEXT_PUBLIC_GESTAO_DEV_AUTH = "false"
@@ -151,6 +166,103 @@ try {
   $env:PGSSLROOTCERT = [string]$config.caPath
   $env:NODE_USE_SYSTEM_CA = "1"
 
+  if ($Suite -eq "storage-cover") {
+    $supabaseProjectDirectory = Join-Path $env:LOCALAPPDATA "Codex\qa\community-v2-storage-qa-20261021\project"
+    $supabaseConfigPath = Join-Path $supabaseProjectDirectory "supabase\config.toml"
+    if (!(Test-Path -LiteralPath $supabaseConfigPath)) {
+      throw "The isolated local Supabase project configuration is unavailable."
+    }
+
+    Push-Location $env:TEMP
+    try {
+      $supabaseStatusLines = & npm exec --yes --package=supabase@2.121.0 -- supabase status --workdir $supabaseProjectDirectory --output-format json
+      if ($LASTEXITCODE -ne 0) {
+        throw "The isolated local Supabase CLI status command failed."
+      }
+    } finally {
+      Pop-Location
+    }
+
+    $supabaseStatus = ($supabaseStatusLines -join [Environment]::NewLine) | ConvertFrom-Json
+    $supabaseDatabaseUrl = [uri]$supabaseStatus.DB_URL
+    $supabaseApiUrl = [uri]$supabaseStatus.API_URL
+    $projectIdMatches = Select-String `
+      -LiteralPath $supabaseConfigPath `
+      -Pattern '^project_id\s*=\s*"interprete-community-storage-qa-20261021"\s*$' `
+      -Quiet
+    if (
+      !$projectIdMatches -or
+      $supabaseApiUrl.Scheme -ne "http" -or
+      $supabaseApiUrl.Host -ne "127.0.0.1" -or
+      $supabaseApiUrl.Port -ne 54321 -or
+      $supabaseDatabaseUrl.Host -ne "127.0.0.1" -or
+      $supabaseDatabaseUrl.Port -ne 54322 -or
+      $supabaseDatabaseUrl.AbsolutePath -ne "/postgres" -or
+      [string]::IsNullOrWhiteSpace($supabaseStatus.SECRET_KEY) -or
+      [string]::IsNullOrWhiteSpace($supabaseStatus.ANON_KEY)
+    ) {
+      throw "Supabase CLI status did not prove the expected isolated loopback project and local credentials."
+    }
+
+    $apiPortBindings = & docker port "supabase_kong_interprete-community-storage-qa-20261021" "8000/tcp"
+    if ($LASTEXITCODE -ne 0) {
+      throw "The isolated Supabase API container port binding could not be verified."
+    }
+    $databasePortBindings = & docker port "supabase_db_interprete-community-storage-qa-20261021" "5432/tcp"
+    if ($LASTEXITCODE -ne 0) {
+      throw "The isolated Supabase database port binding could not be verified."
+    }
+    $portBindings = @($apiPortBindings) + @($databasePortBindings)
+    $nonLoopbackBindings = @(
+      $portBindings | Where-Object {
+        $_.Trim() -notmatch '^(127\.0\.0\.1|\[?::1\]?):\d+$'
+      }
+    )
+    if ($portBindings.Count -lt 2 -or $nonLoopbackBindings.Count -gt 0) {
+      throw "The isolated Supabase API and database ports must be published on loopback only."
+    }
+
+    $env:SUPABASE_URL = $supabaseStatus.API_URL
+    $env:NEXT_PUBLIC_SUPABASE_URL = $supabaseStatus.API_URL
+    $env:SUPABASE_SECRET_KEY = $supabaseStatus.SECRET_KEY
+    $env:SUPABASE_SERVICE_ROLE_KEY = $supabaseStatus.SERVICE_ROLE_KEY
+    $env:SUPABASE_PUBLISHABLE_KEY = $supabaseStatus.PUBLISHABLE_KEY
+    $env:NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = $supabaseStatus.PUBLISHABLE_KEY
+    $env:SUPABASE_ANON_KEY = $supabaseStatus.ANON_KEY
+    $env:NEXT_PUBLIC_SUPABASE_ANON_KEY = $supabaseStatus.ANON_KEY
+    $env:SUPABASE_STORAGE_BUCKET = "community-v2-cover-qa"
+
+    $storageUrl = [uri]$env:SUPABASE_URL
+    $publicStorageUrl = [uri]$env:NEXT_PUBLIC_SUPABASE_URL
+    if (
+      $storageUrl.Scheme -ne "http" -or
+      $storageUrl.Host -ne "127.0.0.1" -or
+      $storageUrl.Port -ne 54321 -or
+      $publicStorageUrl.AbsoluteUri.TrimEnd("/") -ne $storageUrl.AbsoluteUri.TrimEnd("/") -or
+      $env:SUPABASE_STORAGE_BUCKET -ne "community-v2-cover-qa" -or
+      [string]::IsNullOrWhiteSpace($env:SUPABASE_SECRET_KEY) -or
+      [string]::IsNullOrWhiteSpace($env:NEXT_PUBLIC_SUPABASE_ANON_KEY)
+    ) {
+      throw "Storage cover QA requires the isolated loopback Supabase endpoint, local private bucket, and local credentials."
+    }
+
+    $bucketList = @(
+      Invoke-RestMethod `
+        -Uri "$($storageUrl.AbsoluteUri.TrimEnd('/'))/storage/v1/bucket" `
+        -Headers @{
+          apikey = $env:SUPABASE_SECRET_KEY
+          Authorization = "Bearer $($env:SUPABASE_SECRET_KEY)"
+        } `
+        -Method Get `
+        -TimeoutSec 15
+    )
+    $qaBucket = $bucketList | Where-Object { $_.id -eq "community-v2-cover-qa" } | Select-Object -First 1
+    if (!$qaBucket -or $qaBucket.public -ne $false) {
+      throw "Storage cover QA could not prove the configured bucket is private and local."
+    }
+    Write-Output "Isolated Supabase Storage preflight passed: loopback API, private QA bucket, local secret accepted."
+  }
+
   & $psqlPath -X -v ON_ERROR_STOP=1 -c "SELECT current_database() = 'interprete_community_v2_qa' AS isolated_target_ok;" | Out-Null
   if ($LASTEXITCODE -ne 0) {
     throw "The guarded local QA database is not accepting verified TLS connections."
@@ -165,18 +277,25 @@ try {
     if ($Suite -eq "full") {
       bun run community-v2:e2e
     } else {
-      $project = if ($Suite -eq "admin-recovery" -or $Suite -eq "admin-pin") {
+      $project = if ($Suite -eq "storage-cover") {
+        "community-storage-cover"
+      } elseif ($Suite -eq "admin-recovery" -or $Suite -eq "admin-pin") {
         "community-admin-recovery"
       } else {
         "community-member-recovery"
       }
-      $authProjects = @(
-        "--project=clerk-setup",
-        "--project=member-auth",
-        "--project=admin-auth"
-      )
-      $authProjects += "--project=$project"
-      $authProjects += "--no-deps"
+      $authProjects = @()
+      if ($Suite -eq "storage-cover") {
+        $authProjects += "--project=$project"
+      } else {
+        $authProjects = @(
+          "--project=clerk-setup",
+          "--project=member-auth",
+          "--project=admin-auth",
+          "--project=$project",
+          "--no-deps"
+        )
+      }
       if ($Suite -eq "admin-pin") {
         $authProjects += "--grep=initialize Clerk Testing token|reuse or initialize the existing Clerk Development .* session|concurrent staff pin requests"
       }

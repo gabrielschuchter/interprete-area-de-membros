@@ -363,7 +363,7 @@ export function CommunityPostView({
           </div>
           {post.coverUrl && (
             <CommunityCoverImage
-              alt={`Capa: ${post.title}`}
+              alt={post.coverAltText || `Capa: ${post.title}`}
               className="community-post-cover"
               height={630}
               loading="lazy"

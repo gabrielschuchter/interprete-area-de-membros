@@ -22,13 +22,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  type FormEvent,
-  type MouseEvent,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 import {
   discardCommunityDraft,
   publishPost,
@@ -635,8 +629,12 @@ export function CommunityComposer({
     handlePublishedSave().catch(() => undefined);
   };
 
-  const requestLeave = (event: MouseEvent<HTMLAnchorElement>) => {
+  const requestLeave = (event: {
+    preventDefault: () => void;
+    stopPropagation?: () => void;
+  }) => {
     event.preventDefault();
+    event.stopPropagation?.();
     if (leaving || exitDialogOpen) {
       return;
     }
@@ -736,7 +734,7 @@ export function CommunityComposer({
           aria-disabled={leaving}
           className="community-editor-back"
           href={backHref}
-          onClick={requestLeave}
+          onClickCapture={requestLeave}
         >
           <ArrowLeftIcon aria-hidden="true" />
           <span>{leaving ? "Salvando…" : "Voltar"}</span>
