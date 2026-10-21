@@ -7,7 +7,7 @@
 **READY anterior:** o usuário confirmou App Preview e API Preview `READY` no commit funcional `2c43980977741f09815553179588b642969d48fc`. Essa confirmação pertence ao checkpoint anterior; não foi feita investigação de deployment para a revisão atual.
 **Integridade:** nenhum deployment, migration remota ou alteração de GREEN, BLUE, Production, Docker ou Supabase Storage nesta etapa; nenhuma notificação real foi enviada. QA de Storage da Etapa 03 permanece encerrado e preservado.
 **Gates:** `bun run check` 1009 arquivos; `typecheck` 16/16; `boundaries` 937 arquivos; `bun run test` 829 App + 24 domínio + 9 API, scripts 32 pass/1 skip; `bun run build` 8/8; `performance:check` Comunidade 213,9 KiB gzip/225 KiB. `graphify update .` atualizado (7.989 nós, 20.824 arestas).
-**Fechamento:** jornada pronta para commit/push no branch `codex/comunidade-v2`. O READY confirmado pelo usuário continua limitado ao SHA `2c43980977741f09815553179588b642969d48fc`; não foi inferido READY para esta revisão nem feita promoção de alias.
+**Fechamento:** commit funcional `885a67cd1bd3e1bcbf4a37dded0dacc5e42076a2` enviado a `origin/codex/comunidade-v2`. O READY confirmado pelo usuário continua limitado ao SHA `2c43980977741f09815553179588b642969d48fc`; não foi inferido READY para esta revisão nem feita promoção de alias.
 
 ## Retomada da Etapa 02 — evidências de 2026-10-19
 

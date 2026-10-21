@@ -13,7 +13,7 @@
 - **READY anterior:** o usuário confirmou App Preview e API Preview `READY` para o commit funcional `2c43980977741f09815553179588b642969d48fc`. Esta evidência é do checkpoint anterior; nenhuma consulta de deployment foi feita nesta etapa.
 - **Integridade:** sem migration remota, alteração de GREEN ou Production, nem envio de notificação real. Checkout original e arquivos de handoff restaurados fora do Git preservados.
 - **Gates da Etapa 04:** `bun run check` 1009 arquivos; `typecheck` 16/16; `boundaries` 937 arquivos; `bun run test` 829 App + 24 domínio + 9 API, scripts 32 pass/1 skip; `bun run build` 8/8; `performance:check` Comunidade 213,9 KiB gzip de 225 KiB; Playwright `discussion` 4/4. `graphify update .` executado (7.989 nós, 20.824 arestas).
-- **Fechamento da Etapa 04:** jornada pronta para commit/push no branch `codex/comunidade-v2`. Não inferir READY da revisão atual a partir do checkpoint anterior nem promover alias; sem mudança de GREEN/Production.
+- **Fechamento da Etapa 04:** commit funcional `885a67cd1bd3e1bcbf4a37dded0dacc5e42076a2` enviado a `origin/codex/comunidade-v2`. O READY anterior não se estende a este SHA; sem promoção de alias, mudança de GREEN ou Production.
 
 ## Implementado
 
