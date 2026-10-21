@@ -2,6 +2,7 @@ import { database, MemberRole } from "@repo/database";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { getMemberRole } from "@/lib/authorization";
+import { getCommunityMentionCandidates } from "@/lib/community-mentions";
 import {
   consumeMutationRateLimit,
   isMutationRateLimitError,
@@ -47,8 +48,30 @@ export const GET = async (request: Request) => {
     throw error;
   }
 
-  const query = new URL(request.url).searchParams.get("q") ?? "";
+  const searchParams = new URL(request.url).searchParams;
+  const query = searchParams.get("q") ?? "";
   try {
+    const postId = searchParams.get("postId")?.trim();
+    if (postId) {
+      const scope =
+        searchParams.get("scope") === "community" ? "community" : "discussion";
+      const candidates = await getCommunityMentionCandidates({
+        actorId: userId,
+        postId,
+        query,
+        scope,
+      });
+      if (!candidates) {
+        return NextResponse.json(
+          { error: "Discussão não encontrada." },
+          { status: 404 }
+        );
+      }
+      return NextResponse.json(candidates, {
+        headers: { "Cache-Control": "private, no-store" },
+      });
+    }
+
     const [profiles, role] = await Promise.all([
       getMemberDirectory(query),
       getMemberRole(userId),

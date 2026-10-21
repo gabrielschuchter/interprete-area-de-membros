@@ -255,10 +255,17 @@ const excerptFrom = (content: string) => {
 const publishedPostWhere = async (
   postId: string,
   memberId: string,
-  spaceSlug?: string
+  spaceSlug?: string,
+  transaction?: Prisma.TransactionClient
 ) => {
-  const role = await getMemberRole(memberId);
-  const canModeratePrivateGroups = canModerate(role);
+  const member = await (transaction ?? database).member.findUnique({
+    where: { id: memberId },
+    select: { deactivatedAt: true, role: true },
+  });
+  if (!member || member.deactivatedAt) {
+    return { id: `inactive-member:${memberId}` };
+  }
+  const canModeratePrivateGroups = canModerate(member.role);
   return {
     id: postId,
     status: ContentStatus.PUBLISHED,
@@ -1521,23 +1528,34 @@ export const toggleTopicFollow = async (formData: FormData) => {
     action: "community.follow",
     memberId: userId,
   });
-  const post = await database.communityPost.findFirst({
-    where: await publishedPostWhere(postId, userId, spaceSlug || undefined),
-    select: { id: true, slug: true, space: { select: { slug: true } } },
+  const post = await database.$transaction(async (transaction) => {
+    const visiblePost = await transaction.communityPost.findFirst({
+      where: await publishedPostWhere(
+        postId,
+        userId,
+        spaceSlug || undefined,
+        transaction
+      ),
+      select: { id: true, slug: true, space: { select: { slug: true } } },
+    });
+    if (!visiblePost) {
+      return null;
+    }
+    if (desired === "on") {
+      await transaction.topicFollow.upsert({
+        where: { userId_topicId: { userId, topicId: postId } },
+        create: { userId, topicId: postId },
+        update: {},
+      });
+    } else {
+      await transaction.topicFollow.deleteMany({
+        where: { userId, topicId: postId },
+      });
+    }
+    return visiblePost;
   });
   if (!post) {
     return;
-  }
-  if (desired === "on") {
-    await database.topicFollow.upsert({
-      where: { userId_topicId: { userId, topicId: postId } },
-      create: { userId, topicId: postId },
-      update: {},
-    });
-  } else {
-    await database.topicFollow.deleteMany({
-      where: { userId, topicId: postId },
-    });
   }
   revalidateCommunity(post.space?.slug, postId, post.slug ?? undefined);
 };
@@ -1554,26 +1572,36 @@ export const toggleTopicMute = async (formData: FormData) => {
     action: "community.follow",
     memberId: userId,
   });
-  const post = await database.communityPost.findFirst({
-    where: await publishedPostWhere(postId, userId, spaceSlug || undefined),
-    select: { id: true, slug: true, space: { select: { slug: true } } },
+  const post = await database.$transaction(async (transaction) => {
+    const visiblePost = await transaction.communityPost.findFirst({
+      where: await publishedPostWhere(
+        postId,
+        userId,
+        spaceSlug || undefined,
+        transaction
+      ),
+      select: { id: true, slug: true, space: { select: { slug: true } } },
+    });
+    if (!visiblePost) {
+      return null;
+    }
+    if (desired === "on") {
+      const mutedAt = new Date();
+      await transaction.topicFollow.upsert({
+        where: { userId_topicId: { userId, topicId: postId } },
+        create: { userId, topicId: postId, mutedAt },
+        update: { mutedAt },
+      });
+    } else {
+      await transaction.topicFollow.updateMany({
+        where: { userId, topicId: postId },
+        data: { mutedAt: null },
+      });
+    }
+    return visiblePost;
   });
   if (!post) {
     return;
-  }
-  const existing = await database.topicFollow.findUnique({
-    where: { userId_topicId: { userId, topicId: postId } },
-    select: { id: true, mutedAt: true },
-  });
-  if (existing) {
-    await database.topicFollow.update({
-      where: { id: existing.id },
-      data: { mutedAt: desired === "on" ? new Date() : null },
-    });
-  } else if (desired === "on") {
-    await database.topicFollow.create({
-      data: { userId, topicId: postId, mutedAt: new Date() },
-    });
   }
   revalidateCommunity(post.space?.slug, postId, post.slug ?? undefined);
 };
@@ -1665,7 +1693,12 @@ export const updateComment = async (formData: FormData) => {
         authorId: userId,
         deletedAt: null,
         post: {
-          is: await publishedPostWhere(postId, userId, spaceSlug || undefined),
+          is: await publishedPostWhere(
+            postId,
+            userId,
+            spaceSlug || undefined,
+            transaction
+          ),
         },
       },
       select: {
@@ -1699,7 +1732,13 @@ export const updateComment = async (formData: FormData) => {
 
     const editedAt = new Date();
     const write = await transaction.communityComment.updateMany({
-      where: { id: commentId, updatedAt: comment.updatedAt },
+      where: {
+        id: commentId,
+        postId,
+        authorId: userId,
+        deletedAt: null,
+        updatedAt: comment.updatedAt,
+      },
       data: {
         content,
         contentJson: document as Prisma.InputJsonValue | undefined,
@@ -1798,30 +1837,41 @@ export const toggleCommentVote = async (formData: FormData) => {
     action: "community.vote",
     memberId: userId,
   });
-  const comment = await database.communityComment.findFirst({
-    where: {
-      id: commentId,
-      postId,
-      deletedAt: null,
-      post: {
-        is: await publishedPostWhere(postId, userId, spaceSlug || undefined),
+  const updated = await database.$transaction(async (transaction) => {
+    const comment = await transaction.communityComment.findFirst({
+      where: {
+        id: commentId,
+        postId,
+        deletedAt: null,
+        post: {
+          is: await publishedPostWhere(
+            postId,
+            userId,
+            spaceSlug || undefined,
+            transaction
+          ),
+        },
       },
-    },
-    select: { id: true },
+      select: { id: true },
+    });
+    if (!comment) {
+      return false;
+    }
+    if (desired === "on") {
+      await transaction.commentVote.upsert({
+        where: { commentId_memberId: { commentId, memberId: userId } },
+        create: { commentId, memberId: userId, kind: CommunityVoteKind.UP },
+        update: {},
+      });
+    } else {
+      await transaction.commentVote.deleteMany({
+        where: { commentId, memberId: userId },
+      });
+    }
+    return true;
   });
-  if (!comment) {
+  if (!updated) {
     return;
-  }
-  if (desired === "on") {
-    await database.commentVote.upsert({
-      where: { commentId_memberId: { commentId, memberId: userId } },
-      create: { commentId, memberId: userId, kind: CommunityVoteKind.UP },
-      update: {},
-    });
-  } else {
-    await database.commentVote.deleteMany({
-      where: { commentId, memberId: userId },
-    });
   }
   revalidateCommunity(spaceSlug || undefined, postId);
 };
@@ -2034,27 +2084,47 @@ export const softDeleteComment = async (formData: FormData) => {
     action: "community.mutation",
     memberId: userId,
   });
-  const comment = await database.communityComment.findFirst({
-    where: {
-      id: commentId,
-      post: {
-        is: await publishedPostWhere(postId, userId, spaceSlug || undefined),
+  const deleted = await database.$transaction(async (transaction) => {
+    const member = await transaction.member.findUnique({
+      where: { id: userId },
+      select: { deactivatedAt: true, role: true },
+    });
+    if (!member || member.deactivatedAt) {
+      return false;
+    }
+    const visiblePostWhere = await publishedPostWhere(
+      postId,
+      userId,
+      spaceSlug || undefined,
+      transaction
+    );
+    const comment = await transaction.communityComment.findFirst({
+      where: {
+        id: commentId,
+        postId,
+        deletedAt: null,
+        post: { is: visiblePostWhere },
       },
-    },
-    select: { authorId: true, deletedAt: true },
+      select: { authorId: true },
+    });
+    if (!(comment && canManagePost(comment.authorId, userId, member.role))) {
+      return false;
+    }
+    const result = await transaction.communityComment.updateMany({
+      where: {
+        id: commentId,
+        postId,
+        deletedAt: null,
+        post: { is: visiblePostWhere },
+        ...(comment.authorId === userId ? { authorId: userId } : {}),
+      },
+      data: { deletedAt: new Date() },
+    });
+    return result.count === 1;
   });
-  const role = await getMemberRole(userId);
-  if (
-    !comment ||
-    comment.deletedAt ||
-    !canManagePost(comment.authorId, userId, role)
-  ) {
+  if (!deleted) {
     return;
   }
-  await database.communityComment.update({
-    where: { id: commentId },
-    data: { deletedAt: new Date() },
-  });
   revalidateCommunity(spaceSlug || undefined, postId);
 };
 

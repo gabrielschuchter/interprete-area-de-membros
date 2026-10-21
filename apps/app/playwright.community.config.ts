@@ -75,6 +75,12 @@ export default defineConfig({
       dependencies: ["member-auth", "admin-auth"],
       use: { ...localUse, storageState: memberStatePath },
     },
+    {
+      name: "community-discussion",
+      testMatch: /discussion\.spec\.ts$/,
+      dependencies: ["member-auth", "admin-auth"],
+      use: { ...localUse, storageState: memberStatePath },
+    },
   ],
   webServer: {
     command:

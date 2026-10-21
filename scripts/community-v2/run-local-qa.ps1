@@ -1,5 +1,5 @@
 param(
-  [ValidateSet("full", "admin-recovery", "admin-pin", "member-recovery", "storage-cover")]
+  [ValidateSet("full", "admin-recovery", "admin-pin", "member-recovery", "storage-cover", "discussion")]
   [string]$Suite = "full",
   [string]$RunId
 )
@@ -80,6 +80,9 @@ $environmentNames = @(
   "COMMUNITY_QA_ADMIN_ID",
   "COMMUNITY_POST_COVER_ALT_ENABLED",
   "APP_WRITE_FREEZE",
+  "VERCEL_ENV",
+  "OUTBOX_QUEUE_NAMESPACE",
+  "OUTBOX_PREVIEW_MEMBER_IDS",
   "UPLOADS_PAUSED_FOR_ROLLBACK",
   "SEED_DEVELOPMENT_DATA",
   "GESTAO_DEV_AUTH",
@@ -144,6 +147,18 @@ try {
   $env:COMMUNITY_QA_ADMIN_ID = [string]$admin.clerkUserId
   $env:COMMUNITY_POST_COVER_ALT_ENABLED = "true"
   $env:APP_WRITE_FREEZE = "false"
+  $previewMemberIds = @(
+    $ledger.accounts |
+      ForEach-Object { [string]$_.clerkUserId } |
+      Where-Object { ![string]::IsNullOrWhiteSpace($_) } |
+      Select-Object -Unique
+  )
+  if ($previewMemberIds.Count -lt 2) {
+    throw "The local Preview outbox allowlist requires the existing Clerk Development QA accounts."
+  }
+  $env:VERCEL_ENV = "preview"
+  $env:OUTBOX_QUEUE_NAMESPACE = "preview"
+  $env:OUTBOX_PREVIEW_MEMBER_IDS = $previewMemberIds -join ","
   $env:UPLOADS_PAUSED_FOR_ROLLBACK = "false"
   $env:SEED_DEVELOPMENT_DATA = "false"
   $env:GESTAO_DEV_AUTH = "false"
@@ -279,6 +294,8 @@ try {
     } else {
       $project = if ($Suite -eq "storage-cover") {
         "community-storage-cover"
+      } elseif ($Suite -eq "discussion") {
+        "community-discussion"
       } elseif ($Suite -eq "admin-recovery" -or $Suite -eq "admin-pin") {
         "community-admin-recovery"
       } else {

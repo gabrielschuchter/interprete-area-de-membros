@@ -694,7 +694,7 @@ export const recordMentions = async (input: {
   });
 };
 
-const filterPrivateCommunityRecipients = async (
+export const filterPrivateCommunityRecipients = async (
   postId: string,
   recipientIds: readonly string[],
   transaction: Prisma.TransactionClient = database

@@ -29,9 +29,10 @@ const publishedPostWhere = async (
     where: { id: memberId },
     select: { role: true, deactivatedAt: true },
   });
-  const canModerate =
-    member?.deactivatedAt === null &&
-    (member.role === "TEACHER" || member.role === "ADMIN");
+  if (!member || member.deactivatedAt) {
+    return { id: `inactive-member:${memberId}` };
+  }
+  const canModerate = member.role === "TEACHER" || member.role === "ADMIN";
   return {
     id: postId,
     status: ContentStatus.PUBLISHED,

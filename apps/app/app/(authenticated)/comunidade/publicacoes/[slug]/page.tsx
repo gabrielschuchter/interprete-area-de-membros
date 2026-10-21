@@ -8,6 +8,7 @@ import {
   parseCommunityReturnTo,
 } from "@/lib/community-query";
 import { requireMemberId } from "@/lib/learning";
+import { getOrCreateProfile } from "@/lib/profile";
 
 interface CommunityPublicationPageProperties {
   readonly params: Promise<{ slug: string }>;
@@ -26,9 +27,10 @@ const CommunityPublicationPage = async ({
   const filters = await searchParams;
   const memberId = await requireMemberId();
   const commentsPage = Number.parseInt(filters.commentsPage ?? "1", 10);
-  const [role, post] = await Promise.all([
+  const [role, post, currentProfile] = await Promise.all([
     getMemberRole(memberId),
     getCommunityPostBySlug(slug, memberId, commentsPage, filters.commentId),
+    getOrCreateProfile(memberId, false),
   ]);
 
   if (!post) {
@@ -41,6 +43,7 @@ const CommunityPublicationPage = async ({
       <CommunityPostView
         backHref={parseCommunityReturnTo(filters.from)}
         backLabel={communityReturnLabel(filters.from)}
+        currentProfile={currentProfile}
         memberId={memberId}
         post={post}
         role={role}

@@ -1,13 +1,24 @@
 "use client";
 
 import { cn } from "@repo/design-system/lib/utils";
-import { useEffect, useRef, useState } from "react";
+import { AtSignIcon } from "lucide-react";
+import {
+  type CSSProperties,
+  Fragment,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+} from "react";
 
 interface MentionCandidate {
   readonly avatarUrl: string | null;
+  readonly context?: "DISCUSSION" | "COMMUNITY";
   readonly displayName: string | null;
   readonly id: string;
   readonly kind?: "USER" | "GROUP";
+  readonly notificationEligible?: boolean;
+  readonly notificationNote?: string;
   readonly recipientCount?: number;
   readonly role: string;
   readonly username: string;
@@ -27,6 +38,14 @@ interface MentionTextareaProperties
     hasGroupMention: boolean,
     confirmed: boolean
   ) => void;
+  readonly postId?: string;
+}
+
+interface MentionSearchResponse {
+  readonly communityItems?: MentionCandidate[];
+  readonly discussionItems?: MentionCandidate[];
+  readonly groups?: MentionCandidate[];
+  readonly items?: MentionCandidate[];
 }
 
 const mentionPattern = /(?:^|\s)@([a-z0-9-]{0,30})$/i;
@@ -131,6 +150,18 @@ const mentionsFromDocument = (value: unknown): MentionToken[] => {
   return [...new Map(result.map((mention) => [mention.id, mention])).values()];
 };
 
+const candidatesFromSearch = (
+  postId: string | undefined,
+  result: MentionSearchResponse
+) =>
+  postId
+    ? [
+        ...(result.groups ?? []),
+        ...(result.discussionItems ?? []),
+        ...(result.communityItems ?? []),
+      ]
+    : (result.items ?? []);
+
 const MentionAvatar = ({ candidate }: { candidate: MentionCandidate }) => (
   <span className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted font-medium text-xs">
     {candidate.avatarUrl ? (
@@ -165,18 +196,26 @@ export const MentionTextarea = ({
   documentName = "contentDocument",
   onChange,
   onGroupMentionChange,
+  postId,
   ...props
 }: MentionTextareaProperties) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const listboxId = useId();
   const [value, setValue] = useState(String(defaultValue ?? ""));
   const [range, setRange] = useState<MentionRange | null>(null);
-  const [candidates, setCandidates] = useState<MentionCandidate[]>([]);
+  const [searchScope, setSearchScope] = useState<"discussion" | "community">(
+    "discussion"
+  );
+  const [searchResult, setSearchResult] = useState<MentionSearchResponse>({});
+  const [searchPending, setSearchPending] = useState(false);
+  const [popoverPosition, setPopoverPosition] = useState<CSSProperties>();
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [mentions, setMentions] = useState<MentionToken[]>(() =>
     mentionsFromDocument(defaultDocument)
   );
   const [groupMentionConfirmed, setGroupMentionConfirmed] = useState(false);
   const hasGroupMention = mentions.some((mention) => mention.kind === "GROUP");
+  const candidates = candidatesFromSearch(postId, searchResult);
 
   useEffect(() => {
     onGroupMentionChange?.(
@@ -187,34 +226,75 @@ export const MentionTextarea = ({
 
   useEffect(() => {
     if (!range) {
-      setCandidates([]);
+      setSearchResult({});
+      setSearchScope("discussion");
+      setSearchPending(false);
       return;
     }
     const controller = new AbortController();
-    fetch(
-      `/api/members/search?q=${encodeURIComponent(value.slice(range.start + 1, range.end))}`,
-      {
-        signal: controller.signal,
-        headers: { Accept: "application/json" },
-      }
-    )
+    const params = new URLSearchParams({
+      q: value.slice(range.start + 1, range.end),
+    });
+    if (postId) {
+      params.set("postId", postId);
+      params.set("scope", searchScope);
+    }
+    setSearchPending(true);
+    fetch(`/api/members/search?${params.toString()}`, {
+      signal: controller.signal,
+      headers: { Accept: "application/json" },
+    })
       .then(async (response) => {
         if (!response.ok) {
-          return { items: [] };
+          return {};
         }
-        return (await response.json()) as { items?: MentionCandidate[] };
+        return (await response.json()) as MentionSearchResponse;
       })
-      .then((payload) => {
-        setCandidates(payload.items ?? []);
+      .then((payload: MentionSearchResponse) => {
+        setSearchResult(payload);
         setSelectedIndex(0);
       })
       .catch(() => {
         if (!controller.signal.aborted) {
-          setCandidates([]);
+          setSearchResult({});
         }
       });
-    return () => controller.abort();
-  }, [range, value]);
+    const updatePopoverPosition = () => {
+      const textarea = textareaRef.current;
+      if (!(textarea && window.matchMedia("(max-width: 767px)").matches)) {
+        setPopoverPosition(undefined);
+        return;
+      }
+      const rect = textarea.getBoundingClientRect();
+      const viewport = window.visualViewport;
+      const visibleBottom =
+        (viewport?.offsetTop ?? 0) + (viewport?.height ?? window.innerHeight);
+      const availableHeight = viewport?.height ?? window.innerHeight;
+      setPopoverPosition({
+        position: "fixed",
+        left: rect.left,
+        right: Math.max(8, window.innerWidth - rect.right),
+        bottom: Math.max(8, window.innerHeight - visibleBottom + 8),
+        maxHeight: `min(14rem, ${Math.max(112, Math.floor(availableHeight * 0.55))}px)`,
+      });
+    };
+    updatePopoverPosition();
+    window.addEventListener("resize", updatePopoverPosition);
+    window.visualViewport?.addEventListener("resize", updatePopoverPosition);
+    window.visualViewport?.addEventListener("scroll", updatePopoverPosition);
+    return () => {
+      controller.abort();
+      window.removeEventListener("resize", updatePopoverPosition);
+      window.visualViewport?.removeEventListener(
+        "resize",
+        updatePopoverPosition
+      );
+      window.visualViewport?.removeEventListener(
+        "scroll",
+        updatePopoverPosition
+      );
+    };
+  }, [postId, range, searchScope, value]);
 
   const updateValue = (nextValue: string, cursor: number) => {
     setValue(nextValue);
@@ -259,7 +339,30 @@ export const MentionTextarea = ({
     });
   };
 
-  const showSuggestions = Boolean(range && candidates.length > 0);
+  const insertMentionTrigger = () => {
+    const textarea = textareaRef.current;
+    if (!textarea) {
+      return;
+    }
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const nextValue = `${value.slice(0, start)}@${value.slice(end)}`;
+    const nextCursor = start + 1;
+    updateValue(nextValue, nextCursor);
+    requestAnimationFrame(() => {
+      textarea.focus();
+      textarea.setSelectionRange(nextCursor, nextCursor);
+    });
+  };
+
+  const showSuggestions = Boolean(range && (candidates.length > 0 || postId));
+
+  const chooseSuggestion = (index: number) => {
+    const candidate = candidates[index];
+    if (candidate) {
+      chooseCandidate(candidate);
+    }
+  };
 
   return (
     <div className="relative">
@@ -275,6 +378,8 @@ export const MentionTextarea = ({
       />
       <textarea
         {...props}
+        aria-autocomplete="list"
+        aria-controls={showSuggestions ? listboxId : undefined}
         className={cn(className)}
         defaultValue={undefined}
         onChange={(event) =>
@@ -295,7 +400,7 @@ export const MentionTextarea = ({
             );
           } else if (event.key === "Enter" || event.key === "Tab") {
             event.preventDefault();
-            chooseCandidate(candidates[selectedIndex]);
+            chooseSuggestion(selectedIndex);
           } else if (event.key === "Escape") {
             event.preventDefault();
             setRange(null);
@@ -306,44 +411,115 @@ export const MentionTextarea = ({
         ref={textareaRef}
         value={value}
       />
+      <div className="community-mention-toolbar">
+        <button
+          aria-label="Mencionar alguém"
+          className="community-mention-toolbar__button"
+          onClick={insertMentionTrigger}
+          type="button"
+        >
+          <AtSignIcon aria-hidden="true" />
+        </button>
+      </div>
       {showSuggestions && (
         <div
           aria-label="Membros para mencionar"
-          className="motion-layer absolute right-2 bottom-2 left-2 z-10 max-h-56 overflow-y-auto rounded-sm border bg-background p-1 shadow-[var(--shadow-floating)]"
+          className="community-mention-list motion-layer absolute right-2 bottom-2 left-2 z-40 max-h-56 overflow-y-auto rounded-sm border bg-background p-1 shadow-[var(--shadow-floating)]"
+          id={listboxId}
           role="listbox"
+          style={popoverPosition}
         >
-          {candidates.slice(0, 8).map((candidate, index) => (
-            <button
-              aria-selected={index === selectedIndex}
-              className={cn(
-                "flex w-full items-center gap-3 rounded-sm px-3 py-2 text-left text-sm",
-                index === selectedIndex ? "bg-accent" : "hover:bg-accent/60"
-              )}
-              key={candidate.id}
-              onMouseDown={(event) => {
-                event.preventDefault();
-                chooseCandidate(candidate);
-              }}
-              role="option"
-              type="button"
-            >
-              <MentionAvatar candidate={candidate} />
-              <span className="min-w-0">
-                {candidate.kind === "GROUP" && (
-                  <span className="mb-0.5 block text-[11px] text-muted-foreground">
-                    {candidate.recipientCount ?? 0} membros serão notificados
-                  </span>
+          {postId &&
+            ((searchResult.groups?.length ?? 0) > 0 ||
+              (searchResult.discussionItems?.length ?? 0) > 0) && (
+              <div
+                className="community-mention-list__section-title"
+                role="presentation"
+              >
+                NESTA DISCUSSÃO
+              </div>
+            )}
+          {candidates.slice(0, 16).map((candidate, index) => (
+            <Fragment key={candidate.id}>
+              {candidate.context === "COMMUNITY" &&
+                searchResult.communityItems?.[0]?.id === candidate.id && (
+                  <div
+                    className="community-mention-list__section-title"
+                    role="presentation"
+                  >
+                    NA COMUNIDADE
+                  </div>
                 )}
-                <span className="block truncate font-medium">
-                  {candidate.displayName ?? candidate.username}
+              <button
+                aria-selected={index === selectedIndex}
+                className={cn(
+                  "flex w-full items-center gap-3 rounded-sm px-3 py-2 text-left text-sm",
+                  index === selectedIndex ? "bg-accent" : "hover:bg-accent/60"
+                )}
+                onMouseDown={(event) => {
+                  event.preventDefault();
+                  chooseCandidate(candidate);
+                }}
+                role="option"
+                type="button"
+              >
+                <MentionAvatar candidate={candidate} />
+                <span className="min-w-0">
+                  {candidate.kind === "GROUP" && (
+                    <span className="mb-0.5 block text-[11px] text-muted-foreground">
+                      {candidate.recipientCount ?? 0}{" "}
+                      {candidate.recipientCount === 1
+                        ? "membro será"
+                        : "membros serão"}{" "}
+                      notificados
+                    </span>
+                  )}
+                  <span className="block truncate font-medium">
+                    {candidate.displayName ?? candidate.username}
+                  </span>
+                  <span className="block truncate text-muted-foreground text-xs">
+                    @{candidate.username}
+                    {candidateMeta(candidate)}
+                  </span>
+                  {candidate.notificationNote && (
+                    <span className="block truncate text-muted-foreground text-xs">
+                      {candidate.notificationNote}
+                    </span>
+                  )}
                 </span>
-                <span className="block truncate text-muted-foreground text-xs">
-                  @{candidate.username}
-                  {candidateMeta(candidate)}
-                </span>
-              </span>
-            </button>
+              </button>
+            </Fragment>
           ))}
+          {searchPending && candidates.length === 0 && (
+            <p className="px-3 py-2 text-muted-foreground text-xs">Buscando…</p>
+          )}
+          {postId &&
+            searchScope === "discussion" &&
+            value.slice((range?.start ?? 0) + 1, range?.end).trim() &&
+            candidates.length === 0 &&
+            !searchPending && (
+              <div className="grid gap-1 px-3 py-2">
+                <p className="text-muted-foreground text-xs">
+                  Ninguém com esse nome nesta discussão.
+                </p>
+                <button
+                  className="w-fit text-brand-structural text-xs underline underline-offset-2"
+                  onClick={() => setSearchScope("community")}
+                  onMouseDown={(event) => event.preventDefault()}
+                  type="button"
+                >
+                  Procurar em toda a comunidade
+                </button>
+              </div>
+            )}
+          {postId &&
+            searchScope === "community" &&
+            candidates.length === 0 &&
+            !searchPending && (
+              <p className="px-3 py-2 text-muted-foreground text-xs">
+                Ninguém com esse nome na comunidade.
+              </p>
+            )}
         </div>
       )}
       {hasGroupMention && (
