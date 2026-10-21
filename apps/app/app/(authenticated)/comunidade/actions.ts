@@ -2285,6 +2285,72 @@ const enqueueGroupInvitationNotifications = async (
   });
 };
 
+const requireActiveGroupCreator = async (memberId: string) => {
+  const member = await database.member.findUnique({
+    where: { id: memberId },
+    select: { deactivatedAt: true },
+  });
+  if (!member || member.deactivatedAt) {
+    redirect("/onboarding");
+  }
+};
+
+const uploadedGroupCoverUrl = (value: string, memberId: string) => {
+  if (!value) {
+    return null;
+  }
+  const path = memberAssetPathFromUrl(value);
+  if (
+    path?.startsWith("community-assets/covers/") &&
+    isOwnedMemberAssetPath(path, memberId)
+  ) {
+    return value;
+  }
+  return undefined;
+};
+
+const createInitialGroupInvitations = async (
+  transaction: Prisma.TransactionClient,
+  input: {
+    readonly actorId: string;
+    readonly groupId: string;
+    readonly inviteeIds: readonly string[];
+  }
+) => {
+  if (input.inviteeIds.length === 0) {
+    return;
+  }
+  const activeInvitees = await transaction.member.findMany({
+    where: {
+      id: { in: [...input.inviteeIds] },
+      deactivatedAt: null,
+      NOT: { id: input.actorId },
+    },
+    select: { id: true },
+  });
+  if (activeInvitees.length === 0) {
+    return;
+  }
+  const createdAt = new Date();
+  const invitations =
+    await transaction.communitySpaceInvitation.createManyAndReturn({
+      data: activeInvitees.map(({ id }) => ({
+        id: randomUUID(),
+        spaceId: input.groupId,
+        inviteeId: id,
+        inviterId: input.actorId,
+      })),
+      skipDuplicates: true,
+      select: { id: true, inviteeId: true },
+    });
+  await enqueueGroupInvitationNotifications(transaction, {
+    actorId: input.actorId,
+    createdAt,
+    groupId: input.groupId,
+    invitations,
+  });
+};
+
 const enqueueCommunityGroupPostNotifications = async (
   transaction: Prisma.TransactionClient,
   input: {
@@ -2343,6 +2409,10 @@ export const createStudyGroup = async (formData: FormData) => {
   if (!memberId) {
     redirect("/sign-in");
   }
+  await requireActiveGroupCreator(memberId);
+  if (textValue(formData.get("coverUploadPending")) === "true") {
+    redirect("/comunidade/grupos/novo?error=cover");
+  }
   const parsed = groupCreateSchema.safeParse({
     title: textValue(formData.get("title")),
     description: textValue(formData.get("description")),
@@ -2363,7 +2433,10 @@ export const createStudyGroup = async (formData: FormData) => {
     memberId,
   });
   await getOrCreateProfile(memberId);
-  const coverUrl = safeImageUrl(parsed.data.coverUrl, memberId);
+  const coverUrl = uploadedGroupCoverUrl(parsed.data.coverUrl, memberId);
+  if (coverUrl === undefined) {
+    redirect("/comunidade/grupos/novo?error=cover");
+  }
   const slugBase = communitySpaceSlugBase(parsed.data.title);
   const ownerSuffix = communitySpaceSlugBase(memberId).slice(-7) || "member";
 
@@ -2400,37 +2473,26 @@ export const createStudyGroup = async (formData: FormData) => {
           },
           select: { id: true, slug: true },
         });
-
-        let invitations: { id: string; inviteeId: string }[] = [];
-        if (inviteeIds.length > 0) {
-          const activeInvitees = await transaction.member.findMany({
-            where: {
-              id: { in: inviteeIds },
-              deactivatedAt: null,
-              NOT: { id: memberId },
+        await transaction.domainEvent.create({
+          data: {
+            eventType: "community.group.created",
+            actorId: memberId,
+            aggregateType: "CommunitySpace",
+            aggregateId: space.id,
+            idempotencyKey: `community.group.created:${space.id}`,
+            payload: {
+              visibility: parsed.data.visibility,
+              initialRole: CommunitySpaceMemberRole.OWNER,
             },
-            select: { id: true },
-          });
-          if (activeInvitees.length > 0) {
-            invitations =
-              await transaction.communitySpaceInvitation.createManyAndReturn({
-                data: activeInvitees.map(({ id }) => ({
-                  id: randomUUID(),
-                  spaceId: space.id,
-                  inviteeId: id,
-                  inviterId: memberId,
-                })),
-                skipDuplicates: true,
-                select: { id: true, inviteeId: true },
-              });
-            await enqueueGroupInvitationNotifications(transaction, {
-              actorId: memberId,
-              createdAt: new Date(),
-              groupId: space.id,
-              invitations,
-            });
-          }
-        }
+            occurredAt: new Date(),
+          },
+        });
+
+        await createInitialGroupInvitations(transaction, {
+          actorId: memberId,
+          groupId: space.id,
+          inviteeIds,
+        });
         return { duplicateName: false as const, slug: space.slug };
       });
       if (result.duplicateName) {

@@ -10,7 +10,6 @@ describe("communitySpaceDirectoryWhere", () => {
         section: "mine",
       })
     ).toEqual({
-      status: "PUBLISHED",
       AND: [
         {
           OR: [
@@ -21,8 +20,14 @@ describe("communitySpaceDirectoryWhere", () => {
         },
         {
           OR: [
-            { ownerId: "member-a" },
-            { members: { some: { memberId: "member-a" } } },
+            {
+              status: "PUBLISHED",
+              OR: [
+                { ownerId: "member-a" },
+                { members: { some: { memberId: "member-a" } } },
+              ],
+            },
+            { status: "ARCHIVED", ownerId: "member-a" },
           ],
         },
       ],
@@ -37,7 +42,6 @@ describe("communitySpaceDirectoryWhere", () => {
     });
 
     expect(where).toEqual({
-      status: "PUBLISHED",
       AND: [
         {
           OR: [
@@ -47,6 +51,7 @@ describe("communitySpaceDirectoryWhere", () => {
           ],
         },
         {
+          status: "PUBLISHED",
           visibility: "PUBLIC",
           NOT: {
             OR: [

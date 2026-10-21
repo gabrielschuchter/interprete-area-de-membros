@@ -1,10 +1,22 @@
 import { access, mkdir, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
-import { adminStatePath, memberStatePath } from "./auth-state-paths";
+import { clerkSetup } from "@clerk/testing/playwright";
+import {
+  adminStatePath,
+  memberStatePath,
+  secondaryMemberStatePath,
+  teacherStatePath,
+} from "./auth-state-paths";
 
 export default async function globalSetup() {
   process.loadEnvFile(".env.local");
-  const authStates = [memberStatePath, adminStatePath];
+  await clerkSetup();
+  const authStates = [
+    memberStatePath,
+    secondaryMemberStatePath,
+    teacherStatePath,
+    adminStatePath,
+  ];
   await Promise.all(
     authStates.map(async (path) => {
       await mkdir(dirname(path), { recursive: true });

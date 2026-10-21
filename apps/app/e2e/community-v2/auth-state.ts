@@ -3,10 +3,15 @@ import { dirname } from "node:path";
 import { clerk } from "@clerk/testing/playwright";
 import { type BrowserContext, expect, type Page } from "@playwright/test";
 
-export { adminStatePath, memberStatePath } from "./auth-state-paths";
+export {
+  adminStatePath,
+  memberStatePath,
+  secondaryMemberStatePath,
+  teacherStatePath,
+} from "./auth-state-paths";
 
 export const clerkUserId = async (page: Page) => {
-  const sessionCookie = (await page.context().cookies()).find(
+  const sessionCookie = (await page.context().cookies(page.url())).find(
     (cookie) => cookie.name === "__session"
   );
   const payload = sessionCookie?.value.split(".")[1];

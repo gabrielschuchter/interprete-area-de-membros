@@ -8,7 +8,9 @@ import {
   SingleFlightForm,
   SingleFlightSubmit,
 } from "@/components/mutations/single-flight-form";
+import { requireStaff } from "@/lib/authorization";
 import {
+  auditStaffPrivateCommunityAccess,
   communityPostHref,
   getStaffCommunityPosts,
   getStaffCommunitySpaces,
@@ -100,6 +102,8 @@ const AdminCommunityPostRow = ({
 );
 
 const AdminCommunityPage = async () => {
+  const { userId, role } = await requireStaff();
+  await auditStaffPrivateCommunityAccess(userId, role);
   const [spaces, posts, deletedPosts] = await Promise.all([
     getStaffCommunitySpaces(),
     getStaffCommunityPosts(),

@@ -1,5 +1,6 @@
 import "server-only";
 
+import { randomUUID } from "node:crypto";
 import {
   type CommunityPostKind,
   ContentStatus,
@@ -10,6 +11,7 @@ import {
 import { tracePerformance } from "@repo/observability/performance";
 import { getMemberRole, requireStaff } from "@/lib/authorization";
 import { communityCoverAltSelect } from "@/lib/community-cover-alt";
+import { canReadPrivateStudyGroup } from "@/lib/community-group-permissions";
 import {
   extractCommunityMedia,
   normalizeCommunityCoverUrl,
@@ -163,6 +165,7 @@ export const getCommunitySpaceDirectoryPage = async (
         ...(cursorSpace ? { cursor: { id: cursorSpace.id }, skip: 1 } : {}),
         select: {
           id: true,
+          status: true,
           title: true,
           slug: true,
           description: true,
@@ -311,9 +314,7 @@ const communityFeedWhere = ({
 }): Prisma.CommunityPostWhereInput => ({
   status: ContentStatus.PUBLISHED,
   deletedAt: null,
-  ...(spaceSlug
-    ? {}
-    : communityPostAudienceWhere(memberId, canModeratePrivateGroups)),
+  ...(spaceSlug ? {} : communityPostAudienceWhere(memberId, false)),
   ...(sort === "unanswered" ? { comments: { none: { deletedAt: null } } } : {}),
   ...(kind ? { kind } : {}),
   ...(spaceSlug
@@ -495,6 +496,32 @@ export const getCommunityFeed = async (
     kind: options.kind,
     spaceSlug: options.spaceSlug,
   });
+  if (
+    options.spaceSlug &&
+    (role === MemberRole.ADMIN || role === MemberRole.TEACHER)
+  ) {
+    const privateSpace = await database.communitySpace.findFirst({
+      where: {
+        slug: options.spaceSlug,
+        status: ContentStatus.PUBLISHED,
+        visibility: "PRIVATE",
+      },
+      select: { id: true },
+    });
+    if (privateSpace) {
+      await database.domainEvent.create({
+        data: {
+          eventType: "community.group.private_accessed",
+          actorId: memberId,
+          aggregateType: "CommunitySpace",
+          aggregateId: privateSpace.id,
+          idempotencyKey: `community.group.private_feed_accessed:${privateSpace.id}:${randomUUID()}`,
+          payload: { actorRole: role, surface: "feed" },
+          occurredAt: new Date(),
+        },
+      });
+    }
+  }
   const feed = await tracePerformance("member.community.feed-query", () =>
     sort === "popular"
       ? getPopularCommunityPosts(memberId, cursor, where)
@@ -532,7 +559,18 @@ export const getCommunitySpace = async (
   const space = await database.communitySpace.findFirst({
     where: {
       slug,
-      status: ContentStatus.PUBLISHED,
+      status: { in: [ContentStatus.PUBLISHED, ContentStatus.ARCHIVED] },
+      AND:
+        role === MemberRole.ADMIN || role === MemberRole.TEACHER
+          ? []
+          : [
+              {
+                OR: [
+                  { status: ContentStatus.PUBLISHED },
+                  { status: ContentStatus.ARCHIVED, ownerId: memberId },
+                ],
+              },
+            ],
       ...communitySpaceAudienceWhere(
         memberId,
         role === MemberRole.ADMIN || role === MemberRole.TEACHER
@@ -540,6 +578,7 @@ export const getCommunitySpace = async (
     },
     select: {
       id: true,
+      status: true,
       title: true,
       slug: true,
       description: true,
@@ -553,7 +592,14 @@ export const getCommunitySpace = async (
         select: { id: true, role: true },
         take: 1,
       },
-      _count: { select: { members: true } },
+      _count: {
+        select: {
+          members: true,
+          posts: {
+            where: { status: ContentStatus.PUBLISHED, deletedAt: null },
+          },
+        },
+      },
       commentsClosed: true,
       posts: {
         where: { status: ContentStatus.PUBLISHED, deletedAt: null },
@@ -590,6 +636,35 @@ export const getCommunitySpace = async (
   if (!space) {
     return null;
   }
+  const isStaff = role === MemberRole.ADMIN || role === MemberRole.TEACHER;
+  const isOwner =
+    space.ownerId === memberId || space.members[0]?.role === "OWNER";
+  if (
+    space.visibility === "PRIVATE" &&
+    !canReadPrivateStudyGroup({
+      isOwner,
+      isMember: space.members.length > 0,
+      isStaff,
+    })
+  ) {
+    return null;
+  }
+  if (space.status === ContentStatus.ARCHIVED && !(isOwner || isStaff)) {
+    return null;
+  }
+  if (space.visibility === "PRIVATE" && isStaff) {
+    await database.domainEvent.create({
+      data: {
+        eventType: "community.group.private_accessed",
+        actorId: memberId,
+        aggregateType: "CommunitySpace",
+        aggregateId: space.id,
+        idempotencyKey: `community.group.private_accessed:${space.id}:${randomUUID()}`,
+        payload: { actorRole: role },
+        occurredAt: new Date(),
+      },
+    });
+  }
   const hasMorePosts = space.posts.length > POST_PAGE_SIZE;
   const visiblePosts = space.posts.slice(0, POST_PAGE_SIZE);
   return {
@@ -603,6 +678,31 @@ export const getCommunitySpace = async (
     })),
     page: currentPage,
     hasMorePosts,
+  };
+};
+
+const GROUP_MEMBER_PAGE_SIZE = 30;
+
+export const getCommunitySpaceMembers = async (spaceId: string, page = 1) => {
+  const currentPage = Number.isInteger(page) && page > 0 ? page : 1;
+  const rows = await database.communitySpaceMember.findMany({
+    where: { spaceId },
+    orderBy: [{ role: "asc" }, { joinedAt: "asc" }, { id: "asc" }],
+    skip: (currentPage - 1) * GROUP_MEMBER_PAGE_SIZE,
+    take: GROUP_MEMBER_PAGE_SIZE + 1,
+    select: {
+      id: true,
+      memberId: true,
+      role: true,
+      joinedAt: true,
+      member: { select: { displayName: true, avatarUrl: true, role: true } },
+    },
+  });
+  const hasMore = rows.length > GROUP_MEMBER_PAGE_SIZE;
+  return {
+    members: rows.slice(0, GROUP_MEMBER_PAGE_SIZE),
+    page: currentPage,
+    hasMore,
   };
 };
 
@@ -626,7 +726,13 @@ const communityPostSelect = {
   updatedAt: true,
   editedAt: true,
   space: {
-    select: { id: true, title: true, slug: true, commentsClosed: true },
+    select: {
+      id: true,
+      title: true,
+      slug: true,
+      commentsClosed: true,
+      visibility: true,
+    },
   },
   _count: {
     select: { comments: { where: { deletedAt: null } }, votes: true },
@@ -662,7 +768,7 @@ const getPublishedPost = async (
       }
     : communityPostAudienceWhere(memberId, canModeratePrivateGroups);
 
-  return database.communityPost.findFirst({
+  const post = await database.communityPost.findFirst({
     where: {
       AND: [
         identityWhere,
@@ -680,6 +786,20 @@ const getPublishedPost = async (
       },
     },
   });
+  if (post?.space?.visibility === "PRIVATE" && canModeratePrivateGroups) {
+    await database.domainEvent.create({
+      data: {
+        eventType: "community.group.private_post_accessed",
+        actorId: memberId,
+        aggregateType: "CommunitySpace",
+        aggregateId: post.space.id,
+        idempotencyKey: `community.group.private_post_accessed:${post.id}:${randomUUID()}`,
+        payload: { actorRole: role, postId: post.id },
+        occurredAt: new Date(),
+      },
+    });
+  }
+  return post;
 };
 
 const getPostWithComments = async (
@@ -1031,9 +1151,6 @@ export const getSavedCommunityPosts = async (
     readonly take?: number;
   } = {}
 ) => {
-  const role = await getMemberRole(memberId);
-  const canModeratePrivateGroups =
-    role === MemberRole.ADMIN || role === MemberRole.TEACHER;
   const pageSize = options.take ?? 100;
   const query = options.query?.trim().slice(0, 100) ?? "";
   const sort = normalizeCommunitySort(options.sort);
@@ -1044,7 +1161,7 @@ export const getSavedCommunityPosts = async (
       is: {
         status: ContentStatus.PUBLISHED,
         deletedAt: null,
-        ...communityPostAudienceWhere(memberId, canModeratePrivateGroups),
+        ...communityPostAudienceWhere(memberId, false),
         ...(options.kind ? { kind: options.kind } : {}),
         ...(sort === "unanswered"
           ? { comments: { none: { deletedAt: null } } }
@@ -1055,10 +1172,7 @@ export const getSavedCommunityPosts = async (
                 is: {
                   slug: options.spaceSlug,
                   status: ContentStatus.PUBLISHED,
-                  ...communitySpaceAudienceWhere(
-                    memberId,
-                    canModeratePrivateGroups
-                  ),
+                  ...communitySpaceAudienceWhere(memberId, false),
                 },
               },
             }
@@ -1118,6 +1232,31 @@ export const getSavedCommunityPosts = async (
     nextCursor:
       bookmarks.length > pageSize ? visibleBookmarks.at(-1)?.id : undefined,
   };
+};
+
+export const auditStaffPrivateCommunityAccess = async (
+  actorId: string,
+  actorRole: MemberRole
+) => {
+  const privateSpaces = await database.communitySpace.findMany({
+    where: { visibility: "PRIVATE" },
+    select: { id: true },
+  });
+  if (privateSpaces.length === 0) {
+    return;
+  }
+  const occurredAt = new Date();
+  await database.domainEvent.createMany({
+    data: privateSpaces.map(({ id }) => ({
+      eventType: "community.group.private_accessed",
+      actorId,
+      aggregateType: "CommunitySpace",
+      aggregateId: id,
+      idempotencyKey: `community.group.private_admin_index:${id}:${actorId}:${randomUUID()}`,
+      payload: { actorRole, surface: "admin-index" },
+      occurredAt,
+    })),
+  });
 };
 
 export const getStaffCommunitySpaces = async () =>

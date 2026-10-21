@@ -22,10 +22,17 @@ export const communitySpaceDirectoryWhere = ({
 
   if (section === "mine") {
     conditions.push({
-      OR: [{ ownerId: memberId }, { members: { some: { memberId } } }],
+      OR: [
+        {
+          status: "PUBLISHED",
+          OR: [{ ownerId: memberId }, { members: { some: { memberId } } }],
+        },
+        { status: "ARCHIVED", ownerId: memberId },
+      ],
     });
   } else {
     conditions.push({
+      status: "PUBLISHED",
       visibility: "PUBLIC",
       NOT: {
         OR: [{ ownerId: memberId }, { members: { some: { memberId } } }],
@@ -43,5 +50,5 @@ export const communitySpaceDirectoryWhere = ({
     });
   }
 
-  return { status: "PUBLISHED", AND: conditions };
+  return { AND: conditions };
 };

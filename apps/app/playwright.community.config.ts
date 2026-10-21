@@ -4,6 +4,7 @@ import {
   adminStatePath,
   authDirectory,
   memberStatePath,
+  secondaryMemberStatePath,
 } from "./e2e/community-v2/auth-state-paths";
 
 const outputDirectory =
@@ -35,21 +36,24 @@ export default defineConfig({
   use: localUse,
   projects: [
     {
-      name: "clerk-setup",
-      testMatch: /clerk\.setup\.ts$/,
-      use: localUse,
-    },
-    {
       name: "member-auth",
-      testMatch: /member\.auth\.setup\.ts$/,
-      dependencies: ["clerk-setup"],
+      testMatch: /(^|[\\/])member\.auth\.setup\.ts$/,
       use: { ...localUse, storageState: memberStatePath },
     },
     {
       name: "admin-auth",
-      testMatch: /admin\.auth\.setup\.ts$/,
-      dependencies: ["clerk-setup"],
+      testMatch: /(^|[\\/])admin\.auth\.setup\.ts$/,
       use: { ...localUse, storageState: adminStatePath },
+    },
+    {
+      name: "secondary-member-auth",
+      testMatch: /(^|[\\/])secondary-member\.auth\.setup\.ts$/,
+      use: localUse,
+    },
+    {
+      name: "teacher-auth",
+      testMatch: /(^|[\\/])teacher\.auth\.setup\.ts$/,
+      use: localUse,
     },
     {
       name: "community-member",
@@ -80,6 +84,17 @@ export default defineConfig({
       testMatch: /discussion\.spec\.ts$/,
       dependencies: ["member-auth", "admin-auth"],
       use: { ...localUse, storageState: memberStatePath },
+    },
+    {
+      name: "community-groups",
+      testMatch: /community-groups\.spec\.ts$/,
+      dependencies: [
+        "member-auth",
+        "secondary-member-auth",
+        "teacher-auth",
+        "admin-auth",
+      ],
+      use: { ...localUse, storageState: secondaryMemberStatePath },
     },
   ],
   webServer: {

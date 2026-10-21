@@ -1,5 +1,5 @@
 param(
-  [ValidateSet("full", "admin-recovery", "admin-pin", "member-recovery", "storage-cover", "discussion")]
+  [ValidateSet("full", "admin-recovery", "admin-pin", "member-recovery", "storage-cover", "discussion", "groups")]
   [string]$Suite = "full",
   [string]$RunId
 )
@@ -46,9 +46,14 @@ if (
 
 $members = @($ledger.accounts | Where-Object role -eq "MEMBER")
 $member = if ($members.Count -gt 1) { $members[1] } else { $members[0] }
+$secondaryMember = if ($members.Count -gt 1) { $members[0] } else { $null }
 $admin = $ledger.accounts | Where-Object role -eq "ADMIN" | Select-Object -First 1
+$teacher = $ledger.accounts | Where-Object role -eq "TEACHER" | Select-Object -First 1
 if (!($member -and $admin -and $member.email -and $admin.email)) {
   throw "The existing Clerk Development member/admin identities are unavailable."
+}
+if ($Suite -in @("groups", "full") -and !($secondaryMember -and $teacher -and $secondaryMember.email -and $teacher.email)) {
+  throw "The existing second MEMBER and TEACHER Clerk Development identities are required for group authorization QA."
 }
 
 $authDirectory = Join-Path $qaRoot "playwright"
@@ -69,6 +74,7 @@ if ($LASTEXITCODE -ne 0) {
 $savedEnvironment = @{}
 $environmentNames = @(
   "COMMUNITY_QA_ISOLATED",
+  "COMMUNITY_QA_SUITE",
   "COMMUNITY_QA_EXPECTED_DATABASE",
   "COMMUNITY_QA_LEDGER_PATH",
   "COMMUNITY_QA_AUTH_DIR",
@@ -78,6 +84,10 @@ $environmentNames = @(
   "COMMUNITY_QA_MEMBER_ID",
   "COMMUNITY_QA_ADMIN_EMAIL",
   "COMMUNITY_QA_ADMIN_ID",
+  "COMMUNITY_QA_SECONDARY_MEMBER_EMAIL",
+  "COMMUNITY_QA_SECONDARY_MEMBER_ID",
+  "COMMUNITY_QA_TEACHER_EMAIL",
+  "COMMUNITY_QA_TEACHER_ID",
   "COMMUNITY_POST_COVER_ALT_ENABLED",
   "APP_WRITE_FREEZE",
   "VERCEL_ENV",
@@ -136,6 +146,7 @@ try {
   }
 
   $env:COMMUNITY_QA_ISOLATED = "true"
+  $env:COMMUNITY_QA_SUITE = $Suite
   $env:COMMUNITY_QA_EXPECTED_DATABASE = "interprete_community_v2_qa"
   $env:COMMUNITY_QA_LEDGER_PATH = $ledgerPath
   $env:COMMUNITY_QA_AUTH_DIR = $authDirectory
@@ -145,6 +156,10 @@ try {
   $env:COMMUNITY_QA_MEMBER_ID = [string]$member.clerkUserId
   $env:COMMUNITY_QA_ADMIN_EMAIL = [string]$admin.email
   $env:COMMUNITY_QA_ADMIN_ID = [string]$admin.clerkUserId
+  $env:COMMUNITY_QA_SECONDARY_MEMBER_EMAIL = if ($secondaryMember) { [string]$secondaryMember.email } else { "" }
+  $env:COMMUNITY_QA_SECONDARY_MEMBER_ID = if ($secondaryMember) { [string]$secondaryMember.clerkUserId } else { "" }
+  $env:COMMUNITY_QA_TEACHER_EMAIL = if ($teacher) { [string]$teacher.email } else { "" }
+  $env:COMMUNITY_QA_TEACHER_ID = if ($teacher) { [string]$teacher.clerkUserId } else { "" }
   $env:COMMUNITY_POST_COVER_ALT_ENABLED = "true"
   $env:APP_WRITE_FREEZE = "false"
   $previewMemberIds = @(
@@ -181,7 +196,7 @@ try {
   $env:PGSSLROOTCERT = [string]$config.caPath
   $env:NODE_USE_SYSTEM_CA = "1"
 
-  if ($Suite -eq "storage-cover") {
+  if ($Suite -in @("storage-cover", "groups", "full")) {
     $supabaseProjectDirectory = Join-Path $env:LOCALAPPDATA "Codex\qa\community-v2-storage-qa-20261021\project"
     $supabaseConfigPath = Join-Path $supabaseProjectDirectory "supabase\config.toml"
     if (!(Test-Path -LiteralPath $supabaseConfigPath)) {
@@ -296,6 +311,8 @@ try {
         "community-storage-cover"
       } elseif ($Suite -eq "discussion") {
         "community-discussion"
+      } elseif ($Suite -eq "groups") {
+        "community-groups"
       } elseif ($Suite -eq "admin-recovery" -or $Suite -eq "admin-pin") {
         "community-admin-recovery"
       } else {
@@ -306,15 +323,16 @@ try {
         $authProjects += "--project=$project"
       } else {
         $authProjects = @(
-          "--project=clerk-setup",
           "--project=member-auth",
+          "--project=secondary-member-auth",
+          "--project=teacher-auth",
           "--project=admin-auth",
           "--project=$project",
           "--no-deps"
         )
       }
       if ($Suite -eq "admin-pin") {
-        $authProjects += "--grep=initialize Clerk Testing token|reuse or initialize the existing Clerk Development .* session|concurrent staff pin requests"
+        $authProjects += "--grep=reuse or initialize the existing Clerk Development .* session|concurrent staff pin requests"
       }
       bun run community-v2:e2e @authProjects
     }

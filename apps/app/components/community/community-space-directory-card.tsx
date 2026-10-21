@@ -20,10 +20,34 @@ export const CommunitySpaceDirectoryCard = ({
   let memberRole: string | null = null;
   if (isOwner || membership?.role === "OWNER") {
     memberRole = "Dono";
+  } else if (membership?.role === "MODERATOR") {
+    memberRole = "Moderador";
   } else if (membership) {
     memberRole = "Membro";
   }
   const groupHref = `/comunidade/grupos/${space.slug}`;
+  let action = (
+    <form action={joinPublicStudyGroup}>
+      <input name="groupId" type="hidden" value={space.id} />
+      <Button className="min-h-11 w-full" type="submit">
+        Entrar no grupo
+      </Button>
+    </form>
+  );
+  if (isMember) {
+    action = (
+      <Button asChild className="min-h-11 w-full" variant="outline">
+        <Link href={groupHref}>Abrir grupo</Link>
+      </Button>
+    );
+  }
+  if (space.status === "ARCHIVED" && isOwner) {
+    action = (
+      <Button asChild className="min-h-11 w-full" variant="outline">
+        <Link href={`${groupHref}?view=settings`}>Restaurar grupo</Link>
+      </Button>
+    );
+  }
 
   return (
     <article className="flex min-w-0 flex-col overflow-hidden rounded-sm border border-border bg-background">
@@ -62,6 +86,11 @@ export const CommunitySpaceDirectoryCard = ({
               {memberRole}
             </span>
           ) : null}
+          {space.status === "ARCHIVED" ? (
+            <span className="rounded-sm border border-destructive/30 px-2 py-1 text-destructive">
+              Arquivado
+            </span>
+          ) : null}
         </div>
 
         <h2 className="mt-3 min-w-0 font-display text-xl leading-tight [overflow-wrap:anywhere]">
@@ -85,20 +114,7 @@ export const CommunitySpaceDirectoryCard = ({
           {space._count.members === 1 ? "membro" : "membros"}
         </p>
 
-        <div className="mt-5">
-          {isMember ? (
-            <Button asChild className="min-h-11 w-full" variant="outline">
-              <Link href={groupHref}>Abrir grupo</Link>
-            </Button>
-          ) : (
-            <form action={joinPublicStudyGroup}>
-              <input name="groupId" type="hidden" value={space.id} />
-              <Button className="min-h-11 w-full" type="submit">
-                Entrar no grupo
-              </Button>
-            </form>
-          )}
-        </div>
+        <div className="mt-5">{action}</div>
       </div>
     </article>
   );

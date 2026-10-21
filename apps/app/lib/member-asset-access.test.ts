@@ -76,7 +76,25 @@ describe("member asset read authorization", () => {
     await expect(
       canReadMemberAssetPath(communityCoverPath, "member-owner")
     ).resolves.toBe(true);
-    expect(databaseMock.$queryRaw).not.toHaveBeenCalled();
+    expect(databaseMock.$queryRaw).toHaveBeenCalledTimes(1);
+  });
+
+  test("allows a member to read a private group's referenced cover", async () => {
+    databaseMock.$queryRaw.mockResolvedValueOnce([{ allowed: true }]);
+
+    await expect(
+      canReadMemberAssetPath(communityCoverPath, "member-reader")
+    ).resolves.toBe(true);
+    expect(databaseMock.$queryRaw).toHaveBeenCalledTimes(1);
+  });
+
+  test("denies a non-member a private group's cover", async () => {
+    databaseMock.$queryRaw.mockResolvedValueOnce([{ allowed: false }]);
+
+    await expect(
+      canReadMemberAssetPath(communityCoverPath, "member-reader")
+    ).resolves.toBe(false);
+    expect(databaseMock.$queryRaw).toHaveBeenCalledTimes(1);
   });
 
   test("keeps an unreferenced community cover private from other members", async () => {
@@ -86,7 +104,9 @@ describe("member asset read authorization", () => {
   });
 
   test("allows the audience to read a cover referenced by a published post", async () => {
-    databaseMock.$queryRaw.mockResolvedValueOnce([{ id: "cover-post" }]);
+    databaseMock.$queryRaw
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ id: "cover-post" }]);
 
     await expect(
       canReadMemberAssetPath(communityCoverPath, "member-reader")
