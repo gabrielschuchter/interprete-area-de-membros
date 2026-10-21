@@ -5,7 +5,7 @@
 **E2E Etapa 04:** Playwright `discussion` passou 4/4 usando o PostgreSQL local `interprete_community_v2_qa` e as identidades Clerk Development MEMBER/ADMIN existentes. Outbox ficou no namespace local `preview`; consumer e envios reais não foram executados.
 **Visual Etapa 04:** boards 14/15/39/40 foram revistos lado a lado com capturas autenticadas desktop e emulação mobile; o teclado nativo não foi simulado. Handoff extraído em `C:\Users\gabsc\AppData\Local\Codex\qa\community-v2-handoff-20261021\original\interprete-comunidade-v2`; QA em `C:\Users\gabsc\AppData\Local\Codex\qa\community-v2-foundation-20261015\playwright\results\e137669863ca4bbf82bc18105dcf6394`.
 **Deployments pendentes da Etapa 04:** status GitHub consultado para o commit `885a67cd1bd3e1bcbf4a37dded0dacc5e42076a2`: App `success` / `Deployment has completed`; API `failure` / `Canceled from the Vercel Dashboard`. Nenhuma alteração no Vercel foi feita.
-**Integridade:** migrations e dados da Etapa 05 ficaram somente no PostgreSQL QA local; sem escrita em GREEN, BLUE ou Production e sem deployment/promoção da Etapa 05.
+**Integridade:** migrations e dados da Etapa 05 ficaram somente no PostgreSQL QA local; sem escrita em GREEN, BLUE ou Production. O push iniciou automaticamente os Preview do App/API; não houve deploy manual nem promoção de alias/Production.
 **Gates Etapa 05:** `bun run check` 1018 arquivos; `typecheck` 16/16; `boundaries` 946 arquivos; `bun run test` 835 App + 24 domínio + 9 API, scripts 32 pass/1 skip; `bun run build` 8/8; `performance:check` Comunidade 213,9 KiB gzip/225 KiB; `graphify update .` 8.069 nós/21.095 arestas/349 comunidades.
 
 ## Etapa 05 — grupos, membros e moderação — 21/10/2026
@@ -18,7 +18,7 @@
 - Gates da raiz aprovados: `bun run check` (1018), `typecheck` (16/16), `boundaries` (946), `bun run test` (scripts 32 pass/1 skip; App 835 testes/171 arquivos; API 9; domínio 24), `bun run build` (8/8) e `bun run performance:check` (Comunidade 213,9 KiB gzip / 225 KiB). Depois da última alteração somente no helper de captura E2E (`caret: initial`), `bun run fix`, `bun run check`, typecheck do App e descoberta dos 11 testes Playwright passaram; a jornada E2E funcional 5/5 foi executada antes dessa opção do helper.
 - `graphify update .` concluído após as alterações de código: 8.069 nós, 21.095 arestas, 349 comunidades. `graphify-out/` permanece ignorado e não foi incluído.
 - Commit funcional da Etapa 05: `b415397b5ff7b376410b5536f2d108ccc1d9055f` (`feat(comunidade): adicionar grupos e moderação`), na branch `codex/comunidade-v2`.
-- A verificação read-only dos deployments da Etapa 04 encontrou App concluído (`success`) e API cancelada (`failure`, “Canceled from the Vercel Dashboard”). Isso não bloqueou esta implementação. A Etapa 05 não foi implantada; Etapa 06 (convites individuais e links completos) segue fora desta entrega.
+- A verificação read-only dos deployments da Etapa 04 encontrou App concluído (`success`) e API cancelada (`failure`, “Canceled from the Vercel Dashboard”). Isso não bloqueou esta implementação. Após o push, os status read-only do SHA `e8e7d912af4578321905112b3f25154721e4c7c9` mostraram App/API Preview `pending` (`Vercel is deploying your app`). Etapa 06 (convites individuais e links completos) segue fora desta entrega.
 
 ## Retomada da Etapa 02 — evidências de 2026-10-19
 
