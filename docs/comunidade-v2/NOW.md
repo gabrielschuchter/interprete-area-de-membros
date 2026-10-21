@@ -8,9 +8,9 @@
 - **Correção de produto:** a página individual agora usa o `coverAltText` persistido, igual ao feed/editor. O E2E prova o valor após publicar e recarregar.
 - **Capturas controladas:** progresso, falha de capa e saída com alterações em desktop/mobile foram revistas em `C:\Users\gabsc\AppData\Local\Codex\qa\community-v2-foundation-20261015\playwright\results\9c009deee5ab453fbdb1d7aaefde5d9b`. A comparação pixel a pixel aos HTMLs originais não pôde ser comprovada porque eles não estão disponíveis no checkout de QA.
 - **Gates da candidata:** `check` passou (1006 arquivos); `typecheck` 16/16; `boundaries` 934 arquivos; testes, build (8/8) e `performance:check` passaram. E2E Storage autenticado 4/4. `graphify update .` executado.
-- **Preview:** verificar o deployment do SHA após push. O Preview anterior `06cc531c488d5e1350c82fc725a1ed591c0d45d1` abriu no Edge usando a sessão existente; não recebeu escrita de QA.
+- **Push/Preview:** candidata enviada em `2c43980977741f09815553179588b642969d48fc`. Na consulta após push, a API de deployments do GitHub não listava deployment para a branch; somente o check `Vercel Preview Comments` estava `success`. Último App/API Preview confirmado: SHA `06cc531c488d5e1350c82fc725a1ed591c0d45d1`; o novo Preview ainda não está comprovado.
 - **Integridade:** estado de autenticação e credenciais mantidos localmente; ambiente Supabase/Postgres de QA isolados; nenhuma migration remota e nenhum fixture/mutação em GREEN, BLUE ou Production. Checkout original preservado.
-- **Próximo passo concreto:** confirmar SHA/estado `READY` do Preview desta candidata e iniciar a Etapa 04.
+- **Próximo passo concreto:** iniciar a Etapa 04 e confirmar o Preview do SHA enviado assim que a integração Vercel publicar um deployment.
 
 ## Implementado
 

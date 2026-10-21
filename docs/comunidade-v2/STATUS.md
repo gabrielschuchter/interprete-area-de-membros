@@ -5,9 +5,9 @@
 **Isolamento:** projeto Supabase QA `interprete-community-storage-qa-20261021`, API/DB somente loopback, bucket privado `community-v2-cover-qa`; aplicação usa PostgreSQL QA local com TLS `verify-full`. Preflight no runner comprova projeto, URLs, credenciais locais e bindings antes de qualquer escrita. Nenhuma mutação em GREEN, BLUE ou Production.
 **Correção:** a página individual de publicação agora consome `coverAltText` persistido; regressão coberta no E2E após publicar/recarregar. Capturas controladas de progresso, erro e saída com alterações em desktop/mobile foram revistas; comparação pixel a pixel com HTMLs originais não comprovada porque os boards HTML não estão disponíveis no checkout QA.
 **Gates:** `bun run check` passou em 1006 arquivos; `typecheck` 16/16; `boundaries` 934 arquivos; `bun run test`, `bun run build` (8/8) e `bun run performance:check` passaram. A validação de comportamento real é o E2E Storage 4/4; não foram usados mocks para upload/persistência.
-**Preview:** App/API anteriores estavam `READY` no SHA `06cc531c488d5e1350c82fc725a1ed591c0d45d1`. Confirmar o SHA deployment produzido pelo push desta candidata. O alias estável abriu no Edge com sessão existente e sem escrita de QA.
+**Push/Preview:** candidata enviada em `2c43980977741f09815553179588b642969d48fc`. A consulta após push não encontrou deployment da branch; o único check Vercel visível foi `Vercel Preview Comments` (`success`). Último App/API Preview confirmado permanece no SHA `06cc531c488d5e1350c82fc725a1ed591c0d45d1`; o novo Preview ainda não está comprovado. O alias estável abriu no Edge com sessão existente e sem escrita de QA.
 **Autenticação e dados:** Clerk Development `storageState` local protegido; Vercel SSO e Clerk verificados separadamente. Nenhuma credencial Production alterada, migration remota aplicada ou fixture criada em ambientes compartilhados.
-**Próximo passo:** confirmar Preview `READY` no SHA enviado e iniciar a Etapa 04.
+**Próximo passo:** iniciar a Etapa 04 e confirmar o Preview do SHA enviado quando a integração Vercel publicar o deployment.
 
 ## Retomada da Etapa 02 — evidências de 2026-10-19
 
