@@ -26,7 +26,10 @@ interface ProfilePageProperties {
 }
 
 const ProfilePage = async ({ searchParams }: ProfilePageProperties) => {
-  const [{ userId }, filters] = await Promise.all([getAuth(), searchParams]);
+  const [{ userId, memberSnapshot }, filters] = await Promise.all([
+    getAuth(),
+    searchParams,
+  ]);
   if (!userId) {
     return null;
   }
@@ -34,7 +37,8 @@ const ProfilePage = async ({ searchParams }: ProfilePageProperties) => {
   const [
     profile,
     stats,
-    pendingInvitations,
+    invitationHistory,
+    pendingInvitationCount,
     earnedBadges,
     publishedBadgeDefinitions,
   ] = await Promise.all([
@@ -43,20 +47,39 @@ const ProfilePage = async ({ searchParams }: ProfilePageProperties) => {
     database.communitySpaceInvitation.findMany({
       where: {
         inviteeId: userId,
-        status: "PENDING",
         space: { is: { status: "PUBLISHED" } },
       },
       orderBy: { createdAt: "desc" },
       take: 50,
       select: {
         id: true,
+        status: true,
         inviter: {
           select: {
             displayName: true,
             profile: { select: { displayName: true, username: true } },
           },
         },
-        space: { select: { title: true, slug: true, description: true } },
+        space: {
+          select: {
+            title: true,
+            slug: true,
+            description: true,
+            visibility: true,
+            members: {
+              where: { memberId: userId },
+              select: { id: true },
+              take: 1,
+            },
+          },
+        },
+      },
+    }),
+    database.communitySpaceInvitation.count({
+      where: {
+        inviteeId: userId,
+        status: "PENDING",
+        space: { is: { status: "PUBLISHED" } },
       },
     }),
     database.badgeAward.findMany({
@@ -87,6 +110,9 @@ const ProfilePage = async ({ searchParams }: ProfilePageProperties) => {
     return null;
   }
 
+  const isStaff =
+    memberSnapshot?.role === "ADMIN" || memberSnapshot?.role === "TEACHER";
+
   const completion = profileCompletionItems(profile);
   const missing = completion.items.filter(({ complete }) => !complete);
   const badgeCollections = splitProfileBadges(
@@ -104,8 +130,8 @@ const ProfilePage = async ({ searchParams }: ProfilePageProperties) => {
     badgeCollections.earned.map(({ criterion }) => criterion)
   );
   const earnedCriteriaCount = earnedBadgeCriteria.size;
-  let pendingInvitationsLabel = `${pendingInvitations.length} pendentes`;
-  if (pendingInvitations.length === 1) {
+  let pendingInvitationsLabel = `${pendingInvitationCount} pendentes`;
+  if (pendingInvitationCount === 1) {
     pendingInvitationsLabel = "1 pendente";
   }
   const completedLabels = completion.items
@@ -344,7 +370,7 @@ const ProfilePage = async ({ searchParams }: ProfilePageProperties) => {
                   <span className="hidden md:inline"> de estudo</span>
                 </span>
                 <span className="flex items-center gap-2 text-muted-foreground">
-                  {pendingInvitations.length === 0 ? (
+                  {pendingInvitationCount === 0 ? (
                     <>
                       <span className="hidden md:inline">Nenhum pendente</span>
                       <span className="md:hidden">Nenhum</span>
@@ -358,68 +384,87 @@ const ProfilePage = async ({ searchParams }: ProfilePageProperties) => {
                   />
                 </span>
               </summary>
-              {pendingInvitations.length > 0 ? (
+              {invitationHistory.length > 0 ? (
                 <ul className="divide-y border-t">
-                  {pendingInvitations.map((invitation) => (
-                    <li className="py-4" key={invitation.id}>
-                      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-                        <div className="min-w-0">
-                          <Link
-                            className="font-medium hover:underline"
-                            href={`/comunidade/grupos/${invitation.space.slug}`}
-                          >
-                            {invitation.space.title}
-                          </Link>
-                          <p className="mt-1 text-muted-foreground text-xs">
-                            Convite de{" "}
-                            {invitation.inviter?.profile?.displayName ??
-                              invitation.inviter?.displayName ??
-                              invitation.inviter?.profile?.username ??
-                              "membro"}
-                          </p>
-                          {invitation.space.description ? (
-                            <p className="mt-2 text-muted-foreground text-sm">
-                              {invitation.space.description}
+                  {invitationHistory.map((invitation) => {
+                    const canShowGroup =
+                      invitation.space.visibility === "PUBLIC" ||
+                      isStaff ||
+                      invitation.status === "PENDING" ||
+                      (invitation.status === "ACCEPTED" &&
+                        invitation.space.members.length > 0);
+                    const statusLabels: Record<string, string> = {
+                      PENDING: "Pendente",
+                      ACCEPTED: "Aceito",
+                      DECLINED: "Recusado",
+                      REVOKED: "Revogado",
+                    };
+                    return (
+                      <li className="py-4" key={invitation.id}>
+                        <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+                          <div className="min-w-0">
+                            {canShowGroup ? (
+                              <Link
+                                className="font-medium hover:underline"
+                                href={`/comunidade/grupos/${invitation.space.slug}`}
+                              >
+                                {invitation.space.title}
+                              </Link>
+                            ) : (
+                              <p className="font-medium">Convite de grupo</p>
+                            )}
+                            <p className="mt-1 text-muted-foreground text-xs">
+                              {statusLabels[invitation.status] ?? "Atualizado"}
+                              {canShowGroup
+                                ? ` · de ${invitation.inviter?.profile?.displayName ?? invitation.inviter?.displayName ?? invitation.inviter?.profile?.username ?? "membro"}`
+                                : null}
                             </p>
+                            {canShowGroup && invitation.space.description ? (
+                              <p className="mt-2 text-muted-foreground text-sm">
+                                {invitation.space.description}
+                              </p>
+                            ) : null}
+                          </div>
+                          {invitation.status === "PENDING" ? (
+                            <div className="flex shrink-0 gap-2">
+                              <SingleFlightForm
+                                action={respondToStudyGroupInvitation}
+                              >
+                                <input
+                                  name="invitationId"
+                                  type="hidden"
+                                  value={invitation.id}
+                                />
+                                <input
+                                  name="response"
+                                  type="hidden"
+                                  value="ACCEPTED"
+                                />
+                                <SingleFlightSubmit>Aceitar</SingleFlightSubmit>
+                              </SingleFlightForm>
+                              <SingleFlightForm
+                                action={respondToStudyGroupInvitation}
+                              >
+                                <input
+                                  name="invitationId"
+                                  type="hidden"
+                                  value={invitation.id}
+                                />
+                                <input
+                                  name="response"
+                                  type="hidden"
+                                  value="DECLINED"
+                                />
+                                <SingleFlightSubmit variant="outline">
+                                  <XIcon aria-hidden="true" /> Recusar
+                                </SingleFlightSubmit>
+                              </SingleFlightForm>
+                            </div>
                           ) : null}
                         </div>
-                        <div className="flex shrink-0 gap-2">
-                          <SingleFlightForm
-                            action={respondToStudyGroupInvitation}
-                          >
-                            <input
-                              name="invitationId"
-                              type="hidden"
-                              value={invitation.id}
-                            />
-                            <input
-                              name="response"
-                              type="hidden"
-                              value="ACCEPTED"
-                            />
-                            <SingleFlightSubmit>Aceitar</SingleFlightSubmit>
-                          </SingleFlightForm>
-                          <SingleFlightForm
-                            action={respondToStudyGroupInvitation}
-                          >
-                            <input
-                              name="invitationId"
-                              type="hidden"
-                              value={invitation.id}
-                            />
-                            <input
-                              name="response"
-                              type="hidden"
-                              value="DECLINED"
-                            />
-                            <SingleFlightSubmit variant="outline">
-                              <XIcon aria-hidden="true" /> Recusar
-                            </SingleFlightSubmit>
-                          </SingleFlightForm>
-                        </div>
-                      </div>
-                    </li>
-                  ))}
+                      </li>
+                    );
+                  })}
                 </ul>
               ) : (
                 <p className="border-t py-4 text-muted-foreground text-sm">

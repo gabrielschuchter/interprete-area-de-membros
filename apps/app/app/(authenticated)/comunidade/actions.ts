@@ -3,7 +3,6 @@
 import { randomUUID } from "node:crypto";
 import {
   BadgeCriterion,
-  CommunitySpaceInvitationStatus,
   CommunitySpaceMemberRole,
   CommunitySpaceVisibility,
   CommunityVoteKind,
@@ -62,6 +61,7 @@ import {
   notifyCommunityPost,
 } from "@/lib/notifications";
 import { getOrCreateProfile } from "@/lib/profile";
+import { inviteStudyGroupMembers as inviteStudyGroupMembersV2 } from "./invitation-actions";
 
 const draftTitle = "Rascunho sem título";
 const tagSeparatorPattern = /[\n,]/;
@@ -2519,80 +2519,7 @@ export const createStudyGroup = async (formData: FormData) => {
 };
 
 export const inviteStudyGroupMembers = async (formData: FormData) => {
-  const memberId = await currentUserId();
-  const groupId = textValue(formData.get("groupId"));
-  const inviteeIds = formInviteeIds(formData);
-  if (
-    !(memberId && groupId) ||
-    inviteeIds.length === 0 ||
-    inviteeIds.length > 50
-  ) {
-    return;
-  }
-  await consumeMutationRateLimit({
-    action: "community.group.invite",
-    memberId,
-  });
-  const role = await getMemberRole(memberId);
-  const group = await database.communitySpace.findFirst({
-    where: {
-      id: groupId,
-      status: ContentStatus.PUBLISHED,
-      ...(canModerate(role) ? {} : { ownerId: memberId }),
-    },
-    select: { id: true, slug: true, ownerId: true, visibility: true },
-  });
-  if (!group) {
-    return;
-  }
-  const createdAt = new Date();
-  const invitations = await database.$transaction(async (transaction) => {
-    const activeInvitees = await transaction.member.findMany({
-      where: {
-        id: { in: inviteeIds },
-        deactivatedAt: null,
-        NOT: { id: memberId },
-        communitySpaceMemberships: { none: { spaceId: groupId } },
-      },
-      select: { id: true },
-    });
-    const pending = await transaction.communitySpaceInvitation.findMany({
-      where: {
-        spaceId: groupId,
-        status: CommunitySpaceInvitationStatus.PENDING,
-        inviteeId: { in: activeInvitees.map(({ id }) => id) },
-      },
-      select: { inviteeId: true },
-    });
-    const pendingIds = new Set(pending.map(({ inviteeId }) => inviteeId));
-    const newInvitees = activeInvitees.filter(({ id }) => !pendingIds.has(id));
-    if (newInvitees.length === 0) {
-      return [];
-    }
-    const created =
-      await transaction.communitySpaceInvitation.createManyAndReturn({
-        data: newInvitees.map(({ id }) => ({
-          id: randomUUID(),
-          spaceId: groupId,
-          inviteeId: id,
-          inviterId: memberId,
-        })),
-        skipDuplicates: true,
-        select: { id: true, inviteeId: true },
-      });
-    await enqueueGroupInvitationNotifications(transaction, {
-      actorId: memberId,
-      createdAt,
-      groupId,
-      invitations: created,
-    });
-    return created;
-  });
-  if (invitations.length > 0) {
-    await dispatchPendingNotifications();
-    revalidatePath("/perfil");
-    revalidatePath(`/comunidade/grupos/${group.slug}`);
-  }
+  return await inviteStudyGroupMembersV2(formData);
 };
 
 export const joinPublicStudyGroup = async (formData: FormData) => {

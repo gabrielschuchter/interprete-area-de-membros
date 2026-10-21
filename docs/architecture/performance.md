@@ -101,7 +101,8 @@ change.
 profile shell reads the authenticated `Member` snapshot and local `Profile`
 projection; the three header counts are request-cached by member and queried
 in parallel. Established members do not call Clerk Backend API on this path.
-The overview selects at most 50 pending invitations, 100 member-scoped awards,
+The overview selects at most 50 recent invitation-history rows, counts current
+pending invitations with the recipient/status index, 100 member-scoped awards,
 and 200 published badge definitions. The achievements route reads the same
 bounded catalog and award projection, then calculates real criterion progress
 for only the criteria represented in that catalog. No progress or awards are
@@ -121,6 +122,23 @@ The route target remains first visit p95 <= 1 s and small persisted mutations
 p95 <= 500 ms from the budgets above. These are targets; authenticated desktop
 and mobile production measurements are still required before claiming they
 pass. Avatar transfer is measured separately from the profile save.
+
+### Community invitations
+
+Group management projects only the active-link creation time and the latest 50
+invitation rows; a token hash or secret is never returned to the browser. The
+profile history is capped at 50 rows and uses a separate recipient-scoped count
+for current pending invitations. Batch writes accept at most 50 unique
+recipients and return one bounded result per recipient. Membership and
+invitation acceptance and membership commit in one transaction; notification
+rows and outbox jobs for newly created invitations are produced in that same
+transaction. Link preview performs one token-hash
+lookup with a member-scoped membership projection, without a persistent cache.
+The invite dialog acknowledges a mutation immediately, blocks duplicate
+submits, and reports each result only after persistence. Route navigation and
+picker results do not prefetch destinations in bulk. These are bounded-query
+and interaction targets; percentiles and remote scheduled recovery are not
+claimed by local QA.
 
 ## Exercises
 

@@ -444,6 +444,7 @@ model Member {
   communitySpaceMemberships           CommunitySpaceMember[]
   communitySpaceInvitationsReceived   CommunitySpaceInvitation[]         @relation("CommunitySpaceInvitationRecipient")
   communitySpaceInvitationsSent       CommunitySpaceInvitation[]         @relation("CommunitySpaceInvitationSender")
+  communitySpaceInviteLinksCreated    CommunitySpaceInviteLink[]         @relation("CommunitySpaceInviteLinkCreator")
   learningAssignmentBatchesCreated    LearningAssignmentBatch[]          @relation("LearningAssignmentBatchCreator")
   learningAssignmentsReceived         ActivityAssignment[]               @relation("LearningAssignmentRecipient")
   learningAssignmentsCreated          ActivityAssignment[]               @relation("LearningAssignmentAssigner")
@@ -1386,6 +1387,7 @@ model CommunitySpace {
   owner              Member?                    @relation("CommunitySpaceOwner", fields: [ownerId], references: [id], onDelete: SetNull)
   members            CommunitySpaceMember[]
   invitations        CommunitySpaceInvitation[]
+  inviteLinks        CommunitySpaceInviteLink[]
   assignmentBatches  LearningAssignmentBatch[]
   contentCollections ContentCollection[]
   posts              CommunityPost[]
@@ -1428,6 +1430,19 @@ model CommunitySpaceInvitation {
   @@index([inviteeId, status, createdAt])
   @@index([spaceId, inviteeId, status])
   @@index([inviterId, createdAt])
+}
+
+model CommunitySpaceInviteLink {
+  id          String         @id @default(cuid())
+  spaceId     String
+  tokenHash   String         @unique @db.VarChar(64)
+  createdById String?
+  createdAt   DateTime       @default(now())
+  revokedAt   DateTime?
+  space       CommunitySpace @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  createdBy   Member?        @relation("CommunitySpaceInviteLinkCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([spaceId, createdAt])
 }
 
 model CommunityPost {

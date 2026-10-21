@@ -19,6 +19,10 @@ on a server request.
   reserved for reversible local changes and include authoritative
   reconciliation, rollback, idempotency, and protection from out-of-order
   responses.
+- Community invitation actions use database-bounded history and batches of at
+  most 50 people. Results are per recipient; accepting a link commits the
+  invitation state and membership together. A link token is shown only after
+  generation, and only its hash is persisted.
 - The profile editor validates on the server, keeps entered values after a
   validation response, and returns to the overview only after the profile
   transaction commits. Avatar upload has an independent pending state and

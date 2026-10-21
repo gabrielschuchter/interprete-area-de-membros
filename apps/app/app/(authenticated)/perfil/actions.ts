@@ -239,22 +239,28 @@ export const respondToStudyGroupInvitation = async (formData: FormData) => {
     action: "community.group.invitation.respond",
     memberId: userId,
   });
-  const invitation = await database.$transaction(async (transaction) => {
+  const result = await database.$transaction(async (transaction) => {
     const current = await transaction.communitySpaceInvitation.findFirst({
       where: {
         id: invitationId,
         inviteeId: userId,
-        status: CommunitySpaceInvitationStatus.PENDING,
         space: { is: { status: "PUBLISHED" } },
       },
       select: {
         id: true,
         spaceId: true,
+        status: true,
         space: { select: { slug: true } },
       },
     });
     if (!current) {
-      return null;
+      return { status: "unavailable" as const };
+    }
+    if (current.status === CommunitySpaceInvitationStatus.ACCEPTED) {
+      return { status: "already_accepted" as const, slug: current.space.slug };
+    }
+    if (current.status !== CommunitySpaceInvitationStatus.PENDING) {
+      return { status: "unavailable" as const };
     }
     const result = await transaction.communitySpaceInvitation.updateMany({
       where: {
@@ -268,26 +274,36 @@ export const respondToStudyGroupInvitation = async (formData: FormData) => {
       },
     });
     if (result.count !== 1) {
-      return null;
+      const latest = await transaction.communitySpaceInvitation.findUnique({
+        where: { id: current.id },
+        select: { status: true, space: { select: { slug: true } } },
+      });
+      return latest?.status === CommunitySpaceInvitationStatus.ACCEPTED
+        ? { status: "already_accepted" as const, slug: latest.space.slug }
+        : { status: "unavailable" as const };
     }
     if (response === "ACCEPTED") {
-      await transaction.communitySpaceMember.upsert({
-        where: {
-          spaceId_memberId: { spaceId: current.spaceId, memberId: userId },
-        },
-        create: {
-          spaceId: current.spaceId,
-          memberId: userId,
-          role: CommunitySpaceMemberRole.MEMBER,
-        },
-        update: {},
+      await transaction.communitySpaceMember.createMany({
+        data: [
+          {
+            spaceId: current.spaceId,
+            memberId: userId,
+            role: CommunitySpaceMemberRole.MEMBER,
+          },
+        ],
+        skipDuplicates: true,
       });
     }
-    return current;
+    return {
+      status:
+        response === "ACCEPTED" ? ("accepted" as const) : ("declined" as const),
+      slug: current.space.slug,
+    };
   });
-  if (invitation) {
+  if ("slug" in result) {
     revalidatePath("/perfil");
     revalidatePath("/comunidade");
-    revalidatePath(`/comunidade/${invitation.space.slug}`);
+    revalidatePath(`/comunidade/grupos/${result.slug}`);
   }
+  return result;
 };

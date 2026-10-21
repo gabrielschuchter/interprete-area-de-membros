@@ -90,7 +90,13 @@ const matchesPath = (pathname: string, pathPrefix: string) =>
     ? pathname === "/"
     : pathname === pathPrefix || pathname.startsWith(`${pathPrefix}/`);
 
+const communityInviteLinkPathPattern = /^\/comunidade\/convite\/[^/]+\/?$/;
+
+const isCommunityInviteLinkRoute = (pathname: string) =>
+  communityInviteLinkPathPattern.test(pathname);
+
 const isProtectedRoute = (pathname: string) =>
+  !isCommunityInviteLinkRoute(pathname) &&
   protectedRoutePrefixes.some((pathPrefix) =>
     matchesPath(pathname, pathPrefix)
   );

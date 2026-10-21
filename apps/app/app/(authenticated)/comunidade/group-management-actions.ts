@@ -403,10 +403,16 @@ export const removeStudyGroupMember = async (formData: FormData) => {
         },
       },
     });
-    const owner =
+    const isOwner =
       group?.ownerId === actor.memberId ||
       group?.members[0]?.role === CommunitySpaceMemberRole.OWNER;
-    if (!group || group.status !== ContentStatus.PUBLISHED || !owner) {
+    const isModerator =
+      group?.members[0]?.role === CommunitySpaceMemberRole.MODERATOR;
+    if (
+      !group ||
+      group.status !== ContentStatus.PUBLISHED ||
+      !(isOwner || isModerator)
+    ) {
       return null;
     }
     const target = await transaction.communitySpaceMember.findUnique({
@@ -417,7 +423,8 @@ export const removeStudyGroupMember = async (formData: FormData) => {
       !(
         target &&
         canRemoveStudyGroupMember({
-          isOwner: owner,
+          isOwner,
+          isModerator,
           targetGroupRole: target.role,
         })
       )

@@ -1,5 +1,5 @@
 param(
-  [ValidateSet("full", "admin-recovery", "admin-pin", "member-recovery", "storage-cover", "discussion", "groups")]
+  [ValidateSet("full", "admin-recovery", "admin-pin", "member-recovery", "storage-cover", "discussion", "groups", "invitations")]
   [string]$Suite = "full",
   [string]$RunId
 )
@@ -52,7 +52,7 @@ $teacher = $ledger.accounts | Where-Object role -eq "TEACHER" | Select-Object -F
 if (!($member -and $admin -and $member.email -and $admin.email)) {
   throw "The existing Clerk Development member/admin identities are unavailable."
 }
-if ($Suite -in @("groups", "full") -and !($secondaryMember -and $teacher -and $secondaryMember.email -and $teacher.email)) {
+if ($Suite -in @("groups", "invitations", "full") -and !($secondaryMember -and $teacher -and $secondaryMember.email -and $teacher.email)) {
   throw "The existing second MEMBER and TEACHER Clerk Development identities are required for group authorization QA."
 }
 
@@ -300,6 +300,17 @@ try {
 
   Push-Location (Join-Path $repoRoot "apps\app")
   try {
+    if ($Suite -in @("invitations", "full")) {
+      Push-Location $repoRoot
+      try {
+        bun run migrate:deploy
+        if ($LASTEXITCODE -ne 0) {
+          throw "The additive Community V2 invitation migration failed against the guarded local QA database."
+        }
+      } finally {
+        Pop-Location
+      }
+    }
     bun run community-v2:qa:prepare
     if ($LASTEXITCODE -ne 0) {
       throw "Local QA identity preparation failed."
@@ -313,6 +324,8 @@ try {
         "community-discussion"
       } elseif ($Suite -eq "groups") {
         "community-groups"
+      } elseif ($Suite -eq "invitations") {
+        "community-invitations"
       } elseif ($Suite -eq "admin-recovery" -or $Suite -eq "admin-pin") {
         "community-admin-recovery"
       } else {

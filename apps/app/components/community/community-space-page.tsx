@@ -14,6 +14,7 @@ import {
 } from "@/components/community/community-space-views";
 import { getMemberRole } from "@/lib/authorization";
 import { getCommunitySpace, getCommunitySpaceMembers } from "@/lib/community";
+import { getCommunityGroupInvitationManagement } from "@/lib/community-invitations";
 import { requireMemberId } from "@/lib/learning";
 
 interface CommunitySpacePageProperties {
@@ -30,6 +31,32 @@ const parseGroupView = (value?: string): GroupView => {
     return value;
   }
   return "posts";
+};
+
+const loadInvitationManagementSnapshot = async (
+  spaceId: string,
+  memberId: string,
+  canManageInvitations: boolean,
+  view: GroupView
+) => {
+  if (!canManageInvitations || (view !== "posts" && view !== "members")) {
+    return null;
+  }
+  const management = await getCommunityGroupInvitationManagement(
+    spaceId,
+    memberId
+  );
+  if (!management) {
+    return null;
+  }
+  return {
+    ...management,
+    activeLinkCreatedAt: management.activeLinkCreatedAt?.toISOString() ?? null,
+    invitations: management.invitations.map((invitation) => ({
+      ...invitation,
+      createdAt: invitation.createdAt.toISOString(),
+    })),
+  };
 };
 
 const CommunitySpacePage = async ({
@@ -63,6 +90,12 @@ const CommunitySpacePage = async ({
     activeView === "members"
       ? await getCommunitySpaceMembers(space.id, memberPage)
       : null;
+  const invitationManagementSnapshot = await loadInvitationManagementSnapshot(
+    space.id,
+    memberId,
+    isOwner || isModerator || isStaff,
+    activeView
+  );
 
   return (
     <div className="min-h-svh bg-background">
@@ -88,6 +121,8 @@ const CommunitySpacePage = async ({
         />
         {activeView === "posts" ? (
           <CommunitySpacePostsView
+            invitationManagement={invitationManagementSnapshot}
+            isModerator={isModerator}
             isOwner={isOwner}
             isStaff={isStaff}
             memberId={memberId}
@@ -96,8 +131,12 @@ const CommunitySpacePage = async ({
         ) : null}
         {activeView === "members" && members ? (
           <CommunitySpaceMembersView
+            invitationManagement={invitationManagementSnapshot}
+            isModerator={isModerator}
             isOwner={isOwner}
+            isStaff={isStaff}
             listing={members}
+            memberId={memberId}
             space={space}
           />
         ) : null}

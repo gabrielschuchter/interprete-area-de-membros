@@ -96,6 +96,17 @@ export default defineConfig({
       ],
       use: { ...localUse, storageState: secondaryMemberStatePath },
     },
+    {
+      name: "community-invitations",
+      testMatch: /community-invitations\.spec\.ts$/,
+      dependencies: [
+        "member-auth",
+        "secondary-member-auth",
+        "teacher-auth",
+        "admin-auth",
+      ],
+      use: { ...localUse, storageState: secondaryMemberStatePath },
+    },
   ],
   webServer: {
     command:

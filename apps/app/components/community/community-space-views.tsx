@@ -14,10 +14,7 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import {
-  inviteStudyGroupMembers,
-  joinPublicStudyGroup,
-} from "@/app/(authenticated)/comunidade/actions";
+import { joinPublicStudyGroup } from "@/app/(authenticated)/comunidade/actions";
 import {
   removeStudyGroupMember,
   setStudyGroupArchived,
@@ -26,8 +23,11 @@ import {
 } from "@/app/(authenticated)/comunidade/group-management-actions";
 import { CommunityDraftStarter } from "@/components/community/community-draft-starter";
 import { CommunityFeedCard } from "@/components/community/community-feed-card";
+import {
+  CommunityGroupInvitationDialog,
+  type GroupInvitationManagementSnapshot,
+} from "@/components/community/community-group-invitation-dialog";
 import { GroupCoverUpload } from "@/components/community/group-cover-upload";
-import { GroupMemberInvitePicker } from "@/components/community/group-member-invite-picker";
 import {
   SingleFlightForm,
   SingleFlightSubmit,
@@ -228,14 +228,18 @@ const MobileGroupLink = ({
 );
 
 export const CommunitySpacePostsView = ({
+  invitationManagement,
   isOwner,
+  isModerator,
   isStaff,
   memberId,
   space,
 }: {
   readonly isOwner: boolean;
+  readonly isModerator: boolean;
   readonly isStaff: boolean;
   readonly memberId: string;
+  readonly invitationManagement: GroupInvitationManagementSnapshot | null;
   readonly space: CommunitySpaceSnapshot;
 }) => (
   <div className="mt-7 grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1.7fr)_minmax(280px,0.8fr)]">
@@ -306,8 +310,12 @@ export const CommunitySpacePostsView = ({
         <p className="mt-3 text-muted-foreground text-sm leading-6">
           {space._count.members} pessoas fazem parte deste grupo.
         </p>
-        {isOwner || isStaff ? (
-          <GroupInviteForm memberId={memberId} spaceId={space.id} />
+        {invitationManagement && (isOwner || isModerator || isStaff) ? (
+          <CommunityGroupInvitationDialog
+            groupId={space.id}
+            management={invitationManagement}
+            memberId={memberId}
+          />
         ) : null}
       </section>
     </aside>
@@ -347,40 +355,22 @@ const CommunityPostPagination = ({
     </nav>
   ) : null;
 
-const GroupInviteForm = ({
-  memberId,
-  spaceId,
-}: {
-  readonly memberId: string;
-  readonly spaceId: string;
-}) => (
-  <details className="mt-5 border-t pt-4">
-    <summary className="cursor-pointer font-medium text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-      Convidar pessoas
-    </summary>
-    <SingleFlightForm
-      action={inviteStudyGroupMembers}
-      className="mt-4 space-y-4"
-    >
-      <input name="groupId" type="hidden" value={spaceId} />
-      <GroupMemberInvitePicker currentMemberId={memberId} />
-      <div className="flex justify-end border-t pt-4">
-        <SingleFlightSubmit pendingLabel="Enviando…" size="sm">
-          Enviar convites
-        </SingleFlightSubmit>
-      </div>
-    </SingleFlightForm>
-  </details>
-);
-
 export const CommunitySpaceMembersView = ({
+  invitationManagement,
   isOwner,
+  isModerator,
+  isStaff,
   listing,
+  memberId,
   space,
 }: {
   readonly isOwner: boolean;
+  readonly isModerator: boolean;
+  readonly isStaff: boolean;
   readonly listing: CommunitySpaceMembersSnapshot;
+  readonly memberId: string;
   readonly space: CommunitySpaceSnapshot;
+  readonly invitationManagement: GroupInvitationManagementSnapshot | null;
 }) => (
   <section aria-labelledby="members-heading" className="mt-8">
     <div className="flex flex-wrap items-end justify-between gap-3 border-b pb-4">
@@ -393,13 +383,22 @@ export const CommunitySpaceMembersView = ({
           </span>
         </h2>
       </div>
-      <p className="text-muted-foreground text-sm">
-        Proprietários e moderadores ajudam a cuidar do espaço.
-      </p>
+      {invitationManagement && (isOwner || isModerator || isStaff) ? (
+        <CommunityGroupInvitationDialog
+          groupId={space.id}
+          management={invitationManagement}
+          memberId={memberId}
+        />
+      ) : (
+        <p className="text-muted-foreground text-sm">
+          Proprietários e moderadores ajudam a cuidar do espaço.
+        </p>
+      )}
     </div>
     <ul className="mt-4 grid gap-2">
       {listing.members.map((membership) => (
         <GroupMemberRow
+          isModerator={isModerator}
           isOwner={isOwner}
           key={membership.id}
           membership={membership}
@@ -433,15 +432,19 @@ const groupRoleLabel = (role: string) => {
 
 const GroupMemberRow = ({
   isOwner,
+  isModerator,
   membership,
   spaceId,
 }: {
   readonly isOwner: boolean;
+  readonly isModerator: boolean;
   readonly membership: CommunitySpaceMembersSnapshot["members"][number];
   readonly spaceId: string;
 }) => {
   const displayName = membership.member.displayName || "Membro da comunidade";
-  const editable = isOwner && membership.role !== "OWNER";
+  const editable =
+    (isOwner && membership.role !== "OWNER") ||
+    (isModerator && membership.role === "MEMBER");
   return (
     <li className="flex flex-col gap-4 border bg-background p-4 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex min-w-0 items-center gap-3">
@@ -459,6 +462,9 @@ const GroupMemberRow = ({
       {editable ? (
         <GroupMemberControls
           displayName={displayName}
+          identityRole={membership.member.role}
+          isModerator={isModerator}
+          isOwner={isOwner}
           memberId={membership.memberId}
           role={membership.role}
           spaceId={spaceId}
@@ -495,45 +501,55 @@ const MemberAvatar = ({
 
 const GroupMemberControls = ({
   displayName,
+  identityRole,
+  isModerator,
+  isOwner,
   memberId,
   role,
   spaceId,
 }: {
   readonly displayName: string;
+  readonly identityRole: string;
+  readonly isModerator: boolean;
+  readonly isOwner: boolean;
   readonly memberId: string;
   readonly role: string;
   readonly spaceId: string;
 }) => (
   <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-    <SingleFlightForm
-      action={setStudyGroupMemberRole}
-      className="flex flex-1 items-center gap-2 sm:flex-none"
-    >
-      <input name="groupId" type="hidden" value={spaceId} />
-      <input name="memberId" type="hidden" value={memberId} />
-      <label className="sr-only" htmlFor={`role-${memberId}`}>
-        Papel de {displayName}
-      </label>
-      <select
-        className="h-10 min-w-32 rounded-sm border bg-background px-2 text-sm"
-        defaultValue={role}
-        id={`role-${memberId}`}
-        name="role"
+    {isOwner && identityRole === "MEMBER" ? (
+      <SingleFlightForm
+        action={setStudyGroupMemberRole}
+        className="flex flex-1 items-center gap-2 sm:flex-none"
       >
-        <option value="MEMBER">Membro</option>
-        <option value="MODERATOR">Moderador</option>
-      </select>
-      <SingleFlightSubmit size="sm" variant="outline">
-        Salvar
-      </SingleFlightSubmit>
-    </SingleFlightForm>
-    <SingleFlightForm action={removeStudyGroupMember}>
-      <input name="groupId" type="hidden" value={spaceId} />
-      <input name="memberId" type="hidden" value={memberId} />
-      <SingleFlightSubmit size="sm" variant="ghost">
-        Remover
-      </SingleFlightSubmit>
-    </SingleFlightForm>
+        <input name="groupId" type="hidden" value={spaceId} />
+        <input name="memberId" type="hidden" value={memberId} />
+        <label className="sr-only" htmlFor={`role-${memberId}`}>
+          Papel de {displayName}
+        </label>
+        <select
+          className="h-10 min-w-32 rounded-sm border bg-background px-2 text-sm"
+          defaultValue={role}
+          id={`role-${memberId}`}
+          name="role"
+        >
+          <option value="MEMBER">Membro</option>
+          <option value="MODERATOR">Moderador</option>
+        </select>
+        <SingleFlightSubmit size="sm" variant="outline">
+          Salvar
+        </SingleFlightSubmit>
+      </SingleFlightForm>
+    ) : null}
+    {isOwner || (isModerator && role === "MEMBER") ? (
+      <SingleFlightForm action={removeStudyGroupMember}>
+        <input name="groupId" type="hidden" value={spaceId} />
+        <input name="memberId" type="hidden" value={memberId} />
+        <SingleFlightSubmit size="sm" variant="ghost">
+          Remover
+        </SingleFlightSubmit>
+      </SingleFlightForm>
+    ) : null}
   </div>
 );
 

@@ -7,7 +7,11 @@ export const canEditStudyGroup = (input: {
   readonly isStaff: boolean;
 }) => input.isOwner || input.isModerator || input.isStaff;
 
-export const canManageStudyGroupParticipants = (isOwner: boolean) => isOwner;
+export const canManageStudyGroupParticipants = (input: {
+  readonly isOwner: boolean;
+  readonly isModerator: boolean;
+  readonly isStaff: boolean;
+}) => input.isOwner || input.isModerator || input.isStaff;
 
 export const canChangeStudyGroupPrivacy = (isOwner: boolean) => isOwner;
 
@@ -26,8 +30,11 @@ export const canChangeStudyGroupMemberRole = (input: {
 
 export const canRemoveStudyGroupMember = (input: {
   readonly isOwner: boolean;
+  readonly isModerator: boolean;
   readonly targetGroupRole: CommunityGroupRole;
-}) => input.isOwner && input.targetGroupRole !== "OWNER";
+}) =>
+  (input.isOwner && input.targetGroupRole !== "OWNER") ||
+  (input.isModerator && input.targetGroupRole === "MEMBER");
 
 export const canReadPrivateStudyGroup = (input: {
   readonly isOwner: boolean;

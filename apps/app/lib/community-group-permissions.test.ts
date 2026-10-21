@@ -14,16 +14,42 @@ describe("community group permissions", () => {
     expect(
       canEditStudyGroup({ isOwner: false, isModerator: false, isStaff: false })
     ).toBe(false);
-    expect(canManageStudyGroupParticipants(false)).toBe(false);
+    expect(
+      canManageStudyGroupParticipants({
+        isOwner: false,
+        isModerator: false,
+        isStaff: false,
+      })
+    ).toBe(false);
+    expect(
+      canManageStudyGroupParticipants({
+        isOwner: true,
+        isModerator: false,
+        isStaff: false,
+      })
+    ).toBe(true);
+    expect(
+      canManageStudyGroupParticipants({
+        isOwner: false,
+        isModerator: false,
+        isStaff: true,
+      })
+    ).toBe(true);
     expect(canChangeStudyGroupPrivacy(false)).toBe(false);
     expect(canArchiveStudyGroup(false)).toBe(false);
   });
 
-  test("moderators edit approved group fields without participant or sensitive controls", () => {
+  test("moderators invite and remove common members without role escalation", () => {
     expect(
       canEditStudyGroup({ isOwner: false, isModerator: true, isStaff: false })
     ).toBe(true);
-    expect(canManageStudyGroupParticipants(false)).toBe(false);
+    expect(
+      canManageStudyGroupParticipants({
+        isOwner: false,
+        isModerator: true,
+        isStaff: false,
+      })
+    ).toBe(true);
     expect(canChangeStudyGroupPrivacy(false)).toBe(false);
     expect(canArchiveStudyGroup(false)).toBe(false);
     expect(
@@ -35,7 +61,18 @@ describe("community group permissions", () => {
       })
     ).toBe(false);
     expect(
-      canRemoveStudyGroupMember({ isOwner: false, targetGroupRole: "MEMBER" })
+      canRemoveStudyGroupMember({
+        isOwner: false,
+        isModerator: true,
+        targetGroupRole: "MEMBER",
+      })
+    ).toBe(true);
+    expect(
+      canRemoveStudyGroupMember({
+        isOwner: false,
+        isModerator: true,
+        targetGroupRole: "MODERATOR",
+      })
     ).toBe(false);
   });
 
@@ -78,6 +115,23 @@ describe("community group permissions", () => {
         targetGroupRole: "MEMBER",
         targetIdentityRole: "MEMBER",
         nextGroupRole: "OWNER",
+      })
+    ).toBe(false);
+  });
+
+  test("owners can remove non-owners but no one can remove the owner", () => {
+    expect(
+      canRemoveStudyGroupMember({
+        isOwner: true,
+        isModerator: false,
+        targetGroupRole: "MODERATOR",
+      })
+    ).toBe(true);
+    expect(
+      canRemoveStudyGroupMember({
+        isOwner: true,
+        isModerator: false,
+        targetGroupRole: "OWNER",
       })
     ).toBe(false);
   });

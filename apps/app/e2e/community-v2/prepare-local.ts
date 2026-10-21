@@ -36,6 +36,26 @@ if (
   );
 }
 
+// Standalone PostgreSQL does not provide Supabase Realtime's invalidation
+// transport. Keep the real notification row and outbox consumer under test,
+// while making only that external broadcast a local no-op in the guarded QA DB.
+const realtimeSend = await database.$queryRaw<
+  Array<{ readonly installed: boolean }>
+>`
+  SELECT to_regprocedure('realtime.send(jsonb,text,text,boolean)') IS NOT NULL
+    AS installed
+`;
+if (!realtimeSend[0]?.installed) {
+  await database.$executeRawUnsafe('CREATE SCHEMA IF NOT EXISTS "realtime"');
+  await database.$executeRawUnsafe(
+    `CREATE FUNCTION "realtime"."send"(jsonb, text, text, boolean)
+      RETURNS uuid
+      LANGUAGE sql
+      VOLATILE
+      AS 'SELECT gen_random_uuid()'`
+  );
+}
+
 const ledgerPath = process.env.COMMUNITY_QA_LEDGER_PATH;
 if (!ledgerPath) {
   throw new Error("The protected local Clerk QA ledger is not configured.");
@@ -66,7 +86,9 @@ if (accounts.length < 2 || accounts.some((account) => !account.clerkUserId)) {
 }
 
 if (
-  ["groups", "full"].includes(process.env.COMMUNITY_QA_SUITE ?? "") &&
+  ["groups", "invitations", "full"].includes(
+    process.env.COMMUNITY_QA_SUITE ?? ""
+  ) &&
   ![
     process.env.COMMUNITY_QA_MEMBER_ID,
     process.env.COMMUNITY_QA_SECONDARY_MEMBER_ID,
@@ -87,6 +109,13 @@ try {
     groupPinIndex,
     migration,
     moderatorRole,
+    inviteLinkTable,
+    inviteLinkIndex,
+    inviteLinkNoExpiry,
+    inviteLinkMigration,
+    inviteLinkRls,
+    inviteLinkPolicies,
+    inviteLinkGrants,
   ] = await Promise.all([
     database.$queryRaw<Array<{ readonly column_name: string }>>`
         SELECT column_name
@@ -121,6 +150,60 @@ try {
         WHERE enumtypid = '"CommunitySpaceMemberRole"'::regtype
           AND enumlabel = 'MODERATOR'
       `,
+    database.$queryRaw<
+      Array<{
+        readonly column_name: string;
+        readonly data_type: string;
+        readonly character_maximum_length: number | null;
+      }>
+    >`
+        SELECT column_name, data_type, character_maximum_length FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'CommunitySpaceInviteLink'
+          AND column_name = 'tokenHash'
+      `,
+    database.$queryRaw<Array<{ readonly indexname: string }>>`
+        SELECT indexname FROM pg_indexes
+        WHERE schemaname = 'public'
+          AND indexname = 'CommunitySpaceInviteLink_one_active_per_space'
+      `,
+    database.$queryRaw<Array<{ readonly expiry_column_count: bigint }>>`
+        SELECT count(*) AS expiry_column_count FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'CommunitySpaceInviteLink'
+          AND column_name IN ('expiresAt', 'expiresOn')
+      `,
+    database.$queryRaw<Array<{ readonly migration_name: string }>>`
+        SELECT migration_name FROM public."_prisma_migrations"
+        WHERE migration_name = '20261021130000_community_group_invite_links'
+          AND finished_at IS NOT NULL
+          AND rolled_back_at IS NULL
+      `,
+    database.$queryRaw<Array<{ readonly row_security: boolean }>>`
+        SELECT relrowsecurity AS row_security FROM pg_class
+        WHERE oid = 'public."CommunitySpaceInviteLink"'::regclass
+      `,
+    database.$queryRaw<Array<{ readonly policy_count: bigint }>>`
+        SELECT count(*) AS policy_count FROM pg_policies
+        WHERE schemaname = 'public'
+          AND tablename = 'CommunitySpaceInviteLink'
+      `,
+    database.$queryRaw<
+      Array<{
+        readonly anon_allowed: boolean;
+        readonly authenticated_allowed: boolean;
+      }>
+    >`
+        SELECT
+          COALESCE((
+            SELECT has_table_privilege(role.rolname, 'public."CommunitySpaceInviteLink"', 'SELECT')
+            FROM pg_roles AS role WHERE role.rolname = 'anon'
+          ), false) AS anon_allowed,
+          COALESCE((
+            SELECT has_table_privilege(role.rolname, 'public."CommunitySpaceInviteLink"', 'SELECT')
+            FROM pg_roles AS role WHERE role.rolname = 'authenticated'
+          ), false) AS authenticated_allowed
+      `,
   ]);
 
   if (
@@ -133,6 +216,24 @@ try {
   ) {
     throw new Error(
       "The local Community V2 UX migration is not fully applied to the isolated QA database."
+    );
+  }
+
+  if (
+    ["invitations", "full"].includes(process.env.COMMUNITY_QA_SUITE ?? "") &&
+    (inviteLinkTable.length !== 1 ||
+      inviteLinkTable[0]?.data_type !== "character varying" ||
+      inviteLinkTable[0]?.character_maximum_length !== 64 ||
+      inviteLinkIndex.length !== 1 ||
+      inviteLinkNoExpiry[0]?.expiry_column_count !== 0n ||
+      inviteLinkMigration.length !== 1 ||
+      inviteLinkRls[0]?.row_security !== true ||
+      inviteLinkPolicies[0]?.policy_count !== 0n ||
+      inviteLinkGrants[0]?.anon_allowed !== false ||
+      inviteLinkGrants[0]?.authenticated_allowed !== false)
+  ) {
+    throw new Error(
+      "The isolated invitation migration, RLS, or Data API grant boundary is not verified."
     );
   }
 
@@ -152,7 +253,7 @@ try {
   }
 
   process.stdout.write(
-    "Prepared existing Clerk Development MEMBER, TEACHER, and ADMIN identities in the guarded local QA database; migrations, moderator role, and pin indexes verified.\n"
+    "Prepared existing Clerk Development MEMBER, TEACHER, and ADMIN identities in the guarded local QA database; applied migrations and group role indexes verified.\n"
   );
 } finally {
   await database.$disconnect();
