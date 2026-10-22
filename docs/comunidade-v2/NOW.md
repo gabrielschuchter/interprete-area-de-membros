@@ -2,7 +2,7 @@
 
 ## Etapa 08 — Avisos da Comunidade V2 — 22/10/2026
 
-- **Estado:** implementação funcional, E2E integrado no PostgreSQL isolado com Clerk Development e seis gates do monorepo concluídos; commit/push seletivos pendentes. A Etapa 07 foi aceita para avanço; o crawler no Preview protegido permanece gate de release e não foi reaberto.
+- **Estado:** implementação funcional, E2E integrado no PostgreSQL isolado com Clerk Development e seis gates do monorepo concluídos; commit funcional enviado a `origin/codex/comunidade-v2`. A Etapa 07 foi aceita para avanço; o crawler no Preview protegido permanece gate de release e não foi reaberto.
 - **Produto:** Gestão continua como única fonte de criação/edição. Avisos são consultados com autorização server-side na Comunidade, no destaque e no feed; não são incluídos na Início/portal. Público ALL/STAFF/SELECTED/COHORT verifica audiência e associação ativa à turma no banco. Intervalo usa `America/Sao_Paulo` e semântica `início <= agora < fim`; início/fim inexistentes ou inválidos são rejeitados. Edição usa versão/CAS; dispensa individual persiste por versão e recarrega sem reexibir a versão dispensada.
 - **Atualização e notificações:** endpoint sem cache persistente de identidade; polling de 30 s apenas com a aba visível, pausa em aba oculta e refresh ao voltar. Criação/alteração agenda notificações no outbox transacional com namespace `preview`; consumidor revalida status, versão, intervalo, audiência, turma e preferências antes de persistir Notification.
 - **QA E2E:** cinco testes passaram no runner `announcements` (incluindo quatro setups Clerk): audiência correta/incorreta, membro e não membro de turma, papéis/público, datas agendadas e fim exclusivo, dispensa/reload, alteração concorrente de versão e audiência, isolamento de recipients do outbox, API visitante 401, ação Gestão negada a MEMBER, Início sem aviso e polling com aba visível/oculta. Capturas desktop, mobile 390 px e Gestão foram comparadas aos HTMLs originais dos boards 07, 10, 31 e 37b, respeitando o shell existente.
@@ -10,7 +10,8 @@
 - **Artefatos:** `C:\Users\gabsc\AppData\Local\Codex\qa\community-v2-foundation-20261015\playwright\results\fb6d3b97847144dfa1b7cc9220055d04`.
 - **Integridade:** hashes dos três arquivos protegidos `actions.ts`, `community-groups-db.ts` e `community-groups.spec.ts` preservados; não incluir no staging. Nenhuma alteração em GREEN, BLUE, Production, cron ou credenciais.
 - **Gates:** `check` 1.047 arquivos; `typecheck` 16/16; `boundaries` 975 arquivos; `test` scripts 32 pass/1 skip, App 843/174 arquivos, API 9, domínio 24; `build` 8/8; `performance:check` Comunidade 217,8 KiB gzip / 225 KiB; `git diff --check` passou; `graphify update .` 8.261 nós, 21.691 arestas e 363 comunidades.
-- **Próximo:** revisar o staged diff, manter os três arquivos protegidos fora do staging, commitar e enviar `codex/comunidade-v2`.
+- **Commit funcional Etapa 08:** `cc950e8` (`feat(comunidade): integrar avisos V2`), enviado a `origin/codex/comunidade-v2`. Os três arquivos protegidos permaneceram fora do commit.
+- **Continuidade:** OPS-01 continua aguardando prova real de Broadcast/Realtime e recuperação periódica; o crawler no Preview protegido permanece gate de release da Etapa 07.
 
 - **Branch:** `codex/comunidade-v2`
 - **Worktree:** `C:\Users\gabsc\.codex\worktrees\comunidade-v2\interprete-area-de-membros`
