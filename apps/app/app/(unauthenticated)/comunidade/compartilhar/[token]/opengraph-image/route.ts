@@ -1,9 +1,13 @@
 import { ImageResponse } from "next/og";
 import type { NextRequest } from "next/server";
 import { createElement } from "react";
+import sharp from "sharp";
 import { CommunityPostShareOgCard } from "@/components/community/community-post-share-og-card";
 import { getAuth } from "@/lib/auth";
-import { getCommunityPostSharePreview } from "@/lib/community-post-shares";
+import {
+  getCommunityPostShareCoverBytes,
+  getCommunityPostSharePreview,
+} from "@/lib/community-post-shares";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -31,10 +35,28 @@ export const GET = async (
     // Invalid links and backend failures both render the same branded card.
   }
 
+  let coverDataUrl: string | null = null;
+  if (preview?.coverUrl) {
+    const cover = await getCommunityPostShareCoverBytes(preview.coverUrl);
+    if (cover) {
+      try {
+        const image = await sharp(Buffer.from(cover.bytes))
+          .rotate()
+          .resize(1200, 630, { fit: "cover" })
+          .jpeg({ quality: 82 })
+          .toBuffer();
+        coverDataUrl = `data:image/jpeg;base64,${image.toString("base64")}`;
+      } catch {
+        // An unavailable or malformed cover falls back to the designed card.
+      }
+    }
+  }
+
   const response = new ImageResponse(
     createElement(CommunityPostShareOgCard, {
       authorName: preview?.authorName ?? genericAuthor,
-      description: preview?.description ?? genericDescription,
+      coverDataUrl,
+      description: preview?.metaDescription ?? genericDescription,
       title: preview?.title ?? genericTitle,
     }),
     { width: 1200, height: 630 }

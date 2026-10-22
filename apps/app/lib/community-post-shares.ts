@@ -7,9 +7,15 @@ import {
   getCommunityPostShareDetails,
   getPublicCommunityPostShareDetails,
 } from "./community";
+import {
+  createMemberAssetSignedUrl,
+  memberAssetPathFromUrl,
+} from "./member-storage";
 
 const shareTokenPattern = /^[A-Za-z0-9_-]{43}$/;
 const shareListLimit = 20;
+const shareCoverMaxBytes = 5 * 1024 * 1024;
+const shareCoverMimeTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 const hashShareToken = (token: string) =>
   createHash("sha256").update(token, "utf8").digest("hex");
@@ -114,3 +120,73 @@ export const getCommunityPostSharePreview = cache(
       : getPublicCommunityPostShareDetails(link.postId);
   }
 );
+
+/**
+ * Read a cover only after the caller has resolved the active share link against
+ * the current audience. The short-lived Storage URL stays inside this server
+ * helper and is never returned to the page, OG metadata, logs, or browser.
+ */
+export const getCommunityPostShareCoverBytes = async (
+  coverUrl: string | null | undefined
+) => {
+  const path = memberAssetPathFromUrl(coverUrl);
+  if (!path?.startsWith("community-assets/covers/")) {
+    return null;
+  }
+
+  try {
+    const signedUrl = await createMemberAssetSignedUrl(path, 60);
+    if (!signedUrl) {
+      return null;
+    }
+
+    const response = await fetch(signedUrl, {
+      cache: "no-store",
+      redirect: "error",
+      signal: AbortSignal.timeout(5000),
+    });
+    const mimeType = response.headers
+      .get("content-type")
+      ?.split(";")[0]
+      ?.trim()
+      .toLowerCase();
+    const contentLength = Number(response.headers.get("content-length"));
+    if (!(response.ok && response.body)) {
+      return null;
+    }
+    if (!(mimeType && shareCoverMimeTypes.has(mimeType))) {
+      return null;
+    }
+    if (Number.isFinite(contentLength) && contentLength > shareCoverMaxBytes) {
+      return null;
+    }
+
+    const reader = response.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let byteLength = 0;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) {
+        break;
+      }
+      byteLength += value.byteLength;
+      if (byteLength > shareCoverMaxBytes) {
+        await reader.cancel();
+        return null;
+      }
+      chunks.push(value);
+    }
+    if (byteLength === 0) {
+      return null;
+    }
+    const bytes = new Uint8Array(byteLength);
+    let offset = 0;
+    for (const chunk of chunks) {
+      bytes.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+    return { bytes, mimeType };
+  } catch {
+    return null;
+  }
+};

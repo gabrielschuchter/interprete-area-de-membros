@@ -12,7 +12,9 @@ const createPost = async ({
   coverAltText,
   coverUrl,
   excerpt,
+  subtitle,
   spaceId,
+  tags,
   title,
 }: {
   readonly authorId: string;
@@ -20,7 +22,9 @@ const createPost = async ({
   readonly coverAltText?: string;
   readonly coverUrl?: string;
   readonly excerpt: string;
+  readonly subtitle?: string;
   readonly spaceId?: string | null;
+  readonly tags?: string[];
   readonly title: string;
 }) =>
   database.communityPost.create({
@@ -34,6 +38,8 @@ const createPost = async ({
       publishedAt: new Date(),
       spaceId: spaceId ?? null,
       status: "PUBLISHED",
+      subtitle,
+      tags,
       title,
     },
     select: { id: true, title: true },
@@ -81,24 +87,37 @@ const query = async ({ operation, input }: Request) => {
         }),
         createPost({
           authorId: ownerId,
-          content: `Corpo público ${runId}`,
+          content: `Corpo público ${runId}\n\nUma conversa sobre aprendizagem compartilhada e novas perspectivas.`,
           excerpt: `Trecho público ${runId}`,
+          subtitle: `Uma pergunta para a comunidade ${runId}`,
+          tags: ["aprendizagem", "comunidade"],
           title: publicTitle,
         }),
       ]);
-      await database.communityComment.create({
-        data: {
-          authorId: ownerId,
-          content: privateComment,
-          postId: privatePost.id,
-        },
-      });
+      const [privateCommentRow, publicCommentRow] = await Promise.all([
+        database.communityComment.create({
+          data: {
+            authorId: ownerId,
+            content: privateComment,
+            postId: privatePost.id,
+          },
+        }),
+        database.communityComment.create({
+          data: {
+            authorId: ownerId,
+            content: `Resposta pública ${runId}`,
+            postId: publicPost.id,
+          },
+        }),
+      ]);
       return {
         privatePost,
         publicPost,
         privateExcerpt,
         privateCoverAlt,
-        privateComment,
+        privateComment: privateCommentRow.content,
+        publicComment: publicCommentRow.content,
+        publicSubtitle: `Uma pergunta para a comunidade ${runId}`,
         space,
       };
     }

@@ -3,11 +3,13 @@ import { Button } from "@repo/design-system/components/ui/button";
 import { ArrowRightIcon, LockKeyholeIcon } from "lucide-react";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
+import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { cache, type ReactNode } from "react";
 import { getAuth } from "@/lib/auth";
 import { getCommunityPostSharePreview } from "@/lib/community-post-shares";
+import { memberAssetPathFromUrl } from "@/lib/member-storage";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -111,7 +113,7 @@ export const generateMetadata = async ({
   }
 
   const title = `${preview.title} | Comunidade do Interprete`;
-  const description = preview.description || genericDescription;
+  const description = preview.metaDescription || genericDescription;
   return makeMetadata(
     title,
     description,
@@ -197,30 +199,95 @@ const GenericShareLanding = ({
 
 const PublicShareLanding = ({
   authorName,
+  bodyExcerpt,
+  commentCount,
+  coverAltText,
+  coverUrl,
   description,
+  publishedAt,
   returnPath,
+  subtitle,
+  tags,
   title,
 }: {
   readonly authorName: string;
+  readonly bodyExcerpt: string;
+  readonly commentCount: number;
+  readonly coverAltText: string;
+  readonly coverUrl: string | null;
   readonly description: string;
+  readonly publishedAt: Date | null;
   readonly returnPath: string;
+  readonly subtitle: string;
+  readonly tags: readonly string[];
   readonly title: string;
 }) => {
   const signUpQuery = new URLSearchParams({ redirect_url: returnPath });
+  const publishedDate = publishedAt
+    ? new Intl.DateTimeFormat("pt-BR", {
+        day: "2-digit",
+        month: "long",
+        timeZone: "America/Sao_Paulo",
+        year: "numeric",
+      }).format(publishedAt)
+    : null;
   return (
     <ShareFrame>
       <article className="community-share-landing__public-card">
-        <div aria-hidden="true" className="community-share-landing__public-art">
-          <span>Interprete.</span>
-          <span>PUBLICAÇÃO</span>
+        <div
+          aria-hidden={!coverUrl}
+          className="community-share-landing__public-art"
+          data-cover-image={coverUrl ? "true" : undefined}
+        >
+          {coverUrl ? (
+            <Image
+              alt={coverAltText || `Capa da publicação: ${title}`}
+              decoding="async"
+              fetchPriority="high"
+              height={900}
+              src={coverUrl}
+              unoptimized
+              width={1600}
+            />
+          ) : (
+            <>
+              <span>Interprete.</span>
+              <span>PUBLICAÇÃO</span>
+            </>
+          )}
         </div>
         <div className="community-share-landing__public-copy">
+          <div className="community-share-landing__public-meta">
+            {tags.map((tag) => (
+              <span className="community-share-landing__tag" key={tag}>
+                {tag}
+              </span>
+            ))}
+            {publishedAt && publishedDate ? (
+              <time dateTime={publishedAt.toISOString()}>{publishedDate}</time>
+            ) : null}
+            {commentCount > 0 ? (
+              <span>
+                {commentCount} {commentCount === 1 ? "resposta" : "respostas"}
+              </span>
+            ) : null}
+          </div>
           <p className="community-share-landing__author">
-            Publicado por <strong>{authorName}</strong>
+            Por <strong>{authorName}</strong>
           </p>
           <h1>{title}</h1>
-          {description ? (
+          {subtitle ? (
+            <p className="community-share-landing__subtitle">{subtitle}</p>
+          ) : null}
+          {description &&
+          description !== subtitle &&
+          description !== bodyExcerpt ? (
             <p className="community-share-landing__excerpt">{description}</p>
+          ) : null}
+          {bodyExcerpt ? (
+            <div className="community-share-landing__body-excerpt">
+              <p>{bodyExcerpt}</p>
+            </div>
           ) : null}
           <div className="community-share-landing__public-cta">
             <p>Entre para ler a publicação completa e continuar a conversa.</p>
@@ -264,11 +331,22 @@ const CommunityPostSharePage = async ({
   }
 
   if (preview && !preview.isPrivate) {
+    const coverPath = memberAssetPathFromUrl(preview.coverUrl);
+    const coverUrl = coverPath?.startsWith("community-assets/covers/")
+      ? `/comunidade/compartilhar/${encodeURIComponent(token)}/cover`
+      : null;
     return (
       <PublicShareLanding
         authorName={preview.authorName}
+        bodyExcerpt={preview.bodyExcerpt}
+        commentCount={preview.commentCount}
+        coverAltText={preview.coverAltText}
+        coverUrl={coverUrl}
         description={preview.description}
+        publishedAt={preview.publishedAt}
         returnPath={returnPath}
+        subtitle={preview.subtitle}
+        tags={preview.tags}
         title={preview.title}
       />
     );

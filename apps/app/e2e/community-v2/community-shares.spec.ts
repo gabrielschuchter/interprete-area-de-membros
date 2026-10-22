@@ -206,6 +206,8 @@ test("compartilhamento V2 preserva permissões, prévia SSR, retorno Clerk e rev
     privateExcerpt: string;
     privateCoverAlt: string;
     privateComment: string;
+    publicComment: string;
+    publicSubtitle: string;
     space: {
       id: string;
       slug: string;
@@ -251,14 +253,16 @@ test("compartilhamento V2 preserva permissões, prévia SSR, retorno Clerk e rev
     ).toBeVisible();
     const publicShare = await createShareFromUi(page);
     const publicToken = tokenFromUrl(publicShare.url);
+    await captureScreenshot(page, "community-shares-dialog-1440.png");
+    await page.setViewportSize({ width: 390, height: 844 });
+    await captureScreenshot(page, "community-shares-dialog-390.png");
     await publicShare.dialog
       .getByRole("button", {
         name: "Fechar compartilhamento",
       })
       .click();
     await captureScreenshot(page, "community-shares-public-post-1280.png");
-    await page.setViewportSize({ width: 390, height: 844 });
-    await captureScreenshot(page, "community-shares-actions-390.png");
+    await page.setViewportSize({ width: 1440, height: 1000 });
 
     const publicLinkRows = await queryDatabase<
       Array<{
@@ -293,6 +297,19 @@ test("compartilhamento V2 preserva permissões, prévia SSR, retorno Clerk e rev
       noJsPage.getByRole("heading", { name: fixture.publicPost.title })
     ).toBeVisible();
     await expect(
+      noJsPage.getByText(fixture.publicSubtitle, { exact: true })
+    ).toBeVisible();
+    await expect(
+      noJsPage.getByText(fixture.publicComment, { exact: true })
+    ).toHaveCount(0);
+    await expect(
+      noJsPage.getByText("1 resposta", { exact: true })
+    ).toBeVisible();
+    await expect(
+      noJsPage.locator(".community-share-landing__body-excerpt")
+    ).toContainText(`Corpo público ${runId}`);
+    await expect(noJsPage.locator("time[datetime]")).toHaveCount(1);
+    await expect(
       noJsPage.getByText(`Trecho público ${runId}`, { exact: true })
     ).toBeVisible();
     await expect(noJsPage.locator('meta[property="og:title"]')).toHaveAttribute(
@@ -314,6 +331,32 @@ test("compartilhamento V2 preserva permissões, prévia SSR, retorno Clerk e rev
     expect(publicOgResponse.headers()["content-type"]).toContain("image/png");
     expect(publicOgResponse.headers()["cache-control"]).toContain("no-store");
     expect(publicOgResponse.headers()["referrer-policy"]).toBe("no-referrer");
+    await writeFile(
+      resolve(outputDirectory, "community-shares-public-og-1200x630.png"),
+      await publicOgResponse.body()
+    );
+    for (const width of [320, 360, 390, 768, 820, 1024, 1280, 1440]) {
+      await noJsPage.setViewportSize({
+        width,
+        height: width <= 767 ? 844 : 1000,
+      });
+      const fitsViewport = await noJsPage.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth
+      );
+      expect(fitsViewport, `public landing overflow at ${width}px`).toBe(true);
+      if (width === 1280) {
+        await captureScreenshot(
+          noJsPage,
+          "community-shares-public-landing-1280.png"
+        );
+      }
+      if (width === 390) {
+        await captureScreenshot(
+          noJsPage,
+          "community-shares-public-landing-390.png"
+        );
+      }
+    }
 
     const privateShare = await createShareFromUiForPost(
       page,
@@ -355,6 +398,13 @@ test("compartilhamento V2 preserva permissões, prévia SSR, retorno Clerk e rev
     const anonymousPrivateResponse = await anonymousPage.goto(privateShare.url);
     expect(anonymousPrivateResponse?.status()).toBe(200);
     await assertGenericPrivateShare(anonymousPage, hiddenPrivateValues);
+    const privateCoverResponse = await anonymousPage.request.get(
+      `${privateShare.url}/cover`
+    );
+    expect(privateCoverResponse.status()).toBe(404);
+    expect(privateCoverResponse.headers()["cache-control"]).toContain(
+      "no-store"
+    );
     await captureScreenshot(
       anonymousPage,
       "community-shares-private-generic-390.png"
@@ -577,6 +627,177 @@ const createShareFromUiForPost = async (
   return createShareFromUi(page);
 };
 
+test("landing pública mostra prévia SSR responsiva sem JavaScript", async ({
+  browser,
+  page,
+}) => {
+  test.setTimeout(120_000);
+  const { secondaryMemberId } = assertIsolatedQa();
+  const fixture = await queryDatabase<{
+    privatePost: { id: string; title: string };
+    publicPost: { id: string; title: string };
+    space: { id: string; slug: string };
+  }>("create-fixtures", { ownerId: secondaryMemberId, runId });
+  const contexts: Awaited<ReturnType<typeof browser.newContext>>[] = [];
+
+  try {
+    const createResponse = await page.request.post(
+      `${appUrl}/api/community/post-shares`,
+      {
+        headers: { origin: appUrl },
+        data: { postId: fixture.publicPost.id },
+      }
+    );
+    expect(createResponse.status()).toBe(201);
+    const share = (await createResponse.json()) as { url: string };
+    const token = tokenFromUrl(share.url);
+    const context = await browser.newContext({
+      javaScriptEnabled: false,
+      storageState: { cookies: [], origins: [] },
+      viewport: { width: 1280, height: 900 },
+    });
+    contexts.push(context);
+    const anonymousPage = await context.newPage();
+    const response = await anonymousPage.goto(share.url);
+    expect(response?.status()).toBe(200);
+    await expect(
+      anonymousPage.getByRole("heading", { name: fixture.publicPost.title })
+    ).toBeVisible();
+    await expect(
+      anonymousPage.getByText(`Uma pergunta para a comunidade ${runId}`, {
+        exact: true,
+      })
+    ).toBeVisible();
+    await expect(
+      anonymousPage.getByText("1 resposta", { exact: true })
+    ).toBeVisible();
+    await expect(
+      anonymousPage.locator(".community-share-landing__body-excerpt")
+    ).toContainText(`Corpo público ${runId}`);
+
+    const publicOgImage = await anonymousPage
+      .locator('meta[property="og:image"]')
+      .getAttribute("content");
+    const ogResponse = await anonymousPage.request.get(publicOgImage ?? "");
+    expect(ogResponse.status()).toBe(200);
+    expect(ogResponse.headers()["content-type"]).toContain("image/png");
+    expect(ogResponse.headers()["cache-control"]).toContain("no-store");
+    await writeFile(
+      resolve(outputDirectory, "community-shares-public-og-1200x630.png"),
+      await ogResponse.body()
+    );
+
+    for (const width of [320, 360, 390, 768, 820, 1024, 1280, 1440]) {
+      await anonymousPage.setViewportSize({
+        width,
+        height: width <= 767 ? 844 : 1000,
+      });
+      const fitsViewport = await anonymousPage.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth
+      );
+      expect(fitsViewport, `public landing overflow at ${width}px`).toBe(true);
+      if (width === 1280 || width === 390) {
+        await captureScreenshot(
+          anonymousPage,
+          `community-shares-public-landing-${width}.png`
+        );
+      }
+    }
+
+    expect(token).toMatch(shareTokenPattern);
+  } finally {
+    await Promise.all(contexts.map((context) => context.close()));
+    await queryDatabase("cleanup", {
+      spaceId: fixture.space.id,
+      postIds: [fixture.privatePost.id, fixture.publicPost.id],
+    }).catch(() => undefined);
+  }
+});
+
+test("link privado mantém capa e OG genéricos para visitante anônimo", async ({
+  browser,
+  page,
+}) => {
+  test.setTimeout(120_000);
+  const { memberId, secondaryMemberId } = assertIsolatedQa();
+  const fixture = await queryDatabase<{
+    privatePost: { id: string; title: string };
+    publicPost: { id: string; title: string };
+    privateExcerpt: string;
+    privateCoverAlt: string;
+    privateComment: string;
+    space: {
+      id: string;
+      slug: string;
+      title: string;
+      description: string;
+      details: string;
+    };
+  }>("create-fixtures", { ownerId: secondaryMemberId, runId });
+  let anonymousContext: Awaited<ReturnType<typeof browser.newContext>> | null =
+    null;
+
+  try {
+    await queryDatabase("set-membership", {
+      spaceId: fixture.space.id,
+      memberId,
+      active: true,
+    });
+    const createResponse = await page.request.post(
+      `${appUrl}/api/community/post-shares`,
+      {
+        headers: { origin: appUrl },
+        data: { postId: fixture.privatePost.id },
+      }
+    );
+    expect(createResponse.status()).toBe(201);
+    const share = (await createResponse.json()) as { url: string };
+    tokenFromUrl(share.url);
+
+    anonymousContext = await browser.newContext({
+      javaScriptEnabled: false,
+      storageState: { cookies: [], origins: [] },
+    });
+    const anonymousPage = await anonymousContext.newPage();
+    const shareResponse = await anonymousPage.goto(share.url);
+    expect(shareResponse?.status()).toBe(200);
+    await assertGenericPrivateShare(anonymousPage, [
+      fixture.privatePost.title,
+      fixture.privateExcerpt,
+      fixture.privateCoverAlt,
+      `Corpo privado ${runId}`,
+      fixture.privateComment,
+      fixture.space.title,
+      fixture.space.description,
+      fixture.space.details,
+    ]);
+
+    const coverResponse = await anonymousPage.request.get(`${share.url}/cover`);
+    expect(coverResponse.status()).toBe(404);
+    expect(coverResponse.headers()["cache-control"]).toContain("no-store");
+
+    const privateOgResponse = await anonymousPage.request.get(
+      `${share.url}/opengraph-image`
+    );
+    const invalidToken = randomBytes(32).toString("base64url");
+    const invalidOgResponse = await anonymousPage.request.get(
+      `${appUrl}/comunidade/compartilhar/${invalidToken}/opengraph-image`
+    );
+    expect(privateOgResponse.status()).toBe(200);
+    expect(invalidOgResponse.status()).toBe(200);
+    expect(privateOgResponse.headers()["content-type"]).toContain("image/png");
+    expect(await privateOgResponse.body()).toEqual(
+      await invalidOgResponse.body()
+    );
+  } finally {
+    await anonymousContext?.close();
+    await queryDatabase("cleanup", {
+      spaceId: fixture.space.id,
+      postIds: [fixture.privatePost.id, fixture.publicPost.id],
+    }).catch(() => undefined);
+  }
+});
+
 test("link público segue listado e revogável ao reabrir o diálogo", async ({
   browser,
   page,
@@ -596,15 +817,60 @@ test("link público segue listado e revogável ao reabrir o diálogo", async ({
     null;
 
   try {
-    await page.goto(publicPostPath);
-    await expect(
-      page.getByRole("heading", { name: fixture.publicPost.title })
-    ).toBeVisible();
-    const share = await createShareFromUi(page);
+    const createResponse = await page.request.post(
+      `${appUrl}/api/community/post-shares`,
+      {
+        headers: { origin: appUrl },
+        data: { postId: fixture.publicPost.id },
+      }
+    );
+    expect(createResponse.status()).toBe(201);
+    const share = (await createResponse.json()) as { id: string; url: string };
     const token = tokenFromUrl(share.url);
-    await share.dialog
+    await page.goto(publicPostPath);
+    const createdLinksDialog = await openShareDialog(page);
+    await expect(
+      createdLinksDialog.locator(`[data-share-link-id="${share.id}"]`)
+    ).toBeVisible();
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await captureScreenshot(page, "community-shares-dialog-1280.png");
+    await page.setViewportSize({ width: 390, height: 844 });
+    await captureScreenshot(page, "community-shares-dialog-mobile-390.png");
+    await createdLinksDialog
       .getByRole("button", { name: "Fechar compartilhamento" })
       .click();
+
+    anonymousContext = await browser.newContext({
+      javaScriptEnabled: false,
+      storageState: { cookies: [], origins: [] },
+      viewport: { width: 1280, height: 900 },
+    });
+    const anonymousPage = await anonymousContext.newPage();
+    const publicResponse = await anonymousPage.goto(share.url);
+    expect(publicResponse?.status()).toBe(200);
+    await expect(
+      anonymousPage.getByRole("heading", { name: fixture.publicPost.title })
+    ).toBeVisible();
+    await expect(
+      anonymousPage.getByText(`Uma pergunta para a comunidade ${runId}`, {
+        exact: true,
+      })
+    ).toBeVisible();
+    await expect(
+      anonymousPage.getByText("1 resposta", { exact: true })
+    ).toBeVisible();
+    await expect(
+      anonymousPage.locator(".community-share-landing__body-excerpt")
+    ).toContainText(`Corpo público ${runId}`);
+    await captureScreenshot(
+      anonymousPage,
+      "community-shares-public-landing-1280.png"
+    );
+    await anonymousPage.setViewportSize({ width: 390, height: 844 });
+    await captureScreenshot(
+      anonymousPage,
+      "community-shares-public-landing-390.png"
+    );
 
     await page.goto("/comunidade");
     await page.goto(publicPostPath);
@@ -624,10 +890,6 @@ test("link público segue listado e revogável ao reabrir o diálogo", async ({
     });
     expect(JSON.stringify(databaseLinks)).not.toContain(token);
 
-    anonymousContext = await browser.newContext({
-      storageState: { cookies: [], origins: [] },
-    });
-    const anonymousPage = await anonymousContext.newPage();
     await anonymousPage.goto(share.url);
     await assertGenericPrivateShare(anonymousPage, [fixture.publicPost.title]);
   } finally {

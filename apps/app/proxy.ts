@@ -92,7 +92,7 @@ const matchesPath = (pathname: string, pathPrefix: string) =>
 
 const communityInviteLinkPathPattern = /^\/comunidade\/convite\/[^/]+\/?$/;
 const communityPostSharePathPattern =
-  /^\/comunidade\/compartilhar\/[A-Za-z0-9_-]{1,128}(?:\/opengraph-image)?\/?$/;
+  /^\/comunidade\/compartilhar\/[A-Za-z0-9_-]{1,128}(?:\/(?:opengraph-image|cover))?\/?$/;
 
 const isCommunityInviteLinkRoute = (pathname: string) =>
   communityInviteLinkPathPattern.test(pathname);

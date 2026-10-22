@@ -940,7 +940,10 @@ export const getCommunityPostBySlug = async (
   return getPostWithComments(post, memberId, resolvedCommentsPage);
 };
 
-const communityPostShareSummary = (value: string | null | undefined) => {
+const communityPostShareSummary = (
+  value: string | null | undefined,
+  maxLength = 280
+) => {
   if (!value) {
     return "";
   }
@@ -949,7 +952,18 @@ const communityPostShareSummary = (value: string | null | undefined) => {
     .replace(/\p{Cc}/gu, " ")
     .replace(/\s+/g, " ")
     .trim()
-    .slice(0, 280);
+    .slice(0, maxLength);
+};
+
+const communityPostShareOgDescription = (value: string) => {
+  const callToAction = " Entre na discussão no Interprete.";
+  const excerpt = communityPostShareSummary(
+    value,
+    140 - callToAction.length
+  ).trimEnd();
+  return excerpt
+    ? `${excerpt}${callToAction}`
+    : "Acesse o Interprete para continuar a conversa.";
 };
 
 const communityPostShareAuthor = async (authorId: string) => {
@@ -976,13 +990,20 @@ export const getCommunityPostShareDetails = async (
   return {
     authorName: await communityPostShareAuthor(post.authorId),
     coverUrl: normalizeCommunityCoverUrl(post.coverUrl),
+    coverAltText: communityPostShareSummary(post.coverAltText, 160),
     description: summary,
+    bodyExcerpt: communityPostShareSummary(post.content, 720),
     href: communityPostHref(post),
     isPrivate: post.space?.visibility === "PRIVATE",
+    metaDescription: communityPostShareOgDescription(summary),
     postId: post.id,
+    publishedAt: post.publishedAt,
     slug: post.slug,
     spaceVisibility: post.space?.visibility ?? null,
+    subtitle: communityPostShareSummary(post.subtitle, 240),
+    tags: post.tags.slice(0, 5),
     title: post.title,
+    commentCount: post._count.comments,
   };
 };
 
@@ -1008,9 +1029,15 @@ export const getPublicCommunityPostShareDetails = async (postId: string) => {
       subtitle: true,
       excerpt: true,
       content: true,
+      tags: true,
       coverUrl: true,
+      coverAltText: true,
+      publishedAt: true,
       slug: true,
       space: { select: { slug: true, visibility: true } },
+      _count: {
+        select: { comments: { where: { deletedAt: null } } },
+      },
     },
   });
   if (!post) {
@@ -1022,13 +1049,20 @@ export const getPublicCommunityPostShareDetails = async (postId: string) => {
   return {
     authorName: await communityPostShareAuthor(post.authorId),
     coverUrl: normalizeCommunityCoverUrl(post.coverUrl),
+    coverAltText: communityPostShareSummary(post.coverAltText, 160),
     description: summary,
+    bodyExcerpt: communityPostShareSummary(post.content, 720),
     href: communityPostHref(post),
     isPrivate: false,
+    metaDescription: communityPostShareOgDescription(summary),
     postId: post.id,
+    publishedAt: post.publishedAt,
     slug: post.slug,
     spaceVisibility: post.space?.visibility ?? null,
+    subtitle: communityPostShareSummary(post.subtitle, 240),
+    tags: post.tags.slice(0, 5),
     title: post.title,
+    commentCount: post._count.comments,
   };
 };
 
