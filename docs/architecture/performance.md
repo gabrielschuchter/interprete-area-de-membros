@@ -132,8 +132,17 @@ for current pending invitations. Batch writes accept at most 50 unique
 recipients and return one bounded result per recipient. Membership and
 invitation acceptance and membership commit in one transaction; notification
 rows and outbox jobs for newly created invitations are produced in that same
-transaction. Link preview performs one token-hash
-lookup with a member-scoped membership projection, without a persistent cache.
+transaction. `/comunidade/convite/[token]` keeps anonymous HTML and metadata
+generic and returns the Clerk redirect path without resolving group details.
+After authentication, an active token resolves with one token-hash lookup and
+projects only the inviter display name, group title/description/slug/visibility,
+member count, and the current member's membership. A cover URL is included only
+for a public group; an invitee for a private group receives the generic cover.
+The token grants no group-content access, and there is no persistent cache.
+Link invitations have no automatic time expiry; revocation, replacement, or
+unpublishing the group makes the token unusable. Acceptance commits invitation
+state and membership atomically, and invalidates the affected community and
+profile views after commit.
 The invite dialog acknowledges a mutation immediately, blocks duplicate
 submits, and reports each result only after persistence. Route navigation and
 picker results do not prefetch destinations in bulk. These are bounded-query

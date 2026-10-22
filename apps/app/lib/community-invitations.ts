@@ -7,6 +7,7 @@ import {
   database,
   MemberRole,
 } from "@repo/database";
+import { normalizeCommunityCoverUrl } from "./community-media";
 
 const tokenHash = (token: string) =>
   createHash("sha256").update(token).digest("hex");
@@ -31,16 +32,25 @@ export const getCommunityInviteLinkPreview = async (
     select: {
       id: true,
       spaceId: true,
+      createdBy: {
+        select: {
+          displayName: true,
+          profile: { select: { displayName: true } },
+        },
+      },
       space: {
         select: {
           title: true,
           description: true,
           slug: true,
+          coverUrl: true,
+          visibility: true,
           members: {
             where: { memberId },
             select: { id: true },
             take: 1,
           },
+          _count: { select: { members: true } },
         },
       },
     },
@@ -53,7 +63,17 @@ export const getCommunityInviteLinkPreview = async (
       title: invite.space.title,
       description: invite.space.description,
       slug: invite.space.slug,
+      coverUrl:
+        invite.space.visibility === "PUBLIC"
+          ? normalizeCommunityCoverUrl(invite.space.coverUrl)
+          : null,
+      visibility: invite.space.visibility,
+      memberCount: invite.space._count.members,
     },
+    inviterName:
+      invite.createdBy?.profile?.displayName?.trim() ||
+      invite.createdBy?.displayName?.trim() ||
+      "Uma pessoa da Comunidade",
     alreadyMember: invite.space.members.length > 0,
   };
 };

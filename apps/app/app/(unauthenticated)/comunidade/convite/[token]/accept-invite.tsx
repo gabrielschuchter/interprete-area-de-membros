@@ -38,9 +38,9 @@ export const AcceptCommunityGroupInvite = ({
   };
 
   return (
-    <div>
-      <Button disabled={pending} onClick={accept}>
-        {pending ? "Aceitando…" : "Aceitar convite"}
+    <div className="w-full">
+      <Button className="w-full" disabled={pending} onClick={accept}>
+        {pending ? "Entrando…" : "Entrar no grupo"}
       </Button>
       {message ? (
         <output aria-live="polite" className="mt-3 text-sm">

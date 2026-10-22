@@ -22,6 +22,8 @@ const newGroupCreationPath = /\/comunidade\/grupos\/novo(?:[?#]|$)/;
 const groupDetailPath = /\/comunidade\/grupos\/[^/?]+$/;
 const noIndexPattern = /noindex/;
 const inviteTokenPattern = /^[A-Za-z0-9_-]{40,50}$/;
+const memberCountPattern = /\d+ membros?/;
+const invitationAttributionPattern = /convidou você para um grupo/;
 const declinedStatusPattern = /^Recusado\b/;
 const revokedStatusPattern = /^Revogado\b/;
 const linkRevokedMessagePattern = /^Link revogado\./;
@@ -58,6 +60,17 @@ const queryDatabase = <T>(
     );
     let output = "";
     let errorOutput = "";
+    let settled = false;
+    const queryTimeout = setTimeout(() => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      queryProcess.kill();
+      rejectQuery(
+        new Error(`QA database query timed out after 30s (${operation}).`)
+      );
+    }, 30_000);
     queryProcess.stdout.setEncoding("utf8");
     queryProcess.stderr.setEncoding("utf8");
     queryProcess.stdout.on("data", (chunk: string) => {
@@ -66,8 +79,20 @@ const queryDatabase = <T>(
     queryProcess.stderr.on("data", (chunk: string) => {
       errorOutput += chunk;
     });
-    queryProcess.on("error", rejectQuery);
+    queryProcess.on("error", (error) => {
+      clearTimeout(queryTimeout);
+      if (settled) {
+        return;
+      }
+      settled = true;
+      rejectQuery(error);
+    });
     queryProcess.on("close", (code) => {
+      clearTimeout(queryTimeout);
+      if (settled) {
+        return;
+      }
+      settled = true;
       if (code !== 0) {
         rejectQuery(
           new Error(errorOutput || `QA database query exited ${code}.`)
@@ -124,16 +149,26 @@ const screenshot = async (page: Page, name: string) => {
   });
 };
 
-const createPrivateGroup = async (page: Page, title: string) => {
+const createStudyGroup = async (
+  page: Page,
+  title: string,
+  visibility: "PRIVATE" | "PUBLIC"
+) => {
   await page.goto("/comunidade/grupos/novo");
   await page.locator('input[name="title"]').fill(title);
   await page
     .locator('textarea[name="description"]')
-    .fill(`Descrição privada de QA ${runId}.`);
+    .fill(
+      `Descrição ${visibility === "PRIVATE" ? "privada" : "pública"} de QA ${runId}.`
+    );
   await page
     .locator('textarea[name="details"]')
     .fill(`Detalhes privados de QA ${runId}.`);
-  await page.locator('input[name="visibility"][value="PRIVATE"]').check();
+  const visibilityRadio = page.locator(
+    `input[name="visibility"][value="${visibility}"]`
+  );
+  await page.locator("label").filter({ has: visibilityRadio }).click();
+  await expect(visibilityRadio).toBeChecked();
   await page.getByRole("button", { name: "Criar grupo de estudo" }).click();
   await expect(page).not.toHaveURL(newGroupCreationPath, {
     timeout: 30_000,
@@ -154,7 +189,7 @@ const createPrivateGroup = async (page: Page, title: string) => {
   expect(group).toMatchObject({
     slug,
     title,
-    visibility: "PRIVATE",
+    visibility,
     status: "PUBLISHED",
   });
   return group;
@@ -229,9 +264,18 @@ const assertNoGroupMetadata = async (
   for (const hiddenValue of hiddenValues) {
     expect(html).not.toContain(hiddenValue);
   }
+  await expect(page).toHaveTitle("Convite para grupo de estudo | Interprete");
+  await expect(page.locator('meta[name="description"]')).toHaveAttribute(
+    "content",
+    "Acesse o Interprete para responder a um convite."
+  );
   await expect(page.locator('meta[property="og:title"]')).toHaveAttribute(
     "content",
     "Convite para grupo de estudo | Interprete"
+  );
+  await expect(page.locator('meta[property="og:description"]')).toHaveAttribute(
+    "content",
+    "Acesse o Interprete para responder a um convite."
   );
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute(
     "content",
@@ -307,7 +351,11 @@ test("convites V2 cobrem papéis, estados, links privados e outbox em QA isolado
       await ownerPage.goto("/comunidade/grupos/novo");
       await clerk.loaded({ page: ownerPage });
       expect(await clerkUserId(ownerPage)).toBe(secondaryMemberId);
-      privateGroup = await createPrivateGroup(ownerPage, privateGroupTitle);
+      privateGroup = await createStudyGroup(
+        ownerPage,
+        privateGroupTitle,
+        "PRIVATE"
+      );
     }
     if (!privateGroup) {
       throw new Error("The owner-created private QA group was not persisted.");
@@ -710,7 +758,9 @@ test("convites V2 cobrem papéis, estados, links privados e outbox em QA isolado
     const visitorPage = await visitorContext.newPage();
     await visitorPage.goto(firstLinkUrl);
     await expect(
-      visitorPage.getByRole("heading", { name: "Você recebeu um convite." })
+      visitorPage.getByRole("heading", {
+        name: "Entre para conferir o convite.",
+      })
     ).toBeVisible();
     await assertNoGroupMetadata(visitorPage, [
       staffGroupTitle,
@@ -718,7 +768,7 @@ test("convites V2 cobrem papéis, estados, links privados e outbox em QA isolado
       privateGroupDetails,
     ]);
     const signInHref = await visitorPage
-      .getByRole("link", { name: "Entrar" })
+      .getByRole("link", { name: "Entrar para aceitar" })
       .getAttribute("href");
     if (!signInHref) {
       throw new Error("The invite page did not provide a sign-in link.");
@@ -726,7 +776,9 @@ test("convites V2 cobrem papéis, estados, links privados e outbox em QA isolado
     expect(new URL(signInHref, appUrl).searchParams.get("redirect_url")).toBe(
       `/comunidade/convite/${firstLinkToken}`
     );
-    await visitorPage.getByRole("link", { name: "Entrar" }).click();
+    await visitorPage
+      .getByRole("link", { name: "Entrar para aceitar" })
+      .click();
     await clerk.loaded({ page: visitorPage });
     await clerk.signIn({ emailAddress: memberEmail, page: visitorPage });
     await expect(visitorPage).toHaveURL(
@@ -736,7 +788,19 @@ test("convites V2 cobrem papéis, estados, links privados e outbox em QA isolado
       visitorPage.getByRole("heading", { name: staffGroupTitle })
     ).toBeVisible();
     await expect(
-      visitorPage.getByRole("button", { name: "Aceitar convite" })
+      visitorPage.getByRole("article", {
+        name: "Prévia do convite para grupo",
+      })
+    ).toBeVisible();
+    await expect(
+      visitorPage.getByText("Privado", { exact: true })
+    ).toBeVisible();
+    await expect(visitorPage.getByText(memberCountPattern)).toBeVisible();
+    await expect(
+      visitorPage.getByText(invitationAttributionPattern)
+    ).toBeVisible();
+    await expect(
+      visitorPage.getByRole("button", { name: "Entrar no grupo" })
     ).toBeVisible();
     await assertNoGroupMetadata(visitorPage, []);
     await visitorPage.setViewportSize({ width: 1280, height: 960 });
@@ -757,12 +821,15 @@ test("convites V2 cobrem papéis, estados, links privados e outbox em QA isolado
       memberId
     );
     await Promise.all([
-      visitorPage.getByRole("button", { name: "Aceitar convite" }).click(),
+      visitorPage.getByRole("button", { name: "Entrar no grupo" }).click(),
       concurrentlyAuthenticatedMemberPage
-        .getByRole("button", { name: "Aceitar convite" })
+        .getByRole("button", { name: "Entrar no grupo" })
         .click(),
     ]);
     await expect(visitorPage).toHaveURL(
+      new RegExp(`/comunidade/grupos/${staffGroup.slug}$`)
+    );
+    await expect(concurrentlyAuthenticatedMemberPage).toHaveURL(
       new RegExp(`/comunidade/grupos/${staffGroup.slug}$`)
     );
     const linkAcceptedMembership = await queryDatabase<{
@@ -779,6 +846,34 @@ test("convites V2 cobrem papéis, estados, links privados e outbox em QA isolado
     expect(
       acceptedLinkInvitation.some(({ status }) => status === "ACCEPTED")
     ).toBe(true);
+
+    await visitorPage.goto(firstLinkUrl);
+    await expect(
+      visitorPage.getByRole("heading", { name: "Você já está neste grupo" })
+    ).toBeVisible();
+    await expect(
+      visitorPage.getByRole("link", { name: "Abrir grupo" })
+    ).toBeVisible();
+    await assertNoGroupMetadata(visitorPage, [
+      staffGroupTitle,
+      privateGroupDescription,
+      privateGroupDetails,
+    ]);
+    await visitorPage.setViewportSize({ width: 1280, height: 960 });
+    await screenshot(
+      visitorPage,
+      "community-invitation-link-already-member-1280.png"
+    );
+    await visitorPage.setViewportSize({ width: 390, height: 844 });
+    expect(
+      await visitorPage.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth
+      )
+    ).toBe(true);
+    await screenshot(
+      visitorPage,
+      "community-invitation-link-already-member-390.png"
+    );
 
     await profileInvitationResponse(adminPage, staffGroupTitle, "Recusar");
     const declinedInvitation = await queryDatabase<
@@ -892,7 +987,9 @@ test("convites V2 cobrem papéis, estados, links privados e outbox em QA isolado
     const invalidVisitor = await invalidVisitorContext.newPage();
     await invalidVisitor.goto(firstLinkUrl);
     await expect(
-      invalidVisitor.getByRole("heading", { name: "Você recebeu um convite." })
+      invalidVisitor.getByRole("heading", {
+        name: "Entre para conferir o convite.",
+      })
     ).toBeVisible();
     await assertNoGroupMetadata(invalidVisitor, [
       staffGroupTitle,
@@ -905,7 +1002,7 @@ test("convites V2 cobrem papéis, estados, links privados e outbox em QA isolado
     await invalidAuthenticatedPage.goto("/comunidade/convite/token-invalido");
     await expect(
       invalidAuthenticatedPage.getByRole("heading", {
-        name: "Este convite não está disponível.",
+        name: "Este convite não vale mais.",
       })
     ).toBeVisible();
     await assertNoGroupMetadata(invalidAuthenticatedPage, [
@@ -919,7 +1016,7 @@ test("convites V2 cobrem papéis, estados, links privados e outbox em QA isolado
     await revokedAuthenticatedPage.goto(firstLinkUrl);
     await expect(
       revokedAuthenticatedPage.getByRole("heading", {
-        name: "Este convite não está disponível.",
+        name: "Este convite não vale mais.",
       })
     ).toBeVisible();
     await assertNoGroupMetadata(revokedAuthenticatedPage, [
@@ -942,7 +1039,7 @@ test("convites V2 cobrem papéis, estados, links privados e outbox em QA isolado
     await revokedAuthenticatedRegeneratedPage.goto(regeneratedLink);
     await expect(
       revokedAuthenticatedRegeneratedPage.getByRole("heading", {
-        name: "Este convite não está disponível.",
+        name: "Este convite não vale mais.",
       })
     ).toBeVisible();
     await assertNoGroupMetadata(revokedAuthenticatedRegeneratedPage, [
@@ -957,7 +1054,9 @@ test("convites V2 cobrem papéis, estados, links privados e outbox em QA isolado
     const revokedVisitor = await revokedVisitorContext.newPage();
     await revokedVisitor.goto(regeneratedLink);
     await expect(
-      revokedVisitor.getByRole("heading", { name: "Você recebeu um convite." })
+      revokedVisitor.getByRole("heading", {
+        name: "Entre para conferir o convite.",
+      })
     ).toBeVisible();
     await assertNoGroupMetadata(revokedVisitor, [
       staffGroupTitle,
@@ -984,5 +1083,174 @@ test("convites V2 cobrem papéis, estados, links privados e outbox em QA isolado
       adminContext.close(),
       visitorContext.close(),
     ]);
+  }
+});
+
+test("convites individuais e link funcionam em grupo público", async ({
+  browser,
+}) => {
+  test.setTimeout(300_000);
+  const { memberId, secondaryMemberId, adminId } = assertIsolatedQa();
+  await mkdir(outputDirectory, { recursive: true });
+  const accounts = await memberDetails([secondaryMemberId, adminId]);
+  expect(new Set(accounts.map(({ id }) => id))).toEqual(
+    new Set([secondaryMemberId, adminId])
+  );
+  const accountFor = (id: string) => {
+    const account = accounts.find((candidate) => candidate.id === id);
+    if (!account) {
+      throw new Error(`Missing isolated QA account ${id}.`);
+    }
+    return account;
+  };
+  const adminSearch = searchValueFor(accountFor(adminId));
+  const contexts = await Promise.all([
+    browser.newContext({
+      storageState: secondaryMemberStatePath,
+      viewport: { width: 1440, height: 1000 },
+    }),
+    browser.newContext({
+      storageState: adminStatePath,
+      viewport: { width: 1440, height: 1000 },
+    }),
+    browser.newContext({
+      storageState: memberStatePath,
+      viewport: { width: 1440, height: 1000 },
+    }),
+    browser.newContext({
+      storageState: { cookies: [], origins: [] },
+      viewport: { width: 390, height: 844 },
+    }),
+  ]);
+  const [ownerContext, adminContext, memberContext, anonymousContext] =
+    contexts;
+
+  try {
+    const ownerPage = await ownerContext.newPage();
+    await ownerPage.goto("/comunidade/grupos/novo");
+    await clerk.loaded({ page: ownerPage });
+    expect(await clerkUserId(ownerPage)).toBe(secondaryMemberId);
+    const publicGroup = await createStudyGroup(
+      ownerPage,
+      `Convites públicos ${runId}`,
+      "PUBLIC"
+    );
+    if (!publicGroup) {
+      throw new Error("The owner-created public QA group was not persisted.");
+    }
+
+    await ownerPage.goto(`/comunidade/grupos/${publicGroup.slug}`);
+    await openInvitations(ownerPage);
+    await ownerPage.getByRole("tab", { name: "Pessoas" }).click();
+    await selectInvitee(ownerPage, adminSearch);
+    await ownerPage.getByRole("button", { name: "Enviar convites" }).click();
+    await expect(
+      ownerPage.getByTestId("community-invite-batch-result")
+    ).toContainText("Convites enviados.");
+    const publicPersonalInvitation = await queryDatabase<
+      Array<{ id: string; inviteeId: string; status: string }>
+    >("invitation-states", {
+      spaceId: publicGroup.id,
+      memberIds: [adminId],
+    });
+    expect(publicPersonalInvitation[0]?.status).toBe("PENDING");
+
+    const adminPage = await adminContext.newPage();
+    await profileInvitationResponse(adminPage, publicGroup.title, "Aceitar");
+    const publicPersonalMembership = await queryDatabase<{
+      id: string;
+      role: string;
+    } | null>("membership", { spaceId: publicGroup.id, memberId: adminId });
+    expect(publicPersonalMembership?.role).toBe("MEMBER");
+    const acceptedPublicPersonalInvitation = await queryDatabase<
+      Array<{ id: string; inviteeId: string; status: string }>
+    >("invitation-states", {
+      spaceId: publicGroup.id,
+      memberIds: [adminId],
+    });
+    expect(acceptedPublicPersonalInvitation[0]?.status).toBe("ACCEPTED");
+
+    await ownerPage.goto(`/comunidade/grupos/${publicGroup.slug}`);
+    await openInvitations(ownerPage);
+    await ownerPage.getByRole("tab", { name: "Link" }).click();
+    await ownerPage.getByRole("button", { name: "Criar link" }).click();
+    const publicLinkInput = ownerPage.getByRole("textbox", {
+      name: "Link de convite",
+    });
+    await expect(publicLinkInput).toBeVisible();
+    const publicLinkUrl = await publicLinkInput.inputValue();
+    const publicInviteToken =
+      new URL(publicLinkUrl).pathname.split("/").at(-1) ?? "";
+    expect(publicInviteToken).toMatch(inviteTokenPattern);
+
+    const anonymousPage = await anonymousContext.newPage();
+    await anonymousPage.goto(publicLinkUrl);
+    await expect(
+      anonymousPage.getByRole("heading", {
+        name: "Entre para conferir o convite.",
+      })
+    ).toBeVisible();
+    await assertNoGroupMetadata(anonymousPage, [
+      publicGroup.title,
+      publicGroup.description,
+      publicGroup.details,
+    ]);
+    const signInHref = await anonymousPage
+      .getByRole("link", { name: "Entrar para aceitar" })
+      .getAttribute("href");
+    if (!signInHref) {
+      throw new Error("The public invite page did not provide a sign-in link.");
+    }
+    expect(new URL(signInHref, appUrl).searchParams.get("redirect_url")).toBe(
+      `/comunidade/convite/${publicInviteToken}`
+    );
+
+    const memberPage = await memberContext.newPage();
+    await memberPage.goto(publicLinkUrl);
+    await clerk.loaded({ page: memberPage });
+    expect(await clerkUserId(memberPage)).toBe(memberId);
+    await expect(
+      memberPage.getByRole("heading", { name: publicGroup.title })
+    ).toBeVisible();
+    await expect(
+      memberPage.getByRole("article", {
+        name: "Prévia do convite para grupo",
+      })
+    ).toBeVisible();
+    await expect(
+      memberPage.getByText("Público", { exact: true })
+    ).toBeVisible();
+    await expect(memberPage.getByText(memberCountPattern)).toBeVisible();
+    await expect(
+      memberPage.getByText(
+        "Você entra como membro e passa a ver as publicações do grupo."
+      )
+    ).toBeVisible();
+    await screenshot(memberPage, "community-invitation-public-link-1280.png");
+    await memberPage.setViewportSize({ width: 390, height: 844 });
+    expect(
+      await memberPage.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth
+      )
+    ).toBe(true);
+    await screenshot(memberPage, "community-invitation-public-link-390.png");
+    await memberPage.getByRole("button", { name: "Entrar no grupo" }).click();
+    await expect(memberPage).toHaveURL(
+      new URL(`/comunidade/grupos/${publicGroup.slug}`, appUrl).toString()
+    );
+    const publicLinkMembership = await queryDatabase<{
+      id: string;
+      role: string;
+    } | null>("membership", { spaceId: publicGroup.id, memberId });
+    expect(publicLinkMembership?.role).toBe("MEMBER");
+    const acceptedPublicLinkInvitation = await queryDatabase<
+      Array<{ id: string; inviteeId: string; status: string }>
+    >("invitation-states", {
+      spaceId: publicGroup.id,
+      memberIds: [memberId],
+    });
+    expect(acceptedPublicLinkInvitation[0]?.status).toBe("ACCEPTED");
+  } finally {
+    await Promise.all(contexts.map((context) => context.close()));
   }
 });
