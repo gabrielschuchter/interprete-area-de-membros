@@ -4,11 +4,12 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { clerk } from "@clerk/testing/playwright";
 import { expect, type Page, test } from "@playwright/test";
-import { clerkUserId } from "./auth-state";
+import { clerkUserId, prepareClerkStorageState } from "./auth-state";
 import {
   adminStatePath,
   authDirectory,
   memberStatePath,
+  secondaryMemberStatePath,
   teacherStatePath,
 } from "./auth-state-paths";
 
@@ -627,6 +628,19 @@ const createShareFromUiForPost = async (
   return createShareFromUi(page);
 };
 
+const ensureSecondaryMemberSession = async (
+  page: Page,
+  expectedUserId: string
+) => {
+  await prepareClerkStorageState({
+    context: page.context(),
+    emailAddress: process.env.COMMUNITY_QA_SECONDARY_MEMBER_EMAIL,
+    expectedUserId,
+    page,
+    storageStatePath: secondaryMemberStatePath,
+  });
+};
+
 test("landing pública mostra prévia SSR responsiva sem JavaScript", async ({
   browser,
   page,
@@ -641,6 +655,7 @@ test("landing pública mostra prévia SSR responsiva sem JavaScript", async ({
   const contexts: Awaited<ReturnType<typeof browser.newContext>>[] = [];
 
   try {
+    await ensureSecondaryMemberSession(page, secondaryMemberId);
     const createResponse = await page.request.post(
       `${appUrl}/api/community/post-shares`,
       {
@@ -743,6 +758,7 @@ test("link privado mantém capa e OG genéricos para visitante anônimo", async 
       memberId,
       active: true,
     });
+    await ensureSecondaryMemberSession(page, secondaryMemberId);
     const createResponse = await page.request.post(
       `${appUrl}/api/community/post-shares`,
       {
@@ -817,6 +833,7 @@ test("link público segue listado e revogável ao reabrir o diálogo", async ({
     null;
 
   try {
+    await ensureSecondaryMemberSession(page, secondaryMemberId);
     const createResponse = await page.request.post(
       `${appUrl}/api/community/post-shares`,
       {

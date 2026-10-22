@@ -56,7 +56,11 @@ if (!realtimeSend[0]?.installed) {
   );
 }
 
-if (process.env.COMMUNITY_QA_SUITE === "announcements") {
+if (
+  ["invitations", "announcements", "full"].includes(
+    process.env.COMMUNITY_QA_SUITE ?? ""
+  )
+) {
   // This standalone PostgreSQL fixture has no PL/pgSQL runtime or Supabase
   // Realtime. Keep Notification/outbox persistence real while disabling only
   // the database broadcast trigger for this isolated journey. This is not
@@ -326,7 +330,9 @@ try {
     );
   }
 
-  if (process.env.COMMUNITY_QA_SUITE === "announcements") {
+  if (
+    ["announcements", "full"].includes(process.env.COMMUNITY_QA_SUITE ?? "")
+  ) {
     const [
       announcementMigration,
       cohortAudience,

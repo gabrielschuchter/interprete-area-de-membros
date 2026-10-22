@@ -10,7 +10,7 @@ const runId = process.env.COMMUNITY_QA_RUN_ID ?? "";
 const databaseUrl = new URL(process.env.DATABASE_URL ?? "http://invalid.local");
 if (
   process.env.COMMUNITY_QA_ISOLATED !== "true" ||
-  process.env.COMMUNITY_QA_SUITE !== "announcements" ||
+  !["announcements", "full"].includes(process.env.COMMUNITY_QA_SUITE ?? "") ||
   !/^\d{8}-\d{6}-[a-f0-9]{8}$/.test(runId) ||
   databaseUrl.hostname !== "127.0.0.1" ||
   databaseUrl.port !== "54325" ||

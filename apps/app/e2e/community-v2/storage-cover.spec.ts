@@ -324,8 +324,8 @@ test("uploads, persists, publishes, replaces and removes real private cover obje
     storageState: adminStatePath,
   });
   const adminPage = await adminContext.newPage();
-  expect(await clerkUserId(adminPage)).toBe(process.env.COMMUNITY_QA_ADMIN_ID);
   await adminPage.goto("/comunidade");
+  expect(await clerkUserId(adminPage)).toBe(process.env.COMMUNITY_QA_ADMIN_ID);
   const outsiderContext = await browser.newContext({
     baseURL: baseUrl,
     storageState: emptyStorageState,

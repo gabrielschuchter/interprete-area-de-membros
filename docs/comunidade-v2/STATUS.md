@@ -1,5 +1,17 @@
 # Comunidade V2 — status
 
+## Etapa 10 — QA integrado e refinamento final — 22/10/2026
+
+**Estado:** QA local amplo executado, mas ainda sem aceite integrado limpo. Ver matriz A–G e crosswalk dos 53 boards em [QA-MATRIX.md](./QA-MATRIX.md). O Playwright `full` terminou em 17/19 (`ec93c94c16fe43a7923e8e26554523b9`): o spec preexistente/protegido de grupos espera `select[name=role]` para TEACHER/ADMIN, embora a política proíba promovê-los a MODERATOR; o teardown de convites encontrou `ENOSPC` ao gravar trace depois das asserções funcionais. O fluxo isolado de convites passou 6/6.
+
+**Execuções focadas:** Storage/capas 3/3, convites 6/6, compartilhamento 8/8, avisos 5/5, meta 5/5. O runner local suspendeu o trigger de broadcast apenas para o harness PostgreSQL incompatível e confirmou a restauração ao estado `O`. Runs, papéis, dimensões, resultados e severidades estão em `QA-MATRIX.md`.
+
+**Visual e responsividade:** os 53 HTMLs permanecem mapeados por jornada em `BOARDS.md`. Cinco HTMLs oficiais (10, 12, 13, 37b, 51) foram renderizados diretamente nesta rodada; comparação detalhada do board 51 e medição de posição dos avisos nos boards 10/37b foram feitas. Comparação direta individual das 53 referências não foi concluída novamente nesta rodada; parte da evidência vem dos checkpoints das Etapas 02–09. Breakpoints de 320 a 1440 px têm cobertura combinada nos runners focados e checkpoints anteriores.
+
+**Gates:** `check` (1.055 arquivos), `typecheck` (16/16), `boundaries` (983 arquivos), `test` (scripts 32 pass/1 skip; App 845; API 9; member-domain 24), `build` (8/8, exit 0) e `performance:check` passaram. Bundle Comunidade 215,9 KiB gzip / 225 KiB. O Turbo reportou `ENOSPC` ao gravar o cache depois da conclusão do build. `git diff --check` passou.
+
+**Ambiente e pendências:** PostgreSQL QA isolado local, TLS verificado e Clerk Development; 72 migrations locais, nenhuma pendente. Storage/HTML/OG foram validados localmente; nenhuma prova nova no Preview protegido ou Production. Crawler externo, Broadcast/Realtime real e recovery periódico continuam pendentes; OPS-01 não foi simulado. Nenhuma escrita/migration em GREEN, BLUE ou Production, nenhuma alteração de cron/credenciais/proteções Vercel. Os três arquivos locais protegidos foram mantidos fora de edição e staging. A Etapa 11 não foi iniciada.
+
 ## Etapa 09 — Meta coletiva e avatares — 22/10/2026
 
 **Estado:** `IMPLEMENTADA E VALIDADA EM QA LOCAL`; pronta para iniciar a Etapa 10. A implementação mantém os modelos de estudo existentes e acrescenta a renovação da campanha, snapshots persistidos e preferência de avatar. Nenhuma funcionalidade paralela de timer ou de meta foi criada.

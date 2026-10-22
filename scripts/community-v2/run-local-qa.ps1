@@ -73,9 +73,9 @@ if ($LASTEXITCODE -ne 0) {
 # Playwright creates the member/admin state files under this protected directory.
 
 $savedEnvironment = @{}
-$restoreAnnouncementBroadcastTrigger = $false
-$announcementBroadcastTriggerOriginalState = $null
-$announcementTriggerRestoreFailed = $false
+$restoreNotificationBroadcastTrigger = $false
+$notificationBroadcastTriggerOriginalState = $null
+$notificationTriggerRestoreFailed = $false
 $environmentNames = @(
   "COMMUNITY_QA_ISOLATED",
   "COMMUNITY_QA_SUITE",
@@ -349,16 +349,16 @@ SELECT
         Pop-Location
       }
     }
-    if ($Suite -eq "announcements") {
+    if ($Suite -in @("invitations", "announcements", "full")) {
       $triggerStateLines = & $psqlPath -X -qAt -v ON_ERROR_STOP=1 -c 'SELECT tgenabled FROM pg_trigger WHERE tgrelid = ''public."Notification"''::regclass AND tgname = ''Notification_broadcast_invalidation'';'
       if ($LASTEXITCODE -ne 0) {
         throw "Could not inspect the isolated local Notification broadcast trigger state."
       }
-      $announcementBroadcastTriggerOriginalState = ($triggerStateLines -join "").Trim()
-      if ($announcementBroadcastTriggerOriginalState -notin @("O", "D", "A", "R")) {
+      $notificationBroadcastTriggerOriginalState = ($triggerStateLines -join "").Trim()
+      if ($notificationBroadcastTriggerOriginalState -notin @("O", "D", "A", "R")) {
         throw "The isolated local Notification broadcast trigger is missing or has an unsupported state."
       }
-      $restoreAnnouncementBroadcastTrigger = $true
+      $restoreNotificationBroadcastTrigger = $true
     }
     bun run community-v2:qa:prepare
     if ($LASTEXITCODE -ne 0) {
@@ -419,9 +419,9 @@ SELECT
 
   Write-Output "Community V2 local QA artifacts: $outputDirectory"
 } finally {
-  if ($restoreAnnouncementBroadcastTrigger) {
+  if ($restoreNotificationBroadcastTrigger) {
     try {
-      $triggerRestoreSql = switch ($announcementBroadcastTriggerOriginalState) {
+      $triggerRestoreSql = switch ($notificationBroadcastTriggerOriginalState) {
         "O" { 'ALTER TABLE public."Notification" ENABLE TRIGGER "Notification_broadcast_invalidation";' }
         "D" { 'ALTER TABLE public."Notification" DISABLE TRIGGER "Notification_broadcast_invalidation";' }
         "A" { 'ALTER TABLE public."Notification" ENABLE ALWAYS TRIGGER "Notification_broadcast_invalidation";' }
@@ -429,13 +429,13 @@ SELECT
       }
       & $psqlPath -X -v ON_ERROR_STOP=1 -c $triggerRestoreSql | Out-Null
       if ($LASTEXITCODE -ne 0) {
-        $announcementTriggerRestoreFailed = $true
+        $notificationTriggerRestoreFailed = $true
       }
       else {
-        Write-Output "Restored the isolated local Notification broadcast trigger to its original state ($announcementBroadcastTriggerOriginalState)."
+        Write-Output "Restored the isolated local Notification broadcast trigger to its original state ($notificationBroadcastTriggerOriginalState)."
       }
     } catch {
-      $announcementTriggerRestoreFailed = $true
+      $notificationTriggerRestoreFailed = $true
     }
   }
   if (Test-Path -LiteralPath $outputDirectory) {
@@ -452,7 +452,7 @@ SELECT
   foreach ($name in $environmentNames) {
     [Environment]::SetEnvironmentVariable($name, $savedEnvironment[$name], "Process")
   }
-  if ($announcementTriggerRestoreFailed) {
+  if ($notificationTriggerRestoreFailed) {
     throw "The temporary local Notification broadcast trigger could not be restored."
   }
 }

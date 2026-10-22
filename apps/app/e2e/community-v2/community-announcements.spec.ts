@@ -98,7 +98,7 @@ const assertIsolatedQa = () => {
   if (
     runId === "missing-run-id" ||
     process.env.COMMUNITY_QA_ISOLATED !== "true" ||
-    process.env.COMMUNITY_QA_SUITE !== "announcements" ||
+    !["announcements", "full"].includes(process.env.COMMUNITY_QA_SUITE ?? "") ||
     databaseUrl.hostname !== "127.0.0.1" ||
     databaseUrl.port !== "54325" ||
     databaseUrl.pathname.slice(1) !== "interprete_community_v2_qa" ||
@@ -186,13 +186,13 @@ const expectAnnouncementAfterHero = async (page: Page, banner: Locator) => {
   expect(notice.y).toBeLessThan(filters.y);
 
   if (await page.evaluate(() => window.innerWidth <= 767)) {
-    const presence = await page
-      .locator(".community-rail__presence")
+    const avatars = await page
+      .locator(".community-rail__avatars")
       .boundingBox();
-    if (!presence) {
-      throw new Error("The mobile community presence section must be visible.");
+    if (!avatars) {
+      throw new Error("The mobile decorative avatar block must be visible.");
     }
-    expect(notice.y).toBeLessThan(presence.y);
+    expect(notice.y).toBeLessThan(avatars.y);
   }
 };
 
