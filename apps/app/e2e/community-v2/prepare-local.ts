@@ -86,7 +86,7 @@ if (accounts.length < 2 || accounts.some((account) => !account.clerkUserId)) {
 }
 
 if (
-  ["groups", "invitations", "full"].includes(
+  ["groups", "invitations", "shares", "full"].includes(
     process.env.COMMUNITY_QA_SUITE ?? ""
   ) &&
   ![
@@ -217,6 +217,85 @@ try {
     throw new Error(
       "The local Community V2 UX migration is not fully applied to the isolated QA database."
     );
+  }
+
+  if (["shares", "full"].includes(process.env.COMMUNITY_QA_SUITE ?? "")) {
+    const [
+      shareHashColumn,
+      sharePostIndex,
+      shareCreatorIndex,
+      shareMigration,
+      shareRls,
+      sharePolicies,
+      shareGrants,
+      shareHashCheck,
+    ] = await Promise.all([
+      database.$queryRaw<
+        Array<{
+          readonly data_type: string;
+          readonly character_maximum_length: number | null;
+        }>
+      >`
+        SELECT data_type, character_maximum_length FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'CommunityPostShareLink' AND column_name = 'tokenHash'
+      `,
+      database.$queryRaw<Array<{ readonly indexname: string }>>`
+        SELECT indexname FROM pg_indexes WHERE schemaname = 'public'
+          AND indexname = 'CommunityPostShareLink_postId_createdAt_idx'
+      `,
+      database.$queryRaw<Array<{ readonly indexname: string }>>`
+        SELECT indexname FROM pg_indexes WHERE schemaname = 'public'
+          AND indexname = 'CommunityPostShareLink_createdById_createdAt_idx'
+      `,
+      database.$queryRaw<Array<{ readonly migration_name: string }>>`
+        SELECT migration_name FROM public."_prisma_migrations"
+        WHERE migration_name = '20261022130000_community_post_share_links'
+          AND finished_at IS NOT NULL AND rolled_back_at IS NULL
+      `,
+      database.$queryRaw<Array<{ readonly row_security: boolean }>>`
+        SELECT relrowsecurity AS row_security FROM pg_class
+        WHERE oid = 'public."CommunityPostShareLink"'::regclass
+      `,
+      database.$queryRaw<Array<{ readonly policy_count: bigint }>>`
+        SELECT count(*) AS policy_count FROM pg_policies
+        WHERE schemaname = 'public' AND tablename = 'CommunityPostShareLink'
+      `,
+      database.$queryRaw<
+        Array<{
+          readonly anon_allowed: boolean;
+          readonly authenticated_allowed: boolean;
+        }>
+      >`
+        SELECT
+          COALESCE((SELECT has_table_privilege(role.rolname, 'public."CommunityPostShareLink"', 'SELECT')
+            FROM pg_roles AS role WHERE role.rolname = 'anon'), false) AS anon_allowed,
+          COALESCE((SELECT has_table_privilege(role.rolname, 'public."CommunityPostShareLink"', 'SELECT')
+            FROM pg_roles AS role WHERE role.rolname = 'authenticated'), false) AS authenticated_allowed
+      `,
+      database.$queryRaw<Array<{ readonly constraint_count: bigint }>>`
+        SELECT count(*) AS constraint_count FROM pg_constraint
+        WHERE conrelid = 'public."CommunityPostShareLink"'::regclass
+          AND conname = 'CommunityPostShareLink_tokenHash_format_check'
+      `,
+    ]);
+
+    if (
+      shareHashColumn.length !== 1 ||
+      shareHashColumn[0]?.data_type !== "character varying" ||
+      shareHashColumn[0]?.character_maximum_length !== 64 ||
+      sharePostIndex.length !== 1 ||
+      shareCreatorIndex.length !== 1 ||
+      shareMigration.length !== 1 ||
+      shareRls[0]?.row_security !== true ||
+      sharePolicies[0]?.policy_count !== 0n ||
+      shareGrants[0]?.anon_allowed !== false ||
+      shareGrants[0]?.authenticated_allowed !== false ||
+      shareHashCheck[0]?.constraint_count !== 1n
+    ) {
+      throw new Error(
+        "The isolated post-share migration, SHA-256 constraint, RLS, or Data API grant boundary is not verified."
+      );
+    }
   }
 
   if (

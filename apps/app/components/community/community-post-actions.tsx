@@ -8,6 +8,7 @@ import {
   toggleBookmark,
   togglePostVote,
 } from "@/app/(authenticated)/comunidade/actions";
+import { CommunityPostShareDialog } from "./community-post-share-dialog";
 
 type PostAction = "bookmark" | "vote";
 
@@ -17,6 +18,8 @@ interface CommunityPostActionsProperties {
   readonly initialBookmarked: boolean;
   readonly initialVoted: boolean;
   readonly postId: string;
+  readonly shareDescription?: string;
+  readonly shareTitle?: string;
   readonly spaceSlug: string;
   readonly voteCount?: number;
 }
@@ -48,6 +51,8 @@ export const CommunityPostActions = ({
   initialBookmarked,
   initialVoted,
   postId,
+  shareDescription = "",
+  shareTitle = "Publicação da Comunidade",
   spaceSlug,
   voteCount = 0,
 }: CommunityPostActionsProperties) => {
@@ -152,6 +157,11 @@ export const CommunityPostActions = ({
         />
         <span>{state.bookmarked ? "Salvo" : "Salvar"}</span>
       </Button>
+      <CommunityPostShareDialog
+        description={shareDescription}
+        postId={postId}
+        title={shareTitle}
+      />
       {error ? (
         <span className="basis-full text-destructive text-xs" role="alert">
           {error}

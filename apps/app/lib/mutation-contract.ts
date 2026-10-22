@@ -1,6 +1,8 @@
 export const mutationLimits = {
   "community.comment.create": { max: 10, windowMs: 60_000 },
   "community.post.create": { max: 5, windowMs: 10 * 60_000 },
+  "community.post.share-link.create": { max: 10, windowMs: 10 * 60_000 },
+  "community.post.share-link.revoke": { max: 30, windowMs: 10 * 60_000 },
   "community.group.create": { max: 4, windowMs: 60 * 60_000 },
   "community.group.invite": { max: 30, windowMs: 60 * 60_000 },
   "community.group.manage": { max: 30, windowMs: 60 * 60_000 },

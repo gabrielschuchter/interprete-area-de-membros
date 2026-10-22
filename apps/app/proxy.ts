@@ -91,12 +91,19 @@ const matchesPath = (pathname: string, pathPrefix: string) =>
     : pathname === pathPrefix || pathname.startsWith(`${pathPrefix}/`);
 
 const communityInviteLinkPathPattern = /^\/comunidade\/convite\/[^/]+\/?$/;
+const communityPostSharePathPattern =
+  /^\/comunidade\/compartilhar\/[A-Za-z0-9_-]{1,128}(?:\/opengraph-image)?\/?$/;
 
 const isCommunityInviteLinkRoute = (pathname: string) =>
   communityInviteLinkPathPattern.test(pathname);
 
+const isCommunityPostShareRoute = (pathname: string) =>
+  communityPostSharePathPattern.test(pathname);
+
 const isProtectedRoute = (pathname: string) =>
-  !isCommunityInviteLinkRoute(pathname) &&
+  !(
+    isCommunityInviteLinkRoute(pathname) || isCommunityPostShareRoute(pathname)
+  ) &&
   protectedRoutePrefixes.some((pathPrefix) =>
     matchesPath(pathname, pathPrefix)
   );

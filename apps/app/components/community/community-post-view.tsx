@@ -427,6 +427,8 @@ export function CommunityPostView({
               initialBookmarked={post.bookmarks.length > 0}
               initialVoted={post.votes.length > 0}
               postId={post.id}
+              shareDescription={post.subtitle || post.excerpt || undefined}
+              shareTitle={post.title}
               spaceSlug={post.space?.slug ?? ""}
               voteCount={post._count.votes}
             />

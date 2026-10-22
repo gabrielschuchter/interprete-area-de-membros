@@ -177,6 +177,8 @@ export function CommunityFeedCard({
           initialBookmarked={isSaved}
           initialVoted={isVoted}
           postId={post.id}
+          shareDescription={summary}
+          shareTitle={post.title}
           spaceSlug={actionSpaceSlug}
           voteCount={post._count.votes}
         />

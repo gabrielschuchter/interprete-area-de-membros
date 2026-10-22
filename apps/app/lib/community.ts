@@ -940,6 +940,98 @@ export const getCommunityPostBySlug = async (
   return getPostWithComments(post, memberId, resolvedCommentsPage);
 };
 
+const communityPostShareSummary = (value: string | null | undefined) => {
+  if (!value) {
+    return "";
+  }
+  return value
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\p{Cc}/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 280);
+};
+
+const communityPostShareAuthor = async (authorId: string) => {
+  const profile = await database.profile.findUnique({
+    where: { clerkUserId: authorId },
+    select: { displayName: true, username: true },
+  });
+  return (
+    profile?.displayName?.trim() || profile?.username || "Membro da Comunidade"
+  );
+};
+
+export const getCommunityPostShareDetails = async (
+  postId: string,
+  memberId: string
+) => {
+  const post = await getPublishedPost({ id: postId }, memberId);
+  if (!post) {
+    return null;
+  }
+  const summary = communityPostShareSummary(
+    post.excerpt || post.subtitle || post.content
+  );
+  return {
+    authorName: await communityPostShareAuthor(post.authorId),
+    coverUrl: normalizeCommunityCoverUrl(post.coverUrl),
+    description: summary,
+    href: communityPostHref(post),
+    isPrivate: post.space?.visibility === "PRIVATE",
+    postId: post.id,
+    slug: post.slug,
+    spaceVisibility: post.space?.visibility ?? null,
+    title: post.title,
+  };
+};
+
+export const getPublicCommunityPostShareDetails = async (postId: string) => {
+  const post = await database.communityPost.findFirst({
+    where: {
+      id: postId,
+      status: ContentStatus.PUBLISHED,
+      deletedAt: null,
+      OR: [
+        { spaceId: null },
+        {
+          space: {
+            is: { status: ContentStatus.PUBLISHED, visibility: "PUBLIC" },
+          },
+        },
+      ],
+    },
+    select: {
+      id: true,
+      authorId: true,
+      title: true,
+      subtitle: true,
+      excerpt: true,
+      content: true,
+      coverUrl: true,
+      slug: true,
+      space: { select: { slug: true, visibility: true } },
+    },
+  });
+  if (!post) {
+    return null;
+  }
+  const summary = communityPostShareSummary(
+    post.excerpt || post.subtitle || post.content
+  );
+  return {
+    authorName: await communityPostShareAuthor(post.authorId),
+    coverUrl: normalizeCommunityCoverUrl(post.coverUrl),
+    description: summary,
+    href: communityPostHref(post),
+    isPrivate: false,
+    postId: post.id,
+    slug: post.slug,
+    spaceVisibility: post.space?.visibility ?? null,
+    title: post.title,
+  };
+};
+
 export const getCommunityEditorPost = async (
   postId: string,
   memberId: string

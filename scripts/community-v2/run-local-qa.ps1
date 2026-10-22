@@ -1,7 +1,8 @@
 param(
-  [ValidateSet("full", "admin-recovery", "admin-pin", "member-recovery", "storage-cover", "discussion", "groups", "invitations")]
+  [ValidateSet("full", "admin-recovery", "admin-pin", "member-recovery", "storage-cover", "discussion", "groups", "invitations", "shares")]
   [string]$Suite = "full",
-  [string]$RunId
+  [string]$RunId,
+  [string]$TestFilter
 )
 
 $ErrorActionPreference = "Stop"
@@ -52,7 +53,7 @@ $teacher = $ledger.accounts | Where-Object role -eq "TEACHER" | Select-Object -F
 if (!($member -and $admin -and $member.email -and $admin.email)) {
   throw "The existing Clerk Development member/admin identities are unavailable."
 }
-if ($Suite -in @("groups", "invitations", "full") -and !($secondaryMember -and $teacher -and $secondaryMember.email -and $teacher.email)) {
+if ($Suite -in @("groups", "invitations", "shares", "full") -and !($secondaryMember -and $teacher -and $secondaryMember.email -and $teacher.email)) {
   throw "The existing second MEMBER and TEACHER Clerk Development identities are required for group authorization QA."
 }
 
@@ -300,7 +301,7 @@ try {
 
   Push-Location (Join-Path $repoRoot "apps\app")
   try {
-    if ($Suite -in @("invitations", "full")) {
+    if ($Suite -in @("invitations", "shares", "full")) {
       Push-Location $repoRoot
       try {
         bun run migrate:deploy
@@ -326,6 +327,8 @@ try {
         "community-groups"
       } elseif ($Suite -eq "invitations") {
         "community-invitations"
+      } elseif ($Suite -eq "shares") {
+        "community-shares"
       } elseif ($Suite -eq "admin-recovery" -or $Suite -eq "admin-pin") {
         "community-admin-recovery"
       } else {
@@ -346,6 +349,9 @@ try {
       }
       if ($Suite -eq "admin-pin") {
         $authProjects += "--grep=reuse or initialize the existing Clerk Development .* session|concurrent staff pin requests"
+      }
+      if ($TestFilter) {
+        $authProjects += "--grep=$TestFilter"
       }
       bun run community-v2:e2e @authProjects
     }

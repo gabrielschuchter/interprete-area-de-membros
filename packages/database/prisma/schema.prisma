@@ -445,6 +445,7 @@ model Member {
   communitySpaceInvitationsReceived   CommunitySpaceInvitation[]         @relation("CommunitySpaceInvitationRecipient")
   communitySpaceInvitationsSent       CommunitySpaceInvitation[]         @relation("CommunitySpaceInvitationSender")
   communitySpaceInviteLinksCreated    CommunitySpaceInviteLink[]         @relation("CommunitySpaceInviteLinkCreator")
+  communityPostShareLinksCreated      CommunityPostShareLink[]            @relation("CommunityPostShareLinkCreator")
   learningAssignmentBatchesCreated    LearningAssignmentBatch[]          @relation("LearningAssignmentBatchCreator")
   learningAssignmentsReceived         ActivityAssignment[]               @relation("LearningAssignmentRecipient")
   learningAssignmentsCreated          ActivityAssignment[]               @relation("LearningAssignmentAssigner")
@@ -1474,6 +1475,7 @@ model CommunityPost {
   votes          PostVote[]
   bookmarks      CommunityBookmark[]
   followers      TopicFollow[]
+  shareLinks     CommunityPostShareLink[]
 
   @@unique([authorId, idempotencyKey])
   @@index([spaceId, status, createdAt])
@@ -1483,6 +1485,20 @@ model CommunityPost {
   @@index([isPinned, status, createdAt])
   @@index([isFeatured, status, createdAt], map: "CommunityPost_isFeatured_status_createdAt_idx")
   @@index([authorId, status, updatedAt, id], map: "CommunityPost_authorId_status_updatedAt_id_idx")
+}
+
+model CommunityPostShareLink {
+  id          String        @id @default(cuid())
+  postId      String
+  tokenHash   String        @unique @db.VarChar(64)
+  createdById String?
+  createdAt   DateTime      @default(now())
+  revokedAt   DateTime?
+  post        CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  createdBy   Member?       @relation("CommunityPostShareLinkCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([postId, createdAt])
+  @@index([createdById, createdAt])
 }
 
 model CommunityBookmark {
