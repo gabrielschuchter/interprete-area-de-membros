@@ -1109,6 +1109,39 @@ Existing pending feedback and invalidation of Main, correction queue, activity
 and student learning routes remain; no identity cache, pool or index change.
 Local QA uses an isolated distDir/port to preserve the interactive preview.
 
+### Community announcements — Stage 08
+
+Gestão remains the only announcement writer. Community reads use the current
+Member and role for each request, project no more than 100 current notices,
+and filter `startsAt <= now < endsAt`, audience, active cohort membership,
+archive state, and the member's dismissal for that exact announcement version
+in PostgreSQL. Important notices are rendered before the feed composer; common
+notices stay in the Community rail. The Início route does not query or render
+announcements. No recipient, role, or membership result is cached across
+requests, and the JSON refresh endpoint is private and `no-store`.
+
+The client polls the bounded projection every 30 seconds only while the tab is
+visible, refreshes immediately on return to visibility, and removes a visible
+notice at its exact end instant. A scheduled start can appear within one poll
+interval. Dismissal is keyed by announcement and version, persisted under a
+unique database key, and reappears after an edit increments the version. The
+button acknowledges pending state immediately; completion and refresh follow
+the committed dismissal. No automatic prefetch, persistent client cache, or
+optimistic success is added.
+
+Management create/edit/status changes increment or compare the version and
+write notification events and recipient jobs in the same database transaction.
+The outbox consumer rechecks current status, dates, version, audience, active
+cohort membership, and notification preferences while holding shared row locks
+before creating each notification. This prevents stale audience or version
+jobs from delivering after concurrent edits or membership changes. The
+recipient projection is bounded at 10,000 and announcement reads at 100;
+larger audiences fail closed for this notification batch. The local isolated
+PostgreSQL + Clerk Development E2E covers all/selected/staff/cohort targeting,
+versioned dismissal, start/end, visibility changes, Community-only placement,
+and authorization. This does not establish production latency percentiles or
+prove the production outbox recovery worker, Broadcast/Realtime, or OPS-01.
+
 # Início B2 (2026-10-14)
 
 The portal component adds no content or planner query. The authenticated layout

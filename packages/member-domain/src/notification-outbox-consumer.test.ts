@@ -2,6 +2,18 @@ import type { Prisma } from "@repo/database";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { notificationOutboxConsumer } from "./notification-outbox-consumer";
 
+vi.mock("server-only", () => ({}));
+vi.mock("@repo/database", () => ({
+  AnnouncementAudience: {
+    ALL: "ALL",
+    COHORT: "COHORT",
+    SELECTED: "SELECTED",
+    STAFF: "STAFF",
+  },
+  ContentStatus: { PUBLISHED: "PUBLISHED" },
+  MemberRole: { ADMIN: "ADMIN", TEACHER: "TEACHER" },
+}));
+
 beforeEach(() => {
   vi.stubEnv("VERCEL_ENV", "preview");
   vi.stubEnv("OUTBOX_QUEUE_NAMESPACE", "");

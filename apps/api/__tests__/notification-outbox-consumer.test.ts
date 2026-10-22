@@ -2,6 +2,18 @@ import type { Prisma } from "@repo/database";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { notificationOutboxConsumer } from "../lib/notification-outbox-consumer";
 
+vi.mock("server-only", () => ({}));
+vi.mock("@repo/database", () => ({
+  AnnouncementAudience: {
+    ALL: "ALL",
+    COHORT: "COHORT",
+    SELECTED: "SELECTED",
+    STAFF: "STAFF",
+  },
+  ContentStatus: { PUBLISHED: "PUBLISHED" },
+  MemberRole: { ADMIN: "ADMIN", TEACHER: "TEACHER" },
+}));
+
 beforeEach(() => {
   vi.stubEnv("VERCEL_ENV", "production");
   vi.stubEnv("OUTBOX_QUEUE_NAMESPACE", "");
@@ -64,8 +76,8 @@ test("batches active recipients, honors preferences, and excludes the actor", as
         notifications: [
           {
             recipientId: "teacher_1",
-            type: "ANNOUNCEMENT",
-            dedupeKey: "announcement:teacher_1:event_1",
+            type: "MENTION",
+            dedupeKey: "mention:teacher_1:event_1",
           },
           {
             recipientId: "student_1",
@@ -80,8 +92,8 @@ test("batches active recipients, honors preferences, and excludes the actor", as
           },
           {
             recipientId: "deactivated_member",
-            type: "ANNOUNCEMENT",
-            dedupeKey: "announcement:deactivated:event_1",
+            type: "MENTION",
+            dedupeKey: "mention:deactivated:event_1",
           },
         ],
       },

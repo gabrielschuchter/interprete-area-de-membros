@@ -1,4 +1,9 @@
-import type { Prisma } from "@repo/database";
+import {
+  AnnouncementAudience,
+  ContentStatus,
+  MemberRole,
+  type Prisma,
+} from "@repo/database";
 import { assertPreviewNotificationAudience } from "./events";
 import {
   notificationPreferenceForType,
@@ -647,6 +652,8 @@ const toNotificationRow = (
   parentEntityType: request.parentEntityType ?? null,
   parentEntityId: request.parentEntityId ?? null,
   groupKey: request.groupKey ?? null,
+  announcementId: request.announcementId ?? null,
+  announcementVersion: request.announcementVersion ?? null,
   dedupeKey: request.dedupeKey,
   priority:
     request.priority ??
@@ -683,10 +690,43 @@ export const notificationOutboxConsumer: OutboxConsumer = {
       return;
     }
 
+    const announcementIds = distinctIds(
+      requests.map(({ announcementId }) => announcementId)
+    );
+    if (announcementIds.length > 0) {
+      // Serialize delivery with editorial updates so an old audience cannot
+      // slip through while a new version is being committed.
+      await transaction.$queryRaw<Array<{ readonly id: string }>>`
+        SELECT "id" FROM "Announcement"
+        WHERE "id" = ANY(${announcementIds}::text[])
+        FOR SHARE
+      `;
+    }
+
+    const announcementRows = announcementIds.length
+      ? await transaction.announcement.findMany({
+          where: { id: { in: announcementIds } },
+          select: {
+            id: true,
+            audience: true,
+            recipientIds: true,
+            status: true,
+            startsAt: true,
+            endsAt: true,
+            deletedAt: true,
+            version: true,
+            cohorts: { select: { cohortId: true } },
+          },
+        })
+      : [];
+    const announcementsById = new Map(
+      announcementRows.map((announcement) => [announcement.id, announcement])
+    );
+
     const [activeMembers, preferences, bodies] = await Promise.all([
       transaction.member.findMany({
         where: { deactivatedAt: null, id: { in: recipientIds } },
-        select: { id: true },
+        select: { id: true, role: true },
       }),
       transaction.notificationPreference.findMany({
         where: { memberId: { in: recipientIds } },
@@ -695,11 +735,82 @@ export const notificationOutboxConsumer: OutboxConsumer = {
       loadNotificationBodies(transaction, requests),
     ]);
     const activeMemberIds = new Set(activeMembers.map(({ id }) => id));
+    const activeMembersById = new Map(
+      activeMembers.map((member) => [member.id, member])
+    );
     const preferencesByMemberId = new Map(
       preferences.map((preference) => [preference.memberId, preference])
     );
+
+    const announcementCohortIds = distinctIds(
+      announcementRows.flatMap((announcement) =>
+        announcement.audience === AnnouncementAudience.COHORT
+          ? announcement.cohorts.map(({ cohortId }) => cohortId)
+          : []
+      )
+    );
+    const announcementMemberships =
+      announcementCohortIds.length > 0
+        ? await transaction.$queryRaw<
+            Array<{ readonly cohortId: string; readonly memberId: string }>
+          >`
+            SELECT membership."memberId", membership."cohortId"
+            FROM "CohortMembership" AS membership
+            JOIN "Cohort" AS cohort ON cohort."id" = membership."cohortId"
+            WHERE membership."memberId" = ANY(${recipientIds}::text[])
+              AND membership."cohortId" = ANY(${announcementCohortIds}::text[])
+              AND membership."status" = 'ACTIVE'::"CohortMemberStatus"
+              AND membership."leftAt" IS NULL
+              AND cohort."archivedAt" IS NULL
+            FOR SHARE OF membership, cohort
+          `
+        : [];
+    const membershipsByMemberId = new Map<string, Set<string>>();
+    for (const membership of announcementMemberships) {
+      const cohortIds =
+        membershipsByMemberId.get(membership.memberId) ?? new Set();
+      cohortIds.add(membership.cohortId);
+      membershipsByMemberId.set(membership.memberId, cohortIds);
+    }
+    const now = new Date();
+    const isAnnouncementDeliveryAllowed = (request: NotificationRequest) => {
+      if (!(request.announcementId && request.announcementVersion)) {
+        return false;
+      }
+      const announcement = announcementsById.get(request.announcementId);
+      if (
+        !announcement ||
+        announcement.version !== request.announcementVersion ||
+        announcement.status !== ContentStatus.PUBLISHED ||
+        announcement.deletedAt ||
+        (announcement.startsAt && announcement.startsAt > now) ||
+        (announcement.endsAt && announcement.endsAt <= now)
+      ) {
+        return false;
+      }
+      if (announcement.audience === AnnouncementAudience.ALL) {
+        return true;
+      }
+      if (announcement.audience === AnnouncementAudience.STAFF) {
+        const role = activeMembersById.get(request.recipientId)?.role;
+        return role === MemberRole.TEACHER || role === MemberRole.ADMIN;
+      }
+      if (announcement.audience === AnnouncementAudience.SELECTED) {
+        return announcement.recipientIds.includes(request.recipientId);
+      }
+      const memberCohorts = membershipsByMemberId.get(request.recipientId);
+      return Boolean(
+        memberCohorts &&
+          announcement.cohorts.some(({ cohortId }) =>
+            memberCohorts.has(cohortId)
+          )
+      );
+    };
     const rows = requests
       .filter((request) => {
+        if (request.type === "ANNOUNCEMENT") {
+          return isAnnouncementDeliveryAllowed(request);
+        }
         if (request.type === "LEARNING_CONTENT_ASSIGNED") {
           if (request.entityType === "LEARNING_TASK") {
             return Boolean(

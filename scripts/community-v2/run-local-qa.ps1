@@ -1,5 +1,5 @@
 param(
-  [ValidateSet("full", "admin-recovery", "admin-pin", "member-recovery", "storage-cover", "discussion", "groups", "invitations", "shares")]
+  [ValidateSet("full", "admin-recovery", "admin-pin", "member-recovery", "storage-cover", "discussion", "groups", "invitations", "shares", "announcements")]
   [string]$Suite = "full",
   [string]$RunId,
   [string]$TestFilter
@@ -53,7 +53,7 @@ $teacher = $ledger.accounts | Where-Object role -eq "TEACHER" | Select-Object -F
 if (!($member -and $admin -and $member.email -and $admin.email)) {
   throw "The existing Clerk Development member/admin identities are unavailable."
 }
-if ($Suite -in @("groups", "invitations", "shares", "full") -and !($secondaryMember -and $teacher -and $secondaryMember.email -and $teacher.email)) {
+if ($Suite -in @("groups", "invitations", "shares", "announcements", "full") -and !($secondaryMember -and $teacher -and $secondaryMember.email -and $teacher.email)) {
   throw "The existing second MEMBER and TEACHER Clerk Development identities are required for group authorization QA."
 }
 
@@ -73,6 +73,9 @@ if ($LASTEXITCODE -ne 0) {
 # Playwright creates the member/admin state files under this protected directory.
 
 $savedEnvironment = @{}
+$restoreAnnouncementBroadcastTrigger = $false
+$announcementBroadcastTriggerOriginalState = $null
+$announcementTriggerRestoreFailed = $false
 $environmentNames = @(
   "COMMUNITY_QA_ISOLATED",
   "COMMUNITY_QA_SUITE",
@@ -301,16 +304,61 @@ try {
 
   Push-Location (Join-Path $repoRoot "apps\app")
   try {
-    if ($Suite -in @("invitations", "shares", "full")) {
+    if ($Suite -in @("invitations", "shares", "announcements", "full")) {
       Push-Location $repoRoot
       try {
+        if ($Suite -eq "announcements") {
+          $failedMigrationCount = & $psqlPath -X -v ON_ERROR_STOP=1 -At -c 'SELECT count(*) FROM public."_prisma_migrations" WHERE migration_name = ''20261022140000_community_announcement_integration'' AND finished_at IS NULL AND rolled_back_at IS NULL;'
+          if ($LASTEXITCODE -ne 0) {
+            throw "Could not inspect the failed Stage 08 migration in the guarded local QA database."
+          }
+          if ([int]$failedMigrationCount -gt 0) {
+            $partialState = & $psqlPath -X -v ON_ERROR_STOP=1 -At -F '|' -c @'
+SELECT
+  (SELECT count(*) FROM pg_enum WHERE enumtypid = '"AnnouncementAudience"'::regtype AND enumlabel = 'COHORT'),
+  (SELECT count(*) FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'Announcement' AND column_name IN ('isImportant', 'version')),
+  (SELECT count(*) FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'Notification' AND column_name IN ('announcementId', 'announcementVersion')),
+  (SELECT count(*) FROM pg_class WHERE oid IN ('public."AnnouncementCohort"'::regclass, 'public."AnnouncementDismissal"'::regclass)),
+  (SELECT count(*) FROM public."AnnouncementCohort"),
+  (SELECT count(*) FROM public."AnnouncementDismissal"),
+  (SELECT count(*) FROM pg_constraint WHERE conname IN ('Notification_announcementId_fkey', 'Notification_announcement_version_check'));
+'@
+            if (
+              $LASTEXITCODE -ne 0 -or
+              ($partialState -join "").Trim() -ne "1|2|2|2|0|0|0"
+            ) {
+              throw "The incomplete Stage 08 migration does not match the expected empty local additive state; no migration repair was attempted."
+            }
+            Push-Location (Join-Path $repoRoot "packages\database")
+            try {
+              bunx prisma migrate resolve --rolled-back 20261022140000_community_announcement_integration
+              if ($LASTEXITCODE -ne 0) {
+                throw "Could not mark the verified incomplete Stage 08 migration rolled back in the guarded local QA database."
+              }
+            } finally {
+              Pop-Location
+            }
+            Write-Output "Recovered the verified, empty Stage 08 partial migration in the isolated local QA database."
+          }
+        }
         bun run migrate:deploy
         if ($LASTEXITCODE -ne 0) {
-          throw "The additive Community V2 invitation migration failed against the guarded local QA database."
+          throw "The additive Community V2 migration failed against the guarded local QA database."
         }
       } finally {
         Pop-Location
       }
+    }
+    if ($Suite -eq "announcements") {
+      $triggerStateLines = & $psqlPath -X -qAt -v ON_ERROR_STOP=1 -c 'SELECT tgenabled FROM pg_trigger WHERE tgrelid = ''public."Notification"''::regclass AND tgname = ''Notification_broadcast_invalidation'';'
+      if ($LASTEXITCODE -ne 0) {
+        throw "Could not inspect the isolated local Notification broadcast trigger state."
+      }
+      $announcementBroadcastTriggerOriginalState = ($triggerStateLines -join "").Trim()
+      if ($announcementBroadcastTriggerOriginalState -notin @("O", "D", "A", "R")) {
+        throw "The isolated local Notification broadcast trigger is missing or has an unsupported state."
+      }
+      $restoreAnnouncementBroadcastTrigger = $true
     }
     bun run community-v2:qa:prepare
     if ($LASTEXITCODE -ne 0) {
@@ -329,6 +377,8 @@ try {
         "community-invitations"
       } elseif ($Suite -eq "shares") {
         "community-shares"
+      } elseif ($Suite -eq "announcements") {
+        "community-announcements"
       } elseif ($Suite -eq "admin-recovery" -or $Suite -eq "admin-pin") {
         "community-admin-recovery"
       } else {
@@ -367,6 +417,25 @@ try {
 
   Write-Output "Community V2 local QA artifacts: $outputDirectory"
 } finally {
+  if ($restoreAnnouncementBroadcastTrigger) {
+    try {
+      $triggerRestoreSql = switch ($announcementBroadcastTriggerOriginalState) {
+        "O" { 'ALTER TABLE public."Notification" ENABLE TRIGGER "Notification_broadcast_invalidation";' }
+        "D" { 'ALTER TABLE public."Notification" DISABLE TRIGGER "Notification_broadcast_invalidation";' }
+        "A" { 'ALTER TABLE public."Notification" ENABLE ALWAYS TRIGGER "Notification_broadcast_invalidation";' }
+        "R" { 'ALTER TABLE public."Notification" ENABLE REPLICA TRIGGER "Notification_broadcast_invalidation";' }
+      }
+      & $psqlPath -X -v ON_ERROR_STOP=1 -c $triggerRestoreSql | Out-Null
+      if ($LASTEXITCODE -ne 0) {
+        $announcementTriggerRestoreFailed = $true
+      }
+      else {
+        Write-Output "Restored the isolated local Notification broadcast trigger to its original state ($announcementBroadcastTriggerOriginalState)."
+      }
+    } catch {
+      $announcementTriggerRestoreFailed = $true
+    }
+  }
   if (Test-Path -LiteralPath $outputDirectory) {
     $artifactEntries = @((Get-Item -LiteralPath $outputDirectory)) + @(
       Get-ChildItem -LiteralPath $outputDirectory -Force -Recurse
@@ -380,5 +449,8 @@ try {
   }
   foreach ($name in $environmentNames) {
     [Environment]::SetEnvironmentVariable($name, $savedEnvironment[$name], "Process")
+  }
+  if ($announcementTriggerRestoreFailed) {
+    throw "The temporary local Notification broadcast trigger could not be restored."
   }
 }

@@ -67,6 +67,7 @@ const eventSchema = z.object({
   idempotencyKey: keySchema,
   payload: z.record(z.string(), z.json()).default({}),
   occurredAt: z.date(),
+  availableAt: z.date().optional(),
   consumers: z.array(keySchema).max(32).default([]),
 });
 
@@ -148,7 +149,7 @@ export const enqueueDomainEvent = async (
       recipients.map(({ recipientId }) => recipientId)
     );
   }
-  const { consumers: requestedConsumers, ...eventData } = event;
+  const { consumers: requestedConsumers, availableAt, ...eventData } = event;
   const consumers = [
     ...new Set(requestedConsumers.map(resolveOutboxConsumerKey)),
   ];
@@ -179,6 +180,7 @@ export const enqueueDomainEvent = async (
         eventId: persisted.id,
         consumerKey,
         idempotencyKey: makeOutboxIdempotencyKey(persisted.id, consumerKey),
+        ...(availableAt ? { availableAt } : {}),
       })),
       skipDuplicates: true,
     });

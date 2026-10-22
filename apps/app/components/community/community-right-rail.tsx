@@ -1,6 +1,7 @@
 import { Button } from "@repo/design-system/components/ui/button";
 import { ArrowRightIcon, PlusIcon } from "lucide-react";
 import { IntentLink } from "@/app/(authenticated)/components/intent-link";
+import { CommunityAnnouncementDismissButton } from "./community-announcement-dismiss-button";
 import { CommunityDisclosure } from "./community-disclosure";
 import {
   CommunityPresence,
@@ -21,6 +22,7 @@ interface CommunityAnnouncementSummary {
   readonly href: string | null;
   readonly id: string;
   readonly title: string;
+  readonly version: number;
 }
 
 interface CommunityRightRailProperties {
@@ -35,6 +37,7 @@ const formatAnnouncementDate = (value: Date) =>
   new Intl.DateTimeFormat("pt-BR", {
     day: "2-digit",
     month: "short",
+    timeZone: "America/Sao_Paulo",
   }).format(value);
 
 const isInternalHref = (href: string) =>
@@ -188,39 +191,48 @@ export const CommunityRightRail = ({
                 <AnnouncementContent announcement={announcement} />
               );
               const className = "community-rail__announcement group";
+              const key = announcement.groupKey ?? announcement.id;
 
               if (announcement.href && isInternalHref(announcement.href)) {
                 return (
-                  <IntentLink
-                    className={className}
-                    href={announcement.href}
-                    key={announcement.groupKey ?? announcement.id}
-                  >
-                    {content}
-                  </IntentLink>
+                  <article className="border-border border-b py-3" key={key}>
+                    <IntentLink className={className} href={announcement.href}>
+                      {content}
+                    </IntentLink>
+                    <CommunityAnnouncementDismissButton
+                      announcementId={announcement.id}
+                      version={announcement.version}
+                    />
+                  </article>
                 );
               }
 
               if (announcement.href && isExternalHref(announcement.href)) {
                 return (
-                  <a
-                    className={className}
-                    href={announcement.href}
-                    key={announcement.groupKey ?? announcement.id}
-                    rel="noreferrer"
-                    target="_blank"
-                  >
-                    {content}
-                  </a>
+                  <article className="border-border border-b py-3" key={key}>
+                    <a
+                      className={className}
+                      href={announcement.href}
+                      rel="noreferrer"
+                      target="_blank"
+                    >
+                      {content}
+                    </a>
+                    <CommunityAnnouncementDismissButton
+                      announcementId={announcement.id}
+                      version={announcement.version}
+                    />
+                  </article>
                 );
               }
 
               return (
-                <article
-                  className={className}
-                  key={announcement.groupKey ?? announcement.id}
-                >
-                  {content}
+                <article className="border-border border-b py-3" key={key}>
+                  <div className={className}>{content}</div>
+                  <CommunityAnnouncementDismissButton
+                    announcementId={announcement.id}
+                    version={announcement.version}
+                  />
                 </article>
               );
             })}

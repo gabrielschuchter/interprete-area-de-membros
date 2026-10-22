@@ -3,6 +3,7 @@ export type {
   OutboxJobSnapshot,
 } from "./src/events";
 export {
+  assertPreviewNotificationAudience,
   enqueueDomainEvent,
   isOutboxJobClaimable,
   makeOutboxIdempotencyKey,

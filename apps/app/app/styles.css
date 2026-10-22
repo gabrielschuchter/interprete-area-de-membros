@@ -2246,6 +2246,7 @@
         "hero"
         "presence"
         "filters"
+        "announcements"
         "composer"
         "feed"
         "spaces"
@@ -2255,6 +2256,10 @@
 
     .community-content-grid--explore > .community-hero {
       grid-area: hero;
+    }
+
+    .community-content-grid--explore > .community-announcement-area {
+      grid-area: announcements;
     }
 
     .community-content-grid > .community-right-rail,
@@ -2323,11 +2328,16 @@
         "hero"
         "presence"
         "filters"
+        "announcements"
         "composer"
         "feed"
         "spaces"
         "about"
         "notices";
+    }
+
+    .community-content-grid--explore > .community-announcement-area {
+      grid-area: announcements;
     }
 
     .community-discovery-toolbar {
@@ -4146,6 +4156,7 @@ html[data-shell-fallback][data-shell-arrival="return"] .member-route-page {
     grid-template-areas:
       "hero sidebar"
       "filters sidebar"
+      "announcements sidebar"
       "composer sidebar"
       "feed sidebar";
     grid-template-columns: minmax(0, 1fr) minmax(14rem, 17rem);
@@ -4159,6 +4170,11 @@ html[data-shell-fallback][data-shell-arrival="return"] .member-route-page {
   .community-content-grid.community-content-grid--explore
     > .community-feed-nav {
     grid-area: filters;
+  }
+
+  .community-content-grid.community-content-grid--explore
+    > .community-announcement-area {
+    grid-area: announcements;
   }
 
   .community-content-grid.community-content-grid--explore
@@ -4187,6 +4203,7 @@ html[data-shell-fallback][data-shell-arrival="return"] .member-route-page {
       "hero hero"
       "presence presence"
       "filters filters"
+      "announcements announcements"
       "composer composer"
       "feed feed"
       "spaces notices"
@@ -4197,6 +4214,10 @@ html[data-shell-fallback][data-shell-arrival="return"] .member-route-page {
 
   .community-content-grid--explore > .community-feed-nav {
     grid-area: filters;
+  }
+
+  .community-content-grid--explore > .community-announcement-area {
+    grid-area: announcements;
   }
 
   .community-content-grid--explore > .community-hero {
@@ -4359,6 +4380,10 @@ html[data-shell-fallback][data-shell-arrival="return"] .member-route-page {
     height: 1.1rem;
     color: var(--brand-dark-amaranth);
   }
+}
+
+.community-announcement-area:empty {
+  display: none;
 }
 
 @keyframes shell-fade-out {

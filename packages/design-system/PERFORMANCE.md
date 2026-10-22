@@ -487,6 +487,23 @@ on a server request.
   mounted. Existing SingleFlightSubmit reports pending locally and success
   follows persistence. No new prefetch, request loop, motion or dependency.
 
+## Community announcements — Stage 08
+
+- Keep Gestão as the announcement editor. Important notices sit before the
+  Community composer; common notices use the existing right rail, with its
+  mobile disclosure. Never add an announcement block or query to Início.
+- Read at most 100 notices against the current Member/role, date window,
+  audience and active cohort membership. Poll the private, no-store projection
+  every 30 seconds while visible, stop while hidden, and refresh on return.
+  End times clear at the boundary; scheduled starts can appear within one poll.
+- Dismissal is persisted per announcement version. Pending feedback is local
+  and immediate; report completion only after the server commit. Editing
+  advances the version so an earlier dismissal no longer hides the notice.
+- Match the original boards' desktop/mobile placement and restrained priority
+  treatment. The local authenticated screenshots cover desktop and 390 px
+  mobile. They are visual checks for this slice, not device or percentile
+  evidence; OPS-01 and production Broadcast/Realtime remain unproven.
+
 # Início B2 (2026-10-14)
 
 The Interprete portal reuses the authenticated shell and its fresh Member role,

@@ -243,6 +243,7 @@ enum AnnouncementAudience {
   ALL
   STAFF
   SELECTED
+  COHORT
 }
 
 enum MeetingKind {
@@ -451,6 +452,7 @@ model Member {
   learningAssignmentsCreated          ActivityAssignment[]               @relation("LearningAssignmentAssigner")
   libraryItemViews                    LibraryItemView[]
   announcementsCreated                Announcement[]                     @relation("AnnouncementCreator")
+  announcementDismissals              AnnouncementDismissal[]
   exerciseBanksCreated                ExerciseBank[]                     @relation("ExerciseBankCreator")
   exerciseListsCreated                ExerciseList[]                     @relation("ExerciseListCreator")
   exerciseSessions                    ExerciseSession[]
@@ -760,6 +762,7 @@ model Cohort {
   calendarFeeds      CohortCalendarFeed[]
   accessGrantSources AccessGrantSource[]
   activityTargets    ActivityCohortTarget[]
+  announcementTargets AnnouncementCohort[]
 
   @@unique([createdByMemberId, idempotencyKey])
   @@index([archivedAt, startsAt, endsAt])
@@ -1271,6 +1274,8 @@ model Notification {
   id               String    @id @default(cuid())
   memberId         String
   actorId          String?
+  announcementId      String?
+  announcementVersion Int?
   type             String
   entityType       String?
   entityId         String?
@@ -1288,11 +1293,13 @@ model Notification {
   createdAt        DateTime  @default(now())
   member           Member    @relation("NotificationRecipient", fields: [memberId], references: [id], onDelete: Cascade)
   actor            Member?   @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
+  announcement     Announcement? @relation(fields: [announcementId], references: [id], onDelete: SetNull)
 
   @@index([memberId, readAt, createdAt])
   @@index([memberId, seenAt, createdAt])
   @@index([memberId, type, createdAt])
   @@index([groupKey, createdAt])
+  @@index([announcementId, announcementVersion, memberId])
 }
 
 model Mention {
@@ -1342,6 +1349,8 @@ model Announcement {
   startsAt          DateTime?
   endsAt            DateTime?
   isPinned          Boolean              @default(false)
+  isImportant       Boolean              @default(false)
+  version           Int                  @default(1)
   createdByMemberId String?
   publishedAt       DateTime?
   archivedAt        DateTime?
@@ -1349,10 +1358,36 @@ model Announcement {
   createdAt         DateTime             @default(now())
   updatedAt         DateTime             @updatedAt
   createdBy         Member?              @relation("AnnouncementCreator", fields: [createdByMemberId], references: [id], onDelete: SetNull)
+  cohorts           AnnouncementCohort[]
+  dismissals        AnnouncementDismissal[]
+  notifications     Notification[]
 
   @@index([status, isPinned, publishedAt])
   @@index([startsAt, endsAt])
   @@index([createdByMemberId, createdAt])
+}
+
+model AnnouncementCohort {
+  announcementId String
+  cohortId       String
+  createdAt      DateTime     @default(now())
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  cohort         Cohort       @relation(fields: [cohortId], references: [id], onDelete: Restrict)
+
+  @@id([announcementId, cohortId])
+  @@index([cohortId, announcementId])
+}
+
+model AnnouncementDismissal {
+  announcementId      String
+  memberId             String
+  announcementVersion Int
+  dismissedAt          DateTime     @default(now())
+  announcement         Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  member               Member       @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@id([announcementId, memberId, announcementVersion])
+  @@index([memberId, dismissedAt])
 }
 
 model TopicFollow {

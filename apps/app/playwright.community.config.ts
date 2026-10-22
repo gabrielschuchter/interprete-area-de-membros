@@ -118,6 +118,17 @@ export default defineConfig({
       ],
       use: { ...localUse, storageState: secondaryMemberStatePath },
     },
+    {
+      name: "community-announcements",
+      testMatch: /community-announcements\.spec\.ts$/,
+      dependencies: [
+        "member-auth",
+        "secondary-member-auth",
+        "teacher-auth",
+        "admin-auth",
+      ],
+      use: { ...localUse, storageState: memberStatePath },
+    },
   ],
   webServer: {
     command:

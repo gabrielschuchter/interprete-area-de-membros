@@ -1,12 +1,6 @@
 import "server-only";
 
-import {
-  AnnouncementAudience,
-  ContentStatus,
-  database,
-  MemberRole,
-  type Prisma,
-} from "@repo/database";
+import { database, MemberRole, type Prisma } from "@repo/database";
 import {
   enqueueNotificationBatch,
   notificationPreferenceForType,
@@ -14,7 +8,7 @@ import {
 } from "@repo/member-domain";
 import { tracePerformance } from "@repo/observability/performance";
 import { env } from "@/env";
-import { getMemberRole } from "./authorization";
+import { getCommunityAnnouncements } from "./community-announcements";
 import {
   mergeNotificationRecipients,
   notificationFilterTypes,
@@ -112,19 +106,46 @@ const decodeNotificationCursor = (value: string | undefined) => {
 const memberNotificationAudienceWhere = async (
   memberId: string
 ): Promise<Prisma.NotificationWhereInput> => {
-  const groups = await database.communitySpace.findMany({
-    where: {
-      OR: [{ ownerId: memberId }, { members: { some: { memberId } } }],
-    },
-    select: { id: true },
-  });
+  const [groups, announcements] = await Promise.all([
+    database.communitySpace.findMany({
+      where: {
+        OR: [{ ownerId: memberId }, { members: { some: { memberId } } }],
+      },
+      select: { id: true },
+    }),
+    getCommunityAnnouncements(memberId, 100, new Date(), {
+      includeDismissed: true,
+    }),
+  ]);
   return {
     OR: [
-      { type: { not: notificationTypes.groupPost } },
+      {
+        type: {
+          notIn: [notificationTypes.groupPost, notificationTypes.announcement],
+        },
+      },
       {
         type: notificationTypes.groupPost,
         groupKey: { in: groups.map(({ id }) => id) },
       },
+      ...announcements.flatMap(({ id, version }) => [
+        {
+          type: notificationTypes.announcement,
+          announcementId: id,
+          announcementVersion: version,
+        },
+        ...(version === 1
+          ? [
+              {
+                type: notificationTypes.announcement,
+                announcementId: null,
+                announcementVersion: null,
+                entityType: "ANNOUNCEMENT",
+                entityId: id,
+              },
+            ]
+          : []),
+      ]),
     ],
   };
 };
@@ -429,52 +450,14 @@ export const getRecentCommunityAnnouncements = async (
   memberId: string,
   limit = 3
 ) => {
-  const [role, now] = await Promise.all([
-    getMemberRole(memberId),
-    Promise.resolve(new Date()),
-  ]);
-  const isStaff = role === MemberRole.TEACHER || role === MemberRole.ADMIN;
   const announcements = await tracePerformance(
     "member.community.announcements",
-    () =>
-      database.announcement.findMany({
-        where: {
-          status: ContentStatus.PUBLISHED,
-          deletedAt: null,
-          AND: [
-            { OR: [{ startsAt: null }, { startsAt: { lte: now } }] },
-            { OR: [{ endsAt: null }, { endsAt: { gt: now } }] },
-          ],
-          OR: [
-            { audience: AnnouncementAudience.ALL },
-            ...(isStaff ? [{ audience: AnnouncementAudience.STAFF }] : []),
-            {
-              audience: AnnouncementAudience.SELECTED,
-              recipientIds: { has: memberId },
-            },
-          ],
-        },
-        orderBy: [
-          { isPinned: "desc" },
-          { publishedAt: "desc" },
-          { id: "desc" },
-        ],
-        take: Math.min(Math.max(limit, 1), 3),
-        select: {
-          id: true,
-          title: true,
-          body: true,
-          href: true,
-          createdAt: true,
-          publishedAt: true,
-        },
-      })
+    async () =>
+      (await getCommunityAnnouncements(memberId, 100))
+        .filter(({ isImportant }) => !isImportant)
+        .slice(0, Math.min(Math.max(limit, 1), 3))
   );
-  return announcements.map((announcement) => ({
-    ...announcement,
-    createdAt: announcement.publishedAt ?? announcement.createdAt,
-    groupKey: `announcement:${announcement.id}`,
-  }));
+  return announcements;
 };
 
 export const getUnreadNotificationCount = async (memberId: string) =>
@@ -957,23 +940,6 @@ export const notifyActivityDeadline = (input: {
     entityId: input.activityId,
     dedupeKey: `activity-deadline:${input.recipientId}:${input.activityId}:${input.dueAt.toISOString()}`,
     body: input.activityTitle,
-  });
-
-export const notifyAnnouncement = (input: {
-  readonly actorId: string;
-  readonly announcementId: string;
-  readonly body: string;
-  readonly href?: string;
-  readonly recipientId: string;
-  readonly title: string;
-}) =>
-  createNotification({
-    ...input,
-    type: notificationTypes.announcement,
-    entityType: "ANNOUNCEMENT",
-    entityId: input.announcementId,
-    groupKey: `announcement:${input.announcementId}`,
-    dedupeKey: `announcement:${input.announcementId}:${input.recipientId}`,
   });
 
 export const notificationTitle = (type: string) =>

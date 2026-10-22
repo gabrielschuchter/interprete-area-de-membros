@@ -3,6 +3,10 @@ import type { ReactNode } from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { CommunityRightRail } from "./community-right-rail";
 
+vi.mock("@/app/(authenticated)/comunidade/announcements-actions", () => ({
+  dismissCommunityAnnouncement: vi.fn(async () => "dismissed"),
+}));
+
 const clinicalSpaceName = /Prática clínica/;
 const announcementName = /Roda de discussão/;
 
@@ -49,6 +53,7 @@ describe("CommunityRightRail", () => {
             groupKey: "announcement:1",
             href: "/encontros",
             id: "announcement-1",
+            version: 1,
             title: "Roda de discussão",
           },
         ]}
@@ -138,6 +143,7 @@ describe("CommunityRightRail", () => {
             groupKey: "announcement:unsafe",
             href: "javascript:alert(1)",
             id: "announcement-unsafe",
+            version: 1,
             title: "Aviso sem destino seguro",
           },
         ]}

@@ -56,6 +56,16 @@ if (!realtimeSend[0]?.installed) {
   );
 }
 
+if (process.env.COMMUNITY_QA_SUITE === "announcements") {
+  // This standalone PostgreSQL fixture has no PL/pgSQL runtime or Supabase
+  // Realtime. Keep Notification/outbox persistence real while disabling only
+  // the database broadcast trigger for this isolated journey. This is not
+  // Realtime evidence and run-local-qa.ps1 restores the trigger afterward.
+  await database.$executeRawUnsafe(
+    'ALTER TABLE public."Notification" DISABLE TRIGGER "Notification_broadcast_invalidation"'
+  );
+}
+
 const ledgerPath = process.env.COMMUNITY_QA_LEDGER_PATH;
 if (!ledgerPath) {
   throw new Error("The protected local Clerk QA ledger is not configured.");
@@ -86,7 +96,7 @@ if (accounts.length < 2 || accounts.some((account) => !account.clerkUserId)) {
 }
 
 if (
-  ["groups", "invitations", "shares", "full"].includes(
+  ["groups", "invitations", "shares", "announcements", "full"].includes(
     process.env.COMMUNITY_QA_SUITE ?? ""
   ) &&
   ![
@@ -314,6 +324,108 @@ try {
     throw new Error(
       "The isolated invitation migration, RLS, or Data API grant boundary is not verified."
     );
+  }
+
+  if (process.env.COMMUNITY_QA_SUITE === "announcements") {
+    const [
+      announcementMigration,
+      cohortAudience,
+      announcementColumns,
+      notificationColumns,
+      cohortRls,
+      dismissalRls,
+      cohortPolicies,
+      dismissalPolicies,
+      cohortGrants,
+      dismissalGrants,
+      broadcastTrigger,
+    ] = await Promise.all([
+      database.$queryRaw<Array<{ readonly migration_name: string }>>`
+        SELECT migration_name FROM public."_prisma_migrations"
+        WHERE migration_name = '20261022140000_community_announcement_integration'
+          AND finished_at IS NOT NULL AND rolled_back_at IS NULL
+      `,
+      database.$queryRaw<Array<{ readonly enumlabel: string }>>`
+        SELECT enumlabel FROM pg_enum
+        WHERE enumtypid = '"AnnouncementAudience"'::regtype
+          AND enumlabel = 'COHORT'
+      `,
+      database.$queryRaw<Array<{ readonly column_name: string }>>`
+        SELECT column_name FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'Announcement'
+          AND column_name IN ('isImportant', 'version')
+      `,
+      database.$queryRaw<Array<{ readonly column_name: string }>>`
+        SELECT column_name FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'Notification'
+          AND column_name IN ('announcementId', 'announcementVersion')
+      `,
+      database.$queryRaw<Array<{ readonly row_security: boolean }>>`
+        SELECT relrowsecurity AS row_security FROM pg_class
+        WHERE oid = 'public."AnnouncementCohort"'::regclass
+      `,
+      database.$queryRaw<Array<{ readonly row_security: boolean }>>`
+        SELECT relrowsecurity AS row_security FROM pg_class
+        WHERE oid = 'public."AnnouncementDismissal"'::regclass
+      `,
+      database.$queryRaw<Array<{ readonly policy_count: bigint }>>`
+        SELECT count(*) AS policy_count FROM pg_policies
+        WHERE schemaname = 'public' AND tablename = 'AnnouncementCohort'
+      `,
+      database.$queryRaw<Array<{ readonly policy_count: bigint }>>`
+        SELECT count(*) AS policy_count FROM pg_policies
+        WHERE schemaname = 'public' AND tablename = 'AnnouncementDismissal'
+      `,
+      database.$queryRaw<
+        Array<{
+          readonly anon_allowed: boolean;
+          readonly authenticated_allowed: boolean;
+        }>
+      >`
+        SELECT
+          COALESCE((SELECT has_table_privilege(role.rolname, 'public."AnnouncementCohort"', 'SELECT')
+            FROM pg_roles AS role WHERE role.rolname = 'anon'), false) AS anon_allowed,
+          COALESCE((SELECT has_table_privilege(role.rolname, 'public."AnnouncementCohort"', 'SELECT')
+            FROM pg_roles AS role WHERE role.rolname = 'authenticated'), false) AS authenticated_allowed
+      `,
+      database.$queryRaw<
+        Array<{
+          readonly anon_allowed: boolean;
+          readonly authenticated_allowed: boolean;
+        }>
+      >`
+        SELECT
+          COALESCE((SELECT has_table_privilege(role.rolname, 'public."AnnouncementDismissal"', 'SELECT')
+            FROM pg_roles AS role WHERE role.rolname = 'anon'), false) AS anon_allowed,
+          COALESCE((SELECT has_table_privilege(role.rolname, 'public."AnnouncementDismissal"', 'SELECT')
+            FROM pg_roles AS role WHERE role.rolname = 'authenticated'), false) AS authenticated_allowed
+      `,
+      database.$queryRaw<Array<{ readonly trigger_enabled: boolean }>>`
+        SELECT tgenabled <> 'D' AS trigger_enabled
+        FROM pg_trigger
+        WHERE tgrelid = 'public."Notification"'::regclass
+          AND tgname = 'Notification_broadcast_invalidation'
+      `,
+    ]);
+    if (
+      announcementMigration.length !== 1 ||
+      cohortAudience.length !== 1 ||
+      announcementColumns.length !== 2 ||
+      notificationColumns.length !== 2 ||
+      cohortRls[0]?.row_security !== true ||
+      dismissalRls[0]?.row_security !== true ||
+      cohortPolicies[0]?.policy_count !== 0n ||
+      dismissalPolicies[0]?.policy_count !== 0n ||
+      cohortGrants[0]?.anon_allowed !== false ||
+      cohortGrants[0]?.authenticated_allowed !== false ||
+      dismissalGrants[0]?.anon_allowed !== false ||
+      dismissalGrants[0]?.authenticated_allowed !== false ||
+      broadcastTrigger[0]?.trigger_enabled !== false
+    ) {
+      throw new Error(
+        "The isolated announcement migration, cohort audience, RLS, or Data API grant boundary is not verified."
+      );
+    }
   }
 
   for (const account of accounts) {

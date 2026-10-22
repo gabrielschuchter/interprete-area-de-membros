@@ -3,6 +3,7 @@ import { tracePerformance } from "@repo/observability/performance";
 import { ArrowRightIcon } from "lucide-react";
 import { cache, Suspense } from "react";
 import { IntentLink } from "@/app/(authenticated)/components/intent-link";
+import { CommunityAnnouncementFeed } from "@/components/community/community-announcement-feed";
 import { CommunityComposerPrompt } from "@/components/community/community-composer-prompt";
 import { CommunityEmptyState } from "@/components/community/community-empty-state";
 import { CommunityFeedCard } from "@/components/community/community-feed-card";
@@ -18,17 +19,20 @@ import {
   getCommunityPresenceProfiles,
   getCommunitySpaces,
 } from "@/lib/community";
+import { getCommunityAnnouncements } from "@/lib/community-announcements";
 import {
   communityHref,
   parseCommunityKind,
   parseCommunitySort,
 } from "@/lib/community-query";
 import { requireMemberId } from "@/lib/learning";
-import { getRecentCommunityAnnouncements } from "@/lib/notifications";
 import { getOrCreateProfile } from "@/lib/profile";
 
 const getPageCommunitySpaces = cache((memberId: string) =>
   getCommunitySpaces(memberId)
+);
+const getPageCommunityAnnouncements = cache((memberId: string) =>
+  getCommunityAnnouncements(memberId, 100)
 );
 
 const CommunityRightRailData = async ({
@@ -41,14 +45,16 @@ const CommunityRightRailData = async ({
       Promise.all([
         getPageCommunitySpaces(memberId),
         getOrCreateProfile(memberId),
-        getRecentCommunityAnnouncements(memberId),
+        getPageCommunityAnnouncements(memberId),
         getCommunityPresenceProfiles(memberId),
       ])
     );
 
   return (
     <CommunityRightRail
-      announcements={announcements}
+      announcements={announcements
+        .filter(({ isImportant }) => !isImportant)
+        .slice(0, 3)}
       memberId={memberId}
       presenceProfiles={presenceProfiles}
       profile={profile}
@@ -80,6 +86,18 @@ const CommunityFeedNavigationData = async ({
       spaces={spaces.map(({ slug, title }) => ({ slug, title }))}
     />
   );
+};
+
+const CommunityAnnouncementsData = async ({
+  memberId,
+}: {
+  readonly memberId: string;
+}) => {
+  const announcements = await tracePerformance(
+    "member.route.community.announcements",
+    () => getPageCommunityAnnouncements(memberId)
+  );
+  return <CommunityAnnouncementFeed initialAnnouncements={announcements} />;
 };
 
 const CommunityFeedContent = async ({
@@ -254,6 +272,9 @@ const CommunityPage = async ({ searchParams }: CommunityPageProperties) => {
               sort={sort}
               spaceSlug={filters.space}
             />
+          </Suspense>
+          <Suspense fallback={null}>
+            <CommunityAnnouncementsData memberId={memberId} />
           </Suspense>
           <Suspense fallback={<CommunityRightRailFallback />}>
             <CommunityRightRailData memberId={memberId} />
