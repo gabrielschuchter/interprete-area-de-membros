@@ -2244,9 +2244,9 @@
     .community-content-grid--explore {
       grid-template-areas:
         "hero"
+        "announcements"
         "presence"
         "filters"
-        "announcements"
         "composer"
         "feed"
         "spaces"
@@ -2326,9 +2326,9 @@
     .community-content-grid--explore {
       grid-template-areas:
         "hero"
+        "announcements"
         "presence"
         "filters"
-        "announcements"
         "composer"
         "feed"
         "spaces"
@@ -4155,8 +4155,8 @@ html[data-shell-fallback][data-shell-arrival="return"] .member-route-page {
   .community-content-grid.community-content-grid--explore {
     grid-template-areas:
       "hero sidebar"
-      "filters sidebar"
       "announcements sidebar"
+      "filters sidebar"
       "composer sidebar"
       "feed sidebar";
     grid-template-columns: minmax(0, 1fr) minmax(14rem, 17rem);
@@ -4201,9 +4201,9 @@ html[data-shell-fallback][data-shell-arrival="return"] .member-route-page {
   .community-content-grid--explore {
     grid-template-areas:
       "hero hero"
+      "announcements announcements"
       "presence presence"
       "filters filters"
-      "announcements announcements"
       "composer composer"
       "feed feed"
       "spaces notices"

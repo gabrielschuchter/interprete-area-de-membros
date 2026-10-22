@@ -146,6 +146,56 @@ const screenshot = async (page: Page, filename: string) => {
   });
 };
 
+const expectAnnouncementAfterHero = async (page: Page, banner: Locator) => {
+  const [hero, notice, filters] = await Promise.all([
+    page.locator(".community-hero").boundingBox(),
+    banner.boundingBox(),
+    page.locator(".community-feed-nav").boundingBox(),
+  ]);
+  if (!(hero && notice && filters)) {
+    throw new Error("The hero, announcement, and filters must be visible.");
+  }
+  console.info(
+    "[community-announcements-layout]",
+    await page.evaluate(() => {
+      const grid = document.querySelector(".community-content-grid--explore");
+      const values = [
+        ".community-hero",
+        ".community-announcement-area article",
+        ".community-feed-nav",
+      ].map((selector) => {
+        const element = document.querySelector(selector);
+        const style = element ? getComputedStyle(element) : null;
+        const box = element?.getBoundingClientRect();
+        return {
+          selector,
+          gridArea: style?.gridArea,
+          parent: element?.parentElement?.className,
+          y: box?.y,
+          height: box?.height,
+        };
+      });
+      return {
+        viewport: window.innerWidth,
+        template: grid ? getComputedStyle(grid).gridTemplateAreas : null,
+        values,
+      };
+    })
+  );
+  expect(notice.y).toBeGreaterThanOrEqual(hero.y + hero.height);
+  expect(notice.y).toBeLessThan(filters.y);
+
+  if (await page.evaluate(() => window.innerWidth <= 767)) {
+    const presence = await page
+      .locator(".community-rail__presence")
+      .boundingBox();
+    if (!presence) {
+      throw new Error("The mobile community presence section must be visible.");
+    }
+    expect(notice.y).toBeLessThan(presence.y);
+  }
+};
+
 const createAnnouncement = async (
   adminPage: Page,
   input: {
@@ -330,6 +380,7 @@ test("integra avisos da Gestão na Comunidade com audiência, versão, janela e 
       `[data-announcement-id="${important.id}"]`
     );
     await expect(importantBanner).toBeVisible();
+    await expectAnnouncementAfterHero(memberPage, importantBanner);
     await screenshot(memberPage, "community-v2-stage08-community-desktop.png");
 
     const secondaryPage = await secondaryContext.newPage();
@@ -347,6 +398,10 @@ test("integra avisos da Gestão na Comunidade com audiência, versão, janela e 
     await expect(
       mobilePage.locator(`[data-announcement-id="${important.id}"]`)
     ).toBeVisible();
+    await expectAnnouncementAfterHero(
+      mobilePage,
+      mobilePage.locator(`[data-announcement-id="${important.id}"]`)
+    );
     await screenshot(mobilePage, "community-v2-stage08-community-mobile.png");
     await mobilePage.close();
 
