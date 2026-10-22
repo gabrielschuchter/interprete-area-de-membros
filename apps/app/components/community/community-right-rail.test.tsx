@@ -9,6 +9,7 @@ vi.mock("@/app/(authenticated)/comunidade/announcements-actions", () => ({
 
 const clinicalSpaceName = /Prática clínica/;
 const announcementName = /Roda de discussão/;
+const onlineStatusPattern = /online|membros ativos|ativo agora/i;
 
 vi.mock("next/link", () => ({
   default: ({
@@ -32,12 +33,6 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => ({ toString: () => "" }),
 }));
 
-vi.mock("./community-presence", () => ({
-  CommunityPresence: () => (
-    <div data-testid="mock-community-presence">2 membros online</div>
-  ),
-}));
-
 describe("CommunityRightRail", () => {
   afterEach(() => {
     cleanup();
@@ -57,12 +52,8 @@ describe("CommunityRightRail", () => {
             title: "Roda de discussão",
           },
         ]}
-        memberId="ana-id"
-        profile={{
-          avatarUrl: null,
-          displayName: "Ana",
-          username: "ana",
-        }}
+        avatars={[{ avatarUrl: null, initials: "A" }]}
+        goalCard={<div data-testid="goal-summary">Meta coletiva</div>}
         spaces={[
           {
             _count: { posts: 12 },
@@ -80,13 +71,15 @@ describe("CommunityRightRail", () => {
         .map((heading) => heading.textContent)
     ).toEqual([
       "Sobre a comunidade",
-      "Ativo agora",
+      "Pessoas da comunidade",
       "Grupos de estudo",
       "Avisos",
     ]);
-    expect(screen.getByTestId("mock-community-presence").textContent).toContain(
-      "2 membros online"
-    );
+    expect(screen.getByTestId("goal-summary")).toBeTruthy();
+    expect(
+      screen.getByTestId("community-avatars").getAttribute("aria-hidden")
+    ).toBe("true");
+    expect(screen.queryByText(onlineStatusPattern)).toBeNull();
     expect(
       screen.getByRole("link", { name: clinicalSpaceName }).getAttribute("href")
     ).toBe("/comunidade/grupos/pratica-clinica");
@@ -99,8 +92,8 @@ describe("CommunityRightRail", () => {
     render(
       <CommunityRightRail
         announcements={[]}
-        memberId="ana-id"
-        profile={null}
+        avatars={[]}
+        goalCard={<div data-testid="goal-summary">Meta coletiva</div>}
         spaces={[]}
       />
     );
@@ -113,8 +106,8 @@ describe("CommunityRightRail", () => {
     render(
       <CommunityRightRail
         announcements={[]}
-        memberId="ana-id"
-        profile={null}
+        avatars={[]}
+        goalCard={<div data-testid="goal-summary">Meta coletiva</div>}
         spaces={[]}
       />
     );
@@ -147,8 +140,8 @@ describe("CommunityRightRail", () => {
             title: "Aviso sem destino seguro",
           },
         ]}
-        memberId="ana-id"
-        profile={null}
+        avatars={[]}
+        goalCard={<div data-testid="goal-summary">Meta coletiva</div>}
         spaces={[]}
       />
     );

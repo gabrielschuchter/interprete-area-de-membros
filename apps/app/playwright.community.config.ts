@@ -129,6 +129,12 @@ export default defineConfig({
       ],
       use: { ...localUse, storageState: memberStatePath },
     },
+    {
+      name: "community-goal",
+      testMatch: /community-goal\.spec\.ts$/,
+      dependencies: ["member-auth", "teacher-auth", "admin-auth"],
+      use: { ...localUse, storageState: memberStatePath },
+    },
   ],
   webServer: {
     command:

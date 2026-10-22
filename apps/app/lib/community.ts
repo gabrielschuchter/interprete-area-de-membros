@@ -1,6 +1,6 @@
 import "server-only";
 
-import { randomUUID } from "node:crypto";
+import { randomInt, randomUUID } from "node:crypto";
 import {
   type CommunityPostKind,
   ContentStatus,
@@ -206,15 +206,44 @@ export type CommunitySpaceDirectoryPage = Awaited<
 export type CommunitySpaceDirectoryItem =
   CommunitySpaceDirectoryPage["spaces"][number];
 
-export const getCommunityPresenceProfiles = (memberId: string) =>
-  tracePerformance("member.community.presence-profiles", () =>
-    database.profile.findMany({
-      where: { clerkUserId: { not: memberId } },
-      orderBy: [{ updatedAt: "desc" }, { displayName: "asc" }],
-      take: 24,
+const safeCommunityAvatarPattern = /^(?:https?:\/\/|\/(?!\/))/i;
+const communityNameInitials = (value: string) =>
+  value
+    .trim()
+    .split(wordPattern)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toLocaleUpperCase("pt-BR") || "M";
+
+export const getCommunityAvatarVisuals = () =>
+  tracePerformance("member.community.avatar-visuals", async () => {
+    const profiles = await database.profile.findMany({
+      where: {
+        showInCommunityAvatars: true,
+        member: { is: { deactivatedAt: null } },
+      },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      take: 40,
       select: { avatarUrl: true, displayName: true, username: true },
-    })
-  );
+    });
+    const shuffled = [...profiles];
+    for (let index = shuffled.length - 1; index > 0; index -= 1) {
+      const nextIndex = randomInt(index + 1);
+      [shuffled[index], shuffled[nextIndex]] = [
+        shuffled[nextIndex],
+        shuffled[index],
+      ];
+    }
+    return shuffled.map(({ avatarUrl, displayName, username }) => ({
+      avatarUrl:
+        avatarUrl && safeCommunityAvatarPattern.test(avatarUrl)
+          ? avatarUrl
+          : null,
+      initials: communityNameInitials(displayName?.trim() || username),
+    }));
+  });
 
 export const getLatestCommunityPost = async () =>
   database.communityPost.findFirst({

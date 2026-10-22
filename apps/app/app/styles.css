@@ -1345,124 +1345,25 @@
     color: var(--brand-structural);
   }
 
-  .community-presence__stack {
-    display: grid;
-    grid-template-columns: repeat(7, 32px);
-    gap: 0.5rem;
-    align-items: center;
-    min-width: 0;
-  }
-
-  .community-presence__layout {
+  .community-avatars {
     display: flex;
-    flex-direction: column;
+    flex-wrap: nowrap;
     gap: 0.5rem;
-    align-items: flex-start;
-  }
-
-  .community-presence__count {
-    display: inline-flex;
-    gap: 0.15rem;
-    align-items: center;
     min-width: 0;
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-  }
-
-  .community-presence__count-mobile {
-    display: none;
-  }
-
-  .community-presence__signal {
-    display: inline-block;
-    width: 0.42rem;
-    height: 0.42rem;
-    margin-right: 0.35rem;
-    vertical-align: 0.06em;
-    background: var(--brand-dark-amaranth);
-    border-radius: 9999px;
-  }
-
-  .community-presence__avatar {
-    position: relative;
-    z-index: 1;
-    display: block;
-    margin-left: 0;
-    outline: none;
-    border-radius: 9999px;
-  }
-
-  .community-presence__avatar:first-child {
-    margin-left: 0;
-  }
-
-  .community-presence__avatar:hover,
-  .community-presence__avatar:focus-visible {
-    z-index: 2;
-  }
-
-  .community-presence__avatar:focus-visible > :first-child {
-    outline: 3px solid color-mix(in srgb, var(--ring) 65%, transparent);
-    outline-offset: 2px;
-  }
-
-  .community-presence__tooltip {
-    position: absolute;
-    bottom: calc(100% + 0.5rem);
-    left: 50%;
-    z-index: 5;
-    visibility: hidden;
-    max-width: 12rem;
-    padding: 0.35rem 0.5rem;
     overflow: hidden;
-    font-size: 0.7rem;
-    line-height: 1.2;
-    color: var(--primary-foreground);
-    white-space: nowrap;
-    pointer-events: none;
-    background: var(--foreground);
-    border-radius: 0.2rem;
-    opacity: 0;
-    transform: translate(-50%, 0.25rem);
-    transition:
-      opacity var(--motion-duration-fast) var(--motion-ease-out),
-      transform var(--motion-duration-fast) var(--motion-ease-out),
-      visibility var(--motion-duration-fast) var(--motion-ease-out);
   }
 
-  .community-presence__avatar:hover .community-presence__tooltip,
-  .community-presence__avatar:focus-visible .community-presence__tooltip {
-    visibility: visible;
-    opacity: 1;
-    transform: translate(-50%, 0);
-  }
-
-  .community-presence__avatar:last-of-type .community-presence__tooltip {
-    right: 0;
-    left: auto;
-    transform: translate(0, 0.25rem);
-  }
-
-  .community-presence__avatar:last-of-type:hover .community-presence__tooltip,
-  .community-presence__avatar:last-of-type:focus-visible
-    .community-presence__tooltip {
-    transform: translate(0, 0);
-  }
-
-  .community-presence__more,
-  .community-presence__empty {
+  .community-avatars__item {
     display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 32px;
-    height: 32px;
-    padding: 0 0.25rem;
-    font-family: var(--font-data-family);
-    font-size: 0.68rem;
-    color: var(--muted-foreground);
-    background: var(--background);
-    border: 2px solid var(--background);
+    flex: 0 0 auto;
+    padding: 2px;
+    border: 1px solid color-mix(in srgb, var(--foreground) 18%, transparent);
     border-radius: 9999px;
+  }
+
+  .community-avatars__image {
+    width: 32px;
+    height: 32px;
   }
 
   @media (max-width: 1199px) {
@@ -1833,11 +1734,15 @@
     display: contents;
   }
 
+  .community-rail__goal {
+    order: 0;
+  }
+
   .community-rail__about {
     order: 1;
   }
 
-  .community-rail__presence {
+  .community-rail__avatars {
     order: 2;
   }
 
@@ -2081,7 +1986,7 @@
     min-height: 44px;
   }
 
-  .community-presence__avatar-image {
+  .community-avatars__image {
     width: 32px;
     height: 32px;
   }
@@ -2234,7 +2139,8 @@
         "filters"
         "composer"
         "feed"
-        "presence"
+        "goal"
+        "avatars"
         "spaces"
         "extras";
       grid-template-columns: minmax(0, 1fr);
@@ -2245,7 +2151,8 @@
       grid-template-areas:
         "hero"
         "announcements"
-        "presence"
+        "goal"
+        "avatars"
         "filters"
         "composer"
         "feed"
@@ -2270,8 +2177,12 @@
       grid-column: 1;
     }
 
-    .community-rail__presence {
-      grid-area: presence;
+    .community-rail__goal {
+      grid-area: goal;
+    }
+
+    .community-rail__avatars {
+      grid-area: avatars;
     }
 
     .community-rail__spaces {
@@ -2312,7 +2223,8 @@
 
     .community-content-grid {
       grid-template-areas:
-        "presence"
+        "goal"
+        "avatars"
         "views"
         "filters"
         "composer"
@@ -2327,7 +2239,8 @@
       grid-template-areas:
         "hero"
         "announcements"
-        "presence"
+        "goal"
+        "avatars"
         "filters"
         "composer"
         "feed"
@@ -2491,62 +2404,7 @@
       height: 48px;
     }
 
-    .community-rail__presence {
-      display: flex;
-      gap: 0.65rem;
-      align-items: center;
-      min-height: 34px;
-      padding: 0;
-      border: 0;
-    }
-
-    .community-rail__presence > h2 {
-      display: none;
-    }
-
-    .community-rail__presence > div {
-      margin: 0;
-    }
-
-    .community-presence__layout {
-      flex-direction: row;
-      gap: 0.75rem;
-      align-items: center;
-      min-width: 0;
-    }
-
-    .community-presence__stack {
-      display: flex;
-      flex-wrap: nowrap;
-      gap: 0;
-      min-width: 0;
-    }
-
-    .community-presence__avatar {
-      margin-left: -0.45rem;
-    }
-
-    .community-presence__avatar:first-child {
-      margin-left: 0;
-    }
-
-    .community-presence__more {
-      display: none;
-    }
-
-    .community-presence__count {
-      white-space: nowrap;
-    }
-
-    .community-presence__count-desktop {
-      display: none;
-    }
-
-    .community-presence__count-mobile {
-      display: inline;
-    }
-
-    .community-presence__avatar-image {
+    .community-avatars__image {
       width: 28px;
       height: 28px;
     }
@@ -4202,10 +4060,11 @@ html[data-shell-fallback][data-shell-arrival="return"] .member-route-page {
     grid-template-areas:
       "hero hero"
       "announcements announcements"
-      "presence presence"
       "filters filters"
       "composer composer"
       "feed feed"
+      "goal goal"
+      "avatars avatars"
       "spaces notices"
       "spaces about";
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -4245,6 +4104,27 @@ html[data-shell-fallback][data-shell-arrival="return"] .member-route-page {
   .community-hero,
   .community-hero__copy {
     min-height: 14.5rem;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 900px) {
+  .community-feed-nav {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 0.5rem;
+  }
+
+  .community-feed-nav__search,
+  .community-feed-nav__select-wrap--group {
+    grid-column: 1 / -1;
+  }
+
+  .community-feed-nav__search input,
+  .community-feed-nav__select-wrap select {
+    height: 48px;
+  }
+
+  .community-feed-nav__select-wrap select {
+    padding-right: 2rem;
   }
 }
 

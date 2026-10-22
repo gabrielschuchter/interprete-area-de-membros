@@ -82,6 +82,7 @@ const profileSchema = z.object({
   linkedin: optionalUrl(300),
   interests: z.string().trim().max(500),
   showInDirectory: z.boolean(),
+  showInCommunityAvatars: z.boolean(),
 });
 
 export interface ProfileUpdateState {
@@ -126,6 +127,8 @@ export const updateProfile = async (
     linkedin: value(formData, "linkedin"),
     interests: value(formData, "interests"),
     showInDirectory: value(formData, "showInDirectory") === "true",
+    showInCommunityAvatars:
+      value(formData, "showInCommunityAvatars") === "true",
   });
 
   if (!(parsed.success && isValidUsername(parsed.data.username))) {
@@ -173,6 +176,7 @@ export const updateProfile = async (
         data: {
           username: parsed.data.username,
           showInDirectory: parsed.data.showInDirectory,
+          showInCommunityAvatars: parsed.data.showInCommunityAvatars,
           avatarUrl: parsed.data.avatarUrl,
           displayName: parsed.data.displayName,
           headline: parsed.data.headline,
@@ -219,6 +223,7 @@ export const updateProfile = async (
   }
 
   revalidatePath("/perfil");
+  revalidatePath("/comunidade");
   revalidatePath("/membros");
   revalidatePath(`/membros/${existing.username}`);
   revalidatePath(`/membros/${parsed.data.username}`);

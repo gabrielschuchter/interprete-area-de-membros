@@ -4,6 +4,7 @@ import { ArrowRightIcon } from "lucide-react";
 import { cache, Suspense } from "react";
 import { IntentLink } from "@/app/(authenticated)/components/intent-link";
 import { CommunityAnnouncementFeed } from "@/components/community/community-announcement-feed";
+import { CommunityCollectiveGoalCard } from "@/components/community/community-collective-goal-card";
 import { CommunityComposerPrompt } from "@/components/community/community-composer-prompt";
 import { CommunityEmptyState } from "@/components/community/community-empty-state";
 import { CommunityFeedCard } from "@/components/community/community-feed-card";
@@ -14,19 +15,20 @@ import {
 } from "@/components/community/community-navigation";
 import { CommunityRightRail } from "@/components/community/community-right-rail";
 import { Stagger } from "@/components/motion/motion";
+import { getMemberRole } from "@/lib/authorization";
 import {
+  getCommunityAvatarVisuals,
   getCommunityFeed,
-  getCommunityPresenceProfiles,
   getCommunitySpaces,
 } from "@/lib/community";
 import { getCommunityAnnouncements } from "@/lib/community-announcements";
+import { getCommunityGoalSummary } from "@/lib/community-goal";
 import {
   communityHref,
   parseCommunityKind,
   parseCommunitySort,
 } from "@/lib/community-query";
 import { requireMemberId } from "@/lib/learning";
-import { getOrCreateProfile } from "@/lib/profile";
 
 const getPageCommunitySpaces = cache((memberId: string) =>
   getCommunitySpaces(memberId)
@@ -40,28 +42,61 @@ const CommunityRightRailData = async ({
 }: {
   readonly memberId: string;
 }) => {
-  const [spaces, profile, announcements, presenceProfiles] =
-    await tracePerformance("member.route.community.secondary-data", () =>
+  const [spaces, announcements, avatars] = await tracePerformance(
+    "member.route.community.secondary-data",
+    () =>
       Promise.all([
         getPageCommunitySpaces(memberId),
-        getOrCreateProfile(memberId),
         getPageCommunityAnnouncements(memberId),
-        getCommunityPresenceProfiles(memberId),
+        getCommunityAvatarVisuals(),
       ])
-    );
+  );
 
   return (
     <CommunityRightRail
       announcements={announcements
         .filter(({ isImportant }) => !isImportant)
         .slice(0, 3)}
-      memberId={memberId}
-      presenceProfiles={presenceProfiles}
-      profile={profile}
+      avatars={avatars}
+      goalCard={
+        <Suspense fallback={<CommunityGoalCardFallback />}>
+          <CommunityGoalData memberId={memberId} />
+        </Suspense>
+      }
       spaces={spaces}
     />
   );
 };
+
+const CommunityGoalData = async ({
+  memberId,
+}: {
+  readonly memberId: string;
+}) => {
+  const [goal, role] = await Promise.all([
+    getCommunityGoalSummary(),
+    getMemberRole(memberId),
+  ]);
+  return (
+    <CommunityCollectiveGoalCard
+      canManage={role === "ADMIN" || role === "TEACHER"}
+      goal={goal}
+    />
+  );
+};
+
+const CommunityGoalCardFallback = () => (
+  <section
+    aria-busy="true"
+    aria-label="Carregando meta coletiva"
+    className="community-rail__block community-rail__goal rounded-xl border p-4"
+  >
+    <span className="sr-only">Carregando meta coletiva</span>
+    <div className="h-3 w-32 rounded-sm bg-muted" />
+    <div className="mt-4 h-7 w-40 rounded-sm bg-muted" />
+    <div className="mt-4 h-2 rounded-full bg-muted" />
+  </section>
+);
 
 const CommunityFeedNavigationData = async ({
   kind,
@@ -212,6 +247,11 @@ const CommunityRightRailFallback = () => (
     aria-label="Carregando contexto da comunidade"
     className="community-right-rail h-fit space-y-6"
   >
+    <div className="community-rail__block space-y-3">
+      <span className="sr-only">Carregando meta coletiva</span>
+      <div className="h-3 w-32 rounded-sm bg-muted" />
+      <div className="h-12 w-full rounded-sm bg-muted" />
+    </div>
     <div className="community-rail__block space-y-3">
       <span className="sr-only">Carregando contexto da comunidade</span>
       <div className="h-3 w-32 animate-pulse rounded-sm bg-muted" />

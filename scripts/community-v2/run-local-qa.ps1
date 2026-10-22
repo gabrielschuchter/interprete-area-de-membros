@@ -1,5 +1,5 @@
 param(
-  [ValidateSet("full", "admin-recovery", "admin-pin", "member-recovery", "storage-cover", "discussion", "groups", "invitations", "shares", "announcements")]
+  [ValidateSet("full", "admin-recovery", "admin-pin", "member-recovery", "storage-cover", "discussion", "groups", "invitations", "shares", "announcements", "goal")]
   [string]$Suite = "full",
   [string]$RunId,
   [string]$TestFilter
@@ -53,7 +53,7 @@ $teacher = $ledger.accounts | Where-Object role -eq "TEACHER" | Select-Object -F
 if (!($member -and $admin -and $member.email -and $admin.email)) {
   throw "The existing Clerk Development member/admin identities are unavailable."
 }
-if ($Suite -in @("groups", "invitations", "shares", "announcements", "full") -and !($secondaryMember -and $teacher -and $secondaryMember.email -and $teacher.email)) {
+if ($Suite -in @("groups", "invitations", "shares", "announcements", "goal", "full") -and !($secondaryMember -and $teacher -and $secondaryMember.email -and $teacher.email)) {
   throw "The existing second MEMBER and TEACHER Clerk Development identities are required for group authorization QA."
 }
 
@@ -304,7 +304,7 @@ try {
 
   Push-Location (Join-Path $repoRoot "apps\app")
   try {
-    if ($Suite -in @("invitations", "shares", "announcements", "full")) {
+    if ($Suite -in @("invitations", "shares", "announcements", "goal", "full")) {
       Push-Location $repoRoot
       try {
         if ($Suite -eq "announcements") {
@@ -379,6 +379,8 @@ SELECT
         "community-shares"
       } elseif ($Suite -eq "announcements") {
         "community-announcements"
+      } elseif ($Suite -eq "goal") {
+        "community-goal"
       } elseif ($Suite -eq "admin-recovery" -or $Suite -eq "admin-pin") {
         "community-admin-recovery"
       } else {

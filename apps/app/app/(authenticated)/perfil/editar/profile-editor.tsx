@@ -33,6 +33,7 @@ export interface ProfileEditorValues {
   readonly interests: string[];
   readonly linkedin: string | null;
   readonly occupation: string | null;
+  readonly showInCommunityAvatars: boolean;
   readonly showInDirectory: boolean;
   readonly state: string | null;
   readonly username: string;
@@ -96,6 +97,7 @@ const ProfileEditor = ({
     linkedin: profile.linkedin ?? "",
     occupation: profile.occupation ?? "",
     showInDirectory: profile.showInDirectory,
+    showInCommunityAvatars: profile.showInCommunityAvatars,
     state: profile.state ?? "",
     username: profile.username,
     website: profile.website ?? "",

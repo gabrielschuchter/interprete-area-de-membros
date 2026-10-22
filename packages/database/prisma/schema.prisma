@@ -142,6 +142,11 @@ enum StudyGoalPeriod {
   MONTHLY
 }
 
+enum StudyCampaignRenewalMode {
+  AUTOMATIC
+  MANUAL
+}
+
 enum LearningTaskRecurrence {
   ONCE
   DAILY
@@ -490,6 +495,7 @@ model Profile {
   clerkUserId     String   @unique
   username        String   @unique
   showInDirectory Boolean  @default(true)
+  showInCommunityAvatars Boolean  @default(true)
   displayName     String?
   avatarUrl       String?
   headline        String?
@@ -2154,6 +2160,7 @@ model StudyActivityInterval {
 
   @@unique([sessionId, sequence])
   @@index([memberId, startedAt])
+  @@index([startedAt])
   @@index([memberId, isPlayback, startedAt])
 }
 
@@ -2528,13 +2535,30 @@ model StudyCampaign {
   targetMinutes     Int
   startsAt          DateTime
   endsAt            DateTime
+  renewalMode       StudyCampaignRenewalMode @default(MANUAL)
   publishedAt       DateTime?
   archivedAt        DateTime?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
   createdBy         Member?   @relation("StudyCampaignCreator", fields: [createdByMemberId], references: [id], onDelete: SetNull)
+  snapshots         StudyCampaignSnapshot[]
 
   @@index([publishedAt, archivedAt, startsAt, endsAt])
+}
+
+model StudyCampaignSnapshot {
+  id             String              @id @default(cuid())
+  campaignId     String
+  periodStartsAt DateTime
+  periodEndsAt   DateTime
+  targetMinutes  Int
+  totalSeconds   BigInt
+  sourceKinds    StudyActivityKind[] @default([])
+  snapshottedAt  DateTime            @default(now())
+  campaign       StudyCampaign       @relation(fields: [campaignId], references: [id], onDelete: Restrict)
+
+  @@unique([campaignId, periodStartsAt, periodEndsAt])
+  @@index([campaignId, snapshottedAt])
 }
 
 model BadgeDefinition {

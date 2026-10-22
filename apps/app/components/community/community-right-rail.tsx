@@ -1,12 +1,11 @@
 import { Button } from "@repo/design-system/components/ui/button";
 import { ArrowRightIcon, PlusIcon } from "lucide-react";
+import type { ReactNode } from "react";
 import { IntentLink } from "@/app/(authenticated)/components/intent-link";
 import { CommunityAnnouncementDismissButton } from "./community-announcement-dismiss-button";
+import type { CommunityAvatarVisual } from "./community-avatars";
+import { CommunityAvatars } from "./community-avatars";
 import { CommunityDisclosure } from "./community-disclosure";
-import {
-  CommunityPresence,
-  type CommunityPresenceProfile,
-} from "./community-presence";
 
 interface CommunitySpaceSummary {
   readonly _count: { readonly posts: number };
@@ -27,9 +26,8 @@ interface CommunityAnnouncementSummary {
 
 interface CommunityRightRailProperties {
   readonly announcements: readonly CommunityAnnouncementSummary[];
-  readonly memberId: string;
-  readonly presenceProfiles?: readonly CommunityPresenceProfile[];
-  readonly profile: CommunityPresenceProfile | null;
+  readonly avatars: readonly CommunityAvatarVisual[];
+  readonly goalCard: ReactNode;
   readonly spaces: readonly CommunitySpaceSummary[];
 }
 
@@ -69,12 +67,13 @@ const AnnouncementContent = ({
 
 export const CommunityRightRail = ({
   announcements,
-  memberId,
-  profile,
-  presenceProfiles,
+  avatars,
+  goalCard,
   spaces,
 }: CommunityRightRailProperties) => (
   <aside aria-label="Contexto da comunidade" className="community-right-rail">
+    {goalCard}
+
     <CommunityDisclosure
       className="community-rail__context--about"
       defaultExpanded
@@ -111,17 +110,13 @@ export const CommunityRightRail = ({
     </CommunityDisclosure>
 
     <section
-      aria-labelledby="community-presence-heading"
-      className="community-rail__block community-rail__presence"
+      aria-labelledby="community-avatars-heading"
+      className="community-rail__block community-rail__avatars"
     >
-      <h2 className="brand-eyebrow" id="community-presence-heading">
-        Ativo agora
+      <h2 className="brand-eyebrow" id="community-avatars-heading">
+        Pessoas da comunidade
       </h2>
-      <CommunityPresence
-        fallbackProfiles={presenceProfiles}
-        memberId={memberId}
-        profile={profile}
-      />
+      <CommunityAvatars avatars={avatars} />
     </section>
 
     <section
