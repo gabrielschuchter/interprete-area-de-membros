@@ -395,6 +395,7 @@ export const getPublishedCourse = async (
         title: true,
         slug: true,
         experience: true,
+        coverUrl: true,
         description: true,
         learningPath: {
           select: { title: true, slug: true },
