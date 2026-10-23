@@ -17,13 +17,17 @@ import {
   type ReactNode,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
-import { setRoomLessonCompleted } from "@/app/(authenticated)/cursos/room-actions";
+import {
+  setRoomLessonCompleted,
+  setRoomRecordingCompleted,
+} from "@/app/(authenticated)/cursos/room-actions";
 import type { RoomLessonData, RoomMaterial } from "@/lib/room";
 import { type RoomOutlineItem, withLessonCompleted } from "@/lib/room-outline";
-import { roomText } from "./room-copy";
+import { type RoomKind, roomText, roomTextFor } from "./room-copy";
 import { RoomLessonsPanel } from "./room-lessons-panel";
 import { type RoomPanelKey, useRoomPanel } from "./room-panel-context";
 import { RoomPlayer, type RoomPlayerControls } from "./room-player";
@@ -54,17 +58,17 @@ interface RoomViewProperties {
 
 const COLLAPSIBLE_DESCRIPTION = 240;
 
-const panelTitles: Record<RoomPanelKey, string> = {
-  aulas: roomText("aulasTitle"),
-  notas: roomText("notesTitle"),
+const panelTitlesFor = (kind: RoomKind): Record<RoomPanelKey, string> => ({
+  aulas: roomTextFor(kind, "aulasTitle"),
+  notas: roomTextFor(kind, "notesTitle"),
   tempo: roomText("dockTempo"),
-};
+});
 
-const dockLabels: Record<RoomPanelKey, string> = {
-  aulas: roomText("dockAulas"),
+const dockLabelsFor = (kind: RoomKind): Record<RoomPanelKey, string> => ({
+  aulas: roomTextFor(kind, "dockAulas"),
   notas: roomText("dockNotas"),
   tempo: roomText("dockTempo"),
-};
+});
 
 const materialIcon = (kind: RoomMaterial["kind"]) => {
   if (kind === "activity") {
@@ -117,9 +121,11 @@ const MaterialRow = ({ material }: { readonly material: RoomMaterial }) => {
 const About = ({
   description,
   document,
+  kind,
 }: {
   readonly description: string | null;
   readonly document: ReactNode;
+  readonly kind: RoomKind;
 }) => {
   const [collapsed, setCollapsed] = useState(true);
   if (!(description || document)) {
@@ -134,7 +140,7 @@ const About = ({
       data-collapsed={collapsible && collapsed ? "true" : undefined}
     >
       <h2 className="room__h2" id="room-about">
-        {roomText("about")}
+        {roomTextFor(kind, "about")}
       </h2>
       {description ? <p className="room__about-text">{description}</p> : null}
       {document}
@@ -168,7 +174,12 @@ export const RoomView = ({
   const currentIndex = allItems.findIndex(({ isCurrent }) => isCurrent);
   const previousHref =
     currentIndex > 0 ? (allItems[currentIndex - 1]?.href ?? null) : null;
-  const courseHref = `/cursos/${room.course.slug}`;
+  const { kind } = room;
+  const panelTitles = useMemo(() => panelTitlesFor(kind), [kind]);
+  const notesTitle = panelTitles.notas;
+  const dockLabels = dockLabelsFor(kind);
+  const courseHref =
+    kind === "recording" ? room.back.href : `/cursos/${room.course.slug}`;
 
   const openPanel = (key: RoomPanelKey, trigger: HTMLButtonElement) => {
     if (panel === key) {
@@ -201,11 +212,11 @@ export const RoomView = ({
       }
       event.preventDefault();
       setPanel("notas");
-      setAnnouncement(roomText("panelOpened", { nome: panelTitles.notas }));
+      setAnnouncement(roomText("panelOpened", { nome: notesTitle }));
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [setPanel]);
+  }, [notesTitle, setPanel]);
 
   useEffect(() => {
     if (!panel) {
@@ -225,12 +236,16 @@ export const RoomView = ({
     const before = outline;
     setOutline(withLessonCompleted(outline, item.id, completed));
     setPending((current) => new Set(current).add(item.id));
-    setRoomLessonCompleted({ completed, lessonId: item.id })
+    const save =
+      kind === "recording"
+        ? setRoomRecordingCompleted({ assetId: item.id, completed })
+        : setRoomLessonCompleted({ completed, lessonId: item.id });
+    save
       .then((result) => {
         if (!result.ok) {
           throw new Error(result.message);
         }
-        setAnnouncement(roomText(completed ? "marked" : "unmarked"));
+        setAnnouncement(roomTextFor(kind, completed ? "marked" : "unmarked"));
       })
       .catch(() => {
         setOutline(before);
@@ -283,11 +298,12 @@ export const RoomView = ({
           <header className="room__head">
             <h1 className="room__title">{room.title}</h1>
             <p className="room__subtitle">
-              {roomText("subtitle", {
-                curso: room.course.title,
-                modulo: room.module.title,
-                n: moduleNumber,
-              })}
+              {room.subtitle ??
+                roomText("subtitle", {
+                  curso: room.course.title,
+                  modulo: room.module.title,
+                  n: moduleNumber,
+                })}
             </p>
           </header>
           <div aria-hidden="true" className="room__meander" />
@@ -296,6 +312,7 @@ export const RoomView = ({
             courseHref={courseHref}
             hasMaterials={room.materials.length > 0}
             initialState={room.initialPlayerState}
+            kind={kind}
             lessonId={room.id}
             onShowMaterials={showMaterials}
             position={room.position}
@@ -308,7 +325,11 @@ export const RoomView = ({
           <div className="room__body">
             <div className="room__read">
               {room.locked ? null : (
-                <About description={room.description} document={document} />
+                <About
+                  description={room.description}
+                  document={document}
+                  kind={kind}
+                />
               )}
               {room.materials.length > 0 ? (
                 <section
@@ -380,6 +401,7 @@ export const RoomView = ({
             {panel === "aulas" ? (
               <RoomLessonsPanel
                 courseTitle={room.course.title}
+                kind={kind}
                 onToggle={toggleLesson}
                 outline={outline}
                 pending={pending}
@@ -388,12 +410,12 @@ export const RoomView = ({
             {panel === "notas" && !room.locked ? (
               <RoomNotesPanel
                 controlsRef={controlsRef}
-                lessonId={room.id}
+                lessonId={room.linkId}
                 onAnnounce={setAnnouncement}
               />
             ) : null}
             {panel === "tempo" && !room.locked ? (
-              <RoomTimePanel lessonId={room.id} />
+              <RoomTimePanel lessonId={room.linkId} />
             ) : null}
           </aside>
         </>

@@ -28,7 +28,7 @@ const publishedCourse = {
   OR: [{ learningPathId: null }, { learningPath: { is: published } }],
 };
 
-const videoAssetSelect = {
+export const videoAssetSelect = {
   id: true,
   title: true,
   kind: true,
@@ -76,6 +76,10 @@ export interface RoomLessonData {
   readonly description: string | null;
   readonly id: string;
   readonly initialPlayerState: InitialPlayerState;
+  readonly kind: "lesson" | "recording";
+  // Lesson that notes, the timer and study sessions link to. For recordings
+  // it is the lesson that backs the imported recording.
+  readonly linkId: string;
   readonly locked: boolean;
   readonly materials: readonly RoomMaterial[];
   readonly module: { readonly id: string; readonly title: string };
@@ -87,6 +91,8 @@ export interface RoomLessonData {
   readonly releasesAt: Date | null;
   readonly slug: string;
   readonly startAtSeconds: number | null;
+  // Replaces the course and module line when set (recordings).
+  readonly subtitle: string | null;
   readonly title: string;
   readonly video: RoomVideoAsset | null;
 }
@@ -123,7 +129,7 @@ const safeResourceUrl = (value: string) => {
   }
 };
 
-const toRoomVideo = (
+export const toRoomVideo = (
   asset: {
     readonly durationSeconds: number | null;
     readonly externalUrl: string | null;
@@ -362,9 +368,12 @@ export const getRoomLesson = async ({
     completed: current?.completed ?? false,
     course,
     id: target.id,
+    kind: "lesson" as const,
+    linkId: target.id,
     module: { id: target.module.id, title: target.module.title },
     outline,
     slug: target.slug,
+    subtitle: null,
     title: target.title,
   };
 

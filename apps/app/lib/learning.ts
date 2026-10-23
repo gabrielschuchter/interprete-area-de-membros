@@ -23,6 +23,7 @@ import {
 } from "./content-access";
 import { markLearningAssignmentStarted } from "./learning-assignments";
 import { calculateLearningProgress } from "./learning-progress";
+import { getMemberAccessibleRecordingLesson } from "./recordings";
 
 export const requireMemberId = requireSession;
 
@@ -240,7 +241,11 @@ export const getMemberAccessibleLesson = async (
       },
     }),
   ]);
-  if (!(lesson && hasCourseAccess(scope, lesson.module.course.id))) {
+  if (!lesson) {
+    // Imported recordings live in archive courses, outside the async catalog.
+    return getMemberAccessibleRecordingLesson(memberId, lessonId);
+  }
+  if (!hasCourseAccess(scope, lesson.module.course.id)) {
     return null;
   }
   if (

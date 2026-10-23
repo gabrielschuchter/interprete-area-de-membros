@@ -7,6 +7,8 @@ export interface RoomOutlineLessonInput {
   readonly durationSeconds: number | null;
   readonly href: string;
   readonly id: string;
+  // Replaces the ordinal on the thumbnail (recordings show their date).
+  readonly label?: string | null;
   readonly positionSeconds: number;
   readonly releasesAt: Date | null;
   readonly title: string;
@@ -33,6 +35,7 @@ export interface RoomOutlineItem {
   readonly id: string;
   readonly inProgressPercent: number | null;
   readonly isCurrent: boolean;
+  readonly label: string | null;
   readonly locked: boolean;
   readonly ordinal: number;
   readonly releasesAt: Date | null;
@@ -120,6 +123,7 @@ export const buildRoomOutline = ({
           lesson.durationSeconds
         ),
         isCurrent,
+        label: lesson.label ?? null,
         locked,
         ordinal,
         releasesAt: lesson.releasesAt,

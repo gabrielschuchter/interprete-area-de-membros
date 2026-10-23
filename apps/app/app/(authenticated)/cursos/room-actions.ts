@@ -8,6 +8,7 @@ import {
   reopenLessonForMember,
 } from "@/lib/lesson-completion";
 import { mutationLog } from "@/lib/mutation-reliability";
+import { setRecordingCompletion } from "@/lib/room-recording";
 
 const setCompletedInput = z.object({
   completed: z.boolean(),
@@ -30,6 +31,27 @@ export const setRoomLessonCompleted = async (
   return completed
     ? completeLessonForMember(userId, lessonId)
     : reopenLessonForMember(userId, lessonId);
+};
+
+// Same contract as setRoomLessonCompleted, for the recording room.
+export const setRoomRecordingCompleted = async (
+  input: unknown
+): Promise<LessonCompletionResult> => {
+  const parsed = z
+    .object({ assetId: z.string().min(1).max(64), completed: z.boolean() })
+    .safeParse(input);
+  if (!parsed.success) {
+    return { message: "Não foi possível identificar a gravação.", ok: false };
+  }
+  const { userId } = await auth();
+  if (!userId) {
+    return { message: "Sua sessão expirou. Entre novamente.", ok: false };
+  }
+  return setRecordingCompletion(
+    userId,
+    parsed.data.assetId,
+    parsed.data.completed
+  );
 };
 
 const videoIssueInput = z.object({

@@ -31,7 +31,12 @@ import {
   type YouTubePlayerInstance,
 } from "../youtube-iframe-api";
 import { RoomTemple } from "./room-art";
-import { roomReleaseDate, roomText } from "./room-copy";
+import {
+  type RoomKind,
+  roomReleaseDate,
+  roomText,
+  roomTextFor,
+} from "./room-copy";
 
 const LessonPlayer = dynamic(
   () => import("../lesson-player").then((module) => module.LessonPlayer),
@@ -67,6 +72,7 @@ interface RoomPlayerProperties {
   readonly courseHref: string;
   readonly hasMaterials: boolean;
   readonly initialState: InitialPlayerState;
+  readonly kind: RoomKind;
   readonly lessonId: string;
   readonly onShowMaterials: () => void;
   readonly position: {
@@ -357,6 +363,7 @@ const PosterLayer = ({
 const BlockedLayer = ({
   courseHref,
   hasMaterials,
+  kind,
   onRetry,
   onShowMaterials,
   previousHref,
@@ -365,6 +372,7 @@ const BlockedLayer = ({
 }: {
   readonly courseHref: string;
   readonly hasMaterials: boolean;
+  readonly kind: RoomKind;
   readonly onRetry: () => void;
   readonly onShowMaterials: () => void;
   readonly previousHref: string | null;
@@ -421,9 +429,9 @@ const BlockedLayer = ({
     ),
     no_video: (
       <StateCard
-        body={roomText("noVideoBody")}
+        body={roomTextFor(kind, "noVideoBody")}
         icon={<VideoOffIcon aria-hidden="true" size={30} />}
-        title={roomText("noVideoTitle")}
+        title={roomTextFor(kind, "noVideoTitle")}
       />
     ),
     locked: (
@@ -461,6 +469,7 @@ export const RoomPlayer = ({
   courseHref,
   hasMaterials,
   initialState,
+  kind,
   lessonId,
   onShowMaterials,
   position,
@@ -591,7 +600,7 @@ export const RoomPlayer = ({
       {active && isYouTube ? (
         <>
           <StudyHeartbeat
-            activityKind="LESSON"
+            activityKind={kind === "recording" ? "RECORDING" : "LESSON"}
             playbackActive={playing}
             resourceId={lessonId}
           />
@@ -615,6 +624,7 @@ export const RoomPlayer = ({
       <BlockedLayer
         courseHref={courseHref}
         hasMaterials={hasMaterials}
+        kind={kind}
         onRetry={retry}
         onShowMaterials={onShowMaterials}
         previousHref={previousHref}

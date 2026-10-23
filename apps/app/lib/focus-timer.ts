@@ -11,6 +11,7 @@ import {
 import { z } from "zod";
 import { defaultTimerSettings } from "./focus-timer-settings";
 import { getPublishedLearningPaths } from "./learning";
+import { getMemberAccessibleRecordingLesson } from "./recordings";
 
 const DEFAULT_TIMEZONE = "America/Sao_Paulo";
 const preferencesSchema = z.object({
@@ -431,6 +432,16 @@ export const getFocusTimerLinkResources = async (memberId: string) => {
   );
 };
 
+// Course lessons come from the member's learning paths; imported recordings
+// link through their backing lesson.
+const isLinkableLesson = async (memberId: string, lessonId: string) => {
+  const resources = await getFocusTimerLinkResources(memberId);
+  return (
+    resources.some((resource) => resource.id === lessonId) ||
+    (await getMemberAccessibleRecordingLesson(memberId, lessonId)) !== null
+  );
+};
+
 export const getFocusTimerState = (memberId: string) => {
   return database.$transaction(async (transaction) => {
     const now = new Date();
@@ -716,13 +727,11 @@ export const startFocusTimer = async (
     })
     .parse(input);
   await ensureTimerDefaults(memberId);
-  if (parsed.linkedResourceId) {
-    const resources = await getFocusTimerLinkResources(memberId);
-    if (
-      !resources.some((resource) => resource.id === parsed.linkedResourceId)
-    ) {
-      throw new Error("A aula vinculada não está disponível para esta conta.");
-    }
+  if (
+    parsed.linkedResourceId &&
+    !(await isLinkableLesson(memberId, parsed.linkedResourceId))
+  ) {
+    throw new Error("A aula vinculada não está disponível para esta conta.");
   }
   const preferences = await database.plannerPreferences.findUniqueOrThrow({
     where: { memberId },
@@ -937,11 +946,8 @@ export const linkFocusTimer = async (
     .max(255)
     .nullable()
     .parse(linkedResourceId);
-  if (resourceId) {
-    const resources = await getFocusTimerLinkResources(memberId);
-    if (!resources.some((resource) => resource.id === resourceId)) {
-      throw new Error("A aula vinculada não está disponível para esta conta.");
-    }
+  if (resourceId && !(await isLinkableLesson(memberId, resourceId))) {
+    throw new Error("A aula vinculada não está disponível para esta conta.");
   }
   const result = await database.focusTimerSession.updateMany({
     where: { memberId, endedAt: null },
@@ -1061,8 +1067,7 @@ const checkedLessonLink = async (
   if (!resourceId) {
     return null;
   }
-  const resources = await getFocusTimerLinkResources(memberId);
-  if (!resources.some((resource) => resource.id === resourceId)) {
+  if (!(await isLinkableLesson(memberId, resourceId))) {
     throw new Error("A aula vinculada não está disponível para esta conta.");
   }
   return resourceId;

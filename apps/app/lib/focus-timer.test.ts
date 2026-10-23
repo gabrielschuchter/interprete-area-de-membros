@@ -31,6 +31,10 @@ vi.mock("@repo/database", () => ({
 vi.mock("./learning", () => ({
   getPublishedLearningPaths: vi.fn().mockResolvedValue([]),
 }));
+const recordingLesson = vi.hoisted(() => vi.fn());
+vi.mock("./recordings", () => ({
+  getMemberAccessibleRecordingLesson: recordingLesson,
+}));
 
 import {
   addManualFocusTimerSession,
@@ -121,5 +125,36 @@ describe("manual focus timer history", () => {
       })
     ).rejects.toThrow("Uma sessão manual não pode conter horário futuro.");
     expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+});
+
+describe("links to the lesson behind a recording", () => {
+  const pastSession = {
+    elapsedSeconds: 60,
+    linkedResourceId: "lesson_recording",
+    startedAt: new Date(Date.now() - 600_000).toISOString(),
+  };
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.transaction.mockRejectedValue(new Error("reached the write"));
+  });
+
+  test("rejects a lesson that is neither in a path nor a visible recording", async () => {
+    recordingLesson.mockResolvedValue(null);
+    await expect(
+      addManualFocusTimerSession("member_1", pastSession)
+    ).rejects.toThrow("A aula vinculada não está disponível para esta conta.");
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  test("accepts the lesson of a recording the member can see", async () => {
+    recordingLesson.mockResolvedValue({ id: "lesson_recording" });
+    await expect(
+      addManualFocusTimerSession("member_1", pastSession)
+    ).rejects.toThrow("reached the write");
+    expect(recordingLesson).toHaveBeenCalledWith(
+      "member_1",
+      "lesson_recording"
+    );
   });
 });

@@ -1,7 +1,11 @@
 import { Button } from "@repo/design-system/components/ui/button";
 import { ArrowRightIcon } from "lucide-react";
 import Link from "next/link";
-import { recordingArchiveHref } from "@/lib/recording-navigation";
+import { env } from "@/env";
+import {
+  recordingArchiveHref,
+  roomRecordingHref,
+} from "@/lib/recording-navigation";
 import { resolveYoutubePlayback } from "@/lib/youtube-video";
 
 interface RecordingArchiveActionProperties {
@@ -18,6 +22,17 @@ export const RecordingArchiveAction = ({
   mediaProvider,
 }: RecordingArchiveActionProperties) => {
   const playback = resolveYoutubePlayback(mediaProvider, mediaExternalId);
+  // With the room on, every video opens in the room, including the ones
+  // without a source yet, which the room explains instead of hiding.
+  if (isVideo && env.ROOM_V2_ENABLED === "true") {
+    return (
+      <Button asChild className="mt-6" size="sm" variant="outline">
+        <Link href={roomRecordingHref(assetId)}>
+          Abrir gravação <ArrowRightIcon aria-hidden="true" />
+        </Link>
+      </Button>
+    );
+  }
   if (isVideo && playback.kind === "pending") {
     return (
       <output
