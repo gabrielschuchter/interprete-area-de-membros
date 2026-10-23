@@ -1,0 +1,51 @@
+{
+  "checkedAt": "2026-10-23T19:38:46.865Z",
+  "kind": "Targeted workflow harness; curl is stubbed, not scheduler or recovery proof",
+  "yamlParsed": true,
+  "bashSyntax": true,
+  "unchangedScheduleAndSecurityContract": true,
+  "tests": [
+    {
+      "case": "http-200",
+      "pass": true,
+      "exit": 0,
+      "diagnostic": "OPS-01 oidc_claims={\"aud\": true, \"environment\": true, \"event_name\": true, \"iss\": true, \"not_expired\": true, \"ref\": true, \"repository\": true, \"sub\": true, \"workflow_ref\": true}\nOPS-01 phase=preview_response curl_exit=0 http_status=200\nPreview outbox request completed with HTTP 200.\nOPS-01 phase=complete exit=0"
+    },
+    {
+      "case": "sso-302",
+      "pass": true,
+      "exit": 1,
+      "diagnostic": "OPS-01 oidc_claims={\"aud\": true, \"environment\": true, \"event_name\": true, \"iss\": true, \"not_expired\": true, \"ref\": true, \"repository\": true, \"sub\": true, \"workflow_ref\": true}\nOPS-01 phase=preview_response curl_exit=0 http_status=302\nOPS-01 phase=preview_request exit=1"
+    },
+    {
+      "case": "route-401",
+      "pass": true,
+      "exit": 1,
+      "diagnostic": "OPS-01 oidc_claims={\"aud\": true, \"environment\": true, \"event_name\": true, \"iss\": true, \"not_expired\": true, \"ref\": true, \"repository\": true, \"sub\": true, \"workflow_ref\": true}\nOPS-01 phase=preview_response curl_exit=22 http_status=401\nOPS-01 phase=preview_request exit=1"
+    },
+    {
+      "case": "curl-timeout",
+      "pass": true,
+      "exit": 1,
+      "diagnostic": "OPS-01 oidc_claims={\"aud\": true, \"environment\": true, \"event_name\": true, \"iss\": true, \"not_expired\": true, \"ref\": true, \"repository\": true, \"sub\": true, \"workflow_ref\": true}\nOPS-01 phase=preview_response curl_exit=28 http_status=000\nOPS-01 phase=preview_request exit=1"
+    },
+    {
+      "case": "missing-environment",
+      "pass": true,
+      "exit": 1,
+      "diagnostic": "OPS-01 oidc_claims={\"aud\": true, \"environment\": false, \"event_name\": true, \"iss\": true, \"not_expired\": true, \"ref\": true, \"repository\": true, \"sub\": true, \"workflow_ref\": true}\nOPS-01 phase=oidc_claims exit=1"
+    },
+    {
+      "case": "expired-token",
+      "pass": true,
+      "exit": 1,
+      "diagnostic": "OPS-01 oidc_claims={\"aud\": true, \"environment\": true, \"event_name\": true, \"iss\": true, \"not_expired\": false, \"ref\": true, \"repository\": true, \"sub\": true, \"workflow_ref\": true}\nOPS-01 phase=oidc_claims exit=1"
+    },
+    {
+      "case": "wrong-ref",
+      "pass": true,
+      "exit": 1,
+      "diagnostic": "OPS-01 phase=ref_guard exit=1"
+    }
+  ]
+}

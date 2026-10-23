@@ -1,5 +1,12 @@
 # Comunidade V2 — RELEASE-PLAN — Etapa 12A
 
+> Atualização exclusiva de OPS-01: acesso Vercel via navegador comprovado;
+> credencial local expirada, integração indisponível nesta sessão. Patch de
+> diagnóstico no PR draft #16, sem ativação em main ou prova de recovery.
+> **OPS-01 continua BLOQUEADO e o release NO-GO.** Ver [OPS-01.md](OPS-01.md).
+> O restante deste preflight permanece no snapshot original.
+
+
 **Preflight fechado em 23/10/2026: NO-GO para a Etapa 12B de publicação.**
 Branch `codex/comunidade-v2`; candidato de produto
 `4e026b59eb99521ed1c6b94c8444a52049d317c6`. Inspeção remota entre

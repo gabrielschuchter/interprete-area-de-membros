@@ -1,0 +1,75 @@
+{
+  "recordedAt": "2026-10-23T19:43:51.477Z",
+  "scope": "OPS-01 only",
+  "state": "BLOCKED",
+  "rootCauseOf48ScheduledFailures": "NOT PROVEN",
+  "credential": {
+    "localExpiresAt": "2026-10-21T20:02:44.000Z",
+    "expired": true,
+    "modified": false,
+    "doesNotEstablishConnectorScope": true
+  },
+  "connectedTools": {
+    "withTeam": "tool unavailable in this session",
+    "withoutTeam": "tool unavailable in this session"
+  },
+  "authorizedBrowserAccess": {
+    "apiProjectRead": true,
+    "appBuildSettingsRead": true,
+    "requireLogIn": true,
+    "standardProtection": true,
+    "trustedSource": "Existing GitHub rule; Preview only; inspected and Cancel used; unchanged",
+    "automationBypassCount": 0,
+    "activeShareableLinks": 0,
+    "logsRetention": "last hour; most recent schedule outside retained window",
+    "previewWithoutRouteBearer": "Not authorized; worker not executed"
+  },
+  "scheduledRuns": {
+    "observedTotal": 48,
+    "observedSuccesses": 0,
+    "latestRun": 39982199840,
+    "latestAt": "2026-10-23T15:53:53Z",
+    "phaseAndHttpDiagnosticAvailable": false
+  },
+  "patch": {
+    "createdAt": "2026-10-23T19:43:15.545Z",
+    "baseSha": "7a7c8e4d0167490308f54bb8d79b3577c2f0aaa6",
+    "branch": "codex/ops01-preview-diagnostics-20261023",
+    "commit": "1cb2660fbd1aec9070460d32858d056dbe853032",
+    "files": [
+      ".github/workflows/community-v2-preview-outbox.yml"
+    ],
+    "url": "https://github.com/gabrielschuchter/interprete-area-de-membros/pull/16",
+    "draft": true,
+    "merged": false,
+    "productionMutation": false
+  },
+  "permissionsBoundary": {
+    "mainMerged": false,
+    "reason": "RELEASE-PLAN forbids main push/merge because it may promote Production; current instruction also forbids Production changes",
+    "requiredAction": "Authorize activating the workflow-only patch on main with a verified mechanism preventing Production deployment/promotion, then observe a real schedule event"
+  },
+  "proof": {
+    "automaticRecovery": false,
+    "newQaJobCreated": false,
+    "manualWorkerExecuted": false,
+    "newNotification": false,
+    "broadcast": false,
+    "unreadBadge": false,
+    "profileBadgeAward": false,
+    "cronGreenChanged": false,
+    "credentialsChanged": false,
+    "protectionChanged": false,
+    "migrationsRun": false,
+    "generalE2eRun": false,
+    "visualQaRun": false,
+    "rv01AuditRun": false
+  },
+  "graph": {
+    "nodes": 8481,
+    "edges": 22178,
+    "sqlFilesExcluded": 78,
+    "reason": "tree_sitter_sql unavailable; no SQL changed"
+  },
+  "protectedSpecGitHash": "43bb75e8482c3638840cbfa760a91e01927ed770"
+}

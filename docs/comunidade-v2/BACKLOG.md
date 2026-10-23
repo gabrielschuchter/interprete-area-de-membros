@@ -1,5 +1,20 @@
 # Comunidade V2 — backlog operacional
 
+## OPS-01 — retomada delimitada de 23/10/2026
+
+**OPS-01 BLOQUEADO; não resolvido.** Acesso Vercel autorizado comprovado pelo
+navegador; o 403 local corresponde a credencial expirada desde 21/10 e não
+demonstra ausência total de acesso. SSO e Trusted Source Preview foram lidos
+sem alteração. As 48 falhas continuam sem causa HTTP comprovada.
+
+Patch diagnóstico testado 7/7 e preparado no [PR draft #16](https://github.com/gabrielschuchter/interprete-area-de-membros/pull/16),
+sem merge em main. A ativação desse único workflow em main, sem efeito sobre
+Production, é a ação exata pendente de autorização conforme RELEASE-PLAN.
+Nenhum job QA novo, execução manual do worker, prova de recovery/Broadcast/badge,
+migration ou mudança de credencial/proteção/cron ocorreu.
+Detalhes e limites em [OPS-01.md](OPS-01.md). Os demais gates 12A não foram reabertos.
+
+
 ## Fechamento do preflight 12A — 23/10/2026
 
 **NO-GO; 12A encerrada, publicação 12B não iniciada.** OPS-01 foi investigado:
