@@ -7,7 +7,7 @@ import { getHomeLearningSummary } from "@/lib/learning";
 import { getMemberContinueWatching } from "@/lib/recordings";
 
 const areas = [
-  ["Aprender", "Aulas, trilhas e gravações", "/aprender"],
+  ["Cursos", "Aulas, trilhas e gravações", "/cursos"],
   ["Exercícios", "Listas de questões com gabarito e explicação", "/exercicios"],
   ["Atividades", "Atividades atribuídas e enviadas", "/atividades"],
   [
@@ -47,7 +47,7 @@ const StudyOverview = async () => {
   } = {
     title: "Seu próximo capítulo começa aqui.",
     subtitle: "Encontre uma aula, uma boa pergunta ou uma nova leitura.",
-    href: "/aprender",
+    href: "/cursos",
     progress: null,
     action: "Explorar aulas",
   };
@@ -55,7 +55,7 @@ const StudyOverview = async () => {
     next = {
       title: lesson.title,
       subtitle: course.title,
-      href: `/aprender/cursos/${course.slug}/${lesson.slug}`,
+      href: `/cursos/${course.slug}/${lesson.slug}`,
       progress: course.progress.percentage,
       action: course.progress.completedLessons
         ? "Retomar aula"

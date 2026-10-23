@@ -1061,6 +1061,7 @@ model PlaybackProgress {
   playbackSessions    Json        @default("{}") @db.JsonB
   lastViewedAt        DateTime    @default(now())
   completedPlaybackAt DateTime?
+  manualCompletion    Boolean?
   createdAt           DateTime    @default(now())
   updatedAt           DateTime    @updatedAt
   member              Member      @relation(fields: [memberId], references: [id], onDelete: Cascade)
@@ -2401,6 +2402,7 @@ model PlannerNote {
   contentText String                     @default("") @db.Text
   linkedResourceType String?
   linkedResourceId   String?
+  videoTimeSeconds   Int?
   pinnedAt    DateTime?
   deletedAt   DateTime?
   createdAt   DateTime                   @default(now())

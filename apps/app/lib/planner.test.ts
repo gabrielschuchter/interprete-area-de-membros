@@ -127,7 +127,7 @@ describe("planner dashboard reads", () => {
           courseId: "course-a",
           courseSlug: "curso-a",
           releaseAt: deadline,
-          href: "/aprender/cursos/curso-a/aula-liberada",
+          href: "/cursos/curso-a/aula-liberada",
         },
       ],
       cohortEvents: [

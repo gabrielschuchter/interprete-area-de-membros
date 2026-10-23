@@ -91,11 +91,10 @@ const PersonalizationPage = async ({
               type="checkbox"
             />
             <span>
-              <span className="block font-medium">Aprender na navegação</span>
+              <span className="block font-medium">Cursos na navegação</span>
               <span className="mt-1 block text-muted-foreground text-sm leading-6">
-                Mostra Aprender apenas quando houver conteúdo assíncrono
-                publicado e acessível. Cursos históricos não contam como aulas
-                novas.
+                Mostra Cursos apenas quando houver conteúdo assíncrono publicado
+                e acessível. Cursos históricos não contam como aulas novas.
               </span>
             </span>
           </label>

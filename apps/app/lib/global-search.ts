@@ -85,10 +85,10 @@ const resultArea: Record<
   GlobalSearchResultType,
   { area: GlobalSearchArea; section: string }
 > = {
-  path: { area: "Estudar", section: "Aprender" },
-  course: { area: "Estudar", section: "Aprender" },
-  module: { area: "Estudar", section: "Aprender" },
-  lesson: { area: "Estudar", section: "Aprender" },
+  path: { area: "Estudar", section: "Cursos" },
+  course: { area: "Estudar", section: "Cursos" },
+  module: { area: "Estudar", section: "Cursos" },
+  lesson: { area: "Estudar", section: "Cursos" },
   activity: { area: "Estudar", section: "Atividades" },
   recording: { area: "Comunidade", section: "Encontros" },
   community: { area: "Comunidade", section: "Publicações" },
@@ -501,7 +501,7 @@ export const searchGlobal = async (memberId: string, rawQuery: string) => {
         "path",
         "Trilha",
         preview(path.description),
-        `/aprender/trilhas/${path.slug}`
+        `/cursos/trilhas/${path.slug}`
       )
     );
   const courseResults = courses
@@ -513,7 +513,7 @@ export const searchGlobal = async (memberId: string, rawQuery: string) => {
         "course",
         "Curso",
         course.learningPath?.title ?? preview(course.description),
-        `/aprender/cursos/${course.slug}`
+        `/cursos/${course.slug}`
       )
     );
   const moduleResults = modules
@@ -525,7 +525,7 @@ export const searchGlobal = async (memberId: string, rawQuery: string) => {
         "module",
         "Módulo",
         module.course.title,
-        `/aprender/cursos/${module.course.slug}`
+        `/cursos/${module.course.slug}`
       )
     );
   const lessonResults = lessons
@@ -544,7 +544,7 @@ export const searchGlobal = async (memberId: string, rawQuery: string) => {
         "lesson",
         "Aula",
         `${lesson.module.course.title} · ${lesson.module.title}`,
-        `/aprender/cursos/${lesson.module.course.slug}/${lesson.slug}`
+        `/cursos/${lesson.module.course.slug}/${lesson.slug}`
       )
     );
   const activityResults = activities

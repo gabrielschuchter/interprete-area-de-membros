@@ -746,7 +746,7 @@ export const toggleLearningBookmark = async (
   } else {
     await database.libraryBookmark.deleteMany({ where });
   }
-  revalidatePath("/aprender");
+  revalidatePath("/cursos");
   revalidatePath("/biblioteca");
   revalidatePath("/biblioteca/pessoal");
   revalidatePath("/salvos");

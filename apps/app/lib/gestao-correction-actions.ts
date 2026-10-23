@@ -509,7 +509,7 @@ export const saveGestaoCorrection = async (
     await dispatchPendingNotifications();
     revalidatePath(["/atividades", input.preview.activity.slug].join("/"));
     revalidatePath("/atividades");
-    revalidatePath("/aprender");
+    revalidatePath("/cursos");
     revalidatePath("/estudar");
   }
   revalidatePath("/gestao/alunos/correcoes");

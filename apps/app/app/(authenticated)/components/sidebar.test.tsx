@@ -210,7 +210,7 @@ describe("GlobalSidebar personal content group", () => {
       expect(sidebar?.getAttribute("data-collapsible")).toBe("offcanvas")
     );
 
-    currentPath.value = "/aprender";
+    currentPath.value = "/cursos";
     setMatchMedia(false);
     view.rerender(sidebarContent());
     await waitFor(() => {

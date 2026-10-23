@@ -46,7 +46,7 @@ vi.mock("@repo/member-domain", () => ({
   enqueueNotificationBatch: enqueueNotificationBatchMock,
 }));
 
-const assignmentRoutePattern = /^\/aprender\/atribuicoes\//;
+const assignmentRoutePattern = /^\/cursos\/atribuicoes\//;
 
 import {
   LearningAssignmentAudienceType,
@@ -385,7 +385,7 @@ test("module assignments open and identify the assigned module", async () => {
   );
 
   expect(resolved).toEqual({
-    href: "/aprender/cursos/curso?module=module_1#module-module_1",
+    href: "/cursos/curso?module=module_1#module-module_1",
     id: "module_1",
     title: "Módulo 1",
     type: "MODULE",

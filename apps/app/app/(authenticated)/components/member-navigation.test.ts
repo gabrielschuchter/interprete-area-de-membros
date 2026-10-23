@@ -33,7 +33,7 @@ describe("member navigation transition contract", () => {
     expect(
       classifyMemberNavigation({
         currentPath: "/",
-        destinationPath: "/aprender",
+        destinationPath: "/cursos",
       })
     ).toBe("short");
     expect(

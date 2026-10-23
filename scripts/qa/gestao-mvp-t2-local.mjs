@@ -131,7 +131,7 @@ await test("T2 local: membership access, removal, independent grant and preserve
     await page.setViewportSize({ width: 1440, height: 1000 });
   };
   const courseVisible = async (actor, expected, label) => {
-    const response = await visit(actor, `/aprender/cursos/${course.slug}`);
+    const response = await visit(actor, `/cursos/${course.slug}`);
     const html = await response.text();
     if (!expected) {
       await page.getByRole("heading", { name: "404", exact: true }).waitFor();

@@ -107,7 +107,7 @@ describe("resolveStudentFeedActivities", () => {
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
       id: "assignment-new",
-      href: "/aprender/atribuicoes/assignment-new",
+      href: "/cursos/atribuicoes/assignment-new",
       dueAt: day(6),
       message: "Recado mais recente",
       status: "STARTED",

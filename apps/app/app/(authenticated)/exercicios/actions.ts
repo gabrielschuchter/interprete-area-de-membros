@@ -154,7 +154,7 @@ export const startExerciseSession = async (formData: FormData) => {
     return session.id;
   });
   revalidatePath("/exercicios");
-  revalidatePath("/aprender");
+  revalidatePath("/cursos");
   redirect(`/exercicios/sessoes/${sessionId}`);
 };
 
@@ -1108,7 +1108,7 @@ export const setExerciseBankStatus = async (formData: FormData) => {
   }
   revalidateExerciseManagement(gestaoReturn);
   revalidatePath("/exercicios");
-  revalidatePath("/aprender");
+  revalidatePath("/cursos");
   redirect(
     `${exerciseManagementPath(gestaoReturn)}?resultado=bank-status-updated`
   );

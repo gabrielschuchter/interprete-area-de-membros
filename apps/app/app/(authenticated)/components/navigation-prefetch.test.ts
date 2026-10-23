@@ -8,8 +8,8 @@ import {
 afterEach(resetNavigationPrefetchBudget);
 
 test("limits speculative route loads and does not prefetch one destination twice", () => {
-  expect(reserveNavigationPrefetch("/", "/aprender")).toBe(true);
-  expect(reserveNavigationPrefetch("/", "/aprender")).toBe(false);
+  expect(reserveNavigationPrefetch("/", "/cursos")).toBe(true);
+  expect(reserveNavigationPrefetch("/", "/cursos")).toBe(false);
   expect(reserveNavigationPrefetch("/", "/comunidade")).toBe(true);
   expect(reserveNavigationPrefetch("/", "/biblioteca")).toBe(false);
 });
@@ -24,10 +24,10 @@ test("treats fragment links as the same destination for the route budget", () =>
 });
 
 test("starts a fresh intent budget after the route changes", () => {
-  reserveNavigationPrefetch("/", "/aprender");
+  reserveNavigationPrefetch("/", "/cursos");
   reserveNavigationPrefetch("/", "/comunidade");
 
-  expect(reserveNavigationPrefetch("/aprender", "/comunidade")).toBe(true);
+  expect(reserveNavigationPrefetch("/cursos", "/comunidade")).toBe(true);
 });
 
 test("starts a fresh intent budget when pagination changes query parameters", () => {

@@ -11,7 +11,7 @@ interface GestaoCollectionPreviewPageProperties {
 
 const typeLabel = (type: string) => {
   if (type === "LESSON") {
-    return "Aprender";
+    return "Aula";
   }
   if (type === "COURSE") {
     return "Curso";

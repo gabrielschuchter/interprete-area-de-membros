@@ -45,11 +45,14 @@ type LessonNotesData = Awaited<ReturnType<typeof getPlannerNotes>>;
 type LessonTimer = NonNullable<LessonTimerState["active"]>;
 type TimerReview = NonNullable<LessonTimerState["pendingReview"]>;
 
-type TimerAction =
+export type TimerAction =
   | {
       action: "start";
       clientId: string;
+      // The drawer starts a focus session; the room picks the mode itself.
+      durationSeconds?: number | null;
       linkedResourceId: string | null;
+      mode?: "COUNTDOWN" | "FOCUS" | "STOPWATCH";
     }
   | { action: "pause" | "resume" | "stop" }
   | { action: "link"; linkedResourceId: string | null }
@@ -102,9 +105,12 @@ const timerActionPayload = (action: TimerAction, focusMinutes: number) => {
   }
   return {
     ...action,
-    durationSeconds: focusMinutes * 60,
+    durationSeconds:
+      action.durationSeconds === undefined
+        ? focusMinutes * 60
+        : action.durationSeconds,
     linkedResourceType: action.linkedResourceId ? "LESSON" : null,
-    mode: "FOCUS",
+    mode: action.mode ?? "FOCUS",
     title: null,
   };
 };
@@ -187,7 +193,7 @@ const timerBadgeForLesson = (
 const loadErrorMessage = (error: unknown, fallback: string) =>
   error instanceof Error ? error.message : fallback;
 
-function useLessonTimer(lessonId: string, open: boolean) {
+export function useLessonTimer(lessonId: string, open: boolean) {
   const [timerState, setTimerState] = useState<LessonTimerState | null>(null);
   const [clientId, setClientId] = useState<string | null>(null);
   const [linkedOnStart, setLinkedOnStart] = useState(true);
@@ -501,7 +507,7 @@ function TimerControls({
   );
 }
 
-function LessonTimerCard({
+export function LessonTimerCard({
   active,
   activeFromOtherDevice,
   clientId,
@@ -684,7 +690,7 @@ function LessonNotesContent({
   );
 }
 
-function SessionReviewDialog({
+export function SessionReviewDialog({
   note,
   pending,
   review,

@@ -79,7 +79,7 @@ const SavedPage = async ({ searchParams }: SavedPageProperties) => {
     id: `library:${item.id}`,
     label: item.label,
     savedAt: item.savedAt,
-    source: `${item.targetType === "LIBRARY_ITEM" ? "Biblioteca" : "Aprender"} · ${item.category ?? item.label}`,
+    source: `${item.targetType === "LIBRARY_ITEM" ? "Biblioteca" : "Cursos"} · ${item.category ?? item.label}`,
     targetId: item.targetId,
     targetType: item.targetType,
     title: item.title,

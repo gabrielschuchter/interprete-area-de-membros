@@ -6,7 +6,7 @@ const scheduledCourseLinkName = /Curso programado/;
 const firstLessonName = /Atividade um/;
 const secondLessonName = /Atividade dois/;
 const thirdLessonName = /Atividade três/;
-const navigationState = vi.hoisted(() => ({ pathname: "/aprender" }));
+const navigationState = vi.hoisted(() => ({ pathname: "/cursos" }));
 
 vi.mock("next/navigation", () => ({
   usePathname: () => navigationState.pathname,
@@ -186,7 +186,7 @@ describe("LearningContentRail", () => {
               targetType: "COURSE",
             },
             disabled: true,
-            href: "/aprender/cursos/curso-programado",
+            href: "/cursos/curso-programado",
             meta: "Disponível em 6 out., 09:00",
             title: "Curso programado",
           },
@@ -210,9 +210,9 @@ describe("LearningContentRail", () => {
     render(
       <LearningContentRail
         cards={[
-          { href: "/aprender/atribuicoes/one", title: "Atividade um" },
-          { href: "/aprender/atribuicoes/two", title: "Atividade dois" },
-          { href: "/aprender/atribuicoes/three", title: "Atividade três" },
+          { href: "/cursos/atribuicoes/one", title: "Atividade um" },
+          { href: "/cursos/atribuicoes/two", title: "Atividade dois" },
+          { href: "/cursos/atribuicoes/three", title: "Atividade três" },
         ]}
         headingId="rail-prefetch-title"
         title="Retomar"

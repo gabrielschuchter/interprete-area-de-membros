@@ -278,6 +278,6 @@ describe("published collection authorization", () => {
       },
     });
 
-    expect(collectionItemHref(item)).toBe("/aprender/cursos/curso");
+    expect(collectionItemHref(item)).toBe("/cursos/curso");
   });
 });

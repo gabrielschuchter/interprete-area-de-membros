@@ -188,6 +188,26 @@ export const resolveLockedCohortLessons = (input: {
   return locked;
 };
 
+// A locked lesson opens on the earliest release among the member's paths.
+export const resolveCohortLessonUnlockDates = (input: {
+  readonly accessPaths: readonly CohortLessonReleasePath[];
+  readonly lockedLessonIds: ReadonlySet<string>;
+}) => {
+  const unlockDates = new Map<string, Date>();
+  for (const path of input.accessPaths) {
+    for (const { lessonId, releaseAt } of path.releases) {
+      if (!input.lockedLessonIds.has(lessonId)) {
+        continue;
+      }
+      const current = unlockDates.get(lessonId);
+      if (!current || releaseAt < current) {
+        unlockDates.set(lessonId, releaseAt);
+      }
+    }
+  }
+  return unlockDates;
+};
+
 export const cohortDateInput = (value: Date | null) => {
   if (!value) {
     return "";

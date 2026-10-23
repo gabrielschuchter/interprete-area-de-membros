@@ -80,7 +80,7 @@ describe("student calendar lesson releases", () => {
         courseId: "course-a",
         courseSlug: "curso-clinico",
         releaseAt,
-        href: "/aprender/cursos/curso-clinico/aula-de-avaliacao",
+        href: "/cursos/curso-clinico/aula-de-avaliacao",
       },
     ]);
   });

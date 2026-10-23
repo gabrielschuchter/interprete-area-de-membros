@@ -157,7 +157,7 @@ const GestaoLessonEditorPage = async ({
           {published ? (
             <Button asChild variant="outline">
               <Link
-                href={`/aprender/cursos/${lesson.module.course.slug}/${lesson.slug}`}
+                href={`/cursos/${lesson.module.course.slug}/${lesson.slug}`}
               >
                 <ExternalLinkIcon aria-hidden="true" />
                 Ver como aluno

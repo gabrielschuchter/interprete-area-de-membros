@@ -16,8 +16,8 @@
     },
     {
       "route": "learning",
-      "manifestSegments": ["(authenticated)", "aprender"],
-      "entrySuffix": "apps/app/app/(authenticated)/aprender/page",
+      "manifestSegments": ["(authenticated)", "cursos"],
+      "entrySuffix": "apps/app/app/(authenticated)/cursos/page",
       "maxGzipBytes": 230400
     },
     {

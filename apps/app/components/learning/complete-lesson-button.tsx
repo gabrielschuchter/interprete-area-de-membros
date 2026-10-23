@@ -6,7 +6,7 @@ import { useActionState } from "react";
 import {
   type CompleteLessonState,
   completeLesson,
-} from "../../app/(authenticated)/aprender/actions";
+} from "../../app/(authenticated)/cursos/actions";
 
 const initialState: CompleteLessonState = { ok: false };
 

@@ -160,7 +160,7 @@ export const resolveStudentFeedActivities = (
           title: activity.title,
           slug: activity.slug,
           href: latestAssignment
-            ? `/aprender/atribuicoes/${encodeURIComponent(latestAssignment.id)}`
+            ? `/cursos/atribuicoes/${encodeURIComponent(latestAssignment.id)}`
             : `/atividades/${encodeURIComponent(activity.slug)}`,
           status,
           message: latestMessage(assignments),

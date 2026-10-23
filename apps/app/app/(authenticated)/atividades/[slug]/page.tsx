@@ -215,7 +215,7 @@ const ActivityPage = async ({
             </ActivitySubmissionForm>
             {activity.course && (
               <Button asChild className="mt-6 w-full" variant="ghost">
-                <Link href={`/aprender/cursos/${activity.course.slug}`}>
+                <Link href={`/cursos/${activity.course.slug}`}>
                   <ExternalLinkIcon aria-hidden="true" /> Voltar ao curso
                 </Link>
               </Button>

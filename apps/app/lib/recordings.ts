@@ -14,6 +14,7 @@ import {
   recordingGroupNameSearchWhere,
   recordingOwnerDisplayLabel,
 } from "./recording-identity";
+import { roomRecordingHref } from "./recording-navigation";
 
 const yearPattern = /^\d{4}$/;
 
@@ -41,7 +42,7 @@ export const buildContinueWatchingWhere = (
   },
 });
 
-const getRecordingAccessContext = async (
+export const getRecordingAccessContext = async (
   memberId: string
 ): Promise<
   RecordingAccessContext & {
@@ -190,6 +191,49 @@ export const getAccessibleRecordingIds = async (
     select: { id: true },
   });
   return new Set(recordings.map(({ id }) => id));
+};
+
+/**
+ * Notes, the timer and study sessions link to the legacy lesson that backs an
+ * imported recording. This resolves that lesson for members who may see the
+ * recording, so the same links work inside the recording room.
+ */
+export const getMemberAccessibleRecordingLesson = async (
+  memberId: string,
+  lessonId: string
+) => {
+  const recording = await database.importedRecording.findFirst({
+    where: { legacyLessonId: lessonId },
+    select: {
+      assetId: true,
+      id: true,
+      legacyLesson: {
+        select: {
+          id: true,
+          slug: true,
+          title: true,
+          module: {
+            select: {
+              id: true,
+              title: true,
+              course: { select: { id: true, slug: true } },
+            },
+          },
+        },
+      },
+    },
+  });
+  if (!recording) {
+    return null;
+  }
+  const accessible = await getAccessibleRecordingIds(memberId, [recording.id]);
+  if (!accessible.has(recording.id)) {
+    return null;
+  }
+  return {
+    ...recording.legacyLesson,
+    href: roomRecordingHref(recording.assetId),
+  };
 };
 
 /**

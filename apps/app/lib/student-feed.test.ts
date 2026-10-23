@@ -79,7 +79,7 @@ describe("resolveStudentFeed", () => {
         targetId: "activity-a",
         title: "Atividade A",
         slug: "atividade-a",
-        href: "/aprender/atribuicoes/assignment-a",
+        href: "/cursos/atribuicoes/assignment-a",
         status: "NEW",
         message: "Leia antes de enviar",
         availableAt: null,

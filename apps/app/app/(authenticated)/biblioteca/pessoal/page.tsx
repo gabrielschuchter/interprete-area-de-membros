@@ -52,13 +52,13 @@ const PersonalLibraryPage = async () => {
               Nenhum item salvo ainda.
             </h2>
             <p className="mt-3 text-[#7A5A69] text-sm leading-6">
-              Use o marcador Salvar nos cards de Aprender ou nos materiais da
+              Use o marcador Salvar nos cards de Cursos ou nos materiais da
               biblioteca para guardar itens e voltar a eles depois.
             </p>
             <div className="mt-4 flex flex-wrap gap-3">
               <Button asChild className="h-11">
-                <Link href="/aprender" prefetch={false}>
-                  Explorar Aprender
+                <Link href="/cursos" prefetch={false}>
+                  Explorar cursos
                 </Link>
               </Button>
               <Button

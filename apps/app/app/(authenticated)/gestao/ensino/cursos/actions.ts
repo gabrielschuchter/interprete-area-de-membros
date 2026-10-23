@@ -713,7 +713,7 @@ const enqueuePlaylistLessonNotifications = async (
       entityId: lesson.id,
       dedupeKey: `lesson-available:${recipientId}:${lesson.id}`,
       body: lesson.title,
-      href: `/aprender/cursos/${courseSlug}/${lesson.slug}`,
+      href: `/cursos/${courseSlug}/${lesson.slug}`,
     }))
   );
   if (notifications.length > 10_000) {
@@ -1104,7 +1104,7 @@ export const importGestaoYouTubePlaylist = async (input: {
   }
 
   revalidatePath(`/gestao/ensino/cursos/${courseId}`);
-  revalidatePath("/aprender");
+  revalidatePath("/cursos");
   if (status === ContentStatus.PUBLISHED) {
     await dispatchPendingNotifications();
   }
@@ -1685,7 +1685,7 @@ export const saveGestaoLesson = async (
     : null;
   revalidatePath(`/gestao/ensino/cursos/${courseId}`);
   revalidatePath(`/gestao/ensino/cursos/${courseId}/aulas/${lessonId}`);
-  revalidatePath("/aprender");
+  revalidatePath("/cursos");
 
   return {
     ...previousState,
