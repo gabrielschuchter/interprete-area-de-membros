@@ -25,6 +25,7 @@ const noIndexPattern = /noindex/;
 
 type DatabaseOperation =
   | "create-fixtures"
+  | "delete-group-with-post"
   | "set-membership"
   | "share-link-evidence"
   | "private-access-audit-count"
@@ -644,6 +645,38 @@ test("compartilhamento V2 preserva permissões, prévia SSR, retorno Clerk e rev
       postIds,
     }).catch(() => undefined);
     await Promise.all(contexts.map((context) => context.close()));
+  }
+});
+
+test("grupo com publicações não pode ser excluído fisicamente", async () => {
+  const { secondaryMemberId } = assertIsolatedQa();
+  const fixture = await queryDatabase<{
+    privatePost: { id: string; title: string };
+    publicPost: { id: string; title: string };
+    space: { id: string; slug: string };
+  }>("create-fixtures", { ownerId: secondaryMemberId, runId });
+
+  try {
+    const result = await queryDatabase<{
+      readonly blocked: boolean;
+      readonly post: {
+        readonly audienceScope: string;
+        readonly spaceId: string | null;
+      } | null;
+    }>("delete-group-with-post", {
+      postId: fixture.privatePost.id,
+      spaceId: fixture.space.id,
+    });
+
+    expect(result).toEqual({
+      blocked: true,
+      post: { audienceScope: "GROUP", spaceId: fixture.space.id },
+    });
+  } finally {
+    await queryDatabase("cleanup", {
+      spaceId: fixture.space.id,
+      postIds: [fixture.privatePost.id, fixture.publicPost.id],
+    }).catch(() => undefined);
   }
 });
 

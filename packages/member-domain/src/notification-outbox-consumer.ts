@@ -482,6 +482,7 @@ const loadNotificationBodies = async (
     id: true,
     title: true,
     spaceId: true,
+    audienceScope: true,
     status: true,
     deletedAt: true,
     space: {
@@ -626,19 +627,30 @@ const loadNotificationBodies = async (
       const isPublished =
         post.status === ContentStatus.PUBLISHED &&
         post.deletedAt === null &&
-        (!space || space.status === ContentStatus.PUBLISHED);
-      const allowedRecipientIds =
+        ((post.audienceScope === "GLOBAL" && space === null) ||
+          (post.audienceScope === "GROUP" &&
+            space !== null &&
+            space.status === ContentStatus.PUBLISHED));
+      let allowedRecipientIds: Set<string>;
+      if (!isPublished) {
+        allowedRecipientIds = new Set();
+      } else if (
+        post.audienceScope === "GROUP" &&
         space?.visibility === "PRIVATE"
-          ? new Set([
-              ...(space.ownerId ? [space.ownerId] : []),
-              ...space.members.map(({ memberId }) => memberId),
-            ])
-          : new Set(recipientIds);
+      ) {
+        allowedRecipientIds = new Set([
+          ...(space.ownerId ? [space.ownerId] : []),
+          ...space.members.map(({ memberId }) => memberId),
+        ]);
+      } else {
+        allowedRecipientIds = new Set(recipientIds);
+      }
       return [
         post.id,
         {
           allowedRecipientIds,
-          communitySpaceId: space?.id ?? null,
+          communitySpaceId:
+            post.audienceScope === "GROUP" ? (space?.id ?? null) : null,
           isPublished,
         },
       ] as const;

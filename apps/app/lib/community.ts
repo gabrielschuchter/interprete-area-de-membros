@@ -343,7 +343,9 @@ const communityFeedWhere = ({
 }): Prisma.CommunityPostWhereInput => ({
   status: ContentStatus.PUBLISHED,
   deletedAt: null,
-  ...(spaceSlug ? {} : communityPostAudienceWhere(memberId, false)),
+  ...(spaceSlug
+    ? { audienceScope: "GROUP" }
+    : communityPostAudienceWhere(memberId, false)),
   ...(sort === "unanswered" ? { comments: { none: { deletedAt: null } } } : {}),
   ...(kind ? { kind } : {}),
   ...(spaceSlug
@@ -787,6 +789,7 @@ const getPublishedPost = async (
     role === MemberRole.ADMIN || role === MemberRole.TEACHER;
   const audienceWhere: Prisma.CommunityPostWhereInput = where.spaceSlug
     ? {
+        audienceScope: "GROUP",
         space: {
           is: {
             slug: where.spaceSlug,
@@ -1043,8 +1046,9 @@ export const getPublicCommunityPostShareDetails = async (postId: string) => {
       status: ContentStatus.PUBLISHED,
       deletedAt: null,
       OR: [
-        { spaceId: null },
+        { audienceScope: "GLOBAL" },
         {
+          audienceScope: "GROUP",
           space: {
             is: { status: ContentStatus.PUBLISHED, visibility: "PUBLIC" },
           },

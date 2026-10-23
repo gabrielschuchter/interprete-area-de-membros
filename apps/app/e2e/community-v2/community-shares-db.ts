@@ -37,6 +37,7 @@ const createPost = async ({
       kind: "DISCUSSION",
       publishedAt: new Date(),
       spaceId: spaceId ?? null,
+      audienceScope: spaceId ? "GROUP" : "GLOBAL",
       status: "PUBLISHED",
       subtitle,
       tags,
@@ -156,6 +157,29 @@ const query = async ({ operation, input }: Request) => {
           eventType: "community.group.private_post_accessed",
         },
       });
+    case "delete-group-with-post": {
+      const spaceId = input.spaceId as string;
+      const postId = input.postId as string;
+      let blocked = false;
+      try {
+        await database.communitySpace.delete({ where: { id: spaceId } });
+      } catch (error) {
+        if (
+          !error ||
+          typeof error !== "object" ||
+          !("code" in error) ||
+          error.code !== "P2003"
+        ) {
+          throw error;
+        }
+        blocked = true;
+      }
+      const post = await database.communityPost.findUnique({
+        where: { id: postId },
+        select: { audienceScope: true, spaceId: true },
+      });
+      return { blocked, post };
+    }
     case "member-details":
       return database.member.findMany({
         where: { id: { in: input.memberIds as string[] }, deactivatedAt: null },

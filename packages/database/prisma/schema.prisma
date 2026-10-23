@@ -1492,6 +1492,7 @@ model CommunitySpaceInviteLink {
 model CommunityPost {
   id             String              @id @default(cuid())
   spaceId        String?
+  audienceScope  String              @default("UNRESOLVED") @db.VarChar(16)
   authorId       String
   idempotencyKey String?
   kind           CommunityPostKind   @default(DISCUSSION)
@@ -1513,7 +1514,7 @@ model CommunityPost {
   updatedAt      DateTime            @updatedAt
   editedAt       DateTime?
   deletedAt      DateTime?
-  space          CommunitySpace?     @relation(fields: [spaceId], references: [id], onDelete: SetNull)
+  space          CommunitySpace?     @relation(fields: [spaceId], references: [id], onDelete: Restrict)
   comments       CommunityComment[]
   votes          PostVote[]
   bookmarks      CommunityBookmark[]

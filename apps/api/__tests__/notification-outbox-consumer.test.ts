@@ -28,6 +28,7 @@ const deliverPrivateCommentMention = async (
   options: {
     readonly groupDeleted?: boolean;
     readonly includeScope?: boolean;
+    readonly audienceScope?: "GLOBAL" | "GROUP" | "UNRESOLVED";
   } = {}
 ) => {
   const notificationCreateMany = vi.fn().mockResolvedValue({ count: 1 });
@@ -36,6 +37,7 @@ const deliverPrivateCommentMention = async (
     id: "post_private_1",
     title: "Título privado",
     spaceId,
+    audienceScope: options.audienceScope ?? "GROUP",
     status: "PUBLISHED",
     deletedAt: null,
     space: options.groupDeleted
@@ -234,6 +236,7 @@ test("sends group-post notices only to current owners and members", async () => 
           id: "post_1",
           title: "Roteiro",
           spaceId: "private_group_1",
+          audienceScope: "GROUP",
           status: "PUBLISHED",
           deletedAt: null,
           space: {
@@ -365,9 +368,18 @@ test("drops a legacy comment event when a deleted group's scope is ambiguous", a
   expect(notificationCreateMany).not.toHaveBeenCalled();
 });
 
+test("drops an explicit null-scope event for a detached group post", async () => {
+  const { notificationCreateMany } = await deliverPrivateCommentMention(true, {
+    groupDeleted: true,
+  });
+
+  expect(notificationCreateMany).not.toHaveBeenCalled();
+});
+
 test("keeps a current explicitly global comment notification", async () => {
   const { notificationCreateMany } = await deliverPrivateCommentMention(true, {
     groupDeleted: true,
+    audienceScope: "GLOBAL",
   });
 
   expect(notificationCreateMany).toHaveBeenCalledWith({

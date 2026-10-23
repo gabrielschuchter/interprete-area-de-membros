@@ -792,6 +792,7 @@ const resolveCommunityPostAudience = async (
   const post = await transaction.communityPost.findUnique({
     where: { id: postId },
     select: {
+      audienceScope: true,
       status: true,
       deletedAt: true,
       space: {
@@ -808,17 +809,23 @@ const resolveCommunityPostAudience = async (
     !post ||
     post.deletedAt ||
     post.status !== ContentStatus.PUBLISHED ||
-    (post.space && post.space.status !== ContentStatus.PUBLISHED)
+    !(
+      (post.audienceScope === "GLOBAL" && post.space === null) ||
+      (post.audienceScope === "GROUP" && post.space !== null)
+    ) ||
+    (post.audienceScope === "GROUP" &&
+      post.space?.status !== ContentStatus.PUBLISHED)
   ) {
     return {
       communitySpaceId: "__community_scope_unresolved__",
       recipientIds: [],
     };
   }
-  const communitySpaceId = post.space?.id ?? null;
+  const communitySpaceId =
+    post.audienceScope === "GROUP" ? (post.space?.id ?? null) : null;
   if (
-    !post.space ||
-    post.space.visibility !== "PRIVATE" ||
+    post.audienceScope === "GLOBAL" ||
+    post.space?.visibility !== "PRIVATE" ||
     uniqueIds.length === 0
   ) {
     return { communitySpaceId, recipientIds: uniqueIds };

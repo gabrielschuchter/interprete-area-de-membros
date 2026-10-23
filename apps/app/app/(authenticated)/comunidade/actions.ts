@@ -471,6 +471,7 @@ export const createPost = async (formData: FormData) => {
       const created = await transaction.communityPost.create({
         data: {
           spaceId: space?.id ?? null,
+          audienceScope: space ? "GROUP" : "GLOBAL",
           authorId: userId,
           idempotencyKey,
           kind: "DISCUSSION",
@@ -668,6 +669,7 @@ const saveNewCommunityDraft = async ({
     const post = await database.communityPost.create({
       data: {
         spaceId: snapshot.spaceId,
+        audienceScope: snapshot.spaceId ? "GROUP" : "GLOBAL",
         authorId: userId,
         idempotencyKey,
         kind: "DISCUSSION",

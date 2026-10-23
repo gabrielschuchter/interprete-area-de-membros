@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 const { databaseMock, enqueueNotificationBatchMock, state } = vi.hoisted(() => {
   const state = {
     privateSpace: false,
+    detachedGroup: false,
     actorRole: "MEMBER",
     activeMemberIds: [
       "member-mentioned",
@@ -22,20 +23,35 @@ const { databaseMock, enqueueNotificationBatchMock, state } = vi.hoisted(() => {
       ),
     },
     communityPost: {
-      findUnique: vi.fn(() =>
-        state.privateSpace
-          ? {
+      findUnique: vi.fn(() => {
+        if (state.detachedGroup) {
+          return {
+            audienceScope: "GROUP",
+            status: "PUBLISHED",
+            deletedAt: null,
+            space: null,
+          };
+        }
+        if (state.privateSpace) {
+          return {
+            audienceScope: "GROUP",
+            status: "PUBLISHED",
+            deletedAt: null,
+            space: {
+              id: "space-private",
+              visibility: "PRIVATE",
+              ownerId: "member-owner",
               status: "PUBLISHED",
-              deletedAt: null,
-              space: {
-                id: "space-private",
-                visibility: "PRIVATE",
-                ownerId: "member-owner",
-                status: "PUBLISHED",
-              },
-            }
-          : { status: "PUBLISHED", deletedAt: null, space: null }
-      ),
+            },
+          };
+        }
+        return {
+          audienceScope: "GLOBAL",
+          status: "PUBLISHED",
+          deletedAt: null,
+          space: null,
+        };
+      }),
     },
     communitySpaceMember: {
       findMany: vi.fn(() =>
@@ -137,6 +153,7 @@ const notify = (
 describe("community comment notification outbox", () => {
   beforeEach(() => {
     state.privateSpace = false;
+    state.detachedGroup = false;
     state.actorRole = "MEMBER";
     state.activeMemberIds = [
       "member-mentioned",
@@ -234,6 +251,14 @@ describe("community comment notification outbox", () => {
         ({ communitySpaceId }) => communitySpaceId === "space-private"
       )
     ).toBe(true);
+  });
+
+  test("does not produce notifications for a detached group post", async () => {
+    state.detachedGroup = true;
+
+    await notify();
+
+    expect(enqueueNotificationBatchMock).not.toHaveBeenCalled();
   });
 
   test.each([
