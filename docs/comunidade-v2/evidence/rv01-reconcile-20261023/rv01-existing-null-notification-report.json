@@ -1,0 +1,11 @@
+{
+  "fixture": "qa-rv01-1792773100683",
+  "post": {
+    "audienceScope": "UNRESOLVED",
+    "spaceId": null,
+    "status": "DRAFT"
+  },
+  "notificationScope": "__community_scope_unresolved__",
+  "visible": false,
+  "itemCount": 0
+}

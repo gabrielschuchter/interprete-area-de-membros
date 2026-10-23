@@ -9,6 +9,13 @@ const migration = readFileSync(
   ),
   "utf8"
 );
+const audienceReconcileMigration = readFileSync(
+  resolve(
+    process.cwd(),
+    "../../packages/database/prisma/migrations/20261023140000_notification_audience_reconcile/migration.sql"
+  ),
+  "utf8"
+);
 const schema = readFileSync(
   resolve(process.cwd(), "../../packages/database/prisma/schema.prisma"),
   "utf8"
@@ -46,4 +53,25 @@ test("legacy null community notifications fail closed before live-link recovery"
   expect(failClosedUpdate).toBeGreaterThanOrEqual(0);
   expect(commentRecovery).toBeGreaterThan(failClosedUpdate);
   expect(commentBackfill).toContain(`AND post."spaceId" IS NOT NULL`);
+});
+
+test("null community notification scopes fail closed unless references prove a live audience", () => {
+  expect(audienceReconcileMigration).toContain(
+    `SET "communitySpaceId" = '__community_scope_unresolved__'\nWHERE "communitySpaceId" IS NULL`
+  );
+  expect(audienceReconcileMigration).toContain(
+    `reference.audience_scope = 'GLOBAL'\n          AND reference.space_id IS NULL`
+  );
+  expect(audienceReconcileMigration).toContain(
+    `reference.audience_scope = 'GROUP'\n          AND reference.space_id IS NOT NULL\n          AND reference.space_status = 'PUBLISHED'`
+  );
+  expect(audienceReconcileMigration).toContain(
+    `reference.post_status = 'PUBLISHED'\n      AND reference.post_deleted_at IS NULL`
+  );
+  expect(audienceReconcileMigration).toContain(
+    `scope.reference_count = scope.resolved_reference_count\n        AND scope.distinct_post_count = 1`
+  );
+  expect(audienceReconcileMigration).toContain(
+    `notification."memberId" = invitation."inviteeId"\n  AND invitation."status" = 'PENDING'`
+  );
 });

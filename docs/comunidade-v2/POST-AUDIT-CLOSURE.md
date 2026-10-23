@@ -1,5 +1,52 @@
 # Comunidade V2 — encerramento das correções nesta execução
 
+## Fechamento cirúrgico de RV-01 — 23/10/2026
+
+**RV-01 encerrado no QA local migrado. Release continua NO-GO.** A nova
+autorização do usuário limitou esta execução à reprodução original, ao endpoint
+real e ao versionamento seletivo. Nenhuma suíte integrada, build geral,
+Graphify, migration remota ou Etapa 12A foi executada.
+
+- Base conferida: código `80f6c1341acea4a56830d4091cc10e904e1cbbcc`, seguido
+  pelo fechamento documental `93f053cecb91b60d2d32ba4bd0d0514485bc5663`,
+  idêntico no HEAD e em `origin/codex/comunidade-v2` antes deste patch.
+- Reproducer original `rv01-existing-null-notification.ts`, sem alterações:
+  mesma fixture `qa-rv01-1792773100683`, antes `visible=true`/2 itens, depois
+  `visible=false`/0 itens na mesma consulta com cursor. O relatório anterior
+  foi preservado antes da repetição.
+- A notificação originalmente NULL agora persiste com
+  `__community_scope_unresolved__`; o post permanece `UNRESOLVED`, `spaceId=NULL`
+  e `DRAFT`. A fixture permanece no banco, não lida e não vista.
+- HTTP real `GET http://localhost:3101/api/notifications`: 200 e
+  `Cache-Control: private, no-store` em `MENTIONS`, `ALL` e `summary=1`.
+  A fixture ficou ausente das listas completas. `MENTIONS` retornou 1 item,
+  unread/unseen 1/1; `ALL` retornou 2 itens, unread/unseen 2/2; resumo 2/2.
+  As contagens coincidiram exatamente com os itens visíveis, excluindo a
+  fixture não lida/não vista. Autenticação pelo modo de desenvolvimento local
+  existente, com o destinatário real da fixture; não valida Clerk remoto.
+- A migration `20261023140000_notification_audience_reconcile` já aplicada
+  foi somente consultada: checksum SHA-256
+  `d9fcad34bc0bd88a03cee39153dbcbccae44537d914e5ea5ef03b73848d99df2`
+  igual ao arquivo, concluída e sem rollback. PostgreSQL loopback
+  `127.0.0.1:54325/interprete_community_v2_qa`, certificado QA validado.
+- Teste diretamente afetado: `bun x vitest run lib/notification-audience-migration.test.ts`
+  em `apps/app`: **3/3**. Nenhuma correção adicional de código foi necessária.
+- Evidências antes/depois e HTTP preservadas em
+  [evidence/rv01-reconcile-20261023/README.md](evidence/rv01-reconcile-20261023/README.md).
+  O destinatário não tem controle global legítimo direto TOPIC elegível;
+  não foi criada fixture para simular esse controle. O aceite desta missão é
+  a exclusão da notificação original nas listas e contagens.
+- O arquivo protegido `community-groups.spec.ts` permanece fora do commit,
+  hash Git `43bb75e8482c3638840cbfa760a91e01927ed770`. Dados QA preexistentes
+  foram somente lidos. O servidor HTTP iniciado para esta reprodução foi encerrado.
+
+**Critério de parada atingido:** reprodução conclusiva e patch seletivo.
+OPS-01 e os demais gates remotos/infraestrutura continuam na Etapa 12A;
+nenhum release foi aprovado ou ambiente remoto modificado. O registro abaixo
+é histórico e foi supersedido apenas quanto ao bloqueador local RV-01.
+
+## Registro histórico da execução anterior
+
 Data: 23/10/2026. Encerramento determinado pelo usuário: sem novos testes,
 builds, auditorias, código ou rechecagens. **Release NO-GO.** Não há aprovação
 artificial de RV-01 nem início da Etapa 12.

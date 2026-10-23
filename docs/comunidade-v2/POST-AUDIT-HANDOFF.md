@@ -1,19 +1,19 @@
 # Comunidade V2 — fechamento pós-auditoria e handoff 12A
 
-## Encerramento por ordem do usuário — 23/10/2026
+## Fechamento cirúrgico de RV-01 — 23/10/2026
 
-**Estado vigente: NO-GO; correções interrompidas.** Código sincronizado:
-`80f6c1341acea4a56830d4091cc10e904e1cbbcc`. A rechecagem encontrou um P1
-concreto ainda sem fechamento comprovado: notificação comunitária legada com
-`communitySpaceId=NULL` continua visível para post `UNRESOLVED`.
-A migration local `20261023140000_notification_audience_reconcile` e seu
-teste ficam preservados fora do commit; não considerar o patch aprovado.
-A ordem de encerramento proíbe novos testes, correções e rechecagens nesta execução.
+**RV-01 encerrado no QA local migrado; release continua NO-GO.** A reprodução
+original da fixture `qa-rv01-1792773100683` passou sem alteração do reproducer:
+`visible=false`, zero itens. O endpoint HTTP real excluiu a mesma notificação
+em MENTIONS/ALL; contagens e resumo coincidiram com os itens visíveis.
+A migration `20261023140000_notification_audience_reconcile` aplicada no QA
+teve checksum conferido; seu teste passou 3/3. Migration, teste e evidências
+integram o patch seletivo posterior ao fechamento documental `93f053c`.
 
-O estado completo, evidências existentes e próximo passo estão em
-[POST-AUDIT-CLOSURE.md](POST-AUDIT-CLOSURE.md). Os registros abaixo são
-históricos e suas declarações de correção/rechecagem pendente são supersedidas
-por este encerramento. A Etapa 12 não foi iniciada.
+Evidências e limites: [POST-AUDIT-CLOSURE.md](POST-AUDIT-CLOSURE.md).
+Nenhuma suíte integrada, build geral, Graphify ou alteração remota foi executada.
+OPS-01 e os demais gates de infraestrutura continuam na Etapa 12A, não iniciada.
+Os registros abaixo são históricos e supersedidos por este fechamento.
 
 Data: 23/10/2026. Candidato de código: `80f6c1341acea4a56830d4091cc10e904e1cbbcc`.
 Este documento registra as correções pós-auditoria; não executa a Etapa 12A nem autoriza publicação.
