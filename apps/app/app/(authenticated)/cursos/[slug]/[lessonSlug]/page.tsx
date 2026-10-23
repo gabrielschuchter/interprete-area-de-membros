@@ -7,6 +7,7 @@ import {
   ExternalLinkIcon,
   PaperclipIcon,
 } from "lucide-react";
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -14,7 +15,9 @@ import { CompleteLessonButton } from "@/components/learning/complete-lesson-butt
 import { LearningPageFrame } from "@/components/learning/learning-page-frame";
 import { LessonPlayer } from "@/components/learning/lesson-player";
 import { LessonToolsDrawer } from "@/components/learning/lesson-tools-drawer";
+import { RoomLessonPage } from "@/components/learning/room/room-lesson-page";
 import { StudyHeartbeat } from "@/components/learning/study-heartbeat";
+import { env } from "@/env";
 
 const assetKindLabel = (kind: string) => {
   switch (kind) {
@@ -33,6 +36,8 @@ import {
   getPublishedLesson,
   requireMemberId,
 } from "@/lib/learning";
+import { getRoomLessonTitles } from "@/lib/room";
+import { roomMetadata } from "@/lib/room-metadata";
 
 export const dynamic = "force-dynamic";
 
@@ -58,9 +63,32 @@ const safeResourceUrl = (value: string) => {
 
 interface LessonPageProperties {
   readonly params: Promise<{ lessonSlug: string; slug: string }>;
+  readonly searchParams: Promise<{ t?: string | string[] }>;
 }
 
-const LessonPage = async ({ params }: LessonPageProperties) => {
+const roomEnabled = () => env.ROOM_V2_ENABLED === "true";
+
+export const generateMetadata = async ({
+  params,
+}: LessonPageProperties): Promise<Metadata> => {
+  if (!roomEnabled()) {
+    return {};
+  }
+  const { lessonSlug, slug } = await params;
+  const titles = await getRoomLessonTitles(
+    slug,
+    lessonSlug,
+    await requireMemberId()
+  );
+  return roomMetadata(titles?.lesson ?? null, titles?.course ?? null);
+};
+
+const LessonPage = async ({ params, searchParams }: LessonPageProperties) => {
+  // Sala de Aula (docs/sala-de-aula), behind ROOM_V2_ENABLED. Off: the page
+  // below stays exactly as it was.
+  if (roomEnabled()) {
+    return <RoomLessonPage params={params} searchParams={searchParams} />;
+  }
   const { lessonSlug, slug } = await params;
   const memberId = await requireMemberId();
   const courseExperience = await getCourseExperience(slug);

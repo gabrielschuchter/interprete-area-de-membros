@@ -200,3 +200,51 @@ export const completeLessonForMember = async (
   revalidatePath(`/cursos/${lesson.module.course.slug}/${lesson.slug}`, "page");
   return { message: "Aula concluída.", ok: true };
 };
+
+// Unchecking "feita" in the room only reopens the member's own progress row.
+// Assignment completions and badges already earned are history and stay.
+export const reopenLessonForMember = async (
+  memberId: string,
+  lessonId: string
+): Promise<LessonCompletionResult> => {
+  const lesson = await database.lesson.findFirst({
+    where: {
+      id: lessonId,
+      status: ContentStatus.PUBLISHED,
+      module: {
+        status: ContentStatus.PUBLISHED,
+        course: { status: ContentStatus.PUBLISHED },
+      },
+    },
+    select: {
+      slug: true,
+      module: {
+        select: { id: true, course: { select: { id: true, slug: true } } },
+      },
+    },
+  });
+  if (!lesson) {
+    return { message: "A aula não está disponível.", ok: false };
+  }
+  const accessScope = await getLearningAccessScope(memberId);
+  if (
+    !hasLessonAccess(
+      accessScope,
+      lesson.module.course.id,
+      lesson.module.id,
+      lessonId
+    )
+  ) {
+    return { message: "Você não tem acesso a esta aula.", ok: false };
+  }
+
+  await database.lessonProgress.updateMany({
+    where: { memberId, lessonId, status: ProgressStatus.COMPLETED },
+    data: { status: ProgressStatus.IN_PROGRESS, completedAt: null },
+  });
+
+  revalidatePath("/cursos", "page");
+  revalidatePath(`/cursos/${lesson.module.course.slug}`, "page");
+  revalidatePath(`/cursos/${lesson.module.course.slug}/${lesson.slug}`, "page");
+  return { message: "Aula desmarcada.", ok: true };
+};

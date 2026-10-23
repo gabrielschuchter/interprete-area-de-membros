@@ -14,6 +14,7 @@ import {
   accessGrantSourceIsEffective,
   cohortEndedReadUntil,
   resolveCohortCourseAccess,
+  resolveCohortLessonUnlockDates,
   resolveLockedCohortLessons,
 } from "./cohort-domain";
 import { activeAssignmentStatuses } from "./learning-assignments";
@@ -40,6 +41,8 @@ export interface LearningAccessScope {
   readonly fullAccess: boolean;
   readonly fullCourseIds: ReadonlySet<string>;
   readonly lessonIds: ReadonlySet<string>;
+  /** When each lesson in unavailableLessonIds opens for this member. */
+  readonly lessonUnlockDates?: ReadonlyMap<string, Date>;
   readonly libraryItemIds: ReadonlySet<string>;
   readonly moduleIds: ReadonlySet<string>;
   readonly origins?: readonly LearningAccessOrigin[];
@@ -586,6 +589,10 @@ const getLearningAccessScopeUncached = async (
     })),
     now,
   });
+  const lessonUnlockDates = resolveCohortLessonUnlockDates({
+    accessPaths: lessonAccessPaths,
+    lockedLessonIds: scope.unavailableLessonIds,
+  });
 
   return {
     fullAccess: false,
@@ -610,6 +617,7 @@ const getLearningAccessScopeUncached = async (
     ),
     moduleIds: scope.moduleIds,
     unavailableLessonIds: scope.unavailableLessonIds,
+    lessonUnlockDates,
     libraryItemIds: scope.libraryItemIds,
     lessonIds: scope.lessonIds,
     assetIds: scope.assetIds,
