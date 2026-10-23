@@ -3,8 +3,8 @@
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import {
-  completeLessonForMember,
   type LessonCompletionResult,
+  markLessonCompletedByMember,
   reopenLessonForMember,
 } from "@/lib/lesson-completion";
 import { mutationLog } from "@/lib/mutation-reliability";
@@ -29,7 +29,7 @@ export const setRoomLessonCompleted = async (
   }
   const { completed, lessonId } = parsed.data;
   return completed
-    ? completeLessonForMember(userId, lessonId)
+    ? markLessonCompletedByMember(userId, lessonId)
     : reopenLessonForMember(userId, lessonId);
 };
 
