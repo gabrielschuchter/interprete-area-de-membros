@@ -66,5 +66,3 @@ FROM public."CommunitySpaceInvitation" AS invitation
 WHERE notification."type" = 'GROUP_INVITATION'
   AND notification."entityType" = 'COMMUNITY_INVITATION'
   AND notification."entityId" = invitation."id";
-
-\n
