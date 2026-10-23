@@ -11,6 +11,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@repo/design-system/components/ui/dialog";
+import { ChevronDownIcon, Link2Icon, MailIcon, UsersIcon } from "lucide-react";
 import { type FormEvent, useCallback, useState, useTransition } from "react";
 import type { CommunityInviteBatchResult } from "@/app/(authenticated)/comunidade/invitation-actions";
 import {
@@ -86,10 +87,12 @@ const linkActionLabel = (pending: boolean, active: boolean) => {
 
 export const CommunityGroupInvitationDialog = ({
   groupId,
+  groupName,
   memberId,
   management,
 }: {
   readonly groupId: string;
+  readonly groupName: string;
   readonly memberId: string;
   readonly management: GroupInvitationManagementSnapshot;
 }) => {
@@ -212,6 +215,61 @@ export const CommunityGroupInvitationDialog = ({
     });
   };
 
+  const invitationHistory =
+    management.invitations.length > 0 ? (
+      <section aria-label="Convites enviados" className="border-t pt-4">
+        <h3 className="font-medium text-sm">Convites recentes</h3>
+        <ul className="mt-2 max-h-48 space-y-2 overflow-y-auto">
+          {management.invitations.map((invitation) => (
+            <li
+              className="flex flex-wrap items-center justify-between gap-2 text-sm"
+              key={invitation.id}
+            >
+              <span>
+                {invitation.invitee.profile?.displayName ||
+                  invitation.invitee.displayName ||
+                  "Membro"}
+                <span className="ml-2 text-muted-foreground">
+                  {invitationStatusLabel[invitation.status] ?? "Atualizado"}
+                </span>
+              </span>
+              {invitation.status === "PENDING" && (
+                <form
+                  onSubmit={(event) =>
+                    submitRevokeInvitation(event, invitation.id)
+                  }
+                >
+                  <input
+                    name="invitationId"
+                    type="hidden"
+                    value={invitation.id}
+                  />
+                  <Button
+                    disabled={pending}
+                    size="sm"
+                    type="submit"
+                    variant="ghost"
+                  >
+                    {revokeMessages[invitation.id] === "Revogando…"
+                      ? "Revogando…"
+                      : "Revogar"}
+                  </Button>
+                </form>
+              )}
+              {revokeMessages[invitation.id] && (
+                <output
+                  aria-live="polite"
+                  className="w-full text-muted-foreground text-xs"
+                >
+                  {revokeMessages[invitation.id]}
+                </output>
+              )}
+            </li>
+          ))}
+        </ul>
+      </section>
+    ) : null;
+
   return (
     <Dialog onOpenChange={setOpen} open={open}>
       <DialogTrigger asChild>
@@ -225,14 +283,17 @@ export const CommunityGroupInvitationDialog = ({
             Convidar para o grupo
           </DialogTitle>
           <DialogDescription>
-            Convites não dão acesso até a pessoa aceitar. Você pode revogar o
-            link a qualquer momento.
+            <span className="block">{groupName}</span>
+            <span className="mt-1 block">
+              Convites não dão acesso até a pessoa aceitar. Você pode revogar o
+              link a qualquer momento.
+            </span>
           </DialogDescription>
         </DialogHeader>
 
         <div
           aria-label="Formas de convidar"
-          className="grid grid-cols-3 border-b"
+          className="hidden grid-cols-3 border-b sm:grid"
           role="tablist"
         >
           {(
@@ -257,15 +318,61 @@ export const CommunityGroupInvitationDialog = ({
           ))}
         </div>
 
+        <fieldset className="border-0 p-0 sm:hidden">
+          <legend className="sr-only">Formas de convidar</legend>
+          {(
+            [
+              [
+                "link",
+                "Compartilhar o link",
+                "Quem abrir entra como membro",
+                Link2Icon,
+              ],
+              [
+                "email",
+                "Enviar por e-mail",
+                "Quem ainda não tem conta cria uma ao aceitar",
+                MailIcon,
+              ],
+              ["people", "Buscar pessoas", "Por nome ou @usuário", UsersIcon],
+            ] as const
+          ).map(([id, label, description, Icon]) => (
+            <button
+              aria-controls={`invite-panel-${id}`}
+              aria-expanded={tab === id}
+              className="flex min-h-[4.25rem] w-full items-center gap-3 border-b py-3 text-left"
+              key={id}
+              onClick={() => setTab(id)}
+              type="button"
+            >
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted text-brand-structural">
+                <Icon aria-hidden="true" className="size-4" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block font-medium">{label}</span>
+                <span className="block text-muted-foreground text-sm">
+                  {description}
+                </span>
+              </span>
+              <ChevronDownIcon
+                aria-hidden="true"
+                className={`size-4 shrink-0 transition-transform ${tab === id ? "rotate-180" : ""}`}
+              />
+            </button>
+          ))}
+        </fieldset>
+
         {tab === "link" && (
           <section
-            aria-labelledby="invite-tab-link"
+            aria-labelledby="invite-panel-link-label"
             className="space-y-4"
             id="invite-panel-link"
             role="tabpanel"
           >
             <div className="rounded-sm border p-4">
-              <h3 className="font-medium">Link do grupo</h3>
+              <h3 className="font-medium" id="invite-panel-link-label">
+                Link do grupo
+              </h3>
               <p className="mt-1 text-muted-foreground text-sm leading-5">
                 O link não expira por tempo. Regenerar revoga o link atual; quem
                 recebe ainda precisa aceitar para entrar.
@@ -325,12 +432,14 @@ export const CommunityGroupInvitationDialog = ({
 
         {tab === "email" && (
           <section
-            aria-labelledby="invite-tab-email"
+            aria-labelledby="invite-panel-email-label"
             className="rounded-sm border border-dashed p-4"
             id="invite-panel-email"
             role="tabpanel"
           >
-            <h3 className="font-medium">E-mail indisponível</h3>
+            <h3 className="font-medium" id="invite-panel-email-label">
+              E-mail indisponível
+            </h3>
             <p className="mt-1 text-muted-foreground text-sm leading-5">
               O envio de e-mail ainda não tem um provedor configurado. Nenhuma
               mensagem será enviada por esta opção.
@@ -340,11 +449,14 @@ export const CommunityGroupInvitationDialog = ({
 
         {tab === "people" && (
           <section
-            aria-labelledby="invite-tab-people"
+            aria-labelledby="invite-panel-people-label"
             className="space-y-4"
             id="invite-panel-people"
             role="tabpanel"
           >
+            <h3 className="sr-only" id="invite-panel-people-label">
+              Buscar pessoas
+            </h3>
             <form className="space-y-4" onSubmit={submitInvitations}>
               <input name="groupId" type="hidden" value={groupId} />
               <GroupMemberInvitePicker
@@ -382,59 +494,11 @@ export const CommunityGroupInvitationDialog = ({
           </section>
         )}
 
-        {management.invitations.length > 0 && (
-          <section aria-label="Convites enviados" className="border-t pt-4">
-            <h3 className="font-medium text-sm">Convites recentes</h3>
-            <ul className="mt-2 max-h-48 space-y-2 overflow-y-auto">
-              {management.invitations.map((invitation) => (
-                <li
-                  className="flex flex-wrap items-center justify-between gap-2 text-sm"
-                  key={invitation.id}
-                >
-                  <span>
-                    {invitation.invitee.profile?.displayName ||
-                      invitation.invitee.displayName ||
-                      "Membro"}
-                    <span className="ml-2 text-muted-foreground">
-                      {invitationStatusLabel[invitation.status] ?? "Atualizado"}
-                    </span>
-                  </span>
-                  {invitation.status === "PENDING" && (
-                    <form
-                      onSubmit={(event) =>
-                        submitRevokeInvitation(event, invitation.id)
-                      }
-                    >
-                      <input
-                        name="invitationId"
-                        type="hidden"
-                        value={invitation.id}
-                      />
-                      <Button
-                        disabled={pending}
-                        size="sm"
-                        type="submit"
-                        variant="ghost"
-                      >
-                        {revokeMessages[invitation.id] === "Revogando…"
-                          ? "Revogando…"
-                          : "Revogar"}
-                      </Button>
-                    </form>
-                  )}
-                  {revokeMessages[invitation.id] && (
-                    <output
-                      aria-live="polite"
-                      className="w-full text-muted-foreground text-xs"
-                    >
-                      {revokeMessages[invitation.id]}
-                    </output>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
+        <div
+          className={tab === "people" ? "block sm:block" : "hidden sm:block"}
+        >
+          {invitationHistory}
+        </div>
 
         <DialogFooter>
           <DialogClose asChild>

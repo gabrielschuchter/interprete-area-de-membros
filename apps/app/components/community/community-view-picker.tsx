@@ -4,6 +4,7 @@ import {
   Drawer,
   DrawerClose,
   DrawerContent,
+  DrawerDescription,
   DrawerHeader,
   DrawerTitle,
   DrawerTrigger,
@@ -51,6 +52,9 @@ const CommunityViewPicker = ({
       <DrawerContent className="community-view-sheet">
         <DrawerHeader className="community-view-sheet__header !flex-row !text-left">
           <DrawerTitle>Comunidade</DrawerTitle>
+          <DrawerDescription className="sr-only">
+            Escolha uma das cinco visões da Comunidade.
+          </DrawerDescription>
           <DrawerClose asChild>
             <button
               aria-label="Fechar visões da comunidade"

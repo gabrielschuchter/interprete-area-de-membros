@@ -17,6 +17,7 @@ import { RichDocument } from "@/components/learning/rich-document";
 import { ProfileBadges } from "@/components/profile/profile-badges";
 import { getMemberRole } from "@/lib/authorization";
 import { communityPostHref } from "@/lib/community";
+import { safeCommunityReturnPath } from "@/lib/community-return-path";
 import { communityPostAudienceWhere } from "@/lib/community-space-rules";
 import { requireMemberId } from "@/lib/learning";
 import { getPublicProfile } from "@/lib/profile";
@@ -24,6 +25,7 @@ import { splitProfileBadges } from "@/lib/profile-badge-catalog";
 
 interface PublicProfilePageProperties {
   readonly params: Promise<{ username: string }>;
+  readonly searchParams: Promise<{ returnTo?: string | string[] }>;
 }
 
 const whitespacePattern = /\s+/;
@@ -59,8 +61,13 @@ const hostnameFor = (value: string | null) => {
   }
 };
 
-const PublicProfilePage = async ({ params }: PublicProfilePageProperties) => {
+const PublicProfilePage = async ({
+  params,
+  searchParams,
+}: PublicProfilePageProperties) => {
   const { username } = await params;
+  const resolvedSearchParams = await searchParams;
+  const returnTo = safeCommunityReturnPath(resolvedSearchParams.returnTo);
   const profile = await getPublicProfile(username);
 
   if (!profile) {
@@ -140,8 +147,9 @@ const PublicProfilePage = async ({ params }: PublicProfilePageProperties) => {
     <div className="min-h-svh bg-background">
       <main className="mx-auto w-full max-w-[1120px] px-5 py-8 sm:px-8 lg:px-12 lg:py-14">
         <Button asChild className="-ml-3" variant="ghost">
-          <Link href="/membros">
-            <ArrowLeftIcon aria-hidden="true" /> Voltar para os membros
+          <Link href={returnTo ?? "/membros"}>
+            <ArrowLeftIcon aria-hidden="true" />
+            {returnTo ? "Voltar para a discussão" : "Voltar para os membros"}
           </Link>
         </Button>
 

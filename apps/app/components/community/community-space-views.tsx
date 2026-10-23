@@ -313,6 +313,7 @@ export const CommunitySpacePostsView = ({
         {invitationManagement && (isOwner || isModerator || isStaff) ? (
           <CommunityGroupInvitationDialog
             groupId={space.id}
+            groupName={space.title}
             management={invitationManagement}
             memberId={memberId}
           />
@@ -386,6 +387,7 @@ export const CommunitySpaceMembersView = ({
       {invitationManagement && (isOwner || isModerator || isStaff) ? (
         <CommunityGroupInvitationDialog
           groupId={space.id}
+          groupName={space.title}
           management={invitationManagement}
           memberId={memberId}
         />

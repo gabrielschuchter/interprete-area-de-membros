@@ -44,10 +44,10 @@ const SavedCommunityFilters = ({
   spaces,
 }: SavedCommunityFiltersProperties) => (
   <form
-    className="grid gap-3 md:grid-cols-[minmax(0,1fr)_170px_145px_140px_auto]"
+    className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_170px_145px_140px_auto]"
     method="get"
   >
-    <label className="relative min-w-0">
+    <label className="relative min-w-0 sm:col-span-2 lg:col-span-1">
       <span className="sr-only">Buscar nos salvos da comunidade</span>
       <SearchIcon
         aria-hidden="true"

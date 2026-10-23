@@ -227,6 +227,7 @@ const CommentThread = ({
             compact
             profile={comment.profile ?? undefined}
             replyAvatar={depth > 0}
+            returnTo={communityPostHref(post)}
             showHeadline={false}
           />
         )}
@@ -382,6 +383,7 @@ export function CommunityPostView({
               authorId={post.authorId}
               compact
               profile={post.profile ?? undefined}
+              returnTo={href}
               showHeadline={false}
             />
             {authorRoleLabel && (
