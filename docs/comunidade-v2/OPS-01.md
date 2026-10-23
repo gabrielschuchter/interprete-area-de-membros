@@ -4,6 +4,56 @@
 Nenhum job foi declarado recuperado, nenhuma notificação foi criada nesta
 execução e nenhuma chamada autenticada manual do worker foi usada como prova.
 
+## Ativação condicional do PR #16 — 23/10, 20:19 UTC
+
+A autorização posterior do usuário permitiu integrar exclusivamente o patch
+diagnóstico, condicionada à proteção comprovada contra deployments Production.
+Essa condição foi cumprida antes do merge: o Git foi desconectado separadamente
+nos projetos App e API pelo painel autorizado; ambas as páginas foram recarregadas
+e confirmaram ausência de repositório conectado. Configurações preservadas pelo
+Vercel; nenhum Pause Project, alteração de política, credencial ou cron foi usado.
+
+Antes da proteção, ambos rastreavam `main` como Production, com atribuição
+automática dos domínios ativa. Ignored Build Step, projeto não afetado e mensagem
+`[skip ci]` não foram adotados como garantia. Não havia deploy hooks em nenhum
+projeto; o único workflow de `main` era o scheduler Preview, sem etapa de deploy.
+A [documentação Git da Vercel](https://vercel.com/docs/git) confirma o disparo
+de Production ao integrar a branch produtiva; apenas desligar a atribuição de
+domínios ainda permitiria um deployment de Production.
+
+O [PR #16](https://github.com/gabrielschuchter/interprete-area-de-membros/pull/16)
+foi integrado por squash às `20:19:37Z`, commit
+`b5a2f067d75adf16bf84193ecea290c1bd318f5e`, com conferência do head aprovado
+`1cb2660` e diff de **um workflow, 41 adições, zero remoções**. Nenhum código
+de produto V2 foi integrado em `main`.
+
+Production manteve os mesmos deployments e aliases antes/depois do merge:
+
+| Projeto | Deployment ativo | SHA de produto preservado |
+|---|---|---|
+| App | `67N5ST2Dn3NR5XF2n4aekveAaXWF` | `7a7c8e4d0167490308f54bb8d79b3577c2f0aaa6` |
+| API | `XQRUb541CcFFTLhGodnXokBtDMcc` | `6c7b49a3fecab3bda8e2f6ad41789972ad711dd9` |
+
+As listas de deployments consultadas após o merge não mostraram deployment de
+`b5a2f06`. Evidência sanitizada: [production-guard.json](evidence/ops01-20261023/production-guard.json).
+Screenshots e árvores do painel ficam no diretório local indicado nesse JSON.
+
+**Git permanece desconectado nos dois projetos.** Isso suspende novos deployments
+automáticos Git, inclusive Preview. Reconectar exige handoff controlado: a branch
+Production continua sendo `main`, e não foi demonstrado que reconectar deixaria
+de disparar um deployment. Não reconectar para encerrar esta tarefa.
+
+Após a ativação, aguarda-se exclusivamente o próximo evento real `schedule`.
+A consulta atual contabilizou **49 falhas, zero sucessos**, última execução
+`40014660675`, `19:51:09Z`, anterior ao patch. Os últimos oito eventos chegaram
+com intervalos aproximados de 2–6 horas apesar do cron de cinco minutos.
+Workflow ativo. Não houve dispatch, rerun, POST manual ou job QA novo.
+O acompanhamento nesta conversa está ativo a cada cinco minutos, ID
+`ops-01-pr-ximo-schedule-ap-s-pr-16`: uma consulta por ativação, silencioso
+enquanto não houver o evento; encerra após entregar diagnóstico e próximo passo.
+Não autoriza correção adicional, reconexão Git ou novo ciclo de auditoria.
+Os registros abaixo são o snapshot anterior onde divergirem desta ativação.
+
 ## Diagnóstico comprovado
 
 - Permanecem 48 runs `schedule` com falha e zero sucesso na consulta feita
@@ -83,7 +133,7 @@ Graphify AST atualizado: 8.481 nós/22.178 arestas; 78 SQLs não extraídos por
 ausência de `tree_sitter_sql`, sem relação com o patch YAML. Nenhuma migration
 ou auditoria SQL foi realizada.
 
-## Ação exata pendente de autorização
+## Snapshot anterior — ação que estava pendente de autorização
 
 **Integrar/ativar este único patch de workflow em `main`, com garantia de que
 isso não criará/promoverá deployment Production, e observar um novo evento

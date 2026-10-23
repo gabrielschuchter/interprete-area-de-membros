@@ -1,18 +1,25 @@
 # Comunidade V2 — estado para continuidade
 
-## OPS-01 — retomada delimitada de 23/10/2026
+## OPS-01 — ativação condicional do PR #16 — 23/10/2026
 
-**OPS-01 BLOQUEADO; não resolvido.** Acesso Vercel autorizado comprovado pelo
-navegador; o 403 local corresponde a credencial expirada desde 21/10 e não
-demonstra ausência total de acesso. SSO e Trusted Source Preview foram lidos
-sem alteração. As 48 falhas continuam sem causa HTTP comprovada.
+**OPS-01 BLOQUEADO; diagnóstico agendado pendente.** O patch exclusivo do
+[PR #16](https://github.com/gabrielschuchter/interprete-area-de-membros/pull/16)
+foi integrado em main: `b5a2f06`, 20:19:37 UTC. Antes do merge, App e API foram
+desconectados do Git e a proteção foi confirmada por reload no painel.
+Production manteve os mesmos deployments, SHAs e aliases; nenhum deployment
+do merge foi observado. **Git permanece desconectado nos dois projetos.**
+Reconectar exige handoff controlado para evitar publicação.
 
-Patch diagnóstico testado 7/7 e preparado no [PR draft #16](https://github.com/gabrielschuchter/interprete-area-de-membros/pull/16),
-sem merge em main. A ativação desse único workflow em main, sem efeito sobre
-Production, é a ação exata pendente de autorização conforme RELEASE-PLAN.
-Nenhum job QA novo, execução manual do worker, prova de recovery/Broadcast/badge,
-migration ou mudança de credencial/proteção/cron ocorreu.
-Detalhes e limites em [OPS-01.md](OPS-01.md). Os demais gates 12A não foram reabertos.
+Último schedule observado: `40014660675`, 19:51:09 UTC, anterior ao patch;
+49 falhas e zero sucessos. Workflow ativo; os últimos eventos chegaram a cada
+2–6 horas apesar do cron de cinco minutos. Acompanhamento nesta conversa,
+a cada cinco minutos, limitado ao próximo evento real com o patch; silencioso
+até diagnóstico ou ação necessária. ID: `ops-01-pr-ximo-schedule-ap-s-pr-16`.
+
+Não houve job QA novo, chamada manual, prova de recovery/Broadcast/badge,
+migration ou mudança de credencial, autenticação ou cron GREEN.
+Detalhes, proteção e evidências em [OPS-01.md](OPS-01.md).
+Os registros abaixo são históricos onde divergirem desta ativação.
 
 
 ## Etapa 12A encerrada — NO-GO — 23/10/2026

@@ -1,10 +1,15 @@
 # Comunidade V2 — RELEASE-PLAN — Etapa 12A
 
-> Atualização exclusiva de OPS-01: acesso Vercel via navegador comprovado;
-> credencial local expirada, integração indisponível nesta sessão. Patch de
-> diagnóstico no PR draft #16, sem ativação em main ou prova de recovery.
+> Atualização exclusiva de OPS-01: PR #16 integrado em main no commit
+> `b5a2f06`, às 20:19:37 UTC, sob autorização condicional posterior ao preflight.
+> Git desconectado e verificado no App e na API **antes do merge**, impedindo
+> deployments automáticos. Production manteve seus deployments/SHAs/aliases.
+> **Git permanece desconectado em ambos**; reconexão exige handoff controlado.
+> Próximo evento real com o diagnóstico acompanhado nesta conversa; último
+> anterior ao patch: `40014660675`, 19:51 UTC, 49 falhas, zero sucessos.
 > **OPS-01 continua BLOQUEADO e o release NO-GO.** Ver [OPS-01.md](OPS-01.md).
-> O restante deste preflight permanece no snapshot original.
+> O restante deste preflight permanece no snapshot original, inclusive as
+> contagens e impedimentos históricos abaixo. Nenhuma publicação 12B ocorreu.
 
 
 **Preflight fechado em 23/10/2026: NO-GO para a Etapa 12B de publicação.**
