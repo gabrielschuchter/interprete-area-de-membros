@@ -151,7 +151,7 @@ const redirectWithResult = (
   result: "created" | "invalid" | "replayed"
 ): never => {
   revalidatePath("/admin/atribuicoes");
-  revalidatePath("/aprender");
+  revalidatePath("/cursos");
   redirect(`/admin/atribuicoes?resultado=${result}`);
 };
 

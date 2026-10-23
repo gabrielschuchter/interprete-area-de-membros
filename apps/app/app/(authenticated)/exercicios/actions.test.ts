@@ -253,7 +253,7 @@ test("publishes a bank transactionally and invalidates learner surfaces", async 
     select: { id: true },
   });
   expect(mocks.revalidatePath).toHaveBeenCalledWith("/exercicios");
-  expect(mocks.revalidatePath).toHaveBeenCalledWith("/aprender");
+  expect(mocks.revalidatePath).toHaveBeenCalledWith("/cursos");
 });
 
 test("keeps invalid question edits on their list without writing a version", async () => {
@@ -347,7 +347,7 @@ test("starting an assigned exercise list updates assignment in the session trans
   expect(
     mocks.transaction.exerciseSessionQuestion.createMany
   ).toHaveBeenCalled();
-  expect(mocks.revalidatePath).toHaveBeenCalledWith("/aprender");
+  expect(mocks.revalidatePath).toHaveBeenCalledWith("/cursos");
 });
 
 test("reuses an active attempt for the same member and list", async () => {

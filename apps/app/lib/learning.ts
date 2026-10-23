@@ -259,7 +259,7 @@ export const getMemberAccessibleLesson = async (
   }
   return {
     ...lesson,
-    href: `/aprender/cursos/${lesson.module.course.slug}/${lesson.slug}`,
+    href: `/cursos/${lesson.module.course.slug}/${lesson.slug}`,
   };
 };
 

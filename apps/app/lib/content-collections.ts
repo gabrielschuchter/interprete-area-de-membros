@@ -382,11 +382,11 @@ export const collectionItemHref = (
   item: CollectionWithItems["items"][number]
 ) => {
   if (item.lesson) {
-    return `/aprender/cursos/${item.lesson.module.course.slug}/${item.lesson.slug}`;
+    return `/cursos/${item.lesson.module.course.slug}/${item.lesson.slug}`;
   }
 
   if (item.course) {
-    return `/aprender/cursos/${item.course.slug}`;
+    return `/cursos/${item.course.slug}`;
   }
 
   if (item.exerciseList) {

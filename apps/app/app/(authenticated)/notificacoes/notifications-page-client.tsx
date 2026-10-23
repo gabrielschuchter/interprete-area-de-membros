@@ -60,7 +60,7 @@ const filters: readonly { label: string; value: Filter }[] = [
   { label: "Menções", value: "MENTIONS" },
   { label: "Comunidade", value: "COMMUNITY" },
   { label: "Atividades", value: "ACTIVITIES" },
-  { label: "Aprender", value: "LEARNING" },
+  { label: "Cursos", value: "LEARNING" },
   { label: "Conquistas", value: "BADGES" },
 ];
 

@@ -66,7 +66,7 @@ const protectedRoutePrefixes = [
   "/admin",
   "/gestao",
   "/professor",
-  "/aprender",
+  "/cursos",
   "/atividades",
   "/biblioteca",
   "/colecoes",

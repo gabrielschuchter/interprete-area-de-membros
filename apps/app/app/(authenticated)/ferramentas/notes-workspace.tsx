@@ -1154,7 +1154,7 @@ function NoteWorkspaceEditorPanel({
   if (note) {
     const linkedResourceHref = note.linkedResourceId
       ? (linkResources.find((resource) => resource.id === note.linkedResourceId)
-          ?.href ?? "/aprender")
+          ?.href ?? "/cursos")
       : null;
 
     return (

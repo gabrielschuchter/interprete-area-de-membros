@@ -255,7 +255,7 @@ const LearnPage = async () => {
               ),
             }
           : undefined,
-      href: `/aprender/atribuicoes/${assignment.id}`,
+      href: `/cursos/atribuicoes/${assignment.id}`,
       label: assignmentState[assignment.status],
       meta:
         [availability, due].filter(Boolean).join(" · ") ||
@@ -319,8 +319,8 @@ const LearnPage = async () => {
         description: course.description ?? path.description,
         href:
           course.progress.percentage > 0 && course.progress.percentage < 100
-            ? `/aprender/cursos/${course.slug}/${course.modules.flatMap((module) => module.lessons).find((lesson) => !lesson.progress.some((progress) => progress.status === "COMPLETED"))?.slug ?? ""}`
-            : `/aprender/cursos/${course.slug}`,
+            ? `/cursos/${course.slug}/${course.modules.flatMap((module) => module.lessons).find((lesson) => !lesson.progress.some((progress) => progress.status === "COMPLETED"))?.slug ?? ""}`
+            : `/cursos/${course.slug}`,
         label: "Curso",
         meta: `${course.progress.completedLessons}/${course.progress.totalLessons} aulas · ${course.progress.percentage}%`,
         progress: course.progress.percentage,
@@ -355,8 +355,8 @@ const LearnPage = async () => {
         description: course.description,
         href:
           course.progress.percentage > 0 && course.progress.percentage < 100
-            ? `/aprender/cursos/${course.slug}/${nextLesson?.slug ?? ""}`
-            : `/aprender/cursos/${course.slug}`,
+            ? `/cursos/${course.slug}/${nextLesson?.slug ?? ""}`
+            : `/cursos/${course.slug}`,
         label: "Curso",
         meta: `${course.progress.completedLessons}/${course.progress.totalLessons} aulas · ${course.progress.percentage}%`,
         progress: course.progress.percentage,
@@ -393,8 +393,8 @@ const LearnPage = async () => {
   return (
     <LearningPageFrame
       description="Suas aulas, cursos, trilhas e gravações."
-      eyebrow="Estudar · Aprender"
-      title="Aprender"
+      eyebrow="Estudar · Cursos"
+      title="Cursos"
       variant="catalog"
     >
       <div

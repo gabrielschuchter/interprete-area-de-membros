@@ -73,7 +73,7 @@ const LearningPathPage = async ({ params }: LearningPathPageProperties) => {
           </p>
           {firstOpenCourse && (
             <Button asChild className="mt-8 w-fit">
-              <Link href={`/aprender/cursos/${firstOpenCourse.slug}`}>
+              <Link href={`/cursos/${firstOpenCourse.slug}`}>
                 {completedLessons > 0 ? "Continuar trilha" : "Começar trilha"}
                 <ArrowRightIcon aria-hidden="true" />
               </Link>
@@ -144,7 +144,7 @@ const LearningPathPage = async ({ params }: LearningPathPageProperties) => {
                     <h3 className="mt-2 font-display text-2xl leading-tight sm:text-3xl">
                       <Link
                         className="underline decoration-brand-action/40 underline-offset-8 transition-colors hover:text-brand-structural"
-                        href={`/aprender/cursos/${course.slug}`}
+                        href={`/cursos/${course.slug}`}
                       >
                         {course.title}
                       </Link>
@@ -172,7 +172,7 @@ const LearningPathPage = async ({ params }: LearningPathPageProperties) => {
                     />
                     <Link
                       className="inline-flex min-h-11 items-center gap-2 text-brand-structural text-sm underline decoration-brand-action/40 underline-offset-4 hover:text-brand-action-text"
-                      href={`/aprender/cursos/${course.slug}`}
+                      href={`/cursos/${course.slug}`}
                     >
                       Ver curso
                       <ArrowRightIcon aria-hidden="true" className="size-4" />

@@ -236,7 +236,7 @@ const main = async () => {
       pass: new URL(page.url()).pathname !== "/onboarding",
     });
     for (const route of [
-      "/aprender",
+      "/cursos",
       "/atividades",
       "/comunidade",
       "/biblioteca",

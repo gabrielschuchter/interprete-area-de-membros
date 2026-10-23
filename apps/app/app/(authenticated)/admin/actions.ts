@@ -240,7 +240,7 @@ const notifyAvailableMembers = async (
           actorId,
           moduleId: module.id,
           moduleTitle: module.title,
-          href: `/aprender/cursos/${module.course.slug}`,
+          href: `/cursos/${module.course.slug}`,
         })
       )
     );
@@ -254,7 +254,7 @@ const notifyAvailableMembers = async (
           actorId,
           lessonId: lesson.id,
           lessonTitle: lesson.title,
-          href: `/aprender/cursos/${lesson.module.course.slug}/${lesson.slug}`,
+          href: `/cursos/${lesson.module.course.slug}/${lesson.slug}`,
         })
       )
     );
@@ -389,7 +389,7 @@ export const setAccessGrant = async (formData: FormData) => {
   });
 
   revalidatePath("/admin/acessos");
-  revalidatePath("/aprender");
+  revalidatePath("/cursos");
 };
 
 export const removeAccessGrant = async (formData: FormData) => {
@@ -402,7 +402,7 @@ export const removeAccessGrant = async (formData: FormData) => {
 
   await database.accessGrant.deleteMany({ where: { id: grantId } });
   revalidatePath("/admin/acessos");
-  revalidatePath("/aprender");
+  revalidatePath("/cursos");
 };
 
 const asContent = (value: string): Prisma.InputJsonValue => {
@@ -459,7 +459,7 @@ export const createLearningPath = async (formData: FormData) => {
   });
 
   revalidatePath("/admin/learning");
-  revalidatePath("/aprender");
+  revalidatePath("/cursos");
 };
 
 export const createCourse = async (formData: FormData) => {
@@ -509,7 +509,7 @@ export const createCourse = async (formData: FormData) => {
 
   revalidatePath("/admin/learning");
   revalidatePath("/gestao/ensino/cursos");
-  revalidatePath("/aprender");
+  revalidatePath("/cursos");
   redirect(
     gestaoReturn
       ? `/gestao/ensino/cursos/${course.id}`
@@ -684,7 +684,7 @@ export const createModule = async (formData: FormData) => {
   });
 
   revalidatePath(`/admin/learning/courses/${courseId}`);
-  revalidatePath("/aprender", "page");
+  revalidatePath("/cursos", "page");
 };
 
 export const duplicateModule = async (formData: FormData) => {
@@ -976,7 +976,7 @@ export const updateLessonAssetMedia = async (formData: FormData) => {
   });
   const courseId = current.lesson.module.courseId;
   revalidatePath(`/admin/learning/courses/${courseId}`);
-  revalidatePath("/aprender");
+  revalidatePath("/cursos");
   revalidatePath("/encontros/gravacoes");
 };
 
@@ -997,7 +997,7 @@ export const updateLearningPath = async (formData: FormData) => {
   });
 
   revalidatePath("/admin/learning");
-  revalidatePath("/aprender");
+  revalidatePath("/cursos");
 };
 
 export const updateCourse = async (formData: FormData) => {
@@ -1036,7 +1036,7 @@ export const updateCourse = async (formData: FormData) => {
   revalidatePath(`/admin/learning/courses/${courseId}`);
   revalidatePath(`/admin/learning/courses/${courseId}/preview`);
   revalidatePath("/admin/learning");
-  revalidatePath("/aprender");
+  revalidatePath("/cursos");
 };
 
 export const updateModule = async (formData: FormData) => {
@@ -1058,7 +1058,7 @@ export const updateModule = async (formData: FormData) => {
   });
 
   revalidatePath(`/admin/learning/courses/${module.courseId}`);
-  revalidatePath("/aprender");
+  revalidatePath("/cursos");
 };
 
 export const createLessonResource = async (formData: FormData) => {
@@ -1219,7 +1219,7 @@ export const moveModule = async (formData: FormData) => {
   });
 
   revalidatePath(`/admin/learning/courses/${module.courseId}`);
-  revalidatePath("/aprender");
+  revalidatePath("/cursos");
 };
 
 export const moveLesson = async (formData: FormData) => {
@@ -1269,7 +1269,7 @@ export const moveLesson = async (formData: FormData) => {
   });
 
   revalidatePath(`/admin/learning/courses/${lesson.module.courseId}`);
-  revalidatePath("/aprender");
+  revalidatePath("/cursos");
 };
 
 export const setContentStatus = async (formData: FormData) => {
@@ -1293,7 +1293,7 @@ export const setContentStatus = async (formData: FormData) => {
       data: { status, publishedAt },
     });
     revalidatePath("/admin/learning");
-    revalidatePath("/aprender");
+    revalidatePath("/cursos");
     return;
   }
 
@@ -1306,7 +1306,7 @@ export const setContentStatus = async (formData: FormData) => {
     revalidatePath(`/admin/learning/courses/${id}`);
     revalidatePath(`/gestao/ensino/cursos/${id}`);
     revalidatePath(`/gestao/ensino/cursos/${id}/turmas`);
-    revalidatePath("/aprender");
+    revalidatePath("/cursos");
     return;
   }
 
@@ -1670,7 +1670,7 @@ const updateLessonStatus = async ({
   revalidatePath(
     `/gestao/ensino/cursos/${lesson.module.courseId}/aulas/${lessonId}`
   );
-  revalidatePath("/aprender", "page");
+  revalidatePath("/cursos", "page");
   return {
     status: "saved",
     message:

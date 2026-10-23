@@ -424,7 +424,7 @@ export const getFocusTimerLinkResources = async (memberId: string) => {
           title: lesson.title,
           shortLabel: `Aula ${index + 1}`,
           context: `${course.title} · ${module.title}`,
-          href: `/aprender/cursos/${course.slug}/${lesson.slug}`,
+          href: `/cursos/${course.slug}/${lesson.slug}`,
         }))
       )
     )

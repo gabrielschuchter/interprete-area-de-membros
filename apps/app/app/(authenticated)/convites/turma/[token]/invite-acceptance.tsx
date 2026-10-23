@@ -35,7 +35,7 @@ export const CohortInviteAcceptance = ({
           Convite aceito. Sua turma já faz parte dos seus acessos.
         </strong>
         <Button asChild>
-          <Link href="/aprender">Ir para Aprender</Link>
+          <Link href="/cursos">Ir para Cursos</Link>
         </Button>
       </output>
     );

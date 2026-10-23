@@ -87,9 +87,7 @@ export const AdminCourseEditor = async ({
           </Button>
           {course.status === "PUBLISHED" && (
             <Button asChild variant="ghost">
-              <Link href={`/aprender/cursos/${course.slug}`}>
-                Ver como aluno
-              </Link>
+              <Link href={`/cursos/${course.slug}`}>Ver como aluno</Link>
             </Button>
           )}
           <form action={duplicateCourse}>

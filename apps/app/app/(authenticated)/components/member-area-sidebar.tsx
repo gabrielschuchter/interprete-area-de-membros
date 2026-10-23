@@ -130,7 +130,7 @@ const isMemberSidebarPathActive = (
   if (href === "/estudar") {
     const studyAreas = [
       "/estudar",
-      "/aprender",
+      "/cursos",
       "/exercicios",
       "/atividades",
       "/biblioteca",

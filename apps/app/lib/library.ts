@@ -696,8 +696,8 @@ const courseBookmarkCard = (
     description: course.description,
     coverUrl: course.coverUrl,
     category: null,
-    href: `/aprender/cursos/${course.slug}`,
-    openHref: `/aprender/cursos/${course.slug}`,
+    href: `/cursos/${course.slug}`,
+    openHref: `/cursos/${course.slug}`,
     label: "Curso",
   });
 };
@@ -720,8 +720,8 @@ const moduleBookmarkCard = (
     description: module.course.title,
     coverUrl: module.course.coverUrl,
     category: null,
-    href: `/aprender/cursos/${module.course.slug}`,
-    openHref: `/aprender/cursos/${module.course.slug}`,
+    href: `/cursos/${module.course.slug}`,
+    openHref: `/cursos/${module.course.slug}`,
     label: "Módulo",
   });
 };
@@ -745,8 +745,8 @@ const lessonBookmarkCard = (
     description: lesson.description,
     coverUrl: lesson.module.course.coverUrl,
     category: null,
-    href: `/aprender/cursos/${lesson.module.course.slug}/${lesson.slug}`,
-    openHref: `/aprender/cursos/${lesson.module.course.slug}/${lesson.slug}`,
+    href: `/cursos/${lesson.module.course.slug}/${lesson.slug}`,
+    openHref: `/cursos/${lesson.module.course.slug}/${lesson.slug}`,
     label: "Aula",
   });
 };
@@ -771,8 +771,8 @@ const assetBookmarkCard = (
     description: lesson.title,
     coverUrl: lesson.module.course.coverUrl,
     category: null,
-    href: `/aprender/cursos/${lesson.module.course.slug}/${lesson.slug}`,
-    openHref: `/aprender/cursos/${lesson.module.course.slug}/${lesson.slug}`,
+    href: `/cursos/${lesson.module.course.slug}/${lesson.slug}`,
+    openHref: `/cursos/${lesson.module.course.slug}/${lesson.slug}`,
     label: "Material de aula",
   });
 };

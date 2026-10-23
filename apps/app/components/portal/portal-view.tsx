@@ -29,7 +29,7 @@ interface PortalShortcut {
 }
 
 const studyShortcuts: readonly PortalShortcut[] = [
-  { href: "/aprender", icon: BookOpen, label: "Cursos" },
+  { href: "/cursos", icon: BookOpen, label: "Cursos" },
   { href: "/exercicios", icon: ListChecks, label: "Exercícios" },
   { href: "/atividades", icon: ClipboardCheck, label: "Atividades" },
   { href: "/biblioteca", icon: LibraryBig, label: "Biblioteca" },

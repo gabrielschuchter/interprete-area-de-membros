@@ -15,9 +15,9 @@ import { expect, test } from "vitest";
 test("preserves a same-origin destination and its query after auth", () => {
   expect(
     getAuthRedirectPath(
-      "https://app.example/sign-in?redirect_url=https%3A%2F%2Fapp.example%2Faprender%3Fcontinue%3D42"
+      "https://app.example/sign-in?redirect_url=https%3A%2F%2Fapp.example%2Fcursos%3Fcontinue%3D42"
     )
-  ).toBe("/aprender?continue=42");
+  ).toBe("/cursos?continue=42");
 });
 
 test("rejects external and authentication-loop destinations", () => {
@@ -50,8 +50,8 @@ test("sends pending sessions to a task route that retains the safe destination",
     "/session-tasks?redirect_url=%2Fadmin%2Fmembers%3Fpage%3D2"
   );
   expect(getSessionTaskPath("/")).toBe("/session-tasks?redirect_url=%2F");
-  expect(getSignInPath("/aprender?tab=recentes")).toBe(
-    "/sign-in?redirect_url=%2Faprender%3Ftab%3Drecentes"
+  expect(getSignInPath("/cursos?tab=recentes")).toBe(
+    "/sign-in?redirect_url=%2Fcursos%3Ftab%3Drecentes"
   );
   expect(getSignInPath("https://evil.example/path")).toBe(
     "/sign-in?redirect_url=%2F"

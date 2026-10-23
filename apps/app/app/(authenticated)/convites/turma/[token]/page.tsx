@@ -34,7 +34,7 @@ const CohortInvitePage = async ({
         {invite.alreadyMember ? (
           <div className="gt-invite-accepted">
             <strong>Você já participa desta turma.</strong>
-            <Link href="/aprender">Ir para Aprender</Link>
+            <Link href="/cursos">Ir para Cursos</Link>
           </div>
         ) : (
           <>

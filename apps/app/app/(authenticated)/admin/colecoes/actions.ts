@@ -99,7 +99,7 @@ const redirectToCollections = (status: "success" | "error", message: string) =>
 
 const revalidateCollections = () => {
   revalidatePath("/admin/colecoes");
-  revalidatePath("/aprender");
+  revalidatePath("/cursos");
   revalidatePath("/");
 };
 

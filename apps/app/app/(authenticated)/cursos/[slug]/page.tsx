@@ -54,7 +54,7 @@ const CoursePage = async ({ params, searchParams }: CoursePageProperties) => {
         course.description ??
         "Percorra os módulos, leia as aulas e escolha a próxima pergunta para continuar."
       }
-      eyebrow={`${course.learningPath?.title ?? "Aprender"} · curso`}
+      eyebrow={`${course.learningPath?.title ?? "Cursos"} · curso`}
       title={course.title}
     >
       <section className="grid gap-8 border-y py-8 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,0.62fr)] lg:gap-12 lg:py-10">
@@ -69,7 +69,7 @@ const CoursePage = async ({ params, searchParams }: CoursePageProperties) => {
           </p>
           {nextLesson && (
             <Button asChild className="mt-8 w-fit">
-              <Link href={`/aprender/cursos/${course.slug}/${nextLesson.slug}`}>
+              <Link href={`/cursos/${course.slug}/${nextLesson.slug}`}>
                 {course.progress.completedLessons > 0
                   ? "Continuar aula"
                   : "Começar primeira aula"}
@@ -182,7 +182,7 @@ const CoursePage = async ({ params, searchParams }: CoursePageProperties) => {
                           <li key={lesson.id}>
                             <Link
                               className="group flex min-h-20 items-center gap-4 px-3 py-4 transition-colors hover:bg-brand-action/5 sm:px-4"
-                              href={`/aprender/cursos/${course.slug}/${lesson.slug}`}
+                              href={`/cursos/${course.slug}/${lesson.slug}`}
                             >
                               <span className="font-data text-muted-foreground text-xs">
                                 {moduleIndex + 1}.{lessonIndex + 1}

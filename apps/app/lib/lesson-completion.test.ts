@@ -117,7 +117,7 @@ describe("completeLessonForMember", () => {
       mocks.transaction.activityAssignment.updateMany
     ).toHaveBeenCalledTimes(3);
     expect(mocks.dispatchPendingNotifications).toHaveBeenCalledOnce();
-    expect(mocks.revalidatePath).toHaveBeenCalledWith("/aprender", "page");
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/cursos", "page");
   });
 
   test("does not persist progress for a member without lesson access", async () => {

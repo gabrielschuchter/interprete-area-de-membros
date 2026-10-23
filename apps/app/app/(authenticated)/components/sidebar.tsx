@@ -72,8 +72,8 @@ const baseNavigation = [
 ] as const;
 
 const learnNavigation = {
-  href: "/aprender",
-  label: "Aprender",
+  href: "/cursos",
+  label: "Cursos",
   icon: BookOpenIcon,
 } as const;
 

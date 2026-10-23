@@ -88,14 +88,14 @@ const LessonPage = async ({ params }: LessonPageProperties) => {
       <StudyHeartbeat activityKind="LESSON" resourceId={lesson.id} />
       <LessonToolsDrawer
         initialNotes={null}
-        lessonHref={`/aprender/cursos/${lesson.module.course.slug}/${lesson.slug}`}
+        lessonHref={`/cursos/${lesson.module.course.slug}/${lesson.slug}`}
         lessonId={lesson.id}
         lessonTitle={lesson.title}
       />
       <div className="mb-2 flex flex-wrap items-center gap-3 border-b pb-5">
         <Link
           className="inline-flex min-h-11 items-center gap-2 text-muted-foreground text-sm transition-colors hover:text-brand-structural"
-          href={`/aprender/cursos/${courseSlug}`}
+          href={`/cursos/${courseSlug}`}
         >
           <ArrowLeftIcon aria-hidden="true" className="size-4" />
           Voltar ao curso
@@ -134,7 +134,7 @@ const LessonPage = async ({ params }: LessonPageProperties) => {
                                 ? "border-brand-action bg-brand-action/8 text-brand-structural"
                                 : "border-transparent text-muted-foreground hover:border-brand-action/40 hover:text-foreground"
                             }`}
-                            href={`/aprender/cursos/${courseSlug}/${item.slug}`}
+                            href={`/cursos/${courseSlug}/${item.slug}`}
                           >
                             {isCompleted ? (
                               <CheckCircle2Icon
@@ -363,7 +363,7 @@ const LessonPage = async ({ params }: LessonPageProperties) => {
               {lesson.previousLesson && (
                 <Link
                   className="inline-flex min-h-11 max-w-full items-center gap-2 text-muted-foreground text-sm hover:text-brand-structural"
-                  href={`/aprender/cursos/${courseSlug}/${lesson.previousLesson.slug}`}
+                  href={`/cursos/${courseSlug}/${lesson.previousLesson.slug}`}
                 >
                   <ArrowLeftIcon
                     aria-hidden="true"
@@ -383,7 +383,7 @@ const LessonPage = async ({ params }: LessonPageProperties) => {
               {lesson.nextLesson && (
                 <Link
                   className="inline-flex min-h-11 max-w-full items-center gap-2 text-right text-muted-foreground text-sm hover:text-brand-structural"
-                  href={`/aprender/cursos/${courseSlug}/${lesson.nextLesson.slug}`}
+                  href={`/cursos/${courseSlug}/${lesson.nextLesson.slug}`}
                 >
                   <span className="truncate">
                     Próxima: {lesson.nextLesson.title}

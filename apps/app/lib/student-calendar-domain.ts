@@ -149,7 +149,7 @@ export const resolveStudentCalendarLessonReleases = (
       courseId,
       courseSlug: candidate.lesson.module.course.slug,
       releaseAt: candidate.releaseAt,
-      href: `/aprender/cursos/${candidate.lesson.module.course.slug}/${candidate.lesson.slug}`,
+      href: `/cursos/${candidate.lesson.module.course.slug}/${candidate.lesson.slug}`,
     };
     const current = releasesByLesson.get(candidate.lessonId);
     if (

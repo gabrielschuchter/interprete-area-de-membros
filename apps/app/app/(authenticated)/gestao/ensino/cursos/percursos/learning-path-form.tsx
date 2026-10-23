@@ -111,7 +111,7 @@ export const LearningPathForm = ({
         <label className="ge-path-field" htmlFor="path-slug">
           <span>Endereço</span>
           <div className="ge-path-slug-input">
-            <span aria-hidden="true">/aprender/trilhas/</span>
+            <span aria-hidden="true">/cursos/trilhas/</span>
             <Input
               aria-describedby={slugError ? "path-slug-error" : undefined}
               aria-invalid={Boolean(slugError)}

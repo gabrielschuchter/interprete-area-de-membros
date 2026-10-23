@@ -195,11 +195,8 @@ export const completeLessonForMember = async (
   });
 
   await dispatchPendingNotifications();
-  revalidatePath("/aprender", "page");
-  revalidatePath(`/aprender/cursos/${lesson.module.course.slug}`, "page");
-  revalidatePath(
-    `/aprender/cursos/${lesson.module.course.slug}/${lesson.slug}`,
-    "page"
-  );
+  revalidatePath("/cursos", "page");
+  revalidatePath(`/cursos/${lesson.module.course.slug}`, "page");
+  revalidatePath(`/cursos/${lesson.module.course.slug}/${lesson.slug}`, "page");
   return { message: "Aula concluída.", ok: true };
 };

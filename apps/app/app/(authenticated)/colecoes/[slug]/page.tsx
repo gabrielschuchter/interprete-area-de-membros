@@ -36,7 +36,7 @@ const CollectionPage = async ({ params }: CollectionPageProperties) => {
 
   const labelForType = (itemType: string) => {
     if (itemType === "LESSON") {
-      return "Aprender";
+      return "Aula";
     }
     if (itemType === "COURSE") {
       return "Curso";
