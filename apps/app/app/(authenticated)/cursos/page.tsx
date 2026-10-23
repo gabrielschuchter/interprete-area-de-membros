@@ -17,11 +17,8 @@ import {
   getPublishedLearningPaths,
   getPublishedStandaloneCourses,
 } from "@/lib/learning";
-import { getReceivedLearningAssignments } from "@/lib/learning-assignments";
-import { getDirectlyAssignedCourseIds } from "@/lib/learning-catalog-domain";
 import { getMemberLearningBookmarkKeys } from "@/lib/library";
 import { getMemberContinueWatching } from "@/lib/recordings";
-import { resolveStudentFeed } from "@/lib/student-feed";
 
 export const dynamic = "force-dynamic";
 
@@ -36,35 +33,6 @@ const formatDate = (value: Date | null) =>
       }).format(value)
     : null;
 
-const assignmentState = {
-  NEW: "Novo",
-  VIEWED: "Visto",
-  STARTED: "Em andamento",
-  COMPLETED: "Concluído",
-  REVOKED: "Revogado",
-} as const;
-
-const assignmentTargetLabel: Record<string, string> = {
-  ACTIVITY: "Atividade",
-  COURSE: "Curso",
-  MODULE: "Módulo",
-  LESSON: "Aula",
-  ASSET: "Material de aula",
-  RECORDING: "Gravação",
-  LIBRARY_ITEM: "Biblioteca",
-  EXERCISE_LIST: "Exercícios",
-};
-
-const assignmentActionLabel = (status: string) => {
-  if (status === "COMPLETED") {
-    return "Revisar";
-  }
-  if (status === "STARTED") {
-    return "Continuar";
-  }
-  return "Começar";
-};
-
 type LearningCollection = Awaited<
   ReturnType<typeof getPublishedCollectionsForMember>
 >[number];
@@ -74,6 +42,14 @@ interface LearningCourseProgress {
   readonly percentage: number;
   readonly totalLessons: number;
 }
+
+const collectionRecording = (item: LearningCollectionItem) =>
+  item.recording ?? item.asset?.importedRecording ?? null;
+
+// Cursos só mostra cursos e aulas gravadas: exercícios, materiais e itens de
+// biblioteca de uma coleção pertencem a outras seções do Estudar.
+const isCursosItem = (item: LearningCollectionItem) =>
+  Boolean(item.course ?? item.lesson ?? collectionRecording(item));
 
 const collectionBookmarkTarget = (item: LearningCollectionItem) => {
   if (item.course) {
@@ -86,12 +62,6 @@ const collectionBookmarkTarget = (item: LearningCollectionItem) => {
   if (assetId) {
     return { targetId: assetId, targetType: "ASSET" as const };
   }
-  if (item.libraryItem) {
-    return {
-      targetId: item.libraryItem.id,
-      targetType: "LIBRARY_ITEM" as const,
-    };
-  }
   return undefined;
 };
 
@@ -102,29 +72,24 @@ const toCollectionCard = (
   courseProgressById: ReadonlyMap<string, LearningCourseProgress>
 ): LearningRailCard | null => {
   const href = collectionItemHref(item);
-  if (!href) {
+  if (!(href && isCursosItem(item))) {
     return null;
   }
-  const recording = item.recording ?? item.asset?.importedRecording ?? null;
+  const recording = collectionRecording(item);
   const recordingThumbnail = recording?.thumbnailPath
     ? `/api/learning/recordings/${recording.id}/thumbnail`
     : null;
-  let label = "Biblioteca";
+  let label = "Gravação";
   if (item.lesson) {
     label = "Aula";
   } else if (item.course) {
     label = "Curso";
-  } else if (item.exerciseList) {
-    label = "Exercícios";
-  } else if (recording) {
-    label = "Gravação";
   }
   const meta =
     item.lesson?.module.course.title ??
-    item.exerciseList?.bank.title ??
     (recording
       ? (formatDate(recording.meetingDate) ?? "Gravação preservada")
-      : (item.libraryItem?.kind ?? null));
+      : null);
   const bookmark = collectionBookmarkTarget(item);
   const courseProgress = item.course
     ? courseProgressById.get(item.course.id)
@@ -145,14 +110,11 @@ const toCollectionCard = (
     coverUrl:
       item.lesson?.module.course.coverUrl ??
       item.course?.coverUrl ??
-      item.exerciseList?.coverUrl ??
       recordingThumbnail ??
       collection.coverUrl,
     description:
       item.lesson?.description ??
       item.course?.description ??
-      item.exerciseList?.description ??
-      item.libraryItem?.description ??
       collection.description,
     href,
     label,
@@ -182,132 +144,52 @@ const EmptyState = () => (
 
 const LearnPage = async () => {
   const memberId = await requireOnboardedMemberId();
-  const feedAt = new Date();
-  const [
-    learningData,
-    assignments,
-    feedActivities,
-    continueData,
-    bookmarkKeys,
-    resume,
-  ] = await tracePerformance("member.route.learn.primary-data", () => {
-    const pathsPromise = getPublishedLearningPaths(memberId);
-    const standaloneCoursesPromise = getPublishedStandaloneCourses(memberId);
-    const collectionsPromise = getPublishedCollectionsForMember(memberId);
-    const learningDataPromise = Promise.all([
-      pathsPromise,
-      collectionsPromise,
-      standaloneCoursesPromise,
-    ]).then(async ([paths, collections, standaloneCourses]) => {
-      const courseProgressById = new Map(
-        [...paths.flatMap((path) => path.courses), ...standaloneCourses].map(
-          (course) => [course.id, course.progress] as const
-        )
-      );
-      const collectionCourseIds = [
-        ...new Set(
-          collections.flatMap((collection) =>
-            collection.items.flatMap((item) =>
-              item.course ? [item.course.id] : []
-            )
+  const [learningData, continueData, bookmarkKeys, resume] =
+    await tracePerformance("member.route.learn.primary-data", () => {
+      const pathsPromise = getPublishedLearningPaths(memberId);
+      const standaloneCoursesPromise = getPublishedStandaloneCourses(memberId);
+      const collectionsPromise = getPublishedCollectionsForMember(memberId);
+      const learningDataPromise = Promise.all([
+        pathsPromise,
+        collectionsPromise,
+        standaloneCoursesPromise,
+      ]).then(async ([paths, collections, standaloneCourses]) => {
+        const courseProgressById = new Map(
+          [...paths.flatMap((path) => path.courses), ...standaloneCourses].map(
+            (course) => [course.id, course.progress] as const
           )
-        ),
-      ];
-      const missingCourseIds = collectionCourseIds.filter(
-        (courseId) => !courseProgressById.has(courseId)
-      );
-      const additionalCourseProgress = await tracePerformance(
-        "member.route.learn.additional-progress",
-        () => getMemberCourseProgress(memberId, missingCourseIds)
-      );
-      for (const [courseId, progress] of additionalCourseProgress) {
-        courseProgressById.set(courseId, progress);
-      }
-      return { collections, courseProgressById, paths, standaloneCourses };
-    });
+        );
+        const collectionCourseIds = [
+          ...new Set(
+            collections.flatMap((collection) =>
+              collection.items.flatMap((item) =>
+                item.course ? [item.course.id] : []
+              )
+            )
+          ),
+        ];
+        const missingCourseIds = collectionCourseIds.filter(
+          (courseId) => !courseProgressById.has(courseId)
+        );
+        const additionalCourseProgress = await tracePerformance(
+          "member.route.learn.additional-progress",
+          () => getMemberCourseProgress(memberId, missingCourseIds)
+        );
+        for (const [courseId, progress] of additionalCourseProgress) {
+          courseProgressById.set(courseId, progress);
+        }
+        return { collections, courseProgressById, paths, standaloneCourses };
+      });
 
-    return Promise.all([
-      learningDataPromise,
-      getReceivedLearningAssignments(memberId, {
-        at: feedAt,
-        excludeActivityTargets: true,
-      }),
-      resolveStudentFeed(memberId, feedAt),
-      getMemberContinueWatching(memberId),
-      getMemberLearningBookmarkKeys(memberId),
-      cursosV2Enabled() ? getCursosResume(memberId) : Promise.resolve(null),
-    ]);
-  });
+      return Promise.all([
+        learningDataPromise,
+        getMemberContinueWatching(memberId),
+        getMemberLearningBookmarkKeys(memberId),
+        cursosV2Enabled() ? getCursosResume(memberId) : Promise.resolve(null),
+      ]);
+    });
   const { collections, courseProgressById, paths, standaloneCourses } =
     learningData;
-  const directlyAssignedCourseIds = getDirectlyAssignedCourseIds(
-    assignments,
-    feedAt
-  );
-
-  const assignmentCards = assignments.map((assignment) => {
-    const isScheduled = Boolean(
-      assignment.availableAt && assignment.availableAt.getTime() > Date.now()
-    );
-    const availability = assignment.availableAt
-      ? `Disponível em ${formatDate(assignment.availableAt)}`
-      : null;
-    const due = assignment.dueAt
-      ? `Prazo ${formatDate(assignment.dueAt)}`
-      : null;
-    return {
-      actionLabel: isScheduled
-        ? "Aguarde a liberação"
-        : assignmentActionLabel(assignment.status),
-      description: assignment.message,
-      disabled: isScheduled,
-      bookmark:
-        !isScheduled &&
-        ["COURSE", "MODULE", "LESSON", "ASSET", "LIBRARY_ITEM"].includes(
-          assignment.target.type
-        )
-          ? {
-              targetId: assignment.target.id,
-              targetType: assignment.target.type as
-                | "COURSE"
-                | "MODULE"
-                | "LESSON"
-                | "ASSET"
-                | "LIBRARY_ITEM",
-              saved: bookmarkKeys.has(
-                `${assignment.target.type}:${assignment.target.id}`
-              ),
-            }
-          : undefined,
-      href: `/cursos/atribuicoes/${assignment.id}`,
-      label: assignmentState[assignment.status],
-      meta:
-        [availability, due].filter(Boolean).join(" · ") ||
-        (assignmentTargetLabel[assignment.target.type] ?? "Conteúdo"),
-      title: assignment.target.title,
-    };
-  });
-  const activityCards = feedActivities.map((activity) => {
-    const isScheduled = Boolean(
-      activity.availableAt && activity.availableAt.getTime() > feedAt.getTime()
-    );
-    const availability = activity.availableAt
-      ? `Disponível em ${formatDate(activity.availableAt)}`
-      : null;
-    const due = activity.dueAt ? `Prazo ${formatDate(activity.dueAt)}` : null;
-    return {
-      actionLabel: isScheduled
-        ? "Aguarde a liberação"
-        : assignmentActionLabel(activity.status),
-      description: activity.message,
-      disabled: isScheduled,
-      href: activity.href,
-      label: assignmentState[activity.status],
-      meta: [availability, due].filter(Boolean).join(" · ") || "Atividade",
-      title: activity.title,
-    };
-  });
-
   const resumeCards = continueData.continueWatching.map((recording) => ({
     bookmark: {
       targetId: recording.asset.id,
@@ -354,40 +236,31 @@ const LearnPage = async () => {
       headingId: `learning-path-${path.id}`,
       title: path.title,
     }))
-    .map((rail) => ({
-      ...rail,
-      cards: rail.cards.filter(
-        (card) => !directlyAssignedCourseIds.has(card.bookmark.targetId)
-      ),
-    }))
     .filter((rail) => rail.cards.length > 0);
-  const standaloneCourseCards = standaloneCourses
-    .map((course) => {
-      const lessons = course.modules.flatMap((module) => module.lessons);
-      const nextLesson = lessons.find(
-        (lesson) =>
-          !lesson.progress.some(({ status }) => status === "COMPLETED")
-      );
+  const standaloneCourseCards = standaloneCourses.map((course) => {
+    const lessons = course.modules.flatMap((module) => module.lessons);
+    const nextLesson = lessons.find(
+      (lesson) => !lesson.progress.some(({ status }) => status === "COMPLETED")
+    );
 
-      return {
-        bookmark: {
-          targetId: course.id,
-          targetType: "COURSE" as const,
-          saved: bookmarkKeys.has(`COURSE:${course.id}`),
-        },
-        coverUrl: course.coverUrl,
-        description: course.description,
-        href:
-          course.progress.percentage > 0 && course.progress.percentage < 100
-            ? `/cursos/${course.slug}/${nextLesson?.slug ?? ""}`
-            : `/cursos/${course.slug}`,
-        label: "Curso",
-        meta: `${course.progress.completedLessons}/${course.progress.totalLessons} aulas · ${course.progress.percentage}%`,
-        progress: course.progress.percentage,
-        title: course.title,
-      };
-    })
-    .filter((card) => !directlyAssignedCourseIds.has(card.bookmark.targetId));
+    return {
+      bookmark: {
+        targetId: course.id,
+        targetType: "COURSE" as const,
+        saved: bookmarkKeys.has(`COURSE:${course.id}`),
+      },
+      coverUrl: course.coverUrl,
+      description: course.description,
+      href:
+        course.progress.percentage > 0 && course.progress.percentage < 100
+          ? `/cursos/${course.slug}/${nextLesson?.slug ?? ""}`
+          : `/cursos/${course.slug}`,
+      label: "Curso",
+      meta: `${course.progress.completedLessons}/${course.progress.totalLessons} aulas · ${course.progress.percentage}%`,
+      progress: course.progress.percentage,
+      title: course.title,
+    };
+  });
   const courseCards = [
     ...pathRails.flatMap((rail) => rail.cards),
     ...standaloneCourseCards,
@@ -409,7 +282,6 @@ const LearnPage = async () => {
   }));
 
   const hasContent =
-    assignmentCards.length > 0 ||
     resumeCards.length > 0 ||
     courseCards.length > 0 ||
     collectionRails.some((rail) => rail.cards.length > 0);
@@ -444,7 +316,6 @@ const LearnPage = async () => {
       <div className="flex min-h-svh flex-1 flex-col bg-background">
         <main className="flex flex-1 flex-col">
           <CursosView
-            assigned={[...assignmentCards, ...activityCards]}
             courses={courseCards.map((card) => ({
               ...card,
               completedLessons:
@@ -488,7 +359,7 @@ const LearnPage = async () => {
 
   return (
     <LearningPageFrame
-      description="Suas aulas, cursos, trilhas e gravações."
+      description="Seus cursos e aulas gravadas."
       eyebrow="Estudar · Cursos"
       title="Cursos"
       variant="catalog"
@@ -497,11 +368,6 @@ const LearnPage = async () => {
         className="space-y-10 sm:space-y-12"
         data-route-content-ready="learn"
       >
-        <LearningCatalog
-          cards={[...assignmentCards, ...activityCards]}
-          headingId="assigned-learning-title"
-          title="Enviados para você"
-        />
         <LearningCatalog
           cards={resumeCards}
           headingId="resume-learning-title"

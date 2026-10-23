@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRightIcon, PlayIcon } from "lucide-react";
+import { PlayIcon } from "lucide-react";
 import { type CSSProperties, useState } from "react";
 import { IntentLink } from "@/app/(authenticated)/components/intent-link";
 import { CatalogBookmark } from "../learning-catalog";
@@ -352,14 +352,12 @@ const TrailBlock = ({
 };
 
 export const CursosView = ({
-  assigned,
   courses,
   rails,
   resume,
   resumeRecording,
   trails,
 }: {
-  readonly assigned: readonly LearningRailCard[];
   readonly courses: readonly CursosCourse[];
   readonly rails: readonly CursosRail[];
   readonly resume: CursosResumeView | null;
@@ -383,8 +381,6 @@ export const CursosView = ({
   );
   const firstOpen =
     ordered.find((course) => course.progress < 100 && !course.disabled) ?? null;
-  const strips = assigned.length <= 3 ? assigned : [];
-  const assignedRail = assigned.length > 3 ? assigned : [];
 
   return (
     <div className="cb" data-route-content-ready="learn">
@@ -439,30 +435,6 @@ export const CursosView = ({
           </IntentLink>
         </div>
       ) : null}
-      {strips.map((card) => (
-        <div className="cb-strip" key={card.href}>
-          <span className="cb-tag">Atribuído</span>
-          <div>
-            <b>{card.title}</b>
-            {card.meta ? ` · ${card.meta}` : ""}
-          </div>
-          {card.disabled ? (
-            <span className="cb-after">Aguarde a liberação</span>
-          ) : (
-            <IntentLink className="cb-btn cb-btn--sm" href={card.href}>
-              {card.actionLabel ?? "Começar"}
-              <ArrowRightIcon aria-hidden="true" size={14} />
-            </IntentLink>
-          )}
-        </div>
-      ))}
-      <Rail
-        rail={{
-          cards: assignedRail,
-          headingId: "assigned-learning-title",
-          title: "Enviados para você",
-        }}
-      />
       {courses.length > 0 ? (
         <section aria-labelledby="cb-all-title" className="cb-sec">
           <header className="cb-sec__hd">
