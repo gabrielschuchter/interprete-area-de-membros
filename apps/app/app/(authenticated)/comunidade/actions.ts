@@ -2543,10 +2543,9 @@ export const joinPublicStudyGroup = async (formData: FormData) => {
   if (!group) {
     return;
   }
-  await database.communitySpaceMember.upsert({
-    where: { spaceId_memberId: { spaceId: group.id, memberId } },
-    create: { spaceId: group.id, memberId },
-    update: {},
+  await database.communitySpaceMember.createMany({
+    data: [{ spaceId: group.id, memberId }],
+    skipDuplicates: true,
   });
   revalidatePath("/comunidade/grupos");
   revalidatePath(`/comunidade/grupos/${group.slug}`);

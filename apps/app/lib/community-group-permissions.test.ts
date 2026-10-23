@@ -113,6 +113,14 @@ describe("community group permissions", () => {
       canChangeStudyGroupMemberRole({
         isOwner: true,
         targetGroupRole: "MEMBER",
+        targetIdentityRole: "TEACHER",
+        nextGroupRole: "MODERATOR",
+      })
+    ).toBe(false);
+    expect(
+      canChangeStudyGroupMemberRole({
+        isOwner: true,
+        targetGroupRole: "MEMBER",
         targetIdentityRole: "MEMBER",
         nextGroupRole: "OWNER",
       })

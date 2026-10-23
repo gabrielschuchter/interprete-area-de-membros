@@ -106,6 +106,13 @@ const query = ({ operation, input }: GroupDatabaseRequest) => {
         },
         select: { id: true },
       });
+    case "membership-count":
+      return database.communitySpaceMember.count({
+        where: {
+          spaceId: input.spaceId as string,
+          memberId: input.memberId as string,
+        },
+      });
     default:
       throw new Error(`Unsupported community groups QA query: ${operation}`);
   }

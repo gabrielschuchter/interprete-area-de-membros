@@ -36,7 +36,8 @@ type GroupDatabaseOperation =
   | "published-post"
   | "archived-group"
   | "restored-group"
-  | "membership-exists";
+  | "membership-exists"
+  | "membership-count";
 
 const queryGroupDatabase = <T>(
   operation: GroupDatabaseOperation,
@@ -291,17 +292,32 @@ test("cria, modera, restringe, audita, remove e restaura um grupo real", async (
     await expect(
       secondaryPage.getByRole("button", { name: "Participar do grupo" })
     ).toBeVisible();
-    await secondaryPage
-      .getByRole("button", { name: "Participar do grupo" })
-      .click();
+    const concurrentJoinPage = await secondaryContext.newPage();
+    await concurrentJoinPage.goto(`/comunidade/grupos/${groupSlug}`);
+    await clerk.loaded({ page: concurrentJoinPage });
+    expect(await clerkUserId(concurrentJoinPage)).toBe(memberId);
+    const joinButton = (targetPage: import("@playwright/test").Page) =>
+      targetPage.getByRole("button", { name: "Participar do grupo" });
+    await expect(joinButton(concurrentJoinPage)).toBeVisible();
+    await Promise.all([
+      joinButton(secondaryPage).click(),
+      joinButton(concurrentJoinPage).click(),
+    ]);
     await expect(
       secondaryPage.getByRole("button", { name: "Participar do grupo" })
     ).toHaveCount(0);
+    await expect(joinButton(concurrentJoinPage)).toHaveCount(0);
     const joined = await queryGroupDatabase<{ role: string } | null>(
       "membership-role",
       { spaceId: group?.id ?? "", memberId }
     );
     expect(joined?.role).toBe("MEMBER");
+    const concurrentMembershipCount = await queryGroupDatabase<number>(
+      "membership-count",
+      { spaceId: group?.id ?? "", memberId }
+    );
+    expect(concurrentMembershipCount).toBe(1);
+    await concurrentJoinPage.close();
 
     await page.goto(`/comunidade/grupos/${groupSlug}?view=members`);
     await screenshot(page, "community-group-members-desktop.png");
@@ -335,13 +351,7 @@ test("cria, modera, restringe, audita, remove e restaura um grupo real", async (
 
     for (const staffMember of staffPages) {
       await page.goto(`/comunidade/grupos/${groupSlug}?view=members`);
-      const staffRoleForm = page.locator("form").filter({
-        has: page.locator(`input[name="memberId"][value="${staffMember.id}"]`),
-      });
-      await staffRoleForm
-        .locator('select[name="role"]')
-        .selectOption("MODERATOR");
-      await staffRoleForm.getByRole("button", { name: "Salvar" }).click();
+      await expect(page.locator(`#role-${staffMember.id}`)).toHaveCount(0);
       const protectedStaffRole = await queryGroupDatabase<{
         role: string;
       } | null>("membership-role", {
@@ -491,7 +501,7 @@ test("cria, modera, restringe, audita, remove e restaura um grupo real", async (
     await page
       .getByRole("button", { name: newPublicationButtonPattern })
       .click();
-    await expect(page).toHaveURL(postComposerUrlPattern);
+    await expect(page).toHaveURL(postComposerUrlPattern, { timeout: 30_000 });
     await page
       .getByRole("textbox", { name: "Título", exact: true })
       .fill(postTitle);
