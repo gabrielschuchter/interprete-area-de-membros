@@ -1,5 +1,20 @@
 # Comunidade V2 — plano técnico de execução
 
+## Encerramento por ordem do usuário — 23/10/2026
+
+**Estado vigente: NO-GO; correções interrompidas.** Código sincronizado:
+`80f6c1341acea4a56830d4091cc10e904e1cbbcc`. A rechecagem encontrou um P1
+concreto ainda sem fechamento comprovado: notificação comunitária legada com
+`communitySpaceId=NULL` continua visível para post `UNRESOLVED`.
+A migration local `20261023140000_notification_audience_reconcile` e seu
+teste ficam preservados fora do commit; não considerar o patch aprovado.
+A ordem de encerramento proíbe novos testes, correções e rechecagens nesta execução.
+
+O estado completo, evidências existentes e próximo passo estão em
+[POST-AUDIT-CLOSURE.md](POST-AUDIT-CLOSURE.md). Os registros abaixo são
+históricos e suas declarações de correção/rechecagem pendente são supersedidas
+por este encerramento. A Etapa 12 não foi iniciada.
+
 ## Escopo e fontes de verdade
 
 Este plano organiza a implementação da Comunidade V2 a partir da main em b6028a3, preservando a fundação next-forge e os módulos existentes. O Estágio 00 documental está concluído; a Etapa 01 está ACEITA PARA AVANÇO COM PENDÊNCIAS: backup GREEN restaurado e conferido localmente, Preview autenticado com quatro papéis, isolamento namespaced e worker manual com Notification QA persistente comprovados. A recuperação periódica de jobs Preview e Broadcast/badge continuam sem comprovação e estão transferidos para OPS-01 em docs/comunidade-v2/BACKLOG.md. OPS-01 é gate apenas para jornadas que dependem de entrega/recuperação periódica, Broadcast/badge e para o preflight de release; não bloqueia navegação, Explorar, Salvos ou Encontros da Etapa 02. Não afirmar que o scheduler foi validado. O PR #10 e a configuração OIDC existentes são contexto operacional; o cron GREEN, Vercel SSO, credenciais e Production permanecem intocados nesta execução.

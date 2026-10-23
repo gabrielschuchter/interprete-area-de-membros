@@ -1,6 +1,66 @@
 # Comunidade V2 — status
 
-## Candidato definitivo pós-auditoria — 23/10/2026
+## Encerramento por ordem do usuário — 23/10/2026
+
+**Estado vigente: NO-GO; correções interrompidas.** Código sincronizado:
+`80f6c1341acea4a56830d4091cc10e904e1cbbcc`. A rechecagem encontrou um P1
+concreto ainda sem fechamento comprovado: notificação comunitária legada com
+`communitySpaceId=NULL` continua visível para post `UNRESOLVED`.
+A migration local `20261023140000_notification_audience_reconcile` e seu
+teste ficam preservados fora do commit; não considerar o patch aprovado.
+A ordem de encerramento proíbe novos testes, correções e rechecagens nesta execução.
+
+O estado completo, evidências existentes e próximo passo estão em
+[POST-AUDIT-CLOSURE.md](POST-AUDIT-CLOSURE.md). Os registros abaixo são
+históricos e suas declarações de correção/rechecagem pendente são supersedidas
+por este encerramento. A Etapa 12 não foi iniciada.
+
+## Estado atual — correções pós-auditoria — 23/10/2026
+
+**Candidato publicado:** `80f6c1341acea4a56830d4091cc10e904e1cbbcc` em
+`origin/codex/comunidade-v2`. O commit adiciona audiência persistida aos posts,
+impede exclusão física de grupos com posts e aplica fail-closed a posts legados
+sem origem comprovável.
+
+**Bloqueadores de código:** RV-01 (notificações privadas após revogação) e
+RV-06 (post privado destacado de grupo e reclassificado como global) estão
+corrigidos no candidato e enviados para rechecagem adversarial independente no
+thread da Etapa 11. A rechecagem do SHA `80f6c13` está em andamento.
+
+**RV-06 antes/depois:** a reprodução em tabelas temporárias reproduziu
+`ON DELETE SET NULL`: antes da exclusão, 0 posts entravam no filtro global;
+depois, o corpo `CONTEUDO PRIVADO` passou a ser retornado. Após a correção,
+excluir fisicamente um grupo com post foi rejeitado e o post permaneceu com
+`audienceScope=GROUP` e o mesmo `spaceId` (E2E 1/1). Posts legados com FK nula
+permanecem armazenados como `UNRESOLVED` e invisíveis até proveniência ser
+confirmada; não foram promovidos por suposição.
+
+**Validação:** testes unitários direcionados de produtor/regras e consumer:
+24/24; shares E2E 8/8, incluindo a regressão de exclusão; QA integrado
+`8fd64ff585134fd8aab62c725bc7a827`: 21/22. A única falha foi a preparação da
+meta coletiva por nove sessões QA residuais de uma execução interrompida. A
+suíte focada `c681476924c84337ae2c7803a32e7779` passou 5/5; os nove IDs,
+membros e `endedAt` originais foram restaurados e comparados ao snapshot
+protegido. Não declarar o integrado 22/22.
+
+**Seis gates:** `check` 1.058; `typecheck` 16/16; `boundaries` 986/19;
+`test` scripts 32 pass/1 skip, App 853/177, API 14/14 e domínio 24/24;
+`build` 8/8 (aviso não fatal de IO do Turbo e warnings de assets Storybook);
+`performance:check` 26 rotas abaixo de 225 KiB gzip, Comunidade 216,2 KiB.
+`graphify update .`: 8.440 nós, 22.124 arestas e 358 comunidades.
+
+**Parecer:** **NO-GO para release** até a rechecagem adversarial e os gates
+externos RV-02/OPS-01, RV-03/rollback, RV-04/dados legados, RV-05/performance
+autenticada e confirmação remota de grants/RLS, Storage, Clerk/Supabase,
+crawler Preview e Broadcast/Realtime. Esse trabalho não autoriza nem inicia a
+Etapa 12. Nenhuma migration remota, publicação ou alteração de produção ocorreu.
+PostgreSQL QA foi o loopback isolado `127.0.0.1:54325`, TLS `verify-full`,
+75 migrations/zero pendentes.
+
+**Integridade:** `apps/app/e2e/community-v2/community-groups.spec.ts` permanece
+fora do commit, hash `43bb75e8482c3638840cbfa760a91e01927ed770`.
+
+## Histórico — candidato `a20b28d` supersedido
 
 **Código:** `a20b28d2d0854c82d543048cc66fb5d81981ea1a`, na branch
 `codex/comunidade-v2`. Migration complementar fail-closed, inserts legados,
@@ -31,7 +91,7 @@ Nenhuma tarefa de 12A, migration remota ou publicação foi executada.
 
 Os checkpoints abaixo são históricos e são supersedidos por este estado.
 
-## Correções pós-auditoria — 23/10/2026
+## Registro histórico — correção inicial de RV-01 em `53d4ae5`
 
 **Candidato de código:** `53d4ae5c017eab9e7ed3136483dac3ecd4e79e08`, commit `fix(comunidade): revalidar audiencia de notificacoes`, enviado para `origin/codex/comunidade-v2`. A rechecagem adversarial independente do auditor da Etapa 11 foi solicitada para esse SHA e está pendente.
 

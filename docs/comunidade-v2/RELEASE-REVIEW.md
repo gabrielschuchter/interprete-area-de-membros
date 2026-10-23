@@ -1,14 +1,69 @@
 # Comunidade V2 — Revisão adversarial (Etapa 11)
 
+## Encerramento por ordem do usuário — 23/10/2026
+
+**Parecer vigente: NO-GO; correções interrompidas.** Código sincronizado:
+`80f6c1341acea4a56830d4091cc10e904e1cbbcc`. A rechecagem encontrou um P1
+concreto: notificação comunitária legada com `communitySpaceId=NULL` permanece
+visível para post `UNRESOLVED`. Não há fechamento comprovado desse caso.
+A migration local `20261023140000_notification_audience_reconcile` e seu
+teste permanecem fora do commit. Nenhuma nova rechecagem será solicitada.
+
+[POST-AUDIT-CLOSURE.md](POST-AUDIT-CLOSURE.md) é o checkpoint vigente.
+Os registros abaixo são históricos, inclusive as afirmações de correção
+completa ou rechecagem em andamento. A Etapa 12 não foi iniciada.
+
 **Data:** 23/10/2026
 
 **Parecer:** **NO-GO para release.**
 
 **Etapa 12:** não iniciada.
 
-## Rechecagem final — candidato complementar
+## Estado atual do candidato pós-correção — 23/10/2026
 
-Candidato de código atual: `a20b28d2d0854c82d543048cc66fb5d81981ea1a`.
+**Candidato de código:** `80f6c1341acea4a56830d4091cc10e904e1cbbcc`, publicado
+em `origin/codex/comunidade-v2`. RV-01 e o novo RV-06 P1 estão corrigidos no
+código; a rechecagem adversarial independente do SHA final foi solicitada ao
+auditor da Etapa 11 e está em andamento. Nenhum P0 foi identificado.
+
+**RV-06 — reprodução anterior:** a FK de `CommunityPost.spaceId` usava
+`ON DELETE SET NULL`, e filtros globais tratavam `spaceId=NULL` como post
+global. Em transação QA com tabelas temporárias reproduzindo esse contrato,
+o filtro retornou 0 posts antes da exclusão do grupo privado; depois da
+exclusão retornou 1 e entregou `CONTEUDO PRIVADO`.
+
+**RV-06 — correção:** a migration `20261023130000_community_post_audience_scope`
+persiste `GLOBAL`, `GROUP` ou `UNRESOLVED`, aplica constraint de consistência e
+troca a FK para `ON DELETE RESTRICT`. Escritas definem audiência
+explicitamente; feed, detalhe, share público, acesso a recurso, produtor de
+notificação e consumer do outbox exigem escopo coerente. Posts legados com
+`spaceId=NULL` ficam armazenados como `UNRESOLVED`, sem exposição até sua
+proveniência ser confirmada. A exclusão física foi rejeitada no E2E e o post
+continuou `GROUP`, ligado ao mesmo grupo.
+
+**Validação do candidato:** focused producer/rules + consumer, 24/24; shares
+E2E 8/8 e exclusão física 1/1. QA integrado `8fd64ff585134fd8aab62c725bc7a827`
+teve 21/22; a única falha foi o fixture residual da meta coletiva. A suíte
+focada `c681476924c84337ae2c7803a32e7779` passou 5/5 e restaurou os nove
+registros do snapshot protegido com igualdade exata. Seis gates: `check` 1.058;
+`typecheck` 16/16; `boundaries` 986/19; testes scripts 32 pass/1 skip, App
+853/177, API 14/14, domínio 24/24; `build` 8/8; performance 26 rotas sob
+225 KiB gzip, Comunidade 216,2 KiB. Graphify: 8.440 nós/22.124 arestas/358
+comunidades. O banco foi PostgreSQL QA loopback com TLS `verify-full`; nenhuma
+migration remota foi executada.
+
+**Parecer atual: NO-GO para release.** Além da rechecagem independente,
+continuam bloqueadores externos RV-02/OPS-01, RV-03/rollback, RV-04/dados
+legados, RV-05/performance autenticada e confirmação remota de grants/RLS,
+Storage, Clerk/Supabase, crawler no Preview e Broadcast/Realtime. Não houve
+publicação, alteração de ambiente produtivo ou início da Etapa 12.
+
+O conteúdo abaixo registra a auditoria inicial e a correção intermediária; os
+estados atuais são os desta seção.
+
+## Registro histórico — candidato complementar `a20b28d`
+
+O candidato de então era `a20b28d2d0854c82d543048cc66fb5d81981ea1a`.
 O diagnóstico posterior ao primeiro patch encontrou legado com grupo excluído
 e origem NULL; a migration complementar e o consumer agora falham fechados.
 Os seis gates passaram em `4296978`; o delta até o candidato final remove
@@ -29,9 +84,9 @@ impedindo release, com execução reservada ao preflight 12A em conversa própri
 
 **Parecer atual:** **NO-GO para release.** RV-02 (OPS-01), RV-03 (rollback de enums), RV-04 (preflight de convites legados), RV-05 (performance autenticada/mobile) e a confirmação remota de grants/RLS continuam bloqueadores de release. Nenhum P0 foi identificado. A validação de teclado em dispositivo físico segue P3. Não houve migration remota, publicação ou alteração de ambiente produtivo; Etapa 12 não começou.
 
-## Correções pós-auditoria — candidato enviado para rechecagem
+## Registro histórico — correção inicial de RV-01 em `53d4ae5`
 
-**Candidato de código:** `53d4ae5c017eab9e7ed3136483dac3ecd4e79e08` (`fix(comunidade): revalidar audiencia de notificacoes`), enviado a `origin/codex/comunidade-v2`. A rechecagem independente foi solicitada ao auditor da Etapa 11 para esse SHA, com escopo somente leitura. O resultado ainda não foi recebido; RV-01 permanece marcado como **corrigido localmente, aguardando rechecagem**, não como release aprovado.
+O código de RV-01 foi inicialmente enviado no SHA `53d4ae5c017eab9e7ed3136483dac3ecd4e79e08`. A rechecagem vigente abrange RV-01 e RV-06 no candidato final `80f6c1341acea4a56830d4091cc10e904e1cbbcc`.
 
 **Antes — reprodução do RV-01:** uma notificação `MENTION` de comentário privado era gravada com título, corpo, link e IDs; após remover o membro, o predicado de leitura admitia qualquer tipo fora de `GROUP_POST` e `ANNOUNCEMENT`. A linha continuava visível na API e nas contagens. Um evento atrasado de comentário também não revalidava a associação antes de persistir. A análise e a reprodução original, com seus limites, permanecem documentadas em [RV-01](#rv-01--p1--notificações-de-grupo-privado-sobrevivem-à-remoção-do-membro).
 
@@ -67,7 +122,7 @@ Na auditoria inicial, RV-01 foi confirmado; sua reprodução e a implementação
 ### RV-01 — P1 — notificações de grupo privado sobrevivem à remoção do membro
 
 **Classe:** confirmado no código e reproduzido com testes unitários focalizados.
-**Bloqueador de release:** sim no candidato original auditado (`f4ada2616f23a48b3f17bdeb4bc90eb568d3cbfa`). No código corrigido `53d4ae5c017eab9e7ed3136483dac3ecd4e79e08`, a regressão local passou e a rechecagem independente está pendente; o estado posterior consta no início deste relatório.
+**Bloqueador de release:** sim no candidato original auditado (`f4ada2616f23a48b3f17bdeb4bc90eb568d3cbfa`). O código corrigido foi inicialmente enviado em `53d4ae5c017eab9e7ed3136483dac3ecd4e79e08` e está incluído no candidato final `80f6c1341acea4a56830d4091cc10e904e1cbbcc`; a rechecagem independente do candidato final está em andamento.
 
 **Evidência.** `notifyCommunityComment` filtra destinatários privados no momento da criação e grava tipos como `MENTION`, `COMMENT_REPLY`, `TOPIC_COMMENT` e `FOLLOWED_TOPIC_ACTIVITY`, com `body` igual ao título do post e um `href` para o comentário (`apps/app/lib/notifications.ts:680-821`). Esse evento pode aguardar no outbox. No consumer, a revalidação de grupo ocorre somente quando o tipo é `GROUP_POST`; os demais tipos passam pelo retorno genérico `true` (`packages/member-domain/src/notification-outbox-consumer.ts:342-346, 809-853`).
 
@@ -129,6 +184,41 @@ O `performance:check` local informado no handoff da Etapa 10 mede Comunidade em 
 **Impacto.** Não há base para afirmar que as rotas e mutações comunitárias cumprem os limites de desempenho em sessões e dispositivos reais. A ausência de medida não demonstra uma regressão, mas impede fechar o gate de release documentado.
 
 **Correção recomendada.** Medir rotas e mutações da Comunidade em Preview aprovado com sessões autenticadas representativas, rede/dispositivo móvel e cache frio/aquecido; registrar percentis, papel, build/deployment, projeção/paginação e resposta após persistência. Confirmar também isolamento de identidade, grants e conteúdo privado entre sessões. Não alterar Production para obter a evidência.
+
+### RV-06 — P1 — exclusão de grupo converte post privado em global
+
+**Classe:** falha de autorização confirmada no estado anterior e reproduzida
+por simulação transacional do contrato da FK e do filtro global.
+**Bloqueador de release:** sim no candidato anterior; correção presente em
+`80f6c1341acea4a56830d4091cc10e904e1cbbcc`, aguardando rechecagem independente.
+
+**Antes — reprodução:** a relação de `CommunityPost.spaceId` permitia
+`ON DELETE SET NULL`, e os leitores globais usavam `spaceId=NULL` como critério
+de audiência global. Em tabelas temporárias no PostgreSQL QA, a consulta do
+leitor global retornou zero linhas antes de excluir um grupo privado; após a
+exclusão, retornou uma linha e o corpo `CONTEUDO PRIVADO`. A transação foi
+revertida, sem tocar tabelas permanentes.
+
+**Impacto:** uma publicação de grupo privado podia entrar no feed global,
+detalhe de post ou share público, e habilitar produtor/consumer a emitir
+notificações fora do escopo original. A causa era a perda de proveniência ao
+apagar fisicamente o grupo, não um bypass de convite ou share token.
+
+**Correção aplicada:** a migration
+`20261023130000_community_post_audience_scope` adiciona `audienceScope` com
+`GLOBAL`, `GROUP` ou `UNRESOLVED`, constraint coerente com `spaceId` e FK
+`ON DELETE RESTRICT`. Os dois writes da aplicação definem o valor
+explicitamente. Feed, detalhe, share público, acesso a recurso, produtor de
+notificação e consumer exigem escopo e relação coerentes; registros legados
+com FK nula permanecem armazenados, marcados `UNRESOLVED` e invisíveis até
+proveniência ser verificada. A E2E pós-correção tentou excluir fisicamente um
+grupo com post, recebeu a rejeição esperada e confirmou `GROUP` e o mesmo FK.
+
+**Validação:** testes direcionados de regras/produtor e consumer, 24/24;
+shares E2E 8/8 e regressão de exclusão 1/1. O QA integrado ficou em 21/22 por
+fixture anterior da meta coletiva; a suíte focada da meta passou 5/5 com os
+nove registros QA restaurados e comparados ao snapshot original. Os seis gates
+e os limites do teste integrado estão no estado atual no início deste relatório.
 
 ## Risco remoto de RLS / Data API — P2
 

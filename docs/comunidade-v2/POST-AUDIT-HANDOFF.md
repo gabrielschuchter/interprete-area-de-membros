@@ -1,16 +1,39 @@
 # Comunidade V2 — fechamento pós-auditoria e handoff 12A
 
-Data: 23/10/2026. Candidato de código: `a20b28d2d0854c82d543048cc66fb5d81981ea1a`.
-Este documento organiza a transição; não executa a Etapa 12A nem autoriza publicação.
+## Encerramento por ordem do usuário — 23/10/2026
+
+**Estado vigente: NO-GO; correções interrompidas.** Código sincronizado:
+`80f6c1341acea4a56830d4091cc10e904e1cbbcc`. A rechecagem encontrou um P1
+concreto ainda sem fechamento comprovado: notificação comunitária legada com
+`communitySpaceId=NULL` continua visível para post `UNRESOLVED`.
+A migration local `20261023140000_notification_audience_reconcile` e seu
+teste ficam preservados fora do commit; não considerar o patch aprovado.
+A ordem de encerramento proíbe novos testes, correções e rechecagens nesta execução.
+
+O estado completo, evidências existentes e próximo passo estão em
+[POST-AUDIT-CLOSURE.md](POST-AUDIT-CLOSURE.md). Os registros abaixo são
+históricos e suas declarações de correção/rechecagem pendente são supersedidas
+por este encerramento. A Etapa 12 não foi iniciada.
+
+Data: 23/10/2026. Candidato de código: `80f6c1341acea4a56830d4091cc10e904e1cbbcc`.
+Este documento registra as correções pós-auditoria; não executa a Etapa 12A nem autoriza publicação.
 
 ## Estado
 
-Correção complementar de RV-01 commitada, seis gates e QA final concluídos;
-rechecagem independente do candidato ainda pendente. Não declarar fechamento
-antes de registrar os resultados abaixo.
+RV-01 e RV-06 corrigidos e enviados para rechecagem independente no SHA final.
+Seis gates passaram; no QA integrado houve 21/22, e a única falha de fixture
+foi coberta por uma suíte focada de 5/5. O release continua NO-GO pelos gates
+operacionais/remotos abaixo. Etapa 12 não iniciada.
 
 ## Contrato corrigido
 
+- A audiência do post agora é explícita (`GLOBAL`, `GROUP` ou `UNRESOLVED`),
+  coerente com a FK `spaceId`. Exclusão física de grupo com posts é rejeitada;
+  o fluxo de produto arquiva o grupo sem desvincular as publicações. Filas e
+  leitores falham fechados para origem ausente ou contraditória.
+- Posts legados com `spaceId=NULL` são ambíguos entre globais e grupos apagados.
+  Permanecem no banco com `UNRESOLVED`, sem exposição até confirmação de
+  proveniência; a migration não adivinha nem apaga conteúdo.
 - O escopo da notificação é persistido sem FK destrutiva e reautorizado na lista,
   resumo, contagens e mutações de leitura. Tipos de leitura são classificados
   explicitamente; tipo desconhecido não recebe acesso por exclusão.
@@ -32,6 +55,21 @@ antes de registrar os resultados abaixo.
 
 ## Evidências
 
+- RV-06 foi reproduzido no banco QA em transação com tabelas temporárias que
+  reproduzem `ON DELETE SET NULL`: o filtro global retornou `0` antes da
+  exclusão e `1` depois, expondo o texto privado. A transação foi revertida.
+  Após a correção, a E2E de exclusão física rejeitou o DELETE e confirmou o
+  post ainda ligado ao grupo com audiência `GROUP` (1/1); shares passou 8/8.
+- QA integrado `8fd64ff585134fd8aab62c725bc7a827`: 21/22. A falha única da
+  meta coletiva veio de nove sessões de execução QA interrompida. Reteste
+  `c681476924c84337ae2c7803a32e7779`: 5/5; IDs, membros e horários originais
+  foram conferidos contra `rv01-goal-source-snapshot.json` após restauração.
+- Seis gates no candidato `80f6c1341acea4a56830d4091cc10e904e1cbbcc`:
+  check 1.058; typecheck 16/16; boundaries 986/19; scripts 32 pass/1 skip,
+  App 853/177, API 14/14 e domínio 24/24; build 8/8; performance 26 rotas sob
+  225 KiB gzip, Comunidade 216,2 KiB. Graphify: 8.440 nós, 22.124 arestas,
+  358 comunidades. A nova migration foi aplicada somente no QA loopback com
+  TLS `verify-full`; 75 migrations concluídas, zero pendentes.
 - Harness direcionado externo ao Git:
   `C:\Users\gabsc\AppData\Local\Codex\qa\community-v2-foundation-20261015\tools\rv01-final-targeted.ps1`,
   relatório `rv01-final-targeted-report.json` no mesmo QA root.
@@ -121,7 +159,7 @@ rollout/rollback remoto.
 
 | Item | Classe | Condição para release |
 |---|---|---|
-| RV-01 | Código/segurança | Rechecagem do candidato final, incluindo o legado excluído e outbox concorrente |
+| RV-01 / RV-06 | Código/segurança | Rechecagem independente do SHA `80f6c134`; corrigir eventual achado antes de qualquer release |
 | RV-02 / OPS-01 | Operacional | Diagnosticar recovery e observar runs periódicos com recuperação real |
 | RV-03 | Compatibilidade operacional | Ensaiar fallback compatível e retirada de leitores/workers antigos |
 | RV-04 | Preflight de dados | Consulta atual de duplicados de convites, backup e resultado esperado antes da migration |
@@ -130,6 +168,6 @@ rollout/rollback remoto.
 
 Os gates remotos e operacionais mantêm o release em NO-GO. Não reabrem a Etapa
 10 nem exigem outra auditoria geral do código. O avanço para planejar/executar
-12A ocorre em conversa própria após fechamento formal de RV-01; nenhuma tarefa
+12A ocorre em conversa própria após rechecagem formal de RV-01/RV-06; nenhuma tarefa
 de 12A, migration remota, alteração em GREEN/BLUE/Production, mudança de cron,
 credencial, alias ou publicação foi executada aqui.
