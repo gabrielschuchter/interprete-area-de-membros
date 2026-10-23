@@ -20,8 +20,9 @@ const course = {
       lessons: [lesson("3", false), lesson("4", false)],
       title: "Dois",
     },
+    { id: "m3", lessons: [lesson("5", false)], title: "Três" },
   ],
-  progress: { completedLessons: 2, percentage: 50, totalLessons: 4 },
+  progress: { completedLessons: 2, percentage: 40, totalLessons: 5 },
   slug: "curso",
   title: "Curso",
 };
@@ -31,8 +32,8 @@ describe("buildCourseViewData", () => {
     const data = buildCourseViewData(course);
 
     expect(data.continueHref).toBe("/cursos/curso/aula-3");
-    expect(data.continueLabel).toBe("Continuar aula");
-    expect(data.modules.map(({ open }) => open)).toEqual([false, true]);
+    expect(data.continueLabel).toBe("Continuar na aula 3");
+    expect(data.modules.map(({ open }) => open)).toEqual([false, true, false]);
     expect(data.modules[1]?.lessons.map(({ ordinal }) => ordinal)).toEqual([
       3, 4,
     ]);
@@ -42,7 +43,7 @@ describe("buildCourseViewData", () => {
     const data = buildCourseViewData(course, "aula-2");
 
     expect(data.highlightLessonId).toBe("2");
-    expect(data.modules.map(({ open }) => open)).toEqual([true, false]);
+    expect(data.modules.map(({ open }) => open)).toEqual([true, false, false]);
   });
 
   it("ignores an unknown return slug", () => {
