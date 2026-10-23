@@ -5,10 +5,16 @@ import Link from "next/link";
 import { type ReactNode, useState } from "react";
 import type { RoomOutline, RoomOutlineItem } from "@/lib/room-outline";
 import { RoomTemple } from "./room-art";
-import { roomReleaseDateShort, roomText } from "./room-copy";
+import {
+  type RoomKind,
+  roomReleaseDateShort,
+  roomText,
+  roomTextFor,
+} from "./room-copy";
 
 interface RoomLessonsPanelProperties {
   readonly courseTitle: string;
+  readonly kind: RoomKind;
   readonly onToggle: (item: RoomOutlineItem, completed: boolean) => void;
   readonly outline: RoomOutline;
   readonly pending: ReadonlySet<string>;
@@ -48,7 +54,7 @@ const itemMeta = (item: RoomOutlineItem): ReactNode => {
 const LessonThumb = ({ item }: { readonly item: RoomOutlineItem }) => (
   <span aria-hidden="true" className="room-thumb">
     <RoomTemple />
-    <span className="room-thumb__label">{item.ordinal}</span>
+    <span className="room-thumb__label">{item.label ?? item.ordinal}</span>
     {item.inProgressPercent === null ? null : (
       <span className="room-thumb__bar">
         <span style={{ width: `${item.inProgressPercent}%` }} />
@@ -64,10 +70,12 @@ const LessonThumb = ({ item }: { readonly item: RoomOutlineItem }) => (
 
 const LessonRow = ({
   item,
+  kind,
   onToggle,
   pending,
 }: {
   readonly item: RoomOutlineItem;
+  readonly kind: RoomKind;
   readonly onToggle: RoomLessonsPanelProperties["onToggle"];
   readonly pending: boolean;
 }) => {
@@ -89,7 +97,8 @@ const LessonRow = ({
     >
       <label className="room-lesson__check">
         <input
-          aria-label={roomText(
+          aria-label={roomTextFor(
+            kind,
             item.completed ? "checkboxUnmark" : "checkboxMark",
             { n: item.ordinal }
           )}
@@ -116,6 +125,7 @@ const LessonRow = ({
 
 export const RoomLessonsPanel = ({
   courseTitle,
+  kind,
   onToggle,
   outline,
   pending,
@@ -187,6 +197,7 @@ export const RoomLessonsPanel = ({
                     <LessonRow
                       item={item}
                       key={item.id}
+                      kind={kind}
                       onToggle={onToggle}
                       pending={pending.has(item.id)}
                     />

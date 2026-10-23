@@ -4,16 +4,23 @@
 
 export const roomCopy = {
   about: "Sobre a aula",
+  aboutRecording: "Sobre a gravação",
   aulasTitle: "Aulas",
+  aulasTitleRecording: "Gravações",
+  backToRecordings: "Minhas gravações",
   checkboxMark: "Marcar aula {n} como feita",
+  checkboxMarkRecording: "Marcar gravação {n} como feita",
   checkboxUnmark: "Desmarcar aula {n}",
+  checkboxUnmarkRecording: "Desmarcar gravação {n}",
   dockAria: "Ferramentas da aula",
   dockAulas: "Aulas",
+  dockAulasRecording: "Gravações",
   dockNotas: "Notas",
   dockTempo: "Tempo",
   forbiddenBody:
     "Se você acha que isso é um engano, fale com a equipe do Interprete.",
   forbiddenCta: "Voltar a Cursos",
+  forbiddenCtaRecording: "Voltar a Minhas gravações",
   forbiddenTitle: "Você não tem acesso a este conteúdo.",
   groupCount: "{c}/{t}",
   lockedAria: "Aula bloqueada, libera em {data}",
@@ -23,6 +30,7 @@ export const roomCopy = {
   lockedCtaPrevious: "Ir para a aula anterior",
   lockedTitle: "Esta aula será liberada em {data}.",
   marked: "Aula marcada como feita.",
+  markedRecording: "Gravação marcada como feita.",
   materials: "Materiais",
   metaDuration: "{min} min",
   metaLocked: "libera em {data}",
@@ -55,14 +63,21 @@ export const roomCopy = {
   notesStatusSaved: "Salvo agora",
   notesStatusSaving: "Salvando…",
   notesTitle: "Notas desta aula",
+  notesTitleRecording: "Notas desta gravação",
   notesTrashed: "Nota movida para a lixeira.",
   notesUndo: "Desfazer",
   noVideoBody:
     "A aula existe, mas o vídeo ainda não foi anexado. Quando estiver disponível, ele aparece nesta página.",
+  noVideoBodyRecording:
+    "O registro do encontro está aqui, mas o vídeo ainda não foi anexado. Quando estiver disponível, ele aparece nesta página.",
   noVideoTitle: "Esta aula ainda não tem vídeo.",
+  noVideoTitleRecording: "Esta gravação ainda não tem vídeo.",
   notFoundBody: "O link pode estar errado ou a aula foi removida.",
+  notFoundBodyRecording: "O link pode estar errado ou a gravação foi removida.",
   notFoundCta: "Voltar a Cursos",
+  notFoundCtaRecording: "Voltar a Minhas gravações",
   notFoundTitle: "Não encontramos esta aula.",
+  notFoundTitleRecording: "Não encontramos esta gravação.",
   offlineBody: "O vídeo volta quando a conexão voltar.",
   offlineTitle: "Você está sem conexão.",
   panelAria: "Painel da aula: {nome}",
@@ -81,6 +96,8 @@ export const roomCopy = {
   retry: "Tentar de novo",
   saveError: "Não foi possível salvar agora. Tente de novo.",
   subtitle: "{curso} — Módulo {n}, {modulo}",
+  subtitleRecording: "{serie} — {data}",
+  subtitleRecordingNoDate: "{serie}",
   tempoBreak: "Pausa",
   tempoClaim: "Continuar aqui",
   tempoClockAria: "Tempo da sessão",
@@ -119,6 +136,21 @@ export const roomText = (
   roomCopy[key].replace(/\{(\w+)\}/g, (_, name: string) =>
     String(values[name] ?? "")
   );
+
+export type RoomKind = "lesson" | "recording";
+
+// Recordings use the "...Recording" twin of a key when the copy has one.
+export const roomTextFor = (
+  kind: RoomKind,
+  key: RoomCopyKey,
+  values: Readonly<Record<string, string | number>> = {}
+) => {
+  const twin = `${key}Recording`;
+  return roomText(
+    kind === "recording" && twin in roomCopy ? (twin as RoomCopyKey) : key,
+    values
+  );
+};
 
 const shortDateFormatter = new Intl.DateTimeFormat("pt-BR", {
   day: "numeric",

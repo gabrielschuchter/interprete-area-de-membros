@@ -11,7 +11,8 @@ const mocks = vi.hoisted(() => {
     database: {
       $transaction: vi.fn(),
       lesson: { findFirst: vi.fn() },
-      lessonProgress: { findUnique: vi.fn() },
+      lessonProgress: { findUnique: vi.fn(), updateMany: vi.fn() },
+      playbackProgress: { updateMany: vi.fn() },
     },
     dispatchPendingNotifications: vi.fn(),
     evaluateMemberBadges: vi.fn(),
@@ -40,7 +41,7 @@ vi.mock("@repo/database", () => ({
     LESSON: "LESSON",
     MODULE: "MODULE",
   },
-  ProgressStatus: { COMPLETED: "COMPLETED" },
+  ProgressStatus: { COMPLETED: "COMPLETED", IN_PROGRESS: "IN_PROGRESS" },
   database: mocks.database,
 }));
 vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidatePath }));
@@ -55,7 +56,11 @@ vi.mock("./notification-outbox-dispatch", () => ({
   dispatchPendingNotifications: mocks.dispatchPendingNotifications,
 }));
 
-import { completeLessonForMember } from "./lesson-completion";
+import {
+  completeLessonForMember,
+  markLessonCompletedByMember,
+  reopenLessonForMember,
+} from "./lesson-completion";
 
 describe("completeLessonForMember", () => {
   beforeEach(() => {
@@ -146,5 +151,75 @@ describe("completeLessonForMember", () => {
 
     expect(mocks.database.$transaction).not.toHaveBeenCalled();
     expect(mocks.dispatchPendingNotifications).not.toHaveBeenCalled();
+  });
+});
+
+describe("reopening a lesson", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.database.lesson.findFirst.mockResolvedValue({
+      slug: "lesson-one",
+      module: {
+        id: "module-one",
+        course: { id: "course-one", slug: "course-one" },
+      },
+    });
+    mocks.getLearningAccessScope.mockResolvedValue({});
+    mocks.hasLessonAccess.mockReturnValue(true);
+    mocks.database.lessonProgress.updateMany.mockResolvedValue({ count: 1 });
+    mocks.database.playbackProgress.updateMany.mockResolvedValue({ count: 1 });
+  });
+
+  test("reopens the lesson and tells the playback route to leave it open", async () => {
+    await expect(
+      reopenLessonForMember("member-one", "lesson-one")
+    ).resolves.toMatchObject({ ok: true });
+
+    expect(mocks.database.lessonProgress.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: { completedAt: null, status: "IN_PROGRESS" },
+      })
+    );
+    expect(mocks.database.playbackProgress.updateMany).toHaveBeenCalledWith({
+      data: { manualCompletion: false },
+      where: { asset: { lessonId: "lesson-one" }, memberId: "member-one" },
+    });
+  });
+
+  test("changes nothing for a lesson the member cannot open", async () => {
+    mocks.hasLessonAccess.mockReturnValue(false);
+    await expect(
+      reopenLessonForMember("member-one", "lesson-one")
+    ).resolves.toMatchObject({ ok: false });
+    expect(mocks.database.playbackProgress.updateMany).not.toHaveBeenCalled();
+  });
+
+  test("a manual mark lifts an earlier reopen", async () => {
+    mocks.database.$transaction.mockImplementation(
+      async (callback: (transaction: typeof mocks.transaction) => unknown) =>
+        callback(mocks.transaction)
+    );
+    mocks.database.lessonProgress.findUnique.mockResolvedValue(null);
+    mocks.transaction.lessonProgress.findUnique.mockResolvedValue(null);
+    mocks.transaction.lessonProgress.upsert.mockResolvedValue({});
+    mocks.transaction.activityAssignment.updateMany.mockResolvedValue({
+      count: 0,
+    });
+    mocks.transaction.lesson.count.mockResolvedValue(1);
+    mocks.transaction.lessonProgress.count.mockResolvedValue(0);
+    mocks.evaluateMemberBadges.mockResolvedValue([]);
+    mocks.dispatchPendingNotifications.mockResolvedValue(undefined);
+
+    await expect(
+      markLessonCompletedByMember("member-one", "lesson-one")
+    ).resolves.toMatchObject({ ok: true });
+    expect(mocks.database.playbackProgress.updateMany).toHaveBeenCalledWith({
+      data: { manualCompletion: null },
+      where: {
+        asset: { lessonId: "lesson-one" },
+        manualCompletion: false,
+        memberId: "member-one",
+      },
+    });
   });
 });

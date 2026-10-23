@@ -242,9 +242,31 @@ export const reopenLessonForMember = async (
     where: { memberId, lessonId, status: ProgressStatus.COMPLETED },
     data: { status: ProgressStatus.IN_PROGRESS, completedAt: null },
   });
+  // The playback route completes a lesson again on every save past 90%. A
+  // reopen is the member's choice, so it stops that until they mark it again.
+  await database.playbackProgress.updateMany({
+    where: { memberId, asset: { lessonId } },
+    data: { manualCompletion: false },
+  });
 
   revalidatePath("/cursos", "page");
   revalidatePath(`/cursos/${lesson.module.course.slug}`, "page");
   revalidatePath(`/cursos/${lesson.module.course.slug}/${lesson.slug}`, "page");
   return { message: "Aula desmarcada.", ok: true };
+};
+
+// The room checkbox: a manual mark also lifts an earlier reopen, so the 90%
+// rule applies to this lesson again.
+export const markLessonCompletedByMember = async (
+  memberId: string,
+  lessonId: string
+): Promise<LessonCompletionResult> => {
+  const result = await completeLessonForMember(memberId, lessonId);
+  if (result.ok) {
+    await database.playbackProgress.updateMany({
+      where: { memberId, asset: { lessonId }, manualCompletion: false },
+      data: { manualCompletion: null },
+    });
+  }
+  return result;
 };
