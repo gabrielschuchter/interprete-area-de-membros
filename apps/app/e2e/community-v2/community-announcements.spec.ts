@@ -325,7 +325,11 @@ test("integra avisos da Gestão na Comunidade com audiência, versão, janela e 
     await expect(
       adminPage.getByRole("heading", { name: "Uma mensagem, no lugar certo." })
     ).toBeVisible();
+    await adminPage.setViewportSize({ width: 1280, height: 1000 });
     await screenshot(adminPage, "community-v2-stage08-gestao-desktop.png");
+    await adminPage.setViewportSize({ width: 1440, height: 1000 });
+    await screenshot(adminPage, "community-v2-stage08-gestao-desktop-1440.png");
+    await adminPage.setViewportSize({ width: 1280, height: 1000 });
 
     const importantTitle = `Aviso importante ${runId}`;
     const important = await createAnnouncement(adminPage, {
@@ -606,7 +610,7 @@ test("integra avisos da Gestão na Comunidade com audiência, versão, janela e 
       }
     });
     await futurePage.goto("/comunidade");
-    await clerk.loaded({ page: futurePage });
+    await expect(futurePage.locator("main")).toBeVisible();
     await expect(
       futurePage.locator(`[data-announcement-id="${future.id}"]`)
     ).toHaveCount(0);

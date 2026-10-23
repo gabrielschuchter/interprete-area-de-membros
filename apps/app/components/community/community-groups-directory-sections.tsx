@@ -15,6 +15,14 @@ interface CommunityGroupsDirectorySectionsProperties {
   readonly scope: CommunityGroupScope;
 }
 
+const firstCoverSpaceId = (
+  mine: CommunitySpaceDirectoryPage | null,
+  discover: CommunitySpaceDirectoryPage | null
+) =>
+  [...(mine?.spaces ?? []), ...(discover?.spaces ?? [])].find(
+    (space) => space.coverUrl
+  )?.id;
+
 interface DirectoryHrefProperties {
   readonly discoverCursor?: string;
   readonly mineCursor?: string;
@@ -49,12 +57,14 @@ const MyStudyGroupsSection = ({
   discoverCursor,
   memberId,
   mine,
+  prioritySpaceId,
   query,
   scope,
 }: {
   readonly discoverCursor?: string;
   readonly memberId: string;
   readonly mine: CommunitySpaceDirectoryPage;
+  readonly prioritySpaceId?: string;
   readonly query: string;
   readonly scope: CommunityGroupScope;
 }) => (
@@ -74,6 +84,7 @@ const MyStudyGroupsSection = ({
           <CommunitySpaceDirectoryCard
             key={space.id}
             memberId={memberId}
+            prioritizeCover={space.id === prioritySpaceId}
             space={space}
           />
         ))}
@@ -118,12 +129,14 @@ const MyStudyGroupsSection = ({
 const DiscoverStudyGroupsSection = ({
   discover,
   memberId,
+  prioritySpaceId,
   mineCursor,
   query,
   scope,
 }: {
   readonly discover: CommunitySpaceDirectoryPage;
   readonly memberId: string;
+  readonly prioritySpaceId?: string;
   readonly mineCursor?: string;
   readonly query: string;
   readonly scope: CommunityGroupScope;
@@ -151,6 +164,7 @@ const DiscoverStudyGroupsSection = ({
           <CommunitySpaceDirectoryCard
             key={space.id}
             memberId={memberId}
+            prioritizeCover={space.id === prioritySpaceId}
             space={space}
           />
         ))}
@@ -213,25 +227,31 @@ export const CommunityGroupsDirectorySections = ({
   mineCursor,
   query,
   scope,
-}: CommunityGroupsDirectorySectionsProperties) => (
-  <>
-    {mine ? (
-      <MyStudyGroupsSection
-        discoverCursor={discoverCursor}
-        memberId={memberId}
-        mine={mine}
-        query={query}
-        scope={scope}
-      />
-    ) : null}
-    {discover ? (
-      <DiscoverStudyGroupsSection
-        discover={discover}
-        memberId={memberId}
-        mineCursor={mineCursor}
-        query={query}
-        scope={scope}
-      />
-    ) : null}
-  </>
-);
+}: CommunityGroupsDirectorySectionsProperties) => {
+  const prioritySpaceId = firstCoverSpaceId(mine, discover);
+
+  return (
+    <>
+      {mine ? (
+        <MyStudyGroupsSection
+          discoverCursor={discoverCursor}
+          memberId={memberId}
+          mine={mine}
+          prioritySpaceId={prioritySpaceId}
+          query={query}
+          scope={scope}
+        />
+      ) : null}
+      {discover ? (
+        <DiscoverStudyGroupsSection
+          discover={discover}
+          memberId={memberId}
+          mineCursor={mineCursor}
+          prioritySpaceId={prioritySpaceId}
+          query={query}
+          scope={scope}
+        />
+      ) : null}
+    </>
+  );
+};

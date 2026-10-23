@@ -7,11 +7,13 @@ import type { CommunitySpaceDirectoryItem } from "@/lib/community";
 
 interface CommunitySpaceDirectoryCardProperties {
   readonly memberId: string;
+  readonly prioritizeCover?: boolean;
   readonly space: CommunitySpaceDirectoryItem;
 }
 
 export const CommunitySpaceDirectoryCard = ({
   memberId,
+  prioritizeCover = false,
   space,
 }: CommunitySpaceDirectoryCardProperties) => {
   const membership = space.members[0];
@@ -57,6 +59,8 @@ export const CommunitySpaceDirectoryCard = ({
             alt=""
             className="object-cover"
             fill
+            loading={prioritizeCover ? "eager" : "lazy"}
+            priority={prioritizeCover}
             sizes="(min-width: 1280px) 360px, (min-width: 640px) 50vw, 100vw"
             src={space.coverUrl}
             unoptimized

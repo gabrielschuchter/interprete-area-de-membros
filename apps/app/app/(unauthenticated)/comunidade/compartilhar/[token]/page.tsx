@@ -252,6 +252,21 @@ const PublicShareLanding = ({
           ) : (
             <>
               <span>Interprete.</span>
+              <span
+                aria-hidden="true"
+                className="community-share-landing__public-quote"
+              >
+                “
+              </span>
+              <span
+                aria-hidden="true"
+                className="community-share-landing__public-lines"
+              >
+                <span />
+                <span />
+                <span />
+                <span />
+              </span>
               <span>PUBLICAÇÃO</span>
             </>
           )}

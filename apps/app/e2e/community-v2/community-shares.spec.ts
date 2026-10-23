@@ -3,7 +3,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { clerk } from "@clerk/testing/playwright";
-import { expect, type Page, test } from "@playwright/test";
+import { expect, type Locator, type Page, test } from "@playwright/test";
 import { clerkUserId, prepareClerkStorageState } from "./auth-state";
 import {
   adminStatePath,
@@ -131,8 +131,7 @@ const openShareDialog = async (page: Page) => {
   return dialog;
 };
 
-const createShareFromUi = async (page: Page) => {
-  const dialog = await openShareDialog(page);
+const generateShareFromDialog = async (page: Page, dialog: Locator) => {
   const responsePromise = page.waitForResponse(
     (response) =>
       response.request().method() === "POST" &&
@@ -152,6 +151,9 @@ const createShareFromUi = async (page: Page) => {
   await expect(dialog.getByRole("status")).toBeVisible();
   return { dialog, id: created.id, url: created.url };
 };
+
+const createShareFromUi = async (page: Page) =>
+  generateShareFromDialog(page, await openShareDialog(page));
 
 const tokenFromUrl = (value: string) => {
   const token = new URL(value, appUrl).pathname.split("/").at(-1) ?? "";
@@ -252,9 +254,36 @@ test("compartilhamento V2 preserva permissões, prévia SSR, retorno Clerk e rev
     await expect(
       page.getByRole("heading", { name: fixture.publicPost.title })
     ).toBeVisible();
-    const publicShare = await createShareFromUi(page);
-    const publicToken = tokenFromUrl(publicShare.url);
+    const initialPublicShareDialog = await openShareDialog(page);
+    await expect(
+      initialPublicShareDialog.getByRole("complementary", {
+        name: "Prévia do cartão de compartilhamento",
+      })
+    ).toBeVisible();
+    await expect(
+      initialPublicShareDialog.locator(".community-share-preview__art")
+    ).toBeVisible();
+    await captureScreenshot(
+      page,
+      "community-shares-dialog-initial-1440.png",
+      false
+    );
+    await page.setViewportSize({ width: 390, height: 1200 });
+    await captureScreenshot(
+      page,
+      "community-shares-dialog-initial-390.png",
+      false
+    );
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    const publicShare = await generateShareFromDialog(
+      page,
+      initialPublicShareDialog
+    );
+    await expect(
+      initialPublicShareDialog.getByText("E-mail em breve", { exact: true })
+    ).toBeVisible();
     await captureScreenshot(page, "community-shares-dialog-1440.png", false);
+    const publicToken = tokenFromUrl(publicShare.url);
     await page.setViewportSize({ width: 390, height: 1200 });
     await captureScreenshot(page, "community-shares-dialog-390.png", false);
     await publicShare.dialog
@@ -886,6 +915,11 @@ test("link público segue listado e revogável ao reabrir o diálogo", async ({
     await captureScreenshot(
       anonymousPage,
       "community-shares-public-landing-1280.png"
+    );
+    await anonymousPage.setViewportSize({ width: 1440, height: 1000 });
+    await captureScreenshot(
+      anonymousPage,
+      "community-shares-public-landing-1440.png"
     );
     await anonymousPage.setViewportSize({ width: 390, height: 844 });
     await captureScreenshot(

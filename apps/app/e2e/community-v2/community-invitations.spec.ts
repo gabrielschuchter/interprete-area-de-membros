@@ -27,6 +27,7 @@ const invitationAttributionPattern = /convidou você para um grupo/;
 const declinedStatusPattern = /^Recusado\b/;
 const revokedStatusPattern = /^Revogado\b/;
 const linkRevokedMessagePattern = /^Link revogado\./;
+const whatsappInviteLinkPattern = /^https:\/\/wa\.me\/\?text=/;
 let privateGroupTitle = `Convites privados ${runId}`;
 let privateGroupDescription = `Descrição privada de QA ${runId}.`;
 let privateGroupDetails = `Detalhes privados de QA ${runId}.`;
@@ -695,6 +696,8 @@ test("convites V2 cobrem papéis, estados, links privados e outbox em QA isolado
     await expect(partialBatch).toContainText("Convite enviado");
     await staffPage.setViewportSize({ width: 1280, height: 960 });
     await screenshot(staffPage, "community-invitation-partial-1280.png");
+    await staffPage.setViewportSize({ width: 1440, height: 1000 });
+    await screenshot(staffPage, "community-invitation-partial-1440.png");
     const batchInvites = await queryDatabase<
       Array<{ id: string; inviteeId: string; status: string }>
     >("invitation-states", {
@@ -709,6 +712,8 @@ test("convites V2 cobrem papéis, estados, links privados e outbox em QA isolado
     await staffPage.goto(`/comunidade/grupos/${staffGroup.slug}`);
     await openInvitations(staffPage);
     await screenshot(staffPage, "community-invitation-dialog-1280.png", false);
+    await staffPage.setViewportSize({ width: 1440, height: 1000 });
+    await screenshot(staffPage, "community-invitation-dialog-1440.png", false);
     for (const width of [320, 360, 390, 768, 820, 1024, 1280, 1440]) {
       await staffPage.setViewportSize({
         width,
@@ -772,6 +777,20 @@ test("convites V2 cobrem papéis, estados, links privados e outbox em QA isolado
     expect(activeLinksAfterCreate).toHaveLength(1);
     expect(activeLinksAfterCreate[0]?.tokenHash).toBe(firstLinkHash);
     expect(activeLinksAfterCreate[0]?.tokenHash).not.toBe(firstLinkToken);
+    await staffPage.setViewportSize({ width: 390, height: 1200 });
+    const whatsappInviteLink = staffPage.getByRole("link", {
+      name: "WhatsApp",
+    });
+    await expect(whatsappInviteLink).toHaveAttribute(
+      "href",
+      whatsappInviteLinkPattern
+    );
+    await screenshot(
+      staffPage,
+      "community-invitation-sheet-link-390.png",
+      false
+    );
+    await staffPage.setViewportSize({ width: 1280, height: 960 });
 
     const visitorPage = await visitorContext.newPage();
     await visitorPage.goto(firstLinkUrl);
@@ -823,6 +842,8 @@ test("convites V2 cobrem papéis, estados, links privados e outbox em QA isolado
     await assertNoGroupMetadata(visitorPage, []);
     await visitorPage.setViewportSize({ width: 1280, height: 960 });
     await screenshot(visitorPage, "community-invitation-link-1280.png");
+    await visitorPage.setViewportSize({ width: 1440, height: 1000 });
+    await screenshot(visitorPage, "community-invitation-link-1440.png");
     await visitorPage.setViewportSize({ width: 390, height: 844 });
     expect(
       await visitorPage.evaluate(

@@ -276,6 +276,10 @@ test("persiste a meta, une sessões elegíveis, renova com concorrência e respe
     await clerk.loaded({ page: adminPage });
     expect(await clerkUserId(adminPage)).toBe(adminId);
     await expect(adminPage.getByLabel("Título")).toHaveValue(updatedGoalTitle);
+    await adminPage.setViewportSize({ width: 1440, height: 1000 });
+    await screenshot(adminPage, "community-goal-management-active-1440.png");
+    await adminPage.setViewportSize({ width: 390, height: 844 });
+    await screenshot(adminPage, "community-goal-management-active-390.png");
 
     await page.goto("/comunidade/meta");
     await expect(page).toHaveURL(memberMetaRedirectPattern);

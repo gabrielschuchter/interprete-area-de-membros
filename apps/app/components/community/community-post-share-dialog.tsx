@@ -397,61 +397,95 @@ export function CommunityPostShareDialog({
               </Button>
             </header>
 
-            <div className="community-share-preview">
-              <span className="community-share-preview__brand">
-                Interprete.
-              </span>
-              <strong>{title}</strong>
-              {description ? <span>{description}</span> : null}
-            </div>
-
-            <p className="community-share-dialog__privacy">
-              Compartilhar o link não altera o acesso. Quem não tiver permissão
-              verá apenas uma página genérica.
-            </p>
-
-            <div className="community-share-link-row">
-              <Button
-                className="min-h-11"
-                disabled={isCreating}
-                onClick={shareUrl ? copyExistingLink : createLink}
-                type="button"
+            <div className="community-share-dialog__layout">
+              <aside
+                aria-label="Prévia do cartão de compartilhamento"
+                className="community-share-preview-column"
               >
-                {shareUrl ? (
-                  <CopyIcon aria-hidden="true" className="size-4" />
-                ) : (
-                  <Link2Icon aria-hidden="true" className="size-4" />
-                )}
-                {shareButtonLabel}
-              </Button>
-              {shareUrl ? (
-                <input
-                  aria-label="Link de compartilhamento"
-                  className="community-share-link-input"
-                  onFocus={(event) => event.currentTarget.select()}
-                  readOnly
-                  ref={linkInputRef}
-                  value={shareUrl}
-                />
-              ) : null}
+                <div className="community-share-preview">
+                  <div
+                    aria-hidden="true"
+                    className="community-share-preview__art"
+                  >
+                    <span className="community-share-preview__art-brand">
+                      Interprete.
+                    </span>
+                    <span className="community-share-preview__art-quote">
+                      “
+                    </span>
+                    <span className="community-share-preview__art-lines">
+                      <i />
+                      <i />
+                      <i />
+                      <i />
+                    </span>
+                    <span className="community-share-preview__art-label">
+                      PUBLICAÇÃO
+                    </span>
+                  </div>
+                  <div className="community-share-preview__details">
+                    <span className="community-share-preview__brand">
+                      interprete.app
+                    </span>
+                    <strong>{title}</strong>
+                    {description ? <span>{description}</span> : null}
+                    <span className="community-share-preview__cta">
+                      Entre na discussão no Interprete
+                    </span>
+                  </div>
+                </div>
+              </aside>
+
+              <div className="community-share-dialog__controls">
+                <p className="community-share-dialog__privacy">
+                  Compartilhar o link não altera o acesso. Quem não tiver
+                  permissão verá apenas uma página genérica.
+                </p>
+
+                <div className="community-share-link-row">
+                  <Button
+                    className="min-h-11"
+                    disabled={isCreating}
+                    onClick={shareUrl ? copyExistingLink : createLink}
+                    type="button"
+                  >
+                    {shareUrl ? (
+                      <CopyIcon aria-hidden="true" className="size-4" />
+                    ) : (
+                      <Link2Icon aria-hidden="true" className="size-4" />
+                    )}
+                    {shareButtonLabel}
+                  </Button>
+                  {shareUrl ? (
+                    <input
+                      aria-label="Link de compartilhamento"
+                      className="community-share-link-input"
+                      onFocus={(event) => event.currentTarget.select()}
+                      readOnly
+                      ref={linkInputRef}
+                      value={shareUrl}
+                    />
+                  ) : null}
+                </div>
+
+                {shareUrl ? <ShareDestinations shareUrl={shareUrl} /> : null}
+
+                {status ? (
+                  <output
+                    aria-live="polite"
+                    className="community-share-dialog__status"
+                  >
+                    <CheckIcon aria-hidden="true" className="size-4" />
+                    {status}
+                  </output>
+                ) : null}
+                {error ? (
+                  <p className="community-share-dialog__error" role="alert">
+                    {error}
+                  </p>
+                ) : null}
+              </div>
             </div>
-
-            {shareUrl ? <ShareDestinations shareUrl={shareUrl} /> : null}
-
-            {status ? (
-              <output
-                aria-live="polite"
-                className="community-share-dialog__status"
-              >
-                <CheckIcon aria-hidden="true" className="size-4" />
-                {status}
-              </output>
-            ) : null}
-            {error ? (
-              <p className="community-share-dialog__error" role="alert">
-                {error}
-              </p>
-            ) : null}
 
             <ShareLinksList
               headingId={`${titleId}-links`}

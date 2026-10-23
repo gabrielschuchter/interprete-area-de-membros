@@ -20,7 +20,7 @@ export const GroupCoverUpload = ({
   const [url, setUrl] = useState(initialUrl ?? "");
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
-  let uploadLabel = "Enviar capa";
+  let uploadLabel = "Enviar imagem";
   if (uploading) {
     uploadLabel = "Enviando capa…";
   } else if (url) {
@@ -77,6 +77,8 @@ export const GroupCoverUpload = ({
           alt="Prévia da capa do grupo"
           className="object-cover"
           fill
+          loading="eager"
+          priority
           sizes="(max-width: 768px) 100vw, 640px"
           src={url}
           unoptimized

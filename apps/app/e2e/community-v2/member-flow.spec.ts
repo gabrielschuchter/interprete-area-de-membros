@@ -203,6 +203,11 @@ test("creates once, autosaves, publishes, edits, archives, deletes and undoes", 
   await expect(
     page.getByText(`Rascunho removido para recuperação ${runId}`)
   ).toBeVisible();
+  await expect(
+    page.locator(".community-my-publications-list article").filter({
+      hasText: recoveryTitle,
+    })
+  ).toHaveCount(1);
 
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(
@@ -229,6 +234,11 @@ test("creates once, autosaves, publishes, edits, archives, deletes and undoes", 
     animations: "disabled",
   });
   await deleteFromPublicationCard(page, recoveryTitle, "Excluir rascunho?");
+  await expect(
+    page.locator(".community-my-publications-list article").filter({
+      hasText: recoveryTitle,
+    })
+  ).toHaveCount(0);
   await expect(page).toHaveURL(deletedPostUndoPath);
   await expect(
     page.getByRole("status").getByText("Publicação excluída.")

@@ -12,6 +12,7 @@ const meetingsMarker = /Encontros/i;
 const profileRoutePattern = /\/membros\//;
 const profileMarker = /\S/;
 const communityRoutePattern = /^\/comunidade\//;
+const savedBookmarkActionPattern = /Salvar publicação|Remover dos salvos/;
 const viewPickerLabel = "Visão da comunidade: Explorar";
 
 const assertLocalQa = () => {
@@ -133,13 +134,79 @@ test("captura rotas visuais restantes e verifica os oito breakpoints reais", asy
     "community-visual-explore",
     exploreMarker
   );
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  const desktopRailOrder = await page.evaluate(() => {
+    const top = (selector: string) =>
+      document.querySelector(selector)?.getBoundingClientRect().top ??
+      Number.POSITIVE_INFINITY;
+    return [
+      top(".community-rail__goal"),
+      top(".community-rail__avatars"),
+      top(".community-rail__spaces"),
+      top(".community-rail__notices"),
+      top(".community-rail__about"),
+    ];
+  });
+  expect(desktopRailOrder).toEqual([...desktopRailOrder].sort((a, b) => a - b));
+  await page.setViewportSize({ width: 820, height: 1000 });
+  await expect(page.locator(".community-rail__goal")).toBeVisible();
+  await expect(page.locator(".community-rail__avatars")).toBeVisible();
+  const tabletOrder = await page.evaluate(() => {
+    const top = (selector: string) =>
+      document.querySelector(selector)?.getBoundingClientRect().top ??
+      Number.POSITIVE_INFINITY;
+    return {
+      avatars: top(".community-rail__avatars"),
+      filters: top(".community-feed-nav"),
+      goal: top(".community-rail__goal"),
+      hero: top(".community-hero"),
+    };
+  });
+  expect(tabletOrder.hero).toBeLessThan(tabletOrder.goal);
+  expect(Math.abs(tabletOrder.goal - tabletOrder.avatars)).toBeLessThan(2);
+  expect(tabletOrder.goal).toBeLessThan(tabletOrder.filters);
+  expect(tabletOrder.avatars).toBeLessThan(tabletOrder.filters);
   await captureMobileViewPicker(browser);
-  responsive.saved = await captureRoute(
-    page,
-    "/comunidade/salvos",
-    "community-visual-saved",
-    savedMarker
-  );
+  await page.goto("/comunidade");
+  const savedFixturePost = page.locator(".community-post-card").first();
+  const savedFixtureTitle = await savedFixturePost.locator("h2").innerText();
+  const bookmarkButton = savedFixturePost.getByRole("button", {
+    name: savedBookmarkActionPattern,
+  });
+  const bookmarkWasAlreadySet =
+    (await bookmarkButton.getAttribute("aria-pressed")) === "true";
+  if (!bookmarkWasAlreadySet) {
+    await bookmarkButton.click();
+    await expect(bookmarkButton).toHaveAttribute("aria-pressed", "true");
+  }
+  try {
+    responsive.saved = await captureRoute(
+      page,
+      "/comunidade/salvos",
+      "community-visual-saved",
+      savedMarker
+    );
+    await expect(
+      page.getByRole("heading", { name: savedFixtureTitle, exact: true })
+    ).toBeVisible();
+  } finally {
+    if (!bookmarkWasAlreadySet) {
+      await page.goto("/comunidade");
+      const cleanupCard = page.locator(".community-post-card").filter({
+        has: page.getByRole("heading", {
+          name: savedFixtureTitle,
+          exact: true,
+        }),
+      });
+      const cleanupBookmark = cleanupCard.getByRole("button", {
+        name: savedBookmarkActionPattern,
+      });
+      await expect(cleanupCard).toHaveCount(1);
+      await expect(cleanupBookmark).toHaveAttribute("aria-pressed", "true");
+      await cleanupBookmark.click();
+      await expect(cleanupBookmark).toHaveAttribute("aria-pressed", "false");
+    }
+  }
   responsive.meetings = await captureRoute(
     page,
     "/comunidade/encontros",
@@ -159,6 +226,8 @@ test("captura rotas visuais restantes e verifica os oito breakpoints reais", asy
       adminPage.getByRole("heading", { name: "Meta coletiva", level: 1 })
     ).toBeVisible();
     await screenshot(adminPage, "community-visual-goal-management-1280.png");
+    await adminPage.setViewportSize({ width: 1440, height: 1000 });
+    await screenshot(adminPage, "community-visual-goal-management-1440.png");
     await adminPage.setViewportSize({ width: 390, height: 1000 });
     await screenshot(adminPage, "community-visual-goal-management-390.png");
     responsive.goalManagement = await checkResponsiveWidths(

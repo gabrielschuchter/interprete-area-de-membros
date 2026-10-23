@@ -297,7 +297,10 @@ export const CommunitySpacePostsView = ({
           {space._count.members} membros
         </div>
       </section>
-      <section className="border p-5 sm:p-6">
+      <section
+        className="hidden border p-5 sm:p-6 lg:block"
+        data-testid="group-members-summary"
+      >
         <div className="flex items-center justify-between gap-3">
           <h2 className="font-display text-2xl">Membros</h2>
           <Link

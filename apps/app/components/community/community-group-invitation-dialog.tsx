@@ -11,7 +11,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@repo/design-system/components/ui/dialog";
-import { ChevronDownIcon, Link2Icon, MailIcon, UsersIcon } from "lucide-react";
+import {
+  ChevronDownIcon,
+  Link2Icon,
+  MailIcon,
+  MessageCircleIcon,
+  UsersIcon,
+} from "lucide-react";
 import { type FormEvent, useCallback, useState, useTransition } from "react";
 import type { CommunityInviteBatchResult } from "@/app/(authenticated)/comunidade/invitation-actions";
 import {
@@ -277,17 +283,13 @@ export const CommunityGroupInvitationDialog = ({
           Convidar pessoas
         </Button>
       </DialogTrigger>
-      <DialogContent className="inset-x-0 top-auto bottom-0 max-h-[90svh] max-w-none translate-x-0 translate-y-0 overflow-y-auto rounded-t-2xl p-5 sm:inset-0 sm:top-1/2 sm:bottom-auto sm:left-1/2 sm:max-h-[85svh] sm:w-[min(44rem,calc(100%-2rem))] sm:max-w-none sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-lg sm:p-6">
+      <DialogContent className="inset-x-0 top-auto bottom-0 max-h-[90svh] max-w-none translate-x-0 translate-y-0 overflow-y-auto rounded-t-2xl p-4 sm:inset-0 sm:top-1/2 sm:bottom-auto sm:left-1/2 sm:max-h-[85svh] sm:w-[min(44rem,calc(100%-2rem))] sm:max-w-none sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-lg sm:p-6">
         <DialogHeader>
-          <DialogTitle className="font-display text-2xl">
+          <DialogTitle className="font-display text-xl sm:text-2xl">
             Convidar para o grupo
           </DialogTitle>
           <DialogDescription>
             <span className="block">{groupName}</span>
-            <span className="mt-1 block">
-              Convites não dão acesso até a pessoa aceitar. Você pode revogar o
-              link a qualquer momento.
-            </span>
           </DialogDescription>
         </DialogHeader>
 
@@ -340,7 +342,7 @@ export const CommunityGroupInvitationDialog = ({
             <button
               aria-controls={`invite-panel-${id}`}
               aria-expanded={tab === id}
-              className="flex min-h-[4.25rem] w-full items-center gap-3 border-b py-3 text-left"
+              className="flex min-h-16 w-full items-center gap-3 border-b py-2 text-left"
               key={id}
               onClick={() => setTab(id)}
               type="button"
@@ -365,17 +367,17 @@ export const CommunityGroupInvitationDialog = ({
         {tab === "link" && (
           <section
             aria-labelledby="invite-panel-link-label"
-            className="space-y-4"
+            className="space-y-3 sm:space-y-4"
             id="invite-panel-link"
             role="tabpanel"
           >
-            <div className="rounded-sm border p-4">
+            <div className="rounded-sm border p-3 sm:p-4">
               <h3 className="font-medium" id="invite-panel-link-label">
                 Link do grupo
               </h3>
               <p className="mt-1 text-muted-foreground text-sm leading-5">
-                O link não expira por tempo. Regenerar revoga o link atual; quem
-                recebe ainda precisa aceitar para entrar.
+                O link não expira. Regenerar revoga o anterior; cada pessoa
+                ainda precisa aceitar para entrar.
               </p>
               {freshLink && (
                 <div className="mt-3 flex flex-col gap-2 sm:flex-row">
@@ -394,6 +396,17 @@ export const CommunityGroupInvitationDialog = ({
                     {copied ? "Copiado" : "Copiar link"}
                   </Button>
                 </div>
+              )}
+              {freshLink && (
+                <a
+                  className="mt-2 inline-flex min-h-10 items-center gap-2 border border-input bg-background px-3 font-medium text-brand-structural text-sm"
+                  href={`https://wa.me/?text=${encodeURIComponent(`Convite para o grupo ${groupName}: ${freshLink}`)}`}
+                  rel="noopener noreferrer"
+                  target="_blank"
+                >
+                  <MessageCircleIcon aria-hidden="true" className="size-4" />
+                  WhatsApp
+                </a>
               )}
               {!freshLink && activeLink && (
                 <p className="mt-3 text-muted-foreground text-sm">
@@ -500,7 +513,7 @@ export const CommunityGroupInvitationDialog = ({
           {invitationHistory}
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="hidden sm:flex">
           <DialogClose asChild>
             <Button variant="outline">Fechar</Button>
           </DialogClose>

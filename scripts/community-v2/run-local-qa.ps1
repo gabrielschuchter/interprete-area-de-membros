@@ -26,7 +26,12 @@ if (!(Test-Path -LiteralPath $psqlPath)) {
 }
 
 $configBytes = [IO.File]::ReadAllBytes($configPath)
-Add-Type -AssemblyName System.Security.Cryptography.ProtectedData
+$protectedDataAssembly = Join-Path $PSHOME "System.Security.Cryptography.ProtectedData.dll"
+if (Test-Path -LiteralPath $protectedDataAssembly) {
+  Add-Type -Path $protectedDataAssembly
+} else {
+  Add-Type -AssemblyName System.Security.Cryptography.ProtectedData
+}
 $configPlain = [Security.Cryptography.ProtectedData]::Unprotect(
   $configBytes,
   $null,
