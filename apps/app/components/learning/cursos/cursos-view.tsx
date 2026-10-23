@@ -1,15 +1,17 @@
 "use client";
 
-import { ArrowRightIcon, LockIcon } from "lucide-react";
-import Image from "next/image";
-import { useState } from "react";
+import { ArrowRightIcon, PlayIcon } from "lucide-react";
+import { type CSSProperties, useState } from "react";
 import { IntentLink } from "@/app/(authenticated)/components/intent-link";
 import { CatalogBookmark } from "../learning-catalog";
 import type { LearningRailCard } from "../learning-content-rail";
+import { CourseCover, CoverArt, clock, coverLook } from "./cover";
 
 export interface CursosCourse extends LearningRailCard {
+  readonly completedLessons: number;
   readonly id: string;
   readonly lessonCount: number;
+  readonly moduleCount: number;
   readonly progress: number;
   readonly trailId: string | null;
 }
@@ -29,13 +31,24 @@ export interface CursosRail {
 }
 
 export interface CursosResumeView {
+  readonly completedLessons: number;
+  readonly courseHref: string;
+  readonly courseId: string;
   readonly courseTitle: string;
+  readonly durationSeconds: number | null;
   readonly href: string;
   readonly lessonOrdinal: number;
   readonly lessonTitle: string;
-  readonly moduleTitle: string;
+  readonly moduleOrdinal: number;
+  readonly next: readonly {
+    readonly href: string;
+    readonly minutes: number | null;
+    readonly ordinal: number;
+    readonly title: string;
+  }[];
   readonly positionSeconds: number;
   readonly progressPercent: number | null;
+  readonly totalLessons: number;
 }
 
 type CursosFilter = "all" | "doing" | "todo" | "done";
@@ -60,125 +73,256 @@ const matchesFilter = (course: CursosCourse, filter: CursosFilter) => {
   return true;
 };
 
-const clock = (seconds: number) => {
-  const total = Math.max(0, Math.floor(seconds));
-  const minutes = Math.floor(total / 60);
-  const rest = String(total % 60).padStart(2, "0");
-  return minutes >= 60
-    ? `${Math.floor(minutes / 60)}:${String(minutes % 60).padStart(2, "0")}:${rest}`
-    : `${minutes}:${rest}`;
+// In progress first, then not started, then done, keeping the school's order.
+const rank = (course: CursosCourse) => {
+  if (course.progress > 0 && course.progress < 100) {
+    return 0;
+  }
+  return course.progress === 0 ? 1 : 2;
 };
+
+const structure = (course: CursosCourse) => {
+  const modules = `${course.moduleCount} módulo${course.moduleCount === 1 ? "" : "s"}`;
+  return course.moduleCount > 0
+    ? `${modules} · ${course.lessonCount} aulas`
+    : "Em preparação";
+};
+
+const CardMeta = ({ card }: { readonly card: LearningRailCard }) => (
+  <span className="cb-cc__m">
+    <span>{card.meta}</span>
+    {card.actionLabel ? <b>{card.actionLabel}</b> : null}
+  </span>
+);
 
 const CourseCard = ({
   card,
-  size,
+  desc,
+  numeral,
 }: {
-  readonly card: LearningRailCard;
-  readonly size: "grid" | "rail";
+  readonly card: LearningRailCard | CursosCourse;
+  readonly desc?: boolean;
+  readonly numeral?: number;
 }) => {
+  const course = "lessonCount" in card ? card : null;
   const progress =
     typeof card.progress === "number"
       ? Math.round(Math.max(0, Math.min(100, card.progress)))
       : null;
+  const id = course?.id ?? card.bookmark?.targetId ?? card.href;
   const body = (
     <>
-      <span className="cursos-card__cover">
-        <Image
-          alt=""
-          fill
-          sizes={size === "rail" ? "320px" : "(min-width: 1024px) 33vw, 100vw"}
-          src={card.coverUrl || "/brand/learning/course-study.svg"}
-          unoptimized
-        />
-        <span aria-hidden="true" className="cursos-meander" />
-        {progress && progress > 0 ? (
-          <span aria-hidden="true" className="cursos-card__line">
-            <span
-              className="cursos-card__fill"
-              style={{ width: `${progress}%` }}
-            />
-          </span>
+      <CourseCover
+        barPercent={progress}
+        coverUrl={card.coverUrl}
+        done={progress === 100}
+        id={id}
+        kind={card.label ?? "Conteúdo"}
+        locked={card.disabled}
+        numeral={numeral}
+        title={card.title}
+      />
+      <span className="cb-cc__body">
+        <span className="cb-cc__t">{card.title}</span>
+        {desc && card.description ? (
+          <span className="cb-cc__d">{card.description}</span>
         ) : null}
-        {card.disabled ? (
-          <span className="cursos-card__lock">
-            <LockIcon aria-hidden="true" size={16} />
+        {course ? (
+          <span className="cb-cc__m">
+            <span>{structure(course)}</span>
+            {course.progress === 0 ? <b>Novo</b> : null}
+            {course.progress > 0 && course.progress < 100 ? (
+              <b>
+                {course.completedLessons} de {course.lessonCount} aulas
+              </b>
+            ) : null}
+            {course.progress === 100 ? <span>Concluído</span> : null}
           </span>
-        ) : null}
+        ) : (
+          <CardMeta
+            card={
+              card.disabled
+                ? { ...card, actionLabel: "Aguarde a liberação" }
+                : card
+            }
+          />
+        )}
       </span>
-      <span className="cursos-card__kind">{card.label ?? "Conteúdo"}</span>
-      <span className="cursos-card__title">{card.title}</span>
-      {card.description ? (
-        <span className="cursos-card__desc">{card.description}</span>
-      ) : null}
-      {card.meta ? (
-        <span className="cursos-card__meta">{card.meta}</span>
-      ) : null}
     </>
   );
-
   return (
-    <li className="cursos-card" data-size={size}>
+    <li className="cb-ccw">
       {card.disabled ? (
-        <div aria-disabled="true" className="cursos-card__link">
+        <div aria-disabled="true" className="cb-cc" title={card.title}>
           {body}
         </div>
       ) : (
-        <IntentLink className="cursos-card__link" href={card.href}>
+        <IntentLink className="cb-cc" href={card.href} title={card.title}>
           {body}
         </IntentLink>
       )}
-      <CatalogBookmark card={card} />
+      {card.bookmark && !card.disabled ? (
+        <div className="cb-bm">
+          <CatalogBookmark card={card} />
+        </div>
+      ) : null}
     </li>
   );
 };
 
-const Rail = ({ rail }: { readonly rail: CursosRail }) =>
-  rail.cards.length > 0 ? (
-    <section aria-labelledby={rail.headingId} className="cursos-section">
-      <header className="cursos-section__head">
-        <h2 id={rail.headingId}>{rail.title}</h2>
-        {rail.description ? <p>{rail.description}</p> : null}
-      </header>
-      <ul className="cursos-rail">
-        {rail.cards.map((card) => (
-          <CourseCard card={card} key={card.href} size="rail" />
-        ))}
-      </ul>
-    </section>
-  ) : null;
-
-const ResumeBlock = ({ resume }: { readonly resume: CursosResumeView }) => (
-  <section aria-labelledby="cursos-resume-title" className="cursos-resume">
-    <div className="cursos-resume__text">
-      <p className="cursos-eyebrow">Retomar</p>
-      <h2 id="cursos-resume-title">{resume.lessonTitle}</h2>
-      <p className="cursos-resume__where">
-        {resume.courseTitle} · {resume.moduleTitle} · aula{" "}
-        {resume.lessonOrdinal}
-      </p>
-      {resume.progressPercent === null ? null : (
-        <div className="cursos-resume__bar">
-          <div aria-hidden="true" className="cursos-resume__track">
-            <span
-              className="cursos-resume__fill"
-              style={{ width: `${resume.progressPercent}%` }}
-            />
-          </div>
-          <span className="cursos-resume__stamp">
-            você parou em {clock(resume.positionSeconds)} ·{" "}
-            {resume.progressPercent}% da aula
-          </span>
+const Rail = ({ rail }: { readonly rail: CursosRail }) => {
+  if (rail.cards.length === 0) {
+    return null;
+  }
+  const wide = rail.cards.length <= 3;
+  return (
+    <section aria-labelledby={rail.headingId} className="cb-sec">
+      <header className="cb-sec__hd">
+        <div>
+          <h2 id={rail.headingId}>{rail.title}</h2>
+          {rail.description ? <small>{rail.description}</small> : null}
         </div>
-      )}
-    </div>
-    <IntentLink className="cursos-button" href={resume.href}>
-      Retomar aula
-      <ArrowRightIcon aria-hidden="true" size={16} />
-    </IntentLink>
-  </section>
-);
+      </header>
+      <div
+        className={`cb-rail${rail.cards.length >= 4 ? "cb-rail--fade" : ""}`}
+        style={{ "--rw": wide ? "352px" : "320px" } as CSSProperties}
+      >
+        <ul className="cb-rail__tr">
+          {rail.cards.slice(0, 12).map((card) => (
+            <CourseCard card={card} desc key={card.href} />
+          ))}
+        </ul>
+      </div>
+    </section>
+  );
+};
 
-const TrailChain = ({
+const ResumeBlock = ({
+  fallback,
+  resume,
+}: {
+  readonly fallback: CursosCourse | null;
+  readonly resume: CursosResumeView | null;
+}) => {
+  if (resume) {
+    const look = coverLook(resume.courseId);
+    const started = resume.completedLessons > 0 || resume.positionSeconds > 0;
+    const seconds = resume.durationSeconds;
+    const fill =
+      seconds && resume.positionSeconds > 0
+        ? Math.min(100, (100 * resume.positionSeconds) / seconds)
+        : 0;
+    const percent = resume.totalLessons
+      ? Math.round((100 * resume.completedLessons) / resume.totalLessons)
+      : 0;
+    return (
+      <section aria-label="Continuar estudando" className="cb-res">
+        <IntentLink
+          aria-label="Abrir a aula"
+          className="cb-res__cv"
+          data-g={look.gradient}
+          href={resume.href}
+        >
+          <CoverArt art={look.art} />
+          <span className="cb-cv__num">{resume.lessonOrdinal}</span>
+          {resume.positionSeconds > 0 && seconds ? (
+            <span className="cb-res__time">
+              {clock(resume.positionSeconds)} / {clock(seconds)}
+            </span>
+          ) : null}
+          <span aria-hidden="true" className="cb-cv__bar">
+            <i style={{ width: `${fill}%` }} />
+          </span>
+        </IntentLink>
+        <div className="cb-res__bd">
+          <div>
+            <p className="cb-eyebrow">
+              {started ? "Continuar estudando" : "Comece por aqui"}
+            </p>
+            <p className="cb-crumb">{resume.courseTitle}</p>
+          </div>
+          <h2>{resume.lessonTitle}</h2>
+          <p className="cb-eyebrow">
+            Módulo {resume.moduleOrdinal}
+            {resume.positionSeconds > 0
+              ? ` · parou em ${clock(resume.positionSeconds)}`
+              : " · próxima aula"}
+          </p>
+          <div className="cb-prog">
+            <div aria-hidden="true" className="cb-bar">
+              <i style={{ width: `${percent}%` }} />
+            </div>
+            <b>
+              {resume.completedLessons} de {resume.totalLessons} aulas
+            </b>
+          </div>
+          <div className="cb-acts">
+            <IntentLink className="cb-btn" href={resume.href}>
+              <PlayIcon aria-hidden="true" fill="currentColor" size={13} />
+              {started ? "Continuar aula" : "Começar curso"}
+            </IntentLink>
+            <IntentLink
+              className="cb-btn cb-btn--ghost"
+              href={resume.courseHref}
+            >
+              Ver curso
+            </IntentLink>
+          </div>
+          {resume.next.length > 0 ? (
+            <div className="cb-next">
+              <p className="cb-eyebrow">Em seguida</p>
+              {resume.next.map((item) => (
+                <IntentLink
+                  className="cb-nrow"
+                  href={item.href}
+                  key={item.href}
+                >
+                  <i>{item.ordinal}</i>
+                  {item.title}
+                  {item.minutes ? <span>{item.minutes} min</span> : null}
+                </IntentLink>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      </section>
+    );
+  }
+  if (!fallback) {
+    return null;
+  }
+  const look = coverLook(fallback.id);
+  return (
+    <section aria-label="Comece por aqui" className="cb-res">
+      <IntentLink
+        aria-label={`Abrir ${fallback.title}`}
+        className="cb-res__cv"
+        data-g={look.gradient}
+        href={fallback.href}
+      >
+        <CoverArt art={look.art} />
+      </IntentLink>
+      <div className="cb-res__bd">
+        <p className="cb-eyebrow">Comece por aqui</p>
+        <h2>{fallback.title}</h2>
+        {fallback.description ? (
+          <p className="cb-crumb">{fallback.description}</p>
+        ) : null}
+        <div className="cb-prog">
+          <b>{structure(fallback)}</b>
+        </div>
+        <div className="cb-acts">
+          <IntentLink className="cb-btn" href={fallback.href}>
+            <PlayIcon aria-hidden="true" fill="currentColor" size={13} />
+            Começar curso
+          </IntentLink>
+        </div>
+      </div>
+    </section>
+  );
+};
+
+const TrailBlock = ({
   courses,
   trail,
 }: {
@@ -187,38 +331,20 @@ const TrailChain = ({
 }) => {
   const done = courses.filter(({ progress }) => progress === 100).length;
   return (
-    <section
-      aria-labelledby={`cursos-trail-${trail.id}`}
-      className="cursos-section"
-    >
-      <header className="cursos-section__head">
-        <h2 id={`cursos-trail-${trail.id}`}>{trail.title}</h2>
-        <p>
-          {trail.description ? `${trail.description} ` : ""}
-          <span className="cursos-mono">
-            {done} de {courses.length} cursos concluídos
-          </span>
-        </p>
-      </header>
-      <ol className="cursos-chain">
+    <section aria-labelledby={`cb-trail-${trail.id}`} className="cb-trail">
+      <div className="cb-trail__hd">
+        <div>
+          <p className="cb-eyebrow">
+            Trilha · {done} de {courses.length} concluído
+            {done === 1 ? "" : "s"}
+          </p>
+          <h3 id={`cb-trail-${trail.id}`}>{trail.title}</h3>
+          {trail.description ? <p>{trail.description}</p> : null}
+        </div>
+      </div>
+      <ol className="cb-chain">
         {courses.map((course, index) => (
-          <li className="cursos-chain__row" key={course.id}>
-            <IntentLink className="cursos-chain__item" href={course.href}>
-              <span aria-hidden="true" className="cursos-chain__n">
-                {index + 1}
-              </span>
-              <span className="cursos-chain__text">
-                <span className="cursos-chain__title">{course.title}</span>
-                <span className="cursos-card__meta">{course.meta}</span>
-              </span>
-              <span aria-hidden="true" className="cursos-chain__bar">
-                <span
-                  className="cursos-chain__fill"
-                  style={{ width: `${course.progress}%` }}
-                />
-              </span>
-            </IntentLink>
-          </li>
+          <CourseCard card={course} key={course.id} numeral={index + 1} />
         ))}
       </ol>
     </section>
@@ -230,72 +356,143 @@ export const CursosView = ({
   courses,
   rails,
   resume,
+  resumeRecording,
   trails,
 }: {
   readonly assigned: readonly LearningRailCard[];
   readonly courses: readonly CursosCourse[];
   readonly rails: readonly CursosRail[];
   readonly resume: CursosResumeView | null;
+  readonly resumeRecording: LearningRailCard | null;
   readonly trails: readonly CursosTrail[];
 }) => {
   const [filter, setFilter] = useState<CursosFilter>("all");
-  const visible = courses.filter((course) => matchesFilter(course, filter));
+  const ordered = courses
+    .map((course, index) => ({ course, index }))
+    .sort((a, b) => rank(a.course) - rank(b.course) || a.index - b.index)
+    .map(({ course }) => course);
+  const visible = ordered.filter((course) => matchesFilter(course, filter));
   const trailed = new Map(trails.map((trail) => [trail.id, trail]));
-  const loose = visible.filter(
-    ({ trailId }) => trailId === null || !trailed.has(trailId)
-  );
   const counts = (id: CursosFilter) =>
     courses.filter((course) => matchesFilter(course, id)).length;
+  const otherDoing = courses.find(
+    (course) =>
+      course.progress > 0 &&
+      course.progress < 100 &&
+      course.id !== resume?.courseId
+  );
+  const firstOpen =
+    ordered.find((course) => course.progress < 100 && !course.disabled) ?? null;
+  const strips = assigned.length <= 3 ? assigned : [];
+  const assignedRail = assigned.length > 3 ? assigned : [];
 
   return (
-    <div className="cursos" data-route-content-ready="learn">
-      {resume ? <ResumeBlock resume={resume} /> : null}
+    <div className="cb" data-route-content-ready="learn">
+      <div className="cb-head">
+        <h1>Cursos</h1>
+        {courses.length >= 4 ? (
+          <fieldset className="cb-seg" style={{ margin: 0 }}>
+            <legend className="sr-only">Filtrar cursos</legend>
+            {filters.map(({ id, label }) => (
+              <button
+                aria-pressed={filter === id}
+                key={id}
+                onClick={() => setFilter(id)}
+                type="button"
+              >
+                {label}
+                <i>{counts(id)}</i>
+              </button>
+            ))}
+          </fieldset>
+        ) : null}
+      </div>
+      <div aria-hidden="true" className="cb-rule" />
+      <ResumeBlock fallback={firstOpen} resume={resume} />
+      {resumeRecording ? (
+        <div className="cb-also">
+          <div>
+            <b>{resumeRecording.title}</b> · gravação em andamento
+            {typeof resumeRecording.progress === "number"
+              ? ` · ${resumeRecording.progress}% assistido`
+              : ""}
+          </div>
+          <IntentLink
+            className="cb-btn cb-btn--ghost cb-btn--sm"
+            href={resumeRecording.href}
+          >
+            Continuar
+          </IntentLink>
+        </div>
+      ) : null}
+      {otherDoing ? (
+        <div className="cb-also">
+          <div>
+            <b>{otherDoing.title}</b> · curso também em andamento ·{" "}
+            {otherDoing.completedLessons} de {otherDoing.lessonCount} aulas
+          </div>
+          <IntentLink
+            className="cb-btn cb-btn--ghost cb-btn--sm"
+            href={`/cursos/${otherDoing.href.split("/")[2] ?? ""}`}
+          >
+            Ver curso
+          </IntentLink>
+        </div>
+      ) : null}
+      {strips.map((card) => (
+        <div className="cb-strip" key={card.href}>
+          <span className="cb-tag">Atribuído</span>
+          <div>
+            <b>{card.title}</b>
+            {card.meta ? ` · ${card.meta}` : ""}
+          </div>
+          {card.disabled ? (
+            <span className="cb-after">Aguarde a liberação</span>
+          ) : (
+            <IntentLink className="cb-btn cb-btn--sm" href={card.href}>
+              {card.actionLabel ?? "Começar"}
+              <ArrowRightIcon aria-hidden="true" size={14} />
+            </IntentLink>
+          )}
+        </div>
+      ))}
       <Rail
         rail={{
-          cards: assigned,
+          cards: assignedRail,
           headingId: "assigned-learning-title",
           title: "Enviados para você",
         }}
       />
       {courses.length > 0 ? (
-        <section aria-labelledby="cursos-all-title" className="cursos-section">
-          <header className="cursos-section__head cursos-section__head--row">
-            <h2 id="cursos-all-title">Seus cursos</h2>
-            <fieldset className="cursos-filter">
-              <legend className="sr-only">Filtrar cursos</legend>
-              {filters.map(({ id, label }) => (
-                <button
-                  aria-pressed={filter === id}
-                  className="cursos-filter__option"
-                  key={id}
-                  onClick={() => setFilter(id)}
-                  type="button"
-                >
-                  {label}
-                  <span className="cursos-mono">{counts(id)}</span>
-                </button>
-              ))}
-            </fieldset>
+        <section aria-labelledby="cb-all-title" className="cb-sec">
+          <header className="cb-sec__hd">
+            <h2 id="cb-all-title">Cursos</h2>
           </header>
           {visible.length === 0 ? (
-            <p className="cursos-empty">
-              Nenhum curso nesta seleção. Escolha outro filtro para ver o
-              restante.
-            </p>
-          ) : null}
-          {loose.length > 0 ? (
-            <ul className="cursos-grid">
-              {loose.map((course) => (
-                <CourseCard card={course} key={course.id} size="grid" />
+            <div className="cb-state">
+              <h2>Nenhum curso nesta seleção</h2>
+              <p>Tente outra faixa de progresso.</p>
+              <button
+                className="cb-btn cb-btn--ghost cb-btn--sm"
+                onClick={() => setFilter("all")}
+                type="button"
+              >
+                Ver todos os cursos
+              </button>
+            </div>
+          ) : (
+            <ul className="cb-grid">
+              {visible.map((course) => (
+                <CourseCard card={course} desc key={course.id} />
               ))}
             </ul>
-          ) : null}
+          )}
         </section>
       ) : null}
       {trails.map((trail) => {
         const inTrail = visible.filter(({ trailId }) => trailId === trail.id);
-        return inTrail.length > 0 ? (
-          <TrailChain courses={inTrail} key={trail.id} trail={trail} />
+        return inTrail.length > 0 && trailed.has(trail.id) ? (
+          <TrailBlock courses={inTrail} key={trail.id} trail={trail} />
         ) : null;
       })}
       {rails.map((rail) => (

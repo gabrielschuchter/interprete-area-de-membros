@@ -415,9 +415,17 @@ const LearnPage = async () => {
     collectionRails.some((rail) => rail.cards.length > 0);
 
   if (cursosV2Enabled()) {
-    const lessonCountById = new Map(
+    const courseFacts = new Map(
       [...paths.flatMap((path) => path.courses), ...standaloneCourses].map(
-        (course) => [course.id, course.progress.totalLessons] as const
+        (course) =>
+          [
+            course.id,
+            {
+              completedLessons: course.progress.completedLessons,
+              lessonCount: course.progress.totalLessons,
+              moduleCount: course.modules.length,
+            },
+          ] as const
       )
     );
     const trails = pathRails.map((rail) => ({
@@ -431,34 +439,50 @@ const LearnPage = async () => {
         trail.courseIds.map((courseId) => [courseId, trail.id] as const)
       )
     );
+    const [resumeRecording, ...otherRecordings] = resumeCards;
     return (
-      <LearningPageFrame
-        description="Suas aulas, cursos, trilhas e gravações."
-        eyebrow="Estudar · Cursos"
-        title="Cursos"
-        variant="catalog"
-      >
-        <CursosView
-          assigned={[...assignmentCards, ...activityCards]}
-          courses={courseCards.map((card) => ({
-            ...card,
-            id: card.bookmark.targetId,
-            lessonCount: lessonCountById.get(card.bookmark.targetId) ?? 0,
-            trailId: trailByCourse.get(card.bookmark.targetId) ?? null,
-          }))}
-          rails={[
-            {
-              cards: resumeCards,
-              headingId: "resume-learning-title",
-              title: "Continue assistindo",
-            },
-            ...collectionRails,
-          ]}
-          resume={resume}
-          trails={trails}
-        />
-        {!hasContent && <EmptyState />}
-      </LearningPageFrame>
+      <div className="flex min-h-svh flex-1 flex-col bg-background">
+        <main className="flex flex-1 flex-col">
+          <CursosView
+            assigned={[...assignmentCards, ...activityCards]}
+            courses={courseCards.map((card) => ({
+              ...card,
+              completedLessons:
+                courseFacts.get(card.bookmark.targetId)?.completedLessons ?? 0,
+              id: card.bookmark.targetId,
+              lessonCount:
+                courseFacts.get(card.bookmark.targetId)?.lessonCount ?? 0,
+              moduleCount:
+                courseFacts.get(card.bookmark.targetId)?.moduleCount ?? 0,
+              trailId: trailByCourse.get(card.bookmark.targetId) ?? null,
+            }))}
+            rails={[
+              {
+                cards: otherRecordings,
+                headingId: "resume-learning-title",
+                title: "Continue assistindo",
+              },
+              ...collectionRails,
+            ]}
+            resume={
+              resume
+                ? {
+                    ...resume,
+                    courseHref: `/cursos/${encodeURIComponent(resume.courseSlug)}`,
+                    durationSeconds: resume.lessonDurationSeconds,
+                  }
+                : null
+            }
+            resumeRecording={resumeRecording ?? null}
+            trails={trails}
+          />
+          {!hasContent && (
+            <div className="mx-auto w-full max-w-[1192px] px-10 pb-16">
+              <EmptyState />
+            </div>
+          )}
+        </main>
+      </div>
     );
   }
 

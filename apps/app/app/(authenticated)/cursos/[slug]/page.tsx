@@ -13,6 +13,7 @@ import { buildCourseViewData } from "@/components/learning/cursos/course-data";
 import { CourseView } from "@/components/learning/cursos/course-view";
 import { LearningPageFrame } from "@/components/learning/learning-page-frame";
 import { env } from "@/env";
+import { getCourseLessonMeta } from "@/lib/cursos-course";
 import {
   getCourseExperience,
   getPublishedCourse,
@@ -59,10 +60,13 @@ const CoursePage = async ({ params, searchParams }: CoursePageProperties) => {
   );
 
   if (env.ROOM_V2_ENABLED === "true") {
+    const lessonMeta = await getCourseLessonMeta(course.id, memberId);
     return (
       <div className="flex min-h-svh flex-1 flex-col bg-background">
-        <main className="mx-auto flex w-full max-w-[1100px] flex-1 flex-col px-5 py-8 sm:px-8 sm:py-12 lg:px-12">
-          <CourseView data={buildCourseViewData(course, routeSearchParams.r)} />
+        <main className="flex flex-1 flex-col">
+          <CourseView
+            data={buildCourseViewData(course, routeSearchParams.r, lessonMeta)}
+          />
         </main>
       </div>
     );
