@@ -732,7 +732,7 @@ test("convites V2 cobrem papéis, estados, links privados e outbox em QA isolado
           staffPage.getByRole("button", { name: "Compartilhar o link" })
         ).toBeVisible();
         await expect(
-          staffPage.getByRole("button", { name: "Enviar por e-mail" })
+          staffPage.getByRole("button", { name: "E-mail indisponível" })
         ).toBeVisible();
         await expect(
           staffPage.getByRole("button", { name: "Buscar pessoas" })
@@ -745,8 +745,12 @@ test("convites V2 cobrem papéis, estados, links privados e outbox em QA isolado
       }
     }
     await staffPage.setViewportSize({ width: 390, height: 844 });
-    await staffPage.getByRole("button", { name: "Enviar por e-mail" }).click();
-    await expect(staffPage.getByText("E-mail indisponível")).toBeVisible();
+    await staffPage
+      .getByRole("button", { name: "E-mail indisponível" })
+      .click();
+    await expect(
+      staffPage.getByRole("heading", { name: "E-mail indisponível" })
+    ).toBeVisible();
     await expect(
       staffPage.getByText("Nenhuma mensagem será enviada")
     ).toBeVisible();

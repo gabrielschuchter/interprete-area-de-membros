@@ -91,6 +91,15 @@ const linkActionLabel = (pending: boolean, active: boolean) => {
   return "Criar link";
 };
 
+const mobileLinkActionLabel = (pending: boolean, active: boolean) =>
+  active && !pending ? "Redefinir" : linkActionLabel(pending, active);
+
+const invitationPanelOrderClass = {
+  link: "flex flex-col-reverse sm:block",
+  email: "flex flex-col sm:block",
+  people: "flex flex-col sm:block",
+} as const;
+
 export const CommunityGroupInvitationDialog = ({
   groupId,
   groupName,
@@ -293,224 +302,267 @@ export const CommunityGroupInvitationDialog = ({
           </DialogDescription>
         </DialogHeader>
 
-        <div
-          aria-label="Formas de convidar"
-          className="hidden grid-cols-3 border-b sm:grid"
-          role="tablist"
-        >
-          {(
-            [
-              ["link", "Link"],
-              ["email", "E-mail"],
-              ["people", "Pessoas"],
-            ] as const
-          ).map(([id, label]) => (
-            <button
-              aria-controls={`invite-panel-${id}`}
-              aria-selected={tab === id}
-              className={`min-h-11 border-b-2 px-3 text-sm ${tab === id ? "border-brand-structural font-medium text-brand-structural" : "border-transparent text-muted-foreground"}`}
-              id={`invite-tab-${id}`}
-              key={id}
-              onClick={() => setTab(id)}
-              role="tab"
-              type="button"
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-
-        <fieldset className="border-0 p-0 sm:hidden">
-          <legend className="sr-only">Formas de convidar</legend>
-          {(
-            [
+        <div className={invitationPanelOrderClass[tab]}>
+          <div
+            aria-label="Formas de convidar"
+            className="hidden grid-cols-3 border-b sm:grid"
+            role="tablist"
+          >
+            {(
               [
-                "link",
-                "Compartilhar o link",
-                "Quem abrir entra como membro",
-                Link2Icon,
-              ],
-              [
-                "email",
-                "Enviar por e-mail",
-                "Quem ainda não tem conta cria uma ao aceitar",
-                MailIcon,
-              ],
-              ["people", "Buscar pessoas", "Por nome ou @usuário", UsersIcon],
-            ] as const
-          ).map(([id, label, description, Icon]) => (
-            <button
-              aria-controls={`invite-panel-${id}`}
-              aria-expanded={tab === id}
-              className="flex min-h-16 w-full items-center gap-3 border-b py-2 text-left"
-              key={id}
-              onClick={() => setTab(id)}
-              type="button"
-            >
-              <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted text-brand-structural">
-                <Icon aria-hidden="true" className="size-4" />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block font-medium">{label}</span>
-                <span className="block text-muted-foreground text-sm">
-                  {description}
-                </span>
-              </span>
-              <ChevronDownIcon
-                aria-hidden="true"
-                className={`size-4 shrink-0 transition-transform ${tab === id ? "rotate-180" : ""}`}
-              />
-            </button>
-          ))}
-        </fieldset>
-
-        {tab === "link" && (
-          <section
-            aria-labelledby="invite-panel-link-label"
-            className="space-y-3 sm:space-y-4"
-            id="invite-panel-link"
-            role="tabpanel"
-          >
-            <div className="rounded-sm border p-3 sm:p-4">
-              <h3 className="font-medium" id="invite-panel-link-label">
-                Link do grupo
-              </h3>
-              <p className="mt-1 text-muted-foreground text-sm leading-5">
-                O link não expira. Regenerar revoga o anterior; cada pessoa
-                ainda precisa aceitar para entrar.
-              </p>
-              {freshLink && (
-                <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-                  <input
-                    aria-label="Link de convite"
-                    className="h-10 min-w-0 flex-1 rounded-sm border bg-background px-3 text-sm"
-                    readOnly
-                    value={freshLink}
-                  />
-                  <Button
-                    disabled={pending}
-                    onClick={copyLink}
-                    type="button"
-                    variant="outline"
-                  >
-                    {copied ? "Copiado" : "Copiar link"}
-                  </Button>
-                </div>
-              )}
-              {freshLink && (
-                <a
-                  className="mt-2 inline-flex min-h-10 items-center gap-2 border border-input bg-background px-3 font-medium text-brand-structural text-sm"
-                  href={`https://wa.me/?text=${encodeURIComponent(`Convite para o grupo ${groupName}: ${freshLink}`)}`}
-                  rel="noopener noreferrer"
-                  target="_blank"
-                >
-                  <MessageCircleIcon aria-hidden="true" className="size-4" />
-                  WhatsApp
-                </a>
-              )}
-              {!freshLink && activeLink && (
-                <p className="mt-3 text-muted-foreground text-sm">
-                  Há um link ativo. Por segurança, ele não pode ser recuperado
-                  depois de fechar esta janela; gere um novo para copiar.
-                </p>
-              )}
-              <div className="mt-4 flex flex-wrap gap-2">
-                <Button
-                  disabled={pending}
-                  onClick={createLink}
-                  type="button"
-                  variant="outline"
-                >
-                  {linkActionLabel(pending, activeLink)}
-                </Button>
-                {activeLink ? (
-                  <Button
-                    disabled={pending}
-                    onClick={revokeLink}
-                    type="button"
-                    variant="ghost"
-                  >
-                    Revogar link
-                  </Button>
-                ) : null}
-              </div>
-            </div>
-            {linkMessage && (
-              <output aria-live="polite" className="text-sm">
-                {linkMessage}
-              </output>
-            )}
-          </section>
-        )}
-
-        {tab === "email" && (
-          <section
-            aria-labelledby="invite-panel-email-label"
-            className="rounded-sm border border-dashed p-4"
-            id="invite-panel-email"
-            role="tabpanel"
-          >
-            <h3 className="font-medium" id="invite-panel-email-label">
-              E-mail indisponível
-            </h3>
-            <p className="mt-1 text-muted-foreground text-sm leading-5">
-              O envio de e-mail ainda não tem um provedor configurado. Nenhuma
-              mensagem será enviada por esta opção.
-            </p>
-          </section>
-        )}
-
-        {tab === "people" && (
-          <section
-            aria-labelledby="invite-panel-people-label"
-            className="space-y-4"
-            id="invite-panel-people"
-            role="tabpanel"
-          >
-            <h3 className="sr-only" id="invite-panel-people-label">
-              Buscar pessoas
-            </h3>
-            <form className="space-y-4" onSubmit={submitInvitations}>
-              <input name="groupId" type="hidden" value={groupId} />
-              <GroupMemberInvitePicker
-                currentMemberId={memberId}
-                onSelectionChange={updateSelectedPeople}
-              />
-              <div className="flex justify-end border-t pt-4">
-                <Button disabled={pending} type="submit">
-                  {pending ? "Enviando…" : "Enviar convites"}
-                </Button>
-              </div>
-            </form>
-            {batchResult && (
-              <div
-                aria-live="polite"
-                className="rounded-sm border p-3"
-                data-testid="community-invite-batch-result"
+                ["link", "Link"],
+                ["email", "E-mail"],
+                ["people", "Pessoas"],
+              ] as const
+            ).map(([id, label]) => (
+              <button
+                aria-controls={`invite-panel-${id}`}
+                aria-selected={tab === id}
+                className={`min-h-11 border-b-2 px-3 text-sm ${tab === id ? "border-brand-structural font-medium text-brand-structural" : "border-transparent text-muted-foreground"}`}
+                id={`invite-tab-${id}`}
+                key={id}
+                onClick={() => setTab(id)}
+                role="tab"
+                type="button"
               >
-                <p className="font-medium text-sm">
-                  {batchStatusLabel[batchResult.status]}
+                {label}
+              </button>
+            ))}
+          </div>
+
+          <fieldset className="border-0 p-0 sm:hidden">
+            <legend className="sr-only">Formas de convidar</legend>
+            {(
+              [
+                [
+                  "link",
+                  "Compartilhar o link",
+                  "A pessoa precisa aceitar para entrar",
+                  Link2Icon,
+                ],
+                [
+                  "email",
+                  "E-mail indisponível",
+                  "Sem provedor configurado.",
+                  MailIcon,
+                ],
+                ["people", "Buscar pessoas", "Por nome ou @usuário", UsersIcon],
+              ] as const
+            ).map(([id, label, description, Icon]) => (
+              <button
+                aria-controls={`invite-panel-${id}`}
+                aria-expanded={tab === id}
+                className="flex min-h-14 w-full items-center gap-3 border-b py-1.5 text-left"
+                key={id}
+                onClick={() => setTab(id)}
+                type="button"
+              >
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-brand-structural">
+                  <Icon aria-hidden="true" className="size-4" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block font-medium">{label}</span>
+                  <span className="block text-muted-foreground text-sm">
+                    {description}
+                  </span>
+                </span>
+                <ChevronDownIcon
+                  aria-hidden="true"
+                  className={`size-4 shrink-0 transition-transform ${tab === id ? "rotate-180" : ""}`}
+                />
+              </button>
+            ))}
+          </fieldset>
+
+          {tab === "link" && (
+            <section
+              aria-labelledby="invite-panel-link-label"
+              className="space-y-3 sm:space-y-4"
+              id="invite-panel-link"
+              role="tabpanel"
+            >
+              <div className="space-y-3 sm:rounded-sm sm:border sm:p-4">
+                <h3
+                  className="sr-only font-medium sm:not-sr-only"
+                  id="invite-panel-link-label"
+                >
+                  Link do grupo
+                </h3>
+                <p className="mt-1 text-muted-foreground text-sm leading-5">
+                  Sem expiração; ao regenerar, o link anterior deixa de
+                  funcionar.
                 </p>
-                {batchResult.results.length > 0 && (
-                  <ul className="mt-2 space-y-1 text-sm">
-                    {batchResult.results.map(({ inviteeId, status }) => (
-                      <li key={inviteeId}>
-                        {selectedPeople.find(({ id }) => id === inviteeId)
-                          ?.name ?? "Pessoa selecionada"}
-                        : {recipientStatusLabel[status]}
-                      </li>
-                    ))}
-                  </ul>
+                {freshLink && (
+                  <div className="flex min-w-0 gap-2">
+                    <input
+                      aria-label="Link de convite"
+                      className="h-10 min-w-0 flex-1 rounded-sm border bg-background px-3 text-xs sm:text-sm"
+                      readOnly
+                      value={freshLink}
+                    />
+                    <Button
+                      className="min-h-10 shrink-0 px-3"
+                      disabled={pending}
+                      onClick={copyLink}
+                      type="button"
+                      variant="outline"
+                    >
+                      {copied ? "Copiado" : "Copiar link"}
+                    </Button>
+                  </div>
+                )}
+                {freshLink ? (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <a
+                      className="inline-flex min-h-10 items-center gap-1 border border-input bg-background px-2 font-medium text-brand-structural text-xs sm:gap-2 sm:px-3 sm:text-sm"
+                      href={`https://wa.me/?text=${encodeURIComponent(`Convite para o grupo ${groupName}: ${freshLink}`)}`}
+                      rel="noopener noreferrer"
+                      target="_blank"
+                    >
+                      <MessageCircleIcon
+                        aria-hidden="true"
+                        className="size-4"
+                      />
+                      WhatsApp
+                    </a>
+                    <Button
+                      aria-label={linkActionLabel(pending, activeLink)}
+                      className="min-h-10 px-2 text-xs sm:px-4 sm:text-sm"
+                      disabled={pending}
+                      onClick={createLink}
+                      type="button"
+                      variant="outline"
+                    >
+                      <span className="sm:hidden">
+                        {mobileLinkActionLabel(pending, activeLink)}
+                      </span>
+                      <span className="hidden sm:inline">
+                        {linkActionLabel(pending, activeLink)}
+                      </span>
+                    </Button>
+                    {activeLink ? (
+                      <Button
+                        aria-label="Revogar link"
+                        className="min-h-10 px-2 text-xs sm:px-4 sm:text-sm"
+                        disabled={pending}
+                        onClick={revokeLink}
+                        type="button"
+                        variant="ghost"
+                      >
+                        <span className="sm:hidden">Revogar</span>
+                        <span className="hidden sm:inline">Revogar link</span>
+                      </Button>
+                    ) : null}
+                  </div>
+                ) : null}
+                {!freshLink && activeLink && (
+                  <p className="mt-3 text-muted-foreground text-sm">
+                    Há um link ativo. Por segurança, ele não pode ser recuperado
+                    depois de fechar esta janela; gere um novo para copiar.
+                  </p>
+                )}
+                {freshLink ? null : (
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      className="min-h-10"
+                      disabled={pending}
+                      onClick={createLink}
+                      type="button"
+                      variant="outline"
+                    >
+                      {linkActionLabel(pending, activeLink)}
+                    </Button>
+                    {activeLink ? (
+                      <Button
+                        className="min-h-10"
+                        disabled={pending}
+                        onClick={revokeLink}
+                        type="button"
+                        variant="ghost"
+                      >
+                        Revogar link
+                      </Button>
+                    ) : null}
+                  </div>
                 )}
               </div>
-            )}
-          </section>
-        )}
+              {linkMessage && (
+                <output aria-live="polite" className="text-sm">
+                  {linkMessage}
+                </output>
+              )}
+            </section>
+          )}
 
-        <div
-          className={tab === "people" ? "block sm:block" : "hidden sm:block"}
-        >
-          {invitationHistory}
+          {tab === "email" && (
+            <section
+              aria-labelledby="invite-panel-email-label"
+              className="rounded-sm border border-dashed p-4"
+              id="invite-panel-email"
+              role="tabpanel"
+            >
+              <h3 className="font-medium" id="invite-panel-email-label">
+                E-mail indisponível
+              </h3>
+              <p className="mt-1 text-muted-foreground text-sm leading-5">
+                O envio de e-mail ainda não tem um provedor configurado. Nenhuma
+                mensagem será enviada por esta opção.
+              </p>
+            </section>
+          )}
+
+          {tab === "people" && (
+            <section
+              aria-labelledby="invite-panel-people-label"
+              className="space-y-4"
+              id="invite-panel-people"
+              role="tabpanel"
+            >
+              <h3 className="sr-only" id="invite-panel-people-label">
+                Buscar pessoas
+              </h3>
+              <form className="space-y-4" onSubmit={submitInvitations}>
+                <input name="groupId" type="hidden" value={groupId} />
+                <GroupMemberInvitePicker
+                  currentMemberId={memberId}
+                  onSelectionChange={updateSelectedPeople}
+                />
+                <div className="flex justify-end border-t pt-4">
+                  <Button disabled={pending} type="submit">
+                    {pending ? "Enviando…" : "Enviar convites"}
+                  </Button>
+                </div>
+              </form>
+              {batchResult && (
+                <div
+                  aria-live="polite"
+                  className="rounded-sm border p-3"
+                  data-testid="community-invite-batch-result"
+                >
+                  <p className="font-medium text-sm">
+                    {batchStatusLabel[batchResult.status]}
+                  </p>
+                  {batchResult.results.length > 0 && (
+                    <ul className="mt-2 space-y-1 text-sm">
+                      {batchResult.results.map(({ inviteeId, status }) => (
+                        <li key={inviteeId}>
+                          {selectedPeople.find(({ id }) => id === inviteeId)
+                            ?.name ?? "Pessoa selecionada"}
+                          : {recipientStatusLabel[status]}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </section>
+          )}
+
+          <div
+            className={tab === "people" ? "block sm:block" : "hidden sm:block"}
+          >
+            {invitationHistory}
+          </div>
         </div>
 
         <DialogFooter className="hidden sm:flex">

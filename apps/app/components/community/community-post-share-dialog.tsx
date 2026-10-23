@@ -161,9 +161,10 @@ const ShareDestinations = ({ shareUrl }: { readonly shareUrl: string }) => {
       <span
         aria-disabled="true"
         className="community-share-destination-disabled"
+        title="Nenhum provedor de e-mail está configurado; nenhuma mensagem será enviada."
       >
         <MailIcon aria-hidden="true" className="size-4" />
-        E-mail em breve
+        E-mail indisponível
       </span>
     </section>
   );
@@ -284,9 +285,7 @@ export function CommunityPostShareDialog({
       ]);
       try {
         await navigator.clipboard.writeText(payload.url);
-        setStatus(
-          "Link copiado. O acesso continua sujeito às permissões da publicação."
-        );
+        setStatus("Link copiado.");
       } catch {
         setStatus("Link criado. Copie o endereço abaixo para compartilhar.");
         window.setTimeout(() => linkInputRef.current?.select(), 0);
@@ -442,7 +441,19 @@ export function CommunityPostShareDialog({
                   permissão verá apenas uma página genérica.
                 </p>
 
-                <div className="community-share-link-row">
+                <div
+                  className={`community-share-link-row ${shareUrl ? "community-share-link-row--active" : "community-share-link-row--empty"}`}
+                >
+                  {shareUrl ? (
+                    <input
+                      aria-label="Link de compartilhamento"
+                      className="community-share-link-input"
+                      onFocus={(event) => event.currentTarget.select()}
+                      readOnly
+                      ref={linkInputRef}
+                      value={shareUrl}
+                    />
+                  ) : null}
                   <Button
                     className="min-h-11"
                     disabled={isCreating}
@@ -456,16 +467,6 @@ export function CommunityPostShareDialog({
                     )}
                     {shareButtonLabel}
                   </Button>
-                  {shareUrl ? (
-                    <input
-                      aria-label="Link de compartilhamento"
-                      className="community-share-link-input"
-                      onFocus={(event) => event.currentTarget.select()}
-                      readOnly
-                      ref={linkInputRef}
-                      value={shareUrl}
-                    />
-                  ) : null}
                 </div>
 
                 {shareUrl ? <ShareDestinations shareUrl={shareUrl} /> : null}

@@ -81,13 +81,14 @@ describe("CommunityPostShareDialog", () => {
     expect(
       screen.getByRole("textbox", { name: "Link de compartilhamento" })
     ).toHaveProperty("value", shareUrl);
-    expect(screen.getByRole("status").textContent).toContain(
-      "O acesso continua sujeito às permissões da publicação"
+    expect(screen.getByRole("status").textContent).toContain("Link copiado.");
+    expect(dialog.textContent).toContain(
+      "Compartilhar o link não altera o acesso."
     );
     expect(dialog.textContent).toContain(
       "Quem não tiver permissão verá apenas uma página genérica."
     );
-    expect(screen.getByText("E-mail em breve")).toBeTruthy();
+    expect(screen.getByText("E-mail indisponível")).toBeTruthy();
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/community/post-shares",
       expect.objectContaining({ method: "POST" })

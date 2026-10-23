@@ -5556,10 +5556,14 @@ html[data-shell-fallback][data-shell-arrival="return"] .member-route-page {
 
   .community-share-link-row {
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) auto;
     gap: 10px;
     align-items: center;
     margin-top: 18px;
+  }
+
+  .community-share-link-row--empty {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .community-share-link-input {
@@ -5960,6 +5964,7 @@ html[data-shell-fallback][data-shell-arrival="return"] .member-route-page {
     }
 
     .community-share-dialog__content {
+      gap: 12px;
       max-height: min(88dvh, 760px);
       padding: 16px 16px calc(20px + env(safe-area-inset-bottom));
     }
@@ -6030,7 +6035,11 @@ html[data-shell-fallback][data-shell-arrival="return"] .member-route-page {
       margin-top: 0;
     }
 
-    .community-share-link-row > button {
+    .community-share-link-row--active {
+      grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .community-share-link-row--empty > button {
       width: 100%;
     }
 

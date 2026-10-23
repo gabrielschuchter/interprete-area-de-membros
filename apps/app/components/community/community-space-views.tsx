@@ -45,11 +45,12 @@ export type CommunitySpaceMembersSnapshot = Awaited<
   ReturnType<typeof getCommunitySpaceMembers>
 >;
 
-const viewLabels: Readonly<Record<GroupView, string>> = {
+type PrimaryGroupView = Exclude<GroupView, "settings">;
+
+const viewLabels: Readonly<Record<PrimaryGroupView, string>> = {
   posts: "Publicações",
   members: "Membros",
   about: "Sobre",
-  settings: "Configurações",
 };
 
 export const viewHref = (slug: string, view: GroupView) =>
@@ -166,18 +167,16 @@ export const CommunitySpaceTabs = ({
 }) => (
   <>
     <nav aria-label="Seções do grupo" className="mt-6 hidden border-b sm:flex">
-      {(Object.keys(viewLabels) as GroupView[])
-        .filter((item) => item !== "settings" || canEditGroup)
-        .map((item) => (
-          <Link
-            aria-current={view === item ? "page" : undefined}
-            className={`-mb-px border-b-2 px-5 py-3 text-sm ${view === item ? "border-brand-structural font-semibold text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}
-            href={viewHref(spaceSlug, item)}
-            key={item}
-          >
-            {viewLabels[item]}
-          </Link>
-        ))}
+      {(Object.keys(viewLabels) as PrimaryGroupView[]).map((item) => (
+        <Link
+          aria-current={view === item ? "page" : undefined}
+          className={`-mb-px border-b-2 px-5 py-3 text-sm ${view === item ? "border-brand-structural font-semibold text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+          href={viewHref(spaceSlug, item)}
+          key={item}
+        >
+          {viewLabels[item]}
+        </Link>
+      ))}
     </nav>
     <nav aria-label="Seções do grupo" className="mt-5 grid gap-3 sm:hidden">
       <MobileGroupLink

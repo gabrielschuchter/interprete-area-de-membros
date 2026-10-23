@@ -280,7 +280,7 @@ test("compartilhamento V2 preserva permissões, prévia SSR, retorno Clerk e rev
       initialPublicShareDialog
     );
     await expect(
-      initialPublicShareDialog.getByText("E-mail em breve", { exact: true })
+      initialPublicShareDialog.getByText("E-mail indisponível", { exact: true })
     ).toBeVisible();
     await captureScreenshot(page, "community-shares-dialog-1440.png", false);
     const publicToken = tokenFromUrl(publicShare.url);
