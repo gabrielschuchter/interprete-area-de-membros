@@ -55,6 +55,7 @@ vi.mock("@repo/member-domain", () => ({
 }));
 
 import {
+  createNotification,
   getNotificationSummary,
   getNotifications,
   markNotificationsSeen,
@@ -209,4 +210,35 @@ test("summary counts share one current-audience repeatable-read snapshot", async
       ],
     },
   });
+});
+
+test("a community notification without resolved scope fails closed", async () => {
+  await createNotification({
+    recipientId: "member-current",
+    type: "MENTION",
+    bypassPreference: true,
+  });
+
+  expect(databaseMock.notification.create).toHaveBeenCalledWith(
+    expect.objectContaining({
+      data: expect.objectContaining({
+        communitySpaceId: "__community_scope_unresolved__",
+      }),
+    })
+  );
+});
+
+test("an explicitly global community notification keeps a null scope", async () => {
+  await createNotification({
+    recipientId: "member-current",
+    type: "MENTION",
+    communitySpaceId: null,
+    bypassPreference: true,
+  });
+
+  expect(databaseMock.notification.create).toHaveBeenCalledWith(
+    expect.objectContaining({
+      data: expect.objectContaining({ communitySpaceId: null }),
+    })
+  );
 });

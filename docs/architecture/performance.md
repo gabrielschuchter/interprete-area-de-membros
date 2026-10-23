@@ -1144,6 +1144,26 @@ prove the production outbox recovery worker, Broadcast/Realtime, or OPS-01.
 
 # Início B2 (2026-10-14)
 
+## Comunidade V2 — audiência de notificações após revogação (2026-10-23)
+
+O caminho crítico de lista/resumo e das mutações de leitura resolve a audiência
+atual no servidor. A projeção de grupos contém somente IDs; convites contêm ID e
+grupo; avisos têm limite de 100. Lista e contagens usam o mesmo predicado em um
+snapshot RepeatableRead, sem cache persistente de identidade ou grants. A lista
+mantém paginação por cursor no banco e o limite existente de 50 itens. A consulta
+de IDs de grupos ainda cresce com os grupos acessíveis: medir esse custo com a
+população representativa faz parte do preflight, sem aumentar pool ou índices
+nesta correção. O orçamento de feedback continua <=100 ms; sucesso de mutação
+depende da persistência. O orçamento de bundle continua 225 KiB gzip.
+
+O consumer trabalha em lotes existentes de até 100 destinatários e projeta
+somente o post/grupo/comentário e associações desses destinatários. Locks SHARE
+de grupo/membership/convite serializam entrega com revogação; o outbox preserva
+retry durável e dedupeKey. O QA PostgreSQL isolado exercitou as duas ordens da
+corrida e replay sem duplicação. Invalidação continua pelo mecanismo existente;
+nenhum corpo privado entra em Broadcast ou telemetria. Percentis, recuperação
+periódica remota e entrega Broadcast continuam gates de preflight da Etapa 12A.
+
 The portal component adds no content or planner query. The authenticated layout
 continues to resolve identity, the existing profile projection, role and
 product configuration; the Início consumes that result. Only the art for the

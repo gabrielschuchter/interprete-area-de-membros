@@ -1289,7 +1289,7 @@ model Notification {
   parentEntityId   String?
   metadata         Json?
   groupKey         String?
-  communitySpaceId String?
+  communitySpaceId String?   @default("__community_scope_unresolved__")
   dedupeKey        String?   @unique
   priority         Int       @default(0)
   title            String

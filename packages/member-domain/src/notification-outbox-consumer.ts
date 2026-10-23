@@ -918,6 +918,8 @@ const isCommunityCommentNotificationCurrent = (
   const postAudience = postId ? lookups.communityPosts.get(postId) : undefined;
   return Boolean(
     postAudience?.isPublished &&
+      (request.communitySpaceId !== undefined ||
+        postAudience.communitySpaceId !== null) &&
       (request.communitySpaceId === undefined ||
         request.communitySpaceId === postAudience.communitySpaceId) &&
       postAudience.allowedRecipientIds.has(request.recipientId)

@@ -506,6 +506,20 @@ on a server request.
 
 # Início B2 (2026-10-14)
 
+## Comunidade V2 — notificações reautorizadas (2026-10-23)
+
+- Lista, badge e resumo dependem da audiência atual no servidor; não armazenar
+  papel, grants ou contagens privadas em cache compartilhado. Paginação por
+  cursor e limite de 50 continuam no banco.
+- Feedback de clique/submit continua com orçamento <=100 ms, sem antecipar
+  sucesso de persistência. Esta correção não altera componentes, prefetch,
+  animação ou bundle da Comunidade; o teto continua 225 KiB gzip.
+- Revogação deve ocultar título, corpo, link e contagens de notificações
+  privadas. Um evento legado sem proveniência verificável falha fechado, mesmo
+  que o post tenha perdido spaceId após exclusão física do grupo.
+- QA local de API/PostgreSQL e concorrência não mede percentis, dispositivo
+  físico, Broadcast ou recuperação periódica remota; esses gates seguem em 12A.
+
 The Interprete portal reuses the authenticated shell and its fresh Member role,
 profile and product configuration. It adds no content query or shared
 identity/permission cache. The page preloads only the active viewport art set;

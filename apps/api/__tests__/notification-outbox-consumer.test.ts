@@ -23,21 +23,30 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
-const deliverPrivateCommentMention = async (memberIsCurrent: boolean) => {
+const deliverPrivateCommentMention = async (
+  memberIsCurrent: boolean,
+  options: {
+    readonly groupDeleted?: boolean;
+    readonly includeScope?: boolean;
+  } = {}
+) => {
   const notificationCreateMany = vi.fn().mockResolvedValue({ count: 1 });
+  const spaceId = options.groupDeleted ? null : "private_group_1";
   const post = {
     id: "post_private_1",
     title: "Título privado",
-    spaceId: "private_group_1",
+    spaceId,
     status: "PUBLISHED",
     deletedAt: null,
-    space: {
-      id: "private_group_1",
-      visibility: "PRIVATE",
-      status: "PUBLISHED",
-      ownerId: "owner_1",
-      members: memberIsCurrent ? [{ memberId: "removed_member_1" }] : [],
-    },
+    space: options.groupDeleted
+      ? null
+      : {
+          id: "private_group_1",
+          visibility: "PRIVATE",
+          status: "PUBLISHED",
+          ownerId: "owner_1",
+          members: memberIsCurrent ? [{ memberId: "removed_member_1" }] : [],
+        },
   };
   let commentQuery = 0;
   const transaction = {
@@ -81,7 +90,9 @@ const deliverPrivateCommentMention = async (memberIsCurrent: boolean) => {
             entityId: "comment_private_1",
             parentEntityType: "TOPIC",
             parentEntityId: post.id,
-            communitySpaceId: post.spaceId,
+            ...(options.includeScope === false
+              ? {}
+              : { communitySpaceId: post.spaceId }),
             dedupeKey: `mention:removed_member_1:${memberIsCurrent}`,
             body: post.title,
             href: "/comunidade/publicacoes/privada?commentId=comment_private_1",
@@ -339,6 +350,31 @@ test("persists private notification scope while the recipient is a member", asyn
         type: "MENTION",
         body: "Título privado",
         communitySpaceId: "private_group_1",
+      }),
+    ],
+    skipDuplicates: true,
+  });
+});
+
+test("drops a legacy comment event when a deleted group's scope is ambiguous", async () => {
+  const { notificationCreateMany } = await deliverPrivateCommentMention(true, {
+    groupDeleted: true,
+    includeScope: false,
+  });
+
+  expect(notificationCreateMany).not.toHaveBeenCalled();
+});
+
+test("keeps a current explicitly global comment notification", async () => {
+  const { notificationCreateMany } = await deliverPrivateCommentMention(true, {
+    groupDeleted: true,
+  });
+
+  expect(notificationCreateMany).toHaveBeenCalledWith({
+    data: [
+      expect.objectContaining({
+        type: "MENTION",
+        communitySpaceId: null,
       }),
     ],
     skipDuplicates: true,

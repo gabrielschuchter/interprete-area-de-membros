@@ -33,6 +33,29 @@ export const notificationTypes = {
   plannerReminder: "PLANNER_REMINDER",
 } as const;
 
+const communityScopeRequiredTypes = new Set<NotificationType>([
+  notificationTypes.mention,
+  notificationTypes.commentReply,
+  notificationTypes.topicComment,
+  notificationTypes.followedTopicActivity,
+  notificationTypes.groupInvitation,
+  notificationTypes.groupPost,
+]);
+
+const unresolvedCommunityScope = "__community_scope_unresolved__";
+
+const communitySpaceIdForInput = (
+  type: NotificationType,
+  communitySpaceId: string | null | undefined
+) => {
+  if (communitySpaceId !== undefined) {
+    return communitySpaceId;
+  }
+  return communityScopeRequiredTypes.has(type)
+    ? unresolvedCommunityScope
+    : null;
+};
+
 export type NotificationType =
   (typeof notificationTypes)[keyof typeof notificationTypes];
 
@@ -352,7 +375,10 @@ export const createNotification = async (input: {
         parentEntityId: input.parentEntityId ?? null,
         metadata: input.metadata,
         groupKey: input.groupKey ?? null,
-        communitySpaceId: input.communitySpaceId ?? null,
+        communitySpaceId: communitySpaceIdForInput(
+          type,
+          input.communitySpaceId
+        ),
         dedupeKey: input.dedupeKey ?? null,
         priority: priorityForType[type],
         title: input.title ?? titleForType[type],
