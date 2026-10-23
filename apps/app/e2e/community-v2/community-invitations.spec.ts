@@ -782,6 +782,26 @@ test("convites V2 cobrem papéis, estados, links privados e outbox em QA isolado
     expect(activeLinksAfterCreate[0]?.tokenHash).toBe(firstLinkHash);
     expect(activeLinksAfterCreate[0]?.tokenHash).not.toBe(firstLinkToken);
     await staffPage.setViewportSize({ width: 390, height: 1200 });
+    const mobileLinkSection = staffPage.getByRole("button", {
+      name: "Compartilhar o link",
+    });
+    const mobileLinkInput = staffPage.getByRole("textbox", {
+      name: "Link de convite",
+    });
+    const mobileEmailOption = staffPage.getByRole("button", {
+      name: "E-mail indisponível",
+    });
+    const [mobileLinkSectionBox, mobileLinkInputBox, mobileEmailOptionBox] =
+      await Promise.all([
+        mobileLinkSection.boundingBox(),
+        mobileLinkInput.boundingBox(),
+        mobileEmailOption.boundingBox(),
+      ]);
+    if (!(mobileLinkSectionBox && mobileLinkInputBox && mobileEmailOptionBox)) {
+      throw new Error("The mobile invitation hierarchy is not visible.");
+    }
+    expect(mobileLinkSectionBox.y).toBeLessThan(mobileLinkInputBox.y);
+    expect(mobileLinkInputBox.y).toBeLessThan(mobileEmailOptionBox.y);
     const whatsappInviteLink = staffPage.getByRole("link", {
       name: "WhatsApp",
     });

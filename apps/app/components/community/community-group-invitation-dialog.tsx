@@ -95,7 +95,7 @@ const mobileLinkActionLabel = (pending: boolean, active: boolean) =>
   active && !pending ? "Redefinir" : linkActionLabel(pending, active);
 
 const invitationPanelOrderClass = {
-  link: "flex flex-col-reverse sm:block",
+  link: "flex flex-col sm:block",
   email: "flex flex-col sm:block",
   people: "flex flex-col sm:block",
 } as const;
@@ -330,7 +330,9 @@ export const CommunityGroupInvitationDialog = ({
             ))}
           </div>
 
-          <fieldset className="border-0 p-0 sm:hidden">
+          <fieldset
+            className={`border-0 p-0 sm:hidden ${tab === "link" ? "order-2" : "order-1"}`}
+          >
             <legend className="sr-only">Formas de convidar</legend>
             {(
               [
@@ -348,39 +350,62 @@ export const CommunityGroupInvitationDialog = ({
                 ],
                 ["people", "Buscar pessoas", "Por nome ou @usuário", UsersIcon],
               ] as const
-            ).map(([id, label, description, Icon]) => (
-              <button
-                aria-controls={`invite-panel-${id}`}
-                aria-expanded={tab === id}
-                className="flex min-h-14 w-full items-center gap-3 border-b py-1.5 text-left"
-                key={id}
-                onClick={() => setTab(id)}
-                type="button"
-              >
-                <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-brand-structural">
-                  <Icon aria-hidden="true" className="size-4" />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block font-medium">{label}</span>
-                  <span className="block text-muted-foreground text-sm">
-                    {description}
+            )
+              .filter(([id]) => tab !== "link" || id !== "link")
+              .map(([id, label, description, Icon]) => (
+                <button
+                  aria-controls={`invite-panel-${id}`}
+                  aria-expanded={tab === id}
+                  className="flex min-h-14 w-full items-center gap-3 border-b py-1.5 text-left"
+                  key={id}
+                  onClick={() => setTab(id)}
+                  type="button"
+                >
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-brand-structural">
+                    <Icon aria-hidden="true" className="size-4" />
                   </span>
-                </span>
-                <ChevronDownIcon
-                  aria-hidden="true"
-                  className={`size-4 shrink-0 transition-transform ${tab === id ? "rotate-180" : ""}`}
-                />
-              </button>
-            ))}
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-medium">{label}</span>
+                    <span className="block text-muted-foreground text-sm">
+                      {description}
+                    </span>
+                  </span>
+                  <ChevronDownIcon
+                    aria-hidden="true"
+                    className={`size-4 shrink-0 transition-transform ${tab === id ? "rotate-180" : ""}`}
+                  />
+                </button>
+              ))}
           </fieldset>
 
           {tab === "link" && (
             <section
               aria-labelledby="invite-panel-link-label"
-              className="space-y-3 sm:space-y-4"
+              className="order-1 space-y-3 sm:order-none sm:space-y-4"
               id="invite-panel-link"
               role="tabpanel"
             >
+              <button
+                aria-controls="invite-panel-link"
+                aria-expanded="true"
+                className="flex min-h-14 w-full items-center gap-3 border-b py-1.5 text-left sm:hidden"
+                onClick={() => setTab("link")}
+                type="button"
+              >
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-brand-structural">
+                  <Link2Icon aria-hidden="true" className="size-4" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block font-medium">Compartilhar o link</span>
+                  <span className="block text-muted-foreground text-sm">
+                    A pessoa precisa aceitar para entrar
+                  </span>
+                </span>
+                <ChevronDownIcon
+                  aria-hidden="true"
+                  className="size-4 shrink-0 rotate-180"
+                />
+              </button>
               <div className="space-y-3 sm:rounded-sm sm:border sm:p-4">
                 <h3
                   className="sr-only font-medium sm:not-sr-only"
