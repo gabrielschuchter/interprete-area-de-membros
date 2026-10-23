@@ -45,11 +45,14 @@ type LessonNotesData = Awaited<ReturnType<typeof getPlannerNotes>>;
 type LessonTimer = NonNullable<LessonTimerState["active"]>;
 type TimerReview = NonNullable<LessonTimerState["pendingReview"]>;
 
-type TimerAction =
+export type TimerAction =
   | {
       action: "start";
       clientId: string;
+      // The drawer starts a focus session; the room picks the mode itself.
+      durationSeconds?: number | null;
       linkedResourceId: string | null;
+      mode?: "COUNTDOWN" | "FOCUS" | "STOPWATCH";
     }
   | { action: "pause" | "resume" | "stop" }
   | { action: "link"; linkedResourceId: string | null }
@@ -102,9 +105,12 @@ const timerActionPayload = (action: TimerAction, focusMinutes: number) => {
   }
   return {
     ...action,
-    durationSeconds: focusMinutes * 60,
+    durationSeconds:
+      action.durationSeconds === undefined
+        ? focusMinutes * 60
+        : action.durationSeconds,
     linkedResourceType: action.linkedResourceId ? "LESSON" : null,
-    mode: "FOCUS",
+    mode: action.mode ?? "FOCUS",
     title: null,
   };
 };

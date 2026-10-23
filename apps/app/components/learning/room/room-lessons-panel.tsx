@@ -2,10 +2,10 @@
 
 import { ChevronDownIcon, LockIcon } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import type { RoomOutline, RoomOutlineItem } from "@/lib/room-outline";
 import { RoomTemple } from "./room-art";
-import { roomReleaseDate, roomText } from "./room-copy";
+import { roomReleaseDateShort, roomText } from "./room-copy";
 
 interface RoomLessonsPanelProperties {
   readonly courseTitle: string;
@@ -14,12 +14,27 @@ interface RoomLessonsPanelProperties {
   readonly pending: ReadonlySet<string>;
 }
 
-const itemMeta = (item: RoomOutlineItem) => {
+// Board: the current row keeps its duration and adds "assistindo" in wine.
+const itemMeta = (item: RoomOutlineItem): ReactNode => {
+  const duration = item.durationMinutes
+    ? roomText("metaDuration", { min: item.durationMinutes })
+    : null;
   if (item.status === "locked" && item.releasesAt) {
-    return roomText("metaLocked", { data: roomReleaseDate(item.releasesAt) });
+    return roomText("metaLocked", {
+      data: roomReleaseDateShort(item.releasesAt),
+    });
   }
   if (item.status === "current") {
-    return roomText("metaWatching");
+    const watching = (
+      <span className="room-lesson__watching">{roomText("metaWatching")}</span>
+    );
+    return duration ? (
+      <>
+        {duration} · {watching}
+      </>
+    ) : (
+      watching
+    );
   }
   if (item.status === "unavailable") {
     return roomText("metaUnavailable");
@@ -27,9 +42,7 @@ const itemMeta = (item: RoomOutlineItem) => {
   if (item.status === "no_video") {
     return roomText("metaNoVideo");
   }
-  return item.durationMinutes
-    ? roomText("metaDuration", { min: item.durationMinutes })
-    : null;
+  return duration;
 };
 
 const LessonThumb = ({ item }: { readonly item: RoomOutlineItem }) => (
@@ -64,14 +77,7 @@ const LessonRow = ({
       <LessonThumb item={item} />
       <span className="room-lesson__text">
         <span className="room-lesson__title">{item.title}</span>
-        {meta ? (
-          <span
-            className="room-lesson__meta"
-            data-current={item.isCurrent ? "true" : undefined}
-          >
-            {meta}
-          </span>
-        ) : null}
+        {meta ? <span className="room-lesson__meta">{meta}</span> : null}
       </span>
     </>
   );
@@ -141,15 +147,17 @@ export const RoomLessonsPanel = ({
     <>
       <div className="room-outline__course">
         <p className="room-outline__course-title">{courseTitle}</p>
-        <div aria-hidden="true" className="room-outline__bar">
-          <span style={{ width: `${percent}%` }} />
+        <div className="room-outline__progress">
+          <div aria-hidden="true" className="room-outline__bar">
+            <span style={{ width: `${percent}%` }} />
+          </div>
+          <span className="room-outline__count">
+            {roomText("progress", {
+              c: outline.completedCount,
+              t: outline.totalCount,
+            })}
+          </span>
         </div>
-        <span className="room-outline__count">
-          {roomText("progress", {
-            c: outline.completedCount,
-            t: outline.totalCount,
-          })}
-        </span>
       </div>
       <ul className="room-outline__groups">
         {outline.groups.map((group) => {

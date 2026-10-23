@@ -6,6 +6,7 @@ export const RoomTemple = ({ className }: { readonly className?: string }) => (
     className={className}
     fill="none"
     focusable="false"
+    preserveAspectRatio="xMaxYMax meet"
     viewBox="0 0 320 180"
   >
     <g

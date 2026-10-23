@@ -314,7 +314,7 @@ const PosterLayer = ({
         onClick={() => onStart("default")}
         type="button"
       >
-        <PlayIcon aria-hidden="true" fill="currentColor" size={29} />
+        <PlayIcon aria-hidden="true" fill="currentColor" size={22} />
       </button>
       {resume ? (
         <div className="room-glass room-player__resume">

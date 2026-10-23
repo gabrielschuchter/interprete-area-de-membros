@@ -276,11 +276,11 @@ export const RoomView = ({
     <div className="room" data-panel-open={panel ? "true" : "false"}>
       <main className="room__main">
         <div className="room__inner">
+          <Link className="room__back" href={room.back.href}>
+            <ArrowLeftIcon aria-hidden="true" size={16} />
+            {room.back.label}
+          </Link>
           <header className="room__head">
-            <Link className="room__back" href={room.back.href}>
-              <ArrowLeftIcon aria-hidden="true" size={16} />
-              {room.back.label}
-            </Link>
             <h1 className="room__title">{room.title}</h1>
             <p className="room__subtitle">
               {roomText("subtitle", {
@@ -358,14 +358,24 @@ export const RoomView = ({
                 <span className="sr-only">{roomText("panelBack")}</span>
               </button>
               <h2 className="room-panel__title">{panelTitles[panel]}</h2>
-              <button
-                aria-label={roomText("panelClose")}
-                className="room-icon-button room-panel__close"
-                onClick={closePanel}
-                type="button"
-              >
-                <XIcon aria-hidden="true" size={18} />
-              </button>
+              <div className="room-panel__header-actions">
+                {panel === "notas" ? (
+                  <a
+                    className="room-panel__link"
+                    href="/ferramentas?view=notes"
+                  >
+                    {roomText("notesOpenInNotes")}
+                  </a>
+                ) : null}
+                <button
+                  aria-label={roomText("panelClose")}
+                  className="room-icon-button room-panel__close"
+                  onClick={closePanel}
+                  type="button"
+                >
+                  <XIcon aria-hidden="true" size={18} />
+                </button>
+              </div>
             </div>
             {panel === "aulas" ? (
               <RoomLessonsPanel

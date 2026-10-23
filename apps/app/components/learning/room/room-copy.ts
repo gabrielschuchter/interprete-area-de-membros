@@ -33,6 +33,7 @@ export const roomCopy = {
   notesActionError: "Não foi possível concluir a ação. Tente de novo.",
   notesEmptyBody:
     "O que você anotar aqui fica guardado nesta aula e também em Ferramentas, em Notas.",
+  notesEmptyCta: "Escrever a primeira nota",
   notesEmptyTitle: "Nenhuma nota nesta aula ainda",
   notesFormatBold: "Negrito",
   notesFormatItalic: "Itálico",
@@ -48,6 +49,7 @@ export const roomCopy = {
   notesPlaceholder: "Anotar neste momento…",
   notesSavedAt: "{quando} · salvo",
   notesStampAria: "Alternar carimbo do vídeo",
+  notesStampHint: "carimbo do vídeo",
   notesStampNone: "Sem carimbo",
   notesStatusError: "Não foi possível salvar. Tentando de novo…",
   notesStatusSaved: "Salvo agora",
@@ -79,8 +81,26 @@ export const roomCopy = {
   retry: "Tentar de novo",
   saveError: "Não foi possível salvar agora. Tente de novo.",
   subtitle: "{curso} — Módulo {n}, {modulo}",
-  tempoMoreModes: "Pomodoro, regressivo e ajustes ficam em Ferramentas.",
-  tempoOpenTools: "Abrir em Ferramentas",
+  tempoBreak: "Pausa",
+  tempoClaim: "Continuar aqui",
+  tempoClockAria: "Tempo da sessão",
+  tempoCountdown: "Regressivo",
+  tempoFocusCta: "Entrar no Modo foco",
+  tempoFocusHint: "No Modo foco, os avisos do Interprete ficam silenciados.",
+  tempoLinkHere: "Vincular a esta aula",
+  tempoLinkedLesson: "Vinculado a esta aula",
+  tempoLinkedOther: "Vinculado a outra aula",
+  tempoPause: "Pausar",
+  tempoPomodoro: "Pomodoro",
+  tempoReset: "Reiniciar",
+  tempoResume: "Retomar",
+  tempoRound: "Foco {n} de {total}",
+  tempoSetDuration: "Duração",
+  tempoSettings: "Configurar",
+  tempoStart: "Começar",
+  tempoStopwatch: "Cronômetro",
+  tempoUnlinked: "Sem vínculo",
+  tempoWithoutLink: "Começar sem vínculo",
   timeoutBody: "Confira sua conexão e tente de novo.",
   timeoutTitle: "Não foi possível carregar o vídeo.",
   unavailableBody: "Enquanto isso, veja os materiais da aula.",
@@ -110,3 +130,15 @@ export const roomReleaseDate = (value: Date | string) =>
   shortDateFormatter.format(
     typeof value === "string" ? new Date(value) : value
   );
+
+const shortDateWithMonthFormatter = new Intl.DateTimeFormat("pt-BR", {
+  day: "numeric",
+  month: "short",
+  timeZone: "America/Sao_Paulo",
+});
+
+// "21 out." as the board shows it in the lessons list.
+export const roomReleaseDateShort = (value: Date | string) =>
+  shortDateWithMonthFormatter
+    .format(typeof value === "string" ? new Date(value) : value)
+    .replace(" de ", " ");

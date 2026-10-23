@@ -11,12 +11,11 @@ import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import {
   BoldIcon,
+  ClockIcon,
   ItalicIcon,
   ListIcon,
   MoreHorizontalIcon,
   PinIcon,
-  PlusIcon,
-  TimerIcon,
 } from "lucide-react";
 import {
   type MutableRefObject,
@@ -82,14 +81,32 @@ const noteTitle = (text: string) => {
   return firstLine ? firstLine.slice(0, 80) : "Nota da aula";
 };
 
-const savedAtLabel = (date: Date) =>
-  new Intl.DateTimeFormat("pt-BR", {
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    month: "short",
-    timeZone: "America/Sao_Paulo",
-  }).format(date);
+const timeFormatter = new Intl.DateTimeFormat("pt-BR", {
+  hour: "2-digit",
+  minute: "2-digit",
+  timeZone: "America/Sao_Paulo",
+});
+const dayFormatter = new Intl.DateTimeFormat("pt-BR", {
+  day: "numeric",
+  month: "short",
+  timeZone: "America/Sao_Paulo",
+});
+const shortDay = (date: Date) => dayFormatter.format(date).replace(" de ", " ");
+const dayKey = (date: Date) =>
+  new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(
+    date
+  );
+
+// "Hoje, 09:40", "Ontem" or "21 out." as the board shows them.
+export const savedAtLabel = (date: Date, now = new Date()) => {
+  if (dayKey(date) === dayKey(now)) {
+    return `Hoje, ${timeFormatter.format(date)}`;
+  }
+  if (dayKey(date) === dayKey(new Date(now.getTime() - 86_400_000))) {
+    return "Ontem";
+  }
+  return shortDay(date);
+};
 
 const statusLabel: Record<SaveStatus, string> = {
   error: roomText("notesStatusError"),
@@ -207,6 +224,7 @@ export const RoomNotesPanel = ({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [stamp, setStamp] = useState<number | null>(null);
   const [trashed, setTrashed] = useState<RoomNote | null>(null);
+  const capturedRef = useRef<number | null>(null);
 
   const upsert = useCallback((note: RoomNote) => {
     setNotes((current) => {
@@ -241,6 +259,7 @@ export const RoomNotesPanel = ({
     onFocus: () => {
       if (!autosave.noteIdRef.current && autosave.stampRef.current === null) {
         const now = controlsRef.current?.currentTime() ?? null;
+        capturedRef.current = now;
         autosave.stampRef.current = now;
         setStamp(now);
       }
@@ -275,19 +294,47 @@ export const RoomNotesPanel = ({
     load().catch(() => undefined);
   }, [load]);
 
-  const startNewNote = async () => {
-    await autosave.flush();
+  const resetComposer = () => {
     autosave.noteIdRef.current = null;
     autosave.versionRef.current = null;
     autosave.createdAtRef.current = new Date();
     autosave.pinnedRef.current = false;
     autosave.stampRef.current = null;
+    capturedRef.current = null;
     autosave.setStatus("idle");
     setStamp(null);
     setEditingId(null);
     editor?.commands.setContent(emptyDocument);
+  };
+
+  const startNewNote = async () => {
+    await autosave.flush();
+    resetComposer();
     editor?.commands.focus();
   };
+
+  // Leaving the composer closes it: a saved note stays in the list, an empty
+  // one is discarded, and the next focus opens a fresh composer.
+  const composerRef = useRef<HTMLDivElement>(null);
+  const resetRef = useRef(resetComposer);
+  resetRef.current = resetComposer;
+  useEffect(() => {
+    const node = composerRef.current;
+    if (!node) {
+      return;
+    }
+    const onFocusOut = (event: globalThis.FocusEvent) => {
+      if (node.contains(event.relatedTarget as Node | null)) {
+        return;
+      }
+      autosave
+        .flush()
+        .then(() => resetRef.current())
+        .catch(() => undefined);
+    };
+    node.addEventListener("focusout", onFocusOut);
+    return () => node.removeEventListener("focusout", onFocusOut);
+  }, [autosave.flush]);
 
   const openNote = async (note: RoomNote) => {
     if (note.id === editingId) {
@@ -317,7 +364,9 @@ export const RoomNotesPanel = ({
 
   const toggleStamp = () => {
     const next =
-      stamp === null ? (controlsRef.current?.currentTime() ?? null) : null;
+      stamp === null
+        ? (capturedRef.current ?? controlsRef.current?.currentTime() ?? null)
+        : null;
     autosave.stampRef.current = next;
     setStamp(next);
     if (autosave.noteIdRef.current) {
@@ -376,63 +425,34 @@ export const RoomNotesPanel = ({
   };
 
   const seek = (seconds: number) => controlsRef.current?.seekTo(seconds);
+  const hasNotes = Boolean(notes && notes.length > 0);
 
   return (
     <div className="room-notes">
-      <a
-        className="room-panel__link"
-        href={
-          editingId
-            ? `/ferramentas?view=notes&note=${encodeURIComponent(editingId)}`
-            : "/ferramentas?view=notes"
-        }
-      >
-        {roomText("notesOpenInNotes")}
-      </a>
-
-      <div className="room-notes__composer">
-        <div className="room-notes__toolbar">
+      <div className="room-notes__composer" ref={composerRef}>
+        <div className="room-notes__stamp-row">
           <button
             aria-label={roomText("notesStampAria")}
             aria-pressed={stamp !== null}
-            className="room-notes__stamp"
+            className="room-chip"
+            data-none={stamp === null ? "true" : undefined}
             onClick={toggleStamp}
             type="button"
           >
-            <TimerIcon aria-hidden="true" size={14} />
-            {stamp === null
-              ? roomText("notesStampNone")
-              : formatVideoTimestamp(stamp)}
+            {stamp === null ? (
+              roomText("notesStampNone")
+            ) : (
+              <>
+                <ClockIcon aria-hidden="true" size={12} />
+                {formatVideoTimestamp(stamp)}
+              </>
+            )}
           </button>
-          <span className="room-notes__format">
-            <button
-              aria-label={roomText("notesFormatBold")}
-              aria-pressed={editor?.isActive("bold") ?? false}
-              className="room-icon-button"
-              onClick={() => editor?.chain().focus().toggleBold().run()}
-              type="button"
-            >
-              <BoldIcon aria-hidden="true" size={16} />
-            </button>
-            <button
-              aria-label={roomText("notesFormatItalic")}
-              aria-pressed={editor?.isActive("italic") ?? false}
-              className="room-icon-button"
-              onClick={() => editor?.chain().focus().toggleItalic().run()}
-              type="button"
-            >
-              <ItalicIcon aria-hidden="true" size={16} />
-            </button>
-            <button
-              aria-label={roomText("notesFormatList")}
-              aria-pressed={editor?.isActive("bulletList") ?? false}
-              className="room-icon-button"
-              onClick={() => editor?.chain().focus().toggleBulletList().run()}
-              type="button"
-            >
-              <ListIcon aria-hidden="true" size={16} />
-            </button>
-          </span>
+          {stamp === null ? null : (
+            <span className="room-notes__stamp-label">
+              {roomText("notesStampHint")}
+            </span>
+          )}
         </div>
         <div className="room-notes__field">
           {editor?.isEmpty ? (
@@ -443,28 +463,43 @@ export const RoomNotesPanel = ({
           <EditorContent editor={editor} />
         </div>
         <div className="room-notes__footer">
+          <button
+            aria-label={roomText("notesFormatBold")}
+            aria-pressed={editor?.isActive("bold") ?? false}
+            className="room-notes__format"
+            onClick={() => editor?.chain().focus().toggleBold().run()}
+            type="button"
+          >
+            <BoldIcon aria-hidden="true" size={16} />
+          </button>
+          <button
+            aria-label={roomText("notesFormatItalic")}
+            aria-pressed={editor?.isActive("italic") ?? false}
+            className="room-notes__format"
+            onClick={() => editor?.chain().focus().toggleItalic().run()}
+            type="button"
+          >
+            <ItalicIcon aria-hidden="true" size={16} />
+          </button>
+          <button
+            aria-label={roomText("notesFormatList")}
+            aria-pressed={editor?.isActive("bulletList") ?? false}
+            className="room-notes__format"
+            onClick={() => editor?.chain().focus().toggleBulletList().run()}
+            type="button"
+          >
+            <ListIcon aria-hidden="true" size={16} />
+          </button>
           <output className="room-notes__status" data-status={autosave.status}>
             {statusLabel[autosave.status]}
           </output>
-          <button
-            className="room-button room-button--secondary"
-            onClick={() => startNewNote()}
-            type="button"
-          >
-            <PlusIcon aria-hidden="true" size={14} />
-            {roomText("notesNew")}
-          </button>
         </div>
       </div>
 
       {trashed ? (
         <div aria-live="polite" className="room-notes__undo">
           <span>{roomText("notesTrashed")}</span>
-          <button
-            className="room-panel__link"
-            onClick={() => undoTrash()}
-            type="button"
-          >
+          <button onClick={() => undoTrash()} type="button">
             {roomText("notesUndo")}
           </button>
         </div>
@@ -485,87 +520,106 @@ export const RoomNotesPanel = ({
         </div>
       ) : null}
 
-      {notes && notes.length === 0 && !loadError ? (
+      {notes && !hasNotes && !loadError ? (
         <div className="room-notes__empty">
           <p className="room-notes__empty-title">
             {roomText("notesEmptyTitle")}
           </p>
           <p className="room-notes__empty-body">{roomText("notesEmptyBody")}</p>
+          <button
+            className="room-button room-button--secondary"
+            onClick={() => startNewNote()}
+            type="button"
+          >
+            {roomText("notesEmptyCta")}
+          </button>
         </div>
       ) : null}
 
-      {notes && notes.length > 0 ? (
+      {hasNotes ? (
         <ul className="room-notes__list">
-          {notes.map((note) => (
+          {notes?.map((note) => (
             <li
               className="room-note"
               data-editing={note.id === editingId ? "true" : undefined}
               key={note.id}
             >
-              {note.videoTimeSeconds === null ? null : (
-                <button
-                  aria-label={roomText("notesMenuGoTo", {
-                    tempo: formatVideoTimestamp(note.videoTimeSeconds),
-                  })}
-                  className="room-note__stamp"
-                  onClick={() => seek(note.videoTimeSeconds ?? 0)}
-                  type="button"
-                >
-                  {formatVideoTimestamp(note.videoTimeSeconds)}
-                </button>
-              )}
+              <div className="room-note__top">
+                {note.videoTimeSeconds === null ? (
+                  <span className="room-note__none">
+                    {roomText("notesStampNone")}
+                  </span>
+                ) : (
+                  <button
+                    aria-label={roomText("notesMenuGoTo", {
+                      tempo: formatVideoTimestamp(note.videoTimeSeconds),
+                    })}
+                    className="room-chip"
+                    onClick={() => seek(note.videoTimeSeconds ?? 0)}
+                    type="button"
+                  >
+                    {formatVideoTimestamp(note.videoTimeSeconds)}
+                  </button>
+                )}
+                <span className="room-note__spacer" />
+                {note.pinned ? (
+                  <span className="room-note__pin">
+                    <PinIcon aria-label="Fixada" size={14} />
+                  </span>
+                ) : null}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      aria-label={roomText("notesMenuAria")}
+                      className="room-note__more"
+                      type="button"
+                    >
+                      <MoreHorizontalIcon aria-hidden="true" size={18} />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="room-menu">
+                    {note.videoTimeSeconds === null ? null : (
+                      <DropdownMenuItem
+                        onSelect={() => seek(note.videoTimeSeconds ?? 0)}
+                      >
+                        {roomText("notesMenuGoTo", {
+                          tempo: formatVideoTimestamp(note.videoTimeSeconds),
+                        })}
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuItem onSelect={() => togglePin(note)}>
+                      {roomText(
+                        note.pinned ? "notesMenuUnpin" : "notesMenuPin"
+                      )}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <a
+                        href={`/ferramentas?view=notes&note=${encodeURIComponent(note.id)}`}
+                      >
+                        {roomText("notesOpenInNotes")}
+                      </a>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="room-menu__danger"
+                      onSelect={() => trash(note)}
+                    >
+                      {roomText("notesMenuTrash")}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
               <button
                 className="room-note__body"
                 onClick={() => openNote(note)}
                 type="button"
               >
-                <span className="room-note__text">
-                  {note.contentText || "Nota sem conteúdo"}
-                </span>
-                <span className="room-note__meta">
-                  {note.pinned ? (
-                    <PinIcon aria-label="Fixada" size={12} />
-                  ) : null}
-                  {roomText("notesSavedAt", {
-                    quando: savedAtLabel(note.updatedAt),
-                  })}
-                </span>
+                {note.contentText || "Nota sem conteúdo"}
               </button>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    aria-label={roomText("notesMenuAria")}
-                    className="room-icon-button"
-                    type="button"
-                  >
-                    <MoreHorizontalIcon aria-hidden="true" size={16} />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  {note.videoTimeSeconds === null ? null : (
-                    <DropdownMenuItem
-                      onSelect={() => seek(note.videoTimeSeconds ?? 0)}
-                    >
-                      {roomText("notesMenuGoTo", {
-                        tempo: formatVideoTimestamp(note.videoTimeSeconds),
-                      })}
-                    </DropdownMenuItem>
-                  )}
-                  <DropdownMenuItem onSelect={() => togglePin(note)}>
-                    {roomText(note.pinned ? "notesMenuUnpin" : "notesMenuPin")}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <a
-                      href={`/ferramentas?view=notes&note=${encodeURIComponent(note.id)}`}
-                    >
-                      {roomText("notesOpenInNotes")}
-                    </a>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => trash(note)}>
-                    {roomText("notesMenuTrash")}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <span className="room-note__meta">
+                {roomText("notesSavedAt", {
+                  quando: savedAtLabel(note.updatedAt),
+                })}
+              </span>
             </li>
           ))}
         </ul>
