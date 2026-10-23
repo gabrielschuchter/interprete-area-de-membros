@@ -166,12 +166,14 @@
 
 .cursos-filter__option {
   display: inline-flex;
+  flex-shrink: 0;
   gap: 8px;
   align-items: center;
   min-height: 40px;
   padding: 0 14px;
   font: 500 14px / 1 var(--font-sans-family);
   color: var(--text-secondary);
+  white-space: nowrap;
   cursor: pointer;
   background: none;
   border: 0;
