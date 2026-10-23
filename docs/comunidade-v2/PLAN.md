@@ -107,7 +107,11 @@ Cada jornada deve persistir após reload e cobrir dois alunos, professor/admin e
 
 ## Próxima ação
 
-Iniciar agora o Estágio 02 — Navegação e Explorar, na branch codex/comunidade-v2. Construir os cinco destinos e a navegação responsiva, alimentar Explorar com dados reais e paginação por cursor, preservar filtros/origem/retorno, integrar CommunityBookmark ao Salvos global e reaproveitar Encontros/Gravações existentes. OPS-01 não bloqueia estas jornadas. Validar primeiro os boards 02, 03, 03b, 08, 09, 11, 19, 32, 33, 35, 37, 38, 43 e 50.
+Concluir a rechecagem independente do candidato pós-auditoria descrito em
+NOW.md e POST-AUDIT-HANDOFF.md. Etapas 02–10 permanecem aceitas nos limites já
+registrados. Não reiniciar auditoria geral, refinamento visual ou jornadas
+encerradas. Após resolver RV-01, formalizar o fechamento de correções e entregar
+o handoff para 12A em conversa própria; nenhuma tarefa de 12A é executada aqui.
 
 ### Compatibilidade e reversão da fundação
 

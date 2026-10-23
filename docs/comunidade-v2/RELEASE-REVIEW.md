@@ -6,6 +6,25 @@
 
 **Etapa 12:** não iniciada.
 
+## Rechecagem final — candidato complementar
+
+Candidato de código atual: `a20b28d2d0854c82d543048cc66fb5d81981ea1a`.
+O diagnóstico posterior ao primeiro patch encontrou legado com grupo excluído
+e origem NULL; a migration complementar e o consumer agora falham fechados.
+Os seis gates passaram em `4296978`; o delta até o candidato final remove
+somente um escape literal inválido na primeira migration. O ensaio SQL
+completo posterior passou para ambas as migrations, com sete casos em tabelas
+temporárias e rollback. O harness com SQL/consumer real cobriu legado e
+concorrência. QA final concluído: integrado `6543bd9d` 20/21 e meta no reteste
+`ad6e6f88` 5/5, após isolamento/restauração de fixtures da execução anterior
+interrompida, sem mudar produto ou asserções. Rechecagem independente pendente.
+O estado, os limites e o requisito de não coexistência com binários inseguros
+estão em [POST-AUDIT-HANDOFF.md](./POST-AUDIT-HANDOFF.md).
+
+Os achados e pareceres seguintes preservam o histórico. O fechamento de código
+de RV-01 depende da rechecagem acima; os gates operacionais e remotos continuam
+impedindo release, com execução reservada ao preflight 12A em conversa própria.
+
 **Atualização pós-auditoria:** RV-01 P1 foi corrigido no candidato `53d4ae5c017eab9e7ed3136483dac3ecd4e79e08`, enviado para `origin/codex/comunidade-v2`, e passou por testes unitários, integração PostgreSQL/API e E2E integrado local. A rechecagem adversarial independente foi solicitada na conversa da Etapa 11 e está pendente. A correção local do caminho Data API também passou: RLS habilitado e sem `SELECT` para `anon`/`authenticated` no QA isolado. Isso não confirma os grants do projeto remoto nem aplica a migration nele.
 
 **Parecer atual:** **NO-GO para release.** RV-02 (OPS-01), RV-03 (rollback de enums), RV-04 (preflight de convites legados), RV-05 (performance autenticada/mobile) e a confirmação remota de grants/RLS continuam bloqueadores de release. Nenhum P0 foi identificado. A validação de teclado em dispositivo físico segue P3. Não houve migration remota, publicação ou alteração de ambiente produtivo; Etapa 12 não começou.

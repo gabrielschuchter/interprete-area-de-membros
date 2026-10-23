@@ -1,5 +1,36 @@
 # Comunidade V2 — status
 
+## Candidato definitivo pós-auditoria — 23/10/2026
+
+**Código:** `a20b28d2d0854c82d543048cc66fb5d81981ea1a`, na branch
+`codex/comunidade-v2`. Migration complementar fail-closed, inserts legados,
+grupos excluídos e consumer corrigidos. Seis gates aprovados nesta conversa:
+check 1.058; typecheck 16/16; boundaries 986/19; App 852/177 e API 13/3;
+build 8/8; performance:check aprovado.
+
+Os seis gates validaram `4296978`; o único delta posterior é a remoção de um
+escape literal inválido da primeira migration. Ambas as migrations passaram
+depois no ensaio SQL completo em tabelas temporárias e transação revertida.
+Runtime, testes, schema Prisma e bundle são idênticos aos dos gates.
+
+**Validação final:** harness SQL/consumer real passou no PostgreSQL QA isolado,
+incluindo ambas as ordens de entrega/remoção concorrente e replay idempotente.
+QA final concluído: integrado `6543bd9d` com 20/21; a falha inicial da meta
+era fixture residual da execução interrompida. Após isolar somente essas
+fixtures, o reteste `ad6e6f88` passou 5/5; os nove endedAt originais foram
+restaurados e conferidos. Sem mudança de produto ou asserções. Rechecagem
+independente do SHA final pendente.
+O spec protegido mantém o hash `43bb75e8482c3638840cbfa760a91e01927ed770`.
+
+**Decisão:** correções ainda em fechamento. Release permanece NO-GO até os
+gates operacionais/remotos. RV-02–RV-05 e as provas remotas pertencem ao
+preflight 12A; não são declaração de regressão nova de código. O requisito de
+compatibilidade impede servir leitores/workers antigos durante rollout ou
+rollback. Detalhes e evidências: [POST-AUDIT-HANDOFF.md](./POST-AUDIT-HANDOFF.md).
+Nenhuma tarefa de 12A, migration remota ou publicação foi executada.
+
+Os checkpoints abaixo são históricos e são supersedidos por este estado.
+
 ## Correções pós-auditoria — 23/10/2026
 
 **Candidato de código:** `53d4ae5c017eab9e7ed3136483dac3ecd4e79e08`, commit `fix(comunidade): revalidar audiencia de notificacoes`, enviado para `origin/codex/comunidade-v2`. A rechecagem adversarial independente do auditor da Etapa 11 foi solicitada para esse SHA e está pendente.
