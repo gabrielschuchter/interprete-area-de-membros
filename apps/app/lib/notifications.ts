@@ -1,6 +1,6 @@
 import "server-only";
 
-import { database, MemberRole, type Prisma } from "@repo/database";
+import { ContentStatus, database, MemberRole, Prisma } from "@repo/database";
 import {
   enqueueNotificationBatch,
   notificationPreferenceForType,
@@ -104,30 +104,73 @@ const decodeNotificationCursor = (value: string | undefined) => {
 };
 
 const memberNotificationAudienceWhere = async (
-  memberId: string
+  memberId: string,
+  transaction: Prisma.TransactionClient = database,
+  announcementAudience?: Awaited<ReturnType<typeof getCommunityAnnouncements>>
 ): Promise<Prisma.NotificationWhereInput> => {
-  const [groups, announcements] = await Promise.all([
-    database.communitySpace.findMany({
+  const [groups, pendingInvitations, announcements] = await Promise.all([
+    transaction.communitySpace.findMany({
       where: {
-        OR: [{ ownerId: memberId }, { members: { some: { memberId } } }],
+        status: "PUBLISHED",
+        OR: [
+          { visibility: "PUBLIC" },
+          { ownerId: memberId },
+          { members: { some: { memberId } } },
+        ],
       },
       select: { id: true },
     }),
-    getCommunityAnnouncements(memberId, 100, new Date(), {
-      includeDismissed: true,
+    transaction.communitySpaceInvitation.findMany({
+      where: {
+        inviteeId: memberId,
+        status: "PENDING",
+        space: { is: { status: "PUBLISHED" } },
+      },
+      select: { id: true, spaceId: true },
     }),
+    announcementAudience ??
+      getCommunityAnnouncements(memberId, 100, new Date(), {
+        includeDismissed: true,
+      }),
   ]);
+  const accessibleSpaceIds = groups.map(({ id }) => id);
+  const memberIndependentNotificationTypes = [
+    notificationTypes.lessonAvailable,
+    notificationTypes.moduleAvailable,
+    notificationTypes.activityAssigned,
+    notificationTypes.feedbackReceived,
+    notificationTypes.activityDeadline,
+    notificationTypes.contentAssigned,
+    notificationTypes.badgeAwarded,
+    notificationTypes.plannerReminder,
+  ];
   return {
     OR: [
+      { type: { in: memberIndependentNotificationTypes } },
       {
         type: {
-          notIn: [notificationTypes.groupPost, notificationTypes.announcement],
+          in: [
+            notificationTypes.mention,
+            notificationTypes.commentReply,
+            notificationTypes.topicComment,
+            notificationTypes.followedTopicActivity,
+          ],
         },
+        OR: [
+          { communitySpaceId: null },
+          { communitySpaceId: { in: accessibleSpaceIds } },
+        ],
       },
       {
         type: notificationTypes.groupPost,
-        groupKey: { in: groups.map(({ id }) => id) },
+        communitySpaceId: { in: accessibleSpaceIds },
       },
+      ...pendingInvitations.map(({ id, spaceId }) => ({
+        type: notificationTypes.groupInvitation,
+        entityType: "COMMUNITY_INVITATION",
+        entityId: id,
+        communitySpaceId: spaceId,
+      })),
       ...announcements.flatMap(({ id, version }) => [
         {
           type: notificationTypes.announcement,
@@ -148,6 +191,32 @@ const memberNotificationAudienceWhere = async (
       ]),
     ],
   };
+};
+
+const withCurrentNotificationAudience = async <T>(
+  memberId: string,
+  operation: (
+    transaction: Prisma.TransactionClient,
+    audienceWhere: Prisma.NotificationWhereInput
+  ) => Promise<T>
+) => {
+  const announcementAudience = await getCommunityAnnouncements(
+    memberId,
+    100,
+    new Date(),
+    { includeDismissed: true }
+  );
+  return database.$transaction(
+    async (transaction) => {
+      const audienceWhere = await memberNotificationAudienceWhere(
+        memberId,
+        transaction,
+        announcementAudience
+      );
+      return operation(transaction, audienceWhere);
+    },
+    { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead }
+  );
 };
 
 const isNotificationType = (value: string): value is NotificationType =>
@@ -252,6 +321,7 @@ export const createNotification = async (input: {
   readonly parentEntityId?: string;
   readonly metadata?: Prisma.InputJsonValue;
   readonly groupKey?: string;
+  readonly communitySpaceId?: string | null;
   readonly dedupeKey?: string;
   readonly body?: string;
   readonly href?: string;
@@ -282,6 +352,7 @@ export const createNotification = async (input: {
         parentEntityId: input.parentEntityId ?? null,
         metadata: input.metadata,
         groupKey: input.groupKey ?? null,
+        communitySpaceId: input.communitySpaceId ?? null,
         dedupeKey: input.dedupeKey ?? null,
         priority: priorityForType[type],
         title: input.title ?? titleForType[type],
@@ -311,35 +382,49 @@ export const markNotificationsSeen = (
   if (ids.length === 0) {
     return { count: 0 };
   }
-  return database.notification.updateMany({
-    where: { id: { in: ids }, memberId, seenAt: null },
-    data: { seenAt: new Date() },
-  });
+  return withCurrentNotificationAudience(memberId, (transaction, audience) =>
+    transaction.notification.updateMany({
+      where: {
+        AND: [{ id: { in: ids }, memberId, seenAt: null }, audience],
+      },
+      data: { seenAt: new Date() },
+    })
+  );
 };
 
 export const markNotificationRead = (
   memberId: string,
   notificationId: string
 ) =>
-  database.notification.updateMany({
-    where: { id: notificationId, memberId, readAt: null },
-    data: { readAt: new Date(), seenAt: new Date() },
-  });
+  withCurrentNotificationAudience(memberId, (transaction, audience) =>
+    transaction.notification.updateMany({
+      where: {
+        AND: [{ id: notificationId, memberId, readAt: null }, audience],
+      },
+      data: { readAt: new Date(), seenAt: new Date() },
+    })
+  );
 
 export const markNotificationUnread = (
   memberId: string,
   notificationId: string
 ) =>
-  database.notification.updateMany({
-    where: { id: notificationId, memberId },
-    data: { readAt: null },
-  });
+  withCurrentNotificationAudience(memberId, (transaction, audience) =>
+    transaction.notification.updateMany({
+      where: {
+        AND: [{ id: notificationId, memberId }, audience],
+      },
+      data: { readAt: null },
+    })
+  );
 
 export const markAllNotificationsRead = (memberId: string) =>
-  database.notification.updateMany({
-    where: { memberId, readAt: null },
-    data: { readAt: new Date(), seenAt: new Date() },
-  });
+  withCurrentNotificationAudience(memberId, (transaction, audience) =>
+    transaction.notification.updateMany({
+      where: { AND: [{ memberId, readAt: null }, audience] },
+      data: { readAt: new Date(), seenAt: new Date() },
+    })
+  );
 
 const notificationSelect = {
   id: true,
@@ -370,7 +455,7 @@ const notificationSelect = {
   },
 } as const;
 
-export const getNotifications = async (
+export const getNotifications = (
   memberId: string,
   options: {
     readonly cursor?: string;
@@ -382,68 +467,70 @@ export const getNotifications = async (
   const types = options.filter
     ? getNotificationFilterTypes(options.filter)
     : undefined;
-  const [audienceWhere, baseWhere] = await Promise.all([
-    memberNotificationAudienceWhere(memberId),
-    Promise.resolve({ memberId, ...(types ? { type: types } : {}) }),
-  ]);
-  const visibleBaseWhere = { AND: [baseWhere, audienceWhere] };
-  const cursor = decodeNotificationCursor(options.cursor);
-  const where = cursor
-    ? {
-        AND: [
-          visibleBaseWhere,
-          {
-            OR: [
-              { priority: { lt: cursor.priority } },
+  return withCurrentNotificationAudience(
+    memberId,
+    async (transaction, audienceWhere) => {
+      const baseWhere = { memberId, ...(types ? { type: types } : {}) };
+      const visibleBaseWhere = { AND: [baseWhere, audienceWhere] };
+      const cursor = decodeNotificationCursor(options.cursor);
+      const where = cursor
+        ? {
+            AND: [
+              visibleBaseWhere,
               {
-                priority: cursor.priority,
-                createdAt: { lt: cursor.createdAt },
-              },
-              {
-                priority: cursor.priority,
-                createdAt: cursor.createdAt,
-                id: { lt: cursor.id },
+                OR: [
+                  { priority: { lt: cursor.priority } },
+                  {
+                    priority: cursor.priority,
+                    createdAt: { lt: cursor.createdAt },
+                  },
+                  {
+                    priority: cursor.priority,
+                    createdAt: cursor.createdAt,
+                    id: { lt: cursor.id },
+                  },
+                ],
               },
             ],
-          },
-        ],
+          }
+        : visibleBaseWhere;
+      const items = await transaction.notification.findMany({
+        where,
+        orderBy: [{ priority: "desc" }, { createdAt: "desc" }, { id: "desc" }],
+        take: limit + 1,
+        select: notificationSelect,
+      });
+      const hasMore = items.length > limit;
+      if (hasMore) {
+        items.pop();
       }
-    : visibleBaseWhere;
-  const items = await database.notification.findMany({
-    where,
-    orderBy: [{ priority: "desc" }, { createdAt: "desc" }, { id: "desc" }],
-    take: limit + 1,
-    select: notificationSelect,
-  });
-  const hasMore = items.length > limit;
-  if (hasMore) {
-    items.pop();
-  }
-  const [unreadCount, unseenCount] = await Promise.all([
-    database.notification.count({
-      where: { AND: [visibleBaseWhere, { readAt: null }] },
-    }),
-    database.notification.count({
-      where: { AND: [visibleBaseWhere, { seenAt: null }] },
-    }),
-  ]);
-  return {
-    items,
-    unreadCount,
-    unseenCount,
-    nextCursor: hasMore
-      ? (() => {
-          const last = items.at(-1);
-          return last
-            ? encodeNotificationCursor({
-                createdAt: last.createdAt.toISOString(),
-                id: last.id,
-                priority: last.priority,
-              })
-            : null;
-        })()
-      : null,
-  };
+      const [unreadCount, unseenCount] = await Promise.all([
+        transaction.notification.count({
+          where: { AND: [visibleBaseWhere, { readAt: null }] },
+        }),
+        transaction.notification.count({
+          where: { AND: [visibleBaseWhere, { seenAt: null }] },
+        }),
+      ]);
+      return {
+        items,
+        unreadCount,
+        unseenCount,
+        nextCursor: hasMore
+          ? (() => {
+              const last = items.at(-1);
+              return last
+                ? encodeNotificationCursor({
+                    createdAt: last.createdAt.toISOString(),
+                    id: last.id,
+                    priority: last.priority,
+                  })
+                : null;
+            })()
+          : null,
+      };
+    }
+  );
 };
 
 export const getRecentCommunityAnnouncements = async (
@@ -460,24 +547,17 @@ export const getRecentCommunityAnnouncements = async (
   return announcements;
 };
 
-export const getUnreadNotificationCount = async (memberId: string) =>
-  database.notification.count({
-    where: {
-      AND: [
-        { memberId, readAt: null },
-        await memberNotificationAudienceWhere(memberId),
-      ],
-    },
-  });
-
-export const getUnseenNotificationCount = async (memberId: string) =>
-  database.notification.count({
-    where: {
-      AND: [
-        { memberId, seenAt: null },
-        await memberNotificationAudienceWhere(memberId),
-      ],
-    },
+export const getNotificationSummary = (memberId: string) =>
+  withCurrentNotificationAudience(memberId, async (transaction, audience) => {
+    const [unreadCount, unseenCount] = await Promise.all([
+      transaction.notification.count({
+        where: { AND: [{ memberId, readAt: null }, audience] },
+      }),
+      transaction.notification.count({
+        where: { AND: [{ memberId, seenAt: null }, audience] },
+      }),
+    ]);
+    return { unreadCount, unseenCount };
   });
 
 export const extractMentionUsernames = (content: string) =>
@@ -677,25 +757,45 @@ export const recordMentions = async (input: {
   });
 };
 
-export const filterPrivateCommunityRecipients = async (
+const resolveCommunityPostAudience = async (
   postId: string,
   recipientIds: readonly string[],
   transaction: Prisma.TransactionClient = database
 ) => {
   const uniqueIds = [...new Set(recipientIds)];
-  if (uniqueIds.length === 0) {
-    return uniqueIds;
-  }
   const post = await transaction.communityPost.findUnique({
     where: { id: postId },
     select: {
+      status: true,
+      deletedAt: true,
       space: {
-        select: { id: true, visibility: true, ownerId: true },
+        select: {
+          id: true,
+          visibility: true,
+          ownerId: true,
+          status: true,
+        },
       },
     },
   });
-  if (!post?.space || post.space.visibility !== "PRIVATE") {
-    return uniqueIds;
+  if (
+    !post ||
+    post.deletedAt ||
+    post.status !== ContentStatus.PUBLISHED ||
+    (post.space && post.space.status !== ContentStatus.PUBLISHED)
+  ) {
+    return {
+      communitySpaceId: "__community_scope_unresolved__",
+      recipientIds: [],
+    };
+  }
+  const communitySpaceId = post.space?.id ?? null;
+  if (
+    !post.space ||
+    post.space.visibility !== "PRIVATE" ||
+    uniqueIds.length === 0
+  ) {
+    return { communitySpaceId, recipientIds: uniqueIds };
   }
   const members = await transaction.communitySpaceMember.findMany({
     where: {
@@ -709,8 +809,19 @@ export const filterPrivateCommunityRecipients = async (
   if (post.space.ownerId) {
     allowed.add(post.space.ownerId);
   }
-  return uniqueIds.filter((memberId) => allowed.has(memberId));
+  return {
+    communitySpaceId,
+    recipientIds: uniqueIds.filter((memberId) => allowed.has(memberId)),
+  };
 };
+
+export const filterPrivateCommunityRecipients = async (
+  postId: string,
+  recipientIds: readonly string[],
+  transaction: Prisma.TransactionClient = database
+) =>
+  (await resolveCommunityPostAudience(postId, recipientIds, transaction))
+    .recipientIds;
 
 export const notifyCommunityComment = async (input: {
   readonly actorId: string;
@@ -765,15 +876,14 @@ export const notifyCommunityComment = async (input: {
     });
   }
 
-  const allowedRecipients = new Set(
-    await filterPrivateCommunityRecipients(
-      input.postId,
-      recipientCandidates
-        .map(({ memberId }) => memberId)
-        .filter((memberId): memberId is string => Boolean(memberId)),
-      input.transaction
-    )
+  const communityAudience = await resolveCommunityPostAudience(
+    input.postId,
+    recipientCandidates
+      .map(({ memberId }) => memberId)
+      .filter((memberId): memberId is string => Boolean(memberId)),
+    input.transaction
   );
+  const allowedRecipients = new Set(communityAudience.recipientIds);
   const allowedMentions = mentionedIds.filter((memberId) =>
     allowedRecipients.has(memberId)
   );
@@ -803,6 +913,7 @@ export const notifyCommunityComment = async (input: {
     notifications: recipients.map(([recipientId, type]) => ({
       recipientId,
       type,
+      communitySpaceId: communityAudience.communitySpaceId,
       entityType: "COMMENT",
       entityId: input.commentId,
       parentEntityType: input.parentCommentId ? "COMMENT" : "TOPIC",
@@ -833,10 +944,11 @@ export const notifyCommunityPost = async (input: {
     content: input.commentContent,
     document: input.document,
   });
-  const allowedMentionIds = await filterPrivateCommunityRecipients(
+  const communityAudience = await resolveCommunityPostAudience(
     input.postId,
     mentionedIds
   );
+  const allowedMentionIds = communityAudience.recipientIds;
 
   await recordMentions({
     actorId: input.actorId,
@@ -851,6 +963,7 @@ export const notifyCommunityPost = async (input: {
         recipientId,
         actorId: input.actorId,
         type: notificationTypes.mention,
+        communitySpaceId: communityAudience.communitySpaceId,
         entityType: "TOPIC",
         entityId: input.postId,
         metadata: { postId: input.postId },

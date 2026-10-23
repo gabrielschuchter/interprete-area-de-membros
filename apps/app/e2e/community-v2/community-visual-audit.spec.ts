@@ -122,6 +122,7 @@ test("captura rotas visuais restantes e verifica os oito breakpoints reais", asy
   browser,
   page,
 }) => {
+  test.setTimeout(90_000);
   assertLocalQa();
 
   const responsive: Record<

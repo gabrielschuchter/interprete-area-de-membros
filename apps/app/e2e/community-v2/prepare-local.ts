@@ -139,6 +139,11 @@ try {
     groupPinIndex,
     migration,
     moderatorRole,
+    notificationScopeColumn,
+    notificationScopeIndex,
+    notificationAudienceMigration,
+    notificationRls,
+    notificationGrants,
     inviteLinkTable,
     inviteLinkIndex,
     inviteLinkNoExpiry,
@@ -179,6 +184,36 @@ try {
         SELECT enumlabel FROM pg_enum
         WHERE enumtypid = '"CommunitySpaceMemberRole"'::regtype
           AND enumlabel = 'MODERATOR'
+      `,
+    database.$queryRaw<Array<{ readonly column_name: string }>>`
+        SELECT column_name FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'Notification'
+          AND column_name = 'communitySpaceId'
+      `,
+    database.$queryRaw<Array<{ readonly indexname: string }>>`
+        SELECT indexname FROM pg_indexes WHERE schemaname = 'public'
+          AND indexname = 'Notification_memberId_communitySpaceId_createdAt_idx'
+      `,
+    database.$queryRaw<Array<{ readonly migration_name: string }>>`
+        SELECT migration_name FROM public."_prisma_migrations"
+        WHERE migration_name = '20261023110000_notification_community_audience'
+          AND finished_at IS NOT NULL AND rolled_back_at IS NULL
+      `,
+    database.$queryRaw<Array<{ readonly row_security: boolean }>>`
+        SELECT relrowsecurity AS row_security FROM pg_class
+        WHERE oid = 'public."Notification"'::regclass
+      `,
+    database.$queryRaw<
+      Array<{
+        readonly anon_allowed: boolean;
+        readonly authenticated_allowed: boolean;
+      }>
+    >`
+        SELECT
+          COALESCE((SELECT has_table_privilege(role.rolname, 'public."Notification"', 'SELECT')
+            FROM pg_roles AS role WHERE role.rolname = 'anon'), false) AS anon_allowed,
+          COALESCE((SELECT has_table_privilege(role.rolname, 'public."Notification"', 'SELECT')
+            FROM pg_roles AS role WHERE role.rolname = 'authenticated'), false) AS authenticated_allowed
       `,
     database.$queryRaw<
       Array<{
@@ -242,10 +277,16 @@ try {
     globalPinIndex.length !== 1 ||
     groupPinIndex.length !== 1 ||
     migration.length !== 1 ||
-    moderatorRole.length !== 1
+    moderatorRole.length !== 1 ||
+    notificationScopeColumn.length !== 1 ||
+    notificationScopeIndex.length !== 1 ||
+    notificationAudienceMigration.length !== 1 ||
+    notificationRls[0]?.row_security !== true ||
+    notificationGrants[0]?.anon_allowed !== false ||
+    notificationGrants[0]?.authenticated_allowed !== false
   ) {
     throw new Error(
-      "The local Community V2 UX migration is not fully applied to the isolated QA database."
+      "The local Community V2 UX and private-notification migrations or their Data API grant boundary are not fully applied to the isolated QA database."
     );
   }
 

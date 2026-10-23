@@ -36,6 +36,7 @@ const notificationRequestSchema = z
     parentEntityType: z.string().trim().min(1).max(64).nullable().optional(),
     parentEntityId: z.string().trim().min(1).max(255).nullable().optional(),
     groupKey: z.string().trim().min(1).max(255).nullable().optional(),
+    communitySpaceId: z.string().trim().min(1).max(255).nullable().optional(),
     dedupeKey: z.string().trim().min(1).max(255),
     priority: z.number().int().min(0).max(100).optional(),
     href: hrefSchema,

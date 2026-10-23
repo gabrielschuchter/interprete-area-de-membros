@@ -202,6 +202,38 @@ const query = async ({ operation, input }: Request) => {
           : null,
       };
     }
+    case "seed-private-comment-notification":
+      return database.notification.create({
+        data: {
+          memberId: input.memberId as string,
+          actorId: input.actorId as string,
+          type: "MENTION",
+          entityType: "COMMENT",
+          entityId: input.commentId as string,
+          parentEntityType: "TOPIC",
+          parentEntityId: input.postId as string,
+          communitySpaceId: input.spaceId as string,
+          dedupeKey: input.dedupeKey as string,
+          title: "Você foi mencionado",
+          body: input.body as string,
+          href: input.href as string,
+        },
+        select: { id: true },
+      });
+    case "delete-review-notification":
+      return database.notification.deleteMany({
+        where: { dedupeKey: input.dedupeKey as string },
+      });
+    case "review-notification-evidence":
+      return database.notification.findUnique({
+        where: { id: input.notificationId as string },
+        select: {
+          id: true,
+          body: true,
+          href: true,
+          communitySpaceId: true,
+        },
+      });
     case "private-access-audit-count":
       return database.domainEvent.count({
         where: {

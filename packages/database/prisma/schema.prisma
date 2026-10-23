@@ -1289,6 +1289,7 @@ model Notification {
   parentEntityId   String?
   metadata         Json?
   groupKey         String?
+  communitySpaceId String?
   dedupeKey        String?   @unique
   priority         Int       @default(0)
   title            String
@@ -1304,6 +1305,7 @@ model Notification {
   @@index([memberId, readAt, createdAt])
   @@index([memberId, seenAt, createdAt])
   @@index([memberId, type, createdAt])
+  @@index([memberId, communitySpaceId, createdAt])
   @@index([groupKey, createdAt])
   @@index([announcementId, announcementVersion, memberId])
 }

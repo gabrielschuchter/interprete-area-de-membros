@@ -44,6 +44,9 @@ type DatabaseOperation =
   | "all-links"
   | "member-search-details"
   | "outbox-notification-evidence"
+  | "seed-private-comment-notification"
+  | "delete-review-notification"
+  | "review-notification-evidence"
   | "private-access-audit-count";
 
 const queryDatabase = <T>(
@@ -331,7 +334,6 @@ test("convites V2 cobrem papéis, estados, links privados e outbox em QA isolado
     storageState: { cookies: [], origins: [] },
     viewport: { width: 390, height: 844 },
   });
-
   try {
     let privateGroup = await queryDatabase<{
       id: string;
@@ -1315,5 +1317,152 @@ test("convites individuais e link funcionam em grupo público", async ({
     expect(acceptedPublicLinkInvitation[0]?.status).toBe("ACCEPTED");
   } finally {
     await Promise.all(contexts.map((context) => context.close()));
+  }
+});
+
+test("notificação privada persistida some da API após remover o membro", async ({
+  browser,
+}) => {
+  test.setTimeout(120_000);
+  const { memberId, secondaryMemberId, teacherId, adminId } =
+    assertIsolatedQa();
+  await mkdir(outputDirectory, { recursive: true });
+  const privateGroup = await queryDatabase<{
+    id: string;
+    slug: string;
+    title: string;
+    ownerId: string | null;
+    visibility: string;
+    status: string;
+  } | null>("prepare-invitation-fixture", {
+    ownerId: secondaryMemberId,
+    memberIds: [memberId, secondaryMemberId, teacherId, adminId],
+  });
+  if (!privateGroup) {
+    throw new Error(
+      "Run the isolated group journey first to prepare the private QA fixture."
+    );
+  }
+  expect(privateGroup).toMatchObject({
+    ownerId: secondaryMemberId,
+    visibility: "PRIVATE",
+    status: "PUBLISHED",
+  });
+
+  const reviewNotificationDedupeKey = `community-audience-review:${runId}`;
+  const reviewCommentId = `qa-review-comment-${runId}`;
+  const reviewPostId = `qa-review-post-${runId}`;
+  const privateBody = `Comentário privado de QA ${runId}`;
+  let recipientContext: Awaited<ReturnType<typeof browser.newContext>> | null =
+    null;
+
+  try {
+    await queryDatabase("set-memberships", {
+      spaceId: privateGroup.id,
+      members: [{ memberId, role: "MEMBER" }],
+    });
+    recipientContext = await browser.newContext({
+      storageState: memberStatePath,
+      viewport: { width: 1440, height: 1000 },
+    });
+    const recipientPage = await recipientContext.newPage();
+    await recipientPage.goto(`/comunidade/grupos/${privateGroup.slug}`);
+    await clerk.loaded({ page: recipientPage });
+    expect(await clerkUserId(recipientPage)).toBe(memberId);
+    await expect(
+      recipientPage.getByRole("heading", {
+        name: privateGroup.title,
+      })
+    ).toBeVisible();
+
+    const baseline = await recipientPage.evaluate(async () => {
+      const response = await fetch(
+        "/api/notifications?filter=MENTIONS&limit=50"
+      );
+      return { status: response.status, result: await response.json() };
+    });
+    expect(baseline.status).toBe(200);
+
+    const persistedReviewNotification = await queryDatabase<{ id: string }>(
+      "seed-private-comment-notification",
+      {
+        memberId,
+        actorId: secondaryMemberId,
+        spaceId: privateGroup.id,
+        commentId: reviewCommentId,
+        postId: reviewPostId,
+        dedupeKey: reviewNotificationDedupeKey,
+        body: privateBody,
+        href: `/comunidade/publicacoes/${reviewPostId}?commentId=${reviewCommentId}`,
+      }
+    );
+    const visible = await recipientPage.evaluate(async () => {
+      const response = await fetch(
+        "/api/notifications?filter=MENTIONS&limit=50"
+      );
+      return { status: response.status, result: await response.json() };
+    });
+    expect(visible.status).toBe(200);
+    const visibleItem = visible.result.items.find(
+      (item: { id: string }) => item.id === persistedReviewNotification.id
+    );
+    expect(visibleItem).toMatchObject({
+      title: "Você foi mencionado",
+      body: privateBody,
+      href: `/comunidade/publicacoes/${reviewPostId}?commentId=${reviewCommentId}`,
+      entityId: reviewCommentId,
+      parentEntityId: reviewPostId,
+    });
+    expect(visible.result.unreadCount).toBe(baseline.result.unreadCount + 1);
+    expect(visible.result.unseenCount).toBe(baseline.result.unseenCount + 1);
+
+    await queryDatabase("remove-membership", {
+      spaceId: privateGroup.id,
+      memberId,
+    });
+    const hidden = await recipientPage.evaluate(async () => {
+      const response = await fetch(
+        "/api/notifications?filter=MENTIONS&limit=50"
+      );
+      return { status: response.status, result: await response.json() };
+    });
+    expect(hidden.status).toBe(200);
+    expect(
+      hidden.result.items.some(
+        (item: { id: string }) => item.id === persistedReviewNotification.id
+      )
+    ).toBe(false);
+    expect(hidden.result.unreadCount).toBeLessThan(visible.result.unreadCount);
+    expect(hidden.result.unseenCount).toBeLessThan(visible.result.unseenCount);
+
+    const persistedAfterRevocation = await queryDatabase<{
+      id: string;
+      body: string | null;
+      href: string | null;
+      communitySpaceId: string | null;
+    } | null>("review-notification-evidence", {
+      notificationId: persistedReviewNotification.id,
+    });
+    expect(persistedAfterRevocation).toMatchObject({
+      id: persistedReviewNotification.id,
+      body: privateBody,
+      communitySpaceId: privateGroup.id,
+    });
+    expect(persistedAfterRevocation?.href).toContain(reviewCommentId);
+  } finally {
+    try {
+      await queryDatabase("delete-review-notification", {
+        dedupeKey: reviewNotificationDedupeKey,
+      });
+    } finally {
+      try {
+        await queryDatabase("remove-membership", {
+          spaceId: privateGroup.id,
+          memberId,
+        });
+      } finally {
+        await recipientContext?.close();
+      }
+    }
   }
 });

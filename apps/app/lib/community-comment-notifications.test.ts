@@ -25,13 +25,16 @@ const { databaseMock, enqueueNotificationBatchMock, state } = vi.hoisted(() => {
       findUnique: vi.fn(() =>
         state.privateSpace
           ? {
+              status: "PUBLISHED",
+              deletedAt: null,
               space: {
                 id: "space-private",
                 visibility: "PRIVATE",
                 ownerId: "member-owner",
+                status: "PUBLISHED",
               },
             }
-          : { space: null }
+          : { status: "PUBLISHED", deletedAt: null, space: null }
       ),
     },
     communitySpaceMember: {
@@ -170,6 +173,7 @@ describe("community comment notification outbox", () => {
         aggregateId: string;
         idempotencyKey: string;
         notifications: Array<{
+          communitySpaceId: string | null;
           dedupeKey: string;
           parentEntityId: string;
           recipientId: string;
@@ -189,6 +193,7 @@ describe("community comment notification outbox", () => {
         expect.objectContaining({
           recipientId: "member-mentioned",
           type: "MENTION",
+          communitySpaceId: null,
           dedupeKey: "MENTION:member-mentioned:comment-1",
           parentEntityId: "post-1",
         }),
@@ -211,7 +216,12 @@ describe("community comment notification outbox", () => {
 
     const [, event] = enqueueNotificationBatchMock.mock.calls[0] as unknown as [
       unknown,
-      { notifications: Array<{ recipientId: string }> },
+      {
+        notifications: Array<{
+          communitySpaceId: string | null;
+          recipientId: string;
+        }>;
+      },
     ];
     expect(event.notifications.map(({ recipientId }) => recipientId)).toEqual(
       expect.arrayContaining(["member-mentioned", "member-owner"])
@@ -219,6 +229,11 @@ describe("community comment notification outbox", () => {
     expect(
       event.notifications.map(({ recipientId }) => recipientId)
     ).not.toContain("member-follower");
+    expect(
+      event.notifications.every(
+        ({ communitySpaceId }) => communitySpaceId === "space-private"
+      )
+    ).toBe(true);
   });
 
   test.each([

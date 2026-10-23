@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import {
+  getNotificationSummary,
   getNotifications,
-  getUnreadNotificationCount,
-  getUnseenNotificationCount,
   type NotificationFilter,
 } from "@/lib/notifications";
 
@@ -31,8 +30,7 @@ export const GET = async (request: Request) => {
     const notifications = summaryOnly
       ? {
           items: [],
-          unreadCount: await getUnreadNotificationCount(userId),
-          unseenCount: await getUnseenNotificationCount(userId),
+          ...(await getNotificationSummary(userId)),
         }
       : await getNotifications(userId, {
           cursor: searchParams.get("cursor") ?? undefined,

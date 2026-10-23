@@ -262,6 +262,7 @@ export const inviteStudyGroupMembers = async (
           type: "GROUP_INVITATION",
           entityType: "COMMUNITY_INVITATION",
           entityId: id,
+          communitySpaceId: groupId,
           dedupeKey: `community-space-invitation:${id}`,
           groupKey: groupId,
           href: "/perfil#convites",

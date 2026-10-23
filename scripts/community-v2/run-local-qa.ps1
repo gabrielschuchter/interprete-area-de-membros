@@ -18,6 +18,10 @@ $qaRoot = Join-Path $env:LOCALAPPDATA "Codex\qa\community-v2-foundation-20261015
 $configPath = Join-Path $qaRoot "connection.dpapi"
 $ledgerPath = Join-Path $qaRoot "clerk-qa-ledger.json"
 $psqlPath = "C:\Users\gabsc\AppData\Local\Temp\interprete-pgtools-17.11-5\full-extract\bin\psql.exe"
+$psqlFallbackPath = "C:\Users\gabsc\AppData\Local\Temp\interprete-pgtools-17.11-5\full-runtime\pgsql\bin\psql.exe"
+if (!(Test-Path -LiteralPath $psqlPath) -and (Test-Path -LiteralPath $psqlFallbackPath)) {
+  $psqlPath = $psqlFallbackPath
+}
 if (!(Test-Path -LiteralPath $configPath) -or !(Test-Path -LiteralPath $ledgerPath)) {
   throw "The protected local QA configuration or existing Clerk QA ledger is unavailable."
 }
@@ -428,18 +432,30 @@ SELECT
 } finally {
   if ($restoreNotificationBroadcastTrigger) {
     try {
-      $triggerRestoreSql = switch ($notificationBroadcastTriggerOriginalState) {
-        "O" { 'ALTER TABLE public."Notification" ENABLE TRIGGER "Notification_broadcast_invalidation";' }
-        "D" { 'ALTER TABLE public."Notification" DISABLE TRIGGER "Notification_broadcast_invalidation";' }
-        "A" { 'ALTER TABLE public."Notification" ENABLE ALWAYS TRIGGER "Notification_broadcast_invalidation";' }
-        "R" { 'ALTER TABLE public."Notification" ENABLE REPLICA TRIGGER "Notification_broadcast_invalidation";' }
+      $restorePsqlPath = if (Test-Path -LiteralPath $psqlPath) {
+        $psqlPath
+      } elseif (Test-Path -LiteralPath $psqlFallbackPath) {
+        $psqlFallbackPath
+      } else {
+        $null
       }
-      & $psqlPath -X -v ON_ERROR_STOP=1 -c $triggerRestoreSql | Out-Null
-      if ($LASTEXITCODE -ne 0) {
+      if (!$restorePsqlPath) {
         $notificationTriggerRestoreFailed = $true
       }
       else {
-        Write-Output "Restored the isolated local Notification broadcast trigger to its original state ($notificationBroadcastTriggerOriginalState)."
+        $triggerRestoreSql = switch ($notificationBroadcastTriggerOriginalState) {
+          "O" { 'ALTER TABLE public."Notification" ENABLE TRIGGER "Notification_broadcast_invalidation";' }
+          "D" { 'ALTER TABLE public."Notification" DISABLE TRIGGER "Notification_broadcast_invalidation";' }
+          "A" { 'ALTER TABLE public."Notification" ENABLE ALWAYS TRIGGER "Notification_broadcast_invalidation";' }
+          "R" { 'ALTER TABLE public."Notification" ENABLE REPLICA TRIGGER "Notification_broadcast_invalidation";' }
+        }
+        & $restorePsqlPath -X -v ON_ERROR_STOP=1 -c $triggerRestoreSql | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+          $notificationTriggerRestoreFailed = $true
+        }
+        else {
+          Write-Output "Restored the isolated local Notification broadcast trigger to its original state ($notificationBroadcastTriggerOriginalState)."
+        }
       }
     } catch {
       $notificationTriggerRestoreFailed = $true
