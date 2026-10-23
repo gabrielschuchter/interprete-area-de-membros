@@ -138,11 +138,11 @@ const assertIsolatedQa = () => {
   };
 };
 
-const screenshot = async (page: Page, name: string) => {
+const screenshot = async (page: Page, name: string, fullPage = true) => {
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({
     path: resolve(outputDirectory, name),
-    fullPage: true,
+    fullPage,
     animations: "disabled",
     caret: "initial",
     style: "nextjs-portal { display: none !important; }",
@@ -708,7 +708,7 @@ test("convites V2 cobrem papéis, estados, links privados e outbox em QA isolado
     await staffPage.setViewportSize({ width: 1280, height: 960 });
     await staffPage.goto(`/comunidade/grupos/${staffGroup.slug}`);
     await openInvitations(staffPage);
-    await screenshot(staffPage, "community-invitation-dialog-1280.png");
+    await screenshot(staffPage, "community-invitation-dialog-1280.png", false);
     for (const width of [320, 360, 390, 768, 820, 1024, 1280, 1440]) {
       await staffPage.setViewportSize({
         width,
@@ -722,15 +722,33 @@ test("convites V2 cobrem papéis, estados, links privados e outbox em QA isolado
         `invitation dialog overflows at ${width}px`
       ).toBe(true);
       if (width === 390) {
-        await screenshot(staffPage, "community-invitation-sheet-390.png");
+        await staffPage.setViewportSize({ width: 390, height: 1200 });
+        await expect(
+          staffPage.getByRole("button", { name: "Compartilhar o link" })
+        ).toBeVisible();
+        await expect(
+          staffPage.getByRole("button", { name: "Enviar por e-mail" })
+        ).toBeVisible();
+        await expect(
+          staffPage.getByRole("button", { name: "Buscar pessoas" })
+        ).toBeVisible();
+        await screenshot(
+          staffPage,
+          "community-invitation-sheet-390.png",
+          false
+        );
       }
     }
-    await staffPage.getByRole("tab", { name: "E-mail" }).click();
+    await staffPage.setViewportSize({ width: 390, height: 844 });
+    await staffPage.getByRole("button", { name: "Enviar por e-mail" }).click();
     await expect(staffPage.getByText("E-mail indisponível")).toBeVisible();
     await expect(
       staffPage.getByText("Nenhuma mensagem será enviada")
     ).toBeVisible();
-    await staffPage.getByRole("tab", { name: "Link" }).click();
+    await staffPage
+      .getByRole("button", { name: "Compartilhar o link" })
+      .click();
+    await staffPage.setViewportSize({ width: 1280, height: 960 });
     await staffPage.getByRole("button", { name: "Criar link" }).click();
     const generatedLinkInput = staffPage.getByRole("textbox", {
       name: "Link de convite",

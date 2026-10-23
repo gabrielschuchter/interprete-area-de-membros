@@ -102,6 +102,22 @@ if (accounts.length < 2 || accounts.some((account) => !account.clerkUserId)) {
 if (
   ["groups", "invitations", "shares", "announcements", "full"].includes(
     process.env.COMMUNITY_QA_SUITE ?? ""
+  )
+) {
+  const resetRateLimits = await database.mutationRateLimit.deleteMany({
+    where: {
+      action: { startsWith: "community." },
+      memberId: { in: accounts.map(({ clerkUserId }) => clerkUserId) },
+    },
+  });
+  process.stdout.write(
+    `Cleared ${resetRateLimits.count} prior community mutation counters for isolated Clerk QA identities.\n`
+  );
+}
+
+if (
+  ["groups", "invitations", "shares", "announcements", "full"].includes(
+    process.env.COMMUNITY_QA_SUITE ?? ""
   ) &&
   ![
     process.env.COMMUNITY_QA_MEMBER_ID,

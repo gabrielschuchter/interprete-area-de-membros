@@ -1,5 +1,5 @@
 param(
-  [ValidateSet("full", "admin-recovery", "admin-pin", "member-recovery", "storage-cover", "discussion", "groups", "invitations", "shares", "announcements", "goal")]
+  [ValidateSet("full", "admin-recovery", "admin-pin", "member-recovery", "storage-cover", "discussion", "groups", "invitations", "shares", "announcements", "goal", "visual")]
   [string]$Suite = "full",
   [string]$RunId,
   [string]$TestFilter
@@ -381,13 +381,15 @@ SELECT
         "community-announcements"
       } elseif ($Suite -eq "goal") {
         "community-goal"
+      } elseif ($Suite -eq "visual") {
+        "community-visual-audit"
       } elseif ($Suite -eq "admin-recovery" -or $Suite -eq "admin-pin") {
         "community-admin-recovery"
       } else {
         "community-member-recovery"
       }
       $authProjects = @()
-      if ($Suite -eq "storage-cover") {
+      if ($Suite -in @("storage-cover", "visual")) {
         $authProjects += "--project=$project"
       } else {
         $authProjects = @(

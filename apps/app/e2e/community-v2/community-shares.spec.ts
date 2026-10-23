@@ -111,11 +111,11 @@ const assertIsolatedQa = () => {
   return { memberId, secondaryMemberId, teacherId, adminId, memberEmail };
 };
 
-const captureScreenshot = async (page: Page, name: string) => {
+const captureScreenshot = async (page: Page, name: string, fullPage = true) => {
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({
     path: resolve(outputDirectory, name),
-    fullPage: true,
+    fullPage,
     animations: "disabled",
     caret: "initial",
     style: "nextjs-portal { display: none !important; }",
@@ -254,9 +254,9 @@ test("compartilhamento V2 preserva permissões, prévia SSR, retorno Clerk e rev
     ).toBeVisible();
     const publicShare = await createShareFromUi(page);
     const publicToken = tokenFromUrl(publicShare.url);
-    await captureScreenshot(page, "community-shares-dialog-1440.png");
-    await page.setViewportSize({ width: 390, height: 844 });
-    await captureScreenshot(page, "community-shares-dialog-390.png");
+    await captureScreenshot(page, "community-shares-dialog-1440.png", false);
+    await page.setViewportSize({ width: 390, height: 1200 });
+    await captureScreenshot(page, "community-shares-dialog-390.png", false);
     await publicShare.dialog
       .getByRole("button", {
         name: "Fechar compartilhamento",
@@ -850,9 +850,13 @@ test("link público segue listado e revogável ao reabrir o diálogo", async ({
       createdLinksDialog.locator(`[data-share-link-id="${share.id}"]`)
     ).toBeVisible();
     await page.setViewportSize({ width: 1280, height: 900 });
-    await captureScreenshot(page, "community-shares-dialog-1280.png");
+    await captureScreenshot(page, "community-shares-dialog-1280.png", false);
     await page.setViewportSize({ width: 390, height: 844 });
-    await captureScreenshot(page, "community-shares-dialog-mobile-390.png");
+    await captureScreenshot(
+      page,
+      "community-shares-dialog-mobile-390.png",
+      false
+    );
     await createdLinksDialog
       .getByRole("button", { name: "Fechar compartilhamento" })
       .click();
