@@ -8,7 +8,11 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import "../cursos.css";
+import { buildCourseViewData } from "@/components/learning/cursos/course-data";
+import { CourseView } from "@/components/learning/cursos/course-view";
 import { LearningPageFrame } from "@/components/learning/learning-page-frame";
+import { env } from "@/env";
 import {
   getCourseExperience,
   getPublishedCourse,
@@ -19,7 +23,10 @@ export const dynamic = "force-dynamic";
 
 interface CoursePageProperties {
   readonly params: Promise<{ slug: string }>;
-  readonly searchParams?: Promise<{ readonly module?: string | string[] }>;
+  readonly searchParams?: Promise<{
+    readonly module?: string | string[];
+    readonly r?: string | string[];
+  }>;
 }
 
 const CoursePage = async ({ params, searchParams }: CoursePageProperties) => {
@@ -27,7 +34,10 @@ const CoursePage = async ({ params, searchParams }: CoursePageProperties) => {
     params,
     requireMemberId(),
     searchParams ??
-      Promise.resolve<{ readonly module?: string | string[] }>({}),
+      Promise.resolve<{
+        readonly module?: string | string[];
+        readonly r?: string | string[];
+      }>({}),
   ]);
   const courseExperience = await getCourseExperience(slug);
   if (courseExperience?.experience === "RECORDING_ARCHIVE") {
@@ -47,6 +57,16 @@ const CoursePage = async ({ params, searchParams }: CoursePageProperties) => {
   const nextLesson = lessons.find(
     (lesson) => !lesson.progress.some(({ status }) => status === "COMPLETED")
   );
+
+  if (env.ROOM_V2_ENABLED === "true") {
+    return (
+      <div className="flex min-h-svh flex-1 flex-col bg-background">
+        <main className="mx-auto flex w-full max-w-[1100px] flex-1 flex-col px-5 py-8 sm:px-8 sm:py-12 lg:px-12">
+          <CourseView data={buildCourseViewData(course, routeSearchParams.r)} />
+        </main>
+      </div>
+    );
+  }
 
   return (
     <LearningPageFrame

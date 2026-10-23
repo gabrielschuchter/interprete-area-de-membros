@@ -362,7 +362,7 @@ export const getRoomLesson = async ({
   const current = lessons.find(({ id }) => id === target.id);
   const base = {
     back: {
-      href: `/cursos/${encodeURIComponent(course.slug)}`,
+      href: `/cursos/${encodeURIComponent(course.slug)}?r=${encodeURIComponent(target.slug)}`,
       label: course.title,
     },
     completed: current?.completed ?? false,

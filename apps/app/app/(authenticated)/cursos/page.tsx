@@ -1,13 +1,17 @@
 import { tracePerformance } from "@repo/observability/performance";
+import "./cursos.css";
+import { CursosView } from "@/components/learning/cursos/cursos-view";
 import { LearningCatalog } from "@/components/learning/learning-catalog";
 import type { LearningRailCard } from "@/components/learning/learning-content-rail";
 import { LearningPageFrame } from "@/components/learning/learning-page-frame";
+import { env } from "@/env";
 import { requireOnboardedMemberId } from "@/lib/authorization";
 import {
   collectionItemHref,
   collectionItemLabel,
   getPublishedCollectionsForMember,
 } from "@/lib/content-collections";
+import { getCursosResume } from "@/lib/cursos-resume";
 import {
   getMemberCourseProgress,
   getPublishedLearningPaths,
@@ -20,6 +24,8 @@ import { getMemberContinueWatching } from "@/lib/recordings";
 import { resolveStudentFeed } from "@/lib/student-feed";
 
 export const dynamic = "force-dynamic";
+
+const cursosV2Enabled = () => env.ROOM_V2_ENABLED === "true";
 
 const formatDate = (value: Date | null) =>
   value
@@ -158,6 +164,22 @@ const toCollectionCard = (
   };
 };
 
+const EmptyState = () => (
+  <section aria-labelledby="learning-empty-title" className="border-y py-12">
+    <p className="brand-eyebrow">O próximo capítulo será seu</p>
+    <h2
+      className="mt-3 max-w-2xl font-display text-3xl leading-tight sm:text-4xl"
+      id="learning-empty-title"
+    >
+      Ainda não há conteúdo liberado para esta conta.
+    </h2>
+    <p className="mt-4 max-w-2xl text-muted-foreground leading-7">
+      Quando uma trilha ou curso for liberado ou um professor enviar conteúdo,
+      ele aparecerá aqui automaticamente.
+    </p>
+  </section>
+);
+
 const LearnPage = async () => {
   const memberId = await requireOnboardedMemberId();
   const feedAt = new Date();
@@ -167,6 +189,7 @@ const LearnPage = async () => {
     feedActivities,
     continueData,
     bookmarkKeys,
+    resume,
   ] = await tracePerformance("member.route.learn.primary-data", () => {
     const pathsPromise = getPublishedLearningPaths(memberId);
     const standaloneCoursesPromise = getPublishedStandaloneCourses(memberId);
@@ -212,6 +235,7 @@ const LearnPage = async () => {
       resolveStudentFeed(memberId, feedAt),
       getMemberContinueWatching(memberId),
       getMemberLearningBookmarkKeys(memberId),
+      cursosV2Enabled() ? getCursosResume(memberId) : Promise.resolve(null),
     ]);
   });
   const { collections, courseProgressById, paths, standaloneCourses } =
@@ -390,6 +414,54 @@ const LearnPage = async () => {
     courseCards.length > 0 ||
     collectionRails.some((rail) => rail.cards.length > 0);
 
+  if (cursosV2Enabled()) {
+    const lessonCountById = new Map(
+      [...paths.flatMap((path) => path.courses), ...standaloneCourses].map(
+        (course) => [course.id, course.progress.totalLessons] as const
+      )
+    );
+    const trails = pathRails.map((rail) => ({
+      courseIds: rail.cards.map((card) => card.bookmark.targetId),
+      description: rail.description,
+      id: rail.headingId,
+      title: rail.title,
+    }));
+    const trailByCourse = new Map(
+      trails.flatMap((trail) =>
+        trail.courseIds.map((courseId) => [courseId, trail.id] as const)
+      )
+    );
+    return (
+      <LearningPageFrame
+        description="Suas aulas, cursos, trilhas e gravações."
+        eyebrow="Estudar · Cursos"
+        title="Cursos"
+        variant="catalog"
+      >
+        <CursosView
+          assigned={[...assignmentCards, ...activityCards]}
+          courses={courseCards.map((card) => ({
+            ...card,
+            id: card.bookmark.targetId,
+            lessonCount: lessonCountById.get(card.bookmark.targetId) ?? 0,
+            trailId: trailByCourse.get(card.bookmark.targetId) ?? null,
+          }))}
+          rails={[
+            {
+              cards: resumeCards,
+              headingId: "resume-learning-title",
+              title: "Continue assistindo",
+            },
+            ...collectionRails,
+          ]}
+          resume={resume}
+          trails={trails}
+        />
+        {!hasContent && <EmptyState />}
+      </LearningPageFrame>
+    );
+  }
+
   return (
     <LearningPageFrame
       description="Suas aulas, cursos, trilhas e gravações."
@@ -431,24 +503,7 @@ const LearnPage = async () => {
         {collectionRails.map((rail) => (
           <LearningCatalog key={rail.headingId} {...rail} />
         ))}
-        {!hasContent && (
-          <section
-            aria-labelledby="learning-empty-title"
-            className="border-y py-12"
-          >
-            <p className="brand-eyebrow">O próximo capítulo será seu</p>
-            <h2
-              className="mt-3 max-w-2xl font-display text-3xl leading-tight sm:text-4xl"
-              id="learning-empty-title"
-            >
-              Ainda não há conteúdo liberado para esta conta.
-            </h2>
-            <p className="mt-4 max-w-2xl text-muted-foreground leading-7">
-              Quando uma trilha ou curso for liberado ou um professor enviar
-              conteúdo, ele aparecerá aqui automaticamente.
-            </p>
-          </section>
-        )}
+        {!hasContent && <EmptyState />}
       </div>
     </LearningPageFrame>
   );
