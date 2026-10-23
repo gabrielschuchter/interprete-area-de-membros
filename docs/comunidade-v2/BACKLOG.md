@@ -1,5 +1,20 @@
 # Comunidade V2 — backlog operacional
 
+## Fechamento do preflight 12A — 23/10/2026
+
+**NO-GO; 12A encerrada, publicação 12B não iniciada.** OPS-01 foi investigado:
+48 schedules falharam, nenhum teve sucesso; causa exata ainda não identificada.
+Cron GREEN preservado por hash, ativo e com respostas HTTP 200; essa prova não
+substitui recovery V2, Broadcast ou badge. Ações exatas e demais bloqueadores
+concentrados em [RELEASE-PLAN.md](RELEASE-PLAN.md).
+
+RV-04/convites: consulta atual com zero PENDING e zero reclassificações; resolvido
+no snapshot, recontar sob freeze. Proveniência de dois posts publicados, grant
+SELECT de Notification, acesso Vercel 403, recuperação completa/fallback e provas
+remotas dependentes do schema continuam bloqueando a publicação. Nenhum novo
+projeto foi aberto por warnings. O registro de 15/10 abaixo é histórico.
+
+
 Atualizado em 2026-10-15. Itens aqui são gates específicos, não bloqueios globais do produto.
 
 ## OPS-01 — recuperação periódica Preview e Broadcast/badge

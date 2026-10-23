@@ -1,0 +1,727 @@
+{
+  "stage": "12A",
+  "decision": "NO-GO",
+  "closedAt": "2026-10-23T19:20:03.682Z",
+  "sourceSha": "4e026b59eb99521ed1c6b94c8444a52049d317c6",
+  "branch": "codex/comunidade-v2",
+  "readOnlyRemote": true,
+  "productionPublished": false,
+  "db": {
+    "checkedAt": "2026-10-23T19:14:47.775Z",
+    "connection": {
+      "project": "qffqhilydtnrggbcnogh",
+      "host": "aws-0-sa-east-1.pooler.supabase.com",
+      "port": "5432",
+      "tlsVerified": true
+    },
+    "version": "17.11",
+    "appliedMigrations": 65,
+    "lastMigration": {
+      "migration_name": "20261014125527_course_open_access_constraint",
+      "checksum": "5fa3e7a5e7b0cb6e12e474587bfb464a9e1790da539da5be4d2177fac3e9cd7a",
+      "finished_at": "2026-10-14T17:33:25.531Z",
+      "rolled_back_at": null
+    },
+    "incomplete": 0,
+    "checksumDrift": [],
+    "pendingCount": 11,
+    "domainTables": 104,
+    "rlsEnabled": 104,
+    "notification": {
+      "relname": "Notification",
+      "relrowsecurity": true,
+      "bytes": "147456",
+      "anon_select": false,
+      "authenticated_select": true
+    },
+    "notificationPolicy": {
+      "schemaname": "public",
+      "tablename": "Notification",
+      "policyname": "Notification recipient can read own rows",
+      "roles": "{authenticated}",
+      "cmd": "SELECT",
+      "qual": "((auth.jwt() ->> 'sub'::text) = \"memberId\")",
+      "with_check": null
+    },
+    "triggers": [
+      {
+        "relname": "Notification",
+        "tgname": "Notification_broadcast_invalidation",
+        "tgenabled": "O",
+        "definition": "CREATE TRIGGER \"Notification_broadcast_invalidation\" AFTER INSERT OR DELETE OR UPDATE ON public.\"Notification\" FOR EACH ROW EXECUTE FUNCTION broadcast_notification_invalidation()"
+      }
+    ],
+    "tableCounts": [
+      {
+        "name": "CommunityPost",
+        "count": 31
+      },
+      {
+        "name": "CommunitySpace",
+        "count": 2
+      },
+      {
+        "name": "CommunitySpaceMember",
+        "count": 3
+      },
+      {
+        "name": "Notification",
+        "count": 23
+      },
+      {
+        "name": "BadgeAward",
+        "count": 1
+      },
+      {
+        "name": "BadgeEvaluationState",
+        "count": 2
+      }
+    ],
+    "invitationPreflight": [
+      {
+        "pending": 0,
+        "would_revoke": 0
+      }
+    ],
+    "pinConflicts": [
+      {
+        "conflicting_scopes": 0
+      }
+    ],
+    "postSpaceOrphans": [
+      {
+        "post_space_orphans": 0
+      }
+    ],
+    "posts": [
+      {
+        "status": "DRAFT",
+        "null_space": true,
+        "count": 8,
+        "pinned": 0
+      },
+      {
+        "status": "PUBLISHED",
+        "null_space": true,
+        "count": 2,
+        "pinned": 0
+      },
+      {
+        "status": "ARCHIVED",
+        "null_space": true,
+        "count": 18,
+        "pinned": 0
+      },
+      {
+        "status": "ARCHIVED",
+        "null_space": false,
+        "count": 3,
+        "pinned": 0
+      }
+    ],
+    "locks": [
+      {
+        "mode": "AccessShareLock",
+        "granted": true,
+        "count": 2
+      }
+    ],
+    "outbox": [
+      {
+        "consumerKey": "notifications.create.v1",
+        "status": "SUCCEEDED",
+        "count": 2,
+        "oldest": "2026-10-09T06:06:33.503Z",
+        "latest": "2026-10-15T01:57:50.591Z"
+      },
+      {
+        "consumerKey": "preview.notifications.create.v1",
+        "status": "SUCCEEDED",
+        "count": 1,
+        "oldest": "2026-10-16T00:35:27.989Z",
+        "latest": "2026-10-16T00:35:40.965Z"
+      }
+    ],
+    "eligibleOutbox": [],
+    "cron": {
+      "jobs": [
+        {
+          "jobid": "1",
+          "jobname": "interprete-member-outbox",
+          "schedule": "*/5 * * * *",
+          "active": true,
+          "command_md5": "6f2df49714a946c8eb52c9d392d0d72c",
+          "targets_interprete": true,
+          "targets_outbox": false,
+          "mentions_preview": false
+        }
+      ],
+      "commandHashes": [
+        {
+          "jobid": "1",
+          "sha256": "7723899ba5ac9abc17d19be253de93a4ce1253c07730f572ec43f9d8a1101290"
+        }
+      ],
+      "target": [
+        "https://interprete-area-de-membros-api.vercel.app/cron/outbox"
+      ],
+      "runs24Hours": [
+        {
+          "jobid": "1",
+          "status": "succeeded",
+          "count": 288,
+          "earliest": "2026-10-22T19:15:00.137Z",
+          "latest": "2026-10-23T19:10:00.084Z"
+        }
+      ],
+      "httpResponsesRetention": [
+        {
+          "status_code": 200,
+          "timed_out": false,
+          "count": 72,
+          "earliest": "2026-10-23T13:15:00.136Z",
+          "latest": "2026-10-23T19:10:00.099Z"
+        }
+      ],
+      "baselineCommandUnchanged": true
+    },
+    "storage": {
+      "buckets": [
+        {
+          "id": "learning-assets",
+          "public": false,
+          "file_size_limit": "52428800",
+          "allowed_mime_types": [
+            "application/pdf",
+            "image/jpeg",
+            "image/png",
+            "image/webp",
+            "text/plain",
+            "application/vnd.apple.mpegurl",
+            "video/mp4",
+            "video/webm"
+          ]
+        }
+      ],
+      "inventory": [
+        {
+          "bucket_id": "learning-assets",
+          "count": 4,
+          "bytes": "11092"
+        }
+      ]
+    }
+  },
+  "external": {
+    "checkedAt": "2026-10-23T19:12:10.285Z",
+    "scheduler": {
+      "total": 48,
+      "successes": 0,
+      "failures": 48,
+      "runs": [
+        {
+          "id": 39982199840,
+          "createdAt": "2026-10-23T15:53:53Z",
+          "conclusion": "failure",
+          "sha": "90aa250e3d50a077df013edec38f90ce3e828316",
+          "url": "https://github.com/gabrielschuchter/interprete-area-de-membros/actions/runs/39982199840"
+        },
+        {
+          "id": 39946517224,
+          "createdAt": "2026-10-23T11:30:11Z",
+          "conclusion": "failure",
+          "sha": "90aa250e3d50a077df013edec38f90ce3e828316",
+          "url": "https://github.com/gabrielschuchter/interprete-area-de-membros/actions/runs/39946517224"
+        },
+        {
+          "id": 39908818699,
+          "createdAt": "2026-10-23T05:59:27Z",
+          "conclusion": "failure",
+          "sha": "90aa250e3d50a077df013edec38f90ce3e828316",
+          "url": "https://github.com/gabrielschuchter/interprete-area-de-membros/actions/runs/39908818699"
+        },
+        {
+          "id": 39881607621,
+          "createdAt": "2026-10-23T01:01:37Z",
+          "conclusion": "failure",
+          "sha": "90aa250e3d50a077df013edec38f90ce3e828316",
+          "url": "https://github.com/gabrielschuchter/interprete-area-de-membros/actions/runs/39881607621"
+        },
+        {
+          "id": 39867080366,
+          "createdAt": "2026-10-22T22:44:10Z",
+          "conclusion": "failure",
+          "sha": "90aa250e3d50a077df013edec38f90ce3e828316",
+          "url": "https://github.com/gabrielschuchter/interprete-area-de-membros/actions/runs/39867080366"
+        },
+        {
+          "id": 39840969234,
+          "createdAt": "2026-10-22T19:32:19Z",
+          "conclusion": "failure",
+          "sha": "90aa250e3d50a077df013edec38f90ce3e828316",
+          "url": "https://github.com/gabrielschuchter/interprete-area-de-membros/actions/runs/39840969234"
+        },
+        {
+          "id": 39806873562,
+          "createdAt": "2026-10-22T15:39:25Z",
+          "conclusion": "failure",
+          "sha": "90aa250e3d50a077df013edec38f90ce3e828316",
+          "url": "https://github.com/gabrielschuchter/interprete-area-de-membros/actions/runs/39806873562"
+        },
+        {
+          "id": 39764219940,
+          "createdAt": "2026-10-22T10:35:18Z",
+          "conclusion": "failure",
+          "sha": "90aa250e3d50a077df013edec38f90ce3e828316",
+          "url": "https://github.com/gabrielschuchter/interprete-area-de-membros/actions/runs/39764219940"
+        },
+        {
+          "id": 39728335149,
+          "createdAt": "2026-10-22T05:29:42Z",
+          "conclusion": "failure",
+          "sha": "90aa250e3d50a077df013edec38f90ce3e828316",
+          "url": "https://github.com/gabrielschuchter/interprete-area-de-membros/actions/runs/39728335149"
+        },
+        {
+          "id": 39701567309,
+          "createdAt": "2026-10-22T00:45:08Z",
+          "conclusion": "failure",
+          "sha": "90aa250e3d50a077df013edec38f90ce3e828316",
+          "url": "https://github.com/gabrielschuchter/interprete-area-de-membros/actions/runs/39701567309"
+        },
+        {
+          "id": 39685313461,
+          "createdAt": "2026-10-21T22:16:43Z",
+          "conclusion": "failure",
+          "sha": "90aa250e3d50a077df013edec38f90ce3e828316",
+          "url": "https://github.com/gabrielschuchter/interprete-area-de-membros/actions/runs/39685313461"
+        },
+        {
+          "id": 39657579663,
+          "createdAt": "2026-10-21T18:58:56Z",
+          "conclusion": "failure",
+          "sha": "90aa250e3d50a077df013edec38f90ce3e828316",
+          "url": "https://github.com/gabrielschuchter/interprete-area-de-membros/actions/runs/39657579663"
+        },
+        {
+          "id": 39619178378,
+          "createdAt": "2026-10-21T14:42:20Z",
+          "conclusion": "failure",
+          "sha": "90aa250e3d50a077df013edec38f90ce3e828316",
+          "url": "https://github.com/gabrielschuchter/interprete-area-de-membros/actions/runs/39619178378"
+        },
+        {
+          "id": 39578999515,
+          "createdAt": "2026-10-21T09:42:11Z",
+          "conclusion": "failure",
+          "sha": "90aa250e3d50a077df013edec38f90ce3e828316",
+          "url": "https://github.com/gabrielschuchter/interprete-area-de-membros/actions/runs/39578999515"
+        },
+        {
+          "id": 39545783271,
+          "createdAt": "2026-10-21T04:45:28Z",
+          "conclusion": "failure",
+          "sha": "90aa250e3d50a077df013edec38f90ce3e828316",
+          "url": "https://github.com/gabrielschuchter/interprete-area-de-membros/actions/runs/39545783271"
+        },
+        {
+          "id": 39519344022,
+          "createdAt": "2026-10-21T00:07:12Z",
+          "conclusion": "failure",
+          "sha": "90aa250e3d50a077df013edec38f90ce3e828316",
+          "url": "https://github.com/gabrielschuchter/interprete-area-de-membros/actions/runs/39519344022"
+        },
+        {
+          "id": 39501264192,
+          "createdAt": "2026-10-20T21:33:01Z",
+          "conclusion": "failure",
+          "sha": "90aa250e3d50a077df013edec38f90ce3e828316",
+          "url": "https://github.com/gabrielschuchter/interprete-area-de-membros/actions/runs/39501264192"
+        },
+        {
+          "id": 39471037861,
+          "createdAt": "2026-10-20T18:00:50Z",
+          "conclusion": "failure",
+          "sha": "90aa250e3d50a077df013edec38f90ce3e828316",
+          "url": "https://github.com/gabrielschuchter/interprete-area-de-membros/actions/runs/39471037861"
+        },
+        {
+          "id": 39428294973,
+          "createdAt": "2026-10-20T13:11:29Z",
+          "conclusion": "failure",
+          "sha": "90aa250e3d50a077df013edec38f90ce3e828316",
+          "url": "https://github.com/gabrielschuchter/interprete-area-de-membros/actions/runs/39428294973"
+        },
+        {
+          "id": 39389177773,
+          "createdAt": "2026-10-20T07:50:19Z",
+          "conclusion": "failure",
+          "sha": "90aa250e3d50a077df013edec38f90ce3e828316",
+          "url": "https://github.com/gabrielschuchter/interprete-area-de-membros/actions/runs/39389177773"
+        },
+        {
+          "id": 39358541922,
+          "createdAt": "2026-10-20T02:22:20Z",
+          "conclusion": "failure",
+          "sha": "90aa250e3d50a077df013edec38f90ce3e828316",
+          "url": "https://github.com/gabrielschuchter/interprete-area-de-membros/actions/runs/39358541922"
+        },
+        {
+          "id": 39343813339,
+          "createdAt": "2026-10-19T23:48:19Z",
+          "conclusion": "failure",
+          "sha": "90aa250e3d50a077df013edec38f90ce3e828316",
+          "url": "https://github.com/gabrielschuchter/interprete-area-de-membros/actions/runs/39343813339"
+        },
+        {
+          "id": 39317782582,
+          "createdAt": "2026-10-19T20:15:22Z",
+          "conclusion": "failure",
+          "sha": "90aa250e3d50a077df013edec38f90ce3e828316",
+          "url": "https://github.com/gabrielschuchter/interprete-area-de-membros/actions/runs/39317782582"
+        },
+        {
+          "id": 39272012521,
+          "createdAt": "2026-10-19T14:46:39Z",
+          "conclusion": "failure",
+          "sha": "90aa250e3d50a077df013edec38f90ce3e828316",
+          "url": "https://github.com/gabrielschuchter/interprete-area-de-membros/actions/runs/39272012521"
+        },
+        {
+          "id": 39214833921,
+          "createdAt": "2026-10-19T07:15:33Z",
+          "conclusion": "failure",
+          "sha": "90aa250e3d50a077df013edec38f90ce3e828316",
+          "url": "https://github.com/gabrielschuchter/interprete-area-de-membros/actions/runs/39214833921"
+        },
+        {
+          "id": 39187234699,
+          "createdAt": "2026-10-19T01:51:21Z",
+          "conclusion": "failure",
+          "sha": "90aa250e3d50a077df013edec38f90ce3e828316",
+          "url": "https://github.com/gabrielschuchter/interprete-area-de-membros/actions/runs/39187234699"
+        },
+        {
+          "id": 39177760836,
+          "createdAt": "2026-10-18T23:44:16Z",
+          "conclusion": "failure",
+          "sha": "90aa250e3d50a077df013edec38f90ce3e828316",
+          "url": "https://github.com/gabrielschuchter/interprete-area-de-membros/actions/runs/39177760836"
+        },
+        {
+          "id": 39169298154,
+          "createdAt": "2026-10-18T21:46:19Z",
+          "conclusion": "failure",
+          "sha": "90aa250e3d50a077df013edec38f90ce3e828316",
+          "url": "https://github.com/gabrielschuchter/interprete-area-de-membros/actions/runs/39169298154"
+        },
+        {
+          "id": 39158829222,
+          "createdAt": "2026-10-18T19:27:11Z",
+          "conclusion": "failure",
+          "sha": "90aa250e3d50a077df013edec38f90ce3e828316",
+          "url": "https://github.com/gabrielschuchter/interprete-area-de-membros/actions/runs/39158829222"
+        },
+        {
+          "id": 39148383671,
+          "createdAt": "2026-10-18T17:10:54Z",
+          "conclusion": "failure",
+          "sha": "90aa250e3d50a077df013edec38f90ce3e828316",
+          "url": "https://github.com/gabrielschuchter/interprete-area-de-membros/actions/runs/39148383671"
+        },
+        {
+          "id": 39133622137,
+          "createdAt": "2026-10-18T13:54:40Z",
+          "conclusion": "failure",
+          "sha": "90aa250e3d50a077df013edec38f90ce3e828316",
+          "url": "https://github.com/gabrielschuchter/interprete-area-de-membros/actions/runs/39133622137"
+        },
+        {
+          "id": 39117294308,
+          "createdAt": "2026-10-18T09:56:25Z",
+          "conclusion": "failure",
+          "sha": "90aa250e3d50a077df013edec38f90ce3e828316",
+          "url": "https://github.com/gabrielschuchter/interprete-area-de-membros/actions/runs/39117294308"
+        },
+        {
+          "id": 39101556888,
+          "createdAt": "2026-10-18T05:43:57Z",
+          "conclusion": "failure",
+          "sha": "90aa250e3d50a077df013edec38f90ce3e828316",
+          "url": "https://github.com/gabrielschuchter/interprete-area-de-membros/actions/runs/39101556888"
+        },
+        {
+          "id": 39084664290,
+          "createdAt": "2026-10-18T00:57:09Z",
+          "conclusion": "failure",
+          "sha": "90aa250e3d50a077df013edec38f90ce3e828316",
+          "url": "https://github.com/gabrielschuchter/interprete-area-de-membros/actions/runs/39084664290"
+        },
+        {
+          "id": 39077396112,
+          "createdAt": "2026-10-17T23:01:32Z",
+          "conclusion": "failure",
+          "sha": "90aa250e3d50a077df013edec38f90ce3e828316",
+          "url": "https://github.com/gabrielschuchter/interprete-area-de-membros/actions/runs/39077396112"
+        },
+        {
+          "id": 39068912800,
+          "createdAt": "2026-10-17T20:57:50Z",
+          "conclusion": "failure",
+          "sha": "90aa250e3d50a077df013edec38f90ce3e828316",
+          "url": "https://github.com/gabrielschuchter/interprete-area-de-membros/actions/runs/39068912800"
+        },
+        {
+          "id": 39058777964,
+          "createdAt": "2026-10-17T18:35:33Z",
+          "conclusion": "failure",
+          "sha": "90aa250e3d50a077df013edec38f90ce3e828316",
+          "url": "https://github.com/gabrielschuchter/interprete-area-de-membros/actions/runs/39058777964"
+        },
+        {
+          "id": 39048621787,
+          "createdAt": "2026-10-17T16:15:32Z",
+          "conclusion": "failure",
+          "sha": "90aa250e3d50a077df013edec38f90ce3e828316",
+          "url": "https://github.com/gabrielschuchter/interprete-area-de-membros/actions/runs/39048621787"
+        },
+        {
+          "id": 39034421248,
+          "createdAt": "2026-10-17T12:54:54Z",
+          "conclusion": "failure",
+          "sha": "90aa250e3d50a077df013edec38f90ce3e828316",
+          "url": "https://github.com/gabrielschuchter/interprete-area-de-membros/actions/runs/39034421248"
+        },
+        {
+          "id": 39019513340,
+          "createdAt": "2026-10-17T09:00:56Z",
+          "conclusion": "failure",
+          "sha": "90aa250e3d50a077df013edec38f90ce3e828316",
+          "url": "https://github.com/gabrielschuchter/interprete-area-de-membros/actions/runs/39019513340"
+        },
+        {
+          "id": 39004175492,
+          "createdAt": "2026-10-17T04:52:13Z",
+          "conclusion": "failure",
+          "sha": "90aa250e3d50a077df013edec38f90ce3e828316",
+          "url": "https://github.com/gabrielschuchter/interprete-area-de-membros/actions/runs/39004175492"
+        },
+        {
+          "id": 38986208154,
+          "createdAt": "2026-10-17T00:24:16Z",
+          "conclusion": "failure",
+          "sha": "90aa250e3d50a077df013edec38f90ce3e828316",
+          "url": "https://github.com/gabrielschuchter/interprete-area-de-membros/actions/runs/38986208154"
+        },
+        {
+          "id": 38973263746,
+          "createdAt": "2026-10-16T22:02:11Z",
+          "conclusion": "failure",
+          "sha": "90aa250e3d50a077df013edec38f90ce3e828316",
+          "url": "https://github.com/gabrielschuchter/interprete-area-de-membros/actions/runs/38973263746"
+        },
+        {
+          "id": 38951618672,
+          "createdAt": "2026-10-16T19:00:03Z",
+          "conclusion": "failure",
+          "sha": "90aa250e3d50a077df013edec38f90ce3e828316",
+          "url": "https://github.com/gabrielschuchter/interprete-area-de-membros/actions/runs/38951618672"
+        },
+        {
+          "id": 38924754259,
+          "createdAt": "2026-10-16T15:32:21Z",
+          "conclusion": "failure",
+          "sha": "90aa250e3d50a077df013edec38f90ce3e828316",
+          "url": "https://github.com/gabrielschuchter/interprete-area-de-membros/actions/runs/38924754259"
+        },
+        {
+          "id": 38894656803,
+          "createdAt": "2026-10-16T11:34:20Z",
+          "conclusion": "failure",
+          "sha": "90aa250e3d50a077df013edec38f90ce3e828316",
+          "url": "https://github.com/gabrielschuchter/interprete-area-de-membros/actions/runs/38894656803"
+        },
+        {
+          "id": 38859886724,
+          "createdAt": "2026-10-16T06:12:17Z",
+          "conclusion": "failure",
+          "sha": "90aa250e3d50a077df013edec38f90ce3e828316",
+          "url": "https://github.com/gabrielschuchter/interprete-area-de-membros/actions/runs/38859886724"
+        },
+        {
+          "id": 38834885200,
+          "createdAt": "2026-10-16T01:23:48Z",
+          "conclusion": "failure",
+          "sha": "90aa250e3d50a077df013edec38f90ce3e828316",
+          "url": "https://github.com/gabrielschuchter/interprete-area-de-membros/actions/runs/38834885200"
+        }
+      ]
+    },
+    "workflow": {
+      "sha": "9b034ef9aba7396520a7fce9fc12029c434f221c",
+      "contentHash": "f0ff183a90bd756a534b833602a69591cf15ad980180ac53e1367d1c275ed4b4",
+      "schedule": "cron: \"3-58/5 * * * *\"",
+      "hasDispatch": false,
+      "host": "interprete-area-de-membro-git-afba70-gabrielschuchters-projects.vercel.app",
+      "recordsHttpStatusBefore200Assertion": false
+    },
+    "environment": {
+      "name": "community-v2-preview",
+      "branchPolicies": [
+        {
+          "name": "main",
+          "type": "branch"
+        }
+      ],
+      "secretMetadata": [
+        {
+          "name": "PREVIEW_OUTBOX_CRON_SECRET",
+          "created_at": "2026-10-15T23:03:40Z",
+          "updated_at": "2026-10-15T23:03:40Z"
+        }
+      ]
+    },
+    "commitStatuses": [
+      {
+        "context": "Vercel – interprete-area-de-membros-app",
+        "state": "success",
+        "url": "https://vercel.com/gabrielschuchters-projects/interprete-area-de-membros-app/3kaVAqqXeRaN5a1CMLPc4gDX1apd",
+        "updatedAt": "2026-10-23T18:59:02Z"
+      },
+      {
+        "context": "Vercel – interprete-area-de-membros-api",
+        "state": "success",
+        "url": "https://vercel.com/gabrielschuchters-projects/interprete-area-de-membros-api/EAUZyrL9ov5M3m5qui6BQzfBrw1X",
+        "updatedAt": "2026-10-23T18:59:12Z"
+      }
+    ],
+    "http": [
+      {
+        "name": "app",
+        "url": "https://interprete-area-de-membro-git-553be9-gabrielschuchters-projects.vercel.app/",
+        "status": 302,
+        "location": "https://vercel.com/sso-api",
+        "contentType": "text/plain",
+        "cache": "no-store, max-age=0",
+        "milliseconds": 802
+      },
+      {
+        "name": "api",
+        "url": "https://interprete-area-de-membro-git-afba70-gabrielschuchters-projects.vercel.app/",
+        "status": 302,
+        "location": "https://vercel.com/sso-api",
+        "contentType": "text/plain",
+        "cache": "no-store, max-age=0",
+        "milliseconds": 375
+      },
+      {
+        "name": "crawler",
+        "url": "https://interprete-area-de-membro-git-553be9-gabrielschuchters-projects.vercel.app/comunidade/compartilhar/preflight-invalid-token",
+        "status": 302,
+        "location": "https://vercel.com/sso-api",
+        "contentType": "text/plain",
+        "cache": "no-store, max-age=0",
+        "milliseconds": 260
+      }
+    ],
+    "vercelManagement": {
+      "result": "403 forbidden / Not authorized",
+      "tls": "Node system CA enabled; validation never disabled",
+      "currentEnvAndTrustedSourceVerified": false
+    },
+    "connectors": {
+      "supabase": "MCP tool is not available to the model",
+      "vercel": "MCP tool is not available to the model"
+    }
+  },
+  "backups": {
+    "checkedAt": "2026-10-23T19:11:20.972Z",
+    "historicalDatabase": {
+      "createdAt": "2026-10-15T14:56:51.137Z",
+      "encryptedHashVerified": true,
+      "decryptedHashVerified": true,
+      "payloadBytes": 570525,
+      "pgRestoreList": true,
+      "dataDecoded": true,
+      "migrationLedgerEntries": 65,
+      "entries": 1104
+    },
+    "historicalRestore": {
+      "restored": true,
+      "archivePayloadSha256": "a8b5c805dea10193e5c790a2d904fbaff9380b479f0cb4c52cfac7685c268cf0",
+      "matchedTables": 106,
+      "matchedRows": 1486,
+      "matchedAppliedMigrations": 65,
+      "rls": {
+        "total": 104,
+        "protected": 104
+      },
+      "tls": {
+        "ssl": true,
+        "version": "TLSv1.3",
+        "cipher": "TLS_AES_256_GCM_SHA384"
+      },
+      "originalAclRestored": true,
+      "archivedOwnerRemapped": true,
+      "cloudWrites": false,
+      "platformPrerequisite": "auth.jwt from official Supabase Auth migration; Realtime service not started"
+    },
+    "historicalStorage": {
+      "encryptedHashVerified": true,
+      "objectCount": 4,
+      "bytes": 11092,
+      "decoderRecovered": false,
+      "note": "Generic decode did not authenticate the undocumented envelope; no corruption conclusion. Fresh documented snapshot created."
+    },
+    "fresh": {
+      "storage": {
+        "artifact": "C:\\Users\\gabsc\\AppData\\Local\\Codex\\migrations\\interprete-supabase/green-12a-storage-20261023T191322502Z.dpapi",
+        "format": "INTERPRETE-12A-STORAGE-SNAPSHOT-V1",
+        "objects": 4,
+        "bytes": 11092,
+        "roundTripAllHashes": true,
+        "download": "authenticated service GET only; no remote writes",
+        "encryptedHash": "30b7d1357f8d90c1e9eec5a8d9f8669b4c3a0820bce785818a00481a006ce5c6"
+      },
+      "database": {
+        "artifact": "C:\\Users\\gabsc\\AppData\\Local\\Codex\\migrations\\interprete-supabase/green-12a-database-20261023T191322502Z.dpapi",
+        "format": "INTERPRETE-12A-DATABASE-SNAPSHOT-V1",
+        "payloadSha256": "2784de6c5b2620434e7fe2b81cf75367b39d80554b466bfa620d132da88ee113",
+        "payloadBytes": 573006,
+        "encryptedHash": "49e8c72c24327669984f723912dfca6d2e02ca29b25eabf460caf6aa0724b585",
+        "pgRestoreList": true,
+        "dataDecoded": true,
+        "ledgerEntries": 65,
+        "readOnly": true,
+        "tls": "verify-full"
+      },
+      "localAcl": "CurrentUser and SYSTEM",
+      "limits": [
+        "Same-profile DPAPI recovery only",
+        "No Supabase Storage rehydration performed",
+        "New archive not restored into a database; historical same-schema restore reused",
+        "Database and Storage snapshots are sequential without write freeze; refresh under coordinated maintenance in 12B"
+      ]
+    }
+  },
+  "checks": {
+    "reused": "Etapa 10 and post-audit local gates; RV-01 closure 3/3",
+    "runtimeCodeChanged": false,
+    "fullSuitesRepeated": false,
+    "graphUpdated": false,
+    "graphReason": "Only release documentation/evidence changed; no product code changed",
+    "protectedSpecGitHash": "43bb75e8482c3638840cbfa760a91e01927ed770"
+  },
+  "privateReproduction": {
+    "tool": "C:/Users/gabsc/AppData/Local/Codex/qa/community-v2-foundation-20261015/tools/preflight-12a.mjs",
+    "toolSha256": "c5ba09bc865a2115945d6777169fce2f04301656fe5df0ab1c06e4cd5b47c745",
+    "commands": [
+      "db",
+      "external",
+      "snapshot",
+      "backups",
+      "cron-target"
+    ],
+    "notes": "Read-only remote probes. Snapshot creates only protected local copies. Uses existing local credentials without printing them. Do not use vercel mode until read access is restored."
+  }
+}

@@ -1,5 +1,34 @@
 # Comunidade V2 — status
 
+## Etapa 12A encerrada — NO-GO — 23/10/2026
+
+Preflight do candidato `4e026b59eb99521ed1c6b94c8444a52049d317c6` concluído.
+**Publicação 12B não iniciada.** O estado vigente e a sequência condicional estão
+em [RELEASE-PLAN.md](RELEASE-PLAN.md); as seções anteriores abaixo são históricas
+onde divergirem deste fechamento. RV-01 está encerrado no QA local conforme
+[POST-AUDIT-CLOSURE.md](POST-AUDIT-CLOSURE.md), sem nova rechecagem nesta etapa.
+
+- OPS-01: 48 schedules com falha, zero sucesso; cron GREEN inalterado e
+  respostas HTTP 200 do caminho atual não comprovam recovery/Broadcast V2.
+- GREEN: 65 migrations sem drift; 11 V2 pendentes. Convites pendentes e
+  conflitos de pin: zero. Há 28 posts sem grupo, incluindo dois publicados
+  que ficariam UNRESOLVED; exigem tratamento de proveniência/aceite explícito.
+- Notification ainda concede SELECT a authenticated. Migration/revogação e
+  smoke JWT/Realtime dependem da janela autorizada; nenhuma escrita remota.
+- Novos backups protegidos de banco e quatro objetos Storage foram gerados
+  e reabertos. Portabilidade de chave, reidratação Storage e fallback compatível
+  ainda precisam de prova; restauração histórica local foi reaproveitada.
+- Vercel gestão: 403; configuração efetiva/Trusted Source/Clerk atual não
+  confirmados. App/API/crawler anônimo recebem 302 SSO, sem bypass. Performance
+  remota autenticada depende da V2 migrada e permanece sem prova representativa.
+
+Nenhum deploy Production, migration, alteração de cron, credencial ou proteção.
+Spec preexistente `community-groups.spec.ts` preservado, hash Git
+`43bb75e8482c3638840cbfa760a91e01927ed770`, fora dos commits.
+Retomar somente os bloqueadores e provas faltantes do RELEASE-PLAN; não reabrir
+QA visual, RV-01 ou auditoria geral. Não iniciar publicação enquanto NO-GO.
+
+
 ## Fechamento cirúrgico de RV-01 — 23/10/2026
 
 **RV-01 encerrado no QA local migrado; release continua NO-GO.** A reprodução
