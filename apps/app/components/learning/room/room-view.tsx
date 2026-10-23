@@ -7,8 +7,11 @@ import {
   FileTextIcon,
   LinkIcon,
   ListVideoIcon,
+  NotebookPenIcon,
+  TimerIcon,
   XIcon,
 } from "lucide-react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import {
   type ReactNode,
@@ -25,6 +28,24 @@ import { RoomLessonsPanel } from "./room-lessons-panel";
 import { type RoomPanelKey, useRoomPanel } from "./room-panel-context";
 import { RoomPlayer, type RoomPlayerControls } from "./room-player";
 
+// TipTap and the timer only load when their panel opens.
+const panelLoading = () => (
+  <output className="room-notes__status">{roomText("playerLoading")}</output>
+);
+const RoomNotesPanel = dynamic(
+  () => import("./room-notes-panel").then((module) => module.RoomNotesPanel),
+  { loading: panelLoading, ssr: false }
+);
+const RoomTimePanel = dynamic(
+  () => import("./room-time-panel").then((module) => module.RoomTimePanel),
+  { loading: panelLoading, ssr: false }
+);
+
+const isTypingTarget = (target: EventTarget | null) =>
+  target instanceof HTMLElement &&
+  (target.isContentEditable ||
+    ["INPUT", "SELECT", "TEXTAREA"].includes(target.tagName));
+
 interface RoomViewProperties {
   readonly document: ReactNode;
   readonly moduleNumber: number;
@@ -35,6 +56,12 @@ const COLLAPSIBLE_DESCRIPTION = 240;
 
 const panelTitles: Record<RoomPanelKey, string> = {
   aulas: roomText("aulasTitle"),
+  notas: roomText("notesTitle"),
+  tempo: roomText("dockTempo"),
+};
+
+const dockLabels: Record<RoomPanelKey, string> = {
+  aulas: roomText("dockAulas"),
   notas: roomText("dockNotas"),
   tempo: roomText("dockTempo"),
 };
@@ -160,6 +187,26 @@ export const RoomView = ({
     triggerRef.current?.focus();
   }, [setPanel]);
 
+  // N opens the notes from anywhere in the room except while typing.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (
+        event.key.toLowerCase() !== "n" ||
+        event.altKey ||
+        event.ctrlKey ||
+        event.metaKey ||
+        isTypingTarget(event.target)
+      ) {
+        return;
+      }
+      event.preventDefault();
+      setPanel("notas");
+      setAnnouncement(roomText("panelOpened", { nome: panelTitles.notas }));
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [setPanel]);
+
   useEffect(() => {
     if (!panel) {
       return;
@@ -212,12 +259,17 @@ export const RoomView = ({
       type="button"
     >
       {icon}
-      {panelTitles[key]}
+      {dockLabels[key]}
     </button>
   );
-  // Notas and Tempo join the dock when their panels exist; no dead buttons.
   const dockButtons = [
     dockButton("aulas", <ListVideoIcon aria-hidden="true" size={20} />),
+    ...(room.locked
+      ? []
+      : [
+          dockButton("notas", <NotebookPenIcon aria-hidden="true" size={20} />),
+          dockButton("tempo", <TimerIcon aria-hidden="true" size={20} />),
+        ]),
   ];
 
   return (
@@ -322,6 +374,16 @@ export const RoomView = ({
                 outline={outline}
                 pending={pending}
               />
+            ) : null}
+            {panel === "notas" && !room.locked ? (
+              <RoomNotesPanel
+                controlsRef={controlsRef}
+                lessonId={room.id}
+                onAnnounce={setAnnouncement}
+              />
+            ) : null}
+            {panel === "tempo" && !room.locked ? (
+              <RoomTimePanel lessonId={room.id} />
             ) : null}
           </aside>
         </>

@@ -22,6 +22,8 @@ const noteSchema = z
     tagNames: z.array(z.string().trim().min(1).max(32)).max(10).default([]),
     linkedResourceType: z.literal("LESSON").nullable().optional(),
     linkedResourceId: z.string().trim().max(255).nullable().optional(),
+    // Seconds into the lesson video, set by the room. Omitted keeps it as is.
+    videoTimeSeconds: z.number().int().min(0).max(86_400).nullable().optional(),
     expectedUpdatedAt: z
       .string()
       .datetime({ offset: true })
@@ -51,6 +53,7 @@ export interface PlannerNoteSummary {
   tags: { id: string; name: string }[];
   title: string;
   updatedAt: Date;
+  videoTimeSeconds: number | null;
 }
 const emptyDocument = {
   type: "doc",
@@ -177,6 +180,7 @@ export const getPlannerNotes = async (
         n."deletedAt",
         n."createdAt",
         n."updatedAt",
+        n."videoTimeSeconds",
         COALESCE(
           jsonb_agg(DISTINCT jsonb_build_object('id', t.id, 'name', t.name))
             FILTER (WHERE t.id IS NOT NULL),
@@ -235,6 +239,7 @@ export const getPlannerNote = (memberId: string, id: string) => {
         deletedAt: true,
         createdAt: true,
         updatedAt: true,
+        videoTimeSeconds: true,
         tags: { select: { tag: { select: { id: true, name: true } } } },
       },
     })
@@ -383,6 +388,9 @@ const persistNoteContent = async (
         contentText,
         linkedResourceType: input.linkedResourceType ?? null,
         linkedResourceId: input.linkedResourceId ?? null,
+        ...(input.videoTimeSeconds === undefined
+          ? {}
+          : { videoTimeSeconds: input.videoTimeSeconds }),
       },
     });
     return current.id;
@@ -396,6 +404,7 @@ const persistNoteContent = async (
       contentText,
       linkedResourceType: input.linkedResourceType ?? null,
       linkedResourceId: input.linkedResourceId ?? null,
+      videoTimeSeconds: input.videoTimeSeconds ?? null,
     },
     select: { id: true },
   });
@@ -470,6 +479,7 @@ export const savePlannerNote = async (memberId: string, input: unknown) => {
         linkedResourceType: true,
         linkedResourceId: true,
         updatedAt: true,
+        videoTimeSeconds: true,
       },
     });
   });

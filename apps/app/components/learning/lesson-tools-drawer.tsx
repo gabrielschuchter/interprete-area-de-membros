@@ -187,7 +187,7 @@ const timerBadgeForLesson = (
 const loadErrorMessage = (error: unknown, fallback: string) =>
   error instanceof Error ? error.message : fallback;
 
-function useLessonTimer(lessonId: string, open: boolean) {
+export function useLessonTimer(lessonId: string, open: boolean) {
   const [timerState, setTimerState] = useState<LessonTimerState | null>(null);
   const [clientId, setClientId] = useState<string | null>(null);
   const [linkedOnStart, setLinkedOnStart] = useState(true);
@@ -501,7 +501,7 @@ function TimerControls({
   );
 }
 
-function LessonTimerCard({
+export function LessonTimerCard({
   active,
   activeFromOtherDevice,
   clientId,
@@ -684,7 +684,7 @@ function LessonNotesContent({
   );
 }
 
-function SessionReviewDialog({
+export function SessionReviewDialog({
   note,
   pending,
   review,
