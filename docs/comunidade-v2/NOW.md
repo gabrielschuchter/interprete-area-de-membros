@@ -1,5 +1,14 @@
 # Comunidade V2 — estado para continuidade
 
+## Correções pós-auditoria — 23/10/2026
+
+- **Estado:** correção de RV-01 commitada e enviada para `origin/codex/comunidade-v2`, SHA `53d4ae5c017eab9e7ed3136483dac3ecd4e79e08`. Rechecagem adversarial independente solicitada na conversa da Etapa 11; aguardando resposta.
+- **P1 RV-01:** escopo da notificação comunitária, backfill fail-closed, grants da Data API, filtro compartilhado de lista/resumo/contagem/mutações e revalidação do outbox corrigidos. A regressão PostgreSQL/API `77452eea0cdd45a6976aed3d67a54076` passou 1/1; o E2E integrado final `ea0e06a4ffd4408bbd4cfe324bc458ac` passou 21/21 em 17 min 58 s. A linha e o conteúdo privado continuam persistidos no banco após a revogação, mas desaparecem da API e das contagens.
+- **Seis gates do código candidato:** `check` 1.057; `typecheck` 16/16; `boundaries` 985/19; testes scripts 32 pass/1 skip, App 848/176, API 11/3, domínio 24/5; `build` 8/8; `performance:check` 216,2/225 KiB gzip. Build terminou com sucesso com aviso de IO do Turbo; `graphify update .` 8.420 nós/22.098 arestas/353 comunidades.
+- **QA local pós-run:** PostgreSQL isolado `127.0.0.1:54325`, TLS `verify-full`, 73 migrations/zero pendentes; migration de audiência aplicada localmente; Notification com RLS ativo e sem grant `SELECT` para `anon`/`authenticated`; trigger de broadcast restaurado ao estado original `D`. Nenhuma migration remota foi executada.
+- **Parecer:** **NO-GO para release** enquanto a rechecagem estiver pendente e RV-02 (OPS-01), RV-03 (rollback de enums), RV-04 (preflight dos convites legados), RV-05 (performance autenticada/mobile) e a confirmação remota dos grants/RLS permanecerem sem evidência. Storage remoto, crawler de Preview, Clerk/Supabase remoto e Broadcast/Realtime também não foram exercitados nesta etapa.
+- **Integridade:** spec protegido `apps/app/e2e/community-v2/community-groups.spec.ts` fora do commit e com hash `43bb75e8482c3638840cbfa760a91e01927ed770`. Nenhuma publicação, alteração de ambiente produtivo ou início da Etapa 12.
+
 ## Etapa 10 — QA integrado e refinamento final — 23/10/2026
 
 - **Veredito:** **ETAPA 10 APROVADA EM QA LOCAL** para SHA validado `f4ada2616f23a48b3f17bdeb4bc90eb568d3cbfa`; não é aprovação de release remoto. A matriz A–G e os limites por board estão em [QA-MATRIX.md](./QA-MATRIX.md).

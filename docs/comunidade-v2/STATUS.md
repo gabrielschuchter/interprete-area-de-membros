@@ -1,5 +1,17 @@
 # Comunidade V2 — status
 
+## Correções pós-auditoria — 23/10/2026
+
+**Candidato de código:** `53d4ae5c017eab9e7ed3136483dac3ecd4e79e08`, commit `fix(comunidade): revalidar audiencia de notificacoes`, enviado para `origin/codex/comunidade-v2`. A rechecagem adversarial independente do auditor da Etapa 11 foi solicitada para esse SHA e está pendente.
+
+**RV-01 P1:** corrigido localmente no produtor/consumer, escopo persistido, migration fail-closed, audiência de leitura e contagens, mutações de leitura e grants diretos da Data API. A regressão persistente em PostgreSQL/API passou 1/1 (`77452eea0cdd45a6976aed3d67a54076`); o E2E completo passou **21/21**, sem falhas (`ea0e06a4ffd4408bbd4cfe324bc458ac`). A query pós-run confirmou 73 migrations aplicadas/zero pendentes, RLS ativo, sem `SELECT` para `anon`/`authenticated` e trigger local restaurado ao estado `D`.
+
+**Gates:** `check` 1.057 arquivos; `typecheck` 16/16; `boundaries` 985/19; testes scripts 32 pass/1 skip, App 848/176, API 11/3, domínio 24/5; `build` 8/8; `performance:check` 216,2 KiB gzip/225 KiB. O build passou, com aviso de IO do Turbo por espaço; graphify atualizado para 8.420 nós, 22.098 arestas e 353 comunidades.
+
+**Decisão de release:** **NO-GO.** RV-02/OPS-01, RV-03/rollback de enums, RV-04/preflight de convites legados, RV-05/performance autenticada e a confirmação remota de grants/RLS seguem pendentes. Também não há prova nova de Storage remoto, crawler no Preview protegido, Clerk/Supabase remoto ou Broadcast/Realtime. Sem migration remota, publicação, mudanças de produção ou Etapa 12.
+
+**Arquivos protegidos:** `apps/app/e2e/community-v2/community-groups.spec.ts` manteve o hash `43bb75e8482c3638840cbfa760a91e01927ed770` e ficou fora do commit.
+
 ## Etapa 10 — QA integrado e refinamento final — 23/10/2026
 
 **Veredito:** **ETAPA 10 APROVADA EM QA LOCAL** para SHA validado `f4ada2616f23a48b3f17bdeb4bc90eb568d3cbfa`. Esta decisão aceita o candidato local e não substitui gates externos de release.
