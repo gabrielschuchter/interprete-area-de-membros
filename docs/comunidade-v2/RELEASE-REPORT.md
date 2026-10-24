@@ -1,5 +1,20 @@
 # Comunidade V2 — resultado do preflight de go-live
 
+## Atualização final — 24/10/2026 — diagnóstico 401 seguro
+
+**Release permanece NO-GO.** O run automático `40068889714` (SHA `bb923227`) chegou até a requisição Preview, com todos os nove checks OIDC aprovados, mas recebeu HTTP 401. Um rerun diagnóstico explícito (attempt 2, job `120837090924`), sem ser apresentado como prova de recuperação periódica, reproduziu o mesmo resultado em 24/10 às 09:26Z. Na consulta imediata à Vercel não apareceram logs do handler; ausência de logs não distingue SSO de rejeição silenciosa pela aplicação.
+
+**Correções efetuadas nesta etapa, exclusivamente no workflow `main`:**
+- Commit `5148c107`: passou a registrar somente status HTTP, exit do curl e classe de Content-Type (`json`, `html`, `other`).
+- Commit `2533c8cf`: resposta 401 é classificada localmente como `application_cron_auth` apenas quando o corpo JSON corresponder exatamente ao erro de autorização da rota. O corpo é mantido em arquivo temporário de permissão restrita, removido no exit e nunca impresso. Sem segredos ou tokens em logs.
+- O workflow não executou ainda em schedule com esses dois commits: não afirmar que a causa do 401 foi resolvida.
+- App/API seguem desconectados da integração Git; os aliases Production verificados permanecem em App `dpl_Fa3QgVNzB9tP3x5cbquaF1kMQt3g` (SHA `de12af7`) e API `dpl_XQRUb541CcFFTLhGodnXokBtDMcc` (SHA `6c7b49a`), sem promoção desta missão.
+- `CRON_SECRET` existe como secret sensível no Vercel Preview vinculado a `codex/comunidade-v2`, mas a integração não revela seu valor; tampouco permite ler o valor do segredo do environment GitHub. Não foi possível comprovar igualdade, e nenhum segredo foi substituído.
+- A conexão Supabase expõe somente o projeto antigo inativo `wkclodjbrynerfgufmyb`, e acesso explícito ao GREEN `qffqhilydtnrggbcnogh` retornou **permission denied**. Nenhuma migration, restore, reclassificação de post ou alteração no GREEN foi executada.
+
+**Ponto de decisão:** esperar o próximo evento automático já instrumentado para classificar o 401; a resolução exige acesso autenticado que permita ajustar apenas o secret Preview ou a Trusted Source Preview conforme a camada demonstrada. Para liberar 12B continuam indispensáveis fonte autoritativa dos dois posts publicados, ensaio independente de restore banco/Storage e rollback compatível. Nenhuma dessas garantias foi inventada nem removida do gate.
+
+
 ## Rechecagem de execução — 24/10/2026 — OPS-01 HTTP 401
 
 **Estado: NO-GO; nenhuma operação de Production ou GREEN foi executada nesta rechecagem.**
