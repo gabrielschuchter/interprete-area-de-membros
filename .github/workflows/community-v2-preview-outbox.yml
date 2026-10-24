@@ -75,7 +75,7 @@ jobs:
               "event_name": "schedule",
               "workflow_ref": "gabrielschuchter/interprete-area-de-membros/.github/workflows/community-v2-preview-outbox.yml@refs/heads/main",
               "environment": "community-v2-preview",
-              "sub": "repo:gabrielschuchter/interprete-area-de-membros:environment:community-v2-preview",
+              "sub": "repo:gabrielschuchter@291341266/interprete-area-de-membros@1386145986:environment:community-v2-preview",
           }
           checks = {key: (value in claims[key] if isinstance(claims.get(key), list) else claims.get(key) == value) for key, value in expected.items()}
           checks["not_expired"] = isinstance(claims.get("exp"), (int, float)) and claims["exp"] > time.time()
