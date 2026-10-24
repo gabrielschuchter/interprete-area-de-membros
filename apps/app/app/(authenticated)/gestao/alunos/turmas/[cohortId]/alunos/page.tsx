@@ -9,10 +9,10 @@ import {
   listGestaoAssignableCohorts,
 } from "@/lib/gestao-cohorts";
 import { parseSituation } from "@/lib/gestao-student-tracking";
+import { GestaoListFilters } from "../../../../gestao-list-filters";
 import { GestaoCohortHeader } from "../cohort-header";
 import { AddStudentsDrawer, type AddTab } from "./add-students-drawer";
 import { InvitesPanel } from "./invites-panel";
-import { RosterFilters } from "./roster-filters";
 import { RosterTable } from "./roster-table";
 
 const joinedFormat = new Intl.DateTimeFormat("pt-BR", {
@@ -165,7 +165,18 @@ const GestaoCohortStudentsPage = async ({
     <section className="gt-page gt-detail-page">
       <GestaoCohortHeader activeTab="alunos" cohort={cohort} />
       <div className="gk-toolbar">
-        <RosterFilters query={query.q ?? ""} situation={situation ?? ""} />
+        <GestaoListFilters
+          options={[
+            ["ON_TRACK", "Em ritmo"],
+            ["ATTENTION", "Atenção"],
+            ["INACTIVE", "Inativo"],
+          ]}
+          param="situacao"
+          placeholder="Buscar aluno da turma"
+          query={query.q ?? ""}
+          selected={situation ?? ""}
+          selectLabel="Situação"
+        />
         <div className="gk-toolbar-group">
           <Link className="gk-btn" href={`${base}?adicionar=planilha`}>
             Importar planilha

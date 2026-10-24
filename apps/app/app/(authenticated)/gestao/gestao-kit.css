@@ -1248,3 +1248,162 @@ fieldset.gk-drawer-tabs {
     width: 90px;
   }
 }
+
+/* Cronograma da turma */
+.gk-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.gk-week {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 14px;
+}
+.gk-week > header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 14px;
+  text-align: right;
+}
+.gk-week > header strong {
+  font: 600 13px / 1.2 var(--font-display-family);
+}
+.gk-week > header small {
+  font: 400 11px / 1.2 var(--font-sans-family);
+  color: var(--gestao-muted);
+}
+.gk-week-card {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+  background: #fff;
+  border: 1px solid var(--gestao-line);
+  border-radius: 8px;
+}
+.gk-week-card > li {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  min-height: 62px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--gestao-line);
+}
+.gk-week-card > li:last-child {
+  border-bottom: 0;
+}
+.gk-icon-btn--flat {
+  color: var(--gestao-muted);
+  background: transparent;
+  border-color: transparent;
+}
+@media (max-width: 767px) {
+  .gk-week {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .gk-week > header {
+    flex-direction: row;
+    gap: 8px;
+    align-items: baseline;
+    padding-top: 0;
+    text-align: left;
+  }
+}
+
+.gk-toolbar + .gk-timeline {
+  margin-top: 20px;
+}
+
+/* Configurações da turma */
+.gk-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 760px;
+}
+.gk-settings-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.gk-settings-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.gk-settings-save {
+  align-self: flex-start;
+}
+.gk-switch-row {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 52px;
+  font: 400 14px / 1.4 var(--font-sans-family);
+  border-bottom: 1px solid var(--gestao-line);
+}
+.gk-switch-row > span {
+  display: flex;
+  flex-direction: column;
+}
+.gk-switch-row small {
+  font-size: 12px;
+  color: var(--gestao-muted);
+}
+.gk-switch {
+  position: relative;
+  flex: none;
+  width: 44px;
+  height: 26px;
+  appearance: none;
+  cursor: pointer;
+  background: #cdbfba;
+  border-radius: 13px;
+  transition: background 120ms;
+}
+.gk-switch::after {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  content: "";
+  background: #fff;
+  border-radius: 50%;
+  transition: translate 120ms;
+}
+.gk-switch:checked {
+  background: var(--gestao-action);
+}
+.gk-switch:checked::after {
+  translate: 18px 0;
+}
+.gk-switch:focus-visible {
+  outline: 2px solid var(--gestao-text);
+  outline-offset: 2px;
+}
+.gk-btn--block {
+  width: 100%;
+}
+.gk-radio.gk-radio--flat {
+  align-items: center;
+  min-height: 48px;
+  padding-block: 0;
+}
+.gk-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  font: 400 13.5px / 1.45 var(--font-sans-family);
+  background: #fdf1f2;
+  border: 1px solid #e9a5ab;
+  border-radius: 8px;
+}
+.gk-confirm-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}

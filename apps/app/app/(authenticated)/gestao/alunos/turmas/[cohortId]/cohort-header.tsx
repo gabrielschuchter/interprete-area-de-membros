@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import type { GestaoCohortDetail } from "@/lib/gestao-cohorts";
 import { GestaoCrumbTail } from "../../../gestao-crumbs";
 
@@ -22,9 +23,11 @@ const labels = {
 } as const;
 
 export const GestaoCohortHeader = ({
+  action,
   cohort,
   activeTab,
 }: {
+  readonly action?: ReactNode;
   readonly cohort: GestaoCohortDetail;
   readonly activeTab: (typeof tabs)[number][0];
 }) => {
@@ -53,12 +56,14 @@ export const GestaoCohortHeader = ({
           </p>
         </div>
         <div className="gt-detail-actions">
-          <Link
-            className="gk-btn gk-btn--primary"
-            href={`/gestao/alunos/turmas/${cohort.id}/alunos?adicionar=existentes`}
-          >
-            Adicionar alunos
-          </Link>
+          {action ?? (
+            <Link
+              className="gk-btn gk-btn--primary"
+              href={`/gestao/alunos/turmas/${cohort.id}/alunos?adicionar=existentes`}
+            >
+              Adicionar alunos
+            </Link>
+          )}
         </div>
       </header>
       <nav aria-label="Seções da turma" className="gt-cohort-tabs">

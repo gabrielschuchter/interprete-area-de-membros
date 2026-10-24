@@ -2,18 +2,28 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { GestaoIcon } from "../../../../gestao-icon";
+import { GestaoIcon } from "./gestao-icon";
 
 const debounceMs = 250;
 
-/** Busca do aluno da turma (atraso de 250 ms) e filtro de situação na URL. */
-export const RosterFilters = ({
-  query,
-  situation,
-}: {
+interface ListFiltersProperties {
+  readonly options: readonly (readonly [string, string])[];
+  readonly param: string;
+  readonly placeholder: string;
   readonly query: string;
-  readonly situation: string;
-}) => {
+  readonly selected: string;
+  readonly selectLabel: string;
+}
+
+/** Busca (atraso de 250 ms) e um filtro por lista; ambos vivem na URL. */
+export const GestaoListFilters = ({
+  options,
+  param,
+  placeholder,
+  query,
+  selectLabel,
+  selected,
+}: ListFiltersProperties) => {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -57,7 +67,7 @@ export const RosterFilters = ({
       <span className="gk-field" style={{ width: 300 }}>
         <GestaoIcon name="search" size={16} />
         <input
-          aria-label="Buscar aluno da turma"
+          aria-label={placeholder}
           autoComplete="off"
           className="gk-input"
           maxLength={120}
@@ -72,22 +82,24 @@ export const RosterFilters = ({
               debounceMs
             );
           }}
-          placeholder="Buscar aluno da turma"
+          placeholder={placeholder}
           type="search"
           value={value}
         />
       </span>
       <span className="gk-field" style={{ width: 190 }}>
         <select
-          aria-label="Situação"
+          aria-label={selectLabel}
           className="gk-select"
-          onChange={(event) => navigate({ situacao: event.target.value })}
-          value={situation}
+          onChange={(event) => navigate({ [param]: event.target.value })}
+          value={selected}
         >
-          <option value="">Situação</option>
-          <option value="ON_TRACK">Em ritmo</option>
-          <option value="ATTENTION">Atenção</option>
-          <option value="INACTIVE">Inativo</option>
+          <option value="">{selectLabel}</option>
+          {options.map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
         </select>
         <GestaoIcon
           className="gk-select-caret"

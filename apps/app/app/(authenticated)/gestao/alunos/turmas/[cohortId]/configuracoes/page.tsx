@@ -4,9 +4,8 @@ import {
   getGestaoCohortDetail,
   getGestaoTeacherOptions,
 } from "@/lib/gestao-cohorts";
-import { CohortDuplicateForm } from "../cohort-duplicate-form";
 import { GestaoCohortHeader } from "../cohort-header";
-import { CohortSettingsForm } from "../cohort-settings-form";
+import { CohortSettingsForm, settingsFormId } from "../cohort-settings-form";
 
 const GestaoCohortSettingsPage = async ({
   params,
@@ -26,13 +25,25 @@ const GestaoCohortSettingsPage = async ({
   }
   return (
     <section className="gt-page gt-detail-page">
-      <GestaoCohortHeader activeTab="configuracoes" cohort={cohort} />
+      <GestaoCohortHeader
+        action={
+          <button
+            className="gk-btn gk-btn--primary"
+            disabled={cohort.archivedAt !== null}
+            form={settingsFormId}
+            type="submit"
+          >
+            Salvar alterações
+          </button>
+        }
+        activeTab="configuracoes"
+        cohort={cohort}
+      />
       <CohortSettingsForm
         cohort={cohort}
         isAdmin={actor.role === "ADMIN"}
         teachers={teachers}
       />
-      <CohortDuplicateForm cohort={cohort} />
     </section>
   );
 };

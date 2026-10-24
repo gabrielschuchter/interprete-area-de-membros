@@ -362,7 +362,12 @@ export const updateGestaoCohort = async (
 ): Promise<CohortActionResult> => {
   try {
     const value = baseCohort
-      .extend({ cohortId: id, expectedVersion: z.number().int().positive() })
+      .extend({
+        cohortId: id,
+        expectedVersion: z.number().int().positive(),
+        notifyOnNews: z.boolean().optional(),
+        readAfterEndDays: z.number().int().min(0).max(365).optional(),
+      })
       .parse(input);
     const { actor } = await requireGestaoAction("cohort.manage", {
       cohortId: value.cohortId,
@@ -409,6 +414,12 @@ export const updateGestaoCohort = async (
             startsAt: start,
             endsAt: end,
             lateJoinPolicy: value.lateJoinPolicy,
+            ...(value.notifyOnNews === undefined
+              ? {}
+              : { notifyOnNews: value.notifyOnNews }),
+            ...(value.readAfterEndDays === undefined
+              ? {}
+              : { readAfterEndDays: value.readAfterEndDays }),
             version: { increment: 1 },
           },
         });
@@ -911,6 +922,79 @@ export const archiveGestaoCohort = async (
   }
 };
 
+export const restoreGestaoCohort = async (
+  input: unknown
+): Promise<CohortActionResult> => {
+  try {
+    const value = z
+      .object({
+        cohortId: id,
+        expectedVersion: z.number().int().positive(),
+        idempotencyKey: uuid,
+      })
+      .parse(input);
+    const { actor } = await requireGestaoAction("cohort.manage", {
+      cohortId: value.cohortId,
+    });
+    await consumeMutationRateLimit({
+      action: "cohort.mutation",
+      memberId: actor.userId,
+    });
+    const key = readIdempotencyKey(value.idempotencyKey);
+    if (!key) {
+      throw new MutationFailure(
+        "validation",
+        "Atualize a tela e tente novamente."
+      );
+    }
+    const operationKey = eventKey("restored", key);
+    await database.$transaction(
+      async (tx) => {
+        const cohort = await requireCohort(tx, actor, value.cohortId);
+        if (await eventExists(tx, operationKey)) {
+          return;
+        }
+        if (!cohort.archivedAt) {
+          throw new MutationFailure(
+            "conflict",
+            "Esta turma não está arquivada."
+          );
+        }
+        if (cohort.version !== value.expectedVersion) {
+          throw new MutationFailure(
+            "conflict",
+            "A turma mudou em outra sessão. Atualize a tela."
+          );
+        }
+        const result = await tx.cohort.updateMany({
+          where: { id: cohort.id, version: value.expectedVersion },
+          data: { archivedAt: null, version: { increment: 1 } },
+        });
+        if (result.count !== 1) {
+          throw new MutationFailure(
+            "conflict",
+            "A turma mudou em outra sessão. Atualize a tela."
+          );
+        }
+        await recordEvent(
+          tx,
+          actor.userId,
+          cohort.id,
+          "restored",
+          operationKey,
+          { version: value.expectedVersion + 1 }
+        );
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+    );
+    revalidatePath("/gestao/alunos/turmas");
+    revalidatePath(`/gestao/alunos/turmas/${value.cohortId}`);
+    return { ok: true, cohortId: value.cohortId };
+  } catch (error) {
+    return errorResult(error);
+  }
+};
+
 export const setGestaoCohortCourses = async (
   input: unknown
 ): Promise<CohortActionResult> => {
@@ -1051,6 +1135,124 @@ export const setGestaoCohortCourses = async (
     revalidatePath(`/gestao/alunos/turmas/${value.cohortId}`);
     revalidatePath("/cursos");
     return { ok: true, cohortId: value.cohortId };
+  } catch (error) {
+    return errorResult(error);
+  }
+};
+/**
+ * Copia para esta turma os cursos liberados em outra turma que o ator também
+ * gerencia. Cursos já liberados aqui não são alterados.
+ */
+export const copyGestaoCohortCourses = async (
+  input: unknown
+): Promise<CohortActionResult> => {
+  try {
+    const value = z
+      .object({
+        cohortId: id,
+        sourceCohortId: id,
+        expectedVersion: z.number().int().positive(),
+        idempotencyKey: uuid,
+      })
+      .parse(input);
+    if (value.cohortId === value.sourceCohortId) {
+      throw new MutationFailure(
+        "validation",
+        "Escolha outra turma como origem.",
+        { sourceCohortId: "A origem precisa ser diferente." }
+      );
+    }
+    const { actor } = await requireGestaoAction("cohort.manage", {
+      cohortId: value.cohortId,
+    });
+    const key = readIdempotencyKey(value.idempotencyKey);
+    if (!key) {
+      throw new MutationFailure(
+        "validation",
+        "Atualize a tela e tente novamente."
+      );
+    }
+    await consumeMutationRateLimit({
+      action: "cohort.mutation",
+      memberId: actor.userId,
+    });
+    const operationKey = eventKey("courses-copied", key);
+    const copied = await database.$transaction(
+      async (tx) => {
+        const cohort = await requireCohort(tx, actor, value.cohortId);
+        const source = await requireCohort(tx, actor, value.sourceCohortId);
+        if (cohort.archivedAt) {
+          throw new MutationFailure("conflict", "Esta turma está arquivada.");
+        }
+        if (await eventExists(tx, operationKey)) {
+          return 0;
+        }
+        if (cohort.version !== value.expectedVersion) {
+          throw new MutationFailure(
+            "conflict",
+            "A turma mudou em outra sessão. Atualize a tela."
+          );
+        }
+        const [sourceAccesses, currentAccesses] = await Promise.all([
+          tx.cohortCourseAccess.findMany({
+            where: {
+              cohortId: source.id,
+              revokedAt: null,
+              course: { status: ContentStatus.PUBLISHED },
+            },
+            select: { courseId: true, releaseMode: true, startsAt: true },
+          }),
+          tx.cohortCourseAccess.findMany({
+            where: { cohortId: cohort.id, revokedAt: null },
+            select: { courseId: true },
+          }),
+        ]);
+        const present = new Set(
+          currentAccesses.map(({ courseId }) => courseId)
+        );
+        const missing = sourceAccesses.filter(
+          ({ courseId }) => !present.has(courseId)
+        );
+        for (const access of missing) {
+          await tx.cohortCourseAccess.upsert({
+            where: {
+              activeKey: cohortMembershipActiveKey(cohort.id, access.courseId),
+            },
+            create: {
+              activeKey: cohortMembershipActiveKey(cohort.id, access.courseId),
+              cohortId: cohort.id,
+              courseId: access.courseId,
+              releaseMode: access.releaseMode,
+              startsAt: access.startsAt,
+              createdByMemberId: actor.userId,
+            },
+            update: {
+              releaseMode: access.releaseMode,
+              startsAt: access.startsAt,
+              revokedAt: null,
+            },
+          });
+        }
+        await tx.cohort.update({
+          where: { id: cohort.id },
+          data: { version: { increment: 1 } },
+        });
+        await recordEvent(
+          tx,
+          actor.userId,
+          cohort.id,
+          "courses_copied",
+          operationKey,
+          { sourceCohortId: source.id, copiedCount: missing.length }
+        );
+        return missing.length;
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+    );
+    revalidatePath(`/gestao/alunos/turmas/${value.cohortId}/conteudo`);
+    revalidatePath(`/gestao/alunos/turmas/${value.cohortId}`);
+    revalidatePath("/cursos");
+    return { ok: true, cohortId: value.cohortId, invitedCount: copied };
   } catch (error) {
     return errorResult(error);
   }
@@ -1572,6 +1774,158 @@ export const setGestaoCohortLessonRelease = async (
   }
 };
 
+const copyActivitiesAsDrafts = async (
+  tx: Prisma.TransactionClient,
+  input: {
+    readonly actorId: string;
+    readonly key: string;
+    readonly shifted: (date: Date | null) => Date | null;
+    readonly sourceCohortId: string;
+    readonly targetCohortId: string;
+  }
+) => {
+  const activities = await tx.activity.findMany({
+    where: {
+      status: { in: [ContentStatus.DRAFT, ContentStatus.PUBLISHED] },
+      cohortTargets: {
+        some: {
+          cohortId: input.sourceCohortId,
+          revokedAt: null,
+          activeKey: { not: null },
+        },
+      },
+    },
+    orderBy: [{ position: "asc" }, { id: "asc" }],
+    take: 100,
+    select: {
+      title: true,
+      slug: true,
+      prompt: true,
+      instructions: true,
+      deliveryKind: true,
+      position: true,
+      dueAt: true,
+      courseId: true,
+      lessonId: true,
+      relatedLibraryItemId: true,
+      rubricVersion: true,
+      rubricCriteria: {
+        select: { version: true, title: true, weight: true, position: true },
+      },
+    },
+  });
+  let index = 0;
+  for (const activity of activities) {
+    index += 1;
+    const copy = await tx.activity.create({
+      data: {
+        title: activity.title,
+        slug: `${activity.slug.slice(0, 60)}-${input.key.slice(0, 6)}${index}`,
+        prompt: activity.prompt,
+        instructions: activity.instructions,
+        deliveryKind: activity.deliveryKind,
+        status: ContentStatus.DRAFT,
+        position: activity.position,
+        dueAt: input.shifted(activity.dueAt),
+        courseId: activity.courseId,
+        lessonId: activity.lessonId,
+        relatedLibraryItemId: activity.relatedLibraryItemId,
+        rubricVersion: activity.rubricVersion,
+        createdBy: input.actorId,
+        updatedBy: input.actorId,
+      },
+      select: { id: true },
+    });
+    const criteria = activity.rubricCriteria.filter(
+      ({ version }) => version === activity.rubricVersion
+    );
+    if (criteria.length) {
+      await tx.activityRubricCriterion.createMany({
+        data: criteria.map((criterion) => ({
+          activityId: copy.id,
+          version: criterion.version,
+          title: criterion.title,
+          weight: criterion.weight,
+          position: criterion.position,
+        })),
+      });
+    }
+    await tx.activityCohortTarget.create({
+      data: {
+        activityId: copy.id,
+        cohortId: input.targetCohortId,
+        activeKey: `${copy.id}:${input.targetCohortId}`,
+        createdByMemberId: input.actorId,
+      },
+    });
+  }
+  return activities.length;
+};
+
+const copyCohortContent = async (
+  tx: Prisma.TransactionClient,
+  input: {
+    readonly actorId: string;
+    readonly copyActivities: boolean;
+    readonly copySchedule: boolean;
+    readonly key: string;
+    readonly newStart: Date;
+    readonly source: {
+      readonly id: string;
+      readonly startsAt: Date;
+      readonly courseAccesses: readonly {
+        readonly courseId: string;
+        readonly releaseMode: CohortReleaseMode;
+        readonly startsAt: Date | null;
+      }[];
+      readonly lessonReleases: readonly {
+        readonly lessonId: string;
+        readonly releaseAt: Date;
+      }[];
+    };
+    readonly targetCohortId: string;
+  }
+) => {
+  const { source, targetCohortId, actorId } = input;
+  const shiftMs = input.copySchedule
+    ? input.newStart.getTime() - source.startsAt.getTime()
+    : 0;
+  const shifted = (date: Date | null) =>
+    date ? new Date(date.getTime() + shiftMs) : null;
+  if (source.courseAccesses.length) {
+    await tx.cohortCourseAccess.createMany({
+      data: source.courseAccesses.map((access) => ({
+        activeKey: cohortMembershipActiveKey(targetCohortId, access.courseId),
+        cohortId: targetCohortId,
+        courseId: access.courseId,
+        releaseMode: access.releaseMode,
+        startsAt: shifted(access.startsAt),
+        createdByMemberId: actorId,
+      })),
+    });
+  }
+  if (input.copySchedule && source.lessonReleases.length) {
+    await tx.cohortLessonRelease.createMany({
+      data: source.lessonReleases.map((release) => ({
+        cohortId: targetCohortId,
+        lessonId: release.lessonId,
+        releaseAt: new Date(release.releaseAt.getTime() + shiftMs),
+        updatedByMemberId: actorId,
+      })),
+    });
+  }
+  const copiedActivityCount = input.copyActivities
+    ? await copyActivitiesAsDrafts(tx, {
+        actorId,
+        key: input.key,
+        shifted,
+        sourceCohortId: source.id,
+        targetCohortId,
+      })
+    : 0;
+  return { copiedActivityCount, shifted };
+};
+
 export const duplicateGestaoCohort = async (
   input: unknown
 ): Promise<CohortActionResult> => {
@@ -1583,6 +1937,8 @@ export const duplicateGestaoCohort = async (
         name: z.string().trim().min(3).max(120),
         startsAt: dateText,
         endsAt: dateText.optional().or(z.literal("")),
+        copySchedule: z.boolean().default(true),
+        copyActivities: z.boolean().default(false),
         idempotencyKey: uuid,
       })
       .parse(input);
@@ -1617,6 +1973,7 @@ export const duplicateGestaoCohort = async (
           select: {
             id: true,
             version: true,
+            startsAt: true,
             lateJoinPolicy: true,
             notifyOnNews: true,
             readAfterEndDays: true,
@@ -1692,28 +2049,15 @@ export const duplicateGestaoCohort = async (
           },
           select: { id: true },
         });
-        if (source.courseAccesses.length) {
-          await tx.cohortCourseAccess.createMany({
-            data: source.courseAccesses.map((access) => ({
-              activeKey: cohortMembershipActiveKey(copy.id, access.courseId),
-              cohortId: copy.id,
-              courseId: access.courseId,
-              releaseMode: access.releaseMode,
-              startsAt: access.startsAt,
-              createdByMemberId: actor.userId,
-            })),
-          });
-        }
-        if (source.lessonReleases.length) {
-          await tx.cohortLessonRelease.createMany({
-            data: source.lessonReleases.map((release) => ({
-              cohortId: copy.id,
-              lessonId: release.lessonId,
-              releaseAt: release.releaseAt,
-              updatedByMemberId: actor.userId,
-            })),
-          });
-        }
+        const { copiedActivityCount } = await copyCohortContent(tx, {
+          actorId: actor.userId,
+          copyActivities: value.copyActivities,
+          copySchedule: value.copySchedule,
+          key,
+          newStart: start,
+          source,
+          targetCohortId: copy.id,
+        });
         await recordEvent(
           tx,
           actor.userId,
@@ -1723,7 +2067,10 @@ export const duplicateGestaoCohort = async (
           {
             sourceCohortId: source.id,
             copiedCourseCount: source.courseAccesses.length,
-            copiedLessonReleaseCount: source.lessonReleases.length,
+            copiedLessonReleaseCount: value.copySchedule
+              ? source.lessonReleases.length
+              : 0,
+            copiedActivityCount,
             copiedStudents: false,
             copiedInvites: false,
           }
