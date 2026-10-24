@@ -1344,6 +1344,13 @@ export const setContentStatus = async (formData: FormData) => {
       where: { id },
       data: { status, publishedAt },
     });
+    await recordAuditEvent({
+      eventType: "gestao.path.status_changed",
+      actorId: userId,
+      aggregateType: "LearningPath",
+      aggregateId: id,
+      payload: { pathId: id, status },
+    });
     revalidatePath("/admin/learning");
     revalidatePath("/cursos");
     return;
@@ -1353,6 +1360,13 @@ export const setContentStatus = async (formData: FormData) => {
     await database.course.update({
       where: { id },
       data: { status, publishedAt, updatedBy: userId },
+    });
+    await recordAuditEvent({
+      eventType: "gestao.course.status_changed",
+      actorId: userId,
+      aggregateType: "Course",
+      aggregateId: id,
+      payload: { courseId: id, status },
     });
     revalidatePath("/admin/learning");
     revalidatePath(`/admin/learning/courses/${id}`);

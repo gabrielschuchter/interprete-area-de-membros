@@ -278,7 +278,7 @@ export const NotificationsPageClient = ({ initial }: Properties) => {
               </button>
             ))}
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button
               onClick={() =>
                 fetch("/api/notifications/read-all", { method: "POST" })

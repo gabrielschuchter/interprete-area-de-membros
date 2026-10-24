@@ -63,6 +63,7 @@
 }
 .gx-list {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   padding: 0;
   margin: 0;
   list-style: none;
@@ -159,6 +160,9 @@
   font-weight: 650;
   white-space: nowrap;
   border-radius: 999px;
+}
+.gx-list .gx-chip {
+  flex: none;
 }
 .gx-chip[data-tone="ok"] {
   color: #1d5b3b;
@@ -515,6 +519,7 @@
 }
 .gx-list > li > a > span.gx-inline {
   display: block;
+  min-width: 0;
   font-size: 14px;
   line-height: 1.5;
   color: var(--gestao-text);

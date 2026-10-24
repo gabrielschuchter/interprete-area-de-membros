@@ -12,6 +12,18 @@ export const gestaoAuditLabels: Readonly<Record<string, string>> = {
   "gestao.cohort.created": "Turma criada",
   "gestao.cohort.updated": "Turma editada",
   "gestao.cohort.archived": "Turma arquivada",
+  "gestao.cohort.duplicated": "Turma duplicada",
+  "gestao.cohort.members_added": "Alunos adicionados à turma",
+  "gestao.cohort.members_removed": "Alunos removidos da turma",
+  "gestao.cohort.members_moved": "Alunos movidos de turma",
+  "gestao.cohort.members_imported": "Alunos importados por planilha",
+  "gestao.cohort.invite_created": "Convite da turma criado",
+  "gestao.cohort.invite_accepted": "Convite da turma aceito",
+  "gestao.cohort.invite_revoked": "Convite da turma revogado",
+  "gestao.cohort.event.published": "Evento da turma publicado",
+  "gestao.cohort.event.saved": "Evento da turma salvo",
+  "gestao.cohort.event.status_changed": "Situação do evento da turma alterada",
+  "event.published": "Encontro publicado",
   "gestao.cohort.meeting.saved": "Encontro da turma salvo",
   "gestao.cohort.meeting.updated": "Encontro da turma editado",
   "gestao.cohort.calendar.copied": "Calendário copiado",
@@ -20,6 +32,8 @@ export const gestaoAuditLabels: Readonly<Record<string, string>> = {
   "gestao.course.cohort_access.changed": "Acesso do curso por turma alterado",
   "gestao.course.direct_access.granted": "Acesso direto ao curso concedido",
   "gestao.course.direct_access.revoked": "Acesso direto ao curso revogado",
+  "gestao.course.status_changed": "Situação do curso alterada",
+  "gestao.path.status_changed": "Situação do percurso alterada",
   "gestao.lesson.status_changed": "Situação da aula alterada",
   "gestao.lesson.edited": "Aula editada",
   "gestao.youtube.playlist.imported": "Playlist do YouTube importada",
@@ -34,7 +48,7 @@ export const gestaoAuditLabels: Readonly<Record<string, string>> = {
 };
 
 const auditPrefixes = ["gestao."];
-const auditExtraTypes = ["learning.content.assigned"];
+const auditExtraTypes = ["learning.content.assigned", "event.published"];
 
 export interface RecordAuditInput {
   readonly actorId: string;
