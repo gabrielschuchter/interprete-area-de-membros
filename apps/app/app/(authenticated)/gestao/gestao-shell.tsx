@@ -50,6 +50,7 @@ import {
 import type { GestaoRole } from "@/lib/gestao-permissions";
 import { MemberHeaderControls } from "../components/member-header-controls";
 import { useMemberNavigation } from "../components/member-navigation-context";
+import { GestaoSearch } from "./gestao-search";
 import { useGestaoReturnPath } from "./use-gestao-return-path";
 
 interface GestaoShellProperties {
@@ -142,10 +143,16 @@ const navigation: readonly NavigationItem[] = [
 ] as const;
 
 const createActions = [
-  { href: "/gestao/ensino/cursos/novo", label: "Novo curso" },
-  { href: "/gestao/alunos/turmas/nova", label: "Nova turma" },
-  { href: "/gestao/alunos/atribuicoes/nova", label: "Atribuir conteúdo" },
-  { href: "/gestao/comunidade/avisos/novo", label: "Novo aviso" },
+  { href: "/gestao/ensino/cursos/novo", label: "Curso" },
+  { href: "/gestao/ensino/exercicios", label: "Lista de exercícios" },
+  { href: "/gestao/ensino/atividades/nova", label: "Atividade" },
+  { href: "/gestao/ensino/biblioteca/novo", label: "Material" },
+  { href: "/gestao/ensino/colecoes/novo", label: "Coleção" },
+  { href: "/gestao/alunos/turmas/nova", label: "Turma" },
+  { href: "/gestao/alunos/atribuicoes", label: "Atribuição" },
+  { href: "/gestao/comunidade/avisos", label: "Aviso" },
+  { href: "/gestao/comunidade/encontros", label: "Encontro" },
+  { href: "/gestao/comunidade/grupos", label: "Grupo de estudo" },
 ] as const;
 
 const gestaoWhitespacePattern = /\s+/;
@@ -677,7 +684,12 @@ const GestaoShellView = ({
             ) : null}
           </div>
           <div className="gestao-topbar-actions">
-            <MemberHeaderControls memberId={memberId} showSaved={false} />
+            <GestaoSearch memberId={memberId} />
+            <MemberHeaderControls
+              memberId={memberId}
+              showSaved={false}
+              showSearch={false}
+            />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button className="gestao-create-button" size="sm">

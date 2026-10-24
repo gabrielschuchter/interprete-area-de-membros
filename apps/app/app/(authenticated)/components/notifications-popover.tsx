@@ -15,7 +15,7 @@ import {
   RefreshCwIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 type NotificationFilter = "ALL" | "MENTIONS" | "ACTIVITIES";
@@ -152,6 +152,7 @@ export const NotificationsPopover = ({
   realtimeConnected,
 }: NotificationsPopoverProperties) => {
   const router = useRouter();
+  const pathname = usePathname();
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [unseenCount, setUnseenCount] = useState(0);
@@ -521,7 +522,11 @@ export const NotificationsPopover = ({
         <div className="border-border/70 border-t px-4 py-3">
           <Link
             className="text-primary text-sm underline underline-offset-4"
-            href="/notificacoes"
+            href={
+              pathname.startsWith("/gestao")
+                ? "/gestao/notificacoes"
+                : "/notificacoes"
+            }
             onClick={() => onOpenChange(false)}
           >
             Ver todas
