@@ -18,13 +18,13 @@ const GestaoSearchPage = async ({
   const groups =
     query.length >= gestaoSearchMinLength ? await searchGestao(query) : [];
   return (
-    <section className="ga-page">
+    <section className="gx-page">
       <GestaoPageHeading
         description="Alunos, turmas, atividades, cursos, aulas, materiais, avisos e encontros que você pode ver."
         eyebrow="Gestão · Busca"
         title="Buscar em Gestão"
       />
-      <form action="/gestao/busca" className="ga-search-form" method="get">
+      <form action="/gestao/busca" className="gx-search-form" method="get">
         <label>
           <span className="sr-only">Termo de busca</span>
           <input
@@ -36,12 +36,12 @@ const GestaoSearchPage = async ({
             type="search"
           />
         </label>
-        <button className="ga-button" type="submit">
+        <button className="gx-button" type="submit">
           Buscar
         </button>
       </form>
       {query.length < gestaoSearchMinLength ? (
-        <p className="ga-muted">
+        <p className="gx-muted">
           Digite ao menos {gestaoSearchMinLength} letras para buscar.
         </p>
       ) : null}
@@ -52,9 +52,9 @@ const GestaoSearchPage = async ({
         </div>
       ) : null}
       {groups.map((group) => (
-        <section aria-label={group.label} className="ga-card" key={group.key}>
+        <section aria-label={group.label} className="gx-card" key={group.key}>
           <h2>{group.label}</h2>
-          <ul className="ga-list">
+          <ul className="gx-list">
             {group.results.map((result) => (
               <li key={result.id}>
                 <Link href={result.href} prefetch={false}>

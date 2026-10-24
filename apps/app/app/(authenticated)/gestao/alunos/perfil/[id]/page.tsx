@@ -59,7 +59,7 @@ const GestaoStudentProfilePage = async ({
   const name = member.displayName ?? member.email ?? "Aluno sem nome";
   const firstCohort = member.cohortMemberships[0]?.cohort;
   return (
-    <section className="ga-page">
+    <section className="gx-page">
       <GestaoPageHeading
         description={[
           member.profile?.username ? `@${member.profile.username}` : null,
@@ -73,84 +73,84 @@ const GestaoStudentProfilePage = async ({
       >
         {firstCohort ? (
           <Link
-            className="ga-button-outline"
+            className="gx-button-outline"
             href={`/gestao/alunos/turmas/${firstCohort.id}/alunos`}
           >
             Mover de turma
           </Link>
         ) : null}
-        <Link className="ga-button" href="/gestao/alunos/atribuicoes">
+        <Link className="gx-button" href="/gestao/alunos/atribuicoes">
           Atribuir conteúdo
         </Link>
       </GestaoPageHeading>
-      <div className="ga-card ga-profile-head">
+      <div className="gx-card gx-profile-head">
         <Avatar className="size-16">
           <AvatarImage alt="" src={member.avatarUrl ?? undefined} />
           <AvatarFallback>{initials(name)}</AvatarFallback>
         </Avatar>
-        <div className="ga-profile-copy">
-          <p className="ga-muted">
+        <div className="gx-profile-copy">
+          <p className="gx-muted">
             {member.cohortMemberships
               .map(({ cohort }) => cohort.name)
               .join(" · ")}
           </p>
           {member.profile?.headline ? (
-            <p className="ga-muted">{member.profile.headline}</p>
+            <p className="gx-muted">{member.profile.headline}</p>
           ) : null}
         </div>
         {situation ? (
-          <span className="ga-chip" data-tone={tone[situation.situation]}>
+          <span className="gx-chip" data-tone={tone[situation.situation]}>
             {situationLabels[situation.situation]}
           </span>
         ) : null}
       </div>
-      <div className="ga-grid">
-        <div className="ga-card">
-          <p className="ga-muted">Estudo nos últimos 7 dias</p>
-          <p className="ga-metric">
+      <div className="gx-grid">
+        <div className="gx-card">
+          <p className="gx-muted">Estudo nos últimos 7 dias</p>
+          <p className="gx-metric">
             {formatStudyMinutes(situation?.studySecondsLast7Days ?? 0)}
           </p>
-          <p className="ga-muted">
+          <p className="gx-muted">
             {situation?.lastStudyAt
               ? `Último estudo em ${dateFormat.format(situation.lastStudyAt)}`
               : "Ainda não estudou"}
           </p>
         </div>
-        <div className="ga-card">
-          <p className="ga-muted">Aulas concluídas</p>
-          <p className="ga-metric">{profile.completedLessons}</p>
-          <p className="ga-muted">Conclusão aos 90% ou marcada pelo aluno</p>
+        <div className="gx-card">
+          <p className="gx-muted">Aulas concluídas</p>
+          <p className="gx-metric">{profile.completedLessons}</p>
+          <p className="gx-muted">Conclusão aos 90% ou marcada pelo aluno</p>
         </div>
-        <div className="ga-card">
-          <p className="ga-muted">Entregas atrasadas</p>
-          <p className="ga-metric">{situation?.overdueDeliveries ?? 0}</p>
-          <p className="ga-muted">{profile.pendingActivities.length} abertas</p>
+        <div className="gx-card">
+          <p className="gx-muted">Entregas atrasadas</p>
+          <p className="gx-metric">{situation?.overdueDeliveries ?? 0}</p>
+          <p className="gx-muted">{profile.pendingActivities.length} abertas</p>
         </div>
-        <div className="ga-card">
-          <p className="ga-muted">Presença nos encontros</p>
-          <p className="ga-metric">
+        <div className="gx-card">
+          <p className="gx-muted">Presença nos encontros</p>
+          <p className="gx-metric">
             {profile.attendance.total
               ? `${Math.round((profile.attendance.present / profile.attendance.total) * 100)}%`
               : "—"}
           </p>
-          <p className="ga-muted">
+          <p className="gx-muted">
             {profile.attendance.total} registros de presença
           </p>
         </div>
       </div>
-      <div className="ga-columns">
-        <div className="ga-stack">
-          <section aria-labelledby="student-open" className="ga-card">
-            <div className="ga-card-heading">
+      <div className="gx-columns">
+        <div className="gx-stack">
+          <section aria-labelledby="student-open" className="gx-card">
+            <div className="gx-card-heading">
               <h2 id="student-open">Atribuições abertas</h2>
-              <span className="ga-muted">
+              <span className="gx-muted">
                 {profile.pendingActivities.length}
               </span>
             </div>
             {profile.pendingActivities.length === 0 ? (
-              <p className="ga-muted">Nada em aberto para este aluno.</p>
+              <p className="gx-muted">Nada em aberto para este aluno.</p>
             ) : (
-              <ul className="ga-list">
+              <ul className="gx-list">
                 {profile.pendingActivities.map((activity) => (
                   <li key={activity.id}>
                     <Link href={`/gestao/ensino/atividades/${activity.id}`}>
@@ -166,14 +166,14 @@ const GestaoStudentProfilePage = async ({
               </ul>
             )}
           </section>
-          <section aria-labelledby="student-submissions" className="ga-card">
-            <div className="ga-card-heading">
+          <section aria-labelledby="student-submissions" className="gx-card">
+            <div className="gx-card-heading">
               <h2 id="student-submissions">Atividades e feedback</h2>
             </div>
             {profile.submissions.length === 0 ? (
-              <p className="ga-muted">Nenhuma entrega registrada.</p>
+              <p className="gx-muted">Nenhuma entrega registrada.</p>
             ) : (
-              <ul className="ga-list">
+              <ul className="gx-list">
                 {profile.submissions.map((submission) => (
                   <li key={submission.id}>
                     <Link
@@ -193,14 +193,14 @@ const GestaoStudentProfilePage = async ({
               </ul>
             )}
           </section>
-          <section aria-labelledby="student-progress" className="ga-card">
-            <div className="ga-card-heading">
+          <section aria-labelledby="student-progress" className="gx-card">
+            <div className="gx-card-heading">
               <h2 id="student-progress">Progresso nas aulas</h2>
             </div>
             {profile.lessonProgress.length === 0 ? (
-              <p className="ga-muted">Ainda não há progresso registrado.</p>
+              <p className="gx-muted">Ainda não há progresso registrado.</p>
             ) : (
-              <ul className="ga-list">
+              <ul className="gx-list">
                 {profile.lessonProgress.map((item) => (
                   <li
                     key={`${item.lesson.title}-${item.updatedAt.toISOString()}`}
@@ -209,7 +209,7 @@ const GestaoStudentProfilePage = async ({
                       <strong>{item.lesson.title}</strong>
                       <span>{item.lesson.module.course.title}</span>
                       <span
-                        className="ga-chip"
+                        className="gx-chip"
                         data-tone={
                           item.status === "COMPLETED" ? "ok" : "neutral"
                         }
@@ -225,15 +225,15 @@ const GestaoStudentProfilePage = async ({
             )}
           </section>
         </div>
-        <div className="ga-stack">
-          <section aria-labelledby="student-timeline" className="ga-card">
-            <div className="ga-card-heading">
+        <div className="gx-stack">
+          <section aria-labelledby="student-timeline" className="gx-card">
+            <div className="gx-card-heading">
               <h2 id="student-timeline">Linha do tempo</h2>
             </div>
             {profile.timeline.length === 0 ? (
-              <p className="ga-muted">Sem movimentação ainda.</p>
+              <p className="gx-muted">Sem movimentação ainda.</p>
             ) : (
-              <ul className="ga-list">
+              <ul className="gx-list">
                 {profile.timeline.map((entry) => (
                   <li
                     key={`${entry.kind}-${entry.title}-${entry.at.toISOString()}`}
@@ -247,14 +247,14 @@ const GestaoStudentProfilePage = async ({
               </ul>
             )}
           </section>
-          <section aria-labelledby="student-goals" className="ga-card">
-            <div className="ga-card-heading">
+          <section aria-labelledby="student-goals" className="gx-card">
+            <div className="gx-card-heading">
               <h2 id="student-goals">Metas e medalhas</h2>
             </div>
             {profile.goals.length === 0 && profile.awards.length === 0 ? (
-              <p className="ga-muted">Sem metas nem medalhas até agora.</p>
+              <p className="gx-muted">Sem metas nem medalhas até agora.</p>
             ) : (
-              <ul className="ga-list">
+              <ul className="gx-list">
                 {profile.goals.map((goal) => (
                   <li key={`${goal.period}-${goal.targetMinutes}`}>
                     <div>
@@ -276,14 +276,14 @@ const GestaoStudentProfilePage = async ({
               </ul>
             )}
           </section>
-          <section aria-labelledby="student-exercises" className="ga-card">
-            <div className="ga-card-heading">
+          <section aria-labelledby="student-exercises" className="gx-card">
+            <div className="gx-card-heading">
               <h2 id="student-exercises">Exercícios</h2>
             </div>
             {profile.exerciseSessions.length === 0 ? (
-              <p className="ga-muted">Nenhuma sessão de exercícios.</p>
+              <p className="gx-muted">Nenhuma sessão de exercícios.</p>
             ) : (
-              <ul className="ga-list">
+              <ul className="gx-list">
                 {profile.exerciseSessions.map((session) => (
                   <li key={session.id}>
                     <div>

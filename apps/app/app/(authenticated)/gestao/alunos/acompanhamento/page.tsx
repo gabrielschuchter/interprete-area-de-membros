@@ -54,7 +54,7 @@ const TrackingFilters = ({
 }) => (
   <form
     action="/gestao/alunos/acompanhamento"
-    className="ga-filters"
+    className="gx-filters"
     method="get"
   >
     <input
@@ -93,11 +93,11 @@ const TrackingFilters = ({
         </option>
       ))}
     </select>
-    <button className="ga-button" type="submit">
+    <button className="gx-button" type="submit">
       Filtrar
     </button>
     {hasFilters ? (
-      <Link className="ga-link" href="/gestao/alunos/acompanhamento">
+      <Link className="gx-link" href="/gestao/alunos/acompanhamento">
         Limpar filtros
       </Link>
     ) : null}
@@ -109,8 +109,8 @@ const TrackingTable = ({
 }: {
   readonly rows: Awaited<ReturnType<typeof listGestaoStudentTracking>>["rows"];
 }) => (
-  <div className="ga-table-wrap">
-    <table className="ga-table">
+  <div className="gx-table-wrap">
+    <table className="gx-table">
       <thead>
         <tr>
           <th scope="col">Aluno</th>
@@ -138,7 +138,7 @@ const TrackingTable = ({
             <td>{formatStudyMinutes(row.studySecondsLast7Days)}</td>
             <td>{row.overdueDeliveries}</td>
             <td>
-              <span className="ga-chip" data-tone={tone[row.situation]}>
+              <span className="gx-chip" data-tone={tone[row.situation]}>
                 {situationLabels[row.situation]}
               </span>
             </td>
@@ -208,13 +208,13 @@ const GestaoStudentTrackingPage = async ({
   };
   const exportHref = `/gestao/alunos/acompanhamento/exportar${filterParams.size ? `?${filterParams}` : ""}`;
   return (
-    <section className="ga-page">
+    <section className="gx-page">
       <GestaoPageHeading
         description="Situação calculada pelo estudo registrado e pelas entregas. Atenção: 5 dias sem estudar ou entrega atrasada. Inativo: 21 dias sem estudar."
         eyebrow="Gestão · Alunos"
         title="Alunos e acompanhamento"
       >
-        <a className="ga-button-outline" href={exportHref}>
+        <a className="gx-button-outline" href={exportHref}>
           Exportar CSV
         </a>
       </GestaoPageHeading>
@@ -241,21 +241,21 @@ const GestaoStudentTrackingPage = async ({
           </p>
         </div>
       ) : (
-        <div className="ga-card">
+        <div className="gx-card">
           <TrackingTable rows={tracking.rows} />
-          <nav aria-label="Páginas" className="ga-pagination">
+          <nav aria-label="Páginas" className="gx-pagination">
             <span>
               {tracking.total} {tracking.total === 1 ? "aluno" : "alunos"}
             </span>
             <span>
               {page > 1 ? (
-                <Link className="ga-link" href={pageHref(page - 1)}>
+                <Link className="gx-link" href={pageHref(page - 1)}>
                   Anterior
                 </Link>
               ) : null}{" "}
               Página {Math.min(page, pages)} de {pages}{" "}
               {page < pages ? (
-                <Link className="ga-link" href={pageHref(page + 1)}>
+                <Link className="gx-link" href={pageHref(page + 1)}>
                   Próxima
                 </Link>
               ) : null}

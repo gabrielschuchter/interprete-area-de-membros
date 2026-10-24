@@ -342,9 +342,11 @@ const ActivityEditorActions = ({
 
 export const GestaoActivityEditor = async ({
   activityId,
+  defaultCohortId,
   result,
 }: {
   readonly activityId?: string;
+  readonly defaultCohortId?: string;
   readonly result?: string;
 }) => {
   const data: EditorData = await getGestaoActivityEditorData(activityId);
@@ -353,7 +355,11 @@ export const GestaoActivityEditor = async ({
     notFound();
   }
   const cohortIds = new Set(
-    activity?.cohortTargets.map(({ cohortId }) => cohortId) ?? []
+    activity?.cohortTargets.map(({ cohortId }) => cohortId) ??
+      (defaultCohortId &&
+      data.cohorts.some((cohort) => cohort.id === defaultCohortId)
+        ? [defaultCohortId]
+        : [])
   );
   const resultMessage = result ? resultMessages[result] : null;
 

@@ -105,9 +105,11 @@ const navigation: readonly NavigationItem[] = [
     admin: false,
     children: [
       { href: "/gestao/alunos/turmas", label: "Turmas" },
+      { href: "/gestao/alunos/acompanhamento", label: "Acompanhamento" },
       { href: "/gestao/alunos/correcoes", label: "Correções" },
       { href: "/gestao/alunos/atribuicoes", label: "Atribuições" },
       { href: "/gestao/alunos/tarefas", label: "Tarefas e metas" },
+      { href: "/gestao/alunos/reconhecimento", label: "Reconhecimento" },
     ],
   },
   {
@@ -152,7 +154,6 @@ const createActions = [
   { href: "/gestao/alunos/atribuicoes", label: "Atribuição" },
   { href: "/gestao/comunidade/avisos", label: "Aviso" },
   { href: "/gestao/comunidade/encontros", label: "Encontro" },
-  { href: "/gestao/comunidade/grupos", label: "Grupo de estudo" },
 ] as const;
 
 const gestaoWhitespacePattern = /\s+/;
