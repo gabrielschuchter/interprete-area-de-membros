@@ -1,5 +1,19 @@
 # Comunidade V2 — resultado do preflight de go-live
 
+## Rechecagem de execução — 24/10/2026 — OPS-01 HTTP 401
+
+**Estado: NO-GO; nenhuma operação de Production ou GREEN foi executada nesta rechecagem.**
+
+- O GitHub Actions executou automaticamente o schedule [#52](https://github.com/gabrielschuchter/interprete-area-de-membros/actions/runs/40068889714), run `40068889714`, SHA de main `bb92322703e017e9d633074784f9d883392d8599`, em 24/10 às 06:06 UTC. Os **nove** checks booleanos OIDC foram true, inclusive subject imutável. A chamada `POST /cron/outbox` ao Preview retornou **HTTP 401** (`curl_exit=22`). Não houve prova de recuperação, entrega, Broadcast ou badge.
+- O 401 **não foi localizado com segurança**: pode decorrer da proteção Trusted Sources da Vercel ou da autenticação própria do endpoint, que responde 401 quando `CRON_SECRET` não confere. A variável `CRON_SECRET` consta no catálogo de metadados do Preview da API, mas seu valor não foi lido, comparado nem alterado. O GitHub não expõe o valor do segredo equivalente. Logs de runtime no horário do evento estão fora da retenção disponível nesta sessão; consulta dos 30 minutos mais recentes não permite classificar o evento antigo.
+- A alias Preview da API usada pelo scheduler resolve o deployment READY `dpl_BLNMNrdxd5ZjVjUUsRGUA5GGRwKr`, SHA `80f6c13`, que difere do candidato de código `4e026b59` registrado no preflight. Alinhar o artefato requer estratégia de deploy isolado e as demais garantias, não mudança de alias sem controle.
+- O inventário Vercel atual indica Production da API SHA `6c7b49a` e alias principal do App associada a um deployment Production SHA `de12af7` (outra frente, Gestão); revalidar ambos como baseline no eventual rollout. Os dois projetos App/API não aparecem como Git-linked no contexto conectado, coerente com a desconexão documentada.
+- A integração Supabase acessível nesta sessão lista somente um projeto **inativo e distinto**, não o GREEN ativo referido no plano. Por isso não foi possível fazer preflight/migrations/restore reais no GREEN por esta conexão, e nenhum projeto alternativo foi utilizado.
+- Permanecem bloqueios de release: duas publicações PUBLISHED com proveniência não demonstrada, restauração independente do banco/Storage não aprovada, fallback/leitores antigos não comprovados e onze migrations V2 ainda não liberadas. Não classificar registros como globais por inferência; não promover tráfego antes dessas condições.
+
+**Próxima ação mínima de OPS-01:** na próxima execução agendada, distinguir 401 de proteção externa versus endpoint de cron por metadados **sanitizados** de resposta/logs no período de retenção, sem imprimir token, segredo, body, headers completos ou conteúdo privado. Se for o endpoint, sincronizar o segredo por mecanismo seguro e controlado; se for Deployment Protection, reparar a regra exata sem bypass amplo. Só fechar OPS-01 após recovery automático QA namespaced, Broadcast/Realtime e contagem/badge persistentes. Não usar POST manual para substituir a evidência.
+
+
 **Resultado: B — RELEASE BLOQUEADO COM SEGURANÇA.** Revisão encerrada em
 24/10/2026. Nenhuma migration, escrita de produto, alteração de tráfego,
 promoção ou deployment Production foi executado nesta etapa. O Supabase GREEN
