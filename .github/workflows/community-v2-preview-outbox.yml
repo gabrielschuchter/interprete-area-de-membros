@@ -86,7 +86,7 @@ jobs:
           api_url="https://${API_PREVIEW_HOST}/cron/outbox"
           phase=preview_request
           set +e
-          http_status="$(curl \
+          http_result="$(curl \
             --fail \
             --silent \
             --show-error \
@@ -95,14 +95,21 @@ jobs:
             --retry 2 \
             --retry-delay 1 \
             --output /dev/null \
-            --write-out '%{http_code}' \
+            --write-out '%{http_code}|%{content_type}' \
             --request POST \
             --header "Authorization: Bearer ${PREVIEW_OUTBOX_CRON_SECRET}" \
             --header "x-vercel-trusted-oidc-idp-token: ${oidc_token}" \
             "$api_url")"
           curl_exit=$?
           set -e
-          printf 'OPS-01 phase=preview_response curl_exit=%s http_status=%s\n' "$curl_exit" "$http_status"
+          http_status="${http_result%%|*}"
+          response_content_type="${http_result#*|}"
+          case "$response_content_type" in
+            application/json*|application/problem+json*) response_body_type=json ;;
+            text/html*) response_body_type=html ;;
+            *) response_body_type=other ;;
+          esac
+          printf 'OPS-01 phase=preview_response curl_exit=%s http_status=%s response_body_type=%s\n' "$curl_exit" "$http_status" "$response_body_type"
           [[ "$curl_exit" == "0" ]]
           [[ "$http_status" == "200" ]]
           phase=complete
