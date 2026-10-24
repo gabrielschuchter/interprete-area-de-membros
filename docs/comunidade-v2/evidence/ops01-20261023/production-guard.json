@@ -43,7 +43,10 @@
   "unchanged": ["credentials", "GREEN cron", "Trusted Source", "authentication policies", "product deployments", "migrations"],
   "browserEvidenceDirectory": "C:/Users/gabsc/AppData/Local/Codex/qa/community-v2-foundation-20261015/ops01-guard-20261023",
   "nextRealScheduleObservation": {
-    "state": "WAITING_FOR_GITHUB_EVENT",
+    "state": "DIAGNOSTIC_OBTAINED_MONITOR_DELETED",
+    "firstDiagnosticRun": 40036220515,
+    "firstDiagnosticRunAt": "2026-10-23T22:51:14Z",
+    "resultEvidence": "first-scheduled-diagnostic.json",
     "lastPrePatchRun": 40014660675,
     "lastPrePatchRunAt": "2026-10-23T19:51:09Z",
     "observedFailures": 49,

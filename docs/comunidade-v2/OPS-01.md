@@ -4,6 +4,46 @@
 Nenhum job foi declarado recuperado, nenhuma notificação foi criada nesta
 execução e nenhuma chamada autenticada manual do worker foi usada como prova.
 
+## Diagnóstico encerrado — primeiro schedule com o patch
+
+O primeiro evento real após o PR #16 foi o run
+[`40036220515`](https://github.com/gabrielschuchter/interprete-area-de-membros/actions/runs/40036220515),
+criado em **23/10 às 22:51:14 UTC (19:51 BRT)**, SHA `b5a2f06`, com falha.
+O blob do workflow nesse SHA é `f7a3ba70483ee8ab10334c3413733b4dddedf2f1`,
+idêntico ao head aprovado do PR. Foi analisado somente esse primeiro run;
+nenhum rerun, dispatch ou POST manual foi executado.
+
+O log comprova `phase=oidc_claims exit=1`: **`sub=false`**, enquanto `aud`,
+`environment`, `event_name`, `iss`, `not_expired`, `ref`, `repository` e
+`workflow_ref` são `true`. O job parou antes do request Preview; portanto
+**não há `curl_exit` nem status HTTP desse run**.
+
+A consulta read-only ao endpoint GitHub de configuração OIDC do repositório
+retornou `use_default=true`, `use_immutable_subject=true` e o prefixo
+`repo:gabrielschuchter@291341266/interprete-area-de-membros@1386145986`.
+O guard e a Trusted Source Preview inspecionada exigem o formato anterior:
+`repo:gabrielschuchter/interprete-area-de-membros:environment:community-v2-preview`.
+Essa incompatibilidade de subject é um bloqueador concreto. O payload não foi
+gravado e a checagem booleana não constitui validação criptográfica. A resposta
+HTTP das 48/49 falhas anteriores continua sem comprovação; este run diagnóstico
+não chegou a exercitar a decisão da Vercel.
+
+**Próxima ação exata, fora da autorização atual:** autorizar o alinhamento do
+`sub` exigido pela Trusted Source **somente Preview da API** e pelo guard do
+workflow ao subject imutável do repositório, preservando todos os demais claims
+e restrições. Não desabilitar subjects imutáveis nem flexibilizar a regra para
+fazer passar. É alteração de política de autenticação, expressamente vedada
+nesta tarefa; não foi aplicada. Após autorização/correção, a prova deverá voltar
+a ser um schedule real, antes de qualquer prova de job QA.
+
+**OPS-01 permanece BLOQUEADO / NO-GO.** Recovery, Broadcast e badge não foram
+comprovados. App e API permanecem com Git desconectado; nenhuma reconexão,
+publicação, mudança de credencial, cron GREEN ou migration foi realizada.
+O acompanhamento `ops-01-pr-ximo-schedule-ap-s-pr-16` foi **excluído** após
+obter o diagnóstico. Não há novo ciclo de investigação em andamento.
+Evidência: [first-scheduled-diagnostic.json](evidence/ops01-20261023/first-scheduled-diagnostic.json).
+As seções seguintes são históricas onde divergirem deste fechamento.
+
 ## Ativação condicional do PR #16 — 23/10, 20:19 UTC
 
 A autorização posterior do usuário permitiu integrar exclusivamente o patch

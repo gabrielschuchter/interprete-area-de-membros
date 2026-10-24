@@ -5,8 +5,12 @@
 > Git desconectado e verificado no App e na API **antes do merge**, impedindo
 > deployments automáticos. Production manteve seus deployments/SHAs/aliases.
 > **Git permanece desconectado em ambos**; reconexão exige handoff controlado.
-> Próximo evento real com o diagnóstico acompanhado nesta conversa; último
-> anterior ao patch: `40014660675`, 19:51 UTC, 49 falhas, zero sucessos.
+> Primeiro schedule com o patch: `40036220515`, 22:51 UTC. Falha comprovada em
+> `oidc_claims`: `sub=false`, demais oito checks true. GitHub usa subject
+> imutável; guard e Trusted Source Preview inspecionada exigem formato anterior.
+> Request Preview não alcançado, sem status HTTP. Alinhar o `sub` da regra
+> Preview da API e do guard requer autorização para política de autenticação.
+> Nada disso foi alterado; acompanhamento excluído após obter o diagnóstico.
 > **OPS-01 continua BLOQUEADO e o release NO-GO.** Ver [OPS-01.md](OPS-01.md).
 > O restante deste preflight permanece no snapshot original, inclusive as
 > contagens e impedimentos históricos abaixo. Nenhuma publicação 12B ocorreu.

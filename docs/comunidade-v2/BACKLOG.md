@@ -2,7 +2,7 @@
 
 ## OPS-01 — ativação condicional do PR #16 — 23/10/2026
 
-**OPS-01 BLOQUEADO; diagnóstico agendado pendente.** O patch exclusivo do
+**OPS-01 BLOQUEADO; divergência de subject OIDC comprovada.** O patch exclusivo do
 [PR #16](https://github.com/gabrielschuchter/interprete-area-de-membros/pull/16)
 foi integrado em main: `b5a2f06`, 20:19:37 UTC. Antes do merge, App e API foram
 desconectados do Git e a proteção foi confirmada por reload no painel.
@@ -10,11 +10,18 @@ Production manteve os mesmos deployments, SHAs e aliases; nenhum deployment
 do merge foi observado. **Git permanece desconectado nos dois projetos.**
 Reconectar exige handoff controlado para evitar publicação.
 
-Último schedule observado: `40014660675`, 19:51:09 UTC, anterior ao patch;
-49 falhas e zero sucessos. Workflow ativo; os últimos eventos chegaram a cada
-2–6 horas apesar do cron de cinco minutos. Acompanhamento nesta conversa,
-a cada cinco minutos, limitado ao próximo evento real com o patch; silencioso
-até diagnóstico ou ação necessária. ID: `ops-01-pr-ximo-schedule-ap-s-pr-16`.
+Diagnóstico encerrado: primeiro schedule com o patch, run
+[`40036220515`](https://github.com/gabrielschuchter/interprete-area-de-membros/actions/runs/40036220515),
+23/10 às 22:51 UTC, falhou em `oidc_claims`: `sub=false`, demais oito checks
+`true`. Repositório usa subject imutável com prefixo
+`repo:gabrielschuchter@291341266/interprete-area-de-membros@1386145986`;
+guard e Trusted Source Preview inspecionada esperam o formato sem IDs.
+O request Preview não foi alcançado; não há status HTTP desse run.
+
+Próxima ação requer autorização para alinhar o `sub` da regra Trusted Source
+somente Preview da API e do guard diagnóstico ao subject imutável, mantendo
+todas as demais restrições. Nenhuma política foi alterada. Acompanhamento
+`ops-01-pr-ximo-schedule-ap-s-pr-16` excluído após o diagnóstico.
 
 Não houve job QA novo, chamada manual, prova de recovery/Broadcast/badge,
 migration ou mudança de credencial, autenticação ou cron GREEN.
