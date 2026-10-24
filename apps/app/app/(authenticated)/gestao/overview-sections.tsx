@@ -1,27 +1,40 @@
-import {
-  AlertCircleIcon,
-  CalendarIcon,
-  ChevronRightIcon,
-  InboxIcon,
-  PencilIcon,
-  UsersIcon,
-  VideoIcon,
-} from "lucide-react";
 import Link from "next/link";
 import type {
   OverviewAttentionItem,
   OverviewMeeting,
   OverviewMovement,
 } from "@/lib/gestao-overview-extras";
+import { GestaoIcon, type GestaoIconName } from "./gestao-icon";
 
-const icons = {
-  inbox: InboxIcon,
-  alert: AlertCircleIcon,
-  meeting: CalendarIcon,
-  draft: PencilIcon,
-  video: VideoIcon,
-  people: UsersIcon,
-} as const;
+const icons: Record<OverviewAttentionItem["icon"], GestaoIconName> = {
+  inbox: "inbox",
+  alert: "alert-circle",
+  meeting: "video",
+  draft: "pencil",
+  video: "video",
+  people: "users",
+};
+
+const avatarTones = ["#410230", "#6a1a3a", "#8c3a52"] as const;
+const initialsPattern = /\s+/;
+
+const initialsOf = (name: string) =>
+  name
+    .trim()
+    .split(initialsPattern)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase() || "?";
+
+const toneOf = (name: string) => {
+  let hash = 0;
+  for (const char of name) {
+    hash = (hash * 31 + char.charCodeAt(0)) % 997;
+  }
+  return avatarTones[hash % avatarTones.length];
+};
 
 const dayFormat = new Intl.DateTimeFormat("pt-BR", {
   day: "numeric",
@@ -59,11 +72,13 @@ export const AttentionRow = ({
 }: {
   readonly item: OverviewAttentionItem;
 }) => {
-  const Icon = icons[item.icon];
   return (
     <div className="go-attention-row" data-attention-item={item.id}>
-      <span className="go-attention-icon">
-        <Icon aria-hidden="true" size={18} />
+      <span
+        className="go-attention-icon"
+        data-tone={item.icon === "alert" ? "danger" : "default"}
+      >
+        <GestaoIcon name={icons[item.icon]} />
       </span>
       <div className="go-attention-copy">
         <h3>{item.title}</h3>
@@ -104,8 +119,13 @@ export const UpcomingMeetings = ({
             </span>
             <span
               className="gx-chip"
-              data-tone={meeting.draft ? "neutral" : "ok"}
+              data-tone={meeting.draft ? "neutral" : "scheduled"}
             >
+              <GestaoIcon
+                name={meeting.draft ? "pencil" : "clock"}
+                size={12}
+                strokeWidth={1.8}
+              />
               {meeting.draft ? "Rascunho" : "Agendado"}
             </span>
           </li>
@@ -131,18 +151,25 @@ export const RecentMovement = ({
         Entregas e aulas concluídas dos seus alunos aparecem aqui.
       </p>
     ) : (
-      <ul className="gx-list">
+      <ul className="go-movement">
         {movement.map((event) => (
           <li key={event.id}>
-            <Link href={event.href} prefetch={false}>
-              <span className="gx-inline">
-                <strong>{event.who}</strong> {event.verb}{" "}
-                <strong>{event.object}</strong>
-              </span>
-              <time dateTime={event.at.toISOString()}>
-                {relativeTime(event.at, now)}
-              </time>
-            </Link>
+            <span
+              aria-hidden="true"
+              className="go-avatar"
+              style={{ background: toneOf(event.who) }}
+            >
+              {initialsOf(event.who)}
+            </span>
+            <span className="go-movement-copy">
+              <b>{event.who}</b> {event.verb}{" "}
+              <Link href={event.href} prefetch={false}>
+                {event.object}
+              </Link>
+            </span>
+            <time dateTime={event.at.toISOString()}>
+              {relativeTime(event.at, now)}
+            </time>
           </li>
         ))}
       </ul>
@@ -163,7 +190,7 @@ export const Institutional = ({
     <div className="go-week-heading">
       <h2 id="overview-institutional">Institucional</h2>
     </div>
-    <ul className="gx-list">
+    <ul className="go-institutional">
       {[
         {
           href: "/gestao/administracao/membros",
@@ -180,8 +207,8 @@ export const Institutional = ({
       ].map((row) => (
         <li key={row.href}>
           <Link href={row.href} prefetch={false}>
-            <span className="gx-plain">{row.label}</span>
-            <ChevronRightIcon aria-hidden="true" size={16} />
+            <span>{row.label}</span>
+            <GestaoIcon name="chevron-right" size={16} strokeWidth={1.8} />
           </Link>
         </li>
       ))}

@@ -24,21 +24,7 @@ import {
   DropdownMenuTrigger,
 } from "@repo/design-system/components/ui/dropdown-menu";
 import { toast } from "@repo/design-system/lib/toast";
-import {
-  ArrowLeftIcon,
-  BookOpenIcon,
-  ChevronDownIcon,
-  ChevronRightIcon,
-  LayoutDashboardIcon,
-  LockKeyholeIcon,
-  type LucideIcon,
-  MenuIcon,
-  MessageCircleIcon,
-  PlusIcon,
-  Settings2Icon,
-  UsersRoundIcon,
-  XIcon,
-} from "lucide-react";
+import { MenuIcon, XIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { MouseEvent as ReactMouseEvent, ReactNode } from "react";
@@ -50,6 +36,8 @@ import {
 import type { GestaoRole } from "@/lib/gestao-permissions";
 import { MemberHeaderControls } from "../components/member-header-controls";
 import { useMemberNavigation } from "../components/member-navigation-context";
+import { GestaoCrumbsProvider, useGestaoCrumbTail } from "./gestao-crumbs";
+import { GestaoIcon, type GestaoIconName } from "./gestao-icon";
 import { GestaoSearch } from "./gestao-search";
 import { useGestaoReturnPath } from "./use-gestao-return-path";
 
@@ -74,20 +62,20 @@ interface NavigationItem {
     readonly label: string;
   }[];
   readonly href: string;
-  readonly icon: LucideIcon;
+  readonly icon: GestaoIconName;
   readonly label: string;
 }
 
 const navigation: readonly NavigationItem[] = [
   {
     href: "/gestao",
-    icon: LayoutDashboardIcon,
+    icon: "home",
     label: "Visão geral",
     admin: false,
   },
   {
     href: "/gestao/ensino",
-    icon: BookOpenIcon,
+    icon: "book",
     label: "Ensino",
     admin: false,
     children: [
@@ -100,7 +88,7 @@ const navigation: readonly NavigationItem[] = [
   },
   {
     href: "/gestao/alunos",
-    icon: UsersRoundIcon,
+    icon: "users",
     label: "Alunos",
     admin: false,
     children: [
@@ -114,7 +102,7 @@ const navigation: readonly NavigationItem[] = [
   },
   {
     href: "/gestao/comunidade",
-    icon: MessageCircleIcon,
+    icon: "chat",
     label: "Comunidade",
     admin: false,
     children: [
@@ -125,7 +113,7 @@ const navigation: readonly NavigationItem[] = [
   },
   {
     href: "/gestao/administracao",
-    icon: Settings2Icon,
+    icon: "sliders",
     label: "Administração",
     admin: true,
     children: [
@@ -151,17 +139,61 @@ const navigation: readonly NavigationItem[] = [
 
 const welcomeDelayMs = 700;
 
-const createActions = [
-  { href: "/gestao/ensino/cursos/novo", label: "Curso" },
-  { href: "/gestao/ensino/exercicios", label: "Lista de exercícios" },
-  { href: "/gestao/ensino/atividades/nova", label: "Atividade" },
-  { href: "/gestao/ensino/biblioteca/novo", label: "Material" },
-  { href: "/gestao/ensino/colecoes/novo", label: "Coleção" },
-  { href: "/gestao/alunos/turmas/nova", label: "Turma" },
-  { href: "/gestao/alunos/atribuicoes", label: "Atribuição" },
-  { href: "/gestao/comunidade/avisos", label: "Aviso" },
-  { href: "/gestao/comunidade/encontros", label: "Encontro" },
-] as const;
+const createActions: readonly {
+  readonly area: string;
+  readonly href: string;
+  readonly icon: GestaoIconName;
+  readonly label: string;
+}[] = [
+  {
+    area: "Ensino",
+    href: "/gestao/ensino/cursos/novo",
+    icon: "book",
+    label: "Curso",
+  },
+  {
+    area: "Ensino",
+    href: "/gestao/ensino/exercicios",
+    icon: "checklist",
+    label: "Lista de exercícios",
+  },
+  {
+    area: "Ensino",
+    href: "/gestao/ensino/atividades/nova",
+    icon: "inbox",
+    label: "Atividade",
+  },
+  {
+    area: "Ensino",
+    href: "/gestao/ensino/biblioteca/novo",
+    icon: "columns",
+    label: "Material da biblioteca",
+  },
+  {
+    area: "Ensino",
+    href: "/gestao/ensino/colecoes/novo",
+    icon: "star",
+    label: "Coleção",
+  },
+  {
+    area: "Alunos",
+    href: "/gestao/alunos/atribuicoes",
+    icon: "arrow-right",
+    label: "Atribuição",
+  },
+  {
+    area: "Comunidade",
+    href: "/gestao/comunidade/avisos",
+    icon: "bell",
+    label: "Aviso",
+  },
+  {
+    area: "Comunidade",
+    href: "/gestao/comunidade/encontros",
+    icon: "video",
+    label: "Encontro",
+  },
+];
 
 const gestaoWhitespacePattern = /\s+/;
 
@@ -186,7 +218,20 @@ interface GestaoBreadcrumbItem {
   readonly label: string;
 }
 
+const topLevelCrumbs: Readonly<Record<string, string>> = {
+  "/gestao/busca": "Busca",
+  "/gestao/notificacoes": "Notificações",
+  "/gestao/previa": "Ver como aluno",
+};
+
 const gestaoBreadcrumb = (pathname: string): GestaoBreadcrumbItem[] => {
+  if (pathname === "/gestao") {
+    return [{ current: true, href: pathname, label: "Visão geral" }];
+  }
+  const topLevel = topLevelCrumbs[pathname];
+  if (topLevel) {
+    return [{ current: true, href: pathname, label: topLevel }];
+  }
   const area = navigation.find(
     (item) => item.href !== "/gestao" && isActivePath(pathname, item.href)
   );
@@ -266,18 +311,14 @@ const GestaoNavigationEntry = ({
   }, []);
   const isLocked = item.admin && role !== "ADMIN";
   const childItems = isLocked ? undefined : item.children;
-  let TrailingIcon: LucideIcon | null = null;
+  let trailingIcon: GestaoIconName | null = null;
 
   if (isLocked) {
-    TrailingIcon = LockKeyholeIcon;
+    trailingIcon = "lock";
   } else if (childItems) {
-    if (active) {
-      TrailingIcon = ChevronDownIcon;
-    } else {
-      TrailingIcon = ChevronRightIcon;
-    }
+    trailingIcon = active ? "chevron-down" : "chevron-right";
   } else if (item.href !== "/gestao") {
-    TrailingIcon = ChevronRightIcon;
+    trailingIcon = "chevron-right";
   }
 
   return (
@@ -293,12 +334,14 @@ const GestaoNavigationEntry = ({
         onClick={onNavigate}
         title={item.label}
       >
-        <item.icon aria-hidden="true" className="gestao-navigation-icon" />
+        <GestaoIcon className="gestao-navigation-icon" name={item.icon} />
         <span className="gestao-navigation-label">{item.label}</span>
-        {TrailingIcon ? (
-          <TrailingIcon
-            aria-hidden="true"
+        {trailingIcon ? (
+          <GestaoIcon
             className="gestao-navigation-trailing"
+            name={trailingIcon}
+            size={14}
+            strokeWidth={1.8}
           />
         ) : null}
       </Link>
@@ -327,10 +370,7 @@ const GestaoNavigationEntry = ({
               onPointerLeave={scheduleClose}
               type="button"
             >
-              <item.icon
-                aria-hidden="true"
-                className="gestao-navigation-icon"
-              />
+              <GestaoIcon className="gestao-navigation-icon" name={item.icon} />
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent
@@ -393,7 +433,7 @@ const GestaoNavigationEntry = ({
     </div>
   );
 };
-const GestaoShellView = ({
+const GestaoShellFrame = ({
   avatarUrl,
   children,
   displayName,
@@ -417,7 +457,22 @@ const GestaoShellView = ({
   const heading =
     navigation.find((item) => isActivePath(pathname, item.href))?.label ??
     "Gestão";
-  const breadcrumb = gestaoBreadcrumb(pathname);
+  const crumbTail = useGestaoCrumbTail();
+  const baseBreadcrumb = gestaoBreadcrumb(pathname);
+  const breadcrumb: GestaoBreadcrumbItem[] =
+    crumbTail.length > 0
+      ? [
+          ...baseBreadcrumb.map((crumb) => ({ ...crumb, current: false })),
+          ...crumbTail.map((crumb, index) => ({
+            current: index === crumbTail.length - 1,
+            href: crumb.href ?? `${pathname}#${index}`,
+            label: crumb.label,
+          })),
+        ]
+      : baseBreadcrumb.map((crumb, index, all) => ({
+          ...crumb,
+          current: index === all.length - 1,
+        }));
 
   useEffect(() => {
     const desktop = window.matchMedia("(min-width: 1024px)");
@@ -566,6 +621,7 @@ const GestaoShellView = ({
         ))}
       </nav>
       <div className="gestao-sidebar-spacer" />
+      <div aria-hidden="true" className="gestao-sidebar-rule" />
       <Link
         aria-label="Voltar à área de membros"
         className="gestao-back-link"
@@ -573,7 +629,7 @@ const GestaoShellView = ({
         onClick={() => setMobileMenuOpen(false)}
         title="Voltar à área de membros"
       >
-        <ArrowLeftIcon aria-hidden="true" />
+        <GestaoIcon name="arrow-left" size={16} strokeWidth={1.6} />
         <span>Voltar à área de membros</span>
       </Link>
       <DropdownMenu modal={false}>
@@ -589,14 +645,13 @@ const GestaoShellView = ({
             </Avatar>
             <span className="gestao-account-copy">
               <span className="gestao-account-name">{displayName}</span>
-              <span className="gestao-account-role">
-                {role === "ADMIN" ? "Administração" : "Professor"}
+              <span
+                className="gestao-account-role"
+                data-role={role === "ADMIN" ? "admin" : "teacher"}
+              >
+                {role === "ADMIN" ? "Administrador" : "Professor"}
               </span>
             </span>
-            <ChevronRightIcon
-              aria-hidden="true"
-              className="gestao-account-chevron"
-            />
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent
@@ -680,7 +735,12 @@ const GestaoShellView = ({
                 <Link href="/gestao">Gestão</Link>
                 {breadcrumb.map((crumb) => (
                   <span className="contents" key={crumb.href}>
-                    <span aria-hidden="true">›</span>
+                    <GestaoIcon
+                      className="gestao-crumb-separator"
+                      name="chevron-right"
+                      size={14}
+                      strokeWidth={1.8}
+                    />
                     {crumb.current ? (
                       <span aria-current="page">{crumb.label}</span>
                     ) : (
@@ -693,35 +753,53 @@ const GestaoShellView = ({
               <span className="gestao-topbar-section">{heading}</span>
             )}
             {breadcrumb.length > 0 ? (
-              <span className="gestao-topbar-mobile-section">{heading}</span>
+              <span className="gestao-topbar-mobile-section">
+                {breadcrumb.at(-1)?.label ?? heading}
+              </span>
             ) : null}
           </div>
           <div className="gestao-topbar-actions">
             <GestaoSearch memberId={memberId} />
-            <MemberHeaderControls
-              memberId={memberId}
-              showSaved={false}
-              showSearch={false}
-            />
+            <Link
+              className="gestao-preview-button"
+              href={withGestaoReturnPath("/gestao/previa", returnTo)}
+            >
+              <GestaoIcon name="eye" size={16} />
+              <span>Ver como aluno</span>
+            </Link>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button className="gestao-create-button" size="sm">
-                  <PlusIcon aria-hidden="true" />
+                <button className="gestao-create-button" type="button">
+                  <GestaoIcon name="plus" size={16} strokeWidth={1.8} />
                   <span>Criar</span>
-                </Button>
+                  <GestaoIcon name="chevron-down" size={14} strokeWidth={1.8} />
+                </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="min-w-52">
-                <DropdownMenuLabel>Criar em Gestão</DropdownMenuLabel>
-                <DropdownMenuSeparator />
+              <DropdownMenuContent
+                align="end"
+                aria-label="Criar"
+                className="gestao-create-menu"
+              >
                 {createActions.map((item) => (
                   <DropdownMenuItem asChild key={item.href}>
                     <Link href={withGestaoReturnPath(item.href, returnTo)}>
-                      {item.label}
+                      <GestaoIcon name={item.icon} size={18} />
+                      <span className="gestao-create-menu-label">
+                        {item.label}
+                      </span>
+                      <span className="gestao-create-menu-area">
+                        {item.area}
+                      </span>
                     </Link>
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
+            <MemberHeaderControls
+              memberId={memberId}
+              showSaved={false}
+              showSearch={false}
+            />
           </div>
         </header>
         <div className="gestao-page-scroll">
@@ -768,6 +846,12 @@ const GestaoShellView = ({
     </div>
   );
 };
+
+const GestaoShellView = (properties: GestaoShellViewProperties) => (
+  <GestaoCrumbsProvider>
+    <GestaoShellFrame {...properties} />
+  </GestaoCrumbsProvider>
+);
 
 const ClerkGestaoShell = (
   properties: Omit<GestaoShellProperties, "localQaAuth">

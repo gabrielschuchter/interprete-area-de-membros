@@ -1,5 +1,6 @@
 import "./gestao.css";
 import "./gestao-areas.css";
+import "./gestao-fonts.css";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { env } from "@/env";

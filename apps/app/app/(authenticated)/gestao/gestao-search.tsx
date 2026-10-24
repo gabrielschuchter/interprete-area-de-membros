@@ -1,8 +1,8 @@
 "use client";
 
-import { SearchIcon } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
+import { GestaoIcon } from "./gestao-icon";
 
 // The dialog (results, recents, server action) loads on first use so the
 // shell keeps a small initial bundle on every Gestão route.
@@ -44,7 +44,7 @@ export const GestaoSearch = ({ memberId }: { readonly memberId: string }) => {
         ref={trigger}
         type="button"
       >
-        <SearchIcon aria-hidden="true" />
+        <GestaoIcon name="search" />
         <span className="gestao-search-trigger-label">Buscar em Gestão</span>
         <kbd>Ctrl K</kbd>
       </button>

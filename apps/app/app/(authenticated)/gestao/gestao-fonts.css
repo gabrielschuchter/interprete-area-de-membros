@@ -1,0 +1,13 @@
+/*
+ * Os quadros usam Source Serif 4 com eixo óptico automático (títulos grandes
+ * ficam mais estreitos que o corte de texto) e IBM Plex Mono 500 nos rótulos.
+ * O estático global do design system só traz o corte de texto.
+ */
+@import "@fontsource-variable/source-serif-4/opsz.css";
+@import "@fontsource/ibm-plex-mono/500.css";
+
+:root:has(.gestao-shell) {
+  --font-display-family:
+    "Source Serif 4 Variable", "Source Serif 4", "Source Serif Pro", Georgia,
+    serif;
+}
