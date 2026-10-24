@@ -14,6 +14,7 @@ import {
 } from "@repo/security/write-freeze";
 import { type NextProxy, type NextRequest, NextResponse } from "next/server";
 import { env } from "@/env";
+import { gestaoLegacyAdminDestination } from "./lib/gestao-navigation";
 
 const securityHeaders = securityMiddleware(noseconeOptions);
 // Clerk's production Frontend API proxy is registered on this Vercel alias.
@@ -128,6 +129,22 @@ const gestaoBoundaryResponse = async (req: NextRequest, userId: string) => {
     );
   }
   return NextResponse.next({ status: 403, headers });
+};
+
+const legacyAdminRedirect = (req: NextRequest) => {
+  if (
+    env.GESTAO_V2_ENABLED !== "true" ||
+    !matchesPath(req.nextUrl.pathname, "/admin")
+  ) {
+    return null;
+  }
+  const destination = gestaoLegacyAdminDestination(req.nextUrl.pathname);
+  if (!destination) {
+    return null;
+  }
+  const url = req.nextUrl.clone();
+  url.pathname = destination;
+  return NextResponse.redirect(url, 307);
 };
 
 const isSessionTaskRoute = (pathname: string) =>
@@ -246,6 +263,10 @@ const clerkProxy = useDevelopmentTestAuth
             if (denial) {
               return denial;
             }
+            const legacyRedirect = legacyAdminRedirect(req);
+            if (legacyRedirect) {
+              return legacyRedirect;
+            }
           }
         }
 
@@ -303,7 +324,7 @@ const developmentTestAuthProxy = async (req: NextRequest) => {
     userId: process.env.GESTAO_DEV_AUTH_USER_ID,
   });
   const denial = userId ? await gestaoBoundaryResponse(req, userId) : null;
-  return denial ?? securityHeaders();
+  return denial ?? legacyAdminRedirect(req) ?? securityHeaders();
 };
 
 export default (useDevelopmentTestAuth
