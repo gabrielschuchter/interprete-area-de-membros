@@ -50,6 +50,7 @@ import {
 import type { GestaoRole } from "@/lib/gestao-permissions";
 import { MemberHeaderControls } from "../components/member-header-controls";
 import { useMemberNavigation } from "../components/member-navigation-context";
+import { GestaoSearch } from "./gestao-search";
 import { useGestaoReturnPath } from "./use-gestao-return-path";
 
 interface GestaoShellProperties {
@@ -104,7 +105,11 @@ const navigation: readonly NavigationItem[] = [
     admin: false,
     children: [
       { href: "/gestao/alunos/turmas", label: "Turmas" },
+      { href: "/gestao/alunos/acompanhamento", label: "Acompanhamento" },
       { href: "/gestao/alunos/correcoes", label: "Correções" },
+      { href: "/gestao/alunos/atribuicoes", label: "Atribuições" },
+      { href: "/gestao/alunos/tarefas", label: "Tarefas e metas" },
+      { href: "/gestao/alunos/reconhecimento", label: "Reconhecimento" },
     ],
   },
   {
@@ -112,20 +117,50 @@ const navigation: readonly NavigationItem[] = [
     icon: MessageCircleIcon,
     label: "Comunidade",
     admin: false,
+    children: [
+      { href: "/gestao/comunidade/publicacoes", label: "Publicações" },
+      { href: "/gestao/comunidade/avisos", label: "Avisos" },
+      { href: "/gestao/comunidade/encontros", label: "Encontros" },
+    ],
   },
   {
     href: "/gestao/administracao",
     icon: Settings2Icon,
     label: "Administração",
     admin: true,
+    children: [
+      { href: "/gestao/administracao/membros", label: "Membros e papéis" },
+      { href: "/gestao/administracao/acessos", label: "Acessos" },
+      {
+        href: "/gestao/administracao/gravacoes-historicas",
+        label: "Gravações históricas",
+      },
+      {
+        href: "/gestao/administracao/personalizacao",
+        label: "Personalização",
+      },
+      { href: "/gestao/administracao/medalhas", label: "Medalhas" },
+      { href: "/gestao/administracao/integracoes", label: "Integrações" },
+      {
+        href: "/gestao/administracao/auditoria",
+        label: "Registro de atividades",
+      },
+    ],
   },
 ] as const;
 
+const welcomeDelayMs = 700;
+
 const createActions = [
-  { href: "/gestao/ensino/cursos/novo", label: "Novo curso" },
-  { href: "/gestao/alunos/turmas/nova", label: "Nova turma" },
-  { href: "/gestao/alunos/atribuicoes/nova", label: "Atribuir conteúdo" },
-  { href: "/gestao/comunidade/avisos/novo", label: "Novo aviso" },
+  { href: "/gestao/ensino/cursos/novo", label: "Curso" },
+  { href: "/gestao/ensino/exercicios", label: "Lista de exercícios" },
+  { href: "/gestao/ensino/atividades/nova", label: "Atividade" },
+  { href: "/gestao/ensino/biblioteca/novo", label: "Material" },
+  { href: "/gestao/ensino/colecoes/novo", label: "Coleção" },
+  { href: "/gestao/alunos/turmas/nova", label: "Turma" },
+  { href: "/gestao/alunos/atribuicoes", label: "Atribuição" },
+  { href: "/gestao/comunidade/avisos", label: "Aviso" },
+  { href: "/gestao/comunidade/encontros", label: "Encontro" },
 ] as const;
 
 const gestaoWhitespacePattern = /\s+/;
@@ -144,6 +179,41 @@ const isActivePath = (pathname: string, href: string) =>
   href === "/gestao"
     ? pathname === href
     : pathname === href || pathname.startsWith(`${href}/`);
+
+interface GestaoBreadcrumbItem {
+  readonly current: boolean;
+  readonly href: string;
+  readonly label: string;
+}
+
+const gestaoBreadcrumb = (pathname: string): GestaoBreadcrumbItem[] => {
+  const area = navigation.find(
+    (item) => item.href !== "/gestao" && isActivePath(pathname, item.href)
+  );
+  if (!area) {
+    return [];
+  }
+  const section = area.children?.find((child) =>
+    isActivePath(pathname, child.href)
+  );
+  if (!section) {
+    return [
+      { current: pathname === area.href, href: area.href, label: area.label },
+    ];
+  }
+  const crumbs: GestaoBreadcrumbItem[] = [
+    { current: false, href: area.href, label: area.label },
+    {
+      current: pathname === section.href,
+      href: section.href,
+      label: section.label,
+    },
+  ];
+  if (pathname.startsWith("/gestao/ensino/cursos/percursos/")) {
+    crumbs.push({ current: true, href: pathname, label: "Percursos" });
+  }
+  return crumbs;
+};
 
 interface GestaoNavigationEntryProperties {
   readonly item: NavigationItem;
@@ -195,11 +265,12 @@ const GestaoNavigationEntry = ({
     };
   }, []);
   const isLocked = item.admin && role !== "ADMIN";
+  const childItems = isLocked ? undefined : item.children;
   let TrailingIcon: LucideIcon | null = null;
 
   if (isLocked) {
     TrailingIcon = LockKeyholeIcon;
-  } else if (item.children) {
+  } else if (childItems) {
     if (active) {
       TrailingIcon = ChevronDownIcon;
     } else {
@@ -216,7 +287,7 @@ const GestaoNavigationEntry = ({
         aria-label={isLocked ? `${item.label}, acesso restrito` : item.label}
         className="gestao-navigation-link"
         data-active={String(active)}
-        data-has-children={Boolean(item.children)}
+        data-has-children={Boolean(childItems)}
         data-locked={String(isLocked)}
         href={withGestaoReturnPath(item.href, returnTo)}
         onClick={onNavigate}
@@ -231,7 +302,7 @@ const GestaoNavigationEntry = ({
           />
         ) : null}
       </Link>
-      {item.children ? (
+      {childItems ? (
         <DropdownMenu modal={false} onOpenChange={setRailOpen} open={railOpen}>
           <DropdownMenuTrigger asChild>
             <button
@@ -276,7 +347,7 @@ const GestaoNavigationEntry = ({
             sideOffset={10}
           >
             <DropdownMenuLabel>{item.label}</DropdownMenuLabel>
-            {item.children.map((child) => (
+            {childItems.map((child) => (
               <DropdownMenuItem asChild key={child.href}>
                 <Link
                   aria-current={
@@ -296,12 +367,12 @@ const GestaoNavigationEntry = ({
           </DropdownMenuContent>
         </DropdownMenu>
       ) : null}
-      {active && item.children ? (
+      {active && childItems ? (
         <ul
           aria-label={`Páginas de ${item.label}`}
           className="gestao-navigation-children"
         >
-          {item.children.map((child) => {
+          {childItems.map((child) => {
             const childActive = isActivePath(pathname, child.href);
             return (
               <li key={child.href}>
@@ -346,8 +417,7 @@ const GestaoShellView = ({
   const heading =
     navigation.find((item) => isActivePath(pathname, item.href))?.label ??
     "Gestão";
-  const isPathDetail = pathname.startsWith("/gestao/ensino/cursos/percursos/");
-  const isCoursesIndex = pathname === "/gestao/ensino/cursos";
+  const breadcrumb = gestaoBreadcrumb(pathname);
 
   useEffect(() => {
     const desktop = window.matchMedia("(min-width: 1024px)");
@@ -361,17 +431,22 @@ const GestaoShellView = ({
   }, []);
 
   useEffect(() => {
+    let seen = false;
     try {
-      if (
+      seen =
         window.localStorage.getItem(
           `interprete:gestao:welcome:v1:${memberId}`
-        ) !== "seen"
-      ) {
-        setWelcomeOpen(true);
-      }
+        ) === "seen";
     } catch {
-      setWelcomeOpen(true);
+      seen = false;
     }
+    if (seen) {
+      return;
+    }
+    // A modal marks its siblings aria-hidden; opening it while the streamed
+    // page is still hydrating trips React's hydration check on those nodes.
+    const timer = window.setTimeout(() => setWelcomeOpen(true), welcomeDelayMs);
+    return () => window.clearTimeout(timer);
   }, [memberId]);
 
   const dismissWelcome = useCallback(() => {
@@ -597,38 +672,37 @@ const GestaoShellView = ({
             <MenuIcon aria-hidden="true" />
           </button>
           <div className="gestao-topbar-context">
-            {pathname.startsWith("/gestao/ensino/cursos") ? (
+            {breadcrumb.length > 0 ? (
               <nav
                 aria-label="Caminho da página"
                 className="gestao-topbar-breadcrumb"
               >
                 <Link href="/gestao">Gestão</Link>
-                <span aria-hidden="true">›</span>
-                <Link href="/gestao/ensino/cursos">Ensino</Link>
-                {isPathDetail && (
-                  <>
+                {breadcrumb.map((crumb) => (
+                  <span className="contents" key={crumb.href}>
                     <span aria-hidden="true">›</span>
-                    <Link href="/gestao/ensino/cursos">Cursos e percursos</Link>
-                    <span aria-hidden="true">›</span>
-                    <span aria-current="page">Percursos</span>
-                  </>
-                )}
-                {isCoursesIndex && (
-                  <>
-                    <span aria-hidden="true">›</span>
-                    <span aria-current="page">Cursos e percursos</span>
-                  </>
-                )}
+                    {crumb.current ? (
+                      <span aria-current="page">{crumb.label}</span>
+                    ) : (
+                      <Link href={crumb.href}>{crumb.label}</Link>
+                    )}
+                  </span>
+                ))}
               </nav>
             ) : (
               <span className="gestao-topbar-section">{heading}</span>
             )}
-            {pathname.startsWith("/gestao/ensino/cursos") ? (
+            {breadcrumb.length > 0 ? (
               <span className="gestao-topbar-mobile-section">{heading}</span>
             ) : null}
           </div>
           <div className="gestao-topbar-actions">
-            <MemberHeaderControls memberId={memberId} showSaved={false} />
+            <GestaoSearch memberId={memberId} />
+            <MemberHeaderControls
+              memberId={memberId}
+              showSaved={false}
+              showSearch={false}
+            />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button className="gestao-create-button" size="sm">

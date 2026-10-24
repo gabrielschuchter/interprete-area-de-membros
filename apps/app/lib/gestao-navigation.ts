@@ -139,3 +139,52 @@ export const withGestaoReturnPath = (href: string, returnPath: string) => {
   params.set("from", safeGestaoReturnPath(returnPath));
   return `${url.pathname}?${params.toString()}${url.hash}`;
 };
+
+const legacyAdminStaticDestinations: Record<string, string> = {
+  "/admin": "/gestao",
+  "/admin/learning": "/gestao/ensino/cursos",
+  "/admin/learning/courses/new": "/gestao/ensino/cursos/novo",
+  "/admin/library": "/gestao/ensino/biblioteca",
+  "/admin/exercicios": "/gestao/ensino/exercicios",
+  "/admin/activities": "/gestao/ensino/atividades",
+  "/admin/colecoes": "/gestao/ensino/colecoes",
+  "/admin/atribuicoes": "/gestao/alunos/atribuicoes",
+  "/admin/estudo": "/gestao/alunos/tarefas",
+  "/admin/badges": "/gestao/administracao/medalhas",
+  "/admin/membros": "/gestao/administracao/membros",
+  "/admin/community": "/gestao/comunidade/publicacoes",
+  "/admin/avisos": "/gestao/comunidade/avisos",
+  "/admin/meetings": "/gestao/comunidade/encontros",
+  "/admin/gravacoes": "/gestao/administracao/gravacoes-historicas",
+  "/admin/acessos": "/gestao/administracao/acessos",
+  "/admin/personalizacao": "/gestao/administracao/personalizacao",
+};
+
+const legacyAdminPatternDestinations: readonly [RegExp, string][] = [
+  [
+    /^\/admin\/learning\/courses\/([^/]+)\/preview$/u,
+    "/gestao/ensino/cursos/$1/preview",
+  ],
+  [/^\/admin\/learning\/courses\/([^/]+)$/u, "/gestao/ensino/cursos/$1"],
+  [/^\/admin\/exercicios\/([^/]+)$/u, "/gestao/ensino/exercicios/$1"],
+  [/^\/admin\/membros\/([^/]+)$/u, "/gestao/alunos/perfil/$1"],
+];
+
+// Maps a legacy /admin address to its Gestão address so staff never leave the
+// Gestão shell. Returns null for paths with no Gestão equivalent.
+export const gestaoLegacyAdminDestination = (pathname: string) => {
+  const normalized =
+    pathname.length > 1 && pathname.endsWith("/")
+      ? pathname.slice(0, -1)
+      : pathname;
+  const direct = legacyAdminStaticDestinations[normalized];
+  if (direct) {
+    return direct;
+  }
+  for (const [pattern, template] of legacyAdminPatternDestinations) {
+    if (pattern.test(normalized)) {
+      return normalized.replace(pattern, template);
+    }
+  }
+  return null;
+};

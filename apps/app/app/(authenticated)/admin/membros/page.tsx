@@ -6,6 +6,7 @@ import {
 import { Badge } from "@repo/design-system/components/ui/badge";
 import { Button } from "@repo/design-system/components/ui/button";
 import Link from "next/link";
+import { RoleSubmitButton } from "@/components/gestao/role-submit-button";
 import { requireAdmin } from "@/lib/authorization";
 import { getStaffMembers } from "@/lib/profile";
 import { setMemberRole } from "../actions";
@@ -129,9 +130,10 @@ const AdminMembersPage = async () => {
                       <option value="ADMIN">Admin</option>
                     </select>
                   </label>
-                  <Button size="sm" type="submit" variant="outline">
-                    Salvar papel
-                  </Button>
+                  <RoleSubmitButton
+                    currentRole={member.role}
+                    memberName={member.displayName ?? "este membro"}
+                  />
                   {member.profile && (
                     <Button asChild size="sm" variant="ghost">
                       <Link href={`/membros/${member.profile.username}`}>
