@@ -157,29 +157,26 @@ export const GestaoSearch = ({ memberId }: { readonly memberId: string }) => {
     [memberId, router]
   );
 
+  const openActive = () => {
+    const entry = showingRecent ? recent[active] : flat[active];
+    if (entry) {
+      go(entry.href, entry.title);
+    } else if (!showingRecent && query.trim().length >= minLength) {
+      setOpen(false);
+      router.push(`/gestao/busca?q=${encodeURIComponent(query.trim())}`);
+    }
+  };
+
   const onInputKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === "ArrowDown" && optionCount > 0) {
+    if (event.key === "Enter") {
       event.preventDefault();
-      setActive((index) => (index + 1) % optionCount);
-    } else if (event.key === "ArrowUp" && optionCount > 0) {
+      openActive();
+      return;
+    }
+    const step = { ArrowDown: 1, ArrowUp: -1 }[event.key];
+    if (step !== undefined && optionCount > 0) {
       event.preventDefault();
-      setActive((index) => (index - 1 + optionCount) % optionCount);
-    } else if (event.key === "Enter") {
-      event.preventDefault();
-      if (showingRecent) {
-        const entry = recent[active];
-        if (entry) {
-          go(entry.href, entry.title);
-        }
-        return;
-      }
-      const entry = flat[active];
-      if (entry) {
-        go(entry.href, entry.title);
-      } else if (query.trim().length >= minLength) {
-        setOpen(false);
-        router.push(`/gestao/busca?q=${encodeURIComponent(query.trim())}`);
-      }
+      setActive((index) => (index + step + optionCount) % optionCount);
     }
   };
 
