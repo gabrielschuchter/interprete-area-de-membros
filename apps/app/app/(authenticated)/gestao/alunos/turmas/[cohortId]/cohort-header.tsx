@@ -1,7 +1,6 @@
-import { Button } from "@repo/design-system/components/ui/button";
-import { UserPlusIcon } from "lucide-react";
 import Link from "next/link";
 import type { GestaoCohortDetail } from "@/lib/gestao-cohorts";
+import { GestaoCrumbTail } from "../../../gestao-crumbs";
 
 const dateFormat = new Intl.DateTimeFormat("pt-BR", {
   dateStyle: "long",
@@ -34,6 +33,7 @@ export const GestaoCohortHeader = ({
     .join(", ");
   return (
     <>
+      <GestaoCrumbTail items={[{ label: cohort.name }]} />
       <header className="gt-detail-heading">
         <div>
           <div className="gt-detail-title">
@@ -53,12 +53,12 @@ export const GestaoCohortHeader = ({
           </p>
         </div>
         <div className="gt-detail-actions">
-          <Button asChild>
-            <Link href={`/gestao/alunos/turmas/${cohort.id}/alunos#alunos`}>
-              <UserPlusIcon aria-hidden="true" />
-              Adicionar alunos
-            </Link>
-          </Button>
+          <Link
+            className="gk-btn gk-btn--primary"
+            href={`/gestao/alunos/turmas/${cohort.id}/alunos?adicionar=existentes`}
+          >
+            Adicionar alunos
+          </Link>
         </div>
       </header>
       <nav aria-label="Seções da turma" className="gt-cohort-tabs">

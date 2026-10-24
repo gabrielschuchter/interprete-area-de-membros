@@ -16,6 +16,10 @@ import {
 } from "./cohort-domain";
 import { requireGestaoActor } from "./gestao-authorization";
 import type { GestaoRole } from "./gestao-permissions";
+import {
+  queryStudentTracking,
+  type StudentSituation,
+} from "./gestao-student-tracking";
 
 export type GestaoCohortTab = CohortLifecycleStatus | "ALL";
 export interface GestaoCohortListInput {
@@ -30,7 +34,7 @@ const rosterPageSize = 25;
 const cohortEventPageSize = 50;
 const cohortCalendarConflictReadLimit = 500;
 const queryMaxLength = 120;
-const cohortLearningProgress = async (
+export const cohortLearningProgress = async (
   cohortIds: readonly string[],
   activeStudentCounts: ReadonlyMap<string, number>
 ) => {
@@ -983,4 +987,175 @@ export const listGestaoCohortLessonsForRelease = async (cohortId: string) => {
       },
     },
   });
+};
+
+export interface GestaoRosterRow {
+  readonly activitiesDone: number;
+  readonly activitiesTotal: number;
+  readonly displayName: string;
+  readonly email: string | null;
+  readonly individualGrants: number;
+  readonly joinedAt: Date;
+  readonly memberId: string;
+  readonly progress: number;
+  readonly situation: StudentSituation | null;
+}
+
+const countByMember = (
+  rows: readonly { memberId: string; _count: { _all: number } }[]
+) => new Map(rows.map((row) => [row.memberId, row._count._all]));
+
+/**
+ * Alunos ativos da turma com progresso, atividades entregues e situação,
+ * usando as mesmas regras do Acompanhamento para a situação.
+ */
+export const getGestaoCohortRosterTable = async (
+  cohortId: string,
+  input: {
+    readonly page?: number;
+    readonly query?: string;
+    readonly situation?: StudentSituation;
+  } = {}
+) => {
+  const actor = await requireGestaoActor();
+  const cohort = await database.cohort.findFirst({
+    where: { AND: [{ id: cohortId }, actorScope(actor.userId, actor.role)] },
+    select: {
+      id: true,
+      courseAccesses: {
+        where: { revokedAt: null },
+        select: { courseId: true },
+      },
+    },
+  });
+  if (!cohort) {
+    return null;
+  }
+  const page = Math.max(1, Math.trunc(input.page ?? 1));
+  const query = searchInput(input.query);
+  const now = new Date();
+  const tracking = await queryStudentTracking(
+    actor,
+    { cohortId, limit: 5000 },
+    now
+  );
+  const situationById = new Map(
+    tracking.rows.map((row) => [row.id, row.situation])
+  );
+  const situationIds = input.situation
+    ? tracking.rows
+        .filter((row) => row.situation === input.situation)
+        .map((row) => row.id)
+    : null;
+  const where: Prisma.CohortMembershipWhereInput = {
+    cohortId,
+    status: "ACTIVE",
+    leftAt: null,
+    ...(situationIds ? { memberId: { in: situationIds } } : {}),
+    ...(query
+      ? {
+          member: {
+            OR: [
+              { displayName: { contains: query, mode: "insensitive" } },
+              { email: { contains: query, mode: "insensitive" } },
+            ],
+          },
+        }
+      : {}),
+  };
+  const courseIds = cohort.courseAccesses.map(({ courseId }) => courseId);
+  const [memberships, totalCount, lessonTotal, activities] = await Promise.all([
+    database.cohortMembership.findMany({
+      where,
+      orderBy: [{ joinedAt: "asc" }, { id: "asc" }],
+      skip: (page - 1) * rosterPageSize,
+      take: rosterPageSize,
+      select: {
+        joinedAt: true,
+        member: { select: { id: true, displayName: true, email: true } },
+      },
+    }),
+    database.cohortMembership.count({ where }),
+    courseIds.length
+      ? database.lesson.count({
+          where: {
+            status: "PUBLISHED",
+            module: { courseId: { in: courseIds } },
+          },
+        })
+      : Promise.resolve(0),
+    database.activity.findMany({
+      where: {
+        status: "PUBLISHED",
+        cohortTargets: { some: { cohortId, revokedAt: null } },
+      },
+      select: { id: true },
+    }),
+  ]);
+  const memberIds = memberships.map(({ member }) => member.id);
+  const activityIds = activities.map(({ id }) => id);
+  const [completed, submitted, grants] = await Promise.all([
+    courseIds.length && memberIds.length
+      ? database.lessonProgress.groupBy({
+          by: ["memberId"],
+          where: {
+            memberId: { in: memberIds },
+            status: "COMPLETED",
+            lesson: {
+              status: "PUBLISHED",
+              module: { courseId: { in: courseIds } },
+            },
+          },
+          _count: { _all: true },
+        })
+      : Promise.resolve([]),
+    activityIds.length && memberIds.length
+      ? database.activitySubmission.groupBy({
+          by: ["memberId"],
+          where: {
+            memberId: { in: memberIds },
+            activityId: { in: activityIds },
+            status: { in: ["SUBMITTED", "REVIEWED"] },
+          },
+          _count: { _all: true },
+        })
+      : Promise.resolve([]),
+    memberIds.length
+      ? database.accessGrant.groupBy({
+          by: ["memberId"],
+          where: {
+            memberId: { in: memberIds },
+            OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+          },
+          _count: { _all: true },
+        })
+      : Promise.resolve([]),
+  ]);
+  const completedBy = countByMember(completed);
+  const submittedBy = countByMember(submitted);
+  const grantsBy = countByMember(grants);
+  const rows: GestaoRosterRow[] = memberships.map(({ joinedAt, member }) => ({
+    memberId: member.id,
+    displayName: member.displayName ?? member.email ?? "Aluno",
+    email: member.email,
+    joinedAt,
+    progress: lessonTotal
+      ? Math.min(
+          100,
+          Math.round(((completedBy.get(member.id) ?? 0) / lessonTotal) * 100)
+        )
+      : 0,
+    activitiesDone: submittedBy.get(member.id) ?? 0,
+    activitiesTotal: activityIds.length,
+    individualGrants: grantsBy.get(member.id) ?? 0,
+    situation: situationById.get(member.id) ?? null,
+  }));
+  return {
+    courseCount: courseIds.length,
+    page,
+    pageSize: rosterPageSize,
+    rows,
+    totalCount,
+    totalPages: Math.max(1, Math.ceil(totalCount / rosterPageSize)),
+  };
 };

@@ -1,24 +1,43 @@
-import { Button } from "@repo/design-system/components/ui/button";
-import { CalendarDaysIcon } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getGestaoCohortOverviewExtras } from "@/lib/gestao-cohort-overview";
-import { getGestaoCohortDetail } from "@/lib/gestao-cohorts";
-import { situationLabels } from "@/lib/gestao-student-tracking";
+import {
+  cohortLearningProgress,
+  getGestaoCohortDetail,
+} from "@/lib/gestao-cohorts";
+import { GestaoIcon, type GestaoIconName } from "../../../gestao-icon";
 import { GestaoCohortHeader } from "./cohort-header";
 
-const dateFormat = new Intl.DateTimeFormat("pt-BR", {
-  dateStyle: "long",
+const weekDay = new Intl.DateTimeFormat("pt-BR", {
+  day: "numeric",
   timeZone: "America/Sao_Paulo",
 });
-const weekFormat = new Intl.DateTimeFormat("pt-BR", {
-  weekday: "short",
-  day: "numeric",
+const weekMonth = new Intl.DateTimeFormat("pt-BR", {
   month: "short",
+  timeZone: "America/Sao_Paulo",
+});
+const weekDetail = new Intl.DateTimeFormat("pt-BR", {
+  weekday: "short",
   hour: "2-digit",
   minute: "2-digit",
   timeZone: "America/Sao_Paulo",
 });
+const whitespacePattern = /\s+/;
+const initialsOf = (name: string) =>
+  name
+    .split(whitespacePattern)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toLocaleUpperCase("pt-BR") || "?";
+
+const weekIcons: Record<string, GestaoIconName> = {
+  deadline: "inbox",
+  release: "video",
+};
+const percent = (value: number | null) => (value === null ? "—" : `${value}%`);
+
 const GestaoCohortOverviewPage = async ({
   params,
 }: {
@@ -29,90 +48,89 @@ const GestaoCohortOverviewPage = async ({
   if (!cohort) {
     notFound();
   }
-  const extras = await getGestaoCohortOverviewExtras(cohortId);
+  const base = `/gestao/alunos/turmas/${cohortId}`;
+  const [extras, progress] = await Promise.all([
+    getGestaoCohortOverviewExtras(cohortId),
+    cohortLearningProgress(
+      [cohortId],
+      new Map([[cohortId, cohort.activeStudentCount]])
+    ),
+  ]);
+  const students = cohort.activeStudentCount;
+  const links: readonly (readonly [string, string])[] = [
+    [
+      `${cohort.courseAccesses.length} curso(s) liberado(s)`,
+      `${base}/conteudo`,
+    ],
+    [`${extras.openActivities} atividade(s) aberta(s)`, `${base}/atividades`],
+    [`${extras.futureMeetings} encontro(s) futuro(s)`, `${base}/calendario`],
+  ];
   return (
     <section className="gt-page gt-detail-page">
       <GestaoCohortHeader activeTab="visao" cohort={cohort} />
-      <div className="gt-detail-metrics">
+      <div className="gk-stats">
         <article>
           <span>Alunos</span>
-          <strong>{cohort.activeStudentCount}</strong>
-          <small>{cohort.pendingInviteCount} convites pendentes</small>
+          <strong>{students}</strong>
+          <small>{cohort.pendingInviteCount} convite(s) pendente(s)</small>
         </article>
         <article>
-          <span>Cursos liberados</span>
-          <strong>{cohort.courseAccesses.length}</strong>
-          <small>Disponibilidade calculada pela data</small>
+          <span>Progresso médio</span>
+          <strong>{progress.get(cohortId) ?? 0}%</strong>
+          <small>nos cursos liberados</small>
         </article>
-        <article>
-          <span>Entrada tardia</span>
-          <strong>
-            {cohort.lateJoinPolicy === "ALL_ACTIVE"
-              ? "Recebe o conteúdo atual"
-              : "A partir da entrada"}
-          </strong>
-          <small>Regra aplicada em novas matrículas</small>
-        </article>
-        <article>
-          <span>Leitura após encerramento</span>
-          <strong>{cohort.readAfterEndDays} dias</strong>
-          <small>Vínculos individuais são preservados</small>
-        </article>
-      </div>
-      <div className="gt-detail-metrics">
         <article>
           <span>Entregas no prazo</span>
-          <strong>
-            {extras.onTimeRate === null ? "—" : `${extras.onTimeRate}%`}
-          </strong>
-          <small>Entregas feitas até o prazo da atividade</small>
+          <strong>{percent(extras.onTimeRate)}</strong>
+          <small>até o prazo da atividade</small>
         </article>
         <article>
           <span>Presença média</span>
-          <strong>
-            {extras.attendanceRate === null ? "—" : `${extras.attendanceRate}%`}
-          </strong>
-          <small>Nos encontros com presença registrada</small>
-        </article>
-        <article>
-          <span>Atividades abertas</span>
-          <strong>{extras.openActivities}</strong>
-          <small>Publicadas e dentro do prazo</small>
-        </article>
-        <article>
-          <span>Encontros futuros</span>
-          <strong>{extras.futureMeetings}</strong>
-          <small>Publicados para a turma</small>
+          <strong>{percent(extras.attendanceRate)}</strong>
+          <small>nos encontros com presença</small>
         </article>
       </div>
-      <div className="gt-detail-columns">
-        <div className="gx-stack">
-          <section aria-labelledby="cohort-week" className="gt-panel">
-            <div className="gt-panel-heading">
-              <h2 id="cohort-week">Esta semana na turma</h2>
-              <Link href={`/gestao/alunos/turmas/${cohortId}/calendario`}>
-                Calendário
-              </Link>
-            </div>
+      <div className="gk-cols">
+        <div className="gk-stack">
+          <section aria-labelledby="cohort-week" className="gk-panel">
+            <h2 className="gk-panel-title" id="cohort-week">
+              Esta semana na turma
+            </h2>
             {extras.week.length === 0 ? (
-              <p className="gt-panel-empty">
-                Nada marcado para os próximos 7 dias.
-              </p>
+              <p className="gk-empty">Nada marcado para os próximos 7 dias.</p>
             ) : (
-              <ul className="gx-list">
+              <ul className="gk-rows">
                 {extras.week.map((item) => (
                   <li
                     key={`${item.kind}-${item.title}-${item.at.toISOString()}`}
                   >
                     <Link href={item.href}>
-                      <span>
-                        <strong>{item.title}</strong>
-                        <span>
-                          {weekFormat.format(item.at)} · {item.detail}
+                      {item.kind === "meeting" || item.kind === "event" ? (
+                        <span aria-hidden="true" className="gk-date-tile">
+                          <small>
+                            {weekMonth
+                              .format(item.at)
+                              .replace(".", "")
+                              .toLocaleUpperCase("pt-BR")}
+                          </small>
+                          {weekDay.format(item.at)}
                         </span>
+                      ) : (
+                        <span aria-hidden="true" className="gk-icon-tile">
+                          <GestaoIcon
+                            name={weekIcons[item.kind] ?? "calendar"}
+                            size={18}
+                          />
+                        </span>
+                      )}
+                      <span className="gk-row-copy">
+                        <strong>{item.title}</strong>
+                        <small>
+                          {item.detail} · {weekDetail.format(item.at)}
+                        </small>
                       </span>
                       {item.draft ? (
-                        <span className="gx-chip" data-tone="neutral">
+                        <span className="gk-chip" data-tone="neutral">
                           Rascunho
                         </span>
                       ) : null}
@@ -122,41 +140,42 @@ const GestaoCohortOverviewPage = async ({
               </ul>
             )}
           </section>
-          <section aria-labelledby="cohort-attention" className="gt-panel">
-            <div className="gt-panel-heading">
-              <h2 id="cohort-attention">Alunos que pedem atenção</h2>
+          <section aria-labelledby="cohort-attention" className="gk-panel">
+            <div className="gk-panel-head">
+              <h2 className="gk-panel-title" id="cohort-attention">
+                Alunos que pedem atenção
+              </h2>
               <Link href={`/gestao/alunos/acompanhamento?turma=${cohortId}`}>
                 Ver todos
               </Link>
             </div>
             {extras.attention.length === 0 ? (
-              <p className="gt-panel-empty">
+              <p className="gk-empty">
                 Ninguém pede atenção agora. A regra é a mesma do Acompanhamento.
               </p>
             ) : (
-              <ul className="gx-list">
+              <ul className="gk-rows">
                 {extras.attention.map((student) => (
                   <li key={student.id}>
-                    <Link href={`/gestao/alunos/perfil/${student.id}`}>
-                      <span>
-                        <strong>{student.displayName}</strong>
-                        <span>
-                          {student.overdueDeliveries > 0
-                            ? `${student.overdueDeliveries} entregas atrasadas · `
-                            : ""}
-                          {student.lastStudyAt
-                            ? `sem estudar há ${student.daysSinceActivity} dias`
-                            : "ainda não estudou"}
-                        </span>
-                      </span>
-                      <span
-                        className="gx-chip"
-                        data-tone={
-                          student.situation === "INACTIVE" ? "danger" : "warn"
-                        }
-                      >
-                        {situationLabels[student.situation]}
-                      </span>
+                    <span aria-hidden="true" className="gk-avatar">
+                      {initialsOf(student.displayName)}
+                    </span>
+                    <span className="gk-row-copy">
+                      <strong>{student.displayName}</strong>
+                      <small>
+                        {student.overdueDeliveries > 0
+                          ? `${student.overdueDeliveries} entrega(s) atrasada(s) · `
+                          : ""}
+                        {student.lastStudyAt
+                          ? `sem estudar há ${student.daysSinceActivity} dias`
+                          : "ainda não estudou"}
+                      </small>
+                    </span>
+                    <Link
+                      className="gk-btn gk-btn--sm"
+                      href={`/gestao/alunos/perfil/${student.id}`}
+                    >
+                      Ver perfil
                     </Link>
                   </li>
                 ))}
@@ -164,82 +183,54 @@ const GestaoCohortOverviewPage = async ({
             )}
           </section>
         </div>
-        <section className="gt-panel">
-          <div className="gt-panel-heading">
-            <h2>Conteúdos desta turma</h2>
-            <Link href={`/gestao/alunos/turmas/${cohortId}/conteudo`}>
-              Gerenciar
-            </Link>
-          </div>
-          {cohort.courseAccesses.length ? (
-            <ul className="gt-access-list">
-              {cohort.courseAccesses.map((access) => (
-                <li key={access.id}>
-                  <CalendarDaysIcon aria-hidden="true" />
-                  <span>
-                    <strong>{access.course.title}</strong>
-                    <small>
-                      {access.releaseMode === "SCHEDULE" && access.startsAt
-                        ? `Liberação em ${dateFormat.format(access.startsAt)}`
-                        : "Liberado para a turma"}
-                    </small>
-                  </span>
-                  <span className="gt-course-state">
-                    {access.course.status === "PUBLISHED"
-                      ? "Publicado"
-                      : "Indisponível"}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="gt-panel-empty">
-              Nenhum curso foi liberado para esta turma.
+        <div className="gk-stack">
+          <section className="gk-panel">
+            <h2 className="gk-panel-title">Quem recebe o quê</h2>
+            <p className="gk-panel-copy">
+              Os <strong>{students} alunos</strong> recebem os{" "}
+              <strong>mesmos</strong> cursos, atividades e encontros da turma.
+              {cohort.lateJoinPolicy === "ALL_ACTIVE"
+                ? " Quem entra depois recebe tudo que está ativo."
+                : " Quem entra depois recebe só o que for publicado a partir da entrada."}
             </p>
-          )}
-        </section>
-        <section className="gt-panel">
-          <div className="gt-panel-heading">
-            <h2>Responsáveis</h2>
-            <Link href={`/gestao/alunos/turmas/${cohortId}/configuracoes`}>
-              Editar
-            </Link>
-          </div>
-          {cohort.teachers.length ? (
-            <ul className="gt-teacher-list">
-              {cohort.teachers.map(({ member }) => (
-                <li key={member.id}>
-                  <span aria-hidden="true" className="gt-avatar">
-                    {member.displayName
-                      ?.slice(0, 1)
-                      .toLocaleUpperCase("pt-BR") ?? "R"}
-                  </span>
-                  <span>
-                    <strong>{member.displayName ?? "Professor"}</strong>
-                    {member.email ? <small>{member.email}</small> : null}
-                  </span>
+            <ul className="gk-links">
+              {links.map(([label, href]) => (
+                <li key={label}>
+                  <Link href={href}>
+                    {label}
+                    <GestaoIcon name="chevron-right" size={16} />
+                  </Link>
                 </li>
               ))}
             </ul>
-          ) : (
-            <p className="gt-panel-empty">Nenhum responsável foi atribuído.</p>
-          )}
-        </section>
-      </div>
-      <section className="gt-panel">
-        <div className="gt-panel-heading">
-          <h2>Próximo passo</h2>
+          </section>
+          <section className="gk-panel">
+            <div className="gk-panel-head">
+              <h2 className="gk-panel-title">Responsáveis</h2>
+              <Link className="gk-edit-link" href={`${base}/configuracoes`}>
+                <GestaoIcon name="pencil" size={14} />
+                Editar
+              </Link>
+            </div>
+            {cohort.teachers.length ? (
+              <ul className="gk-rows gk-rows--plain">
+                {cohort.teachers.map(({ member }) => (
+                  <li key={member.id}>
+                    <span aria-hidden="true" className="gk-avatar">
+                      {initialsOf(member.displayName ?? "Professor")}
+                    </span>
+                    <span className="gk-row-copy">
+                      <strong>{member.displayName ?? "Professor"}</strong>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="gk-empty">Nenhum responsável foi atribuído.</p>
+            )}
+          </section>
         </div>
-        <p className="gt-panel-copy">
-          Adicione alunos já cadastrados, convide quem ainda não tem acesso ou
-          importe uma planilha com prévia antes de confirmar.
-        </p>
-        <Button asChild variant="outline">
-          <Link href={`/gestao/alunos/turmas/${cohortId}/alunos#alunos`}>
-            Ver alunos da turma
-          </Link>
-        </Button>
-      </section>
+      </div>
     </section>
   );
 };

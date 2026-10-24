@@ -1593,8 +1593,8 @@
 .gt-detail-title h1 {
   margin: 0;
   font-family: var(--font-display-family);
-  font-size: clamp(28px, 3vw, 36px);
-  line-height: 1.1;
+  font-size: 28px;
+  line-height: 1.15;
   color: var(--gestao-text);
 }
 .gt-detail-heading > div:first-child > p {

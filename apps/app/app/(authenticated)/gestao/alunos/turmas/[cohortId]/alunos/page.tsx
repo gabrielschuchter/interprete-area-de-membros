@@ -1,200 +1,117 @@
-import { Button } from "@repo/design-system/components/ui/button";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { getGestaoCohortOverviewExtras } from "@/lib/gestao-cohort-overview";
 import {
   getGestaoAddableMembers,
   getGestaoCohortDetail,
   getGestaoCohortRoster,
-  listGestaoCohorts,
+  getGestaoCohortRosterTable,
+  listGestaoAssignableCohorts,
 } from "@/lib/gestao-cohorts";
+import { parseSituation } from "@/lib/gestao-student-tracking";
 import { GestaoCohortHeader } from "../cohort-header";
-import {
-  CohortCsvImport,
-  CohortInviteManager,
-  CohortRosterManager,
-} from "../cohort-roster";
+import { AddStudentsDrawer, type AddTab } from "./add-students-drawer";
+import { InvitesPanel } from "./invites-panel";
+import { RosterFilters } from "./roster-filters";
+import { RosterTable } from "./roster-table";
 
-type RosterResult = NonNullable<
-  Awaited<ReturnType<typeof getGestaoCohortRoster>>
->;
-type AddableResult = NonNullable<
-  Awaited<ReturnType<typeof getGestaoAddableMembers>>
->;
+const joinedFormat = new Intl.DateTimeFormat("pt-BR", {
+  day: "numeric",
+  month: "short",
+  timeZone: "America/Sao_Paulo",
+});
+const dayMs = 86_400_000;
+const addTabs: readonly AddTab[] = ["existentes", "planilha", "convite"];
+
 const parsePage = (value: string | undefined) =>
   Math.max(1, Number.parseInt(value ?? "1", 10) || 1);
-const routeFor = (cohortId: string) =>
-  `/gestao/alunos/turmas/${cohortId}/alunos`;
-const memberSearchCopy = (add: boolean, onlyUnassigned: boolean) => {
-  if (add && onlyUnassigned) {
-    return {
-      label: "Buscar alunos sem turma",
-      placeholder: "Buscar aluno sem turma",
-      submit: "Buscar alunos",
-    };
+const parseTab = (value: string | undefined) =>
+  addTabs.find((tab) => tab === value) ?? null;
+const ageLabel = (createdAt: Date) => {
+  const days = Math.floor((Date.now() - createdAt.getTime()) / dayMs);
+  if (days <= 0) {
+    return "criado hoje";
   }
-  if (add) {
-    return {
-      label: "Buscar membros para adicionar",
-      placeholder: "Buscar por nome ou e-mail para adicionar",
-      submit: "Buscar membros",
-    };
-  }
-  return {
-    label: "Buscar alunos desta turma",
-    placeholder: "Buscar aluno da turma",
-    submit: "Buscar",
-  };
+  return `criado há ${days} ${days === 1 ? "dia" : "dias"}`;
 };
 
-const MemberSearch = ({
-  cohortId,
-  query,
-  addQuery,
-  add = false,
-  onlyUnassigned = false,
-}: {
-  readonly cohortId: string;
-  readonly query: string;
-  readonly addQuery: string;
-  readonly add?: boolean;
-  readonly onlyUnassigned?: boolean;
-}) => {
-  const copy = memberSearchCopy(add, onlyUnassigned);
-  return (
-    <form
-      action={routeFor(cohortId)}
-      className={`gt-roster-search${add ? "gt-addable-search" : ""}`}
-      method="get"
-    >
-      {add ? (
-        <input name="q" type="hidden" value={query} />
-      ) : (
-        <input name="addq" type="hidden" value={addQuery} />
-      )}
-      {onlyUnassigned ? (
-        <input name="somenteSemTurma" type="hidden" value="1" />
-      ) : null}
-      <label>
-        <span className="sr-only">{copy.label}</span>
-        <input
-          defaultValue={add ? addQuery : query}
-          maxLength={120}
-          name={add ? "addq" : "q"}
-          placeholder={copy.placeholder}
-          type="search"
-        />
-      </label>
-      <Button type="submit" variant="outline">
-        {copy.submit}
-      </Button>
-    </form>
-  );
+const filterParams = (query: { q?: string; situacao?: string }) => {
+  const keep = new URLSearchParams();
+  if (query.q) {
+    keep.set("q", query.q);
+  }
+  if (query.situacao) {
+    keep.set("situacao", query.situacao);
+  }
+  return keep;
 };
-
-const RosterPagination = ({
-  cohortId,
-  page,
-  result,
-  query,
-  addQuery,
-  onlyUnassigned,
-}: {
-  readonly cohortId: string;
-  readonly page: number;
-  readonly result: RosterResult;
-  readonly query: string;
-  readonly addQuery: string;
-  readonly onlyUnassigned: boolean;
-}) =>
-  result.totalPages > 1 ? (
-    <nav aria-label="Paginação dos alunos da turma" className="gt-pagination">
-      <span>
-        {(page - 1) * result.pageSize + 1}–
-        {Math.min(page * result.pageSize, result.totalCount)} de{" "}
-        {result.totalCount}
-      </span>
-      <div>
-        {page > 1 ? (
-          <Link
-            href={`${routeFor(cohortId)}?pagina=${page - 1}&q=${encodeURIComponent(query)}&addq=${encodeURIComponent(addQuery)}${onlyUnassigned ? "&somenteSemTurma=1" : ""}`}
-          >
-            Anterior
-          </Link>
-        ) : null}
-        {page < result.totalPages ? (
-          <Link
-            href={`${routeFor(cohortId)}?pagina=${page + 1}&q=${encodeURIComponent(query)}&addq=${encodeURIComponent(addQuery)}${onlyUnassigned ? "&somenteSemTurma=1" : ""}`}
-          >
-            Próxima
-          </Link>
-        ) : null}
-      </div>
-    </nav>
-  ) : null;
-
-const AddablePagination = ({
-  cohortId,
-  page,
-  result,
-  query,
-  addQuery,
-  onlyUnassigned,
-}: {
-  readonly cohortId: string;
-  readonly page: number;
-  readonly result: AddableResult;
-  readonly query: string;
-  readonly addQuery: string;
-  readonly onlyUnassigned: boolean;
-}) =>
-  result.totalPages > 1 ? (
-    <nav
-      aria-label="Paginação dos membros disponíveis"
-      className="gt-pagination"
-    >
-      <span>
-        Página {page} de {result.totalPages} · {result.totalCount} membros
-      </span>
-      <div>
-        {page > 1 ? (
-          <Link
-            href={`${routeFor(cohortId)}?addpagina=${page - 1}&q=${encodeURIComponent(query)}&addq=${encodeURIComponent(addQuery)}${onlyUnassigned ? "&somenteSemTurma=1" : ""}`}
-          >
-            Anterior
-          </Link>
-        ) : null}
-        {page < result.totalPages ? (
-          <Link
-            href={`${routeFor(cohortId)}?addpagina=${page + 1}&q=${encodeURIComponent(query)}&addq=${encodeURIComponent(addQuery)}${onlyUnassigned ? "&somenteSemTurma=1" : ""}`}
-          >
-            Próxima
-          </Link>
-        ) : null}
-      </div>
-    </nav>
-  ) : null;
-
-const mapTargets = (
-  cohortId: string,
-  cohorts: Awaited<ReturnType<typeof listGestaoCohorts>>["cohorts"]
+const entryText = (
+  courses: number,
+  extras: { openActivities: number; futureMeetings: number } | null
 ) =>
-  cohorts
-    .filter((item) => item.id !== cohortId && item.status !== "ARCHIVED")
-    .map(({ id, name }) => ({ id, name }));
-const mapStudents = (result: RosterResult) =>
-  result.memberships.map(({ joinedAt, member }) => ({
-    id: member.id,
-    displayName: member.displayName,
-    email: member.email,
-    joinedAt,
-  }));
-const mapAddable = (result: AddableResult) =>
-  result.members.map((member) => ({
-    id: member.id,
-    displayName: member.displayName,
-    email: member.email,
-    otherCohortCount: member.otherCohortCount,
-  }));
+  extras
+    ? `${courses} curso(s) liberado(s) · ${extras.openActivities} atividade(s) aberta(s) · ${extras.futureMeetings} encontro(s) futuro(s).`
+    : "";
+
+const EmptyRoster = ({
+  base,
+  filtered,
+}: {
+  readonly base: string;
+  readonly filtered: boolean;
+}) => (
+  <div className="gk-panel">
+    <h2 className="gk-panel-title">
+      {filtered ? "Nenhum aluno encontrado" : "Esta turma ainda não tem alunos"}
+    </h2>
+    <p className="gk-empty">
+      {filtered
+        ? "Ajuste a busca ou o filtro de situação."
+        : "Adicione alunos que já têm conta, importe uma planilha ou gere um link de convite."}
+    </p>
+    {filtered ? null : (
+      <Link
+        className="gk-btn gk-btn--primary gk-btn--wide"
+        href={`${base}?adicionar=existentes`}
+        style={{ marginTop: 14 }}
+      >
+        Adicionar alunos
+      </Link>
+    )}
+  </div>
+);
+
+const Pager = ({
+  from,
+  next,
+  previous,
+  to,
+  total,
+}: {
+  readonly from: number;
+  readonly next: string | null;
+  readonly previous: string | null;
+  readonly to: number;
+  readonly total: number;
+}) => (
+  <div className="gk-pager">
+    <span>
+      {from} a {to} de {total}
+    </span>
+    <div>
+      {previous ? (
+        <Link className="gk-btn" href={previous}>
+          Anterior
+        </Link>
+      ) : null}
+      {next ? (
+        <Link className="gk-btn" href={next}>
+          Próxima
+        </Link>
+      ) : null}
+    </div>
+  </div>
+);
 
 const GestaoCohortStudentsPage = async ({
   params,
@@ -202,76 +119,118 @@ const GestaoCohortStudentsPage = async ({
 }: {
   readonly params: Promise<{ cohortId: string }>;
   readonly searchParams: Promise<{
-    q?: string;
+    adicionar?: string;
     addq?: string;
     pagina?: string;
-    addpagina?: string;
-    somenteSemTurma?: string;
+    q?: string;
+    situacao?: string;
   }>;
 }) => {
   const [{ cohortId }, query] = await Promise.all([params, searchParams]);
-  const onlyUnassigned = query.somenteSemTurma === "1";
-  const [cohort, roster, addable, targetResult] = await Promise.all([
+  const tab = parseTab(query.adicionar);
+  const page = parsePage(query.pagina);
+  const situation = parseSituation(query.situacao);
+  const [cohort, table, roster, targets] = await Promise.all([
     getGestaoCohortDetail(cohortId),
-    getGestaoCohortRoster(cohortId, {
-      page: parsePage(query.pagina),
+    getGestaoCohortRosterTable(cohortId, {
+      page,
       query: query.q,
+      situation,
     }),
-    getGestaoAddableMembers(cohortId, {
-      page: parsePage(query.addpagina),
-      query: query.addq,
-      unassignedOnly: onlyUnassigned,
-    }),
-    listGestaoCohorts({ status: "ALL", page: 1 }),
+    getGestaoCohortRoster(cohortId, {}),
+    listGestaoAssignableCohorts({ page: 1 }),
   ]);
-  if (!(cohort && roster && addable)) {
+  if (!(cohort && table && roster)) {
     notFound();
   }
-  const page = parsePage(query.pagina);
-  const addPage = parsePage(query.addpagina);
-  const q = query.q ?? "";
-  const addq = query.addq ?? "";
+  const [addable, extras] = tab
+    ? await Promise.all([
+        tab === "existentes"
+          ? getGestaoAddableMembers(cohortId, { query: query.addq })
+          : Promise.resolve(null),
+        getGestaoCohortOverviewExtras(cohortId),
+      ])
+    : [null, null];
+  const base = `/gestao/alunos/turmas/${cohortId}/alunos`;
+  const keep = filterParams(query);
+  const pageHref = (target: number) => {
+    const next = new URLSearchParams(keep);
+    next.set("pagina", String(target));
+    return `${base}?${next}`;
+  };
+  const from = table.totalCount ? (page - 1) * table.pageSize + 1 : 0;
+  const to = Math.min(page * table.pageSize, table.totalCount);
+  const entry = entryText(cohort.courseAccesses.length, extras);
   return (
     <section className="gt-page gt-detail-page">
       <GestaoCohortHeader activeTab="alunos" cohort={cohort} />
-      <MemberSearch
-        addQuery={addq}
-        cohortId={cohortId}
-        onlyUnassigned={onlyUnassigned}
-        query={q}
+      <div className="gk-toolbar">
+        <RosterFilters query={query.q ?? ""} situation={situation ?? ""} />
+        <div className="gk-toolbar-group">
+          <Link className="gk-btn" href={`${base}?adicionar=planilha`}>
+            Importar planilha
+          </Link>
+          <Link className="gk-btn" href={`${base}?adicionar=convite`}>
+            Convidar por link
+          </Link>
+        </div>
+      </div>
+      {table.rows.length > 0 ? (
+        <RosterTable
+          cohortId={cohortId}
+          cohortName={cohort.name}
+          courseCount={table.courseCount}
+          key={`${page}-${query.q ?? ""}-${query.situacao ?? ""}`}
+          rows={table.rows.map((row) => ({
+            activitiesDone: row.activitiesDone,
+            activitiesTotal: row.activitiesTotal,
+            displayName: row.displayName,
+            email: row.email,
+            individualGrants: row.individualGrants,
+            joinedLabel: joinedFormat.format(row.joinedAt).replace(".", ""),
+            memberId: row.memberId,
+            progress: row.progress,
+            situation: row.situation,
+          }))}
+          targets={targets.cohorts
+            .filter((item) => item.id !== cohortId)
+            .map(({ id, name }) => ({ id, name }))}
+        />
+      ) : (
+        <EmptyRoster base={base} filtered={Boolean(query.q || situation)} />
+      )}
+      {roster.inviteCount > 0 ? (
+        <InvitesPanel
+          cohortId={cohortId}
+          invites={roster.invites.map((invite) => ({
+            id: invite.id,
+            email: invite.email,
+            ageLabel: ageLabel(invite.createdAt),
+            usage: invite.email
+              ? "Convite individual"
+              : `${invite.usedCount} de ${invite.maxUses} usos`,
+          }))}
+          total={roster.inviteCount}
+        />
+      ) : null}
+      <Pager
+        from={from}
+        next={page < table.totalPages ? pageHref(page + 1) : null}
+        previous={page > 1 ? pageHref(page - 1) : null}
+        to={to}
+        total={table.totalCount}
       />
-      <CohortRosterManager
-        addable={mapAddable(addable)}
-        cohortId={cohortId}
-        onlyUnassigned={onlyUnassigned}
-        students={mapStudents(roster)}
-        targets={mapTargets(cohortId, targetResult.cohorts)}
-      />
-      <RosterPagination
-        addQuery={addq}
-        cohortId={cohortId}
-        onlyUnassigned={onlyUnassigned}
-        page={page}
-        query={q}
-        result={roster}
-      />
-      <MemberSearch
-        add
-        addQuery={addq}
-        cohortId={cohortId}
-        onlyUnassigned={onlyUnassigned}
-        query={q}
-      />
-      <AddablePagination
-        addQuery={addq}
-        cohortId={cohortId}
-        onlyUnassigned={onlyUnassigned}
-        page={addPage}
-        query={q}
-        result={addable}
-      />
-      <CohortCsvImport cohortId={cohortId} />
-      <CohortInviteManager cohortId={cohortId} invites={roster.invites} />
+      {tab ? (
+        <AddStudentsDrawer
+          addable={addable?.members ?? []}
+          addQuery={query.addq ?? ""}
+          cohortId={cohortId}
+          cohortName={cohort.name}
+          entry={entry}
+          studentCount={cohort.activeStudentCount}
+          tab={tab}
+        />
+      ) : null}
     </section>
   );
 };
