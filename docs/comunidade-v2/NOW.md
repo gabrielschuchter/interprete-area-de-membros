@@ -1,5 +1,23 @@
 # Comunidade V2 — estado para continuidade
 
+## Estado vigente — 24/10/2026
+
+**Release NO-GO; nenhum go-live foi iniciado.** O contrato OIDC do workflow e
+da Trusted Source da API Preview foi alinhado ao subject imutável efetivo e
+integrado em `main` pelo PR #17, commit `1586ed53240dd533dd3a38bc244ed49cfabf31ae`.
+Issuer, audience, repositório, branch, workflow e ambiente foram mantidos.
+App e API continuam sem conexão Git na Vercel.
+
+OPS-01 permanece bloqueado: até a consulta de `02:52Z`, não havia schedule
+real com o commit novo. Não foi iniciado job QA nem usado dispatch, rerun ou
+POST manual. Recovery por scheduler, isolamento, Broadcast/Realtime e badge
+persistido seguem sem prova. Proveniência de dados, grants, recuperação
+independente de backup, compatibilidade e smoke remoto também impedem a Etapa
+12B. Consulte [RELEASE-REPORT.md](RELEASE-REPORT.md) e [OPS-01.md](OPS-01.md).
+
+As seções abaixo são históricas onde divergirem deste estado. Não reabrir
+RV-01, QA visual ou E2E geral sem regressão concreta.
+
 ## OPS-01 — ativação condicional do PR #16 — 23/10/2026
 
 **OPS-01 BLOQUEADO; divergência de subject OIDC comprovada.** O patch exclusivo do

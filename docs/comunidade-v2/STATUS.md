@@ -1,5 +1,23 @@
 # Comunidade V2 — status
 
+## Estado vigente — 24/10/2026
+
+**NO-GO para Production.** O contrato OIDC imutável foi corrigido somente no
+guard do workflow e na Trusted Source Preview da API; PR #17 foi integrado em
+`main` como `1586ed53240dd533dd3a38bc244ed49cfabf31ae`. A integração Git da
+Vercel segue desconectada nos projetos App/API. Nenhum deployment ou migration
+foi iniciado por esta execução.
+
+OPS-01 continua aberto enquanto não houver execução `schedule` real no novo
+SHA, recuperação de job namespaced e prova de Broadcast/badge. Também impedem
+GO: duas publicações sem proveniência comprovada que ficariam `UNRESOLVED`,
+grant `authenticated SELECT` em Notification, ausência de restore portátil
+validado para banco e Storage, fallback compatível não ensaiado e smoke remoto
+representativo pendente. O [RELEASE-REPORT.md](RELEASE-REPORT.md) registra os
+valores observados, a evidência e a ação mínima para cada gate.
+
+As seções seguintes são snapshots anteriores onde divergirem deste estado.
+
 ## OPS-01 — ativação condicional do PR #16 — 23/10/2026
 
 **OPS-01 BLOQUEADO; divergência de subject OIDC comprovada.** O patch exclusivo do

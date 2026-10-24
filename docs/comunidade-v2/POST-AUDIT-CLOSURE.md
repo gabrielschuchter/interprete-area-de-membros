@@ -1,5 +1,20 @@
 # Comunidade V2 — encerramento das correções nesta execução
 
+## Atualização de release — 24/10/2026
+
+As correções locais de auditoria, incluindo RV-01, permanecem encerradas e não
+foram reabertas. O contrato OIDC do scheduler foi alinhado e integrado no
+workflow de `main` pelo PR #17; a Trusted Source correspondente continua
+limitada ao Preview da API. OPS-01 permanece bloqueado até uma execução
+agendada real provar recovery e, em seguida, namespace isolado, Broadcast e
+badge. Nenhuma prova manual substitutiva foi usada.
+
+O preflight ampliado terminou **RELEASE BLOCKED WITH SAFETY**: migrations não
+aplicadas, integridade dos posts legados não presumida, sem restauração
+independente comprovada e sem fallback remoto compatível ensaiado. Não houve
+deploy Production. Veja [RELEASE-REPORT.md](RELEASE-REPORT.md) para o resultado
+final e [OPS-01.md](OPS-01.md) para a mudança OIDC.
+
 ## Etapa 12A encerrada — NO-GO — 23/10/2026
 
 Preflight do candidato `4e026b59eb99521ed1c6b94c8444a52049d317c6` concluído.

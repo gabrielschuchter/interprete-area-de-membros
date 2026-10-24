@@ -1,8 +1,43 @@
-# OPS-01 — investigação delimitada — 23/10/2026
+# OPS-01 — recuperação operacional — 24/10/2026
 
-**Estado: BLOQUEADO; não resolvido.** Base do preflight: `04b5e5c`.
-Nenhum job foi declarado recuperado, nenhuma notificação foi criada nesta
-execução e nenhuma chamada autenticada manual do worker foi usada como prova.
+**Estado: BLOQUEADO; contrato OIDC corrigido, recuperação real ainda não comprovada.**
+Este registro atualiza o diagnóstico da base `04b5e5c` sem substituir as provas
+pendentes de scheduler, outbox, Broadcast/Realtime e badge.
+
+## Correção autorizada do contrato OIDC — 24/10/2026
+
+O repositório GitHub declara `use_immutable_subject=true`; seu subject efetivo
+é `repo:gabrielschuchter@291341266/interprete-area-de-membros@1386145986:environment:community-v2-preview`.
+O guard do workflow e a Trusted Source da **API Preview** foram alinhados a esse
+valor exato. A política salva mantém issuer `https://token.actions.githubusercontent.com`,
+audience `https://github.com/gabrielschuchter`, repositório, branch `main`,
+workflow, evento `schedule` e ambiente `community-v2-preview`; a origem continua
+restrita a Preview. `use_immutable_subject` permaneceu habilitado. Não foram
+alteradas outras Trusted Sources, Production, Clerk, cron GREEN, segredos ou
+políticas globais.
+
+O patch mínimo de uma linha foi integrado pelo PR
+[#17](https://github.com/gabrielschuchter/interprete-area-de-membros/pull/17),
+commit `1586ed53240dd533dd3a38bc244ed49cfabf31ae` em `main`. Antes do merge, a
+configuração efetiva dos projetos App e API foi recarregada no painel Vercel e
+confirmou ambos sem conexão Git; assim não houve integração Git que pudesse
+acionar deploy automático. As integrações permanecem desconectadas.
+
+Às `2026-10-24T02:52Z`, uma consulta de schedules ainda mostrava como mais
+recente o run `40049295827`, SHA `b5a2f067`, criado às `01:19:58Z` e encerrado
+com falha antes do commit `1586ed5`. Não havia execução real com o patch novo.
+Não foi feito dispatch, rerun, POST manual ou job QA para substituir essa prova.
+Evidência sanitizada: [ops01-oidc-repair-20261024.json](evidence/ops01-oidc-repair-20261024.json).
+
+**Próxima prova exata:** aguardar um evento `schedule` automático em `main` com
+o blob do workflow pós-`1586ed5`; conferir os checks booleanos sem expor token,
+e só então acompanhar a recuperação de um job QA com namespace isolado. OPS-01
+só pode fechar depois de recuperação por scheduler, isolamento/dedupe, entrega
+Broadcast/Realtime e atualização persistida do unread/badge serem observados.
+O tempo sem evento não autoriza chamada manual nem comprova recuperação.
+
+As seções seguintes registram o diagnóstico anterior e continuam válidas como
+histórico; a divergência de `sub` descrita nelas foi corrigida pelo PR #17.
 
 ## Diagnóstico encerrado — primeiro schedule com o patch
 

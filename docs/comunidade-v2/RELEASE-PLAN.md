@@ -1,19 +1,24 @@
-# Comunidade V2 — RELEASE-PLAN — Etapa 12A
+# Comunidade V2 — RELEASE-PLAN — Etapa 12A/12B
 
-> Atualização exclusiva de OPS-01: PR #16 integrado em main no commit
-> `b5a2f06`, às 20:19:37 UTC, sob autorização condicional posterior ao preflight.
-> Git desconectado e verificado no App e na API **antes do merge**, impedindo
-> deployments automáticos. Production manteve seus deployments/SHAs/aliases.
-> **Git permanece desconectado em ambos**; reconexão exige handoff controlado.
-> Primeiro schedule com o patch: `40036220515`, 22:51 UTC. Falha comprovada em
-> `oidc_claims`: `sub=false`, demais oito checks true. GitHub usa subject
-> imutável; guard e Trusted Source Preview inspecionada exigem formato anterior.
-> Request Preview não alcançado, sem status HTTP. Alinhar o `sub` da regra
-> Preview da API e do guard requer autorização para política de autenticação.
-> Nada disso foi alterado; acompanhamento excluído após obter o diagnóstico.
-> **OPS-01 continua BLOQUEADO e o release NO-GO.** Ver [OPS-01.md](OPS-01.md).
-> O restante deste preflight permanece no snapshot original, inclusive as
-> contagens e impedimentos históricos abaixo. Nenhuma publicação 12B ocorreu.
+> **Atualização 24/10/2026:** o contrato OIDC do scheduler foi corrigido no
+> workflow e na Trusted Source **somente Preview da API** com o subject imutável
+> exato; PR #17, commit `1586ed53240dd533dd3a38bc244ed49cfabf31ae` em `main`.
+> O patch foi integrado enquanto os projetos App/API estavam comprovadamente
+> desconectados do Git na Vercel. Permanecem desconectados. Nenhum schedule
+> posterior ao patch foi observado na consulta de `02:52Z`; OPS-01 segue aberto.
+> **Release NO-GO; nenhuma migration, escrita de produto ou publicação Production
+> foi executada.** O [RELEASE-REPORT.md](RELEASE-REPORT.md) consolida os gates
+> atuais e as ações mínimas restantes. O [OPS-01.md](OPS-01.md) contém a prova
+> do alinhamento e o critério da execução automática real.
+
+As contagens da tabela abaixo são o snapshot original do preflight e permanecem
+históricas onde divergirem do relatório atualizado. A consulta read-only ao
+GREEN nesta execução confirmou 65 migrations aplicadas e zero incompletas,
+Notification com RLS ativo, `anon SELECT=false` e `authenticated SELECT=true`,
+além de 28 posts sem grupo (8 DRAFT, 2 PUBLISHED, 18 ARCHIVED). Uma busca por
+DomainEvent ligado aos dois posts publicados retornou zero correspondências.
+Esses posts continuam sem proveniência comprovada e não podem ser promovidos a
+GLOBAL por suposição.
 
 
 **Preflight fechado em 23/10/2026: NO-GO para a Etapa 12B de publicação.**
