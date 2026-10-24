@@ -149,6 +149,8 @@ const navigation: readonly NavigationItem[] = [
   },
 ] as const;
 
+const welcomeDelayMs = 700;
+
 const createActions = [
   { href: "/gestao/ensino/cursos/novo", label: "Curso" },
   { href: "/gestao/ensino/exercicios", label: "Lista de exercícios" },
@@ -429,17 +431,22 @@ const GestaoShellView = ({
   }, []);
 
   useEffect(() => {
+    let seen = false;
     try {
-      if (
+      seen =
         window.localStorage.getItem(
           `interprete:gestao:welcome:v1:${memberId}`
-        ) !== "seen"
-      ) {
-        setWelcomeOpen(true);
-      }
+        ) === "seen";
     } catch {
-      setWelcomeOpen(true);
+      seen = false;
     }
+    if (seen) {
+      return;
+    }
+    // A modal marks its siblings aria-hidden; opening it while the streamed
+    // page is still hydrating trips React's hydration check on those nodes.
+    const timer = window.setTimeout(() => setWelcomeOpen(true), welcomeDelayMs);
+    return () => window.clearTimeout(timer);
   }, [memberId]);
 
   const dismissWelcome = useCallback(() => {
