@@ -140,6 +140,10 @@ const navigation: readonly NavigationItem[] = [
         label: "Personalização",
       },
       { href: "/gestao/administracao/medalhas", label: "Medalhas" },
+      {
+        href: "/gestao/administracao/auditoria",
+        label: "Registro de atividades",
+      },
     ],
   },
 ] as const;
