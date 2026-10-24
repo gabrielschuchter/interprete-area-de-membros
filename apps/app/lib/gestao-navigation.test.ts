@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   gestaoAdministrationDestination,
   gestaoCommunityDestination,
+  gestaoLegacyAdminDestination,
   gestaoStudentDestination,
   isGestaoShellPath,
   professorDestination,
@@ -94,5 +95,23 @@ describe("Gestão navigation", () => {
         "/biblioteca?q=leitura#retomar"
       )
     ).toBe("/gestao/alunos?from=%2Fbiblioteca%3Fq%3Dleitura%23retomar#lista");
+  });
+
+  it("sends legacy /admin addresses to their Gestão equivalents", () => {
+    expect(gestaoLegacyAdminDestination("/admin")).toBe("/gestao");
+    expect(gestaoLegacyAdminDestination("/admin/community")).toBe(
+      "/gestao/comunidade/publicacoes"
+    );
+    expect(gestaoLegacyAdminDestination("/admin/learning/courses/c1")).toBe(
+      "/gestao/ensino/cursos/c1"
+    );
+    expect(
+      gestaoLegacyAdminDestination("/admin/learning/courses/c1/preview")
+    ).toBe("/gestao/ensino/cursos/c1/preview");
+    expect(gestaoLegacyAdminDestination("/admin/membros/m1/")).toBe(
+      "/gestao/alunos/perfil/m1"
+    );
+    expect(gestaoLegacyAdminDestination("/admin/desconhecido")).toBeNull();
+    expect(gestaoLegacyAdminDestination("/administracao")).toBeNull();
   });
 });

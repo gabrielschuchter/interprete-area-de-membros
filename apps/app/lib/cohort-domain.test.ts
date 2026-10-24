@@ -8,6 +8,7 @@ import {
   cohortSlugBase,
   normalizeCohortName,
   resolveCohortCourseAccess,
+  resolveCohortLessonUnlockDates,
   resolveLockedCohortLessons,
 } from "./cohort-domain";
 
@@ -196,5 +197,28 @@ describe("cohort lesson release windows", () => {
       independentlyGrantedModuleIds: new Set(),
     });
     expect([...locked]).toEqual(["lesson-late"]);
+  });
+});
+describe("cohort lesson unlock dates", () => {
+  it("returns the earliest release among paths for locked lessons only", () => {
+    const unlockDates = resolveCohortLessonUnlockDates({
+      lockedLessonIds: new Set(["lesson-late"]),
+      accessPaths: [
+        {
+          courseId: "course-a",
+          releases: [
+            { lessonId: "lesson-early", releaseAt: date("2026-10-11") },
+            { lessonId: "lesson-late", releaseAt: date("2026-10-14") },
+          ],
+        },
+        {
+          courseId: "course-a",
+          releases: [
+            { lessonId: "lesson-late", releaseAt: date("2026-10-13") },
+          ],
+        },
+      ],
+    });
+    expect([...unlockDates]).toEqual([["lesson-late", date("2026-10-13")]]);
   });
 });

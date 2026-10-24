@@ -103,9 +103,9 @@ test("does not expose arbitrary Clerk diagnostics", () => {
 test("preserves same-origin return URLs and rejects external redirects", () => {
   expect(
     getAuthRedirectPath(
-      "https://members.example/sign-in?redirect_url=%2Faprender%3Ftab%3Dnext"
+      "https://members.example/sign-in?redirect_url=%2Fcursos%3Ftab%3Dnext"
     )
-  ).toBe("/aprender?tab=next");
+  ).toBe("/cursos?tab=next");
   expect(
     getAuthRedirectPath(
       "https://members.example/sign-in?redirect_url=https%3A%2F%2Fevil.example"

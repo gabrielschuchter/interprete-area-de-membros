@@ -16,6 +16,7 @@ import {
   PlusIcon,
   VideoIcon,
 } from "lucide-react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -53,7 +54,12 @@ import {
   type CohortCalendarOccurrenceResult,
   setGestaoCohortCalendarOccurrence,
 } from "./calendar-occurrence-actions";
-import { CohortMeetingDialog } from "./cohort-meeting-dialog";
+
+// Only mounted after a day or meeting is opened, so it stays out of the
+// route's initial JavaScript.
+const CohortMeetingDialog = dynamic(() =>
+  import("./cohort-meeting-dialog").then((module) => module.CohortMeetingDialog)
+);
 
 interface CalendarCopySource {
   readonly id: string;

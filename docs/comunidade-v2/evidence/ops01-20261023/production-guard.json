@@ -40,7 +40,14 @@
     "deploymentForMergedShaObserved": false,
     "promotionExecuted": false
   },
-  "unchanged": ["credentials", "GREEN cron", "Trusted Source", "authentication policies", "product deployments", "migrations"],
+  "unchanged": [
+    "credentials",
+    "GREEN cron",
+    "Trusted Source",
+    "authentication policies",
+    "product deployments",
+    "migrations"
+  ],
   "browserEvidenceDirectory": "C:/Users/gabsc/AppData/Local/Codex/qa/community-v2-foundation-20261015/ops01-guard-20261023",
   "nextRealScheduleObservation": {
     "state": "DIAGNOSTIC_OBTAINED_MONITOR_DELETED",

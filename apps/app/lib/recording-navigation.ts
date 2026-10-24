@@ -55,3 +55,7 @@ export const resolveRecordingPlaybackSelection = <
     ) ?? null
   );
 };
+
+// The recording room (Sala de Aula), keyed by the recording's video asset.
+export const roomRecordingHref = (assetId: string) =>
+  `/encontros/gravacoes/${encodeURIComponent(assetId)}`;

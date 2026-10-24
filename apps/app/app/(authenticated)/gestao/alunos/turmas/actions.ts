@@ -690,7 +690,7 @@ export const removeGestaoCohortMembers = async (
     );
     revalidatePath(`/gestao/alunos/turmas/${value.cohortId}/alunos`);
     revalidatePath("/gestao/alunos/turmas");
-    revalidatePath("/aprender");
+    revalidatePath("/cursos");
     return { ok: true, cohortId: value.cohortId, invitedCount: removed };
   } catch (error) {
     return errorResult(error);
@@ -829,7 +829,7 @@ export const moveGestaoCohortMembers = async (
     );
     revalidatePath(`/gestao/alunos/turmas/${value.cohortId}/alunos`);
     revalidatePath(`/gestao/alunos/turmas/${value.targetCohortId}/alunos`);
-    revalidatePath("/aprender");
+    revalidatePath("/cursos");
     return { ok: true, cohortId: value.targetCohortId };
   } catch (error) {
     return errorResult(error);
@@ -1046,7 +1046,7 @@ export const setGestaoCohortCourses = async (
     );
     revalidatePath(`/gestao/alunos/turmas/${value.cohortId}/conteudo`);
     revalidatePath(`/gestao/alunos/turmas/${value.cohortId}`);
-    revalidatePath("/aprender");
+    revalidatePath("/cursos");
     return { ok: true, cohortId: value.cohortId };
   } catch (error) {
     return errorResult(error);
@@ -1100,7 +1100,7 @@ export const revokeGestaoCohortCourse = async (
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
     );
     revalidatePath(`/gestao/alunos/turmas/${value.cohortId}/conteudo`);
-    revalidatePath("/aprender");
+    revalidatePath("/cursos");
     return { ok: true, cohortId: value.cohortId };
   } catch (error) {
     return errorResult(error);
@@ -1380,7 +1380,7 @@ export const acceptGestaoCohortInvite = async (
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
     );
-    revalidatePath("/aprender");
+    revalidatePath("/cursos");
     revalidatePath("/gestao/alunos/turmas");
     return { ok: true, cohortId };
   } catch (error) {
@@ -1562,7 +1562,7 @@ export const setGestaoCohortLessonRelease = async (
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
     );
     revalidatePath(`/gestao/alunos/turmas/${value.cohortId}/conteudo`);
-    revalidatePath("/aprender");
+    revalidatePath("/cursos");
     return { ok: true, cohortId: value.cohortId };
   } catch (error) {
     return errorResult(error);

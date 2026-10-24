@@ -60,7 +60,7 @@ const filters: readonly { label: string; value: Filter }[] = [
   { label: "Menções", value: "MENTIONS" },
   { label: "Comunidade", value: "COMMUNITY" },
   { label: "Atividades", value: "ACTIVITIES" },
-  { label: "Aprender", value: "LEARNING" },
+  { label: "Cursos", value: "LEARNING" },
   { label: "Conquistas", value: "BADGES" },
 ];
 
@@ -278,7 +278,7 @@ export const NotificationsPageClient = ({ initial }: Properties) => {
               </button>
             ))}
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button
               onClick={() =>
                 fetch("/api/notifications/read-all", { method: "POST" })

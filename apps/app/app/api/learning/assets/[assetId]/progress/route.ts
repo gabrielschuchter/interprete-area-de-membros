@@ -137,6 +137,7 @@ const persistPlaybackProgressOnce = async ({
           durationSeconds: true,
           lastViewedAt: true,
           completedPlaybackAt: true,
+          manualCompletion: true,
         },
       });
       return { progress, completed };
@@ -289,7 +290,12 @@ export const PUT = async (
       );
     }
 
-    if (saved.completed && !recordingId) {
+    // A lesson the member reopened by hand stays open (manualCompletion false).
+    if (
+      saved.completed &&
+      !recordingId &&
+      saved.progress.manualCompletion !== false
+    ) {
       await completeLessonForMember(userId, asset.lesson.id);
     }
 

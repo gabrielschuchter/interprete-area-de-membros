@@ -131,7 +131,7 @@ describe("planner calendar feed", () => {
           courseId: "course-a",
           courseSlug: "curso-clinico",
           releaseAt,
-          href: "/aprender/cursos/curso-clinico/escuta-inicial",
+          href: "/cursos/curso-clinico/escuta-inicial",
         },
       ],
       cohortEvents: [],
@@ -154,7 +154,7 @@ describe("planner calendar feed", () => {
       startsAt: releaseAt,
       endsAt: new Date("2026-10-21T12:30:00.000Z"),
       description: "Aula liberada na sua turma.",
-      url: "https://members.example/aprender/cursos/curso-clinico/escuta-inicial",
+      url: "https://members.example/cursos/curso-clinico/escuta-inicial",
     });
   });
 

@@ -272,7 +272,7 @@ export const resolveLearningAssignmentTargets = async (
       LearningAssignmentTargetType.COURSE,
       item.id,
       item.title,
-      `/aprender/cursos/${item.slug}`
+      `/cursos/${item.slug}`
     );
   }
   for (const item of modules) {
@@ -280,7 +280,7 @@ export const resolveLearningAssignmentTargets = async (
       LearningAssignmentTargetType.MODULE,
       item.id,
       item.title,
-      `/aprender/cursos/${item.course.slug}?module=${encodeURIComponent(item.id)}#module-${encodeURIComponent(item.id)}`
+      `/cursos/${item.course.slug}?module=${encodeURIComponent(item.id)}#module-${encodeURIComponent(item.id)}`
     );
   }
   for (const item of lessons) {
@@ -288,7 +288,7 @@ export const resolveLearningAssignmentTargets = async (
       LearningAssignmentTargetType.LESSON,
       item.id,
       item.title,
-      `/aprender/cursos/${item.module.course.slug}/${item.slug}`
+      `/cursos/${item.module.course.slug}/${item.slug}`
     );
   }
   for (const item of assets) {
@@ -296,7 +296,7 @@ export const resolveLearningAssignmentTargets = async (
       LearningAssignmentTargetType.ASSET,
       item.id,
       item.title,
-      `/aprender/cursos/${item.lesson.module.course.slug}/${item.lesson.slug}#materiais`
+      `/cursos/${item.lesson.module.course.slug}/${item.lesson.slug}#materiais`
     );
   }
   for (const item of recordings) {
@@ -572,7 +572,7 @@ export const enqueueLearningAssignmentNotifications = async (
       entityType: "LEARNING_ASSIGNMENT",
       entityId: assignment.id,
       dedupeKey: `learning-assignment:${assignment.id}`,
-      href: `/aprender/atribuicoes/${assignment.id}`,
+      href: `/cursos/atribuicoes/${assignment.id}`,
     })),
   });
 };

@@ -69,7 +69,7 @@ test("null community notification scopes fail closed unless references prove a l
     `reference.post_status = 'PUBLISHED'\n      AND reference.post_deleted_at IS NULL`
   );
   expect(audienceReconcileMigration).toContain(
-    `scope.reference_count = scope.resolved_reference_count\n        AND scope.distinct_post_count = 1`
+    "scope.reference_count = scope.resolved_reference_count\n        AND scope.distinct_post_count = 1"
   );
   expect(audienceReconcileMigration).toContain(
     `notification."memberId" = invitation."inviteeId"\n  AND invitation."status" = 'PENDING'`

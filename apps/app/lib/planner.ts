@@ -421,7 +421,7 @@ const calendarStudyDestination = (
   libraryItemById: ReadonlyMap<string, { readonly title: string }>
 ) => {
   let title = "Sessão de estudo";
-  let href = "/aprender";
+  let href = "/cursos";
   switch (session.activityKind) {
     case "PERSONAL_TIMER": {
       const timer = timerById.get(session.clientSessionId ?? "");
@@ -432,7 +432,7 @@ const calendarStudyDestination = (
         : null;
       if (linkedLesson) {
         title = timer?.title?.trim() || linkedLesson.title;
-        href = `/aprender/cursos/${linkedLesson.module.course.slug}/${linkedLesson.slug}`;
+        href = `/cursos/${linkedLesson.module.course.slug}/${linkedLesson.slug}`;
       }
       break;
     }
@@ -442,7 +442,7 @@ const calendarStudyDestination = (
         : null;
       if (lesson) {
         title = lesson.title;
-        href = `/aprender/cursos/${lesson.module.course.slug}/${lesson.slug}`;
+        href = `/cursos/${lesson.module.course.slug}/${lesson.slug}`;
       }
       break;
     }

@@ -38,7 +38,7 @@ test("offers a truthful first step and all study areas without a metrics dashboa
   expect(html).toContain("Comece pelo próximo passo.");
   expect(html).toContain("Explorar aulas");
   for (const href of [
-    "/aprender",
+    "/cursos",
     "/atividades",
     "/biblioteca",
     "/exercicios",
@@ -80,7 +80,7 @@ test("resumes the first unfinished authorized lesson and omits submitted activit
     },
   ]);
   const html = renderToStaticMarkup(await StudyOverview());
-  expect(html).toContain('href="/aprender/cursos/curso/b"');
+  expect(html).toContain('href="/cursos/curso/b"');
   expect(html).toContain("Retomar aula");
   expect(html).toContain('href="/atividades/pendente"');
   expect(html).not.toContain("Já enviada");

@@ -281,7 +281,7 @@ export const setGestaoCourseOpenAccess = async (
     );
 
     revalidatePath(`/gestao/ensino/cursos/${value.courseId}/turmas`);
-    revalidatePath("/aprender");
+    revalidatePath("/cursos");
     return { ok: true, duplicate };
   } catch (error) {
     return courseAccessError(error);
@@ -646,7 +646,7 @@ export const setGestaoCourseCohortAccess = async (
     );
     revalidatePath(`/gestao/ensino/cursos/${value.courseId}/turmas`);
     revalidatePath(`/gestao/alunos/turmas/${value.cohortId}/conteudo`);
-    revalidatePath("/aprender");
+    revalidatePath("/cursos");
     return { ok: true, duplicate };
   } catch (error) {
     return courseAccessError(error);
@@ -794,7 +794,7 @@ export const grantGestaoCourseDirectAccess = async (
       { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted }
     );
     revalidatePath(`/gestao/ensino/cursos/${value.courseId}/turmas`);
-    revalidatePath("/aprender");
+    revalidatePath("/cursos");
     return { ok: true, duplicate };
   } catch (error) {
     return courseAccessError(error);
@@ -943,7 +943,7 @@ export const revokeGestaoCourseDirectAccess = async (
       { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted }
     );
     revalidatePath(`/gestao/ensino/cursos/${value.courseId}/turmas`);
-    revalidatePath("/aprender");
+    revalidatePath("/cursos");
     return { ok: true, duplicate };
   } catch (error) {
     return courseAccessError(error);

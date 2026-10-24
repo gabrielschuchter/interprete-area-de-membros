@@ -715,13 +715,7 @@
   "privateReproduction": {
     "tool": "C:/Users/gabsc/AppData/Local/Codex/qa/community-v2-foundation-20261015/tools/preflight-12a.mjs",
     "toolSha256": "c5ba09bc865a2115945d6777169fce2f04301656fe5df0ab1c06e4cd5b47c745",
-    "commands": [
-      "db",
-      "external",
-      "snapshot",
-      "backups",
-      "cron-target"
-    ],
+    "commands": ["db", "external", "snapshot", "backups", "cron-target"],
     "notes": "Read-only remote probes. Snapshot creates only protected local copies. Uses existing local credentials without printing them. Do not use vercel mode until read access is restored."
   }
 }

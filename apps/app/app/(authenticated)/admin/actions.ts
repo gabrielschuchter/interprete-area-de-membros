@@ -24,6 +24,7 @@ import { redirect } from "next/navigation";
 import { parseAnnouncementDateTime } from "@/lib/announcement-time";
 import { requireAdmin, requireStaff } from "@/lib/authorization";
 import { sanitizeRichDocument } from "@/lib/community-content";
+import { recordAuditEvent } from "@/lib/gestao-audit";
 import { requireGestaoAction } from "@/lib/gestao-authorization";
 import { readIdempotencyKey } from "@/lib/mutation-contract";
 import { consumeMutationRateLimit } from "@/lib/mutation-reliability";
@@ -246,7 +247,7 @@ const notifyAvailableMembers = async (
           actorId,
           moduleId: module.id,
           moduleTitle: module.title,
-          href: `/aprender/cursos/${module.course.slug}`,
+          href: `/cursos/${module.course.slug}`,
         })
       )
     );
@@ -260,7 +261,7 @@ const notifyAvailableMembers = async (
           actorId,
           lessonId: lesson.id,
           lessonTitle: lesson.title,
-          href: `/aprender/cursos/${lesson.module.course.slug}/${lesson.slug}`,
+          href: `/cursos/${lesson.module.course.slug}/${lesson.slug}`,
         })
       )
     );
@@ -278,23 +279,47 @@ export const setMemberRole = async (formData: FormData) => {
     return;
   }
 
-  if (memberId === userId && nextRole !== MemberRole.ADMIN) {
-    const adminCount = await database.member.count({
-      where: { role: MemberRole.ADMIN },
+  const member = await database.$transaction(async (transaction) => {
+    const current = await transaction.member.findUnique({
+      where: { id: memberId },
+      select: { role: true },
     });
-
-    if (adminCount <= 1) {
-      return;
+    if (!current || current.role === nextRole) {
+      return null;
     }
-  }
-
-  const member = await database.member.update({
-    where: { id: memberId },
-    data: { role: nextRole as MemberRole },
-    select: { profile: { select: { username: true } } },
+    if (current.role === MemberRole.ADMIN) {
+      const otherAdmins = await transaction.member.count({
+        where: {
+          role: MemberRole.ADMIN,
+          deactivatedAt: null,
+          id: { not: memberId },
+        },
+      });
+      if (otherAdmins === 0) {
+        return null;
+      }
+    }
+    const updated = await transaction.member.update({
+      where: { id: memberId },
+      data: { role: nextRole as MemberRole },
+      select: { profile: { select: { username: true } } },
+    });
+    await recordAuditEvent(
+      {
+        eventType: "gestao.member.role_changed",
+        actorId: userId,
+        aggregateType: "Member",
+        aggregateId: memberId,
+        payload: { memberId, from: current.role, to: nextRole },
+      },
+      transaction
+    );
+    return updated;
   });
 
-  revalidateMemberSurfaces(member.profile?.username);
+  if (member) {
+    revalidateMemberSurfaces(member.profile?.username);
+  }
 };
 
 const isAccessResourceType = (value: string): value is AccessResourceType =>
@@ -339,7 +364,7 @@ const resourceExists = async (
 };
 
 export const setAccessGrant = async (formData: FormData) => {
-  await requireAdminMutation();
+  const { userId } = await requireAdminMutation();
 
   const memberId = asText(formData.get("memberId"));
   const resourceTypeValue = asText(formData.get("resourceType"));
@@ -393,22 +418,49 @@ export const setAccessGrant = async (formData: FormData) => {
       expiresAt,
     },
   });
+  await recordAuditEvent({
+    eventType: "gestao.access.granted",
+    actorId: userId,
+    aggregateType: "Member",
+    aggregateId: memberId,
+    payload: {
+      memberId,
+      resourceType,
+      resourceId,
+      expiresAt: expiresAt?.toISOString() ?? null,
+    },
+  });
 
   revalidatePath("/admin/acessos");
-  revalidatePath("/aprender");
+  revalidatePath("/cursos");
 };
 
 export const removeAccessGrant = async (formData: FormData) => {
-  await requireAdminMutation();
+  const { userId } = await requireAdminMutation();
   const grantId = asText(formData.get("grantId"));
 
   if (!grantId) {
     return;
   }
 
-  await database.accessGrant.deleteMany({ where: { id: grantId } });
+  const grant = await database.accessGrant.findUnique({
+    where: { id: grantId },
+    select: { memberId: true, resourceType: true, resourceId: true },
+  });
+  const removed = await database.accessGrant.deleteMany({
+    where: { id: grantId },
+  });
+  if (grant && removed.count > 0) {
+    await recordAuditEvent({
+      eventType: "gestao.access.revoked",
+      actorId: userId,
+      aggregateType: "Member",
+      aggregateId: grant.memberId,
+      payload: { grantId, ...grant },
+    });
+  }
   revalidatePath("/admin/acessos");
-  revalidatePath("/aprender");
+  revalidatePath("/cursos");
 };
 
 const asContent = (value: string): Prisma.InputJsonValue => {
@@ -465,7 +517,7 @@ export const createLearningPath = async (formData: FormData) => {
   });
 
   revalidatePath("/admin/learning");
-  revalidatePath("/aprender");
+  revalidatePath("/cursos");
 };
 
 export const createCourse = async (formData: FormData) => {
@@ -515,7 +567,7 @@ export const createCourse = async (formData: FormData) => {
 
   revalidatePath("/admin/learning");
   revalidatePath("/gestao/ensino/cursos");
-  revalidatePath("/aprender");
+  revalidatePath("/cursos");
   redirect(
     gestaoReturn
       ? `/gestao/ensino/cursos/${course.id}`
@@ -690,7 +742,7 @@ export const createModule = async (formData: FormData) => {
   });
 
   revalidatePath(`/admin/learning/courses/${courseId}`);
-  revalidatePath("/aprender", "page");
+  revalidatePath("/cursos", "page");
 };
 
 export const duplicateModule = async (formData: FormData) => {
@@ -982,7 +1034,7 @@ export const updateLessonAssetMedia = async (formData: FormData) => {
   });
   const courseId = current.lesson.module.courseId;
   revalidatePath(`/admin/learning/courses/${courseId}`);
-  revalidatePath("/aprender");
+  revalidatePath("/cursos");
   revalidatePath("/encontros/gravacoes");
 };
 
@@ -1003,7 +1055,7 @@ export const updateLearningPath = async (formData: FormData) => {
   });
 
   revalidatePath("/admin/learning");
-  revalidatePath("/aprender");
+  revalidatePath("/cursos");
 };
 
 export const updateCourse = async (formData: FormData) => {
@@ -1042,7 +1094,7 @@ export const updateCourse = async (formData: FormData) => {
   revalidatePath(`/admin/learning/courses/${courseId}`);
   revalidatePath(`/admin/learning/courses/${courseId}/preview`);
   revalidatePath("/admin/learning");
-  revalidatePath("/aprender");
+  revalidatePath("/cursos");
 };
 
 export const updateModule = async (formData: FormData) => {
@@ -1064,7 +1116,7 @@ export const updateModule = async (formData: FormData) => {
   });
 
   revalidatePath(`/admin/learning/courses/${module.courseId}`);
-  revalidatePath("/aprender");
+  revalidatePath("/cursos");
 };
 
 export const createLessonResource = async (formData: FormData) => {
@@ -1225,7 +1277,7 @@ export const moveModule = async (formData: FormData) => {
   });
 
   revalidatePath(`/admin/learning/courses/${module.courseId}`);
-  revalidatePath("/aprender");
+  revalidatePath("/cursos");
 };
 
 export const moveLesson = async (formData: FormData) => {
@@ -1275,7 +1327,7 @@ export const moveLesson = async (formData: FormData) => {
   });
 
   revalidatePath(`/admin/learning/courses/${lesson.module.courseId}`);
-  revalidatePath("/aprender");
+  revalidatePath("/cursos");
 };
 
 export const setContentStatus = async (formData: FormData) => {
@@ -1298,8 +1350,15 @@ export const setContentStatus = async (formData: FormData) => {
       where: { id },
       data: { status, publishedAt },
     });
+    await recordAuditEvent({
+      eventType: "gestao.path.status_changed",
+      actorId: userId,
+      aggregateType: "LearningPath",
+      aggregateId: id,
+      payload: { pathId: id, status },
+    });
     revalidatePath("/admin/learning");
-    revalidatePath("/aprender");
+    revalidatePath("/cursos");
     return;
   }
 
@@ -1308,11 +1367,18 @@ export const setContentStatus = async (formData: FormData) => {
       where: { id },
       data: { status, publishedAt, updatedBy: userId },
     });
+    await recordAuditEvent({
+      eventType: "gestao.course.status_changed",
+      actorId: userId,
+      aggregateType: "Course",
+      aggregateId: id,
+      payload: { courseId: id, status },
+    });
     revalidatePath("/admin/learning");
     revalidatePath(`/admin/learning/courses/${id}`);
     revalidatePath(`/gestao/ensino/cursos/${id}`);
     revalidatePath(`/gestao/ensino/cursos/${id}/turmas`);
-    revalidatePath("/aprender");
+    revalidatePath("/cursos");
     return;
   }
 
@@ -1676,7 +1742,7 @@ const updateLessonStatus = async ({
   revalidatePath(
     `/gestao/ensino/cursos/${lesson.module.courseId}/aulas/${lessonId}`
   );
-  revalidatePath("/aprender", "page");
+  revalidatePath("/cursos", "page");
   return {
     status: "saved",
     message:

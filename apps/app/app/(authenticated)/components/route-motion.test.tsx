@@ -1,7 +1,7 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
-const path = vi.hoisted(() => ({ value: "/aprender" }));
+const path = vi.hoisted(() => ({ value: "/cursos" }));
 vi.mock("next/navigation", () => ({ usePathname: () => path.value }));
 
 import { RouteMotion } from "./route-motion";
@@ -9,7 +9,7 @@ import { RouteMotion } from "./route-motion";
 describe("RouteMotion", () => {
   afterEach(() => {
     cleanup();
-    path.value = "/aprender";
+    path.value = "/cursos";
   });
   test("keeps the portal distinct from destinations hidden before chrome enters", () => {
     path.value = "/";

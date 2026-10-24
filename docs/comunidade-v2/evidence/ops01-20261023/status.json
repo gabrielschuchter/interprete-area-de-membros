@@ -36,9 +36,7 @@
     "baseSha": "7a7c8e4d0167490308f54bb8d79b3577c2f0aaa6",
     "branch": "codex/ops01-preview-diagnostics-20261023",
     "commit": "1cb2660fbd1aec9070460d32858d056dbe853032",
-    "files": [
-      ".github/workflows/community-v2-preview-outbox.yml"
-    ],
+    "files": [".github/workflows/community-v2-preview-outbox.yml"],
     "url": "https://github.com/gabrielschuchter/interprete-area-de-membros/pull/16",
     "draft": true,
     "merged": false,

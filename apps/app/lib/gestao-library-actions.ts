@@ -47,7 +47,7 @@ const revalidateLibrary = () => {
   revalidatePath("/gestao/ensino/biblioteca");
   revalidatePath("/admin/library");
   revalidatePath("/biblioteca");
-  revalidatePath("/aprender");
+  revalidatePath("/cursos");
 };
 
 export const applyGestaoLibraryBulkAction = async (

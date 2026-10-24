@@ -38,7 +38,7 @@ type Story = StoryObj<typeof Sidebar>;
 
 const navigation = [
   { label: "Início", icon: House },
-  { label: "Aprender", icon: BookOpen },
+  { label: "Cursos", icon: BookOpen },
   { label: "Atividades", icon: CheckSquare },
   { label: "Comunidade", icon: MessageCircle },
   { label: "Biblioteca", icon: Library },

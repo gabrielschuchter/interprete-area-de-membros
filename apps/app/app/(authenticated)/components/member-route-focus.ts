@@ -1,5 +1,5 @@
 const routeNames: Readonly<Record<string, string>> = {
-  aprender: "Aprender",
+  cursos: "Cursos",
   atividades: "Atividades",
   biblioteca: "Biblioteca",
   comunidade: "Comunidade",

@@ -33,6 +33,7 @@ export const env = createEnv({
       .min(1_000_000)
       .max(50_000_000_000)
       .default(500_000_000),
+    ROOM_V2_ENABLED: z.enum(["true", "false"]).default("false"),
   },
   client: {},
   runtimeEnv: {
@@ -45,5 +46,6 @@ export const env = createEnv({
     GESTAO_V2_ENABLED: process.env.GESTAO_V2_ENABLED,
     UPLOADS_PAUSED_FOR_ROLLBACK: process.env.UPLOADS_PAUSED_FOR_ROLLBACK,
     GESTAO_VIDEO_MAX_UPLOAD_BYTES: process.env.GESTAO_VIDEO_MAX_UPLOAD_BYTES,
+    ROOM_V2_ENABLED: process.env.ROOM_V2_ENABLED,
   },
 });

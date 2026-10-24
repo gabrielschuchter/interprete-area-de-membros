@@ -21,8 +21,8 @@ export const memberSectionForPathname = (pathname: string) => {
   if (pathname.startsWith("/admin")) {
     return "Professor";
   }
-  if (pathname.startsWith("/aprender")) {
-    return "Aprender";
+  if (pathname.startsWith("/cursos")) {
+    return "Cursos";
   }
   if (pathname.startsWith("/tarefas")) {
     return "Metas e tarefas";
@@ -73,8 +73,8 @@ export const memberBreadcrumbForPathname = (pathname: string) => {
   if (pathname === "/estudar") {
     return "Início › Estudar";
   }
-  if (pathname.startsWith("/aprender")) {
-    return "Estudar · Aprender";
+  if (pathname.startsWith("/cursos")) {
+    return "Estudar · Cursos";
   }
   if (pathname.startsWith("/tarefas")) {
     return "Planejamento · Tarefas";

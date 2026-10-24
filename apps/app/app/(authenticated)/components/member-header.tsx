@@ -30,7 +30,7 @@ const mobileTitleForPath = (pathname: string) => {
   if (pathname === "/ferramentas") {
     return "Ferramentas";
   }
-  if (pathname.startsWith("/aprender") || pathname.startsWith("/atividades")) {
+  if (pathname.startsWith("/cursos") || pathname.startsWith("/atividades")) {
     return memberSectionForPathname(pathname);
   }
   return null;

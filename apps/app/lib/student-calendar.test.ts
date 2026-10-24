@@ -56,7 +56,7 @@ describe("resolveCalendar", () => {
         targetId: "activity-scheduled",
         title: "Atividade agendada",
         slug: "atividade-agendada",
-        href: "/aprender/atribuicoes/assignment-scheduled",
+        href: "/cursos/atribuicoes/assignment-scheduled",
         status: "NEW",
         message: null,
         availableAt: new Date("2026-10-19T12:00:00.000Z"),
@@ -180,7 +180,7 @@ describe("resolveCalendar", () => {
           lessonId: "lesson-a",
           title: "Aula de avaliação",
           releaseAt,
-          href: "/aprender/cursos/curso-clinico/aula-de-avaliacao",
+          href: "/cursos/curso-clinico/aula-de-avaliacao",
         },
       ],
       cohortEvents: [

@@ -106,12 +106,14 @@ interface MemberHeaderControlsProperties {
   readonly memberId: string;
   readonly noteEditorMode?: boolean;
   readonly showSaved?: boolean;
+  readonly showSearch?: boolean;
 }
 
 export const MemberHeaderControls = ({
   memberId,
   noteEditorMode = false,
   showSaved = true,
+  showSearch = true,
 }: MemberHeaderControlsProperties) => {
   const pathname = usePathname();
   const [activeOverlay, setActiveOverlay] = useState<ActiveOverlay>(null);
@@ -199,6 +201,9 @@ export const MemberHeaderControls = ({
   }, [memberId]);
 
   useEffect(() => {
+    if (!showSearch) {
+      return;
+    }
     const handleShortcut = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       const isTyping =
@@ -222,7 +227,7 @@ export const MemberHeaderControls = ({
 
     window.addEventListener("keydown", handleShortcut);
     return () => window.removeEventListener("keydown", handleShortcut);
-  }, [activeOverlay]);
+  }, [activeOverlay, showSearch]);
 
   return (
     <div
@@ -246,20 +251,22 @@ export const MemberHeaderControls = ({
           </IntentLink>
         </Button>
       ) : null}
-      <Button
-        aria-expanded={activeOverlay === "search"}
-        aria-haspopup="dialog"
-        aria-keyshortcuts="Control+K Meta+K"
-        aria-label="Buscar no Interprete"
-        className={`${noteEditorMode ? "size-11" : "size-10"} rounded-full text-muted-foreground hover:bg-accent hover:text-foreground`}
-        onClick={() => setActiveOverlay("search")}
-        size="icon-sm"
-        title="Buscar"
-        type="button"
-        variant="ghost"
-      >
-        <SearchIcon aria-hidden="true" />
-      </Button>
+      {showSearch ? (
+        <Button
+          aria-expanded={activeOverlay === "search"}
+          aria-haspopup="dialog"
+          aria-keyshortcuts="Control+K Meta+K"
+          aria-label="Buscar no Interprete"
+          className={`${noteEditorMode ? "size-11" : "size-10"} rounded-full text-muted-foreground hover:bg-accent hover:text-foreground`}
+          onClick={() => setActiveOverlay("search")}
+          size="icon-sm"
+          title="Buscar"
+          type="button"
+          variant="ghost"
+        >
+          <SearchIcon aria-hidden="true" />
+        </Button>
+      ) : null}
 
       <NotificationsPopover
         noteEditorMode={noteEditorMode}
@@ -277,7 +284,7 @@ export const MemberHeaderControls = ({
         onStatusChange={handleRealtimeStatusChange}
       />
 
-      {activeOverlay === "search" && (
+      {showSearch && activeOverlay === "search" && (
         <GlobalSearch
           onOpenChange={(open) => setActiveOverlay(open ? "search" : null)}
           open

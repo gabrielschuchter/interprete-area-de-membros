@@ -17,7 +17,7 @@ export const memberNavigationDurations: Readonly<
 
 export const portalShortcutPaths: Readonly<Record<string, PortalSide>> = {
   "/estudar": "estudar",
-  "/aprender": "estudar",
+  "/cursos": "estudar",
   "/exercicios": "estudar",
   "/atividades": "estudar",
   "/biblioteca": "estudar",

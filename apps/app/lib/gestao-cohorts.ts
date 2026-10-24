@@ -594,7 +594,7 @@ export const listGestaoCohortCalendarEvents = async (
       startsAt: release.releaseAt,
       endsAt: null,
       status: "PUBLISHED" as const,
-      href: `/aprender/cursos/${release.lesson.module.course.slug}/${release.lesson.slug}`,
+      href: `/cursos/${release.lesson.module.course.slug}/${release.lesson.slug}`,
     })),
   ];
   const items = resolveCohortCalendarItems(sources, {

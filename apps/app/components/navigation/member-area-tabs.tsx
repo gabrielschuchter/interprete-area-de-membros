@@ -20,7 +20,7 @@ import { IntentLink } from "@/app/(authenticated)/components/intent-link";
 
 const studyAreas = [
   { href: "/estudar", label: "Visão geral" },
-  { href: "/aprender", label: "Aprender" },
+  { href: "/cursos", label: "Cursos" },
   { href: "/exercicios", label: "Exercícios" },
   { href: "/atividades", label: "Atividades" },
   { href: "/biblioteca", label: "Biblioteca" },

@@ -17,7 +17,7 @@ const validateLearning = async ({ sql, page, userId, report }) => {
   if (!lesson) {
     throw new Error("Expected migrated published lesson is absent.");
   }
-  const courseUrl = `${ORIGIN}/aprender/cursos/${encodeURIComponent(lesson.course_slug)}`;
+  const courseUrl = `${ORIGIN}/cursos/${encodeURIComponent(lesson.course_slug)}`;
   const lessonUrl = `${courseUrl}/${encodeURIComponent(lesson.slug)}`;
   await page.goto(lessonUrl);
   const missing = page.getByRole("heading", { name: "404", exact: true });

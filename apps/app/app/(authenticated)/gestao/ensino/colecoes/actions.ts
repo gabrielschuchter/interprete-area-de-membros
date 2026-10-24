@@ -111,7 +111,7 @@ const revalidateCollections = () => {
   revalidatePath("/gestao/ensino/colecoes");
   revalidatePath("/admin/colecoes");
   revalidatePath("/gestao");
-  revalidatePath("/aprender");
+  revalidatePath("/cursos");
   revalidatePath("/");
 };
 

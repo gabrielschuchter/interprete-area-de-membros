@@ -298,7 +298,7 @@ const buildFeedItems = async (
       startsAt: release.releaseAt,
       endsAt: null,
       status: "PUBLISHED" as const,
-      href: `/aprender/cursos/${release.lesson.module.course.slug}/${release.lesson.slug}`,
+      href: `/cursos/${release.lesson.module.course.slug}/${release.lesson.slug}`,
     })),
   ];
   const meetingById = new Map(meetings.map((meeting) => [meeting.id, meeting]));

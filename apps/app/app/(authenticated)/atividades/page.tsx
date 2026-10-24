@@ -130,10 +130,7 @@ const ActivitiesPage = async ({
             <p className="mt-3 text-muted-foreground">
               As atividades disponíveis para você aparecerão aqui.
             </p>
-            <IntentLink
-              className="learning-catalog-action mt-6"
-              href="/aprender"
-            >
+            <IntentLink className="learning-catalog-action mt-6" href="/cursos">
               Continuar aprendendo
             </IntentLink>
           </section>

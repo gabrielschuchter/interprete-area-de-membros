@@ -1,14 +1,5 @@
-import { notFound, redirect } from "next/navigation";
-import { requireGestaoAction } from "@/lib/gestao-authorization";
-import { gestaoCommunityDestination } from "@/lib/gestao-navigation";
+import { redirect } from "next/navigation";
 
-const GestaoCommunityPage = async () => {
-  await requireGestaoAction("community.moderate");
-  const destination = gestaoCommunityDestination(["publicacoes"]);
-  if (!destination) {
-    notFound();
-  }
-  redirect(destination);
-};
+const GestaoCommunityPage = () => redirect("/gestao/comunidade/publicacoes");
 
 export default GestaoCommunityPage;

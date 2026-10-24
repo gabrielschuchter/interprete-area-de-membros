@@ -28,7 +28,7 @@ const groupLabel = (item: PersonalLibraryCard) => {
   if (group === "materials") {
     return `MATERIAL · ${item.category ?? "BIBLIOTECA"}`;
   }
-  return group === "courses" ? "CURSO · APRENDER" : "AULA · APRENDER";
+  return group === "courses" ? "CURSO · ESTUDAR" : "AULA · ESTUDAR";
 };
 
 const countLabel = (count: number) =>

@@ -294,7 +294,7 @@ const AdminAssignmentsPage = async ({
           Envie um conteúdo para quem precisa dele.
         </h1>
         <p className="mt-5 text-muted-foreground leading-7">
-          O aluno verá a atribuição em Aprender e receberá uma notificação.
+          O aluno verá a atribuição em Cursos e receberá uma notificação.
           Acesso, prazo e estado ficam registrados por destinatário.
         </p>
       </header>

@@ -20,7 +20,11 @@ const catalogAction = (card: LearningRailCard) => {
   }
   return "Ver conteúdo";
 };
-const CatalogBookmark = ({ card }: { readonly card: LearningRailCard }) => {
+export const CatalogBookmark = ({
+  card,
+}: {
+  readonly card: LearningRailCard;
+}) => {
   return card.bookmark && !card.disabled ? (
     <SingleFlightForm
       action={submitLearningBookmark}
