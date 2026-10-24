@@ -377,8 +377,8 @@
 
 .gestao-account-role {
   display: inline-flex;
-  align-self: flex-start;
   align-items: center;
+  align-self: flex-start;
   height: 22px;
   padding: 0 8px;
   font-size: 11px;
@@ -414,10 +414,10 @@
   display: flex;
   gap: 16px;
   align-items: center;
+  justify-content: space-between;
   height: 60px;
   min-height: 60px;
   padding: 0 32px;
-  justify-content: space-between;
   background: var(--gestao-canvas);
   border-bottom: 1px solid var(--gestao-line);
 }
@@ -460,8 +460,8 @@
   font-weight: 500;
   line-height: 1;
   color: var(--gestao-text);
-  text-decoration: none;
   white-space: nowrap;
+  text-decoration: none;
   background: #fff;
   border: 1px solid var(--gestao-line);
   border-radius: 6px;
@@ -1117,114 +1117,120 @@
 }
 .gt-cohort-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
   gap: 20px;
+  margin-top: 20px;
 }
 .gt-cohort-list {
   display: grid;
   gap: 12px;
+  margin-top: 20px;
 }
 .gt-cohort-card {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
   overflow: hidden;
   background: #fff;
   border: 1px solid var(--gestao-line);
-  border-radius: 7px;
+  border-radius: 8px;
 }
 .gt-cohort-cover {
   display: flex;
   align-items: flex-end;
-  min-height: 108px;
-  padding: 13px 16px;
-  color: #fff;
-  background: linear-gradient(132deg, #70153e, #410230 86%);
+  height: 84px;
+  padding: 12px 18px;
+  color: rgb(241 235 232 / 85%);
+  background: linear-gradient(135deg, #6a1a3a, #2a0121);
 }
 .gt-cohort-card:nth-child(3n + 2) .gt-cohort-cover {
-  background: linear-gradient(132deg, #971a3e, #45062f 90%);
+  background: linear-gradient(135deg, #8c1535, #2a0121);
+}
+.gt-cohort-card:nth-child(3n) .gt-cohort-cover {
+  background: linear-gradient(135deg, #410230, #1b0113);
 }
 .gt-cohort-cover span {
-  font-size: 12px;
-  font-weight: 550;
+  font: 600 12px / 1 var(--font-sans-family);
 }
 .gt-cohort-card-body {
-  padding: 16px 18px 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px;
 }
 .gt-cohort-title-row {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   align-items: flex-start;
   justify-content: space-between;
 }
 .gt-cohort-title-row h2 {
   min-width: 0;
   margin: 0;
-  font-family: var(--font-display-family);
-  font-size: 19px;
-  font-weight: 600;
-  line-height: 1.2;
+  font: 600 20px / 1.25 var(--font-display-family);
   color: var(--gestao-text);
 }
 .gt-status-pill {
+  box-sizing: border-box;
+  display: inline-flex;
   flex: none;
-  padding: 4px 8px;
-  font-size: 10px;
-  font-weight: 650;
-  color: #6a1a3a;
+  gap: 5px;
+  align-items: center;
+  height: 24px;
+  padding: 0 9px;
+  font: 600 11.5px / 1 var(--font-sans-family);
+  color: #410230;
   white-space: nowrap;
-  background: #f5edf2;
-  border-radius: 999px;
+  background: #f6eef4;
+  border-radius: 12px;
 }
 .gt-status-not_started {
-  color: #8c1535;
-  background: #fff0f2;
+  color: var(--gestao-action);
+  background: rgb(140 21 53 / 8%);
 }
 .gt-status-ended,
 .gt-status-archived {
-  color: #735f5c;
-  background: #eee7e4;
+  color: var(--gestao-muted);
+  background: #efe7e3;
 }
 .gt-cohort-facts {
   display: flex;
   flex-wrap: wrap;
-  gap: 16px;
-  margin: 13px 0 15px;
-  font-size: 12px;
+  gap: 18px;
+  font: 400 13px / 1.3 var(--font-sans-family);
   color: var(--gestao-muted);
 }
 .gt-cohort-facts strong {
-  font-family: var(--font-display-family);
-  font-size: 18px;
+  font-size: 16px;
+  font-weight: 600;
   color: var(--gestao-text);
 }
 .gt-cohort-progress {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 6px;
-  margin: 14px 0 16px;
-  font-size: 11px;
-  color: var(--gestao-muted);
 }
 .gt-cohort-progress-label {
   display: flex;
-  gap: 8px;
   justify-content: space-between;
+  font: 500 12px / 1 var(--font-sans-family);
+  color: var(--gestao-muted);
 }
 .gt-cohort-progress-track {
   height: 6px;
   overflow: hidden;
-  background: #e4d9d4;
-  border-radius: 999px;
+  background: var(--gestao-line);
+  border-radius: 3px;
 }
 .gt-cohort-progress-track span {
   display: block;
   height: 100%;
   background: var(--gestao-action);
-  border-radius: inherit;
 }
 .gt-cohort-footer {
   display: flex;
   gap: 8px;
   align-items: center;
-  justify-content: space-between;
 }
 .gt-cohort-card-actions {
   display: flex;
@@ -1234,26 +1240,55 @@
 }
 .gt-responsibles {
   display: flex;
+  flex: 1;
   gap: 8px;
   align-items: center;
   min-width: 0;
-  font-size: 11px;
+  font: 400 12.5px / 1 var(--font-sans-family);
   color: var(--gestao-muted);
 }
 .gt-responsibles > span:last-child {
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .gt-avatar {
-  display: grid;
+  display: inline-flex;
   flex: none;
-  place-items: center;
+  align-items: center;
+  justify-content: center;
   width: 28px;
   height: 28px;
-  font-size: 10px;
-  font-weight: 700;
+  font: 600 10px / 1 var(--font-sans-family);
   color: #fff;
   background: var(--gestao-sidebar);
+  border-radius: 50%;
+}
+.gt-cohort-new {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  min-height: 220px;
+  font: 600 14px / 1 var(--font-sans-family);
+  color: var(--gestao-action);
+  text-decoration: none;
+  background: transparent;
+  border: 1px dashed #bfa9a3;
+  border-radius: 8px;
+}
+.gt-cohort-new:hover {
+  background: rgb(140 21 53 / 4%);
+  border-color: var(--gestao-action);
+}
+.gt-cohort-new > span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: #f1e4e1;
   border-radius: 50%;
 }
 .gt-cohort-list .gt-cohort-card {
@@ -10448,8 +10483,8 @@
   flex: 1 1 340px;
   flex-direction: column;
   gap: 20px;
-  max-width: 420px;
   min-width: 0;
+  max-width: 420px;
 }
 .go-panel {
   box-sizing: border-box;
@@ -10535,12 +10570,12 @@
   color: var(--gestao-muted);
 }
 .go-outline-action {
+  box-sizing: border-box;
   display: inline-flex;
   flex: none;
   gap: 8px;
   align-items: center;
   justify-content: center;
-  box-sizing: border-box;
   height: 40px;
   padding: 0 22px;
   font-size: 14px;
@@ -10548,8 +10583,8 @@
   line-height: 1;
   color: var(--gestao-action);
   text-align: center;
-  text-decoration: none;
   white-space: nowrap;
+  text-decoration: none;
   background: transparent;
   border: 2px solid var(--gestao-action);
   border-radius: 6px;

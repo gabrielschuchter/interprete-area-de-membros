@@ -22,6 +22,7 @@ export interface GestaoCohortListInput {
   readonly page?: number;
   readonly query?: string;
   readonly status?: GestaoCohortTab;
+  readonly teacherId?: string;
 }
 const inviteTokenPattern = /^[a-f\d]{32}$/iu;
 const pageSize = 24;
@@ -125,15 +126,35 @@ export const listGestaoCohorts = cache(
     const status = input.status ?? "ACTIVE";
     const query = searchInput(input.query);
     const scope = actorScope(actor.userId, actor.role);
+    const teacherId = input.teacherId?.trim().slice(0, 120) ?? "";
+    const teacherScope: Prisma.CohortWhereInput = teacherId
+      ? { teachers: { some: { memberId: teacherId } } }
+      : {};
     const where: Prisma.CohortWhereInput = {
-      AND: [scope, statusFilter(status, now), cohortSearch(query)],
+      AND: [
+        scope,
+        teacherScope,
+        statusFilter(status, now),
+        cohortSearch(query),
+      ],
     };
+    const responsibleOptions = await database.member.findMany({
+      where: { cohortTeaching: { some: { cohort: scope } } },
+      orderBy: { displayName: "asc" },
+      select: { displayName: true, id: true },
+      take: 100,
+    });
     const statusCounts = await Promise.all(
       (["ACTIVE", "NOT_STARTED", "ENDED", "ARCHIVED"] as const).map(
         async (tab) => {
           const count = await database.cohort.count({
             where: {
-              AND: [scope, statusFilter(tab, now), cohortSearch(query)],
+              AND: [
+                scope,
+                teacherScope,
+                statusFilter(tab, now),
+                cohortSearch(query),
+              ],
             },
           });
           return [tab, count] as const;
@@ -211,6 +232,8 @@ export const listGestaoCohorts = cache(
       })),
       page,
       pageSize,
+      responsibleOptions,
+      selectedTeacherId: teacherId,
       totalCount,
       totalPages: Math.max(1, Math.ceil(totalCount / pageSize)),
       unassignedMemberCount,
@@ -819,6 +842,16 @@ export const listPublishedCoursesForCohort = async (cohortId: string) => {
   });
   return courses;
 };
+
+export const listGestaoPublishedCourses = cache(async () => {
+  await requireGestaoActor();
+  return database.course.findMany({
+    where: { status: "PUBLISHED" },
+    orderBy: [{ title: "asc" }, { id: "asc" }],
+    select: { id: true, slug: true, title: true },
+    take: 200,
+  });
+});
 
 export const getGestaoTeacherOptions = cache(async () => {
   const actor = await requireGestaoActor();

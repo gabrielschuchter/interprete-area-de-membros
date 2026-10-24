@@ -43,7 +43,11 @@ const shortcuts: readonly {
     icon: "inbox",
     label: "Nova atividade",
   },
-  { href: "/gestao/comunidade/encontros", icon: "video", label: "Novo encontro" },
+  {
+    href: "/gestao/comunidade/encontros",
+    icon: "video",
+    label: "Novo encontro",
+  },
   { href: "/gestao/comunidade/avisos", icon: "bell", label: "Novo aviso" },
   {
     href: "/gestao/alunos/atribuicoes",
@@ -110,36 +114,36 @@ const GestaoOverviewPage = async ({ searchParams }: OverviewPageProperties) => {
               </span>
             </div>
             <div className="go-rows">
-            {overview.pendingCount ? (
-              <div
-                className="go-attention-row"
-                data-attention-item="corrections"
-              >
-                <span className="go-attention-icon">
-                  <GestaoIcon name="inbox" />
-                </span>
-                <div className="go-attention-copy">
-                  <h3>
-                    {overview.pendingCount}{" "}
-                    {overview.pendingCount === 1
-                      ? "entrega aguardando"
-                      : "entregas aguardando"}{" "}
-                    feedback
-                  </h3>
-                  <p>{overview.pendingActivityTitles.join(" · ")}</p>
-                </div>
-                <Link
-                  className="go-outline-action"
-                  href={overview.correctionsHref}
-                  prefetch={false}
+              {overview.pendingCount ? (
+                <div
+                  className="go-attention-row"
+                  data-attention-item="corrections"
                 >
-                  Corrigir
-                </Link>
-              </div>
-            ) : null}
-            {extras.items.map((item) => (
-              <AttentionRow item={item} key={item.id} />
-            ))}
+                  <span className="go-attention-icon">
+                    <GestaoIcon name="inbox" />
+                  </span>
+                  <div className="go-attention-copy">
+                    <h3>
+                      {overview.pendingCount}{" "}
+                      {overview.pendingCount === 1
+                        ? "entrega aguardando"
+                        : "entregas aguardando"}{" "}
+                      feedback
+                    </h3>
+                    <p>{overview.pendingActivityTitles.join(" · ")}</p>
+                  </div>
+                  <Link
+                    className="go-outline-action"
+                    href={overview.correctionsHref}
+                    prefetch={false}
+                  >
+                    Corrigir
+                  </Link>
+                </div>
+              ) : null}
+              {extras.items.map((item) => (
+                <AttentionRow item={item} key={item.id} />
+              ))}
             </div>
             {attentionCount === 0 ? (
               <div className="go-attention-empty">

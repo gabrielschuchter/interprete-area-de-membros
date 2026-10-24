@@ -244,9 +244,12 @@ const teacherIdsFor = async (
   actor: { role: GestaoRole; userId: string },
   selected: readonly string[]
 ) => {
-  const ids = [
-    ...new Set([actor.userId, ...(actor.role === "ADMIN" ? selected : [])]),
-  ];
+  // Professor sempre é responsável pela turma que cria; o administrador
+  // escolhe quem responde (ao menos um), inclusive sem se incluir.
+  const ids =
+    actor.role === "ADMIN" && selected.length > 0
+      ? [...new Set(selected)]
+      : [actor.userId];
   const rows = await tx.member.findMany({
     where: {
       id: { in: ids },
