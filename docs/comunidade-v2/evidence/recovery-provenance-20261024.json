@@ -1,5 +1,5 @@
 {
-  "captured_by_utc": "2026-10-24T03:03:22Z",
+  "captured_by_utc": "2026-10-24T03:06:40Z",
   "legacy_provenance": {
     "source_snapshot_format": "INTERPRETE-SUPABASE-SOURCE-SNAPSHOT-V1",
     "snapshot_contains_row_values": false,
@@ -49,6 +49,17 @@
     "target_container_removed": true,
     "green_blue_or_existing_qa_modified": false,
     "conclusion": "full recovery is unproven; this attempt does not establish archive corruption"
+  },
+  "supabase_compatible_bootstrap_trial": {
+    "source": "existing local Supabase QA database, read-only",
+    "target": "new disposable network-isolated PostgreSQL container",
+    "target_had_host_port_or_persistent_volume": false,
+    "auth_schema_transfer": "schema only; no row data",
+    "target_role_bootstrap_exit_code": 2,
+    "restore_started": false,
+    "sanitized_diagnostic": "platform_role_bootstrap_failed; detail intentionally not retained",
+    "target_container_removed": true,
+    "source_qa_green_or_blue_modified": false
   },
   "follow_up": "Use an isolated fully initialized Supabase-compatible target and independently recoverable key; do not restore to GREEN or BLUE. Obtain authoritative provenance or an explicit decision to keep the two published orphans unavailable."
 }
