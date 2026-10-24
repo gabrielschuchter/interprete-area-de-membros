@@ -25,7 +25,8 @@ acionar deploy automático. As integrações permanecem desconectadas.
 
 Às `2026-10-24T02:52Z`, uma consulta de schedules ainda mostrava como mais
 recente o run `40049295827`, SHA `b5a2f067`, criado às `01:19:58Z` e encerrado
-com falha antes do commit `1586ed5`. Não havia execução real com o patch novo.
+com falha antes do commit `1586ed5`. Uma segunda consulta, feita até `03:01Z`,
+retornou o mesmo run; não havia execução real com o patch novo.
 Não foi feito dispatch, rerun, POST manual ou job QA para substituir essa prova.
 Evidência sanitizada: [ops01-oidc-repair-20261024.json](evidence/ops01-oidc-repair-20261024.json).
 

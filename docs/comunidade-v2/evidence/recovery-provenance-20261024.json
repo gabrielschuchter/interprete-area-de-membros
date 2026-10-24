@@ -1,0 +1,54 @@
+{
+  "captured_by_utc": "2026-10-24T03:03:22Z",
+  "legacy_provenance": {
+    "source_snapshot_format": "INTERPRETE-SUPABASE-SOURCE-SNAPSHOT-V1",
+    "snapshot_contains_row_values": false,
+    "snapshot_row_metadata": {
+      "CommunityPost": 31,
+      "CommunitySpace": 2,
+      "DomainEvent": 1
+    },
+    "row_snapshot_fields": [
+      "schema",
+      "table",
+      "rowCount",
+      "primaryKeyColumns",
+      "primaryKeySetSha256",
+      "canonicalRowSha256",
+      "perRowHashes"
+    ],
+    "published_orphan_domain_event_matches": 0,
+    "ids_content_or_identity_hashes_emitted": false,
+    "snapshot_sufficient_to_reconstruct_post_origin_or_space": false
+  },
+  "green_read_only_observation": {
+    "postgres_version": "17.11",
+    "applied_migrations": 65,
+    "incomplete_migrations": 0,
+    "pending_community_v2_migrations": 11,
+    "notification_rls_enabled": true,
+    "notification_anon_select": false,
+    "notification_authenticated_select": true,
+    "posts_without_space": {
+      "DRAFT": 8,
+      "PUBLISHED": 2,
+      "ARCHIVED": 18
+    }
+  },
+  "database_backup_restore_trial": {
+    "protected_envelope": "green-12a-database-20261023T191322502Z.dpapi",
+    "envelope_format": "INTERPRETE-12A-DATABASE-SNAPSHOT-V1",
+    "archive_bytes": 573006,
+    "archive_sha256": "2784de6c5b2620434e7fe2b81cf75367b39d80554b466bfa620d132da88ee113",
+    "pg_restore_toc_list_exit_code": 0,
+    "target_image": "public.ecr.aws/supabase/postgres:17.11.0.004",
+    "target_isolated": true,
+    "target_had_host_port_network_or_persistent_volume": false,
+    "restore_exit_code": 1,
+    "sanitized_diagnostic": "restore_error; detail intentionally not retained",
+    "target_container_removed": true,
+    "green_blue_or_existing_qa_modified": false,
+    "conclusion": "full recovery is unproven; this attempt does not establish archive corruption"
+  },
+  "follow_up": "Use an isolated fully initialized Supabase-compatible target and independently recoverable key; do not restore to GREEN or BLUE. Obtain authoritative provenance or an explicit decision to keep the two published orphans unavailable."
+}

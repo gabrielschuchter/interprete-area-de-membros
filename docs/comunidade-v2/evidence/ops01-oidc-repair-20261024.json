@@ -60,6 +60,8 @@
     "latest_run_conclusion": "failure",
     "latest_run_is_after_fix_commit": false,
     "schedule_with_fix_observed": false,
+    "rechecked_by_utc": "2026-10-24T03:01:50Z",
+    "recheck_returned_same_latest_run": true,
     "dispatch_rerun_manual_worker_or_qa_job_used": false
   },
   "production_data_changes": {
