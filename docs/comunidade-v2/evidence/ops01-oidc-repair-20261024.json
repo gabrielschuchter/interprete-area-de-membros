@@ -46,7 +46,11 @@
     "api_git_connected_before_merge": false,
     "connections_remain_disconnected": true,
     "production_deploy_requested": false,
-    "manual_deploy_requested": false
+    "manual_deploy_requested": false,
+    "post_merge_dashboard_checked_at_utc": "2026-10-24T02:52:36Z",
+    "app_production_sha": "7a7c8e4d0167490308f54bb8d79b3577c2f0aaa6",
+    "api_production_sha": "6c7b49a3fecab3bda8e2f6ad41789972ad711dd9",
+    "oidc_fix_commit_deployment_observed": false
   },
   "post_fix_schedule_query": {
     "queried_at_utc": "2026-10-24T02:52:36Z",

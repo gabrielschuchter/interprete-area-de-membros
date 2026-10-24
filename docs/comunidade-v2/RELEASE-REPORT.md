@@ -27,10 +27,12 @@ Antes do merge, as configurações efetivas da Vercel foram recarregadas e
 confirmaram que os projetos App e API não estavam conectados a um repositório
 Git. Essa proteção impediu deployment Git automático durante a integração e
 ambos continuam desconectados. Não houve deploy manual. O último inventário
-Production observado antes do PR #17 registrava App SHA
+das listas de deployments foi atualizado após o PR #17: os aliases Production
+continuam apontando para App SHA
 `7a7c8e4d0167490308f54bb8d79b3577c2f0aaa6` e API SHA
-`6c7b49a3fecab3bda8e2f6ad41789972ad711dd9`; esse snapshot não é apresentado
-como confirmação posterior a toda mudança de `main`.
+`6c7b49a3fecab3bda8e2f6ad41789972ad711dd9`, ambos listados como Ready. Não há
+deployment de `1586ed5` nessas listas. O commit mesclado alterou apenas o
+workflow, e nenhuma implantação manual foi solicitada ou realizada.
 
 ## Gates que impedem GO
 
@@ -81,7 +83,9 @@ As observações remotas de banco foram somente leitura e agregadas; nenhum
 conteúdo ou ID dos posts foi registrado. A consulta de DomainEvent encontrou
 zero correspondências aos dois posts publicados sem grupo. Não foram impressos
 tokens, headers, corpos privados, nomes de objetos Storage ou arquivos de
-backup. A evidência sanitizada do contrato OIDC e schedule está em
+backup. A integração Vercel MCP desta sessão retornou indisponível; a
+configuração e os deployments foram conferidos pelo painel web já autenticado.
+A evidência sanitizada do contrato OIDC e schedule está em
 [ops01-oidc-repair-20261024.json](evidence/ops01-oidc-repair-20261024.json).
 
 O spec local protegido `apps/app/e2e/community-v2/community-groups.spec.ts`
