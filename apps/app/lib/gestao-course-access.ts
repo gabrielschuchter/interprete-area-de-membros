@@ -118,7 +118,13 @@ export const getGestaoCourseAccessPage = async (input: {
   };
   const course = await database.course.findUnique({
     where: { id: input.courseId },
-    select: { id: true, title: true, status: true, slug: true },
+    select: {
+      id: true,
+      title: true,
+      status: true,
+      slug: true,
+      updatedAt: true,
+    },
   });
   if (!course) {
     return null;

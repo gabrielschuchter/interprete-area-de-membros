@@ -1,22 +1,12 @@
-import { Button } from "@repo/design-system/components/ui/button";
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CourseSectionTabs } from "@/components/gestao/course-section-tabs";
 import { getGestaoCourseAccessPage } from "@/lib/gestao-course-access";
+import { GestaoCourseHeader } from "../course-header";
 import { CourseAccessManager } from "./course-access-manager";
-import { CoursePublishControl } from "./course-publish-control";
 
 type SearchParameters = Record<string, string | string[] | undefined>;
 
 const first = (value: string | string[] | undefined) =>
   Array.isArray(value) ? value[0] : value;
-
-const statusLabel = {
-  DRAFT: "Rascunho",
-  SCHEDULED: "Agendado",
-  PUBLISHED: "Publicado",
-  ARCHIVED: "Arquivado",
-} as const;
 
 const CourseAccessPage = async ({
   params,
@@ -42,33 +32,8 @@ const CourseAccessPage = async ({
   }
 
   return (
-    <main className="gca-page">
-      <header className="gca-course-heading">
-        <div className="gca-course-title-line">
-          <h1>{data.course.title}</h1>
-          <span
-            className={`gca-course-status is-${data.course.status.toLowerCase()}`}
-          >
-            {statusLabel[data.course.status]}
-          </span>
-        </div>
-        <p className="gca-course-heading-copy">
-          Controle as turmas, os acessos individuais e a disponibilidade deste
-          curso.
-        </p>
-        <div className="gca-course-actions">
-          <Button asChild size="sm" variant="outline">
-            <Link
-              href={`/gestao/ensino/cursos/${encodeURIComponent(data.course.id)}/preview`}
-              prefetch={false}
-            >
-              Pré-visualizar como aluno
-            </Link>
-          </Button>
-          <CoursePublishControl courseId={data.course.id} />
-        </div>
-      </header>
-      <CourseSectionTabs active="access" courseId={data.course.id} />
+    <div className="gca-page gca-page--embedded">
+      <GestaoCourseHeader active="acesso" course={data.course} />
       <CourseAccessManager
         actorRole={data.actorRole}
         candidateCohortPage={data.candidateCohortPage}
@@ -98,7 +63,7 @@ const CourseAccessPage = async ({
         memberTotalPages={data.memberTotalPages}
         openAccess={data.openAccess}
       />
-    </main>
+    </div>
   );
 };
 
