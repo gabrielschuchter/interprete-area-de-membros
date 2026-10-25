@@ -5,11 +5,13 @@ import { NextResponse } from "next/server";
 import { env } from "@/env";
 import { isAuthorizedCronRequest } from "@/lib/cron-auth";
 import { notificationOutboxConsumer } from "@/lib/notification-outbox-consumer";
+import { recoverPreviewOutbox } from "@/lib/preview-outbox-recovery";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 const processOutbox = async (request: Request) => {
+  const startedAt = Date.now();
   const secret = env.CRON_SECRET;
   if (!secret) {
     return NextResponse.json(
@@ -34,9 +36,28 @@ const processOutbox = async (request: Request) => {
       { [notificationOutboxConsumerKey]: notificationOutboxConsumer },
       { workerId: randomUUID() }
     );
-    return NextResponse.json(result, {
-      headers: { "Cache-Control": "private, no-store" },
-    });
+    const previewRecovery = await recoverPreviewOutbox(
+      request,
+      {
+        enabled: env.PREVIEW_OUTBOX_RECOVERY_ENABLED === "true",
+        environment: process.env.VERCEL_ENV,
+        namespace: env.OUTBOX_QUEUE_NAMESPACE,
+        secret: env.PREVIEW_OUTBOX_CRON_SECRET,
+      },
+      Date.now() - startedAt
+    );
+    if (previewRecovery?.status === "failed") {
+      console.warn(
+        "[cron/outbox] preview recovery failed",
+        previewRecovery.reason
+      );
+    }
+    return NextResponse.json(
+      { ...result, ...(previewRecovery && { previewRecovery }) },
+      {
+        headers: { "Cache-Control": "private, no-store" },
+      }
+    );
   } catch (error) {
     console.error(
       "[cron/outbox] batch processing failed",

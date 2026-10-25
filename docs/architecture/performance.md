@@ -1164,6 +1164,18 @@ corrida e replay sem duplicação. Invalidação continua pelo mecanismo existen
 nenhum corpo privado entra em Broadcast ou telemetria. Percentis, recuperação
 periódica remota e entrega Broadcast continuam gates de preflight da Etapa 12A.
 
+### Recuperação agendada do Preview (2026-10-25)
+
+O cron canônico mantém seu lote, consumidor e namespace. Depois do lote, um
+hop opcional aguarda somente o endpoint fixo do API Preview, com OIDC do mesmo
+projeto e bearer dedicado. O hop fica desligado por padrão e só executa em
+Production sem namespace. Não inicia depois de 45 segundos de processamento e
+tem timeout de 8 segundos, dentro dos 60 segundos da função. Falha no Preview
+não desfaz o resultado canônico; o cron durável tenta novamente no próximo ciclo.
+O consumidor Preview continua limitado ao namespace e à allowlist QA. Nenhum
+corpo, token ou destinatário entra no retorno operacional ou no log. Esse caminho
+não acrescenta consultas, cache ou requisições à navegação dos membros.
+
 The portal component adds no content or planner query. The authenticated layout
 continues to resolve identity, the existing profile projection, role and
 product configuration; the Início consumes that result. Only the art for the
