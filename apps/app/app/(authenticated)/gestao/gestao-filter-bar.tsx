@@ -15,10 +15,16 @@ export interface FilterSelect {
 
 /** Busca (250 ms) e filtros por lista; tudo vive na URL e zera a paginação. */
 export const GestaoFilterBar = ({
+  compact = false,
   placeholder,
   query,
+  resetParams = ["pagina"],
   selects,
 }: {
+  /** Empilha os controles na largura do contêiner (painéis estreitos). */
+  readonly compact?: boolean;
+  /** Parâmetros descartados a cada mudança de filtro. */
+  readonly resetParams?: readonly string[];
   readonly placeholder: string;
   readonly query: string;
   readonly selects: readonly FilterSelect[];
@@ -47,7 +53,9 @@ export const GestaoFilterBar = ({
     } else {
       params.delete(param);
     }
-    params.delete("pagina");
+    for (const reset of resetParams) {
+      params.delete(reset);
+    }
     startTransition(() =>
       router.replace(`${pathname}${params.size ? `?${params}` : ""}`, {
         scroll: false,
@@ -58,10 +66,10 @@ export const GestaoFilterBar = ({
   return (
     <div
       aria-busy={pending}
-      className="gk-toolbar-group"
+      className={`gk-toolbar-group${compact ? "gk-toolbar-group--stack" : ""}`}
       data-pending={String(pending)}
     >
-      <span className="gk-field" style={{ width: 300 }}>
+      <span className="gk-field" style={compact ? undefined : { width: 300 }}>
         <GestaoIcon name="search" size={16} />
         <input
           aria-label={placeholder}
@@ -85,7 +93,11 @@ export const GestaoFilterBar = ({
         />
       </span>
       {selects.map((select) => (
-        <span className="gk-field" key={select.param} style={{ width: 190 }}>
+        <span
+          className="gk-field"
+          key={select.param}
+          style={compact ? undefined : { width: 190 }}
+        >
           <select
             aria-label={select.label}
             className="gk-select"

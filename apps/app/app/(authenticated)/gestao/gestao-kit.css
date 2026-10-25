@@ -3100,3 +3100,51 @@ button.gca-text-action {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* Correções: passos da fila e filtros empilhados */
+.gk-stepper {
+  display: flex;
+  gap: 8px;
+}
+.gk-icon-btn--square {
+  width: 44px;
+  height: 44px;
+  background: #fff;
+  border: 1px solid var(--gestao-line);
+  border-radius: 8px;
+}
+.gk-icon-btn--square[data-disabled="true"] {
+  opacity: 0.4;
+}
+.gk-toolbar-group--stack {
+  flex-direction: column;
+  align-items: stretch;
+  padding: 0 12px 12px;
+}
+.gk-toolbar-group--stack .gk-field {
+  width: 100%;
+}
+.gc-profile-link {
+  margin-left: auto;
+  font: 600 13px / 1 var(--font-sans-family);
+  color: var(--gestao-action);
+  text-decoration: none;
+}
+.gc-page .gk-head {
+  margin-bottom: 20px;
+}
+.gc-submission-header {
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+}
+.gk-toolbar-group--stack .gk-field {
+  box-sizing: border-box;
+  width: 100%;
+}
+.gk-toolbar-group--stack .gk-field:first-child {
+  order: 2;
+}
+.gk-toolbar-group--stack .gk-select,
+.gk-toolbar-group--stack .gk-input {
+  box-sizing: border-box;
+  width: 100%;
+}
