@@ -145,6 +145,12 @@ const glyphs = {
       <path d="M6 6l12 12M18 6L6 18" />
     </>
   ),
+  alert: (
+    <>
+      <circle cx="12" cy="12" r="8" />
+      <path d="M12 8v4.5M12 15.5v.5" />
+    </>
+  ),
   clock: (
     <>
       <circle cx="12" cy="12" r="8" />

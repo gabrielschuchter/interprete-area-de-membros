@@ -1,22 +1,29 @@
-import { ContentStatus } from "@repo/database";
-import { Button } from "@repo/design-system/components/ui/button";
-import { Input } from "@repo/design-system/components/ui/input";
-import { PlusIcon, SearchIcon } from "lucide-react";
+import { type ActivityDeliveryKind, ContentStatus } from "@repo/database";
 import Link from "next/link";
-import {
-  SingleFlightForm,
-  SingleFlightSubmit,
-} from "@/components/mutations/single-flight-form";
 import { listGestaoActivities } from "@/lib/gestao-activities";
-import { setGestaoActivityStatus } from "./actions";
+import { GestaoFilterBar } from "../../gestao-filter-bar";
+import { GestaoIcon } from "../../gestao-icon";
+import { ActivityRowMenu } from "./activity-row-menu";
 
 const statusNames: Record<ContentStatus, string> = {
+  ARCHIVED: "Arquivado",
   DRAFT: "Rascunho",
   PUBLISHED: "Publicado",
-  ARCHIVED: "Arquivado",
 };
 
-const statusOptions = [
+const statusIcons = {
+  ARCHIVED: "archive",
+  DRAFT: "pencil",
+  PUBLISHED: "check-circle",
+} as const;
+
+const deliveryNames: Record<ActivityDeliveryKind, string> = {
+  FILE: "Envio de arquivo",
+  TEXT: "Resposta em texto",
+  TEXT_AND_FILE: "Texto e arquivo",
+};
+
+const tabs = [
   ["ALL", "Todas"],
   [ContentStatus.PUBLISHED, "Publicadas"],
   [ContentStatus.DRAFT, "Rascunhos"],
@@ -24,375 +31,292 @@ const statusOptions = [
 ] as const;
 
 const dueOptions = [
-  ["ALL", "Todos os prazos"],
   ["UPCOMING", "Com prazo futuro"],
   ["OVERDUE", "Prazo vencido"],
   ["NONE", "Sem prazo"],
 ] as const;
 
-const dateLabel = (value: Date | null) =>
-  value
-    ? new Intl.DateTimeFormat("pt-BR", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        timeZone: "America/Sao_Paulo",
-      }).format(value)
-    : "Sem prazo";
-
-const pageHref = (input: {
-  readonly query: string;
-  readonly status: string;
-  readonly courseId: string;
-  readonly due: string;
-  readonly page?: number;
-}) => {
-  const params = new URLSearchParams();
-  if (input.query) {
-    params.set("q", input.query);
-  }
-  if (input.status !== "ALL") {
-    params.set("estado", input.status);
-  }
-  if (input.courseId) {
-    params.set("curso", input.courseId);
-  }
-  if (input.due !== "ALL") {
-    params.set("prazo", input.due);
-  }
-  if (input.page && input.page > 1) {
-    params.set("pagina", String(input.page));
-  }
-  const search = params.toString();
-  return `/gestao/ensino/atividades${search ? `?${search}` : ""}`;
-};
-
 const resultMessages: Record<string, string> = {
-  "estado-atualizado": "Estado da atividade atualizado.",
   conflito:
     "A atividade mudou em outra sessão. Atualize a lista antes de tentar novamente.",
   "dados-invalidos": "Revise os campos enviados.",
+  "estado-atualizado": "Estado da atividade atualizado.",
   "nao-encontrada": "A atividade não está mais disponível.",
 };
 
-interface GestaoActivitiesPageProperties {
+const dueFormatter = new Intl.DateTimeFormat("pt-BR", {
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  month: "short",
+  timeZone: "America/Sao_Paulo",
+});
+
+const dueLabel = (value: Date | null) =>
+  value
+    ? dueFormatter.format(value).replace(".", "").replace(" de ", " ")
+    : "Sem prazo";
+
+interface Properties {
   readonly searchParams: Promise<{
-    readonly q?: string;
-    readonly estado?: string;
     readonly curso?: string;
-    readonly prazo?: string;
+    readonly estado?: string;
     readonly pagina?: string;
+    readonly prazo?: string;
+    readonly q?: string;
     readonly resultado?: string;
   }>;
 }
 
-type ActivityRowData = Awaited<
+type Row = Awaited<
   ReturnType<typeof listGestaoActivities>
 >["activities"][number];
 
-const ActivityRecipients = ({
-  activity,
-}: {
-  readonly activity: ActivityRowData;
-}) => (
-  <div className="ga-recipient-summary">
-    {activity.cohortTargets.slice(0, 3).map(({ cohort }) => (
-      <span key={cohort.id}>{cohort.name}</span>
-    ))}
-    {activity.cohortCount > 3 ? (
-      <span>+{activity.cohortCount - 3} turmas</span>
-    ) : null}
-    {activity.directRecipientCount ? (
-      <small>
-        {activity.directRecipientCount} aluno
-        {activity.directRecipientCount === 1 ? "" : "s"} individual
-        {activity.directRecipientCount === 1 ? "" : "is"}
-      </small>
-    ) : null}
-    {activity.cohortCount || activity.directRecipientCount ? null : (
-      <small>Curso ou acesso geral</small>
-    )}
-  </div>
-);
-
-const ActivityStatusAction = ({
-  activity,
-}: {
-  readonly activity: ActivityRowData;
-}) => {
-  const canChangeStatus =
-    activity.status === ContentStatus.PUBLISHED ||
-    activity.status === ContentStatus.ARCHIVED;
-  if (!canChangeStatus) {
-    return null;
+const tabHref = (
+  status: string,
+  params: Awaited<Properties["searchParams"]>
+) => {
+  const next = new URLSearchParams();
+  for (const key of ["q", "curso", "prazo"] as const) {
+    if (params[key]) {
+      next.set(key, params[key] as string);
+    }
   }
-  const isPublished = activity.status === ContentStatus.PUBLISHED;
-  const actionLabel = isPublished ? "Arquivar" : "Reativar";
-  const nextStatus = isPublished
-    ? ContentStatus.ARCHIVED
-    : ContentStatus.PUBLISHED;
+  if (status !== "ALL") {
+    next.set("estado", status);
+  }
+  return `/gestao/ensino/atividades${next.size ? `?${next}` : ""}`;
+};
+
+const Recipients = ({ row }: { readonly row: Row }) => {
+  const first = row.cohortTargets[0]?.cohort.name;
+  if (!(row.directRecipientCount || first)) {
+    return <span className="gk-dash">—</span>;
+  }
   return (
-    <SingleFlightForm action={setGestaoActivityStatus}>
-      <input name="activityId" type="hidden" value={activity.id} />
-      <input name="version" type="hidden" value={activity.version} />
-      <input name="status" type="hidden" value={nextStatus} />
-      <SingleFlightSubmit
-        aria-label={`${actionLabel} ${activity.title}`}
-        size="sm"
-        variant="ghost"
-      >
-        {actionLabel}
-      </SingleFlightSubmit>
-    </SingleFlightForm>
+    <span>
+      {row.directRecipientCount
+        ? `${row.directRecipientCount} ${row.directRecipientCount === 1 ? "aluno" : "alunos"}`
+        : first}
+      {row.directRecipientCount && first ? (
+        <small className="gk-qsub">
+          {first}
+          {row.cohortCount > 1 ? ` +${row.cohortCount - 1}` : ""}
+        </small>
+      ) : null}
+    </span>
   );
 };
 
-const ActivityCatalogRow = ({
-  activity,
-}: {
-  readonly activity: ActivityRowData;
-}) => (
-  <tr>
-    <td data-label="Atividade">
-      <Link
-        className="ga-activity-title"
-        href={`/gestao/ensino/atividades/${activity.id}`}
-        prefetch={false}
+const Deliveries = ({ row }: { readonly row: Row }) => {
+  const total = row.directRecipientCount || row.counts.all;
+  if (!total) {
+    return <span className="gk-dash">—</span>;
+  }
+  const done = Math.min(total, row.counts.submitted + row.counts.reviewed);
+  return (
+    <span className="gk-progress">
+      <span className="gk-progress-bar">
+        <span style={{ width: `${Math.round((done / total) * 100)}%` }} />
+      </span>
+      <small>
+        {done}/{total}
+      </small>
+    </span>
+  );
+};
+
+const Correction = ({ row }: { readonly row: Row }) =>
+  row.counts.toReview ? (
+    <span className="gk-alert-text">
+      <GestaoIcon name="alert" size={13} /> {row.counts.toReview} a corrigir
+    </span>
+  ) : (
+    <span className="gk-dash">—</span>
+  );
+
+const ActivityRow = ({ row }: { readonly row: Row }) => (
+  <tr data-selected={row.counts.toReview > 0}>
+    <td>
+      <div className="gk-person">
+        <span aria-hidden="true" className="gk-kindtile">
+          <GestaoIcon name="inbox" size={18} />
+        </span>
+        <div>
+          <Link
+            className="gk-qtitle"
+            href={`/gestao/ensino/atividades/${row.id}`}
+            prefetch={false}
+          >
+            {row.title}
+          </Link>
+          <small className="gk-qsub">{deliveryNames[row.deliveryKind]}</small>
+        </div>
+      </div>
+    </td>
+    <td>{dueLabel(row.dueAt)}</td>
+    <td>
+      <Recipients row={row} />
+    </td>
+    <td>
+      <Deliveries row={row} />
+    </td>
+    <td>
+      <Correction row={row} />
+    </td>
+    <td>
+      <span
+        className="gk-chip"
+        data-tone={row.status === "PUBLISHED" ? "active" : "neutral"}
       >
-        {activity.title}
-      </Link>
-      <small>{activity.course?.title ?? "Sem curso associado"}</small>
-    </td>
-    <td data-label="Prazo">{dateLabel(activity.dueAt)}</td>
-    <td data-label="Destinatários">
-      <ActivityRecipients activity={activity} />
-    </td>
-    <td data-label="Entregas">{activity.counts.all}</td>
-    <td data-label="Para corrigir">
-      <strong className={activity.counts.toReview ? "ga-review-count" : ""}>
-        {activity.counts.toReview}
-      </strong>
-    </td>
-    <td data-label="Estado">
-      <span className={`ge-status ge-status-${activity.status.toLowerCase()}`}>
-        {statusNames[activity.status]}
+        <GestaoIcon name={statusIcons[row.status]} size={12} />
+        {statusNames[row.status]}
       </span>
     </td>
-    <td data-label="Ações">
-      <div className="ga-row-actions">
-        <Button asChild size="sm" variant="outline">
-          <Link
-            href={`/gestao/ensino/atividades/${activity.id}`}
-            prefetch={false}
-          >
-            Abrir
-          </Link>
-        </Button>
-        <Button asChild size="sm" variant="ghost">
-          <Link
-            href={`/gestao/ensino/atividades/${activity.id}/entregas`}
-            prefetch={false}
-          >
-            Entregas
-          </Link>
-        </Button>
-        <ActivityStatusAction activity={activity} />
-      </div>
+    <td className="gk-col-menu">
+      <ActivityRowMenu
+        id={row.id}
+        status={row.status}
+        title={row.title}
+        version={row.version}
+      />
     </td>
   </tr>
 );
 
-const GestaoActivitiesPage = async ({
-  searchParams,
-}: GestaoActivitiesPageProperties) => {
+const GestaoActivitiesPage = async ({ searchParams }: Properties) => {
   const params = await searchParams;
   const catalog = await listGestaoActivities({
-    query: params.q,
-    status: params.estado,
     courseId: params.curso,
     due: params.prazo,
     page: Number(params.pagina),
+    query: params.q,
+    status: params.estado,
   });
-  const activeStatus = catalog.status;
-  const activeDue = dueOptions.some(([value]) => value === params.prazo)
-    ? (params.prazo ?? "ALL")
-    : "ALL";
-  const resultMessage = params.resultado
-    ? resultMessages[params.resultado]
-    : null;
+  const due = dueOptions.some(([key]) => key === params.prazo)
+    ? (params.prazo ?? "")
+    : "";
+  const first = (catalog.page - 1) * catalog.pageSize + 1;
+  const pageLink = (target: number) => {
+    const next = new URLSearchParams();
+    for (const key of ["q", "curso", "prazo", "estado"] as const) {
+      if (params[key]) {
+        next.set(key, params[key] as string);
+      }
+    }
+    next.set("pagina", String(target));
+    return `/gestao/ensino/atividades?${next}`;
+  };
+  const message = params.resultado ? resultMessages[params.resultado] : null;
 
   return (
-    <section className="gestao-page-content ga-activity-catalog">
-      <header className="ga-page-heading">
-        <div>
-          <p className="gestao-eyebrow">Gestão · Ensino</p>
+    <section className="gt-page gk-activities">
+      <header className="gk-head">
+        <div className="gk-head-copy">
           <h1>Atividades</h1>
           <p>
-            Crie práticas, distribua para as turmas e acompanhe as entregas.
+            Crie e publique atividades. A correção das entregas fica em Alunos ›
+            Correções.
           </p>
         </div>
-        <Button asChild>
-          <Link href="/gestao/ensino/atividades/nova">
-            <PlusIcon aria-hidden="true" /> Nova atividade
+        <div className="gk-head-actions">
+          <Link
+            className="gk-btn gk-btn--primary gk-btn--wide"
+            href="/gestao/ensino/atividades/nova"
+          >
+            Nova atividade
           </Link>
-        </Button>
+        </div>
       </header>
 
-      {resultMessage ? (
-        <output className="ga-result">{resultMessage}</output>
-      ) : null}
+      {message ? <output className="gk-result">{message}</output> : null}
 
-      <nav
-        aria-label="Filtrar atividades por estado"
-        className="ga-status-tabs"
-      >
-        {statusOptions.map(([value, label]) => (
+      <nav aria-label="Estado das atividades" className="gk-tabs">
+        {tabs.map(([key, label]) => (
           <Link
-            aria-current={activeStatus === value ? "page" : undefined}
-            className={activeStatus === value ? "is-active" : ""}
-            href={pageHref({
-              query: catalog.query,
-              status: value,
-              courseId: params.curso ?? "",
-              due: activeDue,
-            })}
-            key={value}
+            aria-current={catalog.status === key ? "page" : undefined}
+            className="gk-tab"
+            href={tabHref(key, params)}
+            key={key}
           >
             {label}
           </Link>
         ))}
       </nav>
 
-      <form
-        action="/gestao/ensino/atividades"
-        className="ga-activity-filters"
-        method="get"
-      >
-        <label className="ga-activity-search" htmlFor="activity-search">
-          <SearchIcon aria-hidden="true" />
-          <Input
-            defaultValue={catalog.query}
-            id="activity-search"
-            maxLength={120}
-            name="q"
-            placeholder="Buscar atividade"
-          />
-        </label>
-        {activeStatus !== "ALL" ? (
-          <input name="estado" type="hidden" value={activeStatus} />
-        ) : null}
-        <label>
-          <span className="sr-only">Filtrar por curso</span>
-          <select defaultValue={params.curso ?? ""} name="curso">
-            <option value="">Todos os cursos</option>
-            {catalog.courses.map((course) => (
-              <option key={course.id} value={course.id}>
-                {course.title}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          <span className="sr-only">Filtrar por prazo</span>
-          <select defaultValue={activeDue} name="prazo">
-            {dueOptions.map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <Button type="submit" variant="outline">
-          Filtrar
-        </Button>
-      </form>
+      <div className="gk-toolbar">
+        <GestaoFilterBar
+          placeholder="Buscar atividades"
+          query={catalog.query}
+          selects={[
+            {
+              label: "Curso",
+              options: catalog.courses.map((c) => [c.id, c.title] as const),
+              param: "curso",
+              value: params.curso ?? "",
+            },
+            { label: "Prazo", options: dueOptions, param: "prazo", value: due },
+          ]}
+        />
+      </div>
 
-      {catalog.activities.length ? (
-        <div className="ga-activity-table-wrap">
-          <table className="ga-activity-table">
-            <thead>
+      <div className="gk-table-card">
+        <table className="gk-table gk-qtable">
+          <thead>
+            <tr>
+              <th>Atividade</th>
+              <th>Prazo</th>
+              <th>Destinatários</th>
+              <th>Entregas</th>
+              <th>Correção</th>
+              <th>Estado</th>
+              <th className="gk-col-menu" />
+            </tr>
+          </thead>
+          <tbody>
+            {catalog.activities.length ? (
+              catalog.activities.map((row) => (
+                <ActivityRow key={row.id} row={row} />
+              ))
+            ) : (
               <tr>
-                <th scope="col">Atividade</th>
-                <th scope="col">Prazo</th>
-                <th scope="col">Destinatários</th>
-                <th scope="col">Entregas</th>
-                <th scope="col">Para corrigir</th>
-                <th scope="col">Estado</th>
-                <th scope="col">
-                  <span className="sr-only">Ações</span>
-                </th>
+                <td className="gk-empty-cell" colSpan={7}>
+                  Nenhuma atividade encontrada. Altere os filtros ou crie uma
+                  atividade para começar.
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {catalog.activities.map((activity) => (
-                <ActivityCatalogRow activity={activity} key={activity.id} />
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <div className="ga-activity-empty">
-          <h2>Nenhuma atividade encontrada</h2>
-          <p>Altere os filtros ou crie uma atividade para começar.</p>
-          <Button asChild variant="outline">
-            <Link href="/gestao/ensino/atividades/nova">Criar atividade</Link>
-          </Button>
-        </div>
-      )}
+            )}
+          </tbody>
+        </table>
+      </div>
 
-      {catalog.totalPages > 1 ? (
-        <nav
-          aria-label="Paginação de atividades"
-          className="ga-activity-pagination"
-        >
-          <span>
-            {catalog.totalCount} atividades · página {catalog.page} de{" "}
-            {catalog.totalPages}
-          </span>
-          <div>
-            <Button
-              asChild
-              disabled={catalog.page <= 1}
-              size="sm"
-              variant="outline"
-            >
-              <Link
-                aria-disabled={catalog.page <= 1}
-                href={pageHref({
-                  query: catalog.query,
-                  status: activeStatus,
-                  courseId: params.curso ?? "",
-                  due: activeDue,
-                  page: Math.max(1, catalog.page - 1),
-                })}
-              >
-                Anterior
-              </Link>
-            </Button>
-            <Button
-              asChild
-              disabled={catalog.page >= catalog.totalPages}
-              size="sm"
-              variant="outline"
-            >
-              <Link
-                aria-disabled={catalog.page >= catalog.totalPages}
-                href={pageHref({
-                  query: catalog.query,
-                  status: activeStatus,
-                  courseId: params.curso ?? "",
-                  due: activeDue,
-                  page: Math.min(catalog.totalPages, catalog.page + 1),
-                })}
-              >
-                Próxima
-              </Link>
-            </Button>
-          </div>
-        </nav>
-      ) : null}
+      <nav aria-label="Paginação das atividades" className="gk-pager">
+        <span>
+          {catalog.totalCount === 0
+            ? "0 atividades"
+            : `${first} a ${Math.min(catalog.page * catalog.pageSize, catalog.totalCount)} de ${catalog.totalCount}`}
+        </span>
+        <div>
+          {catalog.page > 1 ? (
+            <Link className="gk-btn" href={pageLink(catalog.page - 1)}>
+              Anterior
+            </Link>
+          ) : (
+            <span aria-disabled="true" className="gk-btn" data-disabled="true">
+              Anterior
+            </span>
+          )}
+          {catalog.page < catalog.totalPages ? (
+            <Link className="gk-btn" href={pageLink(catalog.page + 1)}>
+              Próxima
+            </Link>
+          ) : (
+            <span aria-disabled="true" className="gk-btn" data-disabled="true">
+              Próxima
+            </span>
+          )}
+        </div>
+      </nav>
     </section>
   );
 };

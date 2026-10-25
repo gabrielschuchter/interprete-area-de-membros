@@ -126,6 +126,7 @@ export const listGestaoActivities = async (input: {
       title: true,
       slug: true,
       status: true,
+      deliveryKind: true,
       dueAt: true,
       updatedAt: true,
       version: true,
