@@ -17,16 +17,7 @@ const GestaoEditLibraryItemPage = async ({
   }
   const courses = await getCourseOptions();
   return (
-    <section className="gestao-page-content gl-page">
-      <header className="gl-material-heading">
-        <div>
-          <p className="gestao-eyebrow">
-            Gestão › Ensino › Biblioteca › Editar
-          </p>
-          <h1>Editar material</h1>
-          <p>As alterações ficam registradas no material existente.</p>
-        </div>
-      </header>
+    <section className="gt-page gk-library">
       <GestaoLibraryItemForm courses={courses} item={item} />
     </section>
   );

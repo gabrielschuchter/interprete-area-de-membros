@@ -40,6 +40,7 @@ const difficultyLabels: Record<LibraryItemDifficulty, string> = {
 const resultMessages: Record<string, string> = {
   "material-atualizado": "Material atualizado.",
   "material-criado": "Material salvo como rascunho.",
+  "material-publicado": "Material publicado para os alunos.",
   "material-existente": "Este material já tinha sido salvo.",
 };
 

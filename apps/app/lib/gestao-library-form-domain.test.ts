@@ -116,3 +116,39 @@ describe("Gestao library form validation", () => {
     }
   });
 });
+
+describe("Gestao library save mode and DOI source", () => {
+  it("reads the explicit save mode and ignores unknown values", () => {
+    const form = validForm();
+    form.set("saveMode", "publish");
+    expect(parse(form)).toMatchObject({ input: { saveMode: "publish" } });
+    form.set("saveMode", "archive");
+    expect(parse(form)).toMatchObject({ input: { saveMode: null } });
+  });
+
+  it("uses the DOI address when a new reference has no link or file", () => {
+    const form = validForm();
+    form.delete("url");
+    form.set("doi", "10.1000/xyz123");
+    expect(parse(form)).toMatchObject({
+      input: { url: "https://doi.org/10.1000/xyz123" },
+    });
+  });
+
+  it("does not invent an address from the DOI when editing", () => {
+    const form = validForm();
+    form.delete("url");
+    form.set("doi", "10.1000/xyz123");
+    expect(parse(form, false)).toMatchObject({ input: { url: null } });
+  });
+
+  it("still requires a source when the DOI is malformed", () => {
+    const form = validForm();
+    form.delete("url");
+    form.set("doi", "not-a-doi");
+    expect(parse(form)).toMatchObject({
+      ok: false,
+      state: { fieldErrors: { url: expect.any(String) } },
+    });
+  });
+});

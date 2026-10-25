@@ -38,6 +38,8 @@ export interface LibraryItemFormState {
   readonly status: "idle" | "error" | "success";
 }
 
+export type LibrarySaveMode = "draft" | "publish";
+
 interface ParsedLibraryItemInput {
   readonly accessNote: string | null;
   readonly accessType: LibraryItemAccessType | null;
@@ -53,6 +55,7 @@ interface ParsedLibraryItemInput {
   readonly language: string | null;
   readonly lessonId: string;
   readonly pmid: string | null;
+  readonly saveMode: LibrarySaveMode | null;
   readonly tags: string[];
   readonly title: string;
   readonly url: string | null;
@@ -77,6 +80,12 @@ const safeUrl = (entry: string) => {
     return null;
   }
 };
+
+const doiPattern = /^10\.\d{4,9}\/\S+$/;
+
+/** Referência sem link nem arquivo: o DOI vira o endereço canônico. */
+const doiAddress = (doi: string) =>
+  doiPattern.test(doi) ? `https://doi.org/${encodeURI(doi)}` : "";
 
 const safeCoverUrl = (entry: string) => {
   const url = safeUrl(entry);
@@ -219,6 +228,9 @@ const validateLibraryMetadata = (input: {
   return null;
 };
 
+const parseSaveMode = (entry: string): LibrarySaveMode | null =>
+  entry === "publish" || entry === "draft" ? entry : null;
+
 export const parseLibraryItemInput = (
   formData: FormData,
   options: {
@@ -228,7 +240,15 @@ export const parseLibraryItemInput = (
 ): ParsedLibraryItemInputResult => {
   const title = value(formData.get("title"));
   const kind = value(formData.get("kind"));
-  const urlInput = value(formData.get("url"));
+  const doi = value(formData.get("doi"));
+  const rawUrlInput = value(formData.get("url"));
+  const fileForSource = formData.get("file");
+  const urlInput =
+    rawUrlInput ||
+    (options.requireSource &&
+    !(fileForSource instanceof File && fileForSource.size > 0)
+      ? doiAddress(doi)
+      : "");
   const url = safeUrl(urlInput);
   const coverInput = value(formData.get("coverUrl"));
   const coverUrl = safeCoverUrl(coverInput);
@@ -293,13 +313,14 @@ export const parseLibraryItemInput = (
       )
         ? (difficultyInput as LibraryItemDifficulty)
         : null,
-      doi: value(formData.get("doi")) || null,
+      doi: doi || null,
       file,
       idempotencyKey,
       kind: kind as LibraryItemKind,
       language,
       lessonId: value(formData.get("lessonId")),
       pmid: value(formData.get("pmid")) || null,
+      saveMode: parseSaveMode(value(formData.get("saveMode"))),
       tags,
       title,
       url,

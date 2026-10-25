@@ -2686,3 +2686,129 @@ button.gca-text-action {
 .gk-library .gk-toolbar-group > .gk-field:not(:first-child) {
   width: 136px !important;
 }
+
+/* Biblioteca: formulário de material */
+.gk-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.gk-filecard {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  padding: 12px;
+  background: #fff;
+  border: 1px solid var(--gestao-line);
+  border-radius: 8px;
+}
+.gk-filecard-copy {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.gk-filecard-copy strong {
+  overflow: hidden;
+  font: 600 14px / 1.2 var(--font-sans-family);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gk-filecard-copy small {
+  font: 400 12.5px / 1.2 var(--font-sans-family);
+  color: var(--gestao-muted);
+}
+.gk-dropzone {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+  padding: 22px 20px;
+  color: var(--gestao-action);
+  text-align: center;
+  border: 1.5px dashed #c9b6bd;
+  border-radius: 8px;
+}
+.gk-dropzone strong {
+  font: 600 14px / 1.2 var(--font-sans-family);
+  color: var(--gestao-text);
+}
+.gk-dropzone small {
+  font: 400 12.5px / 1.2 var(--font-sans-family);
+  color: var(--gestao-muted);
+}
+.gk-dropzone .gk-input {
+  max-width: 460px;
+  margin-top: 8px;
+}
+.gk-dropzone-preview {
+  width: 96px;
+  height: 64px;
+  background-position: center;
+  background-size: cover;
+  border-radius: 6px;
+}
+.gk-collapse {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0;
+  color: inherit;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+}
+.gk-collapse h2 {
+  margin: 0;
+}
+.gk-stack--tight {
+  gap: 16px;
+  margin-top: 16px;
+}
+.gk-form-grid--authors {
+  grid-template-columns: minmax(0, 1fr) 140px;
+}
+.gk-form-grid--three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.gk-statusline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font: 400 13.5px / 1 var(--font-sans-family);
+  color: var(--gestao-muted);
+}
+.gk-pubactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.gk-dupe {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 18px 20px;
+  color: #a8182a;
+  background: #fcf0f0;
+  border: 1px solid #f0c9cc;
+  border-radius: 8px;
+}
+.gk-dupe p {
+  margin: 0;
+  font: 400 14px / 1.45 var(--font-sans-family);
+  color: var(--gestao-text);
+}
+@media (max-width: 767px) {
+  .gk-form-grid--authors,
+  .gk-form-grid--three {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .gk-filecard {
+    flex-wrap: wrap;
+  }
+}
