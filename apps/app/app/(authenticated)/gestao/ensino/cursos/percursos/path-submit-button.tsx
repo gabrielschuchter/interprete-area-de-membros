@@ -67,7 +67,7 @@ export const PathSubmitButton = ({
         <Dialog onOpenChange={setOpen} open={open}>
           <DialogContent
             className="gk-modal gk-modal--confirm"
-            overlayClassName="gk-overlay"
+            overlayClassName="gk-modal-overlay"
             showCloseButton={false}
           >
             <div className="gk-modal-body">

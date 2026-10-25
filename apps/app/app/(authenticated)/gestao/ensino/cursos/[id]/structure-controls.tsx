@@ -94,7 +94,7 @@ const ModuleEditDialog = ({
     <Dialog onOpenChange={(open) => (open ? null : onClose())} open>
       <DialogContent
         className="gk-modal"
-        overlayClassName="gk-overlay"
+        overlayClassName="gk-modal-overlay"
         showCloseButton={false}
       >
         <form className="gk-modal-body" onSubmit={submit}>
