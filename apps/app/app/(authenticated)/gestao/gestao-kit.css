@@ -1856,3 +1856,49 @@ button.gca-text-action {
 .gestao-youtube-state[data-tone="success"] strong {
   color: #1d0a17;
 }
+.gk-course-yt {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  font: 400 13px / 1.4 var(--font-sans-family);
+  color: var(--gestao-muted);
+}
+.gk-course-yt p {
+  margin: 0;
+}
+
+/* Percursos (quadro 52) */
+.gk-btn.gk-btn--icon {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  color: var(--gestao-muted);
+  background: transparent;
+  border: 0;
+}
+.gk-btn.gk-btn--icon:hover {
+  color: var(--gestao-action);
+}
+.ge-path-course-list > li {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.ge-path-course-list > li > a {
+  flex: 1;
+  min-width: 0;
+}
+.ge-path-course-order {
+  display: flex;
+  gap: 2px;
+  padding: 0;
+  margin: 0;
+  border: 0;
+}
+.ge-path-course-order form,
+.ge-path-remove-course-form {
+  display: inline-flex;
+  margin: 0;
+}

@@ -1,6 +1,8 @@
+import { randomUUID } from "node:crypto";
 import { database } from "@repo/database";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { YouTubePlaylistImport } from "@/components/gestao/youtube-playlist-import";
 import { getAdminCourse } from "@/lib/admin-learning";
 import { requireGestaoAction } from "@/lib/gestao-authorization";
 import {
@@ -183,6 +185,21 @@ const GestaoCourseEditorPage = async ({
             ))}
           </SortableGroup>
           <AddModuleRow courseId={course.id} />
+          {course.modules.length > 0 ? (
+            <div className="gk-course-yt">
+              <p>Tem uma lista de reprodução no YouTube?</p>
+              <YouTubePlaylistImport
+                courseId={course.id}
+                courseStatus={course.status}
+                initialIdempotencyKey={randomUUID()}
+                modules={course.modules.map((module) => ({
+                  id: module.id,
+                  status: module.status,
+                  title: module.title,
+                }))}
+              />
+            </div>
+          ) : null}
         </div>
         <aside className="gk-stack">
           <section className="gk-panel">
