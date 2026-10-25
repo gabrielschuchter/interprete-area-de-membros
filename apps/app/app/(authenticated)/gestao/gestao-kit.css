@@ -2957,3 +2957,50 @@ button.gca-text-action {
 .gk-coltitle {
   min-width: 0;
 }
+
+/* Acompanhamento de alunos (quadro 64) */
+.gk-stats--three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 20px;
+}
+.gk-cohortpill {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  max-width: 190px;
+  height: 36px;
+  padding: 0 14px;
+  font: 600 13px / 1.1 var(--font-sans-family);
+  color: var(--gestao-action);
+  background: #f9eef2;
+  border: 1.5px solid var(--gestao-action);
+  border-radius: 18px;
+}
+.gk-cohortpill > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gk-cohortpill em {
+  font-style: normal;
+  font-weight: 700;
+}
+.gk-tracking tr[data-attention="true"] {
+  background: #fbf5f3;
+}
+.gk-dash {
+  color: var(--gestao-muted);
+}
+.gk-tracking .gk-table td,
+.gk-tracking .gk-table th {
+  white-space: nowrap;
+}
+.gk-tracking .gk-cohortpill {
+  max-width: 170px;
+}
+.gk-tracking .gk-progress-track {
+  width: 100px;
+}
+.gk-tracking .gk-table td:nth-child(6) {
+  white-space: normal;
+}
