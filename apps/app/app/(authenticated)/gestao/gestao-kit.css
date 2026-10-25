@@ -3411,10 +3411,10 @@ button.gca-text-action {
 .gk-wizard-card .gk-step-label {
   font-size: 13px;
 }
-.gk-wizard-body .gk-label:has(.gk-pickbox) {
+.gk-label:has(> .gk-pickbox) {
   position: relative;
 }
-.gk-wizard-body .gk-pickmenu {
+.gk-label:has(> .gk-pickbox) > .gk-pickmenu {
   position: absolute;
   top: 100%;
   right: 0;
@@ -3425,4 +3425,80 @@ button.gca-text-action {
 }
 .gk-head + .gk-result {
   margin-top: 16px;
+}
+
+/* Tarefas e metas (71) */
+.gk-goals {
+  margin-top: 40px;
+}
+.gk-goals-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.gk-goals-head h2 {
+  margin: 0;
+  font: 600 22px / 1.2 var(--font-display-family);
+  color: var(--gestao-text);
+}
+.gk-goalgrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+.gk-goalcard {
+  display: grid;
+  gap: 12px;
+  padding: 20px;
+  background: #fff;
+  border: 1px solid var(--gestao-line);
+  border-radius: 10px;
+}
+.gk-goalcard header {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.gk-goalcard-kind {
+  flex: 1;
+  font: 500 11px / 1 var(--font-mono-family, monospace);
+  color: var(--gestao-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.gk-goalcard h3 {
+  margin: 0;
+  font: 600 20px / 1.25 var(--font-display-family);
+  color: var(--gestao-text);
+}
+.gk-goalbar {
+  height: 8px;
+  overflow: hidden;
+  background: #e6dcd8;
+  border-radius: 4px;
+}
+.gk-goalbar > span {
+  display: block;
+  height: 100%;
+  background: var(--gestao-action);
+}
+.gk-goalfacts {
+  display: flex;
+  justify-content: space-between;
+  margin: 0;
+  font: 400 13px / 1.4 var(--font-sans-family);
+  color: var(--gestao-muted);
+}
+.gk-goalcard small {
+  font: 400 12px / 1.4 var(--font-sans-family);
+  color: var(--gestao-muted);
+}
+.gk-goals-empty {
+  grid-column: 1 / -1;
+}
+@media (max-width: 800px) {
+  .gk-goalgrid {
+    grid-template-columns: 1fr;
+  }
 }

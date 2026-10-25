@@ -268,6 +268,7 @@ const AudiencePickMenu = ({
 
 export const AudienceStep = ({
   cohorts,
+  heading = "Quem vai receber?",
   mode,
   onCohorts,
   onMode,
@@ -276,6 +277,7 @@ export const AudienceStep = ({
   selectedStudents,
 }: {
   readonly cohorts: readonly CohortOption[];
+  readonly heading?: string | null;
   readonly mode: AudienceMode;
   readonly onCohorts: (ids: readonly string[]) => void;
   readonly onMode: (mode: AudienceMode) => void;
@@ -336,7 +338,7 @@ export const AudienceStep = ({
 
   return (
     <div className="gk-form-stack">
-      <h2 className="gk-wiz-title">Quem vai receber?</h2>
+      {heading ? <h2 className="gk-wiz-title">{heading}</h2> : null}
       <div className="gk-label">
         <span>Para quem</span>
         <fieldset className="gk-segmented gk-segmented--full">

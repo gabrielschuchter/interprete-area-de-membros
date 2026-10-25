@@ -69,7 +69,7 @@ const readMemberStudyTotals = (
     ORDER BY day ASC
   `);
 
-const readCampaignContribution = (startsAt: Date, endsAt: Date) =>
+export const readCampaignContribution = (startsAt: Date, endsAt: Date) =>
   database.$queryRaw<Array<{ seconds: number | bigint }>>(Prisma.sql`
     WITH clipped AS (
       SELECT
