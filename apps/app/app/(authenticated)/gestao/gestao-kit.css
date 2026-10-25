@@ -1989,3 +1989,125 @@ button.gca-text-action {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* Lista de questões (quadro 54) */
+.gk-list-head {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 20px;
+}
+.gk-list-title {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+.gk-list-title h1 {
+  margin: 0;
+  font: 600 30px / 1.2 var(--font-display-family);
+  color: var(--gestao-text);
+}
+.gk-list-head > p {
+  margin: 0;
+  font: 400 14px / 1.4 var(--font-sans-family);
+  color: var(--gestao-muted);
+}
+.gk-head-actions--left {
+  justify-content: flex-start;
+  margin-top: 12px;
+}
+.gk-qtable td {
+  height: 72px;
+  vertical-align: middle;
+}
+.gk-col-grip {
+  width: 36px;
+  padding: 0 4px !important;
+}
+.gk-col-num {
+  width: 48px;
+}
+.gk-qtitle {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  -webkit-line-clamp: 2;
+  font: 600 14.5px / 1.35 var(--font-sans-family);
+  color: var(--gestao-text);
+  text-decoration: none;
+}
+.gk-qtitle:hover {
+  text-decoration: underline;
+}
+.gk-qsub {
+  display: block;
+  margin-top: 4px;
+  font: 400 12.5px / 1.3 var(--font-sans-family);
+  color: var(--gestao-muted);
+}
+.gk-qtable .gk-grip {
+  color: #cdbcc3;
+  cursor: default;
+}
+.gk-qtable .gk-grip[data-active="true"] {
+  color: var(--gestao-text);
+  cursor: grab;
+}
+.gk-qtable tr[data-dragging="true"] {
+  opacity: 0.45;
+}
+.gk-qtable tr[data-drop="before"] td {
+  box-shadow: inset 0 2px 0 var(--gestao-action);
+}
+.gk-qtable tr[data-drop="after"] td {
+  box-shadow: inset 0 -2px 0 var(--gestao-action);
+}
+.gk-empty-cell {
+  height: 96px;
+  padding: 0 20px !important;
+  color: var(--gestao-muted);
+  text-align: center;
+}
+.gk-link-btn[aria-pressed="true"] {
+  color: var(--gestao-action);
+}
+.gk-link-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.gk-pick-list--questions {
+  max-height: 360px;
+  padding: 0 24px;
+  margin: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+.gk-pick-list--questions label {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px 0;
+  cursor: pointer;
+  border-bottom: 1px solid var(--gestao-line);
+}
+.gk-pick-list--questions strong {
+  display: block;
+  font: 600 14px / 1.35 var(--font-sans-family);
+}
+.gk-pick-list--questions small {
+  font: 400 12.5px / 1.3 var(--font-sans-family);
+  color: var(--gestao-muted);
+}
+.gk-field--full {
+  width: 100%;
+}
+.gk-menu-form-btn {
+  width: 100%;
+  padding: 0;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+}
