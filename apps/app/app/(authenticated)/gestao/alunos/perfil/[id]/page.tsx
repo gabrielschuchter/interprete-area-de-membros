@@ -449,7 +449,7 @@ const GestaoStudentProfilePage = async ({
           ) : null}
           <Link
             className="gk-btn gk-btn--primary gk-btn--wide"
-            href="/gestao/alunos/atribuicoes"
+            href={`/gestao/alunos/atribuicoes/nova?aluno=${encodeURIComponent(member.id)}`}
             prefetch={false}
           >
             Atribuir conteúdo

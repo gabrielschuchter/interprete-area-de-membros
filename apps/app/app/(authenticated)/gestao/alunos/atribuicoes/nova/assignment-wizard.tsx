@@ -141,6 +141,7 @@ interface Props {
   readonly content: readonly ContentOption[];
   readonly initialKey: string;
   readonly initialMessage: string;
+  readonly initialStudents: readonly StudentOption[];
 }
 
 export const AssignmentWizard = ({
@@ -148,6 +149,7 @@ export const AssignmentWizard = ({
   content,
   initialKey,
   initialMessage,
+  initialStudents,
 }: Props) => {
   const [state, formAction, pending] = useActionState(createGestaoAssignment, {
     error: null,
@@ -156,7 +158,8 @@ export const AssignmentWizard = ({
   const [target, setTarget] = useState(initialKey);
   const [mode, setMode] = useState<AudienceMode>("both");
   const [cohortIds, setCohortIds] = useState<readonly string[]>([]);
-  const [students, setStudents] = useState<readonly StudentOption[]>([]);
+  const [students, setStudents] =
+    useState<readonly StudentOption[]>(initialStudents);
   const [terms, setTerms] = useState<TermsDraft>({
     availableAt: "",
     dueAt: "",

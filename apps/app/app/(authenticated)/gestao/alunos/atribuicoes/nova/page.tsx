@@ -1,6 +1,7 @@
 import { database } from "@repo/database";
 import { getGestaoAssignmentOptions } from "@/lib/gestao-assignments";
 import { requireGestaoAction } from "@/lib/gestao-authorization";
+import { getLearningAssignmentRecipientScope } from "@/lib/learning-assignment-scope";
 import { AssignmentWizard } from "./assignment-wizard";
 
 const GestaoNewAssignmentPage = async ({
@@ -22,6 +23,20 @@ const GestaoNewAssignmentPage = async ({
         select: { message: true, targetId: true, targetType: true },
       })
     : null;
+  const student = params.aluno
+    ? await database.member.findFirst({
+        where: {
+          AND: [
+            { id: params.aluno },
+            getLearningAssignmentRecipientScope({
+              role: actor.role === "ADMIN" ? "ADMIN" : "TEACHER",
+              userId: actor.userId,
+            }),
+          ],
+        },
+        select: { id: true, displayName: true },
+      })
+    : null;
   const initialKey =
     source &&
     options.content.some(
@@ -36,6 +51,11 @@ const GestaoNewAssignmentPage = async ({
       content={options.content}
       initialKey={initialKey}
       initialMessage={initialKey ? (source?.message ?? "") : ""}
+      initialStudents={
+        student
+          ? [{ id: student.id, name: student.displayName ?? "Aluno" }]
+          : []
+      }
     />
   );
 };
