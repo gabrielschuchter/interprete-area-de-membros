@@ -1680,3 +1680,179 @@ button.gca-text-action {
   padding-block: 10px;
   resize: vertical;
 }
+
+/* Editor de aula (quadros 49 a 51) */
+.gl-lesson-head {
+  align-items: flex-end;
+}
+.gl-lesson-more {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--gestao-line);
+}
+.gl-lesson-more > summary {
+  font: 600 12.5px / 1.2 var(--font-sans-family);
+  color: var(--gestao-action);
+  cursor: pointer;
+}
+.gl-lesson-more[open] > summary {
+  margin-bottom: 10px;
+}
+.gl-lesson-kind-field {
+  padding: 0;
+  margin: 14px 0 0;
+  border: 0;
+}
+.gl-lesson-kind-field > legend {
+  padding: 0;
+  margin-bottom: 6px;
+  font: 600 12px / 1.2 var(--font-sans-family);
+  color: var(--gestao-muted);
+}
+.gl-lesson-kind-field .gl-lesson-source-switch {
+  grid-template-columns: none;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+}
+.gl-lesson-source-switch label {
+  position: relative;
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  font: 600 13px / 1 var(--font-sans-family);
+  color: var(--gestao-text);
+  cursor: pointer;
+}
+.gl-lesson-source-switch label:has(input:checked) {
+  color: #fff;
+  background: var(--gestao-action);
+}
+.gl-lesson-source-switch label input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  pointer-events: none;
+  opacity: 0;
+}
+.gl-lesson-source-switch label:has(input:focus-visible) {
+  outline: 2px solid var(--gestao-text);
+  outline-offset: -3px;
+}
+.gl-lesson-clock {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  height: 44px;
+  padding: 0 12px;
+  color: var(--gestao-muted);
+  background: #fff;
+  border: 1px solid var(--gestao-line);
+  border-radius: 6px;
+}
+.gl-lesson-clock input {
+  flex: 1;
+  min-width: 0;
+  font: 400 14px / 1 var(--font-sans-family);
+  color: var(--gestao-text);
+  outline: 0;
+  background: transparent;
+  border: 0;
+}
+.gl-lesson-clock[data-invalid="true"] {
+  border: 2px solid #a8182a;
+}
+.gl-lesson-publication-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 14px 0 10px;
+}
+.gl-lesson-publish-form[data-variant="block"] {
+  display: contents;
+}
+.gl-lesson-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0;
+  margin: 12px 0 0;
+  list-style: none;
+}
+.gl-lesson-chips > li {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  padding: 6px 10px;
+  font: 400 12px / 1.2 var(--font-sans-family);
+  color: var(--gestao-text);
+  background: #fff;
+  border: 1px solid var(--gestao-line);
+  border-radius: 6px;
+}
+.gl-lesson-chips > li a {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  color: inherit;
+  text-decoration: none;
+}
+.gl-lesson-chips > li a svg {
+  width: 12px;
+  height: 12px;
+  color: var(--gestao-muted);
+}
+.gl-lesson-chips > li button {
+  display: inline-flex;
+  padding: 0;
+  color: var(--gestao-muted);
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+}
+.gl-lesson-chips > li button svg {
+  width: 13px;
+  height: 13px;
+}
+.gl-lesson-chips--audience > li {
+  font-weight: 600;
+  background: #f6eef4;
+  border-color: #d9c4d6;
+  border-radius: 16px;
+}
+.gestao-youtube-choices {
+  display: flex;
+  gap: 10px;
+}
+.gestao-youtube-field input[aria-invalid="true"] {
+  border: 2px solid #a8182a;
+}
+@media (min-width: 1101px) {
+  .gl-lesson-form .gl-lesson-save-row button {
+    display: none;
+  }
+}
+.gestao-youtube-state[data-tone="success"] {
+  color: #410230;
+  background: #f6eef4;
+  border-color: #e3cfe0;
+}
+.gestao-youtube-state[data-tone="warning"] {
+  color: #7a2530;
+  background: #f8ecee;
+  border-color: #ecd0d4;
+}
+.gestao-youtube-state[data-tone="error"] {
+  color: #a8182a;
+  background: #fdf1f2;
+  border-color: #efc4c9;
+}
+.gestao-youtube-state[data-tone="pending"] {
+  color: var(--gestao-muted);
+  background: #efe7e3;
+  border-color: #e3d9d4;
+}
+.gestao-youtube-state[data-tone="success"] strong {
+  color: #1d0a17;
+}
