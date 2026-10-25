@@ -437,6 +437,24 @@ export const GestaoActivityEditor = async ({
         )}
         <input name="memberIdsMode" type="hidden" value="SET" />
         <ActivityEditorHeader activity={activity} />
+        {activity ? (
+          <nav aria-label="Seções da atividade" className="gk-tabs">
+            <Link
+              aria-current="page"
+              className="gk-tab"
+              href={`/gestao/ensino/atividades/${activity.id}`}
+            >
+              Detalhes
+            </Link>
+            <Link
+              className="gk-tab"
+              href={`/gestao/ensino/atividades/${activity.id}/entregas`}
+              prefetch={false}
+            >
+              Entregas
+            </Link>
+          </nav>
+        ) : null}
         <div className="gk-cols gk-cols--editor">
           <ActivityMainColumn activity={activity} data={data} />
           <aside className="gk-stack">

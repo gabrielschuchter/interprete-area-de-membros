@@ -514,11 +514,11 @@ export const saveGestaoCorrection = async (
   }
   revalidatePath("/gestao/alunos/correcoes");
   revalidatePath("/gestao");
-  revalidatePath(
-    ["/gestao/ensino/atividades", input.preview.activityId, "entregas"].join(
-      "/"
-    )
-  );
+  for (const suffix of ["entregas", "entregas/corrigir"]) {
+    revalidatePath(
+      ["/gestao/ensino/atividades", input.preview.activityId, suffix].join("/")
+    );
+  }
   const code = outcome === "sent" ? "feedback-enviado" : "rascunho-salvo";
   const href = correctionResultPath(
     input.returnTo,

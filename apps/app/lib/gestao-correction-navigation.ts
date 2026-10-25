@@ -1,5 +1,5 @@
 const activityQueuePath =
-  /^\/gestao\/ensino\/atividades\/([A-Za-z0-9_-]+)\/entregas$/;
+  /^\/gestao\/ensino\/atividades\/([A-Za-z0-9_-]+)\/entregas(?:\/corrigir)?$/;
 
 export const correctionNavigation = (candidate: string) => {
   const fallback = "/gestao/alunos/correcoes";

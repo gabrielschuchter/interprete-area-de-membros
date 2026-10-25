@@ -2546,3 +2546,22 @@ button.gca-text-action {
   justify-content: flex-end;
   margin-top: 20px;
 }
+
+/* Entregas por atividade (quadro 58) */
+.gk-chip[data-tone="danger"] {
+  color: #b3261e;
+  background: #fbe9e7;
+}
+.gk-chip[data-tone="muted"] {
+  color: var(--gestao-muted);
+  background: #ece5e1;
+}
+.gk-col-action {
+  text-align: right;
+}
+.gk-qtable .gk-col-action .gk-btn {
+  min-width: 112px;
+}
+.gk-list-title + p {
+  margin-top: 6px;
+}
