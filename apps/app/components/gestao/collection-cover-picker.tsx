@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { GestaoIcon } from "@/app/(authenticated)/gestao/gestao-icon";
 import { collectionCoverStyle } from "@/lib/collection-covers";
 
 interface CollectionCoverOption {
@@ -168,16 +169,13 @@ export const CollectionCoverPicker = ({
           >
             {isUploading ? "Enviando…" : "Escolher arquivo"}
           </button>
-          <span aria-hidden="true" className="gco-cover-library-mark">
-            {"///"}
-          </span>
           <button
             aria-expanded={libraryOpen}
             className="gco-cover-library"
             onClick={() => setLibraryOpen((open) => !open)}
             type="button"
           >
-            Da biblioteca de arquivos
+            <GestaoIcon name="book" size={16} /> Da biblioteca de arquivos
           </button>
         </span>
       </div>

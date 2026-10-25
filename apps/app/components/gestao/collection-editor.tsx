@@ -15,6 +15,8 @@ import {
   removeGestaoCollectionItem,
   saveGestaoCollection,
 } from "@/app/(authenticated)/gestao/ensino/colecoes/actions";
+import { GestaoCrumbTail } from "@/app/(authenticated)/gestao/gestao-crumbs";
+import { GestaoIcon } from "@/app/(authenticated)/gestao/gestao-icon";
 import type { getGestaoCollectionEditorData } from "@/lib/gestao-collections";
 import type { GestaoCollectionFormState } from "@/lib/gestao-collections-domain";
 import { CollectionCoverPicker } from "./collection-cover-picker";
@@ -84,18 +86,19 @@ const FieldError = ({
     </small>
   ) : null;
 
-const itemSymbol = (type: string) => {
-  if (type === "EXERCISE_LIST") {
-    return "☷";
-  }
-  if (type === "LIBRARY_ITEM") {
-    return "Ⅱ";
-  }
-  if (type === "RECORDING") {
-    return "◷";
-  }
-  return "▷";
-};
+const itemIcons = {
+  COURSE: "cap",
+  EXERCISE_LIST: "checklist",
+  LIBRARY_ITEM: "book",
+  RECORDING: "video",
+} as const;
+
+const itemSymbol = (type: string) => (
+  <GestaoIcon
+    name={itemIcons[type as keyof typeof itemIcons] ?? "play-circle"}
+    size={18}
+  />
+);
 
 const CollectionItemRow = ({
   disabled,
@@ -141,7 +144,7 @@ const CollectionItemRow = ({
       }}
       type="button"
     >
-      ⠿
+      <GestaoIcon name="grip" size={16} />
     </button>
     <span aria-hidden="true" className="gco-item-symbol">
       {itemSymbol(item.itemType)}
@@ -740,16 +743,10 @@ export const GestaoCollectionEditor = ({
   const collectionTitle = collection?.title ?? "Nova coleção";
 
   return (
-    <section className="gestao-page-content gco-editor-page">
+    <section className="gt-page gco-editor-page">
+      <GestaoCrumbTail items={[{ label: collectionTitle }]} />
       <header className="gco-editor-heading">
         <div className="gco-editor-title">
-          <p className="gestao-eyebrow">
-            Gestão <span aria-hidden="true">›</span> Ensino{" "}
-            <span aria-hidden="true">›</span>{" "}
-            <Link href="/gestao/ensino/colecoes" prefetch={false}>
-              Coleções
-            </Link>
-          </p>
           <div className="gco-editor-title-line">
             <h1>{collectionTitle}</h1>
             <StatusBadge status={currentStatus} />
