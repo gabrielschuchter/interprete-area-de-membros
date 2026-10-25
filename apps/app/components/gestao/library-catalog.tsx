@@ -1,9 +1,21 @@
 "use client";
 
-import { Button } from "@repo/design-system/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@repo/design-system/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@repo/design-system/components/ui/dropdown-menu";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useState } from "react";
+import { GestaoIcon } from "@/app/(authenticated)/gestao/gestao-icon";
 import type { getGestaoLibraryCatalog } from "@/lib/gestao-library";
 import {
   applyGestaoLibraryBulkAction,
@@ -70,31 +82,57 @@ const coverBackground = (value: string | null) => {
   }
 };
 
-const ItemCheckbox = ({
-  checked,
-  item,
-  onToggle,
-}: {
-  readonly checked: boolean;
-  readonly item: LibraryItem;
-  readonly onToggle: (id: string) => void;
-}) => (
-  <input
-    aria-label={`Selecionar ${item.title}`}
-    checked={checked}
-    className="gl-checkbox"
-    onChange={() => onToggle(item.id)}
-    type="checkbox"
-  />
-);
+const statusIcons = {
+  ARCHIVED: "archive",
+  DRAFT: "pencil",
+  PUBLISHED: "check-circle",
+} as const;
+
+const kindIcons = {
+  ARTICLE: "file",
+  GUIDE: "file",
+  LINK: "link",
+  PDF: "file",
+  VIDEO: "video",
+} as const;
+
+const formId = "gestao-library-bulk";
 
 const ItemStatus = ({ item }: { readonly item: LibraryItem }) => (
-  <span className={`gl-status gl-status-${item.status.toLowerCase()}`}>
+  <span
+    className="gk-chip"
+    data-tone={item.status === "PUBLISHED" ? "active" : "neutral"}
+  >
+    <GestaoIcon name={statusIcons[item.status]} size={12} />
     {itemStatusLabels[item.status] ?? item.status}
   </span>
 );
 
-const LibraryListRow = ({
+const ItemMenu = ({ item }: { readonly item: LibraryItem }) => {
+  const router = useRouter();
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          aria-label={`Mais ações de ${item.title}`}
+          className="gk-icon-btn gk-icon-btn--bare"
+          type="button"
+        >
+          <GestaoIcon name="dots" size={18} />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="gk-menu">
+        <DropdownMenuItem
+          onSelect={() => router.push(`/gestao/ensino/biblioteca/${item.id}`)}
+        >
+          Editar material
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+};
+
+const LibraryRow = ({
   item,
   onToggle,
   selected,
@@ -103,35 +141,52 @@ const LibraryListRow = ({
   readonly onToggle: (id: string) => void;
   readonly selected: boolean;
 }) => (
-  <li className={`gl-list-row ${selected ? "is-selected" : ""}`}>
-    <ItemCheckbox checked={selected} item={item} onToggle={onToggle} />
-    <div className="gl-material-cell">
-      <span aria-hidden="true" className="gl-material-mark">
-        <span>{"///"}</span>
-      </span>
-      <div className="gl-item-copy">
-        <Link href={`/gestao/ensino/biblioteca/${item.id}`} prefetch={false}>
-          {item.title}
-        </Link>
-        <small>{itemDetail(item) || item.authors || "Sem categoria"}</small>
+  <tr data-selected={selected}>
+    <td className="gk-col-check">
+      <input
+        aria-label={`Selecionar ${item.title}`}
+        checked={selected}
+        onChange={() => onToggle(item.id)}
+        type="checkbox"
+      />
+    </td>
+    <td>
+      <div className="gk-person">
+        <span aria-hidden="true" className="gk-kindtile">
+          <GestaoIcon name="book" size={18} />
+        </span>
+        <div>
+          <Link
+            className="gk-qtitle"
+            href={`/gestao/ensino/biblioteca/${item.id}`}
+            prefetch={false}
+          >
+            {item.title}
+          </Link>
+          <small className="gk-qsub">
+            {itemDetail(item) || item.authors || "Sem categoria"}
+          </small>
+        </div>
       </div>
-    </div>
-    <span className="gl-cell-type">
-      {itemTypeLabels[item.kind] ?? item.kind}
-    </span>
-    <span className="gl-cell-access">
-      {item.accessType ? accessLabels[item.accessType] : "Não classificado"}
-    </span>
-    <ItemStatus item={item} />
-    <Link
-      aria-label={`Editar ${item.title}`}
-      className="gl-edit-link"
-      href={`/gestao/ensino/biblioteca/${item.id}`}
-      prefetch={false}
-    >
-      Editar
-    </Link>
-  </li>
+    </td>
+    <td>
+      <span className="gk-kind">
+        <GestaoIcon name={kindIcons[item.kind]} size={14} />
+        {itemTypeLabels[item.kind] ?? item.kind}
+      </span>
+    </td>
+    <td>
+      {item.accessType
+        ? accessLabels[item.accessType]
+        : "Acesso não classificado"}
+    </td>
+    <td>
+      <ItemStatus item={item} />
+    </td>
+    <td className="gk-col-menu">
+      <ItemMenu item={item} />
+    </td>
+  </tr>
 );
 
 const LibraryGridCard = ({
@@ -143,30 +198,87 @@ const LibraryGridCard = ({
   readonly onToggle: (id: string) => void;
   readonly selected: boolean;
 }) => (
-  <article className={`gl-grid-card ${selected ? "is-selected" : ""}`}>
+  <article className="gk-libcard" data-selected={selected}>
     <div
       aria-hidden="true"
-      className="gl-cover"
+      className="gk-libcover"
       style={coverBackground(item.coverUrl)}
     >
       <span>{itemTypeLabels[item.kind] ?? item.kind}</span>
     </div>
-    <div className="gl-grid-copy">
-      <div className="gl-grid-title-row">
-        <ItemCheckbox checked={selected} item={item} onToggle={onToggle} />
-        <Link href={`/gestao/ensino/biblioteca/${item.id}`} prefetch={false}>
-          {item.title}
-        </Link>
-      </div>
+    <div className="gk-libcopy">
+      <label className="gk-libpick">
+        <input
+          aria-label={`Selecionar ${item.title}`}
+          checked={selected}
+          onChange={() => onToggle(item.id)}
+          type="checkbox"
+        />
+      </label>
+      <Link
+        className="gk-libtitle"
+        href={`/gestao/ensino/biblioteca/${item.id}`}
+        prefetch={false}
+      >
+        {item.title}
+      </Link>
       <p>{itemDetail(item) || item.authors || "Sem categoria"}</p>
-      <div className="gl-grid-footer">
+      <div className="gk-libfoot">
         <ItemStatus item={item} />
-        <Link href={`/gestao/ensino/biblioteca/${item.id}`} prefetch={false}>
-          Editar
-        </Link>
+        <ItemMenu item={item} />
       </div>
     </div>
   </article>
+);
+
+const BulkDialog = ({
+  children,
+  description,
+  intent,
+  label,
+  onClose,
+  title,
+}: {
+  readonly children: React.ReactNode;
+  readonly description: string;
+  readonly intent: string;
+  readonly label: string;
+  readonly onClose: () => void;
+  readonly title: string;
+}) => (
+  <Dialog onOpenChange={(open) => (open ? null : onClose())} open>
+    <DialogContent
+      className="gk-modal gk-modal--narrow"
+      overlayClassName="gk-modal-overlay"
+      showCloseButton={false}
+    >
+      <div className="gk-modal-head">
+        <div>
+          <DialogTitle className="gk-modal-title">{title}</DialogTitle>
+          <DialogDescription className="gk-modal-sub">
+            {description}
+          </DialogDescription>
+        </div>
+      </div>
+      <div className="gk-modal-body">{children}</div>
+      <div className="gk-modal-foot">
+        <span className="gk-spacer" />
+        <button className="gk-btn" onClick={onClose} type="button">
+          Cancelar
+        </button>
+        <button
+          className="gk-btn gk-btn--primary"
+          form={formId}
+          name="intent"
+          onClick={() => window.setTimeout(onClose, 0)}
+          type="submit"
+          value={intent}
+        >
+          {label}
+        </button>
+      </div>
+    </DialogContent>
+  </Dialog>
 );
 
 export const GestaoLibraryCatalog = ({ data }: { readonly data: Catalog }) => {
@@ -177,8 +289,7 @@ export const GestaoLibraryCatalog = ({ data }: { readonly data: Catalog }) => {
   );
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [selectionLimitHit, setSelectionLimitHit] = useState(false);
-  const allSelected =
-    data.items.length > 0 && data.items.every(({ id }) => selected.has(id));
+  const [dialog, setDialog] = useState<"category" | "collection" | null>(null);
 
   const toggleSelected = (id: string) => {
     if (!selected.has(id) && selected.size >= maximumBulkSelection) {
@@ -197,10 +308,11 @@ export const GestaoLibraryCatalog = ({ data }: { readonly data: Catalog }) => {
     });
   };
 
+  const allSelected =
+    data.items.length > 0 && data.items.every(({ id }) => selected.has(id));
   const togglePage = () => {
     const pageIds = data.items.map(({ id }) => id);
     if (allSelected) {
-      setSelectionLimitHit(false);
       setSelected((current) => {
         const next = new Set(current);
         for (const id of pageIds) {
@@ -210,8 +322,8 @@ export const GestaoLibraryCatalog = ({ data }: { readonly data: Catalog }) => {
       });
       return;
     }
-    const newSelections = pageIds.filter((id) => !selected.has(id)).length;
-    if (selected.size + newSelections > maximumBulkSelection) {
+    const additions = pageIds.filter((id) => !selected.has(id)).length;
+    if (selected.size + additions > maximumBulkSelection) {
       setSelectionLimitHit(true);
       return;
     }
@@ -230,35 +342,50 @@ export const GestaoLibraryCatalog = ({ data }: { readonly data: Catalog }) => {
   let catalogContent: React.ReactNode;
   if (data.items.length === 0) {
     catalogContent = (
-      <div className="gl-empty">
-        <h2>Nenhum material nesta busca.</h2>
-        <p>Altere os filtros ou cadastre uma referência para a biblioteca.</p>
+      <div className="gk-table-card">
+        <p className="gk-empty-cell gk-empty-block">
+          Nenhum material nesta busca. Altere os filtros ou cadastre uma
+          referência para a biblioteca.
+        </p>
       </div>
     );
   } else if (data.filters.view === "list") {
     catalogContent = (
-      <ul aria-label="Materiais da biblioteca" className="gl-list">
-        <li aria-hidden="true" className="gl-list-heading">
-          <span />
-          <span>Material</span>
-          <span>Tipo</span>
-          <span>Acesso</span>
-          <span>Estado</span>
-          <span />
-        </li>
-        {data.items.map((item) => (
-          <LibraryListRow
-            item={item}
-            key={item.id}
-            onToggle={toggleSelected}
-            selected={selected.has(item.id)}
-          />
-        ))}
-      </ul>
+      <div className="gk-table-card">
+        <table className="gk-table gk-qtable">
+          <thead>
+            <tr>
+              <th className="gk-col-check">
+                <input
+                  aria-label="Selecionar materiais desta página"
+                  checked={allSelected}
+                  onChange={togglePage}
+                  type="checkbox"
+                />
+              </th>
+              <th>Material</th>
+              <th>Tipo</th>
+              <th>Acesso</th>
+              <th>Estado</th>
+              <th className="gk-col-menu" />
+            </tr>
+          </thead>
+          <tbody>
+            {data.items.map((item) => (
+              <LibraryRow
+                item={item}
+                key={item.id}
+                onToggle={toggleSelected}
+                selected={selected.has(item.id)}
+              />
+            ))}
+          </tbody>
+        </table>
+      </div>
     );
   } else {
     catalogContent = (
-      <div className="gl-grid">
+      <div className="gk-libgrid">
         {data.items.map((item) => (
           <LibraryGridCard
             item={item}
@@ -272,96 +399,120 @@ export const GestaoLibraryCatalog = ({ data }: { readonly data: Catalog }) => {
   }
 
   return (
-    <form action={formAction} className="gl-bulk-form">
+    <form action={formAction} id={formId}>
       {[...selected].map((id) => (
         <input key={id} name="itemIds" type="hidden" value={id} />
       ))}
-      <div
-        aria-label="Ações em lote"
-        className="gl-bulk-toolbar"
-        role="toolbar"
-      >
-        <label className="gl-select-page">
-          <input checked={allSelected} onChange={togglePage} type="checkbox" />
-          <span className="sr-only">Selecionar materiais desta página</span>
-          <span>{selected.size} selecionado(s)</span>
-        </label>
-        <Button
-          disabled={pending || selected.size === 0}
-          name="intent"
-          type="submit"
-          value="publish"
-        >
-          Publicar
-        </Button>
-        <Button
-          disabled={pending || selected.size === 0}
-          name="intent"
-          type="submit"
-          value="archive"
-          variant="outline"
-        >
-          Arquivar
-        </Button>
-        <label className="gl-bulk-category">
-          <span className="sr-only">Categoria para os itens selecionados</span>
-          <input maxLength={80} name="category" placeholder="Nova categoria" />
-        </label>
-        <Button
-          disabled={pending || selected.size === 0}
-          name="intent"
-          type="submit"
-          value="category"
-          variant="outline"
-        >
-          Aplicar categoria
-        </Button>
-        <label className="gl-bulk-collection">
-          <span className="sr-only">Coleção para os itens selecionados</span>
-          <select defaultValue="" name="collectionId">
-            <option disabled value="">
-              Adicionar a uma coleção
-            </option>
-            {data.collections.map((collection) => (
-              <option key={collection.id} value={collection.id}>
-                {collection.title}
-              </option>
-            ))}
-          </select>
-        </label>
-        <Button
-          disabled={pending || selected.size === 0}
-          name="intent"
-          type="submit"
-          value="collection"
-          variant="outline"
-        >
-          Adicionar
-        </Button>
-        <Button
-          className="gl-clear-selection"
-          disabled={selected.size === 0 || pending}
-          onClick={() => setSelected(new Set())}
-          type="button"
-          variant="ghost"
-        >
-          Limpar seleção
-        </Button>
-      </div>
+      {selected.size ? (
+        <div aria-label="Ações em lote" className="gk-bulkbar" role="toolbar">
+          <strong>
+            {selected.size}{" "}
+            {selected.size === 1 ? "selecionado" : "selecionados"}
+          </strong>
+          <button
+            disabled={pending}
+            name="intent"
+            type="submit"
+            value="publish"
+          >
+            <GestaoIcon name="check" size={14} /> Publicar
+          </button>
+          <button
+            disabled={pending}
+            name="intent"
+            type="submit"
+            value="archive"
+          >
+            <GestaoIcon name="archive" size={14} /> Arquivar
+          </button>
+          <button onClick={() => setDialog("category")} type="button">
+            <GestaoIcon name="sliders" size={14} /> Editar categoria
+          </button>
+          <button onClick={() => setDialog("collection")} type="button">
+            <GestaoIcon name="star" size={14} /> Adicionar a uma coleção
+          </button>
+          <button
+            className="gk-bulkbar-clear"
+            onClick={() => setSelected(new Set())}
+            type="button"
+          >
+            Limpar seleção
+          </button>
+        </div>
+      ) : null}
       {selectionLimitHit ? (
-        <output aria-live="polite" className="gl-result is-error">
+        <output aria-live="polite" className="gk-error-box">
           Selecione no máximo {maximumBulkSelection} materiais por ação.
         </output>
       ) : null}
       {state.message ? (
         <output
           aria-live={state.status === "error" ? "assertive" : "polite"}
-          className={`gl-result ${state.status === "error" ? "is-error" : ""}`}
+          className={state.status === "error" ? "gk-error-box" : "gk-result"}
         >
           {state.message}
         </output>
       ) : null}
       {catalogContent}
+      {dialog === "category" ? (
+        <BulkDialog
+          description="A categoria nova substitui a atual dos materiais selecionados."
+          intent="category"
+          label="Aplicar categoria"
+          onClose={() => setDialog(null)}
+          title="Editar categoria"
+        >
+          <div className="gk-label">
+            <label htmlFor="bulk-category">Categoria</label>
+            <input
+              autoFocus
+              className="gk-input"
+              form={formId}
+              id="bulk-category"
+              list="bulk-category-options"
+              maxLength={80}
+              name="category"
+              placeholder="Ex.: Revisões sistemáticas"
+            />
+            <datalist id="bulk-category-options">
+              {data.categories.map((category) => (
+                <option key={category} value={category} />
+              ))}
+            </datalist>
+          </div>
+        </BulkDialog>
+      ) : null}
+      {dialog === "collection" ? (
+        <BulkDialog
+          description="Os materiais entram no fim da coleção; os que já estão nela são ignorados."
+          intent="collection"
+          label="Adicionar"
+          onClose={() => setDialog(null)}
+          title="Adicionar a uma coleção"
+        >
+          <div className="gk-label">
+            <label htmlFor="bulk-collection">Coleção</label>
+            <span className="gk-field gk-field--full">
+              <select
+                className="gk-select gk-select--plain"
+                defaultValue=""
+                form={formId}
+                id="bulk-collection"
+                name="collectionId"
+              >
+                <option disabled value="">
+                  Escolha uma coleção
+                </option>
+                {data.collections.map((collection) => (
+                  <option key={collection.id} value={collection.id}>
+                    {collection.title}
+                  </option>
+                ))}
+              </select>
+            </span>
+          </div>
+        </BulkDialog>
+      ) : null}
     </form>
   );
 };

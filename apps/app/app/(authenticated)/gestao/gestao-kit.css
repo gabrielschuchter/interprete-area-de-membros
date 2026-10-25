@@ -2565,3 +2565,124 @@ button.gca-text-action {
 .gk-list-title + p {
   margin-top: 6px;
 }
+
+/* Biblioteca: alternância lista/grade, tipo e cartões */
+.gk-viewswitch {
+  display: inline-flex;
+  padding: 3px;
+  margin: 0;
+  background: #fff;
+  border: 1px solid var(--gestao-line);
+  border-radius: 8px;
+}
+.gk-viewswitch a {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  height: 34px;
+  padding: 0 12px;
+  font: 500 13px / 1 var(--font-sans-family);
+  color: var(--gestao-muted, #6b5b63);
+  text-decoration: none;
+  border-radius: 6px;
+}
+.gk-viewswitch a.is-active {
+  color: #4a2a38;
+  background: #f3e9ed;
+}
+.gk-kind {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+.gk-library .gk-qtable tr[data-selected="true"] {
+  background: #fbf5f7;
+}
+.gk-libgrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 20px;
+  margin-bottom: 20px;
+}
+.gk-libcard {
+  position: relative;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid var(--gestao-line);
+  border-radius: 8px;
+}
+.gk-libcard[data-selected="true"] {
+  outline: 2px solid #4a2a38;
+  outline-offset: -1px;
+}
+.gk-libcover {
+  display: flex;
+  align-items: flex-end;
+  height: 120px;
+  padding: 12px;
+  background-color: #e9dde2;
+  background-image: linear-gradient(135deg, #f3e9ed, #d9c3cc);
+  background-position: center;
+  background-size: cover;
+}
+.gk-libcover span {
+  padding: 3px 7px;
+  font:
+    600 10.5px / 1 ui-monospace,
+    monospace;
+  color: #4a2a38;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: rgb(255 255 255 / 85%);
+  border-radius: 4px;
+}
+.gk-libcopy {
+  padding: 14px 16px 12px;
+}
+.gk-libpick {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  background: #fff;
+  border-radius: 5px;
+}
+.gk-libtitle {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  -webkit-line-clamp: 2;
+  font: 600 14.5px / 1.3 var(--font-sans-family);
+  color: inherit;
+  text-decoration: none;
+}
+.gk-libcopy p {
+  min-height: 16px;
+  margin: 6px 0 12px;
+  font-size: 12.5px;
+  color: #6b5b63;
+}
+.gk-libfoot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+@media (max-width: 1100px) {
+  .gk-libgrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 640px) {
+  .gk-libgrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.gk-library .gk-toolbar-group > .gk-field:first-child {
+  width: 280px !important;
+}
+.gk-library .gk-toolbar-group > .gk-field:not(:first-child) {
+  width: 136px !important;
+}

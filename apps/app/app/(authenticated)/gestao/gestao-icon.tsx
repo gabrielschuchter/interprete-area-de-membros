@@ -39,6 +39,19 @@ const glyphs = {
       <path d="M8 12.5l3 3 5-6" />
     </>
   ),
+  list: (
+    <>
+      <path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" />
+    </>
+  ),
+  grid: (
+    <>
+      <rect height="7" rx="1" width="7" x="3" y="3" />
+      <rect height="7" rx="1" width="7" x="14" y="3" />
+      <rect height="7" rx="1" width="7" x="3" y="14" />
+      <rect height="7" rx="1" width="7" x="14" y="14" />
+    </>
+  ),
   book: (
     <>
       <path d="M2 5h6a4 4 0 0 1 4 4v11a3 3 0 0 0-3-3H2z" />
