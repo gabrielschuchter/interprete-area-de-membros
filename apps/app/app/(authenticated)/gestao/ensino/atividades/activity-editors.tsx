@@ -1,9 +1,9 @@
 "use client";
-
 import { Button } from "@repo/design-system/components/ui/button";
+
 import { Input } from "@repo/design-system/components/ui/input";
-import { PlusIcon, XIcon } from "lucide-react";
 import { useEffect, useState } from "react";
+import { GestaoIcon } from "../../gestao-icon";
 import { searchGestaoActivityMembers } from "./actions";
 
 interface RubricRow {
@@ -40,43 +40,47 @@ export const RubricCriteriaEditor = ({
   );
 
   return (
-    <fieldset className="ga-rubric-editor">
-      <legend>Critérios de avaliação</legend>
-      <p>
-        Defina o peso de cada critério. Os pesos precisam somar 100% antes da
-        publicação.
-      </p>
-      <div className="ga-rubric-rows">
+    <fieldset className="gk-rubric">
+      <div className="gk-card-head">
+        <legend>Critérios de avaliação</legend>
+        <button
+          className="gk-edit-link"
+          disabled={rows.length >= 12}
+          onClick={() =>
+            setRows((current) => [
+              ...current,
+              { key: crypto.randomUUID(), title: "", weight: "" },
+            ])
+          }
+          type="button"
+        >
+          <GestaoIcon name="plus" size={14} /> Adicionar critério
+        </button>
+      </div>
+      <div className="gk-rubric-rows">
         {rows.map((row, index) => (
-          <div className="ga-rubric-row" key={row.key}>
-            <label htmlFor={`rubric-title-${row.key}`}>
-              <span className="sr-only">Critério {index + 1}</span>
-              <Input
-                id={`rubric-title-${row.key}`}
-                maxLength={120}
-                name="rubricTitle"
-                onChange={(event) =>
-                  setRows((current) =>
-                    current.map((item) =>
-                      item.key === row.key
-                        ? { ...item, title: event.target.value }
-                        : item
-                    )
+          <div className="gk-rubric-row" key={row.key}>
+            <input
+              aria-label={`Critério ${index + 1}`}
+              className="gk-input"
+              maxLength={120}
+              name="rubricTitle"
+              onChange={(event) =>
+                setRows((current) =>
+                  current.map((item) =>
+                    item.key === row.key
+                      ? { ...item, title: event.target.value }
+                      : item
                   )
-                }
-                placeholder="Ex.: Clareza do raciocínio"
-                value={row.title}
-              />
-            </label>
-            <label
-              className="ga-rubric-weight"
-              htmlFor={`rubric-weight-${row.key}`}
-            >
-              <span className="sr-only">
-                Peso do critério {index + 1} em porcentagem
-              </span>
-              <Input
-                id={`rubric-weight-${row.key}`}
+                )
+              }
+              placeholder="Ex.: Clareza do raciocínio"
+              value={row.title}
+            />
+            <span className="gk-weight">
+              <input
+                aria-label={`Peso do critério ${index + 1} em porcentagem`}
+                className="gk-input"
                 max="100"
                 min="0"
                 name="rubricWeight"
@@ -94,10 +98,10 @@ export const RubricCriteriaEditor = ({
                 value={row.weight}
               />
               <span aria-hidden="true">%</span>
-            </label>
-            <Button
+            </span>
+            <button
               aria-label={`Remover critério ${index + 1}`}
-              className="ga-icon-button"
+              className="gk-icon-btn gk-icon-btn--bare"
               disabled={rows.length <= 1}
               onClick={() =>
                 setRows((current) =>
@@ -105,31 +109,19 @@ export const RubricCriteriaEditor = ({
                 )
               }
               type="button"
-              variant="ghost"
             >
-              <XIcon aria-hidden="true" />
-            </Button>
+              <GestaoIcon name="trash" size={16} />
+            </button>
           </div>
         ))}
       </div>
-      <div className="ga-rubric-footer">
-        <Button
-          disabled={rows.length >= 12}
-          onClick={() =>
-            setRows((current) => [
-              ...current,
-              { key: crypto.randomUUID(), title: "", weight: "" },
-            ])
-          }
-          type="button"
-          variant="outline"
-        >
-          <PlusIcon aria-hidden="true" /> Adicionar critério
-        </Button>
+      <p className="gk-hint">
+        Os critérios aparecem para o aluno e orientam o feedback na correção. Os
+        pesos precisam somar 100% antes da publicação.{" "}
         <output aria-live="polite" data-valid={total === 100}>
-          {activeRows.length ? `${total}%` : "Sem critérios"}
+          {activeRows.length ? `Soma atual: ${total}%` : "Sem critérios"}
         </output>
-      </div>
+      </p>
     </fieldset>
   );
 };

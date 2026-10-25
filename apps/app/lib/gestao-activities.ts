@@ -358,6 +358,7 @@ export const getGestaoActivityEditorData = async (activityId?: string) => {
             courseId: true,
             lessonId: true,
             relatedLibraryItemId: true,
+            createdAt: true,
             version: true,
             rubricVersion: true,
             cohortTargets: {
