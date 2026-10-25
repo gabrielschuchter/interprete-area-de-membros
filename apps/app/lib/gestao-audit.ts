@@ -49,6 +49,8 @@ export const gestaoAuditLabels: Readonly<Record<string, string>> = {
   "gestao.exercise-list.updated": "Lista de exercícios editada",
   "gestao.exercise-question.state-changed": "Situação da questão alterada",
   "gestao.activity.reminder_sent": "Lembrete de atividade enviado",
+  "gestao.assignment.created": "Atribuição criada",
+  "gestao.assignment.revoked": "Atribuição revogada",
   "learning.content.assigned": "Conteúdo atribuído",
 };
 

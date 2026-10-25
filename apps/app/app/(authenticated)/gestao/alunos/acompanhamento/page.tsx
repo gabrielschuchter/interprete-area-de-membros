@@ -224,7 +224,7 @@ const GestaoStudentTrackingPage = async ({
           </a>
           <Link
             className="gk-btn gk-btn--primary gk-btn--wide"
-            href="/gestao/alunos/turmas/atribuir"
+            href="/gestao/alunos/atribuicoes/nova"
             prefetch={false}
           >
             Atribuir conteúdo
