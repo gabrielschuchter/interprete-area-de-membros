@@ -1,5 +1,4 @@
-import { Button } from "@repo/design-system/components/ui/button";
-import { ArrowLeftIcon } from "lucide-react";
+import { ChevronLeftIcon } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CommunityNavigation } from "@/components/community/community-navigation";
@@ -32,6 +31,9 @@ const parseGroupView = (value?: string): GroupView => {
   }
   return "posts";
 };
+
+const viewListsMembers = (view: GroupView) =>
+  view === "members" || view === "posts";
 
 const loadInvitationManagementSnapshot = async (
   spaceId: string,
@@ -86,32 +88,33 @@ const CommunitySpacePage = async ({
   const view = parseGroupView(filters.view);
   const activeView = view === "settings" && !canEditGroup ? "posts" : view;
   const canPublish = (isMember || isStaff) && !isArchived;
-  const members =
-    activeView === "members"
-      ? await getCommunitySpaceMembers(space.id, memberPage)
-      : null;
+  const members = viewListsMembers(activeView)
+    ? await getCommunitySpaceMembers(space.id, memberPage)
+    : null;
   const invitationManagementSnapshot = await loadInvitationManagementSnapshot(
     space.id,
     memberId,
-    isOwner || isModerator || isStaff,
+    canEditGroup,
     activeView
   );
 
   return (
-    <div className="min-h-svh bg-background">
-      <main className="mx-auto w-full max-w-[1280px] px-4 py-5 sm:px-8 sm:py-8 lg:px-12 lg:py-12">
+    <div className="community-page min-h-svh bg-background">
+      <main className="community-shell community-group-shell mx-auto w-full">
         <CommunityNavigation active="groups" />
-        <Button asChild className="mt-3 -ml-3" variant="ghost">
-          <Link href="/comunidade/grupos">
-            <ArrowLeftIcon aria-hidden="true" /> Todos os grupos
-          </Link>
-        </Button>
+        <Link className="community-back-link" href="/comunidade/grupos">
+          <ChevronLeftIcon aria-hidden="true" /> Grupos
+        </Link>
         <CommunitySpaceHeader
           canEditGroup={canEditGroup}
+          canInvite={canEditGroup}
           canPublish={canPublish}
+          invitationManagement={invitationManagementSnapshot}
           isArchived={isArchived}
           isMember={isMember}
           isModerator={isModerator}
+          isOwner={isOwner}
+          memberId={memberId}
           space={space}
         />
         <CommunitySpaceTabs
@@ -121,11 +124,7 @@ const CommunitySpacePage = async ({
         />
         {activeView === "posts" ? (
           <CommunitySpacePostsView
-            invitationManagement={invitationManagementSnapshot}
-            isModerator={isModerator}
-            isOwner={isOwner}
-            isStaff={isStaff}
-            memberId={memberId}
+            memberPreview={members?.members ?? []}
             space={space}
           />
         ) : null}

@@ -38,7 +38,7 @@ describe("CommunityRightRail", () => {
     cleanup();
   });
 
-  test("keeps the four requested blocks in order and links real spaces", () => {
+  test("keeps the requested blocks in board order and links real spaces", () => {
     render(
       <CommunityRightRail
         announcements={[
@@ -70,10 +70,10 @@ describe("CommunityRightRail", () => {
         .getAllByRole("heading", { level: 2 })
         .map((heading) => heading.textContent)
     ).toEqual([
-      "Sobre a comunidade",
       "Pessoas da comunidade",
       "Grupos de estudo",
       "Avisos",
+      "Sobre a comunidade",
     ]);
     expect(screen.getByTestId("goal-summary")).toBeTruthy();
     expect(
@@ -88,7 +88,7 @@ describe("CommunityRightRail", () => {
     ).toBe("/encontros");
   });
 
-  test("renders a compact empty notice state without inventing content", () => {
+  test("omits the notices block when there is no notice", () => {
     render(
       <CommunityRightRail
         announcements={[]}
@@ -98,11 +98,12 @@ describe("CommunityRightRail", () => {
       />
     );
 
-    expect(screen.getByText("Nenhum aviso recente.")).toBeTruthy();
+    expect(screen.queryByText("Nenhum aviso recente.")).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Avisos" })).toBeNull();
     expect(screen.getByText("Nenhum grupo publicado ainda.")).toBeTruthy();
   });
 
-  test("opens approved community guidance by default and keeps notices independent", () => {
+  test("opens approved community guidance by default", () => {
     render(
       <CommunityRightRail
         announcements={[]}
@@ -115,13 +116,11 @@ describe("CommunityRightRail", () => {
     const aboutDisclosure = screen.getByRole("button", {
       name: "Sobre a comunidade",
     });
-    const noticesDisclosure = screen.getByRole("button", { name: "Avisos" });
 
+    expect(screen.queryByRole("button", { name: "Avisos" })).toBeNull();
     expect(aboutDisclosure.getAttribute("aria-expanded")).toBe("true");
-    expect(noticesDisclosure.getAttribute("aria-expanded")).toBe("false");
     fireEvent.click(aboutDisclosure);
     expect(aboutDisclosure.getAttribute("aria-expanded")).toBe("false");
-    expect(noticesDisclosure.getAttribute("aria-expanded")).toBe("false");
     expect(screen.getByText("Respeite quem pensa diferente.")).toBeTruthy();
     expect(screen.getByText("Como participar")).toBeTruthy();
   });

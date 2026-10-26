@@ -115,7 +115,7 @@ const CommentControls = ({
         </SingleFlightSubmit>
       </SingleFlightForm>
       <span className="community-comment__reply-count">
-        {replies.length} respostas
+        {replies.length} {replies.length === 1 ? "resposta" : "respostas"}
       </span>
       {allowReply && !(comment.deletedAt || post.space?.commentsClosed) && (
         <CommunityCommentDialog
@@ -445,7 +445,10 @@ export function CommunityPostView({
               href="#comments-heading"
             >
               <MessageCircleIcon aria-hidden="true" />
-              <span>{post._count.comments} respostas</span>
+              <span>
+                {post._count.comments}{" "}
+                {post._count.comments === 1 ? "resposta" : "respostas"}
+              </span>
             </Link>
           </div>
         </article>

@@ -30,7 +30,7 @@ const studyAreas = [
 
 const communityAreas = [
   { href: "/comunidade", label: "Explorar" },
-  { href: "/comunidade/grupos", label: "Grupos de estudo" },
+  { href: "/comunidade/grupos", label: "Grupos" },
   { href: "/comunidade/encontros", label: "Encontros" },
   { href: "/comunidade/salvos", label: "Salvos" },
   { href: "/comunidade/minhas-publicacoes", label: "Minhas publicações" },
@@ -205,11 +205,9 @@ export const MemberAreaTabs = () => {
         aria-label={`${sectionLabel} · áreas`}
         className="member-area-tabs-desktop"
       >
-        {isStudyPath ? (
-          <span aria-hidden="true" className="member-area-tabs-section">
-            Estudar
-          </span>
-        ) : null}
+        <span aria-hidden="true" className="member-area-tabs-section">
+          {sectionLabel}
+        </span>
         <div className="member-area-tabs-links">
           {areas.map((area) => (
             <IntentLink

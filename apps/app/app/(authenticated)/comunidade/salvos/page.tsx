@@ -8,6 +8,7 @@ import {
 import Link from "next/link";
 import { CommunityFeedCard } from "@/components/community/community-feed-card";
 import { CommunityNavigation } from "@/components/community/community-navigation";
+import { CommunitySelectSubmitForm } from "@/components/community/community-select-submit-form";
 import { getCommunitySpaces, getSavedCommunityPosts } from "@/lib/community";
 import {
   COMMUNITY_KIND_OPTIONS,
@@ -43,8 +44,8 @@ const SavedCommunityFilters = ({
   spaceSlug,
   spaces,
 }: SavedCommunityFiltersProperties) => (
-  <form
-    className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_170px_145px_140px_auto]"
+  <CommunitySelectSubmitForm
+    className="community-saved-filters grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_176px_120px_136px]"
     method="get"
   >
     <label className="relative min-w-0 sm:col-span-2 lg:col-span-1">
@@ -109,10 +110,7 @@ const SavedCommunityFilters = ({
         ))}
       </select>
     </label>
-    <Button className="h-11" type="submit" variant="outline">
-      Buscar
-    </Button>
-  </form>
+  </CommunitySelectSubmitForm>
 );
 
 const SavedCommunityPage = async ({
@@ -165,82 +163,88 @@ const SavedCommunityPage = async ({
   );
 
   return (
-    <main className="mx-auto min-h-svh w-full max-w-[1120px] px-5 py-8 sm:px-8 lg:px-12 lg:py-10">
-      <CommunityNavigation active="saved" />
-      <header className="mt-7 flex flex-col gap-4 border-border border-b pb-5 sm:flex-row sm:items-end sm:justify-between">
-        <div className="max-w-3xl">
-          <h1 className="sr-only font-display text-4xl leading-none sm:text-5xl md:not-sr-only">
-            Salvos da comunidade
-          </h1>
-          <p className="mt-3 hidden text-muted-foreground leading-7 md:block">
-            O que você guardou aqui, sem sair da Comunidade.
-          </p>
-        </div>
-        <Button
-          asChild
-          className="min-h-11 w-full shrink-0 justify-start sm:w-auto"
-          variant="outline"
-        >
-          <Link href="/salvos">
-            <BookmarkIcon aria-hidden="true" />
-            Ver salvos de toda a plataforma
-            <ExternalLinkIcon aria-hidden="true" className="ml-auto" />
-          </Link>
-        </Button>
-      </header>
-
-      <details className="mt-4 border-b pb-3 md:hidden">
-        <summary className="cursor-pointer py-2 font-medium text-sm">
-          Buscar e filtrar
-        </summary>
-        <div className="pt-3">{savedFilters}</div>
-      </details>
-      <search
-        aria-label="Buscar publicações salvas"
-        className="mt-6 hidden border-b pb-5 md:block"
-      >
-        {savedFilters}
-      </search>
-
-      {saved.posts.length > 0 ? (
-        <section aria-label="Publicações salvas" className="mt-5">
-          <ul className="grid gap-4">
-            {saved.posts.map((post) => (
-              <li key={post.id}>
-                <CommunityFeedCard post={post} returnTo={returnTo} />
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : (
-        <section className="paper-surface mt-10 border p-8 sm:p-12">
-          <BookmarkIcon
-            aria-hidden="true"
-            className="size-6 text-brand-action-text"
-          />
-          <h2 className="mt-5 font-display text-3xl">
-            {query || kind || spaceSlug
-              ? "Nenhuma publicação corresponde aos filtros."
-              : "Você ainda não salvou publicações."}
-          </h2>
-          <p className="mt-3 max-w-2xl text-muted-foreground leading-7">
-            Guarde uma publicação da Comunidade para encontrá-la aqui.
-          </p>
-          <Button asChild className="mt-6">
-            <Link href="/comunidade">Explorar publicações</Link>
-          </Button>
-        </section>
-      )}
-      {nextHref ? (
-        <div className="mt-8 flex justify-center">
-          <Button asChild variant="outline">
-            <Link href={nextHref}>
-              Carregar mais salvos <ArrowRightIcon aria-hidden="true" />
+    <div className="community-page min-h-svh bg-background">
+      <main className="community-shell community-saved-shell mx-auto w-full">
+        <CommunityNavigation active="saved" />
+        <header className="community-saved-header flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div className="max-w-3xl">
+            <h1 className="sr-only font-display text-4xl leading-none sm:text-5xl md:not-sr-only">
+              Salvos da comunidade
+            </h1>
+            <p className="mt-3 hidden text-muted-foreground leading-7 md:block">
+              O que você guardou aqui, sem sair da Comunidade.
+            </p>
+          </div>
+          <Button
+            asChild
+            className="min-h-11 w-full shrink-0 justify-start sm:w-auto"
+            variant="outline"
+          >
+            <Link href="/salvos">
+              <BookmarkIcon aria-hidden="true" />
+              Ver salvos de toda a plataforma
+              <ExternalLinkIcon aria-hidden="true" className="ml-auto" />
             </Link>
           </Button>
-        </div>
-      ) : null}
-    </main>
+        </header>
+
+        <details className="mt-4 border-b pb-3 md:hidden">
+          <summary className="cursor-pointer py-2 font-medium text-sm">
+            Buscar e filtrar
+          </summary>
+          <div className="pt-3">{savedFilters}</div>
+        </details>
+        <search
+          aria-label="Buscar publicações salvas"
+          className="community-saved-search hidden md:block"
+        >
+          {savedFilters}
+        </search>
+
+        {saved.posts.length > 0 ? (
+          <section aria-label="Publicações salvas" className="mt-5">
+            <ul className="community-feed-list">
+              {saved.posts.map((post) => (
+                <li key={post.id}>
+                  <CommunityFeedCard
+                    post={post}
+                    returnTo={returnTo}
+                    variant="saved"
+                  />
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : (
+          <section className="paper-surface mt-10 border p-8 sm:p-12">
+            <BookmarkIcon
+              aria-hidden="true"
+              className="size-6 text-brand-action-text"
+            />
+            <h2 className="mt-5 font-display text-3xl">
+              {query || kind || spaceSlug
+                ? "Nenhuma publicação corresponde aos filtros."
+                : "Você ainda não salvou publicações."}
+            </h2>
+            <p className="mt-3 max-w-2xl text-muted-foreground leading-7">
+              Guarde uma publicação da Comunidade para encontrá-la aqui.
+            </p>
+            <Button asChild className="mt-6">
+              <Link href="/comunidade">Explorar publicações</Link>
+            </Button>
+          </section>
+        )}
+        {nextHref ? (
+          <div className="mt-8 flex justify-center">
+            <Button asChild variant="outline">
+              <Link href={nextHref}>
+                Carregar mais salvos <ArrowRightIcon aria-hidden="true" />
+              </Link>
+            </Button>
+          </div>
+        ) : null}
+      </main>
+    </div>
   );
 };
 

@@ -102,14 +102,9 @@ export const memberBreadcrumbForPathname = (pathname: string) => {
   if (pathname === "/encontros" || pathname.startsWith("/encontros/")) {
     return "Comunidade · Encontros";
   }
-  if (pathname.startsWith("/comunidade/salvos")) {
-    return "Comunidade · Salvos";
-  }
-  if (isCommunityPublicationPath(pathname)) {
-    return "Comunidade · Minhas publicações";
-  }
+  // The Comunidade bar carries the area name; the header does not repeat it.
   if (pathname === "/comunidade" || pathname.startsWith("/comunidade/")) {
-    return "Início › Comunidade";
+    return "";
   }
   return memberSectionForPathname(pathname);
 };

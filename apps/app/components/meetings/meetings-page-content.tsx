@@ -258,9 +258,9 @@ const MeetingsPage = async ({
   if (inCommunity) {
     return (
       <div className="community-page min-h-svh bg-background">
-        <main className="mx-auto w-full max-w-[1120px] px-5 py-8 sm:px-8 lg:px-12 lg:py-12">
+        <main className="community-shell community-meetings-shell mx-auto w-full">
           <CommunityNavigation active="meetings" />
-          <header className="community-meetings-page__intro mt-7 flex flex-col gap-4 border-border border-b pb-5 sm:flex-row sm:items-end sm:justify-between">
+          <header className="community-meetings-page__intro flex flex-col gap-4 border-border border-b pb-5 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <h1 className="font-display text-4xl leading-tight sm:text-5xl">
                 Encontros

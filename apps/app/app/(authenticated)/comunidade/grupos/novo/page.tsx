@@ -39,8 +39,8 @@ const NewStudyGroupPage = async ({
     : null;
 
   return (
-    <div className="min-h-svh bg-background">
-      <main className="mx-auto w-full max-w-[1280px] px-5 py-8 sm:px-8 lg:px-10 lg:py-14">
+    <div className="community-page min-h-svh bg-background">
+      <main className="community-shell mx-auto w-full">
         <CommunityNavigation active="groups" />
         <Button asChild className="-ml-3" variant="ghost">
           <Link href="/comunidade/grupos">

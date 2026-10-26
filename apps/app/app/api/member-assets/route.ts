@@ -147,8 +147,8 @@ export async function GET(request: Request) {
       const { default: sharp } = await import("sharp");
       const thumbnail = await sharp(Buffer.from(source))
         .resize({
-          height: 640,
-          width: 640,
+          height: 1280,
+          width: 1280,
           fit: "inside",
           withoutEnlargement: true,
         })
