@@ -127,8 +127,8 @@
   border-bottom: 1px solid var(--gestao-line);
 }
 .gk-tab {
-  flex-shrink: 0;
   display: inline-flex;
+  flex-shrink: 0;
   align-items: center;
   height: 46px;
   margin-bottom: -1px;
@@ -4368,8 +4368,8 @@ button.gca-text-action {
     display: block;
     flex: 0 0 auto;
     width: auto;
-    height: auto;
     min-width: 0;
+    height: auto;
     padding: 0;
     border: 0;
   }
