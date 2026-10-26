@@ -64,8 +64,8 @@ const InviteUnavailable = () => (
       />
       <h1 className="font-display text-2xl">Este convite não vale mais.</h1>
       <p className="text-muted-foreground text-sm leading-6">
-        O link foi revogado ou o grupo não está mais publicado. Peça um novo
-        link a quem convidou.
+        O link foi redefinido, expirou ou foi revogado, ou o grupo não está mais
+        publicado. Peça um novo link a quem convidou.
       </p>
       <Button asChild className="mt-1" variant="outline">
         <Link href="/comunidade/grupos">Ir para a Comunidade</Link>

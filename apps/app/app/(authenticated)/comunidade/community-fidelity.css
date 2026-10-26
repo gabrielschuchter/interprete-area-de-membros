@@ -807,3 +807,32 @@
   overflow: hidden;
   border-radius: 999px;
 }
+
+/* Encontros (board 32): coluna de 880px; o próximo encontro leva a data cheia. */
+.community-meetings-shell > :not(.community-section-nav) {
+  max-width: 880px;
+  margin-right: auto;
+  margin-left: auto;
+}
+.community-meetings-shell
+  ul
+  > li:first-child
+  .community-meeting-row--upcoming
+  .community-meeting-row__date {
+  color: #fff;
+  background: #8c1535;
+  border-color: #8c1535;
+}
+.community-meetings-shell
+  ul
+  > li:first-child
+  .community-meeting-row--upcoming
+  .community-meeting-row__date
+  * {
+  color: #fff;
+}
+.community-group-header__status {
+  align-self: center;
+  font-size: 13px;
+  color: #5c4a52;
+}

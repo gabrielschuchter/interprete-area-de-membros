@@ -31,6 +31,7 @@ import {
   CommunityGroupInvitationDialog,
   type GroupInvitationManagementSnapshot,
 } from "@/components/community/community-group-invitation-dialog";
+import { CommunityGroupShareButton } from "@/components/community/community-group-share-button";
 import { GroupCoverUpload } from "@/components/community/group-cover-upload";
 import {
   SingleFlightForm,
@@ -170,6 +171,12 @@ export const CommunitySpaceHeader = ({
             groupName={space.title}
             management={invitationManagement}
             memberId={memberId}
+          />
+        ) : null}
+        {space.visibility === "PUBLIC" && !isArchived ? (
+          <CommunityGroupShareButton
+            className="community-group-header__secondary"
+            path={`/comunidade/grupos/${space.slug}`}
           />
         ) : null}
         {canEditGroup ? (

@@ -972,6 +972,20 @@ export const getCommunityPostBySlug = async (
   return getPostWithComments(post, memberId, resolvedCommentsPage);
 };
 
+/** True when the slug is a published post of a private group; the page then explains the access rule instead of a bare 404. */
+export const isPrivateGroupPostSlug = async (slug: string) => {
+  const post = await database.communityPost.findFirst({
+    where: {
+      slug,
+      status: ContentStatus.PUBLISHED,
+      deletedAt: null,
+      space: { visibility: "PRIVATE" },
+    },
+    select: { id: true },
+  });
+  return Boolean(post);
+};
+
 const communityPostShareSummary = (
   value: string | null | undefined,
   maxLength = 280
