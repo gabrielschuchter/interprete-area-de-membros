@@ -1,7 +1,13 @@
 "use client";
 
-import { PlayIcon } from "lucide-react";
-import { type CSSProperties, useState } from "react";
+import { CheckIcon, ListFilterIcon, PlayIcon } from "lucide-react";
+import {
+  type CSSProperties,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { IntentLink } from "@/app/(authenticated)/components/intent-link";
 import { CatalogBookmark } from "../learning-catalog";
 import type { LearningRailCard } from "../learning-content-rail";
@@ -351,6 +357,69 @@ const TrailBlock = ({
   );
 };
 
+const FilterSheet = ({
+  counts,
+  filter,
+  onClose,
+  onPick,
+}: {
+  readonly counts: (id: CursosFilter) => number;
+  readonly filter: CursosFilter;
+  readonly onClose: () => void;
+  readonly onPick: (id: CursosFilter) => void;
+}) => {
+  const first = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    first.current?.focus();
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return (
+    <div className="cb-sheetw">
+      <button
+        aria-label="Fechar filtro"
+        className="cb-sheetbg"
+        onClick={onClose}
+        tabIndex={-1}
+        type="button"
+      />
+      <div
+        aria-label="Filtrar cursos"
+        aria-modal="true"
+        className="cb-sheet"
+        role="dialog"
+      >
+        <div aria-hidden="true" className="cb-sheet__grab" />
+        <h2>Filtrar cursos</h2>
+        {filters.map(({ id, label }) => (
+          <button
+            aria-pressed={filter === id}
+            className="cb-sheet__row"
+            key={id}
+            onClick={() => {
+              onPick(id);
+              onClose();
+            }}
+            ref={id === filter ? first : undefined}
+            type="button"
+          >
+            <span>{label}</span>
+            <i>{counts(id)}</i>
+            {filter === id ? <CheckIcon aria-hidden="true" size={18} /> : null}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 export const CursosView = ({
   courses,
   hideResume = false,
@@ -367,6 +436,8 @@ export const CursosView = ({
   readonly trails: readonly CursosTrail[];
 }) => {
   const [filter, setFilter] = useState<CursosFilter>("all");
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const closeSheet = useCallback(() => setSheetOpen(false), []);
   const ordered = courses
     .map((course, index) => ({ course, index }))
     .sort((a, b) => rank(a.course) - rank(b.course) || a.index - b.index)
@@ -389,22 +460,43 @@ export const CursosView = ({
       <div className="cb-head">
         <h1>Cursos</h1>
         {courses.length >= 4 ? (
-          <fieldset className="cb-seg" style={{ margin: 0 }}>
-            <legend className="sr-only">Filtrar cursos</legend>
-            {filters.map(({ id, label }) => (
-              <button
-                aria-pressed={filter === id}
-                key={id}
-                onClick={() => setFilter(id)}
-                type="button"
-              >
-                {label}
-                <i>{counts(id)}</i>
-              </button>
-            ))}
-          </fieldset>
+          <>
+            <fieldset className="cb-seg" style={{ margin: 0 }}>
+              <legend className="sr-only">Filtrar cursos</legend>
+              {filters.map(({ id, label }) => (
+                <button
+                  aria-pressed={filter === id}
+                  key={id}
+                  onClick={() => setFilter(id)}
+                  type="button"
+                >
+                  {label}
+                  <i>{counts(id)}</i>
+                </button>
+              ))}
+            </fieldset>
+            <button
+              aria-expanded={sheetOpen}
+              aria-haspopup="dialog"
+              className="cb-fbtn"
+              onClick={() => setSheetOpen(true)}
+              type="button"
+            >
+              <ListFilterIcon aria-hidden="true" size={16} />
+              {filters.find(({ id }) => id === filter)?.label}
+              <i>{counts(filter)}</i>
+            </button>
+          </>
         ) : null}
       </div>
+      {sheetOpen ? (
+        <FilterSheet
+          counts={counts}
+          filter={filter}
+          onClose={closeSheet}
+          onPick={setFilter}
+        />
+      ) : null}
       <div aria-hidden="true" className="cb-rule" />
       {hideResume ? null : <ResumeBlock fallback={firstOpen} resume={resume} />}
       {resumeRecording ? (
