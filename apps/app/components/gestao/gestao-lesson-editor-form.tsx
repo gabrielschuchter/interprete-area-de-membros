@@ -16,6 +16,7 @@ import {
   type GestaoLessonSaveState,
   saveGestaoLesson,
 } from "@/app/(authenticated)/gestao/ensino/cursos/actions";
+import { GestaoIcon } from "@/app/(authenticated)/gestao/gestao-icon";
 import { isYouTubeVerificationStatus } from "@/lib/youtube-verification";
 import { GestaoLessonVideoUpload } from "./gestao-lesson-video-upload";
 import { YouTubeVerificationCard } from "./youtube-verification-card";
@@ -90,6 +91,108 @@ const validSeconds = (rawValue: string) => {
   return value <= 86_400 ? value : null;
 };
 
+const formatClock = (rawSeconds: string) => {
+  if (!integerPattern.test(rawSeconds)) {
+    return "";
+  }
+  const total = Number(rawSeconds);
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const seconds = total % 60;
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return hours > 0
+    ? `${hours}:${pad(minutes)}:${pad(seconds)}`
+    : `${pad(minutes)}:${pad(seconds)}`;
+};
+
+const clockPattern = /^(?:(\d{1,2}):)?(\d{1,2}):(\d{2})$/;
+
+const parseClock = (text: string) => {
+  const value = text.trim();
+  if (!value) {
+    return "";
+  }
+  if (integerPattern.test(value)) {
+    return String(validSeconds(value) ?? "");
+  }
+  const match = clockPattern.exec(value);
+  if (!match) {
+    return null;
+  }
+  const total =
+    Number(match[1] ?? 0) * 3600 + Number(match[2]) * 60 + Number(match[3]);
+  return Number(match[3]) < 60 && total <= 86_400 ? String(total) : null;
+};
+
+const ClockField = ({
+  id,
+  label,
+  name,
+  onChange,
+  placeholder,
+  value,
+}: {
+  readonly id: string;
+  readonly label: string;
+  readonly name: string;
+  readonly onChange: (seconds: string) => void;
+  readonly placeholder: string;
+  readonly value: string;
+}) => {
+  const [text, setText] = useState(formatClock(value));
+  const [invalid, setInvalid] = useState(false);
+  return (
+    <label className="gl-lesson-field" htmlFor={id}>
+      <span>{label}</span>
+      <span className="gl-lesson-clock" data-invalid={invalid}>
+        <GestaoIcon name="clock" size={16} />
+        <input
+          aria-invalid={invalid}
+          autoComplete="off"
+          id={id}
+          inputMode="numeric"
+          onBlur={() => {
+            const parsed = parseClock(text);
+            setInvalid(parsed === null);
+            if (parsed !== null) {
+              setText(formatClock(parsed));
+            }
+          }}
+          onChange={(event) => {
+            setText(event.target.value);
+            const parsed = parseClock(event.target.value);
+            setInvalid(false);
+            if (parsed !== null) {
+              onChange(parsed);
+            }
+          }}
+          placeholder={placeholder}
+          value={text}
+        />
+      </span>
+      <input name={name} type="hidden" value={value} />
+      <small>
+        {invalid ? "Use minutos e segundos, como 04:30." : "Opcional"}
+      </small>
+    </label>
+  );
+};
+
+const kindOptions = (current: string) => {
+  const base = [
+    { label: "Vídeo", value: "VIDEO" },
+    { label: "Texto", value: "TEXT" },
+    { label: "Arquivo", value: "MATERIAL" },
+  ];
+  if (current === "READING") {
+    base.splice(2, 0, { label: "Leitura", value: "READING" });
+  }
+  if (current === "MIXED") {
+    base.splice(1, 0, { label: "Misto", value: "MIXED" });
+  }
+  return base;
+};
+
 const LessonBasics = ({
   lesson,
   onTitleChange,
@@ -114,30 +217,31 @@ const LessonBasics = ({
         value={title}
       />
     </label>
-    <label className="gl-lesson-field" htmlFor="gestao-lesson-slug">
-      <span>Endereço da aula</span>
+    <fieldset className="gl-lesson-field gl-lesson-kind-field">
+      <legend>Tipo</legend>
+      <div className="gl-lesson-source-switch">
+        {kindOptions(lesson.kind).map((option) => (
+          <label key={option.value}>
+            <input
+              defaultChecked={option.value === lesson.kind}
+              name="kind"
+              type="radio"
+              value={option.value}
+            />
+            <span>{option.label}</span>
+          </label>
+        ))}
+      </div>
+    </fieldset>
+    <details className="gl-lesson-more">
+      <summary>Endereço da aula</summary>
       <Input
+        aria-label="Endereço da aula"
         defaultValue={lesson.slug}
-        id="gestao-lesson-slug"
         name="slug"
         required
       />
-    </label>
-    <label className="gl-lesson-field" htmlFor="gestao-lesson-kind">
-      <span>Tipo</span>
-      <select
-        className="gl-lesson-select"
-        defaultValue={lesson.kind}
-        id="gestao-lesson-kind"
-        name="kind"
-      >
-        <option value="VIDEO">Vídeo</option>
-        <option value="TEXT">Texto</option>
-        <option value="MATERIAL">Arquivo</option>
-        <option value="READING">Leitura</option>
-        <option value="MIXED">Misto</option>
-      </select>
-    </label>
+    </details>
   </>
 );
 
@@ -192,37 +296,26 @@ const YouTubeFields = ({
       }
     />
     <div className="gl-lesson-time-fields">
-      <label className="gl-lesson-field" htmlFor="gestao-youtube-start">
-        <span>Começar em</span>
-        <Input
-          id="gestao-youtube-start"
-          max={86_400}
-          min={0}
-          name="youtubeStartAtSeconds"
-          onChange={(event) => onStartAtChange(event.target.value)}
-          type="number"
-          value={startAt}
-        />
-        <small>Opcional</small>
-      </label>
-      <label className="gl-lesson-field" htmlFor="gestao-youtube-end">
-        <span>Terminar em</span>
-        <Input
-          id="gestao-youtube-end"
-          max={86_400}
-          min={0}
-          name="youtubeEndAtSeconds"
-          onChange={(event) => onEndAtChange(event.target.value)}
-          placeholder={
-            asset?.durationSeconds
-              ? String(asset.durationSeconds)
-              : "Duração do vídeo"
-          }
-          type="number"
-          value={endAt}
-        />
-        <small>Opcional</small>
-      </label>
+      <ClockField
+        id="gestao-youtube-start"
+        label="Começar em"
+        name="youtubeStartAtSeconds"
+        onChange={onStartAtChange}
+        placeholder="00:00"
+        value={startAt}
+      />
+      <ClockField
+        id="gestao-youtube-end"
+        label="Terminar em"
+        name="youtubeEndAtSeconds"
+        onChange={onEndAtChange}
+        placeholder={
+          asset?.durationSeconds
+            ? formatClock(String(asset.durationSeconds))
+            : "mm:ss"
+        }
+        value={endAt}
+      />
     </div>
   </>
 );
@@ -234,16 +327,17 @@ const LessonTextFields = ({
   readonly description: string | null;
   readonly objectives: string[];
 }) => (
-  <>
+  <details className="gl-lesson-more" open={Boolean(objectives.length)}>
+    <summary>Resumo curto e objetivos</summary>
     <label className="gl-lesson-field" htmlFor="gestao-lesson-description">
-      <span>Descrição</span>
+      <span>Resumo curto</span>
       <Textarea
         defaultValue={description ?? ""}
         id="gestao-lesson-description"
         maxLength={5000}
         name="description"
-        placeholder="Apresente o conteúdo desta aula"
-        rows={3}
+        placeholder="Aparece na lista de aulas"
+        rows={2}
       />
     </label>
     <label className="gl-lesson-field" htmlFor="gestao-lesson-objectives">
@@ -256,7 +350,7 @@ const LessonTextFields = ({
         rows={2}
       />
     </label>
-  </>
+  </details>
 );
 
 const ProviderSelector = ({
@@ -391,6 +485,7 @@ export const GestaoLessonEditorForm = ({
       action={formAction}
       aria-label="Editar aula"
       className="gl-lesson-form"
+      id="gestao-lesson-form"
     >
       <input name="lessonId" type="hidden" value={lesson.id} />
       <input name="courseId" type="hidden" value={courseId} />
@@ -468,7 +563,7 @@ export const GestaoLessonEditorForm = ({
           description={lesson.description}
           objectives={lesson.objectives}
         />
-        <div className="gl-lesson-rich-label">Texto de apoio</div>
+        <div className="gl-lesson-rich-label">Descrição</div>
         <TopicEditor
           ariaLabel="Descrição e conteúdo da aula"
           defaultValue={lesson.content}

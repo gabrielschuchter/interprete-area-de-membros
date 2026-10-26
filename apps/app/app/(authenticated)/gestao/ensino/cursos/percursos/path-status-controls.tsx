@@ -18,13 +18,13 @@ const transitions = {
 const confirmMessageFor = (status: ContentStatus) => {
   switch (status) {
     case ContentStatus.PUBLISHED:
-      return "Confirmo que este percurso ficará visível para os alunos.";
+      return "Este percurso passa a ficar visível para os alunos.";
     case ContentStatus.ARCHIVED:
-      return "Confirmo que o percurso será arquivado para os alunos.";
+      return "O percurso deixa de aparecer para os alunos. Os cursos continuam existindo.";
     case ContentStatus.DRAFT:
-      return "Confirmo que o percurso ficará como rascunho.";
+      return "O percurso deixa de aparecer para os alunos e volta a ser rascunho.";
     default:
-      return "Confirmo a alteração.";
+      return "Confirma a alteração?";
   }
 };
 
@@ -51,11 +51,10 @@ export const LearningPathStatusControls = ({
           value={path.updatedAt.toISOString()}
         />
         <input name="idempotencyKey" type="hidden" value={randomUUID()} />
-        <label className="ge-path-confirm">
-          <input name="confirmStatusChange" required type="checkbox" />
-          <span>{confirmMessageFor(status)}</span>
-        </label>
+        <input name="confirmStatusChange" type="hidden" value="on" />
         <PathSubmitButton
+          confirmText={confirmMessageFor(status)}
+          confirmTitle={`${label}?`}
           label={label}
           pendingLabel="Atualizando…"
           variant={status === ContentStatus.PUBLISHED ? "default" : "outline"}

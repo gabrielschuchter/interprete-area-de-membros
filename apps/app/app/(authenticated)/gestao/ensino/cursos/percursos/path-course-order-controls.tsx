@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { ContentStatus } from "@repo/database";
+import { GestaoIcon } from "../../../gestao-icon";
 import { moveGestaoLearningPathCourse } from "./actions";
 import { PathSubmitButton } from "./path-submit-button";
 
@@ -49,17 +50,27 @@ export const PathCourseOrderControl = ({
     />
     <input name="idempotencyKey" type="hidden" value={randomUUID()} />
     {path.status === ContentStatus.PUBLISHED ? (
-      <label className="ge-path-order-confirm">
-        <input name="confirmPublishedChange" required type="checkbox" />
-        <span>Confirmo que a ordem pode mudar para os alunos agora.</span>
-      </label>
+      <input name="confirmPublishedChange" type="hidden" value="on" />
     ) : null}
     <PathSubmitButton
       ariaLabel={
         direction === "up" ? "Mover curso para cima" : "Mover curso para baixo"
       }
+      confirmText={
+        path.status === ContentStatus.PUBLISHED
+          ? "A ordem dos cursos muda para os alunos agora."
+          : undefined
+      }
+      confirmTitle="Mudar a ordem do percurso publicado?"
+      icon={
+        <GestaoIcon
+          name={direction === "up" ? "chevron-up" : "chevron-down"}
+          size={16}
+        />
+      }
       label={direction === "up" ? "Subir" : "Descer"}
-      pendingLabel="Salvando…"
+      pendingLabel="…"
+      size="icon"
     />
   </form>
 );

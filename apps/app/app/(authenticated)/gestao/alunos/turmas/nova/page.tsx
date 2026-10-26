@@ -1,21 +1,28 @@
 import { requireGestaoActor } from "@/lib/gestao-authorization";
-import { getGestaoTeacherOptions } from "@/lib/gestao-cohorts";
-import { GestaoPageHeading } from "../../../gestao-shell";
-import { GestaoCohortForm } from "../cohort-form";
+import {
+  getGestaoTeacherOptions,
+  listGestaoPublishedCourses,
+} from "@/lib/gestao-cohorts";
+import { CohortWizard } from "../cohort-wizard";
+import GestaoCohortsPage from "../page";
 
 const NewGestaoCohortPage = async () => {
   const actor = await requireGestaoActor();
-  const teachers =
-    actor.role === "ADMIN" ? await getGestaoTeacherOptions() : [];
+  const [teachers, courses] = await Promise.all([
+    getGestaoTeacherOptions(),
+    listGestaoPublishedCourses(),
+  ]);
   return (
-    <section className="gt-page gt-new-page">
-      <GestaoPageHeading
-        description="Defina a regra de entrada agora; você poderá vincular cursos e alunos depois."
-        eyebrow="Gestão · Alunos · Turmas"
-        title="Nova turma"
+    <>
+      <GestaoCohortsPage searchParams={Promise.resolve({})} />
+      <CohortWizard
+        actorId={actor.userId}
+        actorName={actor.displayName ?? "Você"}
+        courses={courses}
+        isAdmin={actor.role === "ADMIN"}
+        teachers={teachers}
       />
-      <GestaoCohortForm isAdmin={actor.role === "ADMIN"} teachers={teachers} />
-    </section>
+    </>
   );
 };
 export default NewGestaoCohortPage;

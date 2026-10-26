@@ -1371,12 +1371,58 @@ export const createExercisePack = async (formData: FormData) => {
   redirect(`${exerciseManagementPath(gestaoReturn)}?resultado=created`);
 };
 
+const questionReturnPrefix = "/gestao/ensino/exercicios/";
+
+const safeQuestionReturn = (formData: FormData) => {
+  const target = value(formData, "returnTo");
+  return target.startsWith(questionReturnPrefix) &&
+    !target.includes("//", 1) &&
+    !target.includes("?") &&
+    !target.includes("\\")
+    ? target
+    : null;
+};
+
+const withReferences = (explanation: string, formData: FormData) => {
+  const lines = formData
+    .getAll("reference")
+    .flatMap((entry) => {
+      const line = typeof entry === "string" ? entry.trim() : "";
+      return line ? [`Referência: ${line.slice(0, 600)}`] : [];
+    })
+    .slice(0, 12);
+  if (!lines.length) {
+    return explanation;
+  }
+  return [explanation, lines.join("\n")].filter(Boolean).join("\n\n");
+};
+
+const questionStatusFor = (
+  saveMode: string,
+  list: { status: ContentStatus; bank: { status: ContentStatus } }
+) => {
+  if (saveMode === "draft") {
+    return ContentStatus.DRAFT;
+  }
+  if (saveMode === "publish") {
+    return ContentStatus.PUBLISHED;
+  }
+  return list.status === ContentStatus.PUBLISHED &&
+    list.bank.status === ContentStatus.PUBLISHED
+    ? ContentStatus.PUBLISHED
+    : ContentStatus.DRAFT;
+};
+
 export const saveExerciseQuestion = async (formData: FormData) => {
   const gestaoReturn = gestaoReturnRequested(formData);
   await requireExerciseStaff(gestaoReturn);
   const listId = value(formData, "listId");
   const questionId = value(formData, "questionId");
   const categoryTitle = value(formData, "categoryTitle").slice(0, 100);
+  const saveMode = value(formData, "saveMode");
+  const returnTo = gestaoReturn ? safeQuestionReturn(formData) : null;
+  const failureTarget = (result: string) =>
+    `${returnTo ?? exerciseManagementPath(gestaoReturn, listId || undefined)}?resultado=${result}`;
   const draft = validatedQuestionDraft(formData);
   const validation = draft
     ? validateExerciseDraft(draft.kind, draft.statement, draft.options)
@@ -1385,9 +1431,7 @@ export const saveExerciseQuestion = async (formData: FormData) => {
     redirect(`${exerciseManagementPath(gestaoReturn)}?resultado=invalid`);
   }
   if (!(draft && validation?.valid)) {
-    redirect(
-      `${exerciseManagementPath(gestaoReturn, listId)}?resultado=invalid`
-    );
+    redirect(failureTarget("invalid"));
   }
   if (
     findMissingExerciseExplanationOptionReferences(
@@ -1395,22 +1439,19 @@ export const saveExerciseQuestion = async (formData: FormData) => {
       draft.options
     ).length > 0
   ) {
-    redirect(
-      `${exerciseManagementPath(gestaoReturn, listId)}?resultado=referencias-invalidas`
-    );
+    redirect(failureTarget("referencias-invalidas"));
   }
-  const validDraft = draft;
+  const validDraft = {
+    ...draft,
+    explanation: withReferences(draft.explanation, formData).slice(0, 20_000),
+  };
   await database.$transaction(
     async (transaction) => {
       const list = await findEditableExerciseList(transaction, listId);
       if (!list || list.bank.status === ContentStatus.ARCHIVED) {
         throw new Error("Lista de exercícios indisponível para edição.");
       }
-      const nextStatus =
-        list.status === ContentStatus.PUBLISHED &&
-        list.bank.status === ContentStatus.PUBLISHED
-          ? ContentStatus.PUBLISHED
-          : ContentStatus.DRAFT;
+      const nextStatus = questionStatusFor(saveMode, list);
       const category = await upsertExerciseCategory(
         transaction,
         list.bankId,
@@ -1453,9 +1494,7 @@ export const saveExerciseQuestion = async (formData: FormData) => {
   );
   revalidateExerciseManagement(gestaoReturn, listId);
   revalidatePath("/exercicios");
-  redirect(
-    `${exerciseManagementPath(gestaoReturn, listId)}?resultado=questao-salva`
-  );
+  redirect(failureTarget("questao-salva"));
 };
 
 export const setExerciseListStatus = async (formData: FormData) => {

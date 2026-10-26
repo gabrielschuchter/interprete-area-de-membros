@@ -298,27 +298,47 @@ export const PathCoursesPanel = ({
   </section>
 );
 
-export const PathEvidencePanel = ({
-  path,
+export const OtherPathsPanel = ({
+  currentId,
+  paths,
 }: {
-  readonly path: LearningPathView;
-}) => {
-  const published = path.status === ContentStatus.PUBLISHED;
-  const evidenceSummary = published
-    ? `${path.publishedCourseCount} de ${path.totalCourses} ${path.totalCourses === 1 ? "curso publicado" : "cursos publicados"} · visível para alunos`
-    : `${path.totalCourses} ${path.totalCourses === 1 ? "curso" : "cursos"} · ainda não visível`;
-  return (
-    <section
-      aria-labelledby="path-evidence-heading"
-      className="ge-path-guidance ge-path-evidence"
-    >
-      <div className="ge-path-panel-heading">
-        <h2 id="path-evidence-heading">Evidência avançada</h2>
-        <span className={`ge-status ge-status-${path.status.toLowerCase()}`}>
-          {statusLabels[path.status]}
-        </span>
-      </div>
-      <p>{evidenceSummary}.</p>
-    </section>
-  );
-};
+  readonly currentId: string;
+  readonly paths: readonly {
+    readonly _count: { readonly courses: number };
+    readonly id: string;
+    readonly status: ContentStatus;
+    readonly title: string;
+  }[];
+}) => (
+  <>
+    {paths
+      .filter((item) => item.id !== currentId)
+      .map((item) => (
+        <section className="ge-path-guidance ge-path-evidence" key={item.id}>
+          <div className="ge-path-panel-heading">
+            <h2>
+              <Link
+                href={`/gestao/ensino/cursos/percursos/${item.id}`}
+                prefetch={false}
+              >
+                {item.title}
+              </Link>
+            </h2>
+            <span
+              className={`ge-status ge-status-${item.status.toLowerCase()}`}
+            >
+              {statusLabels[item.status]}
+            </span>
+          </div>
+          <p>
+            {item._count.courses}{" "}
+            {item._count.courses === 1 ? "curso" : "cursos"}
+            {item.status === ContentStatus.PUBLISHED
+              ? " · visível para os alunos"
+              : " · ainda não visível"}
+            .
+          </p>
+        </section>
+      ))}
+  </>
+);

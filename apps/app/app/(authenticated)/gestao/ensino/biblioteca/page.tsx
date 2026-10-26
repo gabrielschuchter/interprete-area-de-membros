@@ -1,10 +1,11 @@
 import { LibraryItemDifficulty, LibraryItemKind } from "@repo/database";
-import { Button } from "@repo/design-system/components/ui/button";
 import Link from "next/link";
 import { importCuratedLibraryCatalog } from "@/app/(authenticated)/biblioteca/actions";
 import { GestaoLibraryCatalog } from "@/components/gestao/library-catalog";
 import { getGestaoLibraryCatalog } from "@/lib/gestao-library";
 import { buildGestaoLibraryHref } from "@/lib/gestao-library-domain";
+import { GestaoFilterBar } from "../../gestao-filter-bar";
+import { GestaoIcon } from "../../gestao-icon";
 
 interface GestaoLibraryPageProperties {
   readonly searchParams: Promise<{
@@ -30,13 +31,6 @@ const typeLabels: Record<LibraryItemKind, string> = {
   VIDEO: "Vídeo",
 };
 
-const statusLabels: Record<string, string> = {
-  ALL: "Todos",
-  ARCHIVED: "Arquivados",
-  DRAFT: "Rascunhos",
-  PUBLISHED: "Publicados",
-};
-
 const difficultyLabels: Record<LibraryItemDifficulty, string> = {
   ADVANCED: "Avançado",
   INTRODUCTORY: "Introdutório",
@@ -46,6 +40,7 @@ const difficultyLabels: Record<LibraryItemDifficulty, string> = {
 const resultMessages: Record<string, string> = {
   "material-atualizado": "Material atualizado.",
   "material-criado": "Material salvo como rascunho.",
+  "material-publicado": "Material publicado para os alunos.",
   "material-existente": "Este material já tinha sido salvo.",
 };
 
@@ -71,194 +66,149 @@ const GestaoLibraryPage = async ({
   const filters = data.filters;
   const result = query.resultado ? resultMessages[query.resultado] : null;
   const catalogMessage = query.catalog ? catalogMessages[query.catalog] : null;
+  const base = "/gestao/ensino/biblioteca";
+  const first = data.total === 0 ? 0 : (filters.page - 1) * 24 + 1;
+  const last = Math.min(filters.page * 24, data.total);
 
   return (
-    <section className="gestao-page-content gl-page">
-      <header className="gl-heading">
-        <div>
-          <p className="gestao-eyebrow">
-            Gestão <span aria-hidden="true">›</span> Ensino{" "}
-            <span aria-hidden="true">›</span> Biblioteca
-          </p>
+    <section className="gt-page gk-library">
+      <header className="gk-head">
+        <div className="gk-head-copy">
           <h1>Biblioteca</h1>
           <p>
-            {data.total} resultado(s) para os filtros atuais. A curadoria
-            revisada é aditiva e evita duplicatas.
+            Artigos, guias, PDFs e vídeos que o aluno encontra na Biblioteca.
           </p>
         </div>
-        <div className="gl-heading-actions">
+        <div className="gk-head-actions">
           <form action={importCuratedLibraryCatalog}>
             <input name="surface" type="hidden" value="gestao" />
-            <Button type="submit" variant="outline">
+            <button className="gk-btn" type="submit">
               Importar curadoria verificada
-            </Button>
+            </button>
           </form>
-          <Button asChild>
-            <Link href="/gestao/ensino/biblioteca/novo" prefetch={false}>
-              Novo material
-            </Link>
-          </Button>
+          <Link
+            className="gk-btn gk-btn--primary gk-btn--wide"
+            href={`${base}/novo`}
+            prefetch={false}
+          >
+            <GestaoIcon name="plus" size={16} /> Novo material
+          </Link>
         </div>
       </header>
-      {result ? <output className="gl-result">{result}</output> : null}
+      {result ? <output className="gk-result">{result}</output> : null}
       {catalogMessage ? (
-        <output className="gl-result">{catalogMessage}</output>
+        <output className="gk-result">{catalogMessage}</output>
       ) : null}
       {query.uploadPaused === "1" ? (
-        <output className="gl-result">
+        <output className="gk-result">
           O envio de arquivo está pausado. Nenhuma alteração foi aplicada; use
           um link ou tente novamente quando o Storage estiver disponível.
         </output>
       ) : null}
-      <form
-        action="/gestao/ensino/biblioteca"
-        className="gl-filters"
-        method="get"
-      >
-        <label className="gl-search" htmlFor="gl-query">
-          <span aria-hidden="true">⌕</span>
-          <input
-            defaultValue={filters.query}
-            id="gl-query"
-            maxLength={120}
-            name="q"
-            placeholder="Buscar por título, autor, DOI ou PMID"
-          />
-        </label>
-        <label>
-          <span className="sr-only">Tipo</span>
-          <select defaultValue={filters.kind} name="tipo">
-            <option value="">Tipo</option>
-            {Object.values(LibraryItemKind).map((kind) => (
-              <option key={kind} value={kind}>
-                {typeLabels[kind]}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          <span className="sr-only">Categoria</span>
-          <select defaultValue={filters.category} name="categoria">
-            <option value="">Categoria</option>
-            {data.categories.map((category) => (
-              <option key={category} value={category}>
-                {category}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          <span className="sr-only">Idioma</span>
-          <select defaultValue={filters.language} name="idioma">
-            <option value="">Idioma</option>
-            {data.languages.map((language) => (
-              <option key={language} value={language}>
-                {language}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          <span className="sr-only">Nível</span>
-          <select defaultValue={filters.difficulty} name="nivel">
-            <option value="">Nível</option>
-            {Object.values(LibraryItemDifficulty).map((difficulty) => (
-              <option key={difficulty} value={difficulty}>
-                {difficultyLabels[difficulty]}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          <span className="sr-only">Estado</span>
-          <select defaultValue={filters.status} name="estado">
-            {Object.entries(statusLabels).map(([status, label]) => (
-              <option key={status} value={status}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <input name="modo" type="hidden" value={filters.view} />
-        <Button type="submit" variant="outline">
-          Filtrar
-        </Button>
-        <fieldset className="gl-view-switch">
+      <div className="gk-toolbar">
+        <GestaoFilterBar
+          placeholder="Buscar por título, autor, DOI ou PMID"
+          query={filters.query}
+          selects={[
+            {
+              label: "Tipo",
+              param: "tipo",
+              value: filters.kind,
+              options: Object.values(LibraryItemKind).map((kind) => [
+                kind,
+                typeLabels[kind],
+              ]),
+            },
+            {
+              label: "Categoria",
+              param: "categoria",
+              value: filters.category,
+              options: data.categories.map((category) => [category, category]),
+            },
+            {
+              label: "Idioma",
+              param: "idioma",
+              value: filters.language,
+              options: data.languages.map((language) => [language, language]),
+            },
+            {
+              label: "Nível",
+              param: "nivel",
+              value: filters.difficulty,
+              options: Object.values(LibraryItemDifficulty).map((level) => [
+                level,
+                difficultyLabels[level],
+              ]),
+            },
+            {
+              label: "Estado",
+              param: "estado",
+              value: filters.status === "ALL" ? "" : filters.status,
+              options: [
+                ["DRAFT", "Rascunho"],
+                ["PUBLISHED", "Publicado"],
+                ["ARCHIVED", "Arquivado"],
+              ],
+            },
+          ]}
+        />
+        <fieldset className="gk-viewswitch">
           <legend className="sr-only">Modo de visualização</legend>
-          <Link
-            aria-current={filters.view === "list" ? "page" : undefined}
-            className={filters.view === "list" ? "is-active" : ""}
-            href={buildGestaoLibraryHref("/gestao/ensino/biblioteca", filters, {
-              view: "list",
-              page: 1,
-            })}
-            prefetch={false}
-          >
-            Lista
-          </Link>
-          <Link
-            aria-current={filters.view === "grid" ? "page" : undefined}
-            className={filters.view === "grid" ? "is-active" : ""}
-            href={buildGestaoLibraryHref("/gestao/ensino/biblioteca", filters, {
-              view: "grid",
-              page: 1,
-            })}
-            prefetch={false}
-          >
-            Grade
-          </Link>
+          {(["list", "grid"] as const).map((view) => (
+            <Link
+              aria-current={filters.view === view ? "page" : undefined}
+              aria-label={view === "list" ? "Lista" : "Grade"}
+              className={filters.view === view ? "is-active" : ""}
+              href={buildGestaoLibraryHref(base, filters, { view, page: 1 })}
+              key={view}
+              prefetch={false}
+            >
+              <GestaoIcon name={view === "list" ? "list" : "grid"} size={16} />
+              {view === "list" ? "Lista" : "Grade"}
+            </Link>
+          ))}
         </fieldset>
-      </form>
+      </div>
       <GestaoLibraryCatalog data={data} />
-      {data.pageCount > 1 ? (
-        <nav aria-label="Paginação da biblioteca" className="gl-pagination">
-          <span>
-            {data.total} materiais · página {filters.page} de {data.pageCount}
-          </span>
-          <div>
-            {filters.page <= 1 ? (
-              <Button disabled type="button" variant="outline">
-                Anterior
-              </Button>
-            ) : (
-              <Button asChild variant="outline">
-                <Link
-                  href={buildGestaoLibraryHref(
-                    "/gestao/ensino/biblioteca",
-                    filters,
-                    { page: filters.page - 1 }
-                  )}
-                  prefetch={false}
-                >
-                  Anterior
-                </Link>
-              </Button>
-            )}
-            {filters.page >= data.pageCount ? (
-              <Button disabled type="button" variant="outline">
-                Próxima
-              </Button>
-            ) : (
-              <Button asChild variant="outline">
-                <Link
-                  href={buildGestaoLibraryHref(
-                    "/gestao/ensino/biblioteca",
-                    filters,
-                    { page: filters.page + 1 }
-                  )}
-                  prefetch={false}
-                >
-                  Próxima
-                </Link>
-              </Button>
-            )}
-          </div>
-        </nav>
-      ) : (
-        <p aria-live="polite" className="gl-pagination-caption">
-          {data.total} material(is) nesta busca
-        </p>
-      )}
+      <nav aria-label="Paginação da biblioteca" className="gk-pager">
+        <span>
+          {data.total === 0
+            ? "0 materiais"
+            : `${first} a ${last} de ${data.total}`}
+        </span>
+        <div>
+          {filters.page > 1 ? (
+            <Link
+              className="gk-btn"
+              href={buildGestaoLibraryHref(base, filters, {
+                page: filters.page - 1,
+              })}
+              prefetch={false}
+            >
+              Anterior
+            </Link>
+          ) : (
+            <span aria-disabled="true" className="gk-btn" data-disabled="true">
+              Anterior
+            </span>
+          )}
+          {filters.page < data.pageCount ? (
+            <Link
+              className="gk-btn"
+              href={buildGestaoLibraryHref(base, filters, {
+                page: filters.page + 1,
+              })}
+              prefetch={false}
+            >
+              Próxima
+            </Link>
+          ) : (
+            <span aria-disabled="true" className="gk-btn" data-disabled="true">
+              Próxima
+            </span>
+          )}
+        </div>
+      </nav>
     </section>
   );
 };

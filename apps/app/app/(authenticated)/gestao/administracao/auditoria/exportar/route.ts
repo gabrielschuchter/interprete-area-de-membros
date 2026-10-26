@@ -14,13 +14,29 @@ export const GET = async (request: Request) => {
     from: url.searchParams.get("de") ?? undefined,
     to: url.searchParams.get("ate") ?? undefined,
     query: url.searchParams.get("q") ?? undefined,
+    actorId: url.searchParams.get("quem") ?? undefined,
+    periodDays: Number(url.searchParams.get("periodo")) || null,
   });
   const lines = rows.map((row) =>
-    [row.at.toISOString(), row.actor, row.label, row.eventType, row.aggregate]
+    [
+      row.at.toISOString(),
+      row.actor,
+      row.label,
+      row.eventType,
+      row.object,
+      row.details,
+    ]
       .map(csvCell)
       .join(",")
   );
-  const header = ["Quando (UTC)", "Quem", "Ação", "Evento", "Objeto"];
+  const header = [
+    "Quando (UTC)",
+    "Quem",
+    "Ação",
+    "Evento",
+    "Objeto",
+    "Detalhes",
+  ];
   return new Response(
     `﻿${[header.map(csvCell).join(","), ...lines].join("\r\n")}\r\n`,
     {

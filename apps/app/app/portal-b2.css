@@ -1460,3 +1460,16 @@
     transform: translateY(-4px);
   }
 }
+
+.portal-note {
+  max-width: 420px;
+  padding: 6px 14px;
+  margin: 10px auto 0;
+  font-family: var(--font-display-family), "Source Serif 4", Georgia, serif;
+  font-size: 15px;
+  font-style: italic;
+  line-height: 22px;
+  color: var(--portal-muted);
+  background: rgb(255 255 255 / 55%);
+  border-radius: 4px;
+}

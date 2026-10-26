@@ -6,6 +6,7 @@ import {
   PlusIcon,
 } from "lucide-react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import {
   listGestaoCourses,
   listGestaoLearningPaths,
@@ -516,6 +517,13 @@ const GestaoCoursesPage = async ({
           status: value(query.estado),
         })
       : null;
+  const pathHasFilters = Boolean(
+    value(query.q) || value(query.estado) || value(query.pagina)
+  );
+  const firstPath = pathCatalog?.paths[0];
+  if (tab === "percursos" && firstPath && !pathHasFilters) {
+    redirect(`/gestao/ensino/cursos/percursos/${firstPath.id}`);
+  }
   const tabHref = (name: "cursos" | "percursos") => {
     const params = new URLSearchParams();
     if (name === "percursos") {

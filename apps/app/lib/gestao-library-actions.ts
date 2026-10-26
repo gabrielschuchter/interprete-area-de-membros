@@ -207,3 +207,40 @@ export const applyGestaoLibraryBulkAction = async (
     throw error;
   }
 };
+
+export interface LibraryDuplicate {
+  readonly id: string;
+  readonly matchedBy: "doi" | "url";
+  readonly title: string;
+}
+
+/** Procura material já cadastrado com o mesmo DOI ou endereço. */
+export const findGestaoLibraryDuplicate = async (input: {
+  readonly doi: string;
+  readonly excludeId?: string;
+  readonly url: string;
+}): Promise<LibraryDuplicate | null> => {
+  await requireGestaoAction("content.manage");
+  const doi = input.doi.trim().slice(0, 200);
+  const url = input.url.trim().slice(0, 2000);
+  const notSelf = input.excludeId ? { id: { not: input.excludeId } } : {};
+  if (doi) {
+    const byDoi = await database.libraryItem.findFirst({
+      where: { ...notSelf, doi: { equals: doi, mode: "insensitive" } },
+      select: { id: true, title: true },
+    });
+    if (byDoi) {
+      return { ...byDoi, matchedBy: "doi" };
+    }
+  }
+  if (url) {
+    const byUrl = await database.libraryItem.findFirst({
+      where: { ...notSelf, url },
+      select: { id: true, title: true },
+    });
+    if (byUrl) {
+      return { ...byUrl, matchedBy: "url" };
+    }
+  }
+  return null;
+};

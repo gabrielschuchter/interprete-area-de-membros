@@ -153,13 +153,17 @@
   border-radius: 4px;
 }
 .gx-chip {
+  box-sizing: border-box;
   display: inline-flex;
+  gap: 5px;
   align-items: center;
-  padding: 2px 9px;
-  font-size: 12px;
-  font-weight: 650;
+  min-height: 24px;
+  padding: 0 9px;
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1;
   white-space: nowrap;
-  border-radius: 999px;
+  border-radius: 12px;
 }
 .gx-list .gx-chip {
   flex: none;
@@ -167,6 +171,10 @@
 .gx-chip[data-tone="ok"] {
   color: #1d5b3b;
   background: #e3f3ea;
+}
+.gx-chip[data-tone="scheduled"] {
+  color: var(--gestao-action);
+  background: rgb(140 21 53 / 8%);
 }
 .gx-chip[data-tone="warn"] {
   color: #8a4b05;
@@ -240,14 +248,17 @@
 
 /* Busca (Ctrl K) */
 .gestao-search-trigger {
+  box-sizing: border-box;
   display: inline-flex;
   gap: 8px;
   align-items: center;
+  width: 300px;
   min-width: 0;
-  height: 38px;
-  padding: 0 10px;
+  height: 40px;
+  padding: 0 12px;
   font: inherit;
-  font-size: 13px;
+  font-size: 13.5px;
+  line-height: 1;
   color: var(--gestao-muted);
   cursor: pointer;
   background: #fff;
@@ -259,19 +270,22 @@
 }
 .gestao-search-trigger svg {
   flex: none;
-  width: 15px;
-  height: 15px;
+  width: 18px;
+  height: 18px;
 }
 .gestao-search-trigger kbd {
-  padding: 1px 6px;
+  padding: 3px 6px;
   font-family: var(--font-mono-family, monospace);
-  font-size: 11px;
-  background: #f6f1ee;
+  font-size: 10.5px;
+  font-weight: 500;
+  line-height: 1;
+  background: transparent;
   border: 1px solid var(--gestao-line);
   border-radius: 4px;
 }
 .gestao-search-trigger-label {
-  min-width: 150px;
+  flex: 1;
+  min-width: 0;
   text-align: left;
 }
 .gestao-search-dialog {
@@ -436,21 +450,27 @@
 .gx-shortcuts {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 20px;
+  gap: 10px;
+  margin-top: 22px;
 }
 .gx-shortcuts a {
+  box-sizing: border-box;
   display: inline-flex;
+  gap: 8px;
   align-items: center;
-  min-height: 40px;
+  height: 44px;
   padding: 0 16px;
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 600;
+  line-height: 1;
   color: var(--gestao-text);
   text-decoration: none;
   background: #fff;
   border: 1px solid var(--gestao-line);
-  border-radius: 8px;
+  border-radius: 6px;
+}
+.gx-shortcuts a svg {
+  color: var(--gestao-action);
 }
 .gx-shortcuts a:hover {
   color: var(--gestao-action);
@@ -462,50 +482,51 @@
   line-height: 1.5;
   color: var(--gestao-muted);
 }
-.gx-meetings {
-  display: grid;
-  padding: 0;
-  margin: 0;
-  list-style: none;
-}
 .gx-meetings > li {
-  display: grid;
-  grid-template-columns: 48px minmax(0, 1fr) auto;
+  display: flex;
   gap: 12px;
   align-items: center;
   padding: 12px 0;
   border-bottom: 1px solid var(--gestao-line);
 }
-.gx-meetings > li:last-child {
-  border-bottom: 0;
-}
 .gx-date {
-  display: grid;
-  place-items: center;
+  box-sizing: border-box;
+  display: block;
+  flex: none;
   width: 48px;
-  height: 52px;
-  line-height: 1.1;
-  text-transform: uppercase;
+  padding: 5px 0;
+  text-align: center;
+  background: #fff;
   border: 1px solid var(--gestao-line);
-  border-radius: 8px;
+  border-radius: 6px;
 }
 .gx-date small {
-  font: 500 10px / 1.2 var(--font-mono-family);
-  color: var(--gestao-muted);
+  display: block;
+  font: 500 9.5px / 1.2 var(--font-mono-family);
+  color: var(--gestao-action);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
 }
 .gx-date strong {
-  font-size: 18px;
+  display: block;
+  font: 600 19px / 1.2 var(--font-display-family);
+  color: var(--gestao-text);
 }
 .gx-meeting-copy {
-  display: grid;
-  gap: 2px;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
   min-width: 0;
 }
 .gx-meeting-copy strong {
-  font-size: 14px;
+  font-size: 14.5px;
+  font-weight: 600;
+  line-height: 1.3;
 }
 .gx-meeting-copy span {
-  font-size: 12px;
+  font-size: 12.5px;
+  line-height: 1.3;
   color: var(--gestao-muted);
 }
 .gx-plain {
@@ -526,12 +547,6 @@
 }
 .gx-inline strong {
   color: var(--gestao-text);
-}
-.go-week-heading > a {
-  font-size: 13px;
-  font-weight: 650;
-  color: var(--gestao-action);
-  text-decoration: none;
 }
 .gx-card-padded {
   display: grid;

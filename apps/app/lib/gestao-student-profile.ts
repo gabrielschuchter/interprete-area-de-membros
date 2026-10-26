@@ -73,7 +73,7 @@ export const getGestaoStudentProfile = async (memberId: string) => {
     goals,
     attendance,
   ] = await Promise.all([
-    queryStudentTracking(actor, { memberId, limit: 1 }, now),
+    queryStudentTracking(actor, { detail: true, memberId, limit: 1 }, now),
     database.lessonProgress.findMany({
       where: { memberId },
       orderBy: { updatedAt: "desc" },
@@ -104,7 +104,7 @@ export const getGestaoStudentProfile = async (memberId: string) => {
         status: true,
         submittedAt: true,
         activity: { select: { id: true, title: true } },
-        feedback: { select: { submittedAt: true } },
+        feedback: { select: { content: true, submittedAt: true } },
       },
     }),
     database.activity.findMany({
@@ -242,6 +242,25 @@ export const getGestaoStudentProfile = async (memberId: string) => {
   ]
     .sort((left, right) => right.at.getTime() - left.at.getTime())
     .slice(0, 15);
+  const firstCohortId = member.cohortMemberships[0]?.cohort.id;
+  const cohortTracking = firstCohortId
+    ? await queryStudentTracking(
+        actor,
+        { cohortId: firstCohortId, limit: 200 },
+        now
+      )
+    : null;
+  const cohortAverageStudySeconds =
+    cohortTracking && cohortTracking.rows.length > 0
+      ? Math.round(
+          cohortTracking.rows.reduce(
+            (sum, row) => sum + row.studySecondsLast7Days,
+            0
+          ) / cohortTracking.rows.length
+        )
+      : null;
+  const latestFeedback =
+    submissions.find((item) => item.feedback?.submittedAt) ?? null;
   const present = attendance.filter((entry) => entry.isPresent).length;
   return {
     actor,
@@ -250,9 +269,11 @@ export const getGestaoStudentProfile = async (memberId: string) => {
       total: attendance.length,
     },
     awards,
+    cohortAverageStudySeconds,
     completedLessons,
     exerciseSessions,
     goals,
+    latestFeedback,
     lessonProgress,
     member,
     pendingActivities: [...pendingActivities.values()].sort(

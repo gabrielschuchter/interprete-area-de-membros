@@ -30,6 +30,7 @@ const assetKindLabel = (kind: string) => {
   }
 };
 
+import { EditInGestaoBar } from "@/components/gestao/edit-in-gestao-bar";
 import { RichDocument } from "@/components/learning/rich-document";
 import {
   getCourseExperience,
@@ -83,7 +84,10 @@ export const generateMetadata = async ({
   return roomMetadata(titles?.lesson ?? null, titles?.course ?? null);
 };
 
-const LessonPage = async ({ params, searchParams }: LessonPageProperties) => {
+const LessonPageContent = async ({
+  params,
+  searchParams,
+}: LessonPageProperties) => {
   // Sala de Aula (docs/sala-de-aula), behind ROOM_V2_ENABLED. Off: the page
   // below stays exactly as it was.
   if (roomEnabled()) {
@@ -434,6 +438,16 @@ const LessonPage = async ({ params, searchParams }: LessonPageProperties) => {
         </div>
       </div>
     </LearningPageFrame>
+  );
+};
+
+const LessonPage = async (properties: LessonPageProperties) => {
+  const { lessonSlug, slug } = await properties.params;
+  return (
+    <>
+      <EditInGestaoBar courseSlug={slug} lessonSlug={lessonSlug} />
+      <LessonPageContent {...properties} />
+    </>
   );
 };
 

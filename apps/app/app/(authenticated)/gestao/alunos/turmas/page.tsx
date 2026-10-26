@@ -1,14 +1,10 @@
 import { Button } from "@repo/design-system/components/ui/button";
-import {
-  CalendarDaysIcon,
-  MoreHorizontalIcon,
-  PlusIcon,
-  UsersRoundIcon,
-} from "lucide-react";
+import { CalendarDaysIcon } from "lucide-react";
 import Link from "next/link";
 import { requireGestaoActor } from "@/lib/gestao-authorization";
 import { type GestaoCohortTab, listGestaoCohorts } from "@/lib/gestao-cohorts";
-import { GestaoPageHeading } from "../../gestao-shell";
+import { GestaoIcon } from "../../gestao-icon";
+import { CohortFilters } from "./cohort-filters";
 
 const statuses = [
   ["ACTIVE", "Ativas"],
@@ -31,6 +27,12 @@ const statusLabels = {
   ENDED: "Encerrada",
   ARCHIVED: "Arquivada",
 } as const;
+const statusIcons = {
+  ACTIVE: "clock",
+  NOT_STARTED: "calendar",
+  ENDED: "archive",
+  ARCHIVED: "archive",
+} as const;
 type CohortListItem = Awaited<
   ReturnType<typeof listGestaoCohorts>
 >["cohorts"][number];
@@ -38,29 +40,30 @@ type StatusCounts = Awaited<
   ReturnType<typeof listGestaoCohorts>
 >["statusCounts"];
 
-const statusHref = (status: string, query: string) =>
-  `/gestao/alunos/turmas?status=${status}${query ? `&q=${encodeURIComponent(query)}` : ""}`;
+const statusHref = (status: string, query: string, teacherId = "") =>
+  `/gestao/alunos/turmas?status=${status}${query ? `&q=${encodeURIComponent(query)}` : ""}${teacherId ? `&responsavel=${encodeURIComponent(teacherId)}` : ""}`;
 
 const CohortStatusTabs = ({
   status,
   query,
+  teacherId,
   counts,
 }: {
   readonly status: GestaoCohortTab;
   readonly query: string;
+  readonly teacherId: string;
   readonly counts: StatusCounts;
 }) => (
-  <nav aria-label="Situação das turmas" className="gt-status-tabs">
+  <nav aria-label="Situação das turmas" className="gk-tabs">
     {statuses.map(([key, label]) => (
       <Link
         aria-current={status === key ? "page" : undefined}
-        className="gt-status-tab"
-        data-active={String(status === key)}
-        href={statusHref(key, query)}
+        className="gk-tab"
+        href={statusHref(key, query, teacherId)}
         key={key}
+        role="tab"
       >
-        {label}
-        <span>{counts[key]}</span>
+        {counts[key] > 0 ? `${label} · ${counts[key]}` : label}
       </Link>
     ))}
   </nav>
@@ -68,66 +71,59 @@ const CohortStatusTabs = ({
 
 const UnassignedNotice = ({ count }: { readonly count: number | null }) =>
   count ? (
-    <aside aria-label="Alunos sem turma" className="gt-notice">
-      <UsersRoundIcon aria-hidden="true" />
-      <div>
-        <strong>{count} alunos ainda não estão em nenhuma turma.</strong>
-        <p>
+    <aside aria-label="Alunos sem turma" className="gk-notice" role="alert">
+      <GestaoIcon name="alert-circle" size={20} />
+      <div className="gk-notice-copy">
+        <strong>
+          {count === 1
+            ? "1 aluno ainda não está em nenhuma turma."
+            : `${count} alunos ainda não estão em nenhuma turma.`}
+        </strong>
+        <span>
           Eles não recebem cursos, atividades nem encontros até entrarem em uma
           turma.
-        </p>
+        </span>
       </div>
-      <Link href="/gestao/alunos/turmas/atribuir">Atribuir a uma turma</Link>
+      <Link className="gk-btn gk-btn--sm" href="/gestao/alunos/turmas/atribuir">
+        Atribuir a uma turma
+      </Link>
     </aside>
   ) : null;
 
 const CohortListToolbar = ({
   status,
   query,
+  teacherId,
   cardMode,
+  responsibleOptions,
 }: {
   readonly status: GestaoCohortTab;
   readonly query: string;
+  readonly teacherId: string;
   readonly cardMode: boolean;
+  readonly responsibleOptions: readonly {
+    readonly displayName: string | null;
+    readonly id: string;
+  }[];
 }) => (
-  <div className="gt-list-toolbar">
-    <form
-      action="/gestao/alunos/turmas"
-      className="gt-search-form"
-      method="get"
-    >
-      <input name="status" type="hidden" value={status} />
-      <label className="gt-search">
-        <span className="sr-only">Buscar turmas</span>
-        <input
-          autoComplete="off"
-          defaultValue={query}
-          maxLength={120}
-          name="q"
-          placeholder="Buscar turmas"
-          type="search"
-        />
-      </label>
-      <Button type="submit" variant="outline">
-        Buscar
-      </Button>
-    </form>
-    <nav aria-label="Visualização das turmas" className="gt-view-switch">
-      <Link
-        aria-current={cardMode ? "page" : undefined}
-        data-active={String(cardMode)}
-        href={statusHref(status, query)}
-      >
+  <div className="gk-toolbar">
+    <CohortFilters
+      query={query}
+      responsibleOptions={responsibleOptions}
+      selectedTeacherId={teacherId}
+    />
+    <fieldset className="gk-segmented">
+      <legend className="sr-only">Visualização</legend>
+      <Link aria-pressed={cardMode} href={statusHref(status, query, teacherId)}>
         Cartões
       </Link>
       <Link
-        aria-current={cardMode ? undefined : "page"}
-        data-active={String(!cardMode)}
-        href={`${statusHref(status, query)}&visualizacao=lista`}
+        aria-pressed={!cardMode}
+        href={`${statusHref(status, query, teacherId)}&visualizacao=lista`}
       >
         Lista
       </Link>
-    </nav>
+    </fieldset>
   </div>
 );
 
@@ -147,6 +143,11 @@ const CohortCard = ({ cohort }: { readonly cohort: CohortListItem }) => (
         <span
           className={`gt-status-pill gt-status-${cohort.status.toLowerCase()}`}
         >
+          <GestaoIcon
+            name={statusIcons[cohort.status]}
+            size={12}
+            strokeWidth={1.8}
+          />
           {statusLabels[cohort.status]}
         </span>
       </div>
@@ -188,9 +189,13 @@ const CohortCard = ({ cohort }: { readonly cohort: CohortListItem }) => (
             .join(", ")}
         >
           <span aria-hidden="true" className="gt-avatar">
-            {cohort.responsible[0]?.displayName
-              ?.slice(0, 1)
-              .toLocaleUpperCase("pt-BR") ?? "R"}
+            {(cohort.responsible[0]?.displayName ?? "R")
+              .split(" ")
+              .filter(Boolean)
+              .slice(0, 2)
+              .map((part) => part[0])
+              .join("")
+              .toLocaleUpperCase("pt-BR")}
           </span>
           <span>
             Responsável:{" "}
@@ -201,19 +206,19 @@ const CohortCard = ({ cohort }: { readonly cohort: CohortListItem }) => (
           </span>
         </div>
         <div className="gt-cohort-card-actions">
-          <Button asChild variant="outline">
-            <Link href={`/gestao/alunos/turmas/${cohort.id}`}>Abrir</Link>
-          </Button>
-          <Button
-            aria-label={`Configurações de ${cohort.name}`}
-            asChild
-            size="icon"
-            variant="outline"
+          <Link
+            className="gk-btn gk-btn--sm"
+            href={`/gestao/alunos/turmas/${cohort.id}`}
           >
-            <Link href={`/gestao/alunos/turmas/${cohort.id}/configuracoes`}>
-              <MoreHorizontalIcon aria-hidden="true" />
-            </Link>
-          </Button>
+            Abrir
+          </Link>
+          <Link
+            aria-label={`Configurações de ${cohort.name}`}
+            className="gk-icon-btn"
+            href={`/gestao/alunos/turmas/${cohort.id}/configuracoes`}
+          >
+            <GestaoIcon name="dots" size={18} />
+          </Link>
         </div>
       </div>
     </div>
@@ -223,14 +228,24 @@ const CohortCard = ({ cohort }: { readonly cohort: CohortListItem }) => (
 const CohortCards = ({
   cohorts,
   cardMode,
+  canCreate,
 }: {
   readonly cohorts: readonly CohortListItem[];
   readonly cardMode: boolean;
+  readonly canCreate: boolean;
 }) => (
   <div className={cardMode ? "gt-cohort-grid" : "gt-cohort-list"}>
     {cohorts.map((cohort) => (
       <CohortCard cohort={cohort} key={cohort.id} />
     ))}
+    {cardMode && canCreate ? (
+      <Link className="gt-cohort-new" href="/gestao/alunos/turmas/nova">
+        <span>
+          <GestaoIcon name="plus" size={20} />
+        </span>
+        Nova turma
+      </Link>
+    ) : null}
   </div>
 );
 
@@ -306,6 +321,7 @@ const GestaoCohortsPage = async ({
   readonly searchParams: Promise<{
     q?: string;
     pagina?: string;
+    responsavel?: string;
     status?: string;
     visualizacao?: string;
   }>;
@@ -319,33 +335,50 @@ const GestaoCohortsPage = async ({
     : "ACTIVE";
   const page = Math.max(1, Number.parseInt(params.pagina ?? "1", 10) || 1);
   const query = params.q?.trim().slice(0, 120) ?? "";
-  const result = await listGestaoCohorts({ page, query, status });
+  const teacherId = params.responsavel?.trim().slice(0, 120) ?? "";
+  const result = await listGestaoCohorts({ page, query, status, teacherId });
   const cardMode = params.visualizacao !== "lista";
   return (
     <section className="gt-page">
-      <GestaoPageHeading
-        description="Os alunos entram em turmas. Todos da mesma turma recebem os mesmos cursos e cronograma; envios individuais continuam separados."
-        eyebrow="Gestão · Alunos"
-        title="Turmas"
-      >
-        <Button asChild variant="outline">
-          <Link href="/gestao/alunos/turmas/nova">
-            <PlusIcon aria-hidden="true" />
+      <header className="gk-head">
+        <div className="gk-head-copy">
+          <h1>Turmas</h1>
+          <p>
+            Os alunos entram em turmas. Todos da mesma turma recebem os mesmos
+            cursos, atividades, encontros e avisos, e você pode enviar algo só
+            para alguns.
+          </p>
+        </div>
+        <div className="gk-head-actions">
+          <Link className="gk-btn" href="/gestao/alunos/turmas/importar">
+            Importar turma de planilha
+          </Link>
+          <Link
+            className="gk-btn gk-btn--primary gk-btn--wide"
+            href="/gestao/alunos/turmas/nova"
+          >
             Nova turma
           </Link>
-        </Button>
-      </GestaoPageHeading>
+        </div>
+      </header>
       <CohortStatusTabs
         counts={result.statusCounts}
         query={query}
         status={status}
+        teacherId={teacherId}
       />
       {actor.role === "ADMIN" ? (
         <UnassignedNotice count={result.unassignedMemberCount} />
       ) : null}
-      <CohortListToolbar cardMode={cardMode} query={query} status={status} />
+      <CohortListToolbar
+        cardMode={cardMode}
+        query={query}
+        responsibleOptions={result.responsibleOptions}
+        status={status}
+        teacherId={teacherId}
+      />
       {result.cohorts.length ? (
-        <CohortCards cardMode={cardMode} cohorts={result.cohorts} />
+        <CohortCards canCreate cardMode={cardMode} cohorts={result.cohorts} />
       ) : (
         <EmptyCohorts query={query} status={status} />
       )}
