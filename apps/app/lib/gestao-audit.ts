@@ -60,6 +60,9 @@ export const gestaoAuditLabels: Readonly<Record<string, string>> = {
   "gestao.recording.assigned": "Gravações históricas vinculadas",
   "gestao.recording.revoked": "Vínculo de gravações revogado",
   "gestao.personalization.published": "Personalização publicada",
+  "gestao.medal.created": "Medalha criada",
+  "gestao.medal.updated": "Critério ou texto da medalha alterado",
+  "gestao.medal.status_changed": "Situação da medalha alterada",
   "learning.content.assigned": "Conteúdo atribuído",
 };
 
