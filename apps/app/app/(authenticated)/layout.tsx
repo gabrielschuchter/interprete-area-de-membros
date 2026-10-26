@@ -8,6 +8,7 @@ import { getAuth } from "@/lib/auth";
 import { getMemberProductConfig } from "@/lib/product-config";
 import { getOrCreateProfile } from "@/lib/profile";
 import { MemberShellController } from "./components/member-shell-controller";
+import { PreviewBanner } from "./components/preview-banner";
 
 export const dynamic = "force-dynamic";
 
@@ -77,21 +78,24 @@ const AppLayout = async ({ children }: AppLayoutProperties) => {
   }
 
   return (
-    <MemberShellController
-      avatarUrl={profile?.avatarUrl ?? member.avatarUrl ?? null}
-      canManageContent={member.role === "TEACHER" || member.role === "ADMIN"}
-      displayName={profile?.displayName ?? member.displayName ?? "Membro"}
-      email={member.email ?? ""}
-      gestaoV2Enabled={env.GESTAO_V2_ENABLED === "true"}
-      localQaAuth={
-        process.env.NODE_ENV === "development" &&
-        process.env.GESTAO_DEV_AUTH === "true"
-      }
-      memberId={userId}
-      productConfig={productConfig}
-    >
-      {children}
-    </MemberShellController>
+    <>
+      <PreviewBanner />
+      <MemberShellController
+        avatarUrl={profile?.avatarUrl ?? member.avatarUrl ?? null}
+        canManageContent={member.role === "TEACHER" || member.role === "ADMIN"}
+        displayName={profile?.displayName ?? member.displayName ?? "Membro"}
+        email={member.email ?? ""}
+        gestaoV2Enabled={env.GESTAO_V2_ENABLED === "true"}
+        localQaAuth={
+          process.env.NODE_ENV === "development" &&
+          process.env.GESTAO_DEV_AUTH === "true"
+        }
+        memberId={userId}
+        productConfig={productConfig}
+      >
+        {children}
+      </MemberShellController>
+    </>
   );
 };
 

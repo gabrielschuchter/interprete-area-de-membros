@@ -4290,3 +4290,45 @@ button.gca-text-action {
 .gk-qtable td.gk-qsub {
   vertical-align: middle;
 }
+
+/* Ver como aluno (19) */
+.gk-preview-note {
+  display: block;
+  padding: 10px 40px;
+  font: 500 13px / 1.4 var(--font-sans-family);
+  color: #fff;
+  background: var(--gestao-action);
+}
+.gk-preview-note a {
+  font-weight: 700;
+  color: #fff;
+  text-decoration: underline;
+}
+.gk-previewopts {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0;
+  margin: 0;
+  border: 0;
+}
+.gk-previewopts .gk-radio {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  font: 400 14px / 1.4 var(--font-sans-family);
+  border: 1px solid var(--gestao-line);
+  border-radius: 8px;
+}
+.gk-previewopts .gk-radio[data-checked="true"] {
+  background: #f9f1f1;
+  border-color: var(--gestao-action);
+}
+.gk-previewopts .gk-radio span {
+  display: flex;
+  flex-direction: column;
+}
+.gk-previewopts .gk-radio small {
+  color: var(--gestao-muted);
+}
