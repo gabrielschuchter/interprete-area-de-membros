@@ -139,3 +139,28 @@ export const ProfileBadges = ({
     </section>
   </section>
 );
+
+export const PublicProfileBadges = ({
+  earnedBadges,
+}: {
+  readonly earnedBadges: readonly EarnedProfileBadge[];
+}) => {
+  if (earnedBadges.length === 0) {
+    return null;
+  }
+
+  return (
+    <section
+      aria-labelledby="public-profile-badges-heading"
+      className="public-profile__panel"
+    >
+      <h2
+        className="public-profile__eyebrow"
+        id="public-profile-badges-heading"
+      >
+        Medalhas
+      </h2>
+      <BadgeGrid badges={earnedBadges} emptyMessage="" status="earned" />
+    </section>
+  );
+};

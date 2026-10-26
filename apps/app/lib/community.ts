@@ -1474,3 +1474,53 @@ export const getStaffCommunityPosts = async () =>
       space: { select: { title: true, slug: true } },
     },
   });
+
+export const getMemberCommunityPublications = async (
+  viewerId: string,
+  authorId: string,
+  take = 12
+) => {
+  const role = await getMemberRole(viewerId);
+  const posts = await database.communityPost.findMany({
+    where: {
+      authorId,
+      status: ContentStatus.PUBLISHED,
+      deletedAt: null,
+      ...communityPostAudienceWhere(
+        viewerId,
+        role === MemberRole.ADMIN || role === MemberRole.TEACHER
+      ),
+    },
+    orderBy: [{ isPinned: "desc" }, { publishedAt: "desc" }, { id: "desc" }],
+    take,
+    select: communityFeedSelect(viewerId),
+  });
+  const enriched = await enrichAuthors(posts);
+
+  return enriched.map((post) => ({
+    ...post,
+    coverUrl: normalizeCommunityCoverUrl(post.coverUrl),
+    excerpt: post.excerpt ?? "",
+    media: extractCommunityMedia(post.contentJson),
+    readingMinutes: readingMinutes(post.excerpt ?? ""),
+  }));
+};
+
+export const getCommonCommunitySpaces = (viewerId: string, memberId: string) =>
+  database.communitySpace.findMany({
+    where: {
+      status: ContentStatus.PUBLISHED,
+      AND: [
+        {
+          OR: [
+            { ownerId: viewerId },
+            { members: { some: { memberId: viewerId } } },
+          ],
+        },
+        { OR: [{ ownerId: memberId }, { members: { some: { memberId } } }] },
+      ],
+    },
+    orderBy: [{ position: "asc" }, { title: "asc" }],
+    take: 12,
+    select: { id: true, title: true, slug: true, coverUrl: true },
+  });
