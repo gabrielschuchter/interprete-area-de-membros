@@ -266,24 +266,55 @@ const AudiencePickMenu = ({
   );
 };
 
+const DefaultAudienceHint = ({
+  subject,
+  total,
+}: {
+  readonly subject: string;
+  readonly total: number;
+}) =>
+  total === 0 ? (
+    "Escolha ao menos uma turma ou um aluno."
+  ) : (
+    <>
+      <strong>
+        {total} {total === 1 ? "destinatário" : "destinatários"}.
+      </strong>{" "}
+      A lista é registrada no envio: quem entrar nas turmas depois não recebe{" "}
+      {subject}. Alunos repetidos contam uma vez.
+    </>
+  );
+
 export const AudienceStep = ({
   cohorts,
   heading = "Quem vai receber?",
+  hideLabel = false,
+  hint,
+  label = "Destinatários",
   mode,
   onCohorts,
   onMode,
   onStudents,
   selectedCohorts,
   selectedStudents,
+  placeholder,
+  showModes = true,
+  subject = "esta atribuição",
 }: {
   readonly cohorts: readonly CohortOption[];
   readonly heading?: string | null;
+  readonly hideLabel?: boolean;
+  readonly hint?: React.ReactNode;
+  readonly label?: string;
   readonly mode: AudienceMode;
   readonly onCohorts: (ids: readonly string[]) => void;
   readonly onMode: (mode: AudienceMode) => void;
   readonly onStudents: (students: readonly StudentOption[]) => void;
   readonly selectedCohorts: readonly string[];
+  readonly placeholder?: string;
   readonly selectedStudents: readonly StudentOption[];
+  readonly showModes?: boolean;
+  readonly subject?: string;
 }) => {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
@@ -339,24 +370,31 @@ export const AudienceStep = ({
   return (
     <div className="gk-form-stack">
       {heading ? <h2 className="gk-wiz-title">{heading}</h2> : null}
-      <div className="gk-label">
-        <span>Para quem</span>
-        <fieldset className="gk-segmented gk-segmented--full">
-          <legend className="sr-only">Para quem</legend>
-          {modeOptions.map(([value, label]) => (
-            <button
-              aria-pressed={mode === value}
-              key={value}
-              onClick={() => changeMode(value)}
-              type="button"
-            >
-              {label}
-            </button>
-          ))}
-        </fieldset>
-      </div>
+      {showModes ? (
+        <div className="gk-label">
+          <span>Para quem</span>
+          <fieldset className="gk-segmented gk-segmented--full">
+            <legend className="sr-only">Para quem</legend>
+            {modeOptions.map(([value, label]) => (
+              <button
+                aria-pressed={mode === value}
+                key={value}
+                onClick={() => changeMode(value)}
+                type="button"
+              >
+                {label}
+              </button>
+            ))}
+          </fieldset>
+        </div>
+      ) : null}
       <div className="gk-label" ref={box}>
-        <label htmlFor="assignment-audience-input">Destinatários</label>
+        <label
+          className={hideLabel ? "sr-only" : undefined}
+          htmlFor="assignment-audience-input"
+        >
+          {label}
+        </label>
         <div className="gk-pickbox" data-open={open}>
           {cohorts
             .filter((cohort) => selectedCohorts.includes(cohort.id))
@@ -413,23 +451,13 @@ export const AudienceStep = ({
                 event.preventDefault();
               }
             }}
-            placeholder={placeholders[mode]}
+            placeholder={placeholder ?? placeholders[mode]}
             role="combobox"
             value={query}
           />
         </div>
         <small className="gk-hint">
-          {total === 0 ? (
-            "Escolha ao menos uma turma ou um aluno."
-          ) : (
-            <>
-              <strong>
-                {total} {total === 1 ? "destinatário" : "destinatários"}.
-              </strong>{" "}
-              A lista é registrada no envio: quem entrar nas turmas depois não
-              recebe esta atribuição. Alunos repetidos contam uma vez.
-            </>
-          )}
+          {hint ?? <DefaultAudienceHint subject={subject} total={total} />}
         </small>
         {open ? (
           <AudiencePickMenu

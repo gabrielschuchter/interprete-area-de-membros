@@ -101,7 +101,8 @@ change.
 profile shell reads the authenticated `Member` snapshot and local `Profile`
 projection; the three header counts are request-cached by member and queried
 in parallel. Established members do not call Clerk Backend API on this path.
-The overview selects at most 50 pending invitations, 100 member-scoped awards,
+The overview selects at most 50 recent invitation-history rows, counts current
+pending invitations with the recipient/status index, 100 member-scoped awards,
 and 200 published badge definitions. The achievements route reads the same
 bounded catalog and award projection, then calculates real criterion progress
 for only the criteria represented in that catalog. No progress or awards are
@@ -121,6 +122,32 @@ The route target remains first visit p95 <= 1 s and small persisted mutations
 p95 <= 500 ms from the budgets above. These are targets; authenticated desktop
 and mobile production measurements are still required before claiming they
 pass. Avatar transfer is measured separately from the profile save.
+
+### Community invitations
+
+Group management projects only the active-link creation time and the latest 50
+invitation rows; a token hash or secret is never returned to the browser. The
+profile history is capped at 50 rows and uses a separate recipient-scoped count
+for current pending invitations. Batch writes accept at most 50 unique
+recipients and return one bounded result per recipient. Membership and
+invitation acceptance and membership commit in one transaction; notification
+rows and outbox jobs for newly created invitations are produced in that same
+transaction. `/comunidade/convite/[token]` keeps anonymous HTML and metadata
+generic and returns the Clerk redirect path without resolving group details.
+After authentication, an active token resolves with one token-hash lookup and
+projects only the inviter display name, group title/description/slug/visibility,
+member count, and the current member's membership. A cover URL is included only
+for a public group; an invitee for a private group receives the generic cover.
+The token grants no group-content access, and there is no persistent cache.
+Link invitations have no automatic time expiry; revocation, replacement, or
+unpublishing the group makes the token unusable. Acceptance commits invitation
+state and membership atomically, and invalidates the affected community and
+profile views after commit.
+The invite dialog acknowledges a mutation immediately, blocks duplicate
+submits, and reports each result only after persistence. Route navigation and
+picker results do not prefetch destinations in bulk. These are bounded-query
+and interaction targets; percentiles and remote scheduled recovery are not
+claimed by local QA.
 
 ## Exercises
 
@@ -1082,7 +1109,72 @@ Existing pending feedback and invalidation of Main, correction queue, activity
 and student learning routes remain; no identity cache, pool or index change.
 Local QA uses an isolated distDir/port to preserve the interactive preview.
 
+### Community announcements — Stage 08
+
+Gestão remains the only announcement writer. Community reads use the current
+Member and role for each request, project no more than 100 current notices,
+and filter `startsAt <= now < endsAt`, audience, active cohort membership,
+archive state, and the member's dismissal for that exact announcement version
+in PostgreSQL. Important notices are rendered before the feed composer; common
+notices stay in the Community rail. The Início route does not query or render
+announcements. No recipient, role, or membership result is cached across
+requests, and the JSON refresh endpoint is private and `no-store`.
+
+The client polls the bounded projection every 30 seconds only while the tab is
+visible, refreshes immediately on return to visibility, and removes a visible
+notice at its exact end instant. A scheduled start can appear within one poll
+interval. Dismissal is keyed by announcement and version, persisted under a
+unique database key, and reappears after an edit increments the version. The
+button acknowledges pending state immediately; completion and refresh follow
+the committed dismissal. No automatic prefetch, persistent client cache, or
+optimistic success is added.
+
+Management create/edit/status changes increment or compare the version and
+write notification events and recipient jobs in the same database transaction.
+The outbox consumer rechecks current status, dates, version, audience, active
+cohort membership, and notification preferences while holding shared row locks
+before creating each notification. This prevents stale audience or version
+jobs from delivering after concurrent edits or membership changes. The
+recipient projection is bounded at 10,000 and announcement reads at 100;
+larger audiences fail closed for this notification batch. The local isolated
+PostgreSQL + Clerk Development E2E covers all/selected/staff/cohort targeting,
+versioned dismissal, start/end, visibility changes, Community-only placement,
+and authorization. This does not establish production latency percentiles or
+prove the production outbox recovery worker, Broadcast/Realtime, or OPS-01.
+
 # Início B2 (2026-10-14)
+
+## Comunidade V2 — audiência de notificações após revogação (2026-10-23)
+
+O caminho crítico de lista/resumo e das mutações de leitura resolve a audiência
+atual no servidor. A projeção de grupos contém somente IDs; convites contêm ID e
+grupo; avisos têm limite de 100. Lista e contagens usam o mesmo predicado em um
+snapshot RepeatableRead, sem cache persistente de identidade ou grants. A lista
+mantém paginação por cursor no banco e o limite existente de 50 itens. A consulta
+de IDs de grupos ainda cresce com os grupos acessíveis: medir esse custo com a
+população representativa faz parte do preflight, sem aumentar pool ou índices
+nesta correção. O orçamento de feedback continua <=100 ms; sucesso de mutação
+depende da persistência. O orçamento de bundle continua 225 KiB gzip.
+
+O consumer trabalha em lotes existentes de até 100 destinatários e projeta
+somente o post/grupo/comentário e associações desses destinatários. Locks SHARE
+de grupo/membership/convite serializam entrega com revogação; o outbox preserva
+retry durável e dedupeKey. O QA PostgreSQL isolado exercitou as duas ordens da
+corrida e replay sem duplicação. Invalidação continua pelo mecanismo existente;
+nenhum corpo privado entra em Broadcast ou telemetria. Percentis, recuperação
+periódica remota e entrega Broadcast continuam gates de preflight da Etapa 12A.
+
+### Recuperação agendada do Preview (2026-10-25)
+
+O cron canônico mantém seu lote, consumidor e namespace. Depois do lote, um
+hop opcional aguarda somente o endpoint fixo do API Preview, com OIDC do mesmo
+projeto e bearer dedicado. O hop fica desligado por padrão e só executa em
+Production sem namespace. Não inicia depois de 45 segundos de processamento e
+tem timeout de 8 segundos, dentro dos 60 segundos da função. Falha no Preview
+não desfaz o resultado canônico; o cron durável tenta novamente no próximo ciclo.
+O consumidor Preview continua limitado ao namespace e à allowlist QA. Nenhum
+corpo, token ou destinatário entra no retorno operacional ou no log. Esse caminho
+não acrescenta consultas, cache ou requisições à navegação dos membros.
 
 The portal component adds no content or planner query. The authenticated layout
 continues to resolve identity, the existing profile projection, role and

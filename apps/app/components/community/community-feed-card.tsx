@@ -24,6 +24,7 @@ export interface CommunityFeedCardPost {
   readonly _count: { readonly comments: number; readonly votes: number };
   readonly authorId: string;
   readonly bookmarks: readonly { readonly id: string }[];
+  readonly coverAltText?: string | null;
   readonly coverUrl?: string | null;
   readonly createdAt: Date;
   readonly excerpt: string;
@@ -45,18 +46,22 @@ export interface CommunityFeedCardPost {
 interface CommunityFeedCardProperties {
   readonly managementActions?: ReactNode;
   readonly post: CommunityFeedCardPost;
+  readonly returnTo?: string;
   readonly spaceSlug?: string;
+  readonly variant?: "explore";
 }
 
 const formatDate = (date: Date) =>
   date.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
 
 export function CommunityFeedCard({
+  variant,
   managementActions,
   post,
+  returnTo,
   spaceSlug,
 }: CommunityFeedCardProperties) {
-  const href = communityPostHref(post);
+  const href = communityPostHref(post, returnTo);
   const actionSpaceSlug = spaceSlug ?? post.space?.slug ?? "";
   const isVoted = post.votes.length > 0;
   const isSaved = post.bookmarks.length > 0;
@@ -70,7 +75,13 @@ export function CommunityFeedCard({
 
   return (
     <article
-      className={`community-post-card relative ${post.isPinned ? "community-post-card--pinned" : ""}`}
+      className={[
+        "community-post-card relative",
+        variant === "explore" ? "community-post-card--explore" : "",
+        post.isPinned ? "community-post-card--pinned" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
     >
       {post.isPinned ? (
         <div className="community-post-card__pin">
@@ -93,7 +104,7 @@ export function CommunityFeedCard({
         {post.space ? (
           <IntentLink
             className="community-post-card__space"
-            href={`/comunidade/${post.space.slug}`}
+            href={`/comunidade/grupos/${post.space.slug}`}
           >
             {post.space.title}
           </IntentLink>
@@ -127,7 +138,7 @@ export function CommunityFeedCard({
         </div>
         {coverUrl ? (
           <CommunityCoverImage
-            alt={`Capa: ${post.title}`}
+            alt={post.coverAltText || `Capa: ${post.title}`}
             className="community-post-card__media relative z-10"
             height={100}
             loading="lazy"
@@ -166,6 +177,8 @@ export function CommunityFeedCard({
           initialBookmarked={isSaved}
           initialVoted={isVoted}
           postId={post.id}
+          shareDescription={summary}
+          shareTitle={post.title}
           spaceSlug={actionSpaceSlug}
           voteCount={post._count.votes}
         />

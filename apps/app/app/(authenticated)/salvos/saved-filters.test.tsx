@@ -11,9 +11,10 @@ import { SavedFilters } from "./saved-filters";
 
 const counts = {
   aulas: 2,
+  comunidade: 2,
   materiais: 3,
   questoes: 4,
-  todos: 9,
+  todos: 11,
 } as const;
 
 describe("SavedFilters", () => {

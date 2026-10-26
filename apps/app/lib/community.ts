@@ -1,28 +1,38 @@
 import "server-only";
 
+import { randomInt, randomUUID } from "node:crypto";
 import {
+  type CommunityPostKind,
   ContentStatus,
   database,
   MemberRole,
   type Prisma,
 } from "@repo/database";
 import { tracePerformance } from "@repo/observability/performance";
-import { getMemberRole } from "@/lib/authorization";
+import { getMemberRole, requireStaff } from "@/lib/authorization";
+import { communityCoverAltSelect } from "@/lib/community-cover-alt";
+import { canReadPrivateStudyGroup } from "@/lib/community-group-permissions";
 import {
   extractCommunityMedia,
   normalizeCommunityCoverUrl,
 } from "@/lib/community-media";
 import { communityPopularityScore } from "@/lib/community-ranking";
 import {
+  type CommunitySpaceDirectorySection,
+  communitySpaceDirectoryWhere,
+} from "@/lib/community-space-directory";
+import {
   communityPostAudienceWhere,
   communitySpaceAudienceWhere,
 } from "@/lib/community-space-rules";
 import { getProfilesByClerkIds } from "@/lib/profile";
 
-const POST_PAGE_SIZE = 20;
+const POST_PAGE_SIZE = 10;
+export const COMMUNITY_SPACE_DIRECTORY_PAGE_SIZE = 6;
 const COMMENT_PAGE_SIZE = 40;
 const POPULARITY_CANDIDATE_LIMIT = 200;
 const wordPattern = /\s+/;
+const communitySpaceDirectoryCursorPattern = /^[A-Za-z0-9_-]{1,64}$/;
 
 const readingMinutes = (content: string) =>
   Math.max(
@@ -30,20 +40,30 @@ const readingMinutes = (content: string) =>
     Math.ceil(content.trim().split(wordPattern).filter(Boolean).length / 180)
   );
 
-export const communityPostHref = (post: {
-  readonly id: string;
-  readonly slug: string | null;
-  readonly space?: { readonly slug: string } | null;
-}) => {
-  if (post.slug) {
-    return `/comunidade/publicacoes/${post.slug}`;
-  }
-
+export const communityPostHref = (
+  post: {
+    readonly id: string;
+    readonly slug: string | null;
+    readonly space?: { readonly slug: string } | null;
+  },
+  returnTo?: string
+) => {
+  let path = `/comunidade/publicacoes/${post.id}`;
   if (post.space) {
-    return `/comunidade/${post.space.slug}/${post.id}`;
+    path = `/comunidade/${post.space.slug}/${post.id}`;
   }
-
-  return `/comunidade/publicacoes/${post.id}`;
+  if (post.slug) {
+    path = `/comunidade/publicacoes/${post.slug}`;
+  }
+  const isSafeReturnPath =
+    returnTo === "/salvos" ||
+    returnTo === "/comunidade" ||
+    returnTo?.startsWith("/comunidade/") === true;
+  if (!isSafeReturnPath) {
+    return path;
+  }
+  const params = new URLSearchParams({ from: returnTo });
+  return `${path}?${params.toString()}`;
 };
 
 type ProfileMap = Awaited<ReturnType<typeof getProfilesByClerkIds>>;
@@ -103,15 +123,127 @@ export const getCommunitySpaces = async (memberId: string) => {
   );
 };
 
-export const getCommunityPresenceProfiles = (memberId: string) =>
-  tracePerformance("member.community.presence-profiles", () =>
-    database.profile.findMany({
-      where: { clerkUserId: { not: memberId } },
-      orderBy: [{ updatedAt: "desc" }, { displayName: "asc" }],
-      take: 24,
-      select: { avatarUrl: true, displayName: true, username: true },
-    })
+export const getCommunitySpaceDirectoryPage = async (
+  memberId: string,
+  {
+    cursor,
+    query,
+    section,
+  }: {
+    readonly cursor?: string;
+    readonly query?: string;
+    readonly section: CommunitySpaceDirectorySection;
+  }
+) => {
+  const role = await getMemberRole(memberId);
+  const where = communitySpaceDirectoryWhere({
+    canModeratePrivateGroups:
+      role === MemberRole.ADMIN || role === MemberRole.TEACHER,
+    memberId,
+    query,
+    section,
+  });
+  const requestedCursor =
+    cursor && communitySpaceDirectoryCursorPattern.test(cursor)
+      ? cursor
+      : undefined;
+  const cursorSpace = requestedCursor
+    ? await tracePerformance("member.community.space-directory.cursor", () =>
+        database.communitySpace.findFirst({
+          where: { AND: [where, { id: requestedCursor }] },
+          select: { id: true },
+        })
+      )
+    : null;
+  const result = await tracePerformance(
+    "member.community.space-directory",
+    () =>
+      database.communitySpace.findMany({
+        where,
+        orderBy: [{ position: "asc" }, { title: "asc" }, { id: "asc" }],
+        take: COMMUNITY_SPACE_DIRECTORY_PAGE_SIZE + 1,
+        ...(cursorSpace ? { cursor: { id: cursorSpace.id }, skip: 1 } : {}),
+        select: {
+          id: true,
+          status: true,
+          title: true,
+          slug: true,
+          description: true,
+          icon: true,
+          coverUrl: true,
+          visibility: true,
+          ownerId: true,
+          members: {
+            where: { memberId },
+            select: { role: true },
+            take: 1,
+          },
+          _count: {
+            select: {
+              members: true,
+              posts: {
+                where: { status: ContentStatus.PUBLISHED, deletedAt: null },
+              },
+            },
+          },
+        },
+      })
   );
+  const hasMore = result.length > COMMUNITY_SPACE_DIRECTORY_PAGE_SIZE;
+  const spaces = result.slice(0, COMMUNITY_SPACE_DIRECTORY_PAGE_SIZE);
+  const lastSpace = spaces.at(-1);
+
+  return {
+    spaces,
+    hasMore,
+    nextCursor: hasMore ? lastSpace?.id : undefined,
+  };
+};
+
+export type CommunitySpaceDirectoryPage = Awaited<
+  ReturnType<typeof getCommunitySpaceDirectoryPage>
+>;
+export type CommunitySpaceDirectoryItem =
+  CommunitySpaceDirectoryPage["spaces"][number];
+
+const safeCommunityAvatarPattern = /^(?:https?:\/\/|\/(?!\/))/i;
+const communityNameInitials = (value: string) =>
+  value
+    .trim()
+    .split(wordPattern)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toLocaleUpperCase("pt-BR") || "M";
+
+export const getCommunityAvatarVisuals = () =>
+  tracePerformance("member.community.avatar-visuals", async () => {
+    const profiles = await database.profile.findMany({
+      where: {
+        showInCommunityAvatars: true,
+        member: { is: { deactivatedAt: null } },
+      },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      take: 40,
+      select: { avatarUrl: true, displayName: true, username: true },
+    });
+    const shuffled = [...profiles];
+    for (let index = shuffled.length - 1; index > 0; index -= 1) {
+      const nextIndex = randomInt(index + 1);
+      [shuffled[index], shuffled[nextIndex]] = [
+        shuffled[nextIndex],
+        shuffled[index],
+      ];
+    }
+    return shuffled.map(({ avatarUrl, displayName, username }) => ({
+      avatarUrl:
+        avatarUrl && safeCommunityAvatarPattern.test(avatarUrl)
+          ? avatarUrl
+          : null,
+      initials: communityNameInitials(displayName?.trim() || username),
+    }));
+  });
 
 export const getLatestCommunityPost = async () =>
   database.communityPost.findFirst({
@@ -135,7 +267,8 @@ export const getLatestCommunityPost = async () =>
   });
 
 interface CommunityFeedOptions {
-  readonly page?: number;
+  readonly cursor?: string;
+  readonly kind?: CommunityPostKind;
   readonly query?: string;
   readonly sort?: "recent" | "popular" | "unanswered";
   readonly spaceSlug?: string;
@@ -155,6 +288,7 @@ const communityFeedSelect = (memberId: string) =>
     status: true,
     isPinned: true,
     isFeatured: true,
+    kind: true,
     publishedAt: true,
     createdAt: true,
     space: { select: { title: true, slug: true } },
@@ -166,9 +300,6 @@ const communityFeedSelect = (memberId: string) =>
   }) as const;
 
 type CommunityFeedSort = NonNullable<CommunityFeedOptions["sort"]>;
-
-const normalizeCommunityPage = (page: number | undefined) =>
-  Number.isInteger(page) && (page ?? 1) > 0 ? (page ?? 1) : 1;
 
 const normalizeCommunitySort = (
   sort: CommunityFeedOptions["sort"]
@@ -199,6 +330,7 @@ const communityFeedWhere = ({
   memberId,
   query,
   sort,
+  kind,
   spaceSlug,
 }: {
   readonly authorIds?: string[];
@@ -206,14 +338,16 @@ const communityFeedWhere = ({
   readonly memberId: string;
   readonly query: string;
   readonly sort: CommunityFeedSort;
+  readonly kind?: CommunityPostKind;
   readonly spaceSlug?: string;
 }): Prisma.CommunityPostWhereInput => ({
   status: ContentStatus.PUBLISHED,
   deletedAt: null,
   ...(spaceSlug
-    ? {}
-    : communityPostAudienceWhere(memberId, canModeratePrivateGroups)),
+    ? { audienceScope: "GROUP" }
+    : communityPostAudienceWhere(memberId, false)),
   ...(sort === "unanswered" ? { comments: { none: { deletedAt: null } } } : {}),
+  ...(kind ? { kind } : {}),
   ...(spaceSlug
     ? {
         space: {
@@ -259,7 +393,7 @@ const communityFeedWhere = ({
 
 const getPopularCommunityPosts = async (
   memberId: string,
-  page: number,
+  cursor: string | undefined,
   where: Prisma.CommunityPostWhereInput
 ) => {
   // Keep the ranking bounded: interactions seed the candidate pool, then the
@@ -326,18 +460,24 @@ const getPopularCommunityPosts = async (
       const leftDate = (left.post.publishedAt ?? left.post.createdAt).getTime();
       return rightDate - leftDate || left.post.id.localeCompare(right.post.id);
     });
-  const start = (page - 1) * POST_PAGE_SIZE;
+  const cursorIndex = cursor
+    ? rankedPosts.findIndex(({ post }) => post.id === cursor)
+    : -1;
+  const start = cursorIndex >= 0 ? cursorIndex + 1 : 0;
+  const visiblePosts = rankedPosts
+    .slice(start, start + POST_PAGE_SIZE)
+    .map(({ post }) => post);
+  const hasMore = rankedPosts.length > start + POST_PAGE_SIZE;
   return {
-    hasMore: rankedPosts.length > start + POST_PAGE_SIZE,
-    visiblePosts: rankedPosts
-      .slice(start, start + POST_PAGE_SIZE)
-      .map(({ post }) => post),
+    hasMore,
+    nextCursor: hasMore ? visiblePosts.at(-1)?.id : undefined,
+    visiblePosts,
   };
 };
 
 const getChronologicalCommunityPosts = async (
   memberId: string,
-  page: number,
+  cursor: string | undefined,
   where: Prisma.CommunityPostWhereInput
 ) => {
   const posts = await database.communityPost.findMany({
@@ -349,13 +489,16 @@ const getChronologicalCommunityPosts = async (
       { createdAt: "desc" },
       { id: "asc" },
     ],
-    skip: (page - 1) * POST_PAGE_SIZE,
+    ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
     take: POST_PAGE_SIZE + 1,
     select: communityFeedSelect(memberId),
   });
+  const visiblePosts = posts.slice(0, POST_PAGE_SIZE);
+  const hasMore = posts.length > POST_PAGE_SIZE;
   return {
-    hasMore: posts.length > POST_PAGE_SIZE,
-    visiblePosts: posts.slice(0, POST_PAGE_SIZE),
+    hasMore,
+    nextCursor: hasMore ? visiblePosts.at(-1)?.id : undefined,
+    visiblePosts,
   };
 };
 
@@ -363,7 +506,7 @@ export const getCommunityFeed = async (
   memberId: string,
   options: CommunityFeedOptions = {}
 ) => {
-  const page = normalizeCommunityPage(options.page);
+  const cursor = options.cursor?.trim().slice(0, 100) || undefined;
   const query = options.query?.trim().slice(0, 100) ?? "";
   const sort = normalizeCommunitySort(options.sort);
   const [authorIds, role] = await tracePerformance(
@@ -381,12 +524,39 @@ export const getCommunityFeed = async (
     memberId,
     query,
     sort,
+    kind: options.kind,
     spaceSlug: options.spaceSlug,
   });
+  if (
+    options.spaceSlug &&
+    (role === MemberRole.ADMIN || role === MemberRole.TEACHER)
+  ) {
+    const privateSpace = await database.communitySpace.findFirst({
+      where: {
+        slug: options.spaceSlug,
+        status: ContentStatus.PUBLISHED,
+        visibility: "PRIVATE",
+      },
+      select: { id: true },
+    });
+    if (privateSpace) {
+      await database.domainEvent.create({
+        data: {
+          eventType: "community.group.private_accessed",
+          actorId: memberId,
+          aggregateType: "CommunitySpace",
+          aggregateId: privateSpace.id,
+          idempotencyKey: `community.group.private_feed_accessed:${privateSpace.id}:${randomUUID()}`,
+          payload: { actorRole: role, surface: "feed" },
+          occurredAt: new Date(),
+        },
+      });
+    }
+  }
   const feed = await tracePerformance("member.community.feed-query", () =>
     sort === "popular"
-      ? getPopularCommunityPosts(memberId, page, where)
-      : getChronologicalCommunityPosts(memberId, page, where)
+      ? getPopularCommunityPosts(memberId, cursor, where)
+      : getChronologicalCommunityPosts(memberId, cursor, where)
   );
 
   const enrichedPosts = await tracePerformance(
@@ -402,7 +572,7 @@ export const getCommunityFeed = async (
       media: extractCommunityMedia(post.contentJson),
       readingMinutes: readingMinutes(post.excerpt ?? ""),
     })),
-    page,
+    nextCursor: feed.nextCursor,
     hasMore: feed.hasMore,
     query,
     sort,
@@ -420,7 +590,18 @@ export const getCommunitySpace = async (
   const space = await database.communitySpace.findFirst({
     where: {
       slug,
-      status: ContentStatus.PUBLISHED,
+      status: { in: [ContentStatus.PUBLISHED, ContentStatus.ARCHIVED] },
+      AND:
+        role === MemberRole.ADMIN || role === MemberRole.TEACHER
+          ? []
+          : [
+              {
+                OR: [
+                  { status: ContentStatus.PUBLISHED },
+                  { status: ContentStatus.ARCHIVED, ownerId: memberId },
+                ],
+              },
+            ],
       ...communitySpaceAudienceWhere(
         memberId,
         role === MemberRole.ADMIN || role === MemberRole.TEACHER
@@ -428,6 +609,7 @@ export const getCommunitySpace = async (
     },
     select: {
       id: true,
+      status: true,
       title: true,
       slug: true,
       description: true,
@@ -441,7 +623,14 @@ export const getCommunitySpace = async (
         select: { id: true, role: true },
         take: 1,
       },
-      _count: { select: { members: true } },
+      _count: {
+        select: {
+          members: true,
+          posts: {
+            where: { status: ContentStatus.PUBLISHED, deletedAt: null },
+          },
+        },
+      },
       commentsClosed: true,
       posts: {
         where: { status: ContentStatus.PUBLISHED, deletedAt: null },
@@ -478,6 +667,35 @@ export const getCommunitySpace = async (
   if (!space) {
     return null;
   }
+  const isStaff = role === MemberRole.ADMIN || role === MemberRole.TEACHER;
+  const isOwner =
+    space.ownerId === memberId || space.members[0]?.role === "OWNER";
+  if (
+    space.visibility === "PRIVATE" &&
+    !canReadPrivateStudyGroup({
+      isOwner,
+      isMember: space.members.length > 0,
+      isStaff,
+    })
+  ) {
+    return null;
+  }
+  if (space.status === ContentStatus.ARCHIVED && !(isOwner || isStaff)) {
+    return null;
+  }
+  if (space.visibility === "PRIVATE" && isStaff) {
+    await database.domainEvent.create({
+      data: {
+        eventType: "community.group.private_accessed",
+        actorId: memberId,
+        aggregateType: "CommunitySpace",
+        aggregateId: space.id,
+        idempotencyKey: `community.group.private_accessed:${space.id}:${randomUUID()}`,
+        payload: { actorRole: role },
+        occurredAt: new Date(),
+      },
+    });
+  }
   const hasMorePosts = space.posts.length > POST_PAGE_SIZE;
   const visiblePosts = space.posts.slice(0, POST_PAGE_SIZE);
   return {
@@ -494,6 +712,31 @@ export const getCommunitySpace = async (
   };
 };
 
+const GROUP_MEMBER_PAGE_SIZE = 30;
+
+export const getCommunitySpaceMembers = async (spaceId: string, page = 1) => {
+  const currentPage = Number.isInteger(page) && page > 0 ? page : 1;
+  const rows = await database.communitySpaceMember.findMany({
+    where: { spaceId },
+    orderBy: [{ role: "asc" }, { joinedAt: "asc" }, { id: "asc" }],
+    skip: (currentPage - 1) * GROUP_MEMBER_PAGE_SIZE,
+    take: GROUP_MEMBER_PAGE_SIZE + 1,
+    select: {
+      id: true,
+      memberId: true,
+      role: true,
+      joinedAt: true,
+      member: { select: { displayName: true, avatarUrl: true, role: true } },
+    },
+  });
+  const hasMore = rows.length > GROUP_MEMBER_PAGE_SIZE;
+  return {
+    members: rows.slice(0, GROUP_MEMBER_PAGE_SIZE),
+    page: currentPage,
+    hasMore,
+  };
+};
+
 const communityPostSelect = {
   id: true,
   title: true,
@@ -504,6 +747,7 @@ const communityPostSelect = {
   contentJson: true,
   tags: true,
   coverUrl: true,
+  ...communityCoverAltSelect,
   authorId: true,
   isPinned: true,
   isFeatured: true,
@@ -513,7 +757,13 @@ const communityPostSelect = {
   updatedAt: true,
   editedAt: true,
   space: {
-    select: { id: true, title: true, slug: true, commentsClosed: true },
+    select: {
+      id: true,
+      title: true,
+      slug: true,
+      commentsClosed: true,
+      visibility: true,
+    },
   },
   _count: {
     select: { comments: { where: { deletedAt: null } }, votes: true },
@@ -539,6 +789,7 @@ const getPublishedPost = async (
     role === MemberRole.ADMIN || role === MemberRole.TEACHER;
   const audienceWhere: Prisma.CommunityPostWhereInput = where.spaceSlug
     ? {
+        audienceScope: "GROUP",
         space: {
           is: {
             slug: where.spaceSlug,
@@ -549,7 +800,7 @@ const getPublishedPost = async (
       }
     : communityPostAudienceWhere(memberId, canModeratePrivateGroups);
 
-  return database.communityPost.findFirst({
+  const post = await database.communityPost.findFirst({
     where: {
       AND: [
         identityWhere,
@@ -567,6 +818,20 @@ const getPublishedPost = async (
       },
     },
   });
+  if (post?.space?.visibility === "PRIVATE" && canModeratePrivateGroups) {
+    await database.domainEvent.create({
+      data: {
+        eventType: "community.group.private_post_accessed",
+        actorId: memberId,
+        aggregateType: "CommunitySpace",
+        aggregateId: post.space.id,
+        idempotencyKey: `community.group.private_post_accessed:${post.id}:${randomUUID()}`,
+        payload: { actorRole: role, postId: post.id },
+        occurredAt: new Date(),
+      },
+    });
+  }
+  return post;
 };
 
 const getPostWithComments = async (
@@ -707,6 +972,133 @@ export const getCommunityPostBySlug = async (
   return getPostWithComments(post, memberId, resolvedCommentsPage);
 };
 
+const communityPostShareSummary = (
+  value: string | null | undefined,
+  maxLength = 280
+) => {
+  if (!value) {
+    return "";
+  }
+  return value
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\p{Cc}/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, maxLength);
+};
+
+const communityPostShareOgDescription = (value: string) => {
+  const callToAction = " Entre na discussão no Interprete.";
+  const excerpt = communityPostShareSummary(
+    value,
+    140 - callToAction.length
+  ).trimEnd();
+  return excerpt
+    ? `${excerpt}${callToAction}`
+    : "Acesse o Interprete para continuar a conversa.";
+};
+
+const communityPostShareAuthor = async (authorId: string) => {
+  const profile = await database.profile.findUnique({
+    where: { clerkUserId: authorId },
+    select: { displayName: true, username: true },
+  });
+  return (
+    profile?.displayName?.trim() || profile?.username || "Membro da Comunidade"
+  );
+};
+
+export const getCommunityPostShareDetails = async (
+  postId: string,
+  memberId: string
+) => {
+  const post = await getPublishedPost({ id: postId }, memberId);
+  if (!post) {
+    return null;
+  }
+  const summary = communityPostShareSummary(
+    post.excerpt || post.subtitle || post.content
+  );
+  return {
+    authorName: await communityPostShareAuthor(post.authorId),
+    coverUrl: normalizeCommunityCoverUrl(post.coverUrl),
+    coverAltText: communityPostShareSummary(post.coverAltText, 160),
+    description: summary,
+    bodyExcerpt: communityPostShareSummary(post.content, 720),
+    href: communityPostHref(post),
+    isPrivate: post.space?.visibility === "PRIVATE",
+    metaDescription: communityPostShareOgDescription(summary),
+    postId: post.id,
+    publishedAt: post.publishedAt,
+    slug: post.slug,
+    spaceVisibility: post.space?.visibility ?? null,
+    subtitle: communityPostShareSummary(post.subtitle, 240),
+    tags: post.tags.slice(0, 5),
+    title: post.title,
+    commentCount: post._count.comments,
+  };
+};
+
+export const getPublicCommunityPostShareDetails = async (postId: string) => {
+  const post = await database.communityPost.findFirst({
+    where: {
+      id: postId,
+      status: ContentStatus.PUBLISHED,
+      deletedAt: null,
+      OR: [
+        { audienceScope: "GLOBAL" },
+        {
+          audienceScope: "GROUP",
+          space: {
+            is: { status: ContentStatus.PUBLISHED, visibility: "PUBLIC" },
+          },
+        },
+      ],
+    },
+    select: {
+      id: true,
+      authorId: true,
+      title: true,
+      subtitle: true,
+      excerpt: true,
+      content: true,
+      tags: true,
+      coverUrl: true,
+      coverAltText: true,
+      publishedAt: true,
+      slug: true,
+      space: { select: { slug: true, visibility: true } },
+      _count: {
+        select: { comments: { where: { deletedAt: null } } },
+      },
+    },
+  });
+  if (!post) {
+    return null;
+  }
+  const summary = communityPostShareSummary(
+    post.excerpt || post.subtitle || post.content
+  );
+  return {
+    authorName: await communityPostShareAuthor(post.authorId),
+    coverUrl: normalizeCommunityCoverUrl(post.coverUrl),
+    coverAltText: communityPostShareSummary(post.coverAltText, 160),
+    description: summary,
+    bodyExcerpt: communityPostShareSummary(post.content, 720),
+    href: communityPostHref(post),
+    isPrivate: false,
+    metaDescription: communityPostShareOgDescription(summary),
+    postId: post.id,
+    publishedAt: post.publishedAt,
+    slug: post.slug,
+    spaceVisibility: post.space?.visibility ?? null,
+    subtitle: communityPostShareSummary(post.subtitle, 240),
+    tags: post.tags.slice(0, 5),
+    title: post.title,
+    commentCount: post._count.comments,
+  };
+};
+
 export const getCommunityEditorPost = async (
   postId: string,
   memberId: string
@@ -740,9 +1132,16 @@ export const getCommunityEditorPost = async (
   };
 };
 
-export const getMyCommunityPosts = async (memberId: string) => {
+export const getMyCommunityPosts = async (
+  memberId: string,
+  status?: ContentStatus
+) => {
   const posts = await database.communityPost.findMany({
-    where: { authorId: memberId, deletedAt: null },
+    where: {
+      authorId: memberId,
+      deletedAt: null,
+      ...(status ? { status } : {}),
+    },
     orderBy: { updatedAt: "desc" },
     take: 100,
     select: {
@@ -755,6 +1154,7 @@ export const getMyCommunityPosts = async (memberId: string) => {
       tags: true,
       authorId: true,
       coverUrl: true,
+      ...communityCoverAltSelect,
       isPinned: true,
       isFeatured: true,
       createdAt: true,
@@ -778,50 +1178,244 @@ export const getMyCommunityPosts = async (memberId: string) => {
   );
 };
 
-export const getSavedCommunityPosts = async (memberId: string) => {
-  const role = await getMemberRole(memberId);
-  const bookmarks = await database.communityBookmark.findMany({
+export type CommunityPublicationSort = "recent" | "oldest" | "title";
+
+const MY_PUBLICATIONS_PAGE_SIZE = 20;
+const COMMUNITY_PUBLICATIONS_CURSOR_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
+
+export const getMyCommunityPublicationCounts = async (memberId: string) => {
+  const rows = await database.communityPost.groupBy({
+    by: ["status"],
+    where: { authorId: memberId, deletedAt: null },
+    _count: { _all: true },
+  });
+  const counts = { archived: 0, drafts: 0, published: 0 };
+  for (const row of rows) {
+    if (row.status === ContentStatus.PUBLISHED) {
+      counts.published = row._count._all;
+    } else if (row.status === ContentStatus.DRAFT) {
+      counts.drafts = row._count._all;
+    } else if (row.status === ContentStatus.ARCHIVED) {
+      counts.archived = row._count._all;
+    }
+  }
+  return counts;
+};
+
+export const getMyCommunityPublicationPage = async (
+  memberId: string,
+  options: {
+    readonly cursor?: string;
+    readonly query?: string;
+    readonly sort?: CommunityPublicationSort;
+    readonly status: ContentStatus;
+  }
+) => {
+  const take = MY_PUBLICATIONS_PAGE_SIZE;
+  const cursor = options.cursor?.match(COMMUNITY_PUBLICATIONS_CURSOR_PATTERN)
+    ? options.cursor
+    : undefined;
+  const query = options.query?.trim().slice(0, 100) ?? "";
+  let orderBy: Prisma.CommunityPostOrderByWithRelationInput[];
+  if (options.sort === "title") {
+    orderBy = [{ title: "asc" }, { id: "asc" }];
+  } else if (options.sort === "oldest") {
+    orderBy = [{ updatedAt: "asc" }, { id: "asc" }];
+  } else {
+    orderBy = [{ updatedAt: "desc" }, { id: "desc" }];
+  }
+  const rows = await database.communityPost.findMany({
     where: {
-      memberId,
-      post: {
-        status: ContentStatus.PUBLISHED,
-        deletedAt: null,
-        ...communityPostAudienceWhere(
-          memberId,
-          role === MemberRole.ADMIN || role === MemberRole.TEACHER
-        ),
-      },
+      authorId: memberId,
+      deletedAt: null,
+      status: options.status,
+      ...(query
+        ? {
+            OR: [
+              { title: { contains: query, mode: "insensitive" as const } },
+              { subtitle: { contains: query, mode: "insensitive" as const } },
+              { excerpt: { contains: query, mode: "insensitive" as const } },
+            ],
+          }
+        : {}),
     },
-    orderBy: { createdAt: "desc" },
-    take: 100,
+    orderBy,
+    ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+    take: take + 1,
     select: {
+      id: true,
+      title: true,
+      subtitle: true,
+      slug: true,
+      excerpt: true,
+      status: true,
+      tags: true,
+      authorId: true,
+      coverUrl: true,
+      ...communityCoverAltSelect,
+      isPinned: true,
+      isFeatured: true,
       createdAt: true,
-      post: {
-        select: {
-          id: true,
-          title: true,
-          subtitle: true,
-          slug: true,
-          excerpt: true,
-          tags: true,
-          publishedAt: true,
-          createdAt: true,
-          authorId: true,
-          space: { select: { title: true, slug: true } },
-          _count: {
-            select: { comments: { where: { deletedAt: null } }, votes: true },
-          },
-        },
+      publishedAt: true,
+      updatedAt: true,
+      space: { select: { title: true, slug: true } },
+      _count: {
+        select: { comments: { where: { deletedAt: null } }, votes: true },
       },
+      votes: { where: { memberId }, select: { id: true } },
+      bookmarks: { where: { memberId }, select: { id: true } },
     },
   });
+  const hasMore = rows.length > take;
+  const pageRows = hasMore ? rows.slice(0, take) : rows;
+  return {
+    nextCursor: hasMore ? (pageRows.at(-1)?.id ?? null) : null,
+    posts: await enrichAuthors(
+      pageRows.map((post) => ({
+        ...post,
+        coverUrl: normalizeCommunityCoverUrl(post.coverUrl),
+        excerpt: post.excerpt ?? "",
+        readingMinutes: readingMinutes(post.excerpt ?? ""),
+      }))
+    ),
+  };
+};
 
-  const posts = bookmarks.map(({ createdAt: savedAt, post }) => ({
+export const getStaffDeletedCommunityPosts = async () => {
+  await requireStaff();
+  const recoverableSince = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  return database.communityPost.findMany({
+    where: { deletedAt: { gte: recoverableSince, lte: new Date() } },
+    orderBy: { deletedAt: "desc" },
+    take: 50,
+    select: {
+      id: true,
+      title: true,
+      authorId: true,
+      status: true,
+      deletedAt: true,
+      space: { select: { title: true, slug: true } },
+    },
+  });
+};
+
+export const getSavedCommunityPosts = async (
+  memberId: string,
+  options: {
+    readonly cursor?: string;
+    readonly kind?: CommunityPostKind;
+    readonly query?: string;
+    readonly sort?: CommunityFeedOptions["sort"];
+    readonly spaceSlug?: string;
+    readonly take?: number;
+  } = {}
+) => {
+  const pageSize = options.take ?? 100;
+  const query = options.query?.trim().slice(0, 100) ?? "";
+  const sort = normalizeCommunitySort(options.sort);
+  const authorIds = await findMatchingCommunityAuthorIds(query);
+  const where: Prisma.CommunityBookmarkWhereInput = {
+    memberId,
+    post: {
+      is: {
+        status: ContentStatus.PUBLISHED,
+        deletedAt: null,
+        ...communityPostAudienceWhere(memberId, false),
+        ...(options.kind ? { kind: options.kind } : {}),
+        ...(sort === "unanswered"
+          ? { comments: { none: { deletedAt: null } } }
+          : {}),
+        ...(options.spaceSlug
+          ? {
+              space: {
+                is: {
+                  slug: options.spaceSlug,
+                  status: ContentStatus.PUBLISHED,
+                  ...communitySpaceAudienceWhere(memberId, false),
+                },
+              },
+            }
+          : {}),
+        ...(query
+          ? {
+              OR: [
+                { title: { contains: query, mode: "insensitive" } },
+                { subtitle: { contains: query, mode: "insensitive" } },
+                { excerpt: { contains: query, mode: "insensitive" } },
+                { tags: { has: query.toLowerCase() } },
+                ...(authorIds?.length ? [{ authorId: { in: authorIds } }] : []),
+              ],
+            }
+          : {}),
+      },
+    },
+  };
+  const [bookmarks, totalCount] = await Promise.all([
+    database.communityBookmark.findMany({
+      where,
+      orderBy:
+        sort === "popular"
+          ? [
+              { post: { isFeatured: "desc" } },
+              { post: { isPinned: "desc" } },
+              { post: { votes: { _count: "desc" } } },
+              { post: { comments: { _count: "desc" } } },
+              { post: { publishedAt: "desc" } },
+              { post: { createdAt: "desc" } },
+              { id: "asc" },
+            ]
+          : [{ createdAt: "desc" }, { id: "desc" }],
+      ...(options.cursor ? { cursor: { id: options.cursor }, skip: 1 } : {}),
+      take: pageSize + 1,
+      select: {
+        id: true,
+        createdAt: true,
+        post: { select: communityFeedSelect(memberId) },
+      },
+    }),
+    database.communityBookmark.count({ where }),
+  ]);
+  const visibleBookmarks = bookmarks.slice(0, pageSize);
+  const posts = visibleBookmarks.map(({ createdAt: savedAt, post }) => ({
     ...post,
+    coverUrl: normalizeCommunityCoverUrl(post.coverUrl),
     excerpt: post.excerpt ?? "",
+    media: extractCommunityMedia(post.contentJson),
+    readingMinutes: readingMinutes(post.excerpt ?? ""),
     savedAt,
   }));
-  return enrichAuthors(posts);
+  return {
+    posts: await enrichAuthors(posts),
+    hasMore: bookmarks.length > pageSize,
+    totalCount,
+    nextCursor:
+      bookmarks.length > pageSize ? visibleBookmarks.at(-1)?.id : undefined,
+  };
+};
+
+export const auditStaffPrivateCommunityAccess = async (
+  actorId: string,
+  actorRole: MemberRole
+) => {
+  const privateSpaces = await database.communitySpace.findMany({
+    where: { visibility: "PRIVATE" },
+    select: { id: true },
+  });
+  if (privateSpaces.length === 0) {
+    return;
+  }
+  const occurredAt = new Date();
+  await database.domainEvent.createMany({
+    data: privateSpaces.map(({ id }) => ({
+      eventType: "community.group.private_accessed",
+      actorId,
+      aggregateType: "CommunitySpace",
+      aggregateId: id,
+      idempotencyKey: `community.group.private_admin_index:${id}:${actorId}:${randomUUID()}`,
+      payload: { actorRole, surface: "admin-index" },
+      occurredAt,
+    })),
+  });
 };
 
 export const getStaffCommunitySpaces = async () =>

@@ -1,0 +1,63 @@
+{
+  "sourceSha": "4e026b59eb99521ed1c6b94c8444a52049d317c6",
+  "remoteApplied": 65,
+  "remoteChecksumDrift": [],
+  "expectedAfterApply": 76,
+  "pending": [
+    {
+      "order": 1,
+      "name": "20261020190000_community_publication_ux",
+      "sha256": "86cc22a872276ce6903ffb61d3f144b2e2efcb14e6b441c85c6b7c5c7dbc2ff8"
+    },
+    {
+      "order": 2,
+      "name": "20261021120000_community_group_moderation",
+      "sha256": "b9099cdb49aace5cfd763511da5b0aab66165fc4120f1a66a69e92fdead6d2f2"
+    },
+    {
+      "order": 3,
+      "name": "20261021130000_community_group_invite_links",
+      "sha256": "055505a15d8fe3ee4e41c955ec737a0041f4e30187f6799ea096694eb181a415"
+    },
+    {
+      "order": 4,
+      "name": "20261021140000_community_group_invitation_pending_unique",
+      "sha256": "ea33eac17d953d43e3acd04ef5c471227e2e413b6033061ff8dab4826fca9708"
+    },
+    {
+      "order": 5,
+      "name": "20261022130000_community_post_share_links",
+      "sha256": "d845bbf85d2ef9138862b41fec05eb11489433490bbf85d9801da62cb4afbeff"
+    },
+    {
+      "order": 6,
+      "name": "20261022140000_community_announcement_integration",
+      "sha256": "7d69b2bdd3e1ad8bb7c9cd000a10f79660f29f4948119172fce1435d753d220e"
+    },
+    {
+      "order": 7,
+      "name": "20261022150000_community_collective_goal",
+      "sha256": "dc8c2029703fd1aae6e80df25c4606ec813bcd1fc638389019ac0aeda4f85442"
+    },
+    {
+      "order": 8,
+      "name": "20261023110000_notification_community_audience",
+      "sha256": "f7b628c32ed4c05c0acb7f42cf4c2da077eef912d8a376f5c6d8ff45dd01e554"
+    },
+    {
+      "order": 9,
+      "name": "20261023120000_notification_community_audience_fail_closed",
+      "sha256": "837d8a6175120d25ee681ce9d09f90da526d2f85ade90a93d15cb90631dcc559"
+    },
+    {
+      "order": 10,
+      "name": "20261023130000_community_post_audience_scope",
+      "sha256": "6a6b825c2f34fb2202ab4269edd7d52c2b07380b652c7848177fc1ad070ecb58"
+    },
+    {
+      "order": 11,
+      "name": "20261023140000_notification_audience_reconcile",
+      "sha256": "d9fcad34bc0bd88a03cee39153dbcbccae44537d914e5ea5ef03b73848d99df2"
+    }
+  ]
+}

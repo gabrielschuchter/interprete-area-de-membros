@@ -11,11 +11,13 @@ import {
   getCommunityEditorPost,
   getCommunitySpaces,
 } from "@/lib/community";
+import { communityCoverAltEnabled } from "@/lib/community-cover-alt";
+import { safeCommunityReturnPath } from "@/lib/community-return-path";
 import { requireMemberId } from "@/lib/learning";
 
 interface CommunityEditorPageProperties {
   readonly params: Promise<{ postId: string }>;
-  readonly searchParams: Promise<{ preview?: string }>;
+  readonly searchParams: Promise<{ from?: string; preview?: string }>;
 }
 
 const emptyDocument: JSONContent = {
@@ -40,17 +42,22 @@ const CommunityEditorPage = async ({
   }
 
   const document = (post.contentJson as JSONContent | null) ?? emptyDocument;
-  const backHref =
-    post.status === "PUBLISHED"
-      ? communityPostHref(post)
-      : "/comunidade/meus-topicos";
+  const contextualReturn = safeCommunityReturnPath(filters.from);
+  let defaultReturn = "/comunidade/minhas-publicacoes?status=drafts";
+  if (post.status === "PUBLISHED") {
+    defaultReturn = communityPostHref(post);
+  } else if (post.status === "ARCHIVED") {
+    defaultReturn = "/comunidade/minhas-publicacoes?status=archived";
+  }
+  const backHref = contextualReturn ?? defaultReturn;
+  const editHref = `/comunidade/editor/${post.id}?${new URLSearchParams({ from: backHref }).toString()}`;
 
   if (filters.preview === "1") {
     return (
       <div className="min-h-svh bg-background">
         <main className="community-post-shell mx-auto w-full">
           <Button asChild className="community-post-back" variant="ghost">
-            <Link href={`/comunidade/editor/${post.id}`}>
+            <Link href={editHref}>
               <ArrowLeftIcon aria-hidden="true" /> Voltar para a edição
             </Link>
           </Button>
@@ -89,7 +96,7 @@ const CommunityEditorPage = async ({
             {post.coverUrl && (
               // biome-ignore lint/performance/noImgElement: cover URLs are sanitized user content and may come from hosts not configured for next/image.
               <img
-                alt=""
+                alt={post.coverAltText || `Capa: ${post.title}`}
                 className="community-post-cover"
                 height={630}
                 src={post.coverUrl}
@@ -111,15 +118,24 @@ const CommunityEditorPage = async ({
         <h1 className="sr-only">Escrever publicação</h1>
         <CommunityComposer
           backHref={backHref}
+          enableCoverAltText={communityCoverAltEnabled}
+          idempotencyKey=""
           initialContent={document}
+          initialCoverAltText={post.coverAltText ?? ""}
           initialCoverUrl={post.coverUrl}
           initialSpaceId={post.space?.id ?? null}
           initialSpaceSlug={post.space?.slug ?? null}
           initialSubtitle={post.subtitle}
           initialTags={post.tags}
           initialTitle={post.title}
+          initialUpdatedAt={post.updatedAt.toISOString()}
           postId={post.id}
-          spaces={spaces.map(({ id, slug, title }) => ({ id, slug, title }))}
+          spaces={spaces.map(({ id, slug, title, visibility }) => ({
+            id,
+            slug,
+            title,
+            visibility,
+          }))}
           status={post.status}
         />
       </main>

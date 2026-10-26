@@ -1,0 +1,68 @@
+{
+  "scope": "PR #16 activation only; conditional user authorization",
+  "recordedAt": "2026-10-23T20:24:00Z",
+  "preMergeGuard": {
+    "mechanism": "Disconnect Git repository separately on App and API projects; reload and verify disconnected before merge",
+    "app": "prj_bwG8vDd4x2flyPaRMq8HEvi7t5Lj",
+    "api": "prj_LzsMnY95oPtOdp6KUwUaPRQ5lfh6",
+    "bothDisconnectedBeforeMerge": true,
+    "deployHooksBeforeDisconnect": 0,
+    "mainWorkflows": [".github/workflows/community-v2-preview-outbox.yml"],
+    "originalProductionBranch": "main",
+    "originalAutoAssignProductionDomains": true,
+    "ignoredBuildAndSkipCiNotUsedAsGuarantee": true,
+    "gitLeftDisconnected": true,
+    "reconnectionRequiresControlledHandoff": true
+  },
+  "merge": {
+    "pullRequest": "https://github.com/gabrielschuchter/interprete-area-de-membros/pull/16",
+    "approvedHead": "1cb2660fbd1aec9070460d32858d056dbe853032",
+    "base": "7a7c8e4d0167490308f54bb8d79b3577c2f0aaa6",
+    "commit": "b5a2f067d75adf16bf84193ecea290c1bd318f5e",
+    "mergedAt": "2026-10-23T20:19:37Z",
+    "files": [".github/workflows/community-v2-preview-outbox.yml"],
+    "additions": 41,
+    "deletions": 0
+  },
+  "productionBeforeAndAfter": {
+    "app": {
+      "deployment": "67N5ST2Dn3NR5XF2n4aekveAaXWF",
+      "source": "7a7c8e4d0167490308f54bb8d79b3577c2f0aaa6",
+      "alias": "interprete-area-de-membros-app.vercel.app",
+      "unchanged": true
+    },
+    "api": {
+      "deployment": "XQRUb541CcFFTLhGodnXokBtDMcc",
+      "source": "6c7b49a3fecab3bda8e2f6ad41789972ad711dd9",
+      "alias": "interprete-area-de-membros-api.vercel.app",
+      "unchanged": true
+    },
+    "deploymentForMergedShaObserved": false,
+    "promotionExecuted": false
+  },
+  "unchanged": [
+    "credentials",
+    "GREEN cron",
+    "Trusted Source",
+    "authentication policies",
+    "product deployments",
+    "migrations"
+  ],
+  "browserEvidenceDirectory": "C:/Users/gabsc/AppData/Local/Codex/qa/community-v2-foundation-20261015/ops01-guard-20261023",
+  "nextRealScheduleObservation": {
+    "state": "DIAGNOSTIC_OBTAINED_MONITOR_DELETED",
+    "firstDiagnosticRun": 40036220515,
+    "firstDiagnosticRunAt": "2026-10-23T22:51:14Z",
+    "resultEvidence": "first-scheduled-diagnostic.json",
+    "lastPrePatchRun": 40014660675,
+    "lastPrePatchRunAt": "2026-10-23T19:51:09Z",
+    "observedFailures": 49,
+    "observedSuccesses": 0,
+    "workflowState": "active",
+    "observedCadenceHours": "2-6",
+    "heartbeatId": "ops-01-pr-ximo-schedule-ap-s-pr-16",
+    "checkIntervalMinutes": 5,
+    "stopAfterDiagnostic": true,
+    "manualDispatchOrWorkerCall": false
+  }
+}

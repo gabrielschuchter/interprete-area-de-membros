@@ -1,5 +1,6 @@
 import "server-only";
 
+import { randomUUID } from "node:crypto";
 import { database, MemberRole } from "@repo/database";
 import {
   isMemberAssetPath,
@@ -151,6 +152,44 @@ const hasPublishedLearningPathCoverReference = async (path: string) => {
   return Boolean(learningPath);
 };
 
+const hasReadableGroupCoverReference = async (
+  path: string,
+  memberId: string
+) => {
+  const url = memberAssetUrl(path);
+  const references = await database.$queryRaw<Array<{ allowed: boolean }>>`
+    SELECT (
+      (
+        s."status" = 'PUBLISHED'
+        AND (
+          s."visibility" = 'PUBLIC'
+          OR s."ownerId" = ${memberId}
+          OR EXISTS (
+            SELECT 1 FROM "CommunitySpaceMember" membership
+            WHERE membership."spaceId" = s."id"
+              AND membership."memberId" = ${memberId}
+          )
+        )
+      )
+      OR (
+        s."status" = 'ARCHIVED'
+        AND (
+          s."ownerId" = ${memberId}
+          OR EXISTS (
+            SELECT 1 FROM "CommunitySpaceMember" membership
+            WHERE membership."spaceId" = s."id"
+              AND membership."memberId" = ${memberId}
+          )
+        )
+      )
+    ) AS "allowed"
+    FROM "CommunitySpace" s
+    WHERE s."coverUrl" = ${url}
+    LIMIT 1
+  `;
+  return references[0]?.allowed ?? null;
+};
+
 const canReadProfileAvatar = async (path: string, memberId: string) => {
   const ownerId = ownerIdFromPath(path, profileAvatarPrefix);
   if (!ownerId) {
@@ -200,6 +239,75 @@ const canReadLibraryAsset = async (path: string, memberId: string) => {
   return item?.status === "PUBLISHED" || item?.createdBy === memberId;
 };
 
+const auditStaffGroupCoverRead = async (
+  path: string,
+  memberId: string,
+  role: MemberRole
+) => {
+  if (!path.startsWith(communityCoverPrefix)) {
+    return;
+  }
+  const group = await database.communitySpace.findFirst({
+    where: {
+      coverUrl: memberAssetUrl(path),
+      visibility: "PRIVATE",
+      status: { in: ["PUBLISHED", "ARCHIVED"] },
+    },
+    select: { id: true },
+  });
+  if (!group) {
+    return;
+  }
+  await database.domainEvent.create({
+    data: {
+      eventType: "community.group.private_cover_accessed",
+      actorId: memberId,
+      aggregateType: "CommunitySpace",
+      aggregateId: group.id,
+      idempotencyKey: `community.group.private_cover_accessed:${group.id}:${randomUUID()}`,
+      payload: { actorRole: role },
+      occurredAt: new Date(),
+    },
+  });
+};
+
+const communityPrefixForPath = (path: string) => {
+  if (path.startsWith(communityCoverPrefix)) {
+    return communityCoverPrefix;
+  }
+  if (path.startsWith(communityInlinePrefix)) {
+    return communityInlinePrefix;
+  }
+  if (path.startsWith(communityAttachmentPrefix)) {
+    return communityAttachmentPrefix;
+  }
+  return null;
+};
+
+const canReadCommunityAsset = async (path: string, memberId: string) => {
+  const communityPrefix = communityPrefixForPath(path);
+  if (!communityPrefix) {
+    return false;
+  }
+  const ownerId = ownerIdFromPath(path, communityPrefix);
+  const groupCoverAccess =
+    communityPrefix === communityCoverPrefix
+      ? await hasReadableGroupCoverReference(path, memberId)
+      : null;
+  if (groupCoverAccess !== null) {
+    return groupCoverAccess;
+  }
+  // The uploader may read a draft while saving; persisted assets follow their audience.
+  return (
+    ownerId === memberId ||
+    (communityPrefix === communityCoverPrefix &&
+      (await hasPublishedCollectionCoverReference(path, memberId))) ||
+    (communityPrefix === communityCoverPrefix &&
+      (await hasPublishedLearningPathCoverReference(path))) ||
+    hasPublishedCommunityReference(path, memberId)
+  );
+};
+
 /**
  * Central read authorization for the private member-assets bucket.
  *
@@ -226,6 +334,7 @@ export const canReadMemberAssetPath = async (
   }
 
   if (isStaffRole(member.role)) {
+    await auditStaffGroupCoverRead(path, memberId, member.role);
     return true;
   }
 
@@ -233,29 +342,8 @@ export const canReadMemberAssetPath = async (
     return canReadProfileAvatar(path, memberId);
   }
 
-  if (
-    path.startsWith(communityCoverPrefix) ||
-    path.startsWith(communityInlinePrefix) ||
-    path.startsWith(communityAttachmentPrefix)
-  ) {
-    let communityPrefix = communityAttachmentPrefix;
-    if (path.startsWith(communityCoverPrefix)) {
-      communityPrefix = communityCoverPrefix;
-    } else if (path.startsWith(communityInlinePrefix)) {
-      communityPrefix = communityInlinePrefix;
-    }
-    const ownerId = ownerIdFromPath(path, communityPrefix);
-
-    // Keep the upload-to-save experience working for the author while a draft
-    // is still being persisted. Other members need a real visible reference.
-    return (
-      ownerId === memberId ||
-      (communityPrefix === communityCoverPrefix &&
-        (await hasPublishedCollectionCoverReference(path, memberId))) ||
-      (communityPrefix === communityCoverPrefix &&
-        (await hasPublishedLearningPathCoverReference(path))) ||
-      hasPublishedCommunityReference(path, memberId)
-    );
+  if (communityPrefixForPath(path)) {
+    return canReadCommunityAsset(path, memberId);
   }
 
   if (path.startsWith(activitySubmissionPrefix)) {

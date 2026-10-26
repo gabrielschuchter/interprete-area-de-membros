@@ -23,6 +23,8 @@ export const env = createEnv({
     YOUTUBE_DEVELOPMENT_ADAPTER: z.enum(["true", "false"]).default("false"),
     CRON_SECRET: z.string().min(32).optional(),
     APP_WRITE_FREEZE: z.enum(["true", "false"]).default("false"),
+    OUTBOX_QUEUE_NAMESPACE: z.enum(["preview"]).optional(),
+    OUTBOX_PREVIEW_MEMBER_IDS: z.string().optional(),
     GESTAO_V2_ENABLED: z.enum(["true", "false"]).default("false"),
     UPLOADS_PAUSED_FOR_ROLLBACK: z.enum(["true", "false"]).default("false"),
     GESTAO_VIDEO_MAX_UPLOAD_BYTES: z.coerce
@@ -39,6 +41,8 @@ export const env = createEnv({
     YOUTUBE_DEVELOPMENT_ADAPTER: process.env.YOUTUBE_DEVELOPMENT_ADAPTER,
     CRON_SECRET: process.env.CRON_SECRET,
     APP_WRITE_FREEZE: process.env.APP_WRITE_FREEZE,
+    OUTBOX_QUEUE_NAMESPACE: process.env.OUTBOX_QUEUE_NAMESPACE,
+    OUTBOX_PREVIEW_MEMBER_IDS: process.env.OUTBOX_PREVIEW_MEMBER_IDS,
     GESTAO_V2_ENABLED: process.env.GESTAO_V2_ENABLED,
     UPLOADS_PAUSED_FOR_ROLLBACK: process.env.UPLOADS_PAUSED_FOR_ROLLBACK,
     GESTAO_VIDEO_MAX_UPLOAD_BYTES: process.env.GESTAO_VIDEO_MAX_UPLOAD_BYTES,

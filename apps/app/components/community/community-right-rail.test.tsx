@@ -3,8 +3,13 @@ import type { ReactNode } from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { CommunityRightRail } from "./community-right-rail";
 
+vi.mock("@/app/(authenticated)/comunidade/announcements-actions", () => ({
+  dismissCommunityAnnouncement: vi.fn(async () => "dismissed"),
+}));
+
 const clinicalSpaceName = /Prática clínica/;
 const announcementName = /Roda de discussão/;
+const onlineStatusPattern = /online|membros ativos|ativo agora/i;
 
 vi.mock("next/link", () => ({
   default: ({
@@ -28,12 +33,6 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => ({ toString: () => "" }),
 }));
 
-vi.mock("./community-presence", () => ({
-  CommunityPresence: () => (
-    <div data-testid="mock-community-presence">2 membros online</div>
-  ),
-}));
-
 describe("CommunityRightRail", () => {
   afterEach(() => {
     cleanup();
@@ -49,15 +48,12 @@ describe("CommunityRightRail", () => {
             groupKey: "announcement:1",
             href: "/encontros",
             id: "announcement-1",
+            version: 1,
             title: "Roda de discussão",
           },
         ]}
-        memberId="ana-id"
-        profile={{
-          avatarUrl: null,
-          displayName: "Ana",
-          username: "ana",
-        }}
+        avatars={[{ avatarUrl: null, initials: "A" }]}
+        goalCard={<div data-testid="goal-summary">Meta coletiva</div>}
         spaces={[
           {
             _count: { posts: 12 },
@@ -75,16 +71,18 @@ describe("CommunityRightRail", () => {
         .map((heading) => heading.textContent)
     ).toEqual([
       "Sobre a comunidade",
-      "Ativo agora",
+      "Pessoas da comunidade",
       "Grupos de estudo",
       "Avisos",
     ]);
-    expect(screen.getByTestId("mock-community-presence").textContent).toContain(
-      "2 membros online"
-    );
+    expect(screen.getByTestId("goal-summary")).toBeTruthy();
+    expect(
+      screen.getByTestId("community-avatars").getAttribute("aria-hidden")
+    ).toBe("true");
+    expect(screen.queryByText(onlineStatusPattern)).toBeNull();
     expect(
       screen.getByRole("link", { name: clinicalSpaceName }).getAttribute("href")
-    ).toBe("/comunidade/pratica-clinica");
+    ).toBe("/comunidade/grupos/pratica-clinica");
     expect(
       screen.getByRole("link", { name: announcementName }).getAttribute("href")
     ).toBe("/encontros");
@@ -94,8 +92,8 @@ describe("CommunityRightRail", () => {
     render(
       <CommunityRightRail
         announcements={[]}
-        memberId="ana-id"
-        profile={null}
+        avatars={[]}
+        goalCard={<div data-testid="goal-summary">Meta coletiva</div>}
         spaces={[]}
       />
     );
@@ -104,12 +102,12 @@ describe("CommunityRightRail", () => {
     expect(screen.getByText("Nenhum grupo publicado ainda.")).toBeTruthy();
   });
 
-  test("keeps mobile context disclosures independent and accessible", () => {
+  test("opens approved community guidance by default and keeps notices independent", () => {
     render(
       <CommunityRightRail
         announcements={[]}
-        memberId="ana-id"
-        profile={null}
+        avatars={[]}
+        goalCard={<div data-testid="goal-summary">Meta coletiva</div>}
         spaces={[]}
       />
     );
@@ -119,11 +117,13 @@ describe("CommunityRightRail", () => {
     });
     const noticesDisclosure = screen.getByRole("button", { name: "Avisos" });
 
-    expect(aboutDisclosure.getAttribute("aria-expanded")).toBe("false");
-    expect(noticesDisclosure.getAttribute("aria-expanded")).toBe("false");
-    fireEvent.click(aboutDisclosure);
     expect(aboutDisclosure.getAttribute("aria-expanded")).toBe("true");
     expect(noticesDisclosure.getAttribute("aria-expanded")).toBe("false");
+    fireEvent.click(aboutDisclosure);
+    expect(aboutDisclosure.getAttribute("aria-expanded")).toBe("false");
+    expect(noticesDisclosure.getAttribute("aria-expanded")).toBe("false");
+    expect(screen.getByText("Respeite quem pensa diferente.")).toBeTruthy();
+    expect(screen.getByText("Como participar")).toBeTruthy();
   });
 
   test("does not turn an unsafe notice URL into a navigable link", () => {
@@ -136,11 +136,12 @@ describe("CommunityRightRail", () => {
             groupKey: "announcement:unsafe",
             href: "javascript:alert(1)",
             id: "announcement-unsafe",
+            version: 1,
             title: "Aviso sem destino seguro",
           },
         ]}
-        memberId="ana-id"
-        profile={null}
+        avatars={[]}
+        goalCard={<div data-testid="goal-summary">Meta coletiva</div>}
         spaces={[]}
       />
     );

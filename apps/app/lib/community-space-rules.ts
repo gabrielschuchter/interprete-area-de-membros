@@ -50,8 +50,9 @@ export const communityPostAudienceWhere = (
   canModeratePrivateGroups = false
 ): Prisma.CommunityPostWhereInput => ({
   OR: [
-    { spaceId: null },
+    { audienceScope: "GLOBAL" },
     {
+      audienceScope: "GROUP",
       space: {
         is: {
           status: "PUBLISHED",
@@ -67,8 +68,9 @@ export const communityPostMutationAudienceWhere = (
   canModeratePrivateGroups = false
 ): Prisma.CommunityPostWhereInput => ({
   OR: [
-    { spaceId: null },
+    { audienceScope: "GLOBAL" },
     {
+      audienceScope: "GROUP",
       space: {
         is: {
           status: "PUBLISHED",

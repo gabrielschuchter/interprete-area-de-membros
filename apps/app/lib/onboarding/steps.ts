@@ -29,5 +29,11 @@ export const isOnboardingStepSlug = (
 export const clampStepIndex = (value: number) =>
   Math.max(0, Math.min(Number.isInteger(value) ? value : 0, LAST_STEP_INDEX));
 
-export const onboardingStepPath = (index: number) =>
-  `/onboarding/${onboardingSteps[clampStepIndex(index)].slug}`;
+// `returnTo` is the already-sanitized internal path the person was heading to
+// before onboarding; it rides in the query so every step keeps it.
+export const onboardingStepPath = (index: number, returnTo?: string) => {
+  const path = `/onboarding/${onboardingSteps[clampStepIndex(index)].slug}`;
+  return returnTo && returnTo !== "/"
+    ? `${path}?redirect_url=${encodeURIComponent(returnTo)}`
+    : path;
+};

@@ -6,15 +6,17 @@ import { useId, useState } from "react";
 interface CommunityDisclosureProperties {
   readonly children: ReactNode;
   readonly className?: string;
+  readonly defaultExpanded?: boolean;
   readonly label: string;
 }
 
 export const CommunityDisclosure = ({
   children,
   className = "",
+  defaultExpanded = false,
   label,
 }: CommunityDisclosureProperties) => {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
   const contentId = useId();
 
   return (

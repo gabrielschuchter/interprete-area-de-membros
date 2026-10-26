@@ -1,6 +1,6 @@
 import { Prisma, type PrismaClient } from "@repo/database";
 import { z } from "zod";
-import { nextOutboxRetryAt } from "./events";
+import { nextOutboxRetryAt, resolveOutboxConsumerKey } from "./events";
 
 const workerOptionsSchema = z.object({
   batchSize: z.number().int().min(1).max(100).default(25),
@@ -214,7 +214,13 @@ export const processOutboxBatch = async (
   input: z.input<typeof workerOptionsSchema>
 ): Promise<OutboxBatchResult> => {
   const options = workerOptionsSchema.parse(input);
-  const keys = Object.keys(consumers);
+  const consumersByScopedKey = new Map(
+    Object.entries(consumers).map(([key, consumer]) => [
+      resolveOutboxConsumerKey(key),
+      consumer,
+    ])
+  );
+  const keys = [...consumersByScopedKey.keys()];
   const claimedJobs = await claimOutboxJobs(database, keys, options);
   const eventsById = await getOutboxEvents(database, claimedJobs);
   const result = {
@@ -230,7 +236,7 @@ export const processOutboxBatch = async (
       database,
       job: claimedJob,
       event: eventsById.get(claimedJob.eventId),
-      consumer: consumers[claimedJob.consumerKey],
+      consumer: consumersByScopedKey.get(claimedJob.consumerKey),
       options,
     });
     result[outcome] += 1;

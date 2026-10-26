@@ -1,0 +1,19 @@
+{
+  "capturedAt": "2026-10-25T22:05:21.063Z",
+  "sourceActors": 4,
+  "roleDistribution": {
+    "MEMBER": 2,
+    "TEACHER": 1,
+    "ADMIN": 1
+  },
+  "productionUsersBefore": 7,
+  "reuse": 0,
+  "create": 4,
+  "creationRequestsDryRunPassed": 4,
+  "productionMutationsPerformed": false,
+  "roleDatabaseWritesPerformed": false,
+  "emailsSent": false,
+  "protectedPlanPath": "C:\\Users\\gabsc\\AppData\\Local\\Codex\\qa\\community-v2-release-20261025\\production-qa-actor-plan.dpapi",
+  "planSha256": "534b7c17d6b047b7bbc604b54606377b02ecbc3580d2da4bd67d302d3058311c",
+  "originalProvidedSnapshotWasNullArray": true
+}

@@ -1,0 +1,11 @@
+{
+  "observedAt": "2026-10-26T11:05:40.162Z",
+  "target": "Production candidate immutable host",
+  "deployment": "dpl_6sUFnu82hfq4jubt3QJDnupyMQKo",
+  "realStudentsImpersonated": 0,
+  "actors": [],
+  "passed": false,
+  "failedStage": "member_1-sign-in",
+  "errorClass": "TimeoutError",
+  "completedAt": "2026-10-26T11:06:14.739Z"
+}

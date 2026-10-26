@@ -1,9 +1,12 @@
-import { beforeEach, describe, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { enqueueDomainEvent } from "./events";
 import { scheduleNextRecurringPlannerReminder } from "./planner-reminders";
 
 vi.mock("server-only", () => ({}));
-vi.mock("./events", () => ({ enqueueDomainEvent: vi.fn() }));
+vi.mock("./events", async () => ({
+  ...(await vi.importActual<typeof import("./events")>("./events")),
+  enqueueDomainEvent: vi.fn(),
+}));
 vi.mock("./notifications", () => ({
   notificationOutboxConsumerKey: "notifications.create.v1",
 }));
@@ -29,9 +32,15 @@ const makeTransaction = () => {
 
 describe("recurring planner reminders", () => {
   beforeEach(() => {
+    vi.stubEnv("VERCEL_ENV", "preview");
+    vi.stubEnv("OUTBOX_QUEUE_NAMESPACE", "");
     vi.mocked(enqueueDomainEvent).mockResolvedValue({
       id: "domain_event_1",
     } as never);
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
   });
 
   test("anchors monthly occurrences to the original day of month", async () => {
@@ -65,6 +74,13 @@ describe("recurring planner reminders", () => {
       transaction,
       expect.objectContaining({ aggregateType: "planner.reminder" })
     );
+    expect(transaction.outboxJob.updateMany).toHaveBeenCalledWith({
+      where: {
+        eventId: "domain_event_1",
+        consumerKey: "preview.notifications.create.v1",
+      },
+      data: { availableAt: expect.any(Date) },
+    });
   });
 
   test("uses an occurrence override and links its own calendar occurrence", async () => {

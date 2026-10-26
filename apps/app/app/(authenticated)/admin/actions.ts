@@ -16,14 +16,16 @@ import {
 } from "@repo/database";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { queueAnnouncementNotifications } from "@/lib/announcement-notification-outbox";
+import { parseAnnouncementDateTime } from "@/lib/announcement-time";
 import { requireAdmin, requireStaff } from "@/lib/authorization";
 import { sanitizeRichDocument } from "@/lib/community-content";
 import { recordAuditEvent } from "@/lib/gestao-audit";
 import { requireGestaoAction } from "@/lib/gestao-authorization";
 import { readIdempotencyKey } from "@/lib/mutation-contract";
 import { consumeMutationRateLimit } from "@/lib/mutation-reliability";
+import { dispatchPendingNotifications } from "@/lib/notification-outbox-dispatch";
 import {
-  notifyAnnouncement,
   notifyLessonAvailable,
   notifyModuleAvailable,
 } from "@/lib/notifications";
@@ -1792,6 +1794,17 @@ const announcementAudienceValues = Object.values(AnnouncementAudience);
 const isAnnouncementAudience = (value: string): value is AnnouncementAudience =>
   announcementAudienceValues.includes(value as AnnouncementAudience);
 
+const formList = (formData: FormData, name: string, limit: number) =>
+  [
+    ...new Set(
+      formData
+        .getAll(name)
+        .filter((value): value is string => typeof value === "string")
+        .map((value) => value.trim())
+        .filter(Boolean)
+    ),
+  ].slice(0, limit);
+
 const readAnnouncementInput = (formData: FormData) => {
   const title = asText(formData.get("title")).slice(0, 180);
   const body = asText(formData.get("body")).slice(0, 10_000);
@@ -1803,22 +1816,31 @@ const readAnnouncementInput = (formData: FormData) => {
       : asHttpUrl(rawHref);
   const rawStartsAt = asText(formData.get("startsAt"));
   const rawEndsAt = asText(formData.get("endsAt"));
-  const startsAt = rawStartsAt ? new Date(rawStartsAt) : null;
-  const endsAt = rawEndsAt ? new Date(rawEndsAt) : null;
+  const startsAt = rawStartsAt ? parseAnnouncementDateTime(rawStartsAt) : null;
+  const endsAt = rawEndsAt ? parseAnnouncementDateTime(rawEndsAt) : null;
   const statusValue = asText(formData.get("status")) || "PUBLISHED";
   const status = Object.values(ContentStatus).includes(
     statusValue as ContentStatus
   )
     ? (statusValue as ContentStatus)
     : null;
-  const recipientIds = asList(formData.get("recipientIds"), 200);
+  const recipientIds = [
+    ...new Set(
+      formList(formData, "recipientIds", 200)
+        .flatMap((value) => value.split(LIST_SPLIT))
+        .map((value) => value.trim())
+        .filter(Boolean)
+    ),
+  ].slice(0, 200);
+  const cohortIds = formList(formData, "cohortIds", 50);
   if (
     !(title && body && isAnnouncementAudience(audienceValue) && status) ||
-    (startsAt && !Number.isFinite(startsAt.valueOf())) ||
-    (endsAt && !Number.isFinite(endsAt.valueOf())) ||
+    (rawStartsAt && !startsAt) ||
+    (rawEndsAt && !endsAt) ||
     (startsAt && endsAt && endsAt <= startsAt) ||
     (audienceValue === AnnouncementAudience.SELECTED &&
-      recipientIds.length === 0)
+      recipientIds.length === 0) ||
+    (audienceValue === AnnouncementAudience.COHORT && cohortIds.length === 0)
   ) {
     return null;
   }
@@ -1829,78 +1851,38 @@ const readAnnouncementInput = (formData: FormData) => {
     audience: audienceValue,
     recipientIds:
       audienceValue === AnnouncementAudience.SELECTED ? recipientIds : [],
+    cohortIds: audienceValue === AnnouncementAudience.COHORT ? cohortIds : [],
     startsAt,
     endsAt,
     isPinned: asText(formData.get("isPinned")) === "on",
+    isImportant: asText(formData.get("isImportant")) === "on",
     status,
   };
 };
 
-const announcementRecipients = async (
-  audience: AnnouncementAudience,
-  recipientIds: readonly string[],
-  actorId: string
+const validateAnnouncementTargets = async (
+  transaction: Prisma.TransactionClient,
+  parsed: NonNullable<ReturnType<typeof readAnnouncementInput>>
 ) => {
-  const audienceCondition = (() => {
-    if (audience === AnnouncementAudience.STAFF) {
-      return { role: { in: [MemberRole.TEACHER, MemberRole.ADMIN] } };
+  if (parsed.recipientIds.length > 0) {
+    const selectedMembers = await transaction.member.findMany({
+      where: { id: { in: parsed.recipientIds }, deactivatedAt: null },
+      select: { id: true },
+    });
+    if (selectedMembers.length !== parsed.recipientIds.length) {
+      return false;
     }
-    if (audience === AnnouncementAudience.SELECTED) {
-      return { id: { in: [...recipientIds] } };
-    }
-    return {};
-  })();
-  const members = await database.member.findMany({
-    where: {
-      deactivatedAt: null,
-      id: { not: actorId },
-      ...audienceCondition,
-    },
-    select: { id: true },
-    take: 10_000,
-  });
-  return members;
-};
-
-const dispatchAnnouncement = async (
-  announcement: {
-    readonly id: string;
-    readonly title: string;
-    readonly body: string;
-    readonly href: string | null;
-    readonly audience: AnnouncementAudience;
-    readonly recipientIds: readonly string[];
-    readonly startsAt: Date | null;
-    readonly endsAt: Date | null;
-    readonly status: ContentStatus;
-  },
-  actorId: string
-) => {
-  const now = new Date();
-  if (
-    announcement.status !== ContentStatus.PUBLISHED ||
-    (announcement.startsAt && announcement.startsAt > now) ||
-    (announcement.endsAt && announcement.endsAt <= now)
-  ) {
-    return;
   }
-  const recipients = await announcementRecipients(
-    announcement.audience,
-    announcement.recipientIds,
-    actorId
-  );
-  await Promise.all(
-    recipients.map(({ id }) =>
-      notifyAnnouncement({
-        actorId,
-        announcementId: announcement.id,
-        body: announcement.body,
-        href: announcement.href ?? "/comunidade",
-        recipientId: id,
-        title: announcement.title,
-      })
-    )
-  );
+  if (parsed.cohortIds.length > 0) {
+    const selectedCohorts = await transaction.cohort.findMany({
+      where: { id: { in: parsed.cohortIds }, archivedAt: null },
+      select: { id: true },
+    });
+    if (selectedCohorts.length !== parsed.cohortIds.length) {
+      return false;
+    }
+  }
+  return true;
 };
 
 const revalidateAnnouncementSurfaces = () => {
@@ -1916,78 +1898,107 @@ export const createAnnouncement = async (formData: FormData) => {
     return;
   }
   const now = new Date();
-  const announcement = await database.announcement.create({
-    data: {
-      id: randomUUID(),
-      ...parsed,
-      createdByMemberId: userId,
-      publishedAt: parsed.status === ContentStatus.PUBLISHED ? now : null,
-      archivedAt: parsed.status === ContentStatus.ARCHIVED ? now : null,
-    },
-    select: {
-      id: true,
-      title: true,
-      body: true,
-      href: true,
-      audience: true,
-      recipientIds: true,
-      startsAt: true,
-      endsAt: true,
-      status: true,
-    },
+  const id = randomUUID();
+  const result = await database.$transaction(async (transaction) => {
+    if (!(await validateAnnouncementTargets(transaction, parsed))) {
+      return "invalid" as const;
+    }
+    const { cohortIds, ...data } = parsed;
+    const announcement = await transaction.announcement.create({
+      data: {
+        id,
+        ...data,
+        createdByMemberId: userId,
+        publishedAt: parsed.status === ContentStatus.PUBLISHED ? now : null,
+        archivedAt: parsed.status === ContentStatus.ARCHIVED ? now : null,
+        ...(cohortIds.length > 0
+          ? { cohorts: { create: cohortIds.map((cohortId) => ({ cohortId })) } }
+          : {}),
+      },
+    });
+    await queueAnnouncementNotifications(
+      transaction,
+      announcement,
+      cohortIds,
+      userId
+    );
+    return "saved" as const;
   });
-  await dispatchAnnouncement(announcement, userId);
+  if (result === "invalid") {
+    redirect("/admin/avisos?erro=destino");
+  }
+  if (result === "saved" && (!parsed.startsAt || parsed.startsAt <= now)) {
+    await dispatchPendingNotifications();
+  }
   revalidateAnnouncementSurfaces();
 };
 
 export const updateAnnouncement = async (formData: FormData) => {
   const { userId } = await requireStaffMutation();
   const id = asText(formData.get("id"));
+  const expectedVersion = asPositiveInteger(formData.get("expectedVersion"));
   const parsed = readAnnouncementInput(formData);
-  if (!(id && parsed)) {
-    return;
-  }
-  const existing = await database.announcement.findUnique({
-    where: { id, deletedAt: null },
-    select: { id: true, publishedAt: true },
-  });
-  if (!existing) {
+  if (!(id && expectedVersion && parsed)) {
     return;
   }
   const now = new Date();
-  const announcement = await database.announcement.update({
-    where: { id },
-    data: {
-      ...parsed,
-      publishedAt:
-        parsed.status === ContentStatus.PUBLISHED
-          ? (existing.publishedAt ?? now)
-          : existing.publishedAt,
-      archivedAt: parsed.status === ContentStatus.ARCHIVED ? now : null,
-    },
-    select: {
-      id: true,
-      title: true,
-      body: true,
-      href: true,
-      audience: true,
-      recipientIds: true,
-      startsAt: true,
-      endsAt: true,
-      status: true,
-    },
-  });
-  if (announcement.status === ContentStatus.PUBLISHED) {
-    const safeHref = announcement.href ?? "/comunidade";
-    await database.notification.updateMany({
-      where: { groupKey: `announcement:${id}` },
+  const result = await database.$transaction(async (transaction) => {
+    const existing = await transaction.announcement.findUnique({
+      where: { id, deletedAt: null },
+      select: { publishedAt: true },
+    });
+    if (
+      !(existing && (await validateAnnouncementTargets(transaction, parsed)))
+    ) {
+      return "invalid" as const;
+    }
+    const { cohortIds, ...data } = parsed;
+    const updated = await transaction.announcement.updateMany({
+      where: { id, version: expectedVersion, deletedAt: null },
       data: {
-        title: announcement.title,
-        body: announcement.body,
-        href: safeHref,
+        ...data,
+        version: { increment: 1 },
+        publishedAt:
+          parsed.status === ContentStatus.PUBLISHED
+            ? (existing.publishedAt ?? now)
+            : existing.publishedAt,
+        archivedAt: parsed.status === ContentStatus.ARCHIVED ? now : null,
       },
     });
-    await dispatchAnnouncement(announcement, userId);
+    if (updated.count !== 1) {
+      return "conflict" as const;
+    }
+    await transaction.announcementCohort.deleteMany({
+      where: { announcementId: id },
+    });
+    if (cohortIds.length > 0) {
+      await transaction.announcementCohort.createMany({
+        data: cohortIds.map((cohortId) => ({ announcementId: id, cohortId })),
+      });
+    }
+    const announcement = await transaction.announcement.findUniqueOrThrow({
+      where: { id },
+    });
+    await queueAnnouncementNotifications(
+      transaction,
+      announcement,
+      cohortIds,
+      userId
+    );
+    return "saved" as const;
+  });
+  if (result === "conflict") {
+    revalidateAnnouncementSurfaces();
+    redirect("/admin/avisos?erro=conflito");
+  }
+  if (result === "invalid") {
+    redirect("/admin/avisos?erro=destino");
+  }
+  if (
+    parsed.status === ContentStatus.PUBLISHED &&
+    (!parsed.startsAt || parsed.startsAt <= now)
+  ) {
+    await dispatchPendingNotifications();
   }
   revalidateAnnouncementSurfaces();
 };
@@ -1995,44 +2006,63 @@ export const updateAnnouncement = async (formData: FormData) => {
 export const setAnnouncementStatus = async (formData: FormData) => {
   const { userId } = await requireStaffMutation();
   const id = asText(formData.get("id"));
+  const expectedVersion = asPositiveInteger(formData.get("expectedVersion"));
   const statusValue = asText(formData.get("status"));
   if (
-    !(id && Object.values(ContentStatus).includes(statusValue as ContentStatus))
+    !(
+      id &&
+      expectedVersion &&
+      Object.values(ContentStatus).includes(statusValue as ContentStatus)
+    )
   ) {
-    return;
-  }
-  const existing = await database.announcement.findUnique({
-    where: { id, deletedAt: null },
-  });
-  if (!existing) {
     return;
   }
   const status = statusValue as ContentStatus;
   const now = new Date();
-  const announcement = await database.announcement.update({
-    where: { id },
-    data: {
-      status,
-      publishedAt:
-        status === ContentStatus.PUBLISHED
-          ? (existing.publishedAt ?? now)
-          : existing.publishedAt,
-      archivedAt: status === ContentStatus.ARCHIVED ? now : null,
-    },
-    select: {
-      id: true,
-      title: true,
-      body: true,
-      href: true,
-      audience: true,
-      recipientIds: true,
-      startsAt: true,
-      endsAt: true,
-      status: true,
-    },
+  const result = await database.$transaction(async (transaction) => {
+    const existing = await transaction.announcement.findUnique({
+      where: { id, deletedAt: null },
+      select: { publishedAt: true },
+    });
+    if (!existing) {
+      return "invalid" as const;
+    }
+    const updated = await transaction.announcement.updateMany({
+      where: { id, version: expectedVersion, deletedAt: null },
+      data: {
+        status,
+        version: { increment: 1 },
+        publishedAt:
+          status === ContentStatus.PUBLISHED
+            ? (existing.publishedAt ?? now)
+            : existing.publishedAt,
+        archivedAt: status === ContentStatus.ARCHIVED ? now : null,
+      },
+    });
+    if (updated.count !== 1) {
+      return "conflict" as const;
+    }
+    const announcement = await transaction.announcement.findUniqueOrThrow({
+      where: { id },
+      include: { cohorts: { select: { cohortId: true } } },
+    });
+    await queueAnnouncementNotifications(
+      transaction,
+      announcement,
+      announcement.cohorts.map(({ cohortId }) => cohortId),
+      userId
+    );
+    return "saved" as const;
   });
+  if (result === "conflict") {
+    revalidateAnnouncementSurfaces();
+    redirect("/admin/avisos?erro=conflito");
+  }
+  if (result === "invalid") {
+    return;
+  }
   if (status === ContentStatus.PUBLISHED) {
-    await dispatchAnnouncement(announcement, userId);
+    await dispatchPendingNotifications();
   }
   revalidateAnnouncementSurfaces();
 };
@@ -2040,16 +2070,23 @@ export const setAnnouncementStatus = async (formData: FormData) => {
 export const deleteAnnouncement = async (formData: FormData) => {
   await requireStaffMutation();
   const id = asText(formData.get("id"));
-  if (!id) {
+  const expectedVersion = asPositiveInteger(formData.get("expectedVersion"));
+  if (!(id && expectedVersion)) {
     return;
   }
-  await database.announcement.updateMany({
-    where: { id, deletedAt: null },
+  const now = new Date();
+  const updated = await database.announcement.updateMany({
+    where: { id, version: expectedVersion, deletedAt: null },
     data: {
       status: ContentStatus.ARCHIVED,
-      archivedAt: new Date(),
-      deletedAt: new Date(),
+      version: { increment: 1 },
+      archivedAt: now,
+      deletedAt: now,
     },
   });
+  if (updated.count !== 1) {
+    revalidateAnnouncementSurfaces();
+    redirect("/admin/avisos?erro=conflito");
+  }
   revalidateAnnouncementSurfaces();
 };

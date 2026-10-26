@@ -3,10 +3,12 @@ export type {
   OutboxJobSnapshot,
 } from "./src/events";
 export {
+  assertPreviewNotificationAudience,
   enqueueDomainEvent,
   isOutboxJobClaimable,
   makeOutboxIdempotencyKey,
   nextOutboxRetryAt,
+  resolveOutboxConsumerKey,
   withMemberIdentityLock,
 } from "./src/events";
 export {

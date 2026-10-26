@@ -6,6 +6,7 @@ import {
   database,
   LearningTaskRecurrence,
   MemberRole,
+  StudyCampaignRenewalMode,
   StudyGoalPeriod,
 } from "@repo/database";
 import { enqueueNotificationBatch } from "@repo/member-domain";
@@ -13,6 +14,12 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireStaff } from "@/lib/authorization";
 import { evaluateMemberBadges } from "@/lib/badges";
+import {
+  CommunityGoalConflictError,
+  CommunityGoalValidationError,
+  createStudyCampaignSafely,
+  setStudyCampaignPublicationSafely,
+} from "@/lib/community-goal";
 import { requireMemberId } from "@/lib/learning";
 import { dispatchPendingNotifications } from "@/lib/notification-outbox-dispatch";
 import { studyPeriodKey } from "@/lib/study-periods";
@@ -267,27 +274,46 @@ export const createStudyCampaign = async (formData: FormData) => {
   const endsAt = dateTimePattern.test(endsAtRaw)
     ? new Date(`${endsAtRaw}:00-03:00`)
     : null;
+  const renewalMode = Object.values(StudyCampaignRenewalMode).find(
+    (mode) => mode === textValue(formData, "renewalMode")
+  );
   if (
-    !(title && startsAt && endsAt && Number.isInteger(targetMinutes)) ||
+    !(
+      title &&
+      startsAt &&
+      endsAt &&
+      Number.isInteger(targetMinutes) &&
+      renewalMode
+    ) ||
     targetMinutes < 15 ||
     targetMinutes > 100_800 ||
     endsAt <= startsAt
   ) {
     redirect("/admin/estudo?resultado=campanha-invalida");
   }
-  await database.studyCampaign.create({
-    data: {
+  try {
+    await createStudyCampaignSafely({
       createdByMemberId: userId,
       title,
       description: description || null,
       targetMinutes,
       startsAt,
       endsAt,
-      publishedAt:
-        textValue(formData, "published") === "true" ? new Date() : null,
-    },
-  });
+      renewalMode,
+      published: textValue(formData, "published") === "true",
+    });
+  } catch (error) {
+    if (error instanceof CommunityGoalConflictError) {
+      redirect("/admin/estudo?resultado=campanha-conflito");
+    }
+    if (error instanceof CommunityGoalValidationError) {
+      redirect("/admin/estudo?resultado=campanha-invalida");
+    }
+    throw error;
+  }
   revalidatePath("/admin/estudo");
+  revalidatePath("/comunidade");
+  revalidatePath("/comunidade/meta");
   revalidatePath("/");
   redirect("/admin/estudo?resultado=campanha-criada");
 };
@@ -296,14 +322,21 @@ export const setStudyCampaignPublication = async (formData: FormData) => {
   await requireStaff();
   const id = textValue(formData, "campaignId");
   const published = textValue(formData, "published") === "true";
-  const updated = await database.studyCampaign.updateMany({
-    where: { id },
-    data: { publishedAt: published ? new Date() : null, archivedAt: null },
-  });
-  if (updated.count !== 1) {
+  let updated = false;
+  try {
+    updated = await setStudyCampaignPublicationSafely(id, published);
+  } catch (error) {
+    if (error instanceof CommunityGoalConflictError) {
+      redirect("/admin/estudo?resultado=campanha-conflito");
+    }
+    throw error;
+  }
+  if (!updated) {
     redirect("/admin/estudo?resultado=campanha-indisponivel");
   }
   revalidatePath("/admin/estudo");
+  revalidatePath("/comunidade");
+  revalidatePath("/comunidade/meta");
   revalidatePath("/");
   redirect("/admin/estudo?resultado=campanha-atualizada");
 };

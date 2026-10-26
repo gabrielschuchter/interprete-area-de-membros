@@ -1,10 +1,5 @@
-import { forbidden, notFound, redirect } from "next/navigation";
+import { forbidden, notFound } from "next/navigation";
 import { requireGestaoActor } from "@/lib/gestao-authorization";
-import {
-  gestaoAdministrationDestination,
-  gestaoCommunityDestination,
-  gestaoStudentDestination,
-} from "@/lib/gestao-navigation";
 import {
   canPerformGestaoAction,
   type GestaoAction,
@@ -17,7 +12,8 @@ const actionByArea: Record<string, GestaoAction> = {
   administracao: "members.manage",
 };
 
-const GestaoPendingRoute = async ({
+/** Endereço que não existe na Gestão: nada de telas antigas como destino. */
+const GestaoUnknownRoute = async ({
   params,
 }: {
   readonly params: Promise<{ readonly slug: string[] }>;
@@ -27,34 +23,10 @@ const GestaoPendingRoute = async ({
   if (!action) {
     notFound();
   }
-
   if (!canPerformGestaoAction(actor.role, action)) {
     forbidden();
   }
-
-  if (slug[0] === "comunidade") {
-    const destination = gestaoCommunityDestination(slug.slice(1));
-    if (destination) {
-      redirect(destination);
-    }
-  }
-
-  if (slug[0] === "administracao" && slug.length > 1) {
-    const destination = gestaoAdministrationDestination(slug.slice(1));
-    if (destination) {
-      redirect(destination);
-    }
-    notFound();
-  }
-
-  if (slug[0] === "alunos") {
-    const destination = gestaoStudentDestination(slug.slice(1));
-    if (destination) {
-      redirect(destination);
-    }
-  }
-
   notFound();
 };
 
-export default GestaoPendingRoute;
+export default GestaoUnknownRoute;

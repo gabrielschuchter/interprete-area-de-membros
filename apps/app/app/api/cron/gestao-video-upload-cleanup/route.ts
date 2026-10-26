@@ -2,6 +2,7 @@ import { isAuthorizedCronRequest } from "@repo/security/cron-auth";
 import { NextResponse } from "next/server";
 import { env } from "@/env";
 import { cleanupExpiredGestaoLessonVideoUploads } from "@/lib/gestao-lesson-video-upload-actions";
+import { publishDueGestaoMeetings } from "@/lib/gestao-meetings-schedule";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -19,9 +20,14 @@ export async function GET(request: Request) {
 
   try {
     const result = await cleanupExpiredGestaoLessonVideoUploads();
-    return NextResponse.json(result, {
-      headers: { "Cache-Control": "private, no-store" },
-    });
+    // Rotina diária da Gestão: publica também os encontros agendados.
+    const meetingsPublished = await publishDueGestaoMeetings();
+    return NextResponse.json(
+      { ...result, meetingsPublished },
+      {
+        headers: { "Cache-Control": "private, no-store" },
+      }
+    );
   } catch (error) {
     console.error(
       "[cron/gestao-video-upload-cleanup] batch failed",

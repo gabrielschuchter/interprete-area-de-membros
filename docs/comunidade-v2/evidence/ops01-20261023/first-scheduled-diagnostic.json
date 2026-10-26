@@ -1,0 +1,65 @@
+{
+  "observedAt": "2026-10-24T02:32:45Z",
+  "state": "BLOCKED",
+  "firstPostPatchScheduledRun": {
+    "id": 40036220515,
+    "url": "https://github.com/gabrielschuchter/interprete-area-de-membros/actions/runs/40036220515",
+    "event": "schedule",
+    "createdAt": "2026-10-23T22:51:14Z",
+    "headSha": "b5a2f067d75adf16bf84193ecea290c1bd318f5e",
+    "conclusion": "failure",
+    "jobId": 120696236230,
+    "jobStartedAt": "2026-10-23T22:51:19Z",
+    "jobCompletedAt": "2026-10-23T22:51:22Z"
+  },
+  "approvedBlob": {
+    "headCommit": "1cb2660fbd1aec9070460d32858d056dbe853032",
+    "mergedCommit": "b5a2f067d75adf16bf84193ecea290c1bd318f5e",
+    "workflowBlobInBoth": "f7a3ba70483ee8ab10334c3413733b4dddedf2f1",
+    "matches": true
+  },
+  "diagnostic": {
+    "phase": "oidc_claims",
+    "exit": 1,
+    "claims": {
+      "aud": true,
+      "environment": true,
+      "event_name": true,
+      "iss": true,
+      "not_expired": true,
+      "ref": true,
+      "repository": true,
+      "sub": false,
+      "workflow_ref": true
+    },
+    "previewRequestReached": false,
+    "curlExit": null,
+    "httpStatus": null,
+    "rawJwtOrBodyRecorded": false
+  },
+  "repositoryOidcConfigurationReadOnly": {
+    "endpoint": "GET /repos/gabrielschuchter/interprete-area-de-membros/actions/oidc/customization/sub",
+    "use_default": true,
+    "use_immutable_subject": true,
+    "sub_claim_prefix": "repo:gabrielschuchter@291341266/interprete-area-de-membros@1386145986",
+    "currentGuardAndPreviouslyInspectedTrustedSourceSub": "repo:gabrielschuchter/interprete-area-de-membros:environment:community-v2-preview"
+  },
+  "conclusion": "Concrete mismatch: repository uses immutable OIDC subject prefix; workflow guard and Preview Trusted Source expect the previous non-immutable subject format. First diagnostic run stops at sub comparison before HTTP.",
+  "limits": "No HTTP proof of how the earlier 48/49 failures were handled by Vercel. No automatic recovery, Broadcast or badge proof. Payload checks do not verify JWT signature.",
+  "requiredAuthorization": "Align the exact sub expected by the Preview-only API Trusted Source and diagnostic workflow guard with the repository immutable subject, retaining all other constraints. Do not disable immutable subjects or weaken the rule.",
+  "mutations": {
+    "authenticationPolicyChanged": false,
+    "credentialsChanged": false,
+    "greenCronChanged": false,
+    "gitReconnected": false,
+    "newMergeOrDeployment": false,
+    "manualWorkerOrDispatch": false,
+    "qaJobCreated": false
+  },
+  "monitor": {
+    "id": "ops-01-pr-ximo-schedule-ap-s-pr-16",
+    "deleted": true,
+    "reason": "First real scheduled diagnostic obtained; no further investigation authorized"
+  },
+  "protectedSpecGitHash": "43bb75e8482c3638840cbfa760a91e01927ed770"
+}

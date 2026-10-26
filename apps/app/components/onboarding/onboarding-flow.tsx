@@ -125,7 +125,9 @@ const failureMessage = (code: OnboardingFailureCode) =>
 export const OnboardingFlow = ({
   initialStep,
   state,
+  returnTo = "/",
 }: {
+  readonly returnTo?: string;
   readonly initialStep: number;
   readonly state: OnboardingState;
   // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: this unit deliberately keeps one step workflow (validation, saving state, offline and session handling) together.
@@ -272,7 +274,8 @@ export const OnboardingFlow = ({
     []
   );
 
-  const goTo = (index: number) => router.push(onboardingStepPath(index));
+  const goTo = (index: number) =>
+    router.push(onboardingStepPath(index, returnTo));
   const back = () => goTo(initialStep - 1);
 
   const themesForCard = useMemo(() => themes, [themes]);
@@ -581,7 +584,7 @@ export const OnboardingFlow = ({
           <Link
             aria-label={copy.a11yEtapa(index + 1, item.name)}
             className="ob-dot-link"
-            href={onboardingStepPath(index)}
+            href={onboardingStepPath(index, returnTo)}
           >
             {content}
           </Link>
@@ -1440,7 +1443,7 @@ export const OnboardingFlow = ({
               <button
                 className="ob-btn"
                 disabled={actionsDisabled}
-                onClick={() => finish("/")}
+                onClick={() => finish(returnTo)}
                 type="button"
               >
                 {busy ? (
@@ -1483,7 +1486,7 @@ export const OnboardingFlow = ({
               <button
                 className="ob-btn ob-btn-wide"
                 disabled={actionsDisabled}
-                onClick={() => finish("/")}
+                onClick={() => finish(returnTo)}
                 type="button"
               >
                 {copy.conclusao.cta}
@@ -1605,7 +1608,7 @@ export const OnboardingFlow = ({
               className="ob-btn"
               onClick={() => {
                 router.push(
-                  `/sign-in?redirect_url=${encodeURIComponent(onboardingStepPath(initialStep))}`
+                  `/sign-in?redirect_url=${encodeURIComponent(onboardingStepPath(initialStep, returnTo))}`
                 );
               }}
               type="button"

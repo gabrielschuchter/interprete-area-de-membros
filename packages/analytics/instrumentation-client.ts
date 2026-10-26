@@ -1,3 +1,5 @@
+import { containsCommunityPostShareCapability } from "./privacy";
+
 let posthogClient: Promise<typeof import("posthog-js")> | null = null;
 
 const loadPostHog = () => (posthogClient ??= import("posthog-js"));
@@ -14,6 +16,10 @@ export const initializeAnalytics = (): Promise<void> | undefined => {
       posthog.init(key, {
         api_host: host,
         defaults: "2025-05-24",
+        before_send: (event) =>
+          event && containsCommunityPostShareCapability(event.properties)
+            ? null
+            : event,
       });
     })
     .catch(() => undefined);

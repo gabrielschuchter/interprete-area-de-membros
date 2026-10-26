@@ -19,6 +19,13 @@ on a server request.
   reserved for reversible local changes and include authoritative
   reconciliation, rollback, idempotency, and protection from out-of-order
   responses.
+- Community invitation actions use database-bounded history and batches of at
+  most 50 people. Results are per recipient; accepting a link commits the
+  invitation state and membership together. A link token is shown only after
+  generation, and only its hash is persisted. Anonymous link pages keep group
+  details out of HTML and metadata; authenticated invite previews are limited to
+  an active token and never grant content access before acceptance. Links do
+  not expire by time and remain revocable.
 - The profile editor validates on the server, keeps entered values after a
   validation response, and returns to the overview only after the profile
   transaction commits. Avatar upload has an independent pending state and
@@ -480,7 +487,38 @@ on a server request.
   mounted. Existing SingleFlightSubmit reports pending locally and success
   follows persistence. No new prefetch, request loop, motion or dependency.
 
+## Community announcements — Stage 08
+
+- Keep Gestão as the announcement editor. Important notices sit before the
+  Community composer; common notices use the existing right rail, with its
+  mobile disclosure. Never add an announcement block or query to Início.
+- Read at most 100 notices against the current Member/role, date window,
+  audience and active cohort membership. Poll the private, no-store projection
+  every 30 seconds while visible, stop while hidden, and refresh on return.
+  End times clear at the boundary; scheduled starts can appear within one poll.
+- Dismissal is persisted per announcement version. Pending feedback is local
+  and immediate; report completion only after the server commit. Editing
+  advances the version so an earlier dismissal no longer hides the notice.
+- Match the original boards' desktop/mobile placement and restrained priority
+  treatment. The local authenticated screenshots cover desktop and 390 px
+  mobile. They are visual checks for this slice, not device or percentile
+  evidence; OPS-01 and production Broadcast/Realtime remain unproven.
+
 # Início B2 (2026-10-14)
+
+## Comunidade V2 — notificações reautorizadas (2026-10-23)
+
+- Lista, badge e resumo dependem da audiência atual no servidor; não armazenar
+  papel, grants ou contagens privadas em cache compartilhado. Paginação por
+  cursor e limite de 50 continuam no banco.
+- Feedback de clique/submit continua com orçamento <=100 ms, sem antecipar
+  sucesso de persistência. Esta correção não altera componentes, prefetch,
+  animação ou bundle da Comunidade; o teto continua 225 KiB gzip.
+- Revogação deve ocultar título, corpo, link e contagens de notificações
+  privadas. Um evento legado sem proveniência verificável falha fechado, mesmo
+  que o post tenha perdido spaceId após exclusão física do grupo.
+- QA local de API/PostgreSQL e concorrência não mede percentis, dispositivo
+  físico, Broadcast ou recuperação periódica remota; esses gates seguem em 12A.
 
 The Interprete portal reuses the authenticated shell and its fresh Member role,
 profile and product configuration. It adds no content query or shared

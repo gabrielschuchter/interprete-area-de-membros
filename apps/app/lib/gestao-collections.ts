@@ -196,7 +196,7 @@ const getCollectionItemWindow = async (
   };
 };
 
-const buildCollectionCoverOptions = (
+export const buildCollectionCoverOptions = (
   coverFiles: readonly {
     readonly id: string;
     readonly storagePath: string | null;

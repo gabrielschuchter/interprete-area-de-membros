@@ -165,7 +165,7 @@ describe("GlobalSidebar personal content group", () => {
   });
 
   test.each([
-    ["/comunidade/meus-topicos", "Meus tópicos"],
+    ["/comunidade/minhas-publicacoes", "Minhas publicações"],
     ["/configuracoes", "Configurações"],
     ["/perfil", "Abrir meu perfil"],
   ])("exposes the current page for %s", (pathname, accessibleName) => {

@@ -26,7 +26,6 @@ import {
   withGestaoReturnPath,
 } from "@/lib/gestao-navigation";
 import type { GestaoRole } from "@/lib/gestao-permissions";
-import { MemberHeaderControls } from "../components/member-header-controls";
 import { useMemberNavigation } from "../components/member-navigation-context";
 import { GestaoCrumbsProvider, useGestaoCrumbTail } from "./gestao-crumbs";
 import { GestaoIcon, type GestaoIconName } from "./gestao-icon";
@@ -41,6 +40,23 @@ const GestaoMobileDrawer = dynamic(
 const GestaoGuards = dynamic(
   () => import("./gestao-guards").then((m) => m.GestaoGuards),
   { ssr: false }
+);
+const GestaoNotificationsBell = dynamic(
+  () => import("./gestao-notifications").then((m) => m.GestaoNotificationsBell),
+  {
+    loading: () => (
+      <button
+        aria-busy="true"
+        aria-label="Carregando notificações"
+        className="gk-bell"
+        disabled
+        type="button"
+      >
+        <GestaoIcon name="bell" size={18} strokeWidth={1.6} />
+      </button>
+    ),
+    ssr: false,
+  }
 );
 const GestaoWelcomeDialog = dynamic(
   () => import("./gestao-shell-dialogs").then((m) => m.GestaoWelcomeDialog),
@@ -113,6 +129,7 @@ const navigation: readonly NavigationItem[] = [
     admin: false,
     children: [
       { href: "/gestao/comunidade/publicacoes", label: "Publicações" },
+      { href: "/gestao/comunidade/grupos", label: "Grupos" },
       { href: "/gestao/comunidade/avisos", label: "Avisos" },
       { href: "/gestao/comunidade/encontros", label: "Encontros" },
     ],
@@ -802,11 +819,7 @@ const GestaoShellFrame = ({
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
-            <MemberHeaderControls
-              memberId={memberId}
-              showSaved={false}
-              showSearch={false}
-            />
+            <GestaoNotificationsBell memberId={memberId} />
           </div>
         </header>
         <div className="gestao-page-scroll">

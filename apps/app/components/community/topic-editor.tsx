@@ -401,6 +401,8 @@ function TopicEditorCore({
       attributes: {
         class: "prose-editor min-h-64 px-4 py-4 outline-none",
         "aria-label": ariaLabel,
+        "aria-multiline": "true",
+        role: "textbox",
       },
       handleDOMEvents: {
         blur: () => {

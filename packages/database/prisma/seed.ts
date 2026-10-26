@@ -694,6 +694,7 @@ const seed = async () => {
       await database.communityPost.create({
         data: {
           spaceId: space.id,
+          audienceScope: "GROUP",
           authorId: actorId,
           kind: "PUBLICATION",
           title: "Como começar uma pergunta clínica?",

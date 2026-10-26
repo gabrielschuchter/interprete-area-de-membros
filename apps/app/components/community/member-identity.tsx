@@ -19,6 +19,7 @@ interface MemberIdentityProperties {
     member?: { role: "MEMBER" | "TEACHER" | "ADMIN" };
   };
   readonly replyAvatar?: boolean;
+  readonly returnTo?: string;
   readonly showHeadline?: boolean;
 }
 
@@ -48,6 +49,7 @@ export const MemberIdentity = ({
   compact = false,
   feedAvatar = false,
   replyAvatar = false,
+  returnTo,
 }: MemberIdentityProperties) => {
   const username = profile?.username ?? authorId;
   const displayName = profile?.displayName ?? "Membro";
@@ -86,10 +88,14 @@ export const MemberIdentity = ({
     return <div className="flex min-w-0 items-center gap-3">{content}</div>;
   }
 
+  const profileHref = `/membros/${encodeURIComponent(profile.username)}${
+    returnTo ? `?${new URLSearchParams({ returnTo }).toString()}` : ""
+  }`;
+
   return (
     <IntentLink
       className="group flex min-w-0 items-center gap-3"
-      href={`/membros/${profile.username}`}
+      href={profileHref}
     >
       {content}
     </IntentLink>

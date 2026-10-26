@@ -1,0 +1,81 @@
+{
+  "sha": "660595b1a83a0fec343207a35dcf09256709499a",
+  "observedAt": "2026-10-26T10:44:46.425Z",
+  "activatedAt": "2026-10-26T10:44:46.427Z",
+  "authenticatedOldHostsDenied": true,
+  "onlyCompatibleImmutableHostsAllowed": true,
+  "results": [
+    {
+      "kind": "app",
+      "host": "interprete-area-de-membros-qcl07slyl-gabrielschuchters-projects.vercel.app",
+      "status": 200,
+      "vercelError": null,
+      "redirectedToSSO": false,
+      "expected": "allowed-compatible"
+    },
+    {
+      "kind": "app",
+      "host": "interprete-area-de-membros.vercel.app",
+      "status": 403,
+      "vercelError": null,
+      "redirectedToSSO": false,
+      "expected": "denied-old-or-public"
+    },
+    {
+      "kind": "app",
+      "host": "interprete-area-de-membros-app.vercel.app",
+      "status": 403,
+      "vercelError": null,
+      "redirectedToSSO": false,
+      "expected": "denied-old-or-public"
+    },
+    {
+      "kind": "app",
+      "host": "interprete-area-de-membros-d6b73bl4m-gabrielschuchters-projects.vercel.app",
+      "status": 403,
+      "vercelError": null,
+      "redirectedToSSO": false,
+      "expected": "denied-old-or-public"
+    },
+    {
+      "kind": "app",
+      "host": "interprete-area-de-membros-5e3kay65o-gabrielschuchters-projects.vercel.app",
+      "status": 403,
+      "vercelError": null,
+      "redirectedToSSO": false,
+      "expected": "denied-old-or-public"
+    },
+    {
+      "kind": "api",
+      "host": "interprete-area-de-membros-nx0ebcpo3-gabrielschuchters-projects.vercel.app",
+      "status": 200,
+      "vercelError": null,
+      "redirectedToSSO": false,
+      "expected": "allowed-compatible"
+    },
+    {
+      "kind": "api",
+      "host": "interprete-area-de-membros-api.vercel.app",
+      "status": 403,
+      "vercelError": null,
+      "redirectedToSSO": false,
+      "expected": "denied-old-or-public"
+    },
+    {
+      "kind": "api",
+      "host": "interprete-area-de-membro-git-afba70-gabrielschuchters-projects.vercel.app",
+      "status": 403,
+      "vercelError": null,
+      "redirectedToSSO": false,
+      "expected": "denied-old-or-public"
+    },
+    {
+      "kind": "api",
+      "host": "interprete-area-de-membros-r10ocbjeg-gabrielschuchters-projects.vercel.app",
+      "status": 403,
+      "vercelError": null,
+      "redirectedToSSO": false,
+      "expected": "denied-old-or-public"
+    }
+  ]
+}

@@ -1,0 +1,74 @@
+{
+  "captured_at_utc": "2026-10-24T02:52:36Z",
+  "result": "blocked_pending_real_scheduled_recovery",
+  "repository": "gabrielschuchter/interprete-area-de-membros",
+  "github_oidc": {
+    "use_default": true,
+    "use_immutable_subject": true,
+    "repository_id": "1386145986",
+    "repository_owner_id": "291341266",
+    "subject_expected": "repo:gabrielschuchter@291341266/interprete-area-de-membros@1386145986:environment:community-v2-preview"
+  },
+  "workflow_fix": {
+    "path": ".github/workflows/community-v2-preview-outbox.yml",
+    "change": "expected sub aligned to immutable GitHub subject",
+    "pull_request": 17,
+    "merged_at_utc": "2026-10-24T02:46:21Z",
+    "main_commit": "1586ed53240dd533dd3a38bc244ed49cfabf31ae",
+    "other_claim_constraints_preserved": [
+      "iss",
+      "aud",
+      "repository",
+      "ref",
+      "event_name",
+      "workflow_ref",
+      "environment",
+      "not_expired"
+    ],
+    "focused_local_assertion": "immutable subject accepted; legacy subject and altered constraints rejected"
+  },
+  "vercel_trusted_source": {
+    "project": "interprete-area-de-membros-api",
+    "environment": "Preview only",
+    "issuer": "https://token.actions.githubusercontent.com",
+    "audience": "https://github.com/gabrielschuchter",
+    "repository": "gabrielschuchter/interprete-area-de-membros",
+    "subject": "repo:gabrielschuchter@291341266/interprete-area-de-membros@1386145986:environment:community-v2-preview",
+    "ref": "refs/heads/main",
+    "event_name": "schedule",
+    "workflow_ref": "gabrielschuchter/interprete-area-de-membros/.github/workflows/community-v2-preview-outbox.yml@refs/heads/main",
+    "environment_claim": "community-v2-preview",
+    "saved_and_reopened_in_ui": true,
+    "production_or_global_auth_changed": false
+  },
+  "deployment_guard": {
+    "app_git_connected_before_merge": false,
+    "api_git_connected_before_merge": false,
+    "connections_remain_disconnected": true,
+    "production_deploy_requested": false,
+    "manual_deploy_requested": false,
+    "post_merge_dashboard_checked_at_utc": "2026-10-24T02:52:36Z",
+    "app_production_sha": "7a7c8e4d0167490308f54bb8d79b3577c2f0aaa6",
+    "api_production_sha": "6c7b49a3fecab3bda8e2f6ad41789972ad711dd9",
+    "oidc_fix_commit_deployment_observed": false
+  },
+  "post_fix_schedule_query": {
+    "queried_at_utc": "2026-10-24T02:52:36Z",
+    "latest_run_id": "40049295827",
+    "latest_run_created_at_utc": "2026-10-24T01:19:58Z",
+    "latest_run_sha": "b5a2f067d75adf16bf84193ecea290c1bd318f5e",
+    "latest_run_conclusion": "failure",
+    "latest_run_is_after_fix_commit": false,
+    "schedule_with_fix_observed": false,
+    "rechecked_by_utc": "2026-10-24T03:01:50Z",
+    "recheck_returned_same_latest_run": true,
+    "dispatch_rerun_manual_worker_or_qa_job_used": false
+  },
+  "production_data_changes": {
+    "migrations_applied": 0,
+    "product_data_written": false,
+    "traffic_or_alias_changed": false,
+    "green_cron_changed": false,
+    "blue_touched": false
+  }
+}
