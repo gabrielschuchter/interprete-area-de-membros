@@ -1,0 +1,143 @@
+{
+  "observedAt": "2026-10-26T15:52:30.727Z",
+  "result": "PUBLISHED",
+  "environment": "Production",
+  "app": {
+    "publicUrl": "https://interprete-area-de-membros.vercel.app",
+    "aliases": [
+      "interprete-area-de-membros.vercel.app",
+      "interprete-area-de-membros-app.vercel.app"
+    ],
+    "deploymentId": "dpl_5T61v53srxCJnkc9ffC29W3jzB1x",
+    "immutableUrl": "https://interprete-area-de-membros-2p7rwuh6g-gabrielschuchters-projects.vercel.app",
+    "sha": "1c57191542316654cc3b2da1f21e3f5474529408",
+    "state": "READY",
+    "target": "production"
+  },
+  "api": {
+    "publicUrl": "https://interprete-area-de-membros-api.vercel.app",
+    "deploymentId": "dpl_5975utnkeZVCrQXyXUEAyk7UUNRW",
+    "immutableUrl": "https://interprete-area-de-membros-nx0ebcpo3-gabrielschuchters-projects.vercel.app",
+    "sha": "660595b1a83a0fec343207a35dcf09256709499a",
+    "state": "READY",
+    "target": "production",
+    "publicHealth": "OK"
+  },
+  "protection": {
+    "maintenanceOnPublicAliases": false,
+    "hostGuardActiveVersion": 5,
+    "onlyVerifiedCompatibleHostsAllowed": true,
+    "temporaryQaTrustedSourceRestored": true,
+    "gitIntegrationConnected": false
+  },
+  "data": {
+    "v2MigrationsApplied": 13,
+    "ledgerEntries": 78,
+    "drift": 0,
+    "t0DatabaseAndStorageRestoreVerified": true,
+    "isolatedCompatibleFallbackVerified": true,
+    "ambiguousLegacyPublishedPosts": 2,
+    "ambiguousPostsRemainUnresolvedAndFailClosed": true
+  },
+  "workers": {
+    "cronJobName": "interprete-member-outbox",
+    "active": true,
+    "schedule": "*/5 * * * *",
+    "scheduledRuns": [
+      {
+        "startedAt": "2026-10-26T15:35:00.249Z",
+        "status": "succeeded"
+      },
+      {
+        "startedAt": "2026-10-26T15:40:00.068Z",
+        "status": "succeeded"
+      },
+      {
+        "startedAt": "2026-10-26T15:45:00.156Z",
+        "status": "succeeded"
+      }
+    ],
+    "qaJobRecovery": {
+      "automatic": true,
+      "manualWorkerCalls": 0,
+      "namespace": "production",
+      "namespaceIsolation": true,
+      "notificationPersisted": true,
+      "recipientIsolation": true
+    },
+    "qaJobRecoveryEvidence": "production-scheduler-realtime-repro-20261026.json"
+  },
+  "realtime": {
+    "publicationIncludesRealtimeMessages": true,
+    "rlsChanged": false,
+    "grantsChanged": false,
+    "userUiBadgeTest": {
+      "passed": true,
+      "recipientUpdatedWithoutReload": true,
+      "nonrecipientUnchanged": true,
+      "persistedAfterReload": true,
+      "announcementArchived": true
+    },
+    "observerNote": "The scheduler probe did not capture Broadcast frames or DOM badge values; the separate direct UI probe measured the badge and summary."
+  },
+  "authenticatedSmoke": {
+    "passed": true,
+    "deploymentProtectionBypassUsed": false,
+    "controlledMemberIdentityMatched": true,
+    "realMemberImpersonation": 0,
+    "community": true,
+    "groups": true,
+    "savedPosts": true,
+    "notificationSummaryPrivateNoStore": true,
+    "realtimeTokenIdentityScoped": true,
+    "realtimeConfig": true,
+    "privateChannelSubscribed": true,
+    "app5xx": 0,
+    "pageErrors": 0,
+    "roleAndGroupEvidence": {
+      "actorsAuthenticated": 4,
+      "roleAuthorization": true,
+      "privateGroupCreated": true,
+      "unauthorizedMemberBlocked": true,
+      "publicationPersisted": true,
+      "groupArchived": true,
+      "source": "production-smoke-20261026.json",
+      "initialRunNotificationStagePassed": false,
+      "notificationAndRealtimeGapClosedBy": [
+        "production-public-auth-smoke-20261026.json",
+        "production-realtime-badge-probe-20261026.json"
+      ]
+    }
+  },
+  "controlledQaAccounts": {
+    "retired": 4,
+    "role": "MEMBER",
+    "profilesRemainHidden": true,
+    "realMemberRowsTouched": 0
+  },
+  "monitoring": {
+    "requestLogsWindowMinutes": 15,
+    "app": {
+      "deploymentId": "dpl_5T61v53srxCJnkc9ffC29W3jzB1x",
+      "requests": 50,
+      "statuses": {
+        "200": 37,
+        "304": 6,
+        "307": 7
+      },
+      "serverErrors": 0,
+      "errorLogEntries": 0
+    },
+    "api": {
+      "deploymentId": "dpl_5975utnkeZVCrQXyXUEAyk7UUNRW",
+      "requests": 4,
+      "statuses": {
+        "200": 4
+      },
+      "serverErrors": 0,
+      "errorLogEntries": 0
+    },
+    "latencyPercentilesAvailable": false
+  },
+  "passed": true
+}

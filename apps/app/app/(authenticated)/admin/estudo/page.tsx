@@ -51,6 +51,7 @@ const AdminStudyPage = async ({ searchParams }: AdminStudyPageProperties) => {
         targetMinutes: true,
         startsAt: true,
         endsAt: true,
+        renewalMode: true,
         publishedAt: true,
         archivedAt: true,
       },
@@ -58,7 +59,11 @@ const AdminStudyPage = async ({ searchParams }: AdminStudyPageProperties) => {
   ]);
   const messages: Record<string, string> = {
     "campanha-atualizada": "A publicação da meta coletiva foi atualizada.",
+    "campanha-conflito":
+      "Já existe outra meta publicada. Retire-a antes de publicar uma nova.",
     "campanha-criada": "A meta coletiva foi salva.",
+    "campanha-invalida":
+      "Confira o título, o valor e um período entre 1 e 366 dias.",
     "tarefa-atribuida":
       "A tarefa foi atribuída e notificações duráveis foram enfileiradas.",
   };
@@ -209,7 +214,7 @@ const AdminStudyPage = async ({ searchParams }: AdminStudyPageProperties) => {
               rows={3}
             />
           </label>
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <label className="grid gap-2" htmlFor="campaign-target">
               <span className="font-medium text-sm">
                 Objetivo total · minutos
@@ -222,6 +227,18 @@ const AdminStudyPage = async ({ searchParams }: AdminStudyPageProperties) => {
                 required
                 type="number"
               />
+            </label>
+            <label className="grid gap-2" htmlFor="campaign-renewal">
+              <span className="font-medium text-sm">Renovação</span>
+              <select
+                className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+                defaultValue="MANUAL"
+                id="campaign-renewal"
+                name="renewalMode"
+              >
+                <option value="AUTOMATIC">Automática</option>
+                <option value="MANUAL">Manual</option>
+              </select>
             </label>
             <label className="grid gap-2" htmlFor="campaign-start">
               <span className="font-medium text-sm">
@@ -286,7 +303,10 @@ const AdminStudyPage = async ({ searchParams }: AdminStudyPageProperties) => {
                   <p className="mt-1 text-muted-foreground text-sm">
                     {campaign.targetMinutes.toLocaleString("pt-BR")} minutos ·{" "}
                     {formatDate(campaign.startsAt)} a{" "}
-                    {formatDate(campaign.endsAt)}
+                    {formatDate(campaign.endsAt)} · Renovação{" "}
+                    {campaign.renewalMode === "AUTOMATIC"
+                      ? "automática"
+                      : "manual"}
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">

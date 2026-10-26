@@ -43,7 +43,7 @@ export const getCohortNoticeIds = async (cohortId: string) => {
 export const getCohortNotices = async (cohortId: string, now = new Date()) => {
   const ids = await getCohortNoticeIds(cohortId);
   const notices = await database.announcement.findMany({
-    where: { id: { in: ids }, deletedAt: null },
+    where: { id: { in: ids }, deletedAt: null, status: { not: "DRAFT" } },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     select: {
       id: true,

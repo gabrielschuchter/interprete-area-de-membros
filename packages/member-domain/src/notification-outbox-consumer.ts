@@ -1,4 +1,10 @@
-import type { Prisma } from "@repo/database";
+import {
+  AnnouncementAudience,
+  ContentStatus,
+  MemberRole,
+  type Prisma,
+} from "@repo/database";
+import { assertPreviewNotificationAudience } from "./events";
 import {
   notificationPreferenceForType,
   notificationPriority,
@@ -36,11 +42,24 @@ type NotificationRequest = ReturnType<
 interface NotificationBodyLookups {
   readonly activities: ReadonlyMap<string, string>;
   readonly badges: ReadonlyMap<string, string>;
+  readonly commentPostIds: ReadonlyMap<string, string>;
   readonly comments: ReadonlyMap<string, string>;
+  readonly communityPosts: ReadonlyMap<
+    string,
+    {
+      readonly allowedRecipientIds: ReadonlySet<string>;
+      readonly communitySpaceId: string | null;
+      readonly isPublished: boolean;
+    }
+  >;
   readonly groupAudience: ReadonlyMap<string, ReadonlySet<string>>;
   readonly groupInvitations: ReadonlyMap<
     string,
-    { readonly inviteeId: string; readonly title: string }
+    {
+      readonly inviteeId: string;
+      readonly spaceId: string;
+      readonly title: string;
+    }
   >;
   readonly learningAssignments: ReadonlyMap<
     string,
@@ -59,6 +78,98 @@ interface NotificationBodyLookups {
 const distinctIds = (values: readonly (string | null | undefined)[]) => [
   ...new Set(values.filter((value): value is string => Boolean(value))),
 ];
+
+const communityCommentNotificationTypes = new Set([
+  "MENTION",
+  "COMMENT_REPLY",
+  "TOPIC_COMMENT",
+  "FOLLOWED_TOPIC_ACTIVITY",
+]);
+
+const lockCommunityNotificationAudience = async (
+  transaction: Parameters<OutboxConsumer["handle"]>[0],
+  requests: readonly NotificationRequest[],
+  recipientIds: readonly string[]
+) => {
+  const communityRequests = requests.filter(
+    ({ type }) =>
+      communityCommentNotificationTypes.has(type) ||
+      type === "GROUP_POST" ||
+      type === "GROUP_INVITATION"
+  );
+  if (communityRequests.length === 0) {
+    return;
+  }
+
+  const postIds = distinctIds(
+    communityRequests.flatMap((request) => [
+      request.entityType === "TOPIC" ? request.entityId : null,
+      request.parentEntityType === "TOPIC" ? request.parentEntityId : null,
+    ])
+  );
+  const commentIds = distinctIds(
+    communityRequests.flatMap((request) => [
+      request.entityType === "COMMENT" ? request.entityId : null,
+      request.parentEntityType === "COMMENT" ? request.parentEntityId : null,
+    ])
+  );
+  const comments = commentIds.length
+    ? await transaction.communityComment.findMany({
+        where: { id: { in: commentIds }, deletedAt: null },
+        select: { postId: true },
+      })
+    : [];
+  const relatedPostIds = distinctIds([
+    ...postIds,
+    ...comments.map(({ postId }) => postId),
+  ]);
+  const posts = relatedPostIds.length
+    ? await transaction.communityPost.findMany({
+        where: { id: { in: relatedPostIds } },
+        select: { spaceId: true },
+      })
+    : [];
+  const spaceIds = distinctIds([
+    ...posts.map(({ spaceId }) => spaceId),
+    ...communityRequests
+      .filter(
+        ({ type }) => type === "GROUP_POST" || type === "GROUP_INVITATION"
+      )
+      .map(({ groupKey }) => groupKey),
+  ]);
+
+  if (spaceIds.length > 0) {
+    // Membership removal and group archival serialize against this delivery.
+    await transaction.$queryRaw<Array<{ readonly id: string }>>`
+      SELECT "id" FROM "CommunitySpace"
+      WHERE "id" = ANY(${spaceIds}::text[])
+      ORDER BY "id"
+      FOR SHARE
+    `;
+    await transaction.$queryRaw<Array<{ readonly spaceId: string }>>`
+      SELECT "spaceId" FROM "CommunitySpaceMember"
+      WHERE "spaceId" = ANY(${spaceIds}::text[])
+        AND "memberId" = ANY(${[...recipientIds]}::text[])
+      ORDER BY "spaceId", "memberId"
+      FOR SHARE
+    `;
+  }
+
+  const invitationIds = distinctIds(
+    communityRequests
+      .filter(({ type }) => type === "GROUP_INVITATION")
+      .map(({ entityId }) => entityId)
+  );
+  if (invitationIds.length > 0) {
+    await transaction.$queryRaw<Array<{ readonly id: string }>>`
+      SELECT "id" FROM "CommunitySpaceInvitation"
+      WHERE "id" = ANY(${invitationIds}::text[])
+        AND "inviteeId" = ANY(${[...recipientIds]}::text[])
+      ORDER BY "id"
+      FOR SHARE
+    `;
+  }
+};
 
 const learningTargetKey = (type: string, id: string) => `${type}:${id}`;
 
@@ -367,6 +478,26 @@ const loadNotificationBodies = async (
   const recipientIds = distinctIds(
     requests.map(({ recipientId }) => recipientId)
   );
+  const communityPostSelect = {
+    id: true,
+    title: true,
+    spaceId: true,
+    audienceScope: true,
+    status: true,
+    deletedAt: true,
+    space: {
+      select: {
+        id: true,
+        visibility: true,
+        status: true,
+        ownerId: true,
+        members: {
+          where: { memberId: { in: recipientIds } },
+          select: { memberId: true },
+        },
+      },
+    },
+  } as const;
 
   const [
     activities,
@@ -407,14 +538,18 @@ const loadNotificationBodies = async (
       : [],
     postIds.length
       ? transaction.communityPost.findMany({
-          where: { deletedAt: null, id: { in: postIds } },
-          select: { id: true, title: true },
+          where: {
+            deletedAt: null,
+            status: ContentStatus.PUBLISHED,
+            id: { in: postIds },
+          },
+          select: communityPostSelect,
         })
       : [],
     commentIds.length
       ? transaction.communityComment.findMany({
           where: { deletedAt: null, id: { in: commentIds } },
-          select: { id: true, post: { select: { id: true, title: true } } },
+          select: { id: true, post: { select: communityPostSelect } },
         })
       : [],
     groupIds.length
@@ -441,7 +576,7 @@ const loadNotificationBodies = async (
           select: {
             id: true,
             inviteeId: true,
-            space: { select: { title: true } },
+            space: { select: { id: true, title: true } },
           },
         })
       : [],
@@ -481,6 +616,46 @@ const loadNotificationBodies = async (
     comments.map(({ id, post }) => [id, post.title])
   );
   const postsById = new Map(posts.map(({ id, title }) => [id, title]));
+  const commentPostIds = new Map(comments.map(({ id, post }) => [id, post.id]));
+  const allRelatedPosts = new Map([
+    ...posts.map((post) => [post.id, post] as const),
+    ...comments.map(({ post }) => [post.id, post] as const),
+  ]);
+  const communityPosts = new Map(
+    [...allRelatedPosts.values()].map((post) => {
+      const space = post.space;
+      const isPublished =
+        post.status === ContentStatus.PUBLISHED &&
+        post.deletedAt === null &&
+        ((post.audienceScope === "GLOBAL" && space === null) ||
+          (post.audienceScope === "GROUP" &&
+            space !== null &&
+            space.status === ContentStatus.PUBLISHED));
+      let allowedRecipientIds: Set<string>;
+      if (!isPublished) {
+        allowedRecipientIds = new Set();
+      } else if (
+        post.audienceScope === "GROUP" &&
+        space?.visibility === "PRIVATE"
+      ) {
+        allowedRecipientIds = new Set([
+          ...(space.ownerId ? [space.ownerId] : []),
+          ...space.members.map(({ memberId }) => memberId),
+        ]);
+      } else {
+        allowedRecipientIds = new Set(recipientIds);
+      }
+      return [
+        post.id,
+        {
+          allowedRecipientIds,
+          communitySpaceId:
+            post.audienceScope === "GROUP" ? (space?.id ?? null) : null,
+          isPublished,
+        },
+      ] as const;
+    })
+  );
   for (const comment of comments) {
     postsById.set(comment.post.id, comment.post.title);
   }
@@ -503,11 +678,13 @@ const loadNotificationBodies = async (
     modules: new Map(modules.map(({ id, title }) => [id, title])),
     posts: postsById,
     comments: commentBodies,
+    commentPostIds,
+    communityPosts,
     groupAudience,
     groupInvitations: new Map(
       invitations.map(({ id, inviteeId, space }) => [
         id,
-        { inviteeId, title: space.title },
+        { inviteeId, spaceId: space.id, title: space.title },
       ])
     ),
     learningAssignments,
@@ -582,6 +759,37 @@ const relatedEntityId = (
   return null;
 };
 
+const communityPostIdForRequest = (
+  request: NotificationRequest,
+  lookups: NotificationBodyLookups
+) => {
+  const topicId = relatedEntityId(request, "TOPIC");
+  if (topicId) {
+    return topicId;
+  }
+  const commentId = relatedEntityId(request, "COMMENT");
+  return commentId ? (lookups.commentPostIds.get(commentId) ?? null) : null;
+};
+
+const communitySpaceIdForRequest = (
+  request: NotificationRequest,
+  lookups: NotificationBodyLookups
+) => {
+  if (request.type === "GROUP_POST") {
+    return request.groupKey ?? null;
+  }
+  if (request.type === "GROUP_INVITATION" && request.entityId) {
+    return lookups.groupInvitations.get(request.entityId)?.spaceId ?? null;
+  }
+  if (communityCommentNotificationTypes.has(request.type)) {
+    const postId = communityPostIdForRequest(request, lookups);
+    return postId
+      ? (lookups.communityPosts.get(postId)?.communitySpaceId ?? null)
+      : null;
+  }
+  return null;
+};
+
 const relatedNotificationBody = (
   request: NotificationRequest,
   lookups: NotificationBodyLookups
@@ -646,6 +854,9 @@ const toNotificationRow = (
   parentEntityType: request.parentEntityType ?? null,
   parentEntityId: request.parentEntityId ?? null,
   groupKey: request.groupKey ?? null,
+  communitySpaceId: communitySpaceIdForRequest(request, lookups),
+  announcementId: request.announcementId ?? null,
+  announcementVersion: request.announcementVersion ?? null,
   dedupeKey: request.dedupeKey,
   priority:
     request.priority ??
@@ -661,6 +872,111 @@ const toNotificationRow = (
   href: request.href ?? null,
 });
 
+const isLearningNotificationCurrent = (
+  request: NotificationRequest,
+  lookups: NotificationBodyLookups
+) => {
+  if (request.entityType === "LEARNING_TASK") {
+    return Boolean(
+      request.entityId &&
+        lookups.learningTasks
+          .get(request.entityId)
+          ?.recipientIds.has(request.recipientId)
+    );
+  }
+  return (
+    typeof request.entityId === "string" &&
+    lookups.learningAssignments.get(request.entityId)?.recipientId ===
+      request.recipientId
+  );
+};
+
+const isGroupInvitationCurrent = (
+  request: NotificationRequest,
+  lookups: NotificationBodyLookups
+) => {
+  const invitation = request.entityId
+    ? lookups.groupInvitations.get(request.entityId)
+    : undefined;
+  return Boolean(
+    invitation?.inviteeId === request.recipientId &&
+      (!request.groupKey || request.groupKey === invitation.spaceId) &&
+      (request.communitySpaceId === undefined ||
+        request.communitySpaceId === invitation.spaceId)
+  );
+};
+
+const isGroupPostCurrent = (
+  request: NotificationRequest,
+  lookups: NotificationBodyLookups
+) => {
+  const postId = communityPostIdForRequest(request, lookups);
+  const postAudience = postId ? lookups.communityPosts.get(postId) : undefined;
+  return Boolean(
+    request.groupKey &&
+      postAudience?.isPublished &&
+      postAudience.communitySpaceId === request.groupKey &&
+      (request.communitySpaceId === undefined ||
+        request.communitySpaceId === postAudience.communitySpaceId) &&
+      lookups.groupAudience.get(request.groupKey)?.has(request.recipientId)
+  );
+};
+
+const isCommunityCommentNotificationCurrent = (
+  request: NotificationRequest,
+  lookups: NotificationBodyLookups
+) => {
+  const postId = communityPostIdForRequest(request, lookups);
+  const postAudience = postId ? lookups.communityPosts.get(postId) : undefined;
+  return Boolean(
+    postAudience?.isPublished &&
+      (request.communitySpaceId !== undefined ||
+        postAudience.communitySpaceId !== null) &&
+      (request.communitySpaceId === undefined ||
+        request.communitySpaceId === postAudience.communitySpaceId) &&
+      postAudience.allowedRecipientIds.has(request.recipientId)
+  );
+};
+
+const isNotificationAudienceCurrent = (
+  request: NotificationRequest,
+  lookups: NotificationBodyLookups,
+  isAnnouncementAllowed: (request: NotificationRequest) => boolean
+) => {
+  if (request.type === "ANNOUNCEMENT") {
+    return isAnnouncementAllowed(request);
+  }
+  if (
+    request.type === "LEARNING_CONTENT_ASSIGNED" &&
+    !isLearningNotificationCurrent(request, lookups)
+  ) {
+    return false;
+  }
+  if (
+    request.type === "GROUP_INVITATION" &&
+    !isGroupInvitationCurrent(request, lookups)
+  ) {
+    return false;
+  }
+  if (
+    request.type === "BADGE_AWARDED" &&
+    !(
+      request.entityType === "BADGE" &&
+      typeof request.entityId === "string" &&
+      lookups.badges.has(`${request.recipientId}:${request.entityId}`)
+    )
+  ) {
+    return false;
+  }
+  if (request.type === "GROUP_POST" && !isGroupPostCurrent(request, lookups)) {
+    return false;
+  }
+  return (
+    !communityCommentNotificationTypes.has(request.type) ||
+    isCommunityCommentNotificationCurrent(request, lookups)
+  );
+};
+
 export const notificationOutboxConsumer: OutboxConsumer = {
   handle: async (transaction, event) => {
     if (event.eventType !== "notifications.batch_requested") {
@@ -668,6 +984,10 @@ export const notificationOutboxConsumer: OutboxConsumer = {
     }
 
     const { notifications } = parseNotificationOutboxPayload(event.payload);
+    assertPreviewNotificationAudience(
+      event.actorId,
+      notifications.map(({ recipientId }) => recipientId)
+    );
     const requests = notifications.filter(
       (notification) => notification.recipientId !== event.actorId
     );
@@ -678,10 +998,49 @@ export const notificationOutboxConsumer: OutboxConsumer = {
       return;
     }
 
+    await lockCommunityNotificationAudience(
+      transaction,
+      requests,
+      recipientIds
+    );
+
+    const announcementIds = distinctIds(
+      requests.map(({ announcementId }) => announcementId)
+    );
+    if (announcementIds.length > 0) {
+      // Serialize delivery with editorial updates so an old audience cannot
+      // slip through while a new version is being committed.
+      await transaction.$queryRaw<Array<{ readonly id: string }>>`
+        SELECT "id" FROM "Announcement"
+        WHERE "id" = ANY(${announcementIds}::text[])
+        FOR SHARE
+      `;
+    }
+
+    const announcementRows = announcementIds.length
+      ? await transaction.announcement.findMany({
+          where: { id: { in: announcementIds } },
+          select: {
+            id: true,
+            audience: true,
+            recipientIds: true,
+            status: true,
+            startsAt: true,
+            endsAt: true,
+            deletedAt: true,
+            version: true,
+            cohorts: { select: { cohortId: true } },
+          },
+        })
+      : [];
+    const announcementsById = new Map(
+      announcementRows.map((announcement) => [announcement.id, announcement])
+    );
+
     const [activeMembers, preferences, bodies] = await Promise.all([
       transaction.member.findMany({
         where: { deactivatedAt: null, id: { in: recipientIds } },
-        select: { id: true },
+        select: { id: true, role: true },
       }),
       transaction.notificationPreference.findMany({
         where: { memberId: { in: recipientIds } },
@@ -690,47 +1049,85 @@ export const notificationOutboxConsumer: OutboxConsumer = {
       loadNotificationBodies(transaction, requests),
     ]);
     const activeMemberIds = new Set(activeMembers.map(({ id }) => id));
+    const activeMembersById = new Map(
+      activeMembers.map((member) => [member.id, member])
+    );
     const preferencesByMemberId = new Map(
       preferences.map((preference) => [preference.memberId, preference])
     );
-    const rows = requests
-      .filter((request) => {
-        if (request.type === "LEARNING_CONTENT_ASSIGNED") {
-          if (request.entityType === "LEARNING_TASK") {
-            return Boolean(
-              request.entityId &&
-                bodies.learningTasks
-                  .get(request.entityId)
-                  ?.recipientIds.has(request.recipientId)
-            );
-          }
-          return (
-            typeof request.entityId === "string" &&
-            bodies.learningAssignments.get(request.entityId)?.recipientId ===
-              request.recipientId
-          );
-        }
-        if (request.type === "GROUP_INVITATION") {
-          return (
-            typeof request.entityId === "string" &&
-            bodies.groupInvitations.get(request.entityId)?.inviteeId ===
-              request.recipientId
-          );
-        }
-        if (request.type === "BADGE_AWARDED") {
-          return (
-            request.entityType === "BADGE" &&
-            typeof request.entityId === "string" &&
-            bodies.badges.has(`${request.recipientId}:${request.entityId}`)
-          );
-        }
-        if (request.type === "GROUP_POST" && request.groupKey) {
-          return bodies.groupAudience
-            .get(request.groupKey)
-            ?.has(request.recipientId);
-        }
+
+    const announcementCohortIds = distinctIds(
+      announcementRows.flatMap((announcement) =>
+        announcement.audience === AnnouncementAudience.COHORT
+          ? announcement.cohorts.map(({ cohortId }) => cohortId)
+          : []
+      )
+    );
+    const announcementMemberships =
+      announcementCohortIds.length > 0
+        ? await transaction.$queryRaw<
+            Array<{ readonly cohortId: string; readonly memberId: string }>
+          >`
+            SELECT membership."memberId", membership."cohortId"
+            FROM "CohortMembership" AS membership
+            JOIN "Cohort" AS cohort ON cohort."id" = membership."cohortId"
+            WHERE membership."memberId" = ANY(${recipientIds}::text[])
+              AND membership."cohortId" = ANY(${announcementCohortIds}::text[])
+              AND membership."status" = 'ACTIVE'::"CohortMemberStatus"
+              AND membership."leftAt" IS NULL
+              AND cohort."archivedAt" IS NULL
+            FOR SHARE OF membership, cohort
+          `
+        : [];
+    const membershipsByMemberId = new Map<string, Set<string>>();
+    for (const membership of announcementMemberships) {
+      const cohortIds =
+        membershipsByMemberId.get(membership.memberId) ?? new Set();
+      cohortIds.add(membership.cohortId);
+      membershipsByMemberId.set(membership.memberId, cohortIds);
+    }
+    const now = new Date();
+    const isAnnouncementDeliveryAllowed = (request: NotificationRequest) => {
+      if (!(request.announcementId && request.announcementVersion)) {
+        return false;
+      }
+      const announcement = announcementsById.get(request.announcementId);
+      if (
+        !announcement ||
+        announcement.version !== request.announcementVersion ||
+        announcement.status !== ContentStatus.PUBLISHED ||
+        announcement.deletedAt ||
+        (announcement.startsAt && announcement.startsAt > now) ||
+        (announcement.endsAt && announcement.endsAt <= now)
+      ) {
+        return false;
+      }
+      if (announcement.audience === AnnouncementAudience.ALL) {
         return true;
-      })
+      }
+      if (announcement.audience === AnnouncementAudience.STAFF) {
+        const role = activeMembersById.get(request.recipientId)?.role;
+        return role === MemberRole.TEACHER || role === MemberRole.ADMIN;
+      }
+      if (announcement.audience === AnnouncementAudience.SELECTED) {
+        return announcement.recipientIds.includes(request.recipientId);
+      }
+      const memberCohorts = membershipsByMemberId.get(request.recipientId);
+      return Boolean(
+        memberCohorts &&
+          announcement.cohorts.some(({ cohortId }) =>
+            memberCohorts.has(cohortId)
+          )
+      );
+    };
+    const rows = requests
+      .filter((request) =>
+        isNotificationAudienceCurrent(
+          request,
+          bodies,
+          isAnnouncementDeliveryAllowed
+        )
+      )
       .filter((request) =>
         isNotificationAllowed(request, activeMemberIds, preferencesByMemberId)
       )

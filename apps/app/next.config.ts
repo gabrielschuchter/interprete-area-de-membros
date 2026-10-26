@@ -29,7 +29,10 @@ nextConfig = {
   },
   logging: {
     incomingRequests: {
-      ignore: [/__clerk_/],
+      ignore: [
+        /__clerk_/,
+        /\/comunidade\/compartilhar\/[A-Za-z0-9_-]{43}(?:\/opengraph-image)?/,
+      ],
     },
   },
   async headers() {
@@ -41,6 +44,22 @@ nextConfig = {
             key: "Cache-Control",
             value: "private, no-store",
           },
+        ],
+      },
+      {
+        source: "/comunidade/compartilhar/:token",
+        headers: [
+          { key: "Cache-Control", value: "private, no-store" },
+          { key: "Referrer-Policy", value: "no-referrer" },
+          { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" },
+        ],
+      },
+      {
+        source: "/comunidade/compartilhar/:token/:path*",
+        headers: [
+          { key: "Cache-Control", value: "private, no-store" },
+          { key: "Referrer-Policy", value: "no-referrer" },
+          { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" },
         ],
       },
     ];

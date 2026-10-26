@@ -11,12 +11,16 @@ type ServerFormAction =
 interface SingleFlightFormProperties
   extends Omit<React.ComponentProps<"form">, "action" | "onSubmit"> {
   readonly action: ServerFormAction;
+  readonly onActionError?: () => void;
+  readonly onResult?: (result: unknown) => void;
   readonly onSettled?: () => void;
 }
 
 export const SingleFlightForm = ({
   action,
   children,
+  onActionError,
+  onResult,
   onSettled,
   ...props
 }: SingleFlightFormProperties) => {
@@ -24,13 +28,17 @@ export const SingleFlightForm = ({
   const runAction = useCallback(
     async (formData: FormData) => {
       try {
-        await action(formData);
+        const result = await action(formData);
+        onResult?.(result);
+      } catch (error) {
+        onActionError?.();
+        throw error;
       } finally {
         lockedRef.current = false;
         onSettled?.();
       }
     },
-    [action, onSettled]
+    [action, onActionError, onResult, onSettled]
   );
 
   return (

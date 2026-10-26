@@ -1,0 +1,53 @@
+{
+  "result": "PASS",
+  "completedAt": "2026-10-23T18:53:18.718Z",
+  "target": "127.0.0.1:54325/interprete_community_v2_qa",
+  "tls": "certificate verification enabled with the QA CA",
+  "endpoint": "http://localhost:3101/api/notifications",
+  "authentication": "existing local development auth, existing fixture recipient; no Clerk remote writes",
+  "migration": {
+    "name": "20261023140000_notification_audience_reconcile",
+    "checksum": "d9fcad34bc0bd88a03cee39153dbcbccae44537d914e5ea5ef03b73848d99df2",
+    "appliedChecksumMatches": true
+  },
+  "fixture": "qa-rv01-1792773100683",
+  "post": {
+    "audienceScope": "UNRESOLVED",
+    "spaceId": null,
+    "status": "DRAFT"
+  },
+  "originalNotificationScope": null,
+  "reconciledNotificationScope": "__community_scope_unresolved__",
+  "fixtureUnread": true,
+  "fixtureUnseen": true,
+  "fixturePreserved": true,
+  "filters": [
+    {
+      "filter": "MENTIONS",
+      "pages": 1,
+      "visibleItems": 1,
+      "unresolvedVisible": false,
+      "legitimateGlobalVisible": "no existing control for recipient",
+      "unreadCount": 1,
+      "unseenCount": 1,
+      "countsMatchVisibleItems": true
+    },
+    {
+      "filter": "ALL",
+      "pages": 1,
+      "visibleItems": 2,
+      "unresolvedVisible": false,
+      "legitimateGlobalVisible": "no existing control for recipient",
+      "unreadCount": 2,
+      "unseenCount": 2,
+      "countsMatchVisibleItems": true
+    }
+  ],
+  "summary": {
+    "unreadCount": 2,
+    "unseenCount": 2,
+    "matchesAllVisibleItems": true
+  },
+  "databaseWrites": 0,
+  "remoteChanges": 0
+}

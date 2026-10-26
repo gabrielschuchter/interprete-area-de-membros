@@ -10,6 +10,7 @@ interface CommunityDraftStarterProperties {
   readonly children: ReactNode;
   readonly className?: string;
   readonly pendingLabel?: ReactNode;
+  readonly returnTo?: string;
   readonly spaceId?: string;
   readonly variant?: "default" | "ghost" | "outline";
 }
@@ -18,11 +19,13 @@ export const CommunityDraftStarter = ({
   children,
   className,
   pendingLabel = "Abrindo editor…",
+  returnTo = "/comunidade",
   spaceId,
   variant = "default",
 }: CommunityDraftStarterProperties) => (
   <SingleFlightForm action={startDraft}>
     <input name="idempotencyKey" type="hidden" value={randomUUID()} />
+    <input name="returnTo" type="hidden" value={returnTo} />
     <input name="spaceId" type="hidden" value={spaceId ?? ""} />
     <SingleFlightSubmit
       className={className}

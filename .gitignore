@@ -65,6 +65,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# Graphify maps and query caches are generated locally; keep the worktree copy out of commits.
+/graphify-out/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

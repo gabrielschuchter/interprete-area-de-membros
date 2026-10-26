@@ -16,9 +16,20 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("./mention-textarea", () => ({
-  MentionTextarea: (props: TextareaHTMLAttributes<HTMLTextAreaElement>) => (
-    <textarea {...props} />
-  ),
+  MentionTextarea: (
+    props: Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, "onChange"> & {
+      readonly onChange?: (value: string) => void;
+      readonly postId?: string;
+    }
+  ) => {
+    const { onChange, postId: _postId, ...textareaProps } = props;
+    return (
+      <textarea
+        {...textareaProps}
+        onChange={(event) => onChange?.(event.currentTarget.value)}
+      />
+    );
+  },
 }));
 
 const response = () =>

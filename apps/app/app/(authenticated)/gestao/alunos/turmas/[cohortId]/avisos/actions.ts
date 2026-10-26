@@ -2,6 +2,7 @@
 
 import { AnnouncementAudience, ContentStatus, database } from "@repo/database";
 import { revalidatePath } from "next/cache";
+import { queueAnnouncementNotifications } from "@/lib/announcement-notification-outbox";
 import { recordAuditEvent } from "@/lib/gestao-audit";
 import { requireGestaoCohortActor } from "@/lib/gestao-authorization";
 import {
@@ -9,7 +10,7 @@ import {
   getCohortNoticeIds,
 } from "@/lib/gestao-cohort-notices";
 import { consumeMutationRateLimit } from "@/lib/mutation-reliability";
-import { notifyAnnouncement } from "@/lib/notifications";
+import { dispatchPendingNotifications } from "@/lib/notification-outbox-dispatch";
 
 export interface CohortNoticeState {
   readonly done: boolean;
@@ -67,45 +68,44 @@ export const publishCohortNotice = async (
     };
   }
   const recipientIds = students.map(({ memberId }) => memberId);
-  const announcement = await database.announcement.create({
-    data: {
-      audience: AnnouncementAudience.SELECTED,
-      body,
-      createdByMemberId: actor.userId,
-      isPinned: text(formData, "isPinned") === "on",
-      publishedAt: now,
-      recipientIds,
-      startsAt,
-      status: ContentStatus.PUBLISHED,
-      title,
-    },
-    select: { id: true },
-  });
-  await recordAuditEvent({
-    actorId: actor.userId,
-    aggregateId: announcement.id,
-    aggregateType: "Announcement",
-    eventType: cohortNoticeCreated,
-    payload: {
-      cohortId,
-      recipients: recipientIds.length,
-      scheduled: startsAt?.toISOString() ?? null,
-      title,
-    },
+  await database.$transaction(async (transaction) => {
+    const announcement = await transaction.announcement.create({
+      data: {
+        audience: AnnouncementAudience.SELECTED,
+        body,
+        createdByMemberId: actor.userId,
+        isPinned: text(formData, "isPinned") === "on",
+        publishedAt: now,
+        recipientIds,
+        startsAt,
+        status: ContentStatus.PUBLISHED,
+        title,
+      },
+    });
+    await recordAuditEvent(
+      {
+        actorId: actor.userId,
+        aggregateId: announcement.id,
+        aggregateType: "Announcement",
+        eventType: cohortNoticeCreated,
+        payload: {
+          cohortId,
+          recipients: recipientIds.length,
+          scheduled: startsAt?.toISOString() ?? null,
+          title,
+        },
+      },
+      transaction
+    );
+    await queueAnnouncementNotifications(
+      transaction,
+      announcement,
+      [],
+      actor.userId
+    );
   });
   if (!startsAt) {
-    await Promise.all(
-      recipientIds.map((recipientId) =>
-        notifyAnnouncement({
-          actorId: actor.userId,
-          announcementId: announcement.id,
-          body,
-          href: "/comunidade",
-          recipientId,
-          title,
-        })
-      )
-    );
+    await dispatchPendingNotifications();
   }
   revalidatePath(pathFor(cohortId));
   revalidatePath("/comunidade");

@@ -186,12 +186,6 @@
   background: var(--cb-vine);
 }
 
-.cb-seg button i {
-  margin-left: 6px;
-  font: normal 11.5px / 1 var(--cb-mono);
-  opacity: 0.8;
-}
-
 .cb-tag {
   display: inline-flex;
   flex: none;
@@ -402,10 +396,6 @@
 
 .cb-cc:active .cb-cv {
   transform: none;
-}
-
-.cb-cc:active .cb-cc__body {
-  background: var(--cb-tint);
 }
 
 .cb-cc[aria-disabled="true"] {
@@ -1780,4 +1770,14 @@
   .cb-toast {
     bottom: 16px;
   }
+}
+
+.cb-seg button i {
+  margin-left: 6px;
+  font: normal 11.5px / 1 var(--cb-mono);
+  opacity: 0.8;
+}
+
+.cb-cc:active .cb-cc__body {
+  background: var(--cb-tint);
 }

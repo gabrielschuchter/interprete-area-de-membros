@@ -34,7 +34,10 @@ import {
   isUniqueConstraintError,
 } from "@/lib/mutation-reliability";
 import { dispatchPendingNotifications } from "@/lib/notification-outbox-dispatch";
-import { notifyFeedbackReceived } from "@/lib/notifications";
+import {
+  notifyFeedbackReceived,
+  notifySubmissionReceived,
+} from "@/lib/notifications";
 
 const value = (formData: FormData, name: string) => {
   const entry = formData.get(name);
@@ -274,7 +277,12 @@ export const submitActivity = async (
         },
       ],
     },
-    select: { slug: true, deliveryKind: true, rubricVersion: true },
+    select: {
+      slug: true,
+      title: true,
+      deliveryKind: true,
+      rubricVersion: true,
+    },
   });
 
   if (!activity) {
@@ -368,6 +376,12 @@ export const submitActivity = async (
   });
 
   await dispatchPendingNotifications();
+  await notifySubmissionReceived({
+    activityId,
+    activityTitle: activity.title,
+    studentId: userId,
+    submittedAt,
+  }).catch(() => undefined);
 
   if (previous?.attachmentPath && previous.attachmentPath !== attachmentPath) {
     await deleteMemberAsset(previous.attachmentPath);

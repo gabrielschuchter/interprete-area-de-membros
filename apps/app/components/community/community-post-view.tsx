@@ -3,6 +3,7 @@ import {
   ArrowLeftIcon,
   Edit2Icon,
   MessageCircleIcon,
+  MoreHorizontalIcon,
   ThumbsUpIcon,
   Trash2Icon,
 } from "lucide-react";
@@ -22,6 +23,7 @@ import {
   SingleFlightSubmit,
 } from "../mutations/single-flight-form";
 import { CommentComposer } from "./comment-composer";
+import { CommunityCommentDialog } from "./community-comment-dialog";
 import { CommunityCoverImage } from "./community-cover-image";
 import { CommunityDiscussionFollow } from "./community-discussion-follow";
 import { CommunityPostActions } from "./community-post-actions";
@@ -60,6 +62,11 @@ const CommentContent = ({
 
 interface CommentThreadProperties {
   readonly comment: CommunityComment;
+  readonly currentProfile: {
+    readonly avatarUrl: string | null;
+    readonly displayName: string | null;
+    readonly username: string;
+  } | null;
   readonly depth: number;
   readonly memberId: string;
   readonly post: CommunityPost;
@@ -70,6 +77,7 @@ interface CommentThreadProperties {
 const CommentControls = ({
   allowReply,
   comment,
+  currentProfile,
   memberId,
   post,
   replies,
@@ -110,72 +118,84 @@ const CommentControls = ({
         {replies.length} respostas
       </span>
       {allowReply && !(comment.deletedAt || post.space?.commentsClosed) && (
-        <details>
-          <summary className="community-comment__reply-toggle">
-            Responder
-          </summary>
-          <CommentComposer
-            ariaLabel={`Responder a ${(comment.content || "comentário removido").slice(0, 40)}`}
-            className="mt-3 grid gap-3"
-            parentId={comment.id}
-            placeholder="Escreva uma resposta... Use @nome para mencionar alguém."
-            postId={post.id}
-            spaceSlug={post.space?.slug ?? ""}
-          />
-        </details>
+        <CommunityCommentDialog
+          currentProfile={currentProfile}
+          postId={post.id}
+          replyContext={{
+            authorName:
+              comment.profile?.displayName ??
+              comment.profile?.username ??
+              "membro",
+            content: comment.content.slice(0, 240),
+            deleted: Boolean(comment.deletedAt),
+            parentId: comment.id,
+          }}
+          spaceSlug={post.space?.slug ?? ""}
+        />
       )}
-      {!comment.deletedAt && comment.authorId === memberId && (
-        <details>
-          <summary
-            aria-label="Editar comentário"
-            className="community-comment__edit-toggle"
-          >
-            <Edit2Icon aria-hidden="true" /> <span>Editar</span>
+      {(canDelete || (!comment.deletedAt && comment.authorId === memberId)) && (
+        <details className="community-comment__options">
+          <summary aria-label="Opções do comentário">
+            <MoreHorizontalIcon aria-hidden="true" />
           </summary>
-          <SingleFlightForm action={updateComment} className="mt-3 grid gap-3">
-            <input name="commentId" type="hidden" value={comment.id} />
-            <input name="postId" type="hidden" value={post.id} />
-            <input
-              name="spaceSlug"
-              type="hidden"
-              value={post.space?.slug ?? ""}
-            />
-            <MentionTextarea
-              className="min-h-24 w-full rounded-sm border bg-background px-3 py-2 text-sm leading-6 outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/35"
-              defaultDocument={comment.contentJson}
-              defaultValue={comment.content}
-              name="content"
-              required
-            />
-            <SingleFlightSubmit
-              className="w-fit"
-              pendingLabel="Salvando…"
-              size="sm"
-            >
-              Salvar resposta
-            </SingleFlightSubmit>
-          </SingleFlightForm>
-        </details>
-      )}
-      {canDelete && (
-        <SingleFlightForm action={softDeleteComment}>
-          <input name="commentId" type="hidden" value={comment.id} />
-          <input name="postId" type="hidden" value={post.id} />
-          <input
-            name="spaceSlug"
-            type="hidden"
-            value={post.space?.slug ?? ""}
-          />
-          <SingleFlightSubmit
-            aria-label="Apagar comentário"
-            className="community-comment__delete"
-            pendingLabel="Apagando…"
-            size="sm"
-            variant="ghost"
+          <div
+            aria-label="Opções do comentário"
+            className="community-comment__options-menu"
+            role="menu"
           >
-            <Trash2Icon aria-hidden="true" /> <span>Apagar</span>
-          </SingleFlightSubmit>
-        </SingleFlightForm>
+            {!comment.deletedAt && comment.authorId === memberId && (
+              <details className="community-comment__edit-panel">
+                <summary role="menuitem">
+                  <Edit2Icon aria-hidden="true" /> Editar
+                </summary>
+                <SingleFlightForm action={updateComment} className="grid gap-3">
+                  <input name="commentId" type="hidden" value={comment.id} />
+                  <input name="postId" type="hidden" value={post.id} />
+                  <input
+                    name="spaceSlug"
+                    type="hidden"
+                    value={post.space?.slug ?? ""}
+                  />
+                  <MentionTextarea
+                    className="min-h-24 w-full rounded-sm border bg-background px-3 py-2 text-sm leading-6 outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/35"
+                    defaultDocument={comment.contentJson}
+                    defaultValue={comment.content}
+                    name="content"
+                    postId={post.id}
+                    required
+                  />
+                  <SingleFlightSubmit
+                    className="w-fit"
+                    pendingLabel="Salvando…"
+                    size="sm"
+                  >
+                    Salvar edição
+                  </SingleFlightSubmit>
+                </SingleFlightForm>
+              </details>
+            )}
+            {canDelete && (
+              <SingleFlightForm action={softDeleteComment}>
+                <input name="commentId" type="hidden" value={comment.id} />
+                <input name="postId" type="hidden" value={post.id} />
+                <input
+                  name="spaceSlug"
+                  type="hidden"
+                  value={post.space?.slug ?? ""}
+                />
+                <SingleFlightSubmit
+                  className="community-comment__options-delete"
+                  pendingLabel="Apagando…"
+                  role="menuitem"
+                  size="sm"
+                  variant="ghost"
+                >
+                  <Trash2Icon aria-hidden="true" /> Apagar
+                </SingleFlightSubmit>
+              </SingleFlightForm>
+            )}
+          </div>
+        </details>
       )}
     </div>
   );
@@ -183,6 +203,7 @@ const CommentControls = ({
 
 const CommentThread = ({
   comment,
+  currentProfile,
   depth,
   memberId,
   post,
@@ -206,6 +227,7 @@ const CommentThread = ({
             compact
             profile={comment.profile ?? undefined}
             replyAvatar={depth > 0}
+            returnTo={communityPostHref(post)}
             showHeadline={false}
           />
         )}
@@ -236,6 +258,7 @@ const CommentThread = ({
         <CommentControls
           allowReply={depth === 0}
           comment={comment}
+          currentProfile={currentProfile}
           memberId={memberId}
           post={post}
           replies={replies}
@@ -247,6 +270,7 @@ const CommentThread = ({
           {replies.map((reply) => (
             <CommentThread
               comment={reply}
+              currentProfile={currentProfile}
               depth={depth + 1}
               key={reply.id}
               memberId={memberId}
@@ -264,6 +288,11 @@ const CommentThread = ({
 interface CommunityPostViewProperties {
   readonly backHref?: string;
   readonly backLabel?: string;
+  readonly currentProfile: {
+    readonly avatarUrl: string | null;
+    readonly displayName: string | null;
+    readonly username: string;
+  } | null;
   readonly memberId: string;
   readonly post: CommunityPost;
   readonly role: string;
@@ -274,6 +303,7 @@ export function CommunityPostView({
   backHref,
   backLabel,
   memberId,
+  currentProfile,
   post,
   role,
 }: CommunityPostViewProperties) {
@@ -305,7 +335,9 @@ export function CommunityPostView({
           <Link
             href={
               backHref ??
-              (post.space ? `/comunidade/${post.space.slug}` : "/comunidade")
+              (post.space
+                ? `/comunidade/grupos/${post.space.slug}`
+                : "/comunidade")
             }
           >
             <ArrowLeftIcon aria-hidden="true" />{" "}
@@ -318,7 +350,7 @@ export function CommunityPostView({
               {post.space && (
                 <Link
                   className="community-post-group"
-                  href={`/comunidade/${post.space.slug}`}
+                  href={`/comunidade/grupos/${post.space.slug}`}
                 >
                   {post.space.title}
                 </Link>
@@ -351,6 +383,7 @@ export function CommunityPostView({
               authorId={post.authorId}
               compact
               profile={post.profile ?? undefined}
+              returnTo={href}
               showHeadline={false}
             />
             {authorRoleLabel && (
@@ -361,7 +394,7 @@ export function CommunityPostView({
           </div>
           {post.coverUrl && (
             <CommunityCoverImage
-              alt={`Capa: ${post.title}`}
+              alt={post.coverAltText || `Capa: ${post.title}`}
               className="community-post-cover"
               height={630}
               loading="lazy"
@@ -396,6 +429,8 @@ export function CommunityPostView({
               initialBookmarked={post.bookmarks.length > 0}
               initialVoted={post.votes.length > 0}
               postId={post.id}
+              shareDescription={post.subtitle || post.excerpt || undefined}
+              shareTitle={post.title}
               spaceSlug={post.space?.slug ?? ""}
               voteCount={post._count.votes}
             />
@@ -436,6 +471,7 @@ export function CommunityPostView({
               <CommentComposer
                 ariaLabel="Comentário"
                 className="community-comment-composer"
+                currentProfile={currentProfile}
                 helperText="Use @nome para mencionar alguém."
                 placeholder="Acrescente uma leitura, uma pergunta ou uma referência…"
                 postId={post.id}
@@ -452,6 +488,7 @@ export function CommunityPostView({
               topLevel.map((comment) => (
                 <CommentThread
                   comment={comment}
+                  currentProfile={currentProfile}
                   depth={0}
                   key={comment.id}
                   memberId={memberId}
@@ -487,6 +524,13 @@ export function CommunityPostView({
           )}
         </section>
       </main>
+      {!post.space?.commentsClosed && (
+        <CommunityCommentDialog
+          currentProfile={currentProfile}
+          postId={post.id}
+          spaceSlug={post.space?.slug ?? ""}
+        />
+      )}
     </div>
   );
 }

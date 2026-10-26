@@ -1,0 +1,189 @@
+{
+  "observedAt": "2026-10-26T10:17:35.527Z",
+  "scheduler": {
+    "automaticSuccessesSinceRepair": 14,
+    "latestAutomaticRun": {
+      "id": 40273763962,
+      "status": "completed",
+      "conclusion": "success",
+      "createdAt": "2026-10-26T05:21:17Z"
+    },
+    "sampledLogs": [
+      {
+        "runId": 40273763962,
+        "url": "https://github.com/gabrielschuchter/interprete-area-de-membros/actions/runs/40273763962",
+        "event": "schedule",
+        "attempt": 1,
+        "sha": "2533c8cf628e69e6cca19cc05f62ef94806816e2",
+        "createdAt": "2026-10-26T05:21:17Z",
+        "updatedAt": "2026-10-26T05:21:30Z",
+        "oidcChecks": {
+          "aud": true,
+          "environment": true,
+          "event_name": true,
+          "iss": true,
+          "not_expired": true,
+          "ref": true,
+          "repository": true,
+          "sub": true,
+          "workflow_ref": true
+        },
+        "allOidcChecksPassed": true,
+        "response": {
+          "curlExit": 0,
+          "httpStatus": 200,
+          "bodyType": "json",
+          "denialSource": "undetermined"
+        },
+        "completeExit": 0
+      },
+      {
+        "runId": 40250335003,
+        "url": "https://github.com/gabrielschuchter/interprete-area-de-membros/actions/runs/40250335003",
+        "event": "schedule",
+        "attempt": 1,
+        "sha": "2533c8cf628e69e6cca19cc05f62ef94806816e2",
+        "createdAt": "2026-10-26T00:38:25Z",
+        "updatedAt": "2026-10-26T00:38:38Z",
+        "oidcChecks": {
+          "aud": true,
+          "environment": true,
+          "event_name": true,
+          "iss": true,
+          "not_expired": true,
+          "ref": true,
+          "repository": true,
+          "sub": true,
+          "workflow_ref": true
+        },
+        "allOidcChecksPassed": true,
+        "response": {
+          "curlExit": 0,
+          "httpStatus": 200,
+          "bodyType": "json",
+          "denialSource": "undetermined"
+        },
+        "completeExit": 0
+      },
+      {
+        "runId": 40240246430,
+        "url": "https://github.com/gabrielschuchter/interprete-area-de-membros/actions/runs/40240246430",
+        "event": "schedule",
+        "attempt": 1,
+        "sha": "2533c8cf628e69e6cca19cc05f62ef94806816e2",
+        "createdAt": "2026-10-25T22:27:01Z",
+        "updatedAt": "2026-10-25T22:27:15Z",
+        "oidcChecks": {
+          "aud": true,
+          "environment": true,
+          "event_name": true,
+          "iss": true,
+          "not_expired": true,
+          "ref": true,
+          "repository": true,
+          "sub": true,
+          "workflow_ref": true
+        },
+        "allOidcChecksPassed": true,
+        "response": {
+          "curlExit": 0,
+          "httpStatus": 200,
+          "bodyType": "json",
+          "denialSource": "undetermined"
+        },
+        "completeExit": 0
+      }
+    ],
+    "successfulScheduleGapMinutes": [
+      283, 131, 150, 141, 218, 254, 287, 281, 136, 134, 133, 186, 209
+    ],
+    "fiveMinuteSlaProved": false
+  },
+  "vercel": {
+    "apiGitDisconnected": true,
+    "sso": {
+      "deploymentType": "all_except_custom_domains"
+    },
+    "oidc": {
+      "enabled": true,
+      "issuerMode": "team"
+    },
+    "preview": {
+      "id": "dpl_3hcRwBr8NMnYjZ1xWDCpSf9wWZi8",
+      "sha": "660595b1a83a0fec343207a35dcf09256709499a",
+      "target": null,
+      "readyState": "READY",
+      "aliasMatches": true
+    },
+    "trustedGithubChecks": {
+      "aud": true,
+      "repository": true,
+      "sub": true,
+      "ref": true,
+      "event_name": true,
+      "environment": true,
+      "workflow_ref": true
+    },
+    "githubRulePreviewOnly": true,
+    "sameProjectProductionToPreviewPresent": true,
+    "dedicatedProductionHopSecretPresent": true,
+    "productionHopDisabled": true
+  },
+  "database": {
+    "readOnly": true,
+    "tlsVerified": true,
+    "migrations": {
+      "complete": 65,
+      "incomplete": 0
+    },
+    "jobs": [
+      {
+        "namespace": "canonical",
+        "status": "SUCCEEDED",
+        "count": 2,
+        "eligible": 0,
+        "latest_update": "2026-10-15T01:57:50.591Z"
+      },
+      {
+        "namespace": "preview",
+        "status": "SUCCEEDED",
+        "count": 1,
+        "eligible": 0,
+        "latest_update": "2026-10-16T00:35:40.965Z"
+      }
+    ],
+    "notifications": 23,
+    "canonicalCron": [
+      {
+        "name": "interprete-member-outbox",
+        "schedule": "*/5 * * * *",
+        "active": true,
+        "endpointResolvedFromVault": true,
+        "endpointMatchesCanonical": true,
+        "commandSha256": "7723899ba5ac9abc17d19be253de93a4ce1253c07730f572ec43f9d8a1101290"
+      }
+    ],
+    "canonicalCronLastHourSqlRuns": [
+      {
+        "status": "succeeded",
+        "count": 12,
+        "latest_end": "2026-10-26T10:15:00.147Z"
+      }
+    ],
+    "pgNetLastHourRetainedResponses": [
+      {
+        "status_code": 200,
+        "count": 12,
+        "any_timeout": false
+      }
+    ]
+  },
+  "limits": {
+    "manualPostUsed": false,
+    "databaseMutations": false,
+    "productionDeploymentOrTrafficChanged": false,
+    "automaticJobRecoveryProved": false,
+    "realtimeDeliveryProved": false,
+    "badgeReloadPersistenceProved": false
+  }
+}

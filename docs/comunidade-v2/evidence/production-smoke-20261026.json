@@ -1,0 +1,30 @@
+{
+  "observedAt": "2026-10-26T13:00:02.797Z",
+  "environment": "Production",
+  "sourceSha": "1c57191542316654cc3b2da1f21e3f5474529408",
+  "deployment": "dpl_5T61v53srxCJnkc9ffC29W3jzB1x",
+  "realMembersImpersonated": 0,
+  "actorsAuthenticated": 4,
+  "roleAuthorization": true,
+  "group": {
+    "createdPrivate": true,
+    "unauthorizedMemberBlocked": true,
+    "publicationPersisted": true,
+    "archived": true
+  },
+  "notifications": {
+    "realtimeConfigured": false,
+    "recipientBroadcast": false,
+    "nonrecipientIsolation": false,
+    "unreadPersisted": false,
+    "badgeUpdated": false,
+    "privateNoStore": false
+  },
+  "app5xx": 0,
+  "pageErrors": 0,
+  "passed": false,
+  "failedStage": "automatic-notification-delivery",
+  "errorClass": "Error",
+  "announcementArchived": false,
+  "completedAt": "2026-10-26T13:07:34.063Z"
+}

@@ -112,7 +112,20 @@ const matchesPath = (pathname: string, pathPrefix: string) =>
     ? pathname === "/"
     : pathname === pathPrefix || pathname.startsWith(`${pathPrefix}/`);
 
+const communityInviteLinkPathPattern = /^\/comunidade\/convite\/[^/]+\/?$/;
+const communityPostSharePathPattern =
+  /^\/comunidade\/compartilhar\/[A-Za-z0-9_-]{1,128}(?:\/(?:opengraph-image|cover))?\/?$/;
+
+const isCommunityInviteLinkRoute = (pathname: string) =>
+  communityInviteLinkPathPattern.test(pathname);
+
+const isCommunityPostShareRoute = (pathname: string) =>
+  communityPostSharePathPattern.test(pathname);
+
 const isProtectedRoute = (pathname: string) =>
+  !(
+    isCommunityInviteLinkRoute(pathname) || isCommunityPostShareRoute(pathname)
+  ) &&
   protectedRoutePrefixes.some((pathPrefix) =>
     matchesPath(pathname, pathPrefix)
   );

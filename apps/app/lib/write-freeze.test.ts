@@ -7,10 +7,15 @@ import {
   shouldPauseStorageUploadDuringRollback,
   shouldPauseUploadDuringRollback,
 } from "@repo/security/write-freeze";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 describe("write freeze", () => {
   it("recognizes the centralized flag value without accepting ambiguous values", () => {
+    vi.stubEnv("APP_WRITE_FREEZE", "");
     expect(isAppWriteFreezeEnabled("true")).toBe(true);
     expect(isAppWriteFreezeEnabled("false")).toBe(false);
     expect(isAppWriteFreezeEnabled(undefined)).toBe(false);

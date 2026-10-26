@@ -1,0 +1,59 @@
+{
+  "observedAt": "2026-10-26T10:21:04.320Z",
+  "artifacts": [
+    {
+      "kind": "api",
+      "id": "dpl_3hcRwBr8NMnYjZ1xWDCpSf9wWZi8",
+      "url": "https://interprete-area-de-membros-xlryqp6o7-gabrielschuchters-projects.vercel.app",
+      "target": "Preview",
+      "state": "READY",
+      "sha": "660595b1a83a0fec343207a35dcf09256709499a",
+      "submittedEnvironmentVerified": true,
+      "environmentEvidence": "exact submitted deployment env and build.env, matched to deployment receipt; READY env pull is unsupported",
+      "runtimeSmokePending": true,
+      "GREEN": true,
+      "transactionPooler": true,
+      "certificateConfigured": true,
+      "clerk": "Development",
+      "namespace": "preview",
+      "qaAllowlistVerified": 4,
+      "uploadsEnabled": true,
+      "gitDisconnected": true
+    },
+    {
+      "kind": "app",
+      "id": "dpl_9NnkqNPSaNW5EpVVGL23KZnsNy3P",
+      "url": "https://interprete-area-de-membros-d6b73bl4m-gabrielschuchters-projects.vercel.app",
+      "target": "Preview",
+      "state": "READY",
+      "sha": "660595b1a83a0fec343207a35dcf09256709499a",
+      "submittedEnvironmentVerified": true,
+      "environmentEvidence": "exact submitted deployment env and build.env, matched to deployment receipt; READY env pull is unsupported",
+      "runtimeSmokePending": true,
+      "GREEN": true,
+      "transactionPooler": true,
+      "certificateConfigured": true,
+      "clerk": "Development",
+      "namespace": "preview",
+      "qaAllowlistVerified": 4,
+      "uploadsEnabled": true,
+      "gitDisconnected": true
+    }
+  ],
+  "productionAliases": [
+    {
+      "host": "interprete-area-de-membros.vercel.app",
+      "deploymentId": "dpl_Fa3QgVNzB9tP3x5cbquaF1kMQt3g"
+    },
+    {
+      "host": "interprete-area-de-membros-app.vercel.app",
+      "deploymentId": "dpl_Fa3QgVNzB9tP3x5cbquaF1kMQt3g"
+    },
+    {
+      "host": "interprete-area-de-membros-api.vercel.app",
+      "deploymentId": "dpl_XQRUb541CcFFTLhGodnXokBtDMcc"
+    }
+  ],
+  "productionUnchanged": true,
+  "remoteDatabaseMutated": false
+}

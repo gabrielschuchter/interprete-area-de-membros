@@ -1,0 +1,70 @@
+{
+  "captured_at_utc": "2026-10-25T21:47:46Z",
+  "preparation_only": true,
+  "remote_mutations": 0,
+  "implementation": "scripts/ops/community-release-host-guard.mjs",
+  "regression_tests": "scripts/ops/community-release-host-guard.test.mjs",
+  "authoritative_inventory": {
+    "app_deployments": 98,
+    "api_deployments": 94,
+    "pagination_complete": true,
+    "App_and_API_Git_connected": false,
+    "app_protection": "prod_deployment_urls_and_all_previews",
+    "api_protection": "all_except_custom_domains",
+    "app_firewall_active": null,
+    "app_firewall_draft": null,
+    "api_firewall_active": null,
+    "api_firewall_draft": null,
+    "source": "Authenticated Vercel REST: project, all deployment pages, aliases, exact deployment details and firewall active/draft listing",
+    "full_inventory": "Protected DPAPI copy outside Git: community-host-guard-resume-20261025T214746Z.dpapi"
+  },
+  "actual_aliases": {
+    "app": {
+      "hosts": [
+        "interprete-area-de-membros.vercel.app",
+        "interprete-area-de-membros-app.vercel.app"
+      ],
+      "deployment_id": "dpl_Fa3QgVNzB9tP3x5cbquaF1kMQt3g",
+      "sha": "de12af75327aac59b33229e4969ec5dcec30cae5"
+    },
+    "api": {
+      "host": "interprete-area-de-membros-api.vercel.app",
+      "deployment_id": "dpl_XQRUb541CcFFTLhGodnXokBtDMcc",
+      "sha": "6c7b49a3fecab3bda8e2f6ad41789972ad711dd9"
+    },
+    "preview_hop": {
+      "host": "interprete-area-de-membro-git-afba70-gabrielschuchters-projects.vercel.app",
+      "deployment_id": "dpl_gs4mCxd4DmBZ88PA5hPc1vX8qRgp",
+      "sha": "80f6c1341acea4a56830d4091cc10e904e1cbbcc",
+      "target": null,
+      "branch": "codex/comunidade-v2"
+    }
+  },
+  "corrections": [
+    "Release validates and allows both App public aliases instead of accidentally denying the real public URL",
+    "Maintenance excludes both public aliases",
+    "Primary and fallback artifacts require Production configuration, in addition to project, READY, exact SHA and hostname checks",
+    "API Preview hop requires explicit --preview-deployment at the same SHA, Preview target, V2 branch and deployed isolation environment keys",
+    "The fixed Preview alias must point to that explicit Preview artifact",
+    "Public aliases may resolve only to selected Production artifacts, never to the Preview artifact",
+    "All verified hostnames are deduplicated and sorted before plan digest and rule generation"
+  ],
+  "validation": {
+    "regression_tests_passed": 7,
+    "regression_real_network_requests": 0,
+    "regression_mutations": 0,
+    "targeted_biome_files_passed": 2,
+    "diff_check": "passed",
+    "live_app_release_dry_run": "passed with both actual public aliases",
+    "live_api_release_dry_run": "passed without implicitly allowing Preview",
+    "live_requests_mutated_remote_state": false
+  },
+  "execution_limits": [
+    "No firewall rule was staged or activated; this is readiness evidence, not a live denial proof",
+    "Vercel deployment details expose environment key names, not their values: namespace=preview and the actual QA recipient allowlist must be verified from deployment creation/runtime evidence separately",
+    "The current Production API and Preview use different SHAs; the guard will refuse to combine them as a final compatible release selection",
+    "The real App public alias is not listed among the project's current domains, so promotion alone must not be assumed to move it; confirm or assign both aliases before release mode",
+    "After controlled activation, prove old authenticated immutable/branch hosts cannot reach runtime, verify both public App aliases and the exact Preview hop, and test old deployment pinning parameters/headers",
+    "Anonymous Deployment Protection redirects are not themselves evidence of WAF denial"
+  ]
+}

@@ -14,12 +14,16 @@ export const CollectionCoverPicker = ({
   coverOptions,
   initialUrl,
   mutationStatus,
+  noun = "capa",
   onValueChange,
+  sizeHint = " · até 5 MB",
 }: {
   readonly coverOptions: readonly CollectionCoverOption[];
   readonly initialUrl: string;
   readonly mutationStatus: "idle" | "error" | "success";
+  readonly noun?: string;
   readonly onValueChange: () => void;
+  readonly sizeHint?: string;
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const uncommittedUploadUrl = useRef<string | null>(null);
@@ -158,8 +162,10 @@ export const CollectionCoverPicker = ({
         <span aria-hidden="true" className="gco-upload-arrow">
           ↑
         </span>
-        <strong>{isUploading ? "Enviando capa…" : "Arraste uma capa"}</strong>
-        <small>JPG, PNG ou WebP · até 5 MB</small>
+        <strong>
+          {isUploading ? `Enviando ${noun}…` : `Arraste uma ${noun}`}
+        </strong>
+        <small>JPG, PNG ou WebP{sizeHint}</small>
         <span className="gco-cover-tools">
           <button
             className="gco-cover-choose"

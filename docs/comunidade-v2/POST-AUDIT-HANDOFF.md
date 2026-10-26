@@ -1,0 +1,202 @@
+# Comunidade V2 — fechamento pós-auditoria e handoff 12A
+
+## Etapa 12A encerrada — NO-GO — 23/10/2026
+
+Preflight do candidato `4e026b59eb99521ed1c6b94c8444a52049d317c6` concluído.
+**Publicação 12B não iniciada.** O estado vigente e a sequência condicional estão
+em [RELEASE-PLAN.md](RELEASE-PLAN.md); as seções anteriores abaixo são históricas
+onde divergirem deste fechamento. RV-01 está encerrado no QA local conforme
+[POST-AUDIT-CLOSURE.md](POST-AUDIT-CLOSURE.md), sem nova rechecagem nesta etapa.
+
+- OPS-01: 48 schedules com falha, zero sucesso; cron GREEN inalterado e
+  respostas HTTP 200 do caminho atual não comprovam recovery/Broadcast V2.
+- GREEN: 65 migrations sem drift; 11 V2 pendentes. Convites pendentes e
+  conflitos de pin: zero. Há 28 posts sem grupo, incluindo dois publicados
+  que ficariam UNRESOLVED; exigem tratamento de proveniência/aceite explícito.
+- Notification ainda concede SELECT a authenticated. Migration/revogação e
+  smoke JWT/Realtime dependem da janela autorizada; nenhuma escrita remota.
+- Novos backups protegidos de banco e quatro objetos Storage foram gerados
+  e reabertos. Portabilidade de chave, reidratação Storage e fallback compatível
+  ainda precisam de prova; restauração histórica local foi reaproveitada.
+- Vercel gestão: 403; configuração efetiva/Trusted Source/Clerk atual não
+  confirmados. App/API/crawler anônimo recebem 302 SSO, sem bypass. Performance
+  remota autenticada depende da V2 migrada e permanece sem prova representativa.
+
+Nenhum deploy Production, migration, alteração de cron, credencial ou proteção.
+Spec preexistente `community-groups.spec.ts` preservado, hash Git
+`43bb75e8482c3638840cbfa760a91e01927ed770`, fora dos commits.
+Retomar somente os bloqueadores e provas faltantes do RELEASE-PLAN; não reabrir
+QA visual, RV-01 ou auditoria geral. Não iniciar publicação enquanto NO-GO.
+
+
+## Fechamento cirúrgico de RV-01 — 23/10/2026
+
+**RV-01 encerrado no QA local migrado; release continua NO-GO.** A reprodução
+original da fixture `qa-rv01-1792773100683` passou sem alteração do reproducer:
+`visible=false`, zero itens. O endpoint HTTP real excluiu a mesma notificação
+em MENTIONS/ALL; contagens e resumo coincidiram com os itens visíveis.
+A migration `20261023140000_notification_audience_reconcile` aplicada no QA
+teve checksum conferido; seu teste passou 3/3. Migration, teste e evidências
+integram o patch seletivo posterior ao fechamento documental `93f053c`.
+
+Evidências e limites: [POST-AUDIT-CLOSURE.md](POST-AUDIT-CLOSURE.md).
+Nenhuma suíte integrada, build geral, Graphify ou alteração remota foi executada.
+OPS-01 e os demais gates de infraestrutura continuam na Etapa 12A, não iniciada.
+Os registros abaixo são históricos e supersedidos por este fechamento.
+
+Data: 23/10/2026. Candidato de código: `80f6c1341acea4a56830d4091cc10e904e1cbbcc`.
+Este documento registra as correções pós-auditoria; não executa a Etapa 12A nem autoriza publicação.
+
+## Estado
+
+RV-01 e RV-06 corrigidos e enviados para rechecagem independente no SHA final.
+Seis gates passaram; no QA integrado houve 21/22, e a única falha de fixture
+foi coberta por uma suíte focada de 5/5. O release continua NO-GO pelos gates
+operacionais/remotos abaixo. Etapa 12 não iniciada.
+
+## Contrato corrigido
+
+- A audiência do post agora é explícita (`GLOBAL`, `GROUP` ou `UNRESOLVED`),
+  coerente com a FK `spaceId`. Exclusão física de grupo com posts é rejeitada;
+  o fluxo de produto arquiva o grupo sem desvincular as publicações. Filas e
+  leitores falham fechados para origem ausente ou contraditória.
+- Posts legados com `spaceId=NULL` são ambíguos entre globais e grupos apagados.
+  Permanecem no banco com `UNRESOLVED`, sem exposição até confirmação de
+  proveniência; a migration não adivinha nem apaga conteúdo.
+- O escopo da notificação é persistido sem FK destrutiva e reautorizado na lista,
+  resumo, contagens e mutações de leitura. Tipos de leitura são classificados
+  explicitamente; tipo desconhecido não recebe acesso por exclusão.
+- A migration complementar `20261023120000_notification_community_audience_fail_closed`
+  é aditiva à `20261023110000_notification_community_audience`, já commitada.
+  Ela fecha notificações comunitárias legadas com escopo NULL e recupera somente
+  vínculos com grupo verificável. Um post global antigo e um post cujo grupo foi
+  excluído são indistinguíveis: ambos ficam inacessíveis nesse backfill.
+  Não há exclusão de conteúdo ou restauração artificial de proveniência.
+- Inserts antigos que omitem a coluna recebem o marcador
+  `__community_scope_unresolved__`. O produtor atual exige escopo resolvido ou
+  NULL explicitamente global. O consumer descarta evento antigo sem escopo se
+  o post estiver sem grupo; eventos novos explicitamente globais continuam.
+- Locks SHARE de grupo, associação e convite serializam entrega do outbox com
+  remoção/arquivo/revogação. Dedupe e retry durável permanecem os existentes.
+- A primeira migration revoga grants diretos da Data API. O QA local confirma
+  RLS ativo e SELECT negado para anon/authenticated. Não há afirmação sobre
+  catálogo remoto nem execução dessas migrations remotamente.
+
+## Evidências
+
+- RV-06 foi reproduzido no banco QA em transação com tabelas temporárias que
+  reproduzem `ON DELETE SET NULL`: o filtro global retornou `0` antes da
+  exclusão e `1` depois, expondo o texto privado. A transação foi revertida.
+  Após a correção, a E2E de exclusão física rejeitou o DELETE e confirmou o
+  post ainda ligado ao grupo com audiência `GROUP` (1/1); shares passou 8/8.
+- QA integrado `8fd64ff585134fd8aab62c725bc7a827`: 21/22. A falha única da
+  meta coletiva veio de nove sessões de execução QA interrompida. Reteste
+  `c681476924c84337ae2c7803a32e7779`: 5/5; IDs, membros e horários originais
+  foram conferidos contra `rv01-goal-source-snapshot.json` após restauração.
+- Seis gates no candidato `80f6c1341acea4a56830d4091cc10e904e1cbbcc`:
+  check 1.058; typecheck 16/16; boundaries 986/19; scripts 32 pass/1 skip,
+  App 853/177, API 14/14 e domínio 24/24; build 8/8; performance 26 rotas sob
+  225 KiB gzip, Comunidade 216,2 KiB. Graphify: 8.440 nós, 22.124 arestas,
+  358 comunidades. A nova migration foi aplicada somente no QA loopback com
+  TLS `verify-full`; 75 migrations concluídas, zero pendentes.
+- Harness direcionado externo ao Git:
+  `C:\Users\gabsc\AppData\Local\Codex\qa\community-v2-foundation-20261015\tools\rv01-final-targeted.ps1`,
+  relatório `rv01-final-targeted-report.json` no mesmo QA root.
+  Executou o SQL corretivo em transação com rollback, incluindo exclusão de um
+  grupo temporário, recuperação de vínculo vivo e insert que omite a coluna.
+  Executou o consumer real em PostgreSQL nas duas ordens de corrida:
+  remoção primeiro não entrega; entrega primeiro mantém o lock e a remoção
+  concorrente encontra lock_timeout. Replay produz uma linha, nunca duas.
+  Evento legado ambíguo é descartado e evento explicitamente global entrega.
+  Fixture exclusiva identificada por `qa-rv01-1792773100683` foi preservada;
+  grupo e post encerrados como DRAFT. Nenhum registro real foi modificado.
+- Seis gates em `4296978`: check 1.058; typecheck 16/16; boundaries 986/19;
+  scripts 32 pass/1 skip, App 852/177, API 13/3, domínio 24/5; build 8/8;
+  Comunidade 216,2/225 KiB gzip. Logs em `rv01-final-gates/results.json`.
+  Runtime/schema/testes do candidato final são idênticos. O único delta é a
+  remoção do escape literal inválido da primeira migration, validado pelo
+  ensaio SQL completo posterior em `rv01-migrations-sql-report.json`.
+  Ambas as migrations foram executadas em tabelas temporárias; sete casos
+  passaram e toda a transação foi revertida, sem interferir no E2E ativo.
+- Banco QA: 74 migrations concluídas e zero pendentes. A migration complementar
+  tem checksum aplicado idêntico ao arquivo final. O histórico local da
+  primeira migration tem checksum `0ba36523…`, diferente do arquivo final
+  `f7b628c3…`; a diferença já existia antes desta conversa. O ledger não foi
+  reescrito para simular igualdade. A sintaxe e o resultado de ambos os SQLs
+  finais foram comprovados no ensaio acima. Na 12A, confirmar se ambas estão
+  pendentes no alvo remoto; se houver histórico aplicado divergente, reconciliar
+  esse histórico explicitamente antes de qualquer migration. Nenhum checksum
+  remoto foi consultado ou alterado aqui.
+- Espaço local: três runs históricos foram transferidos para
+  `D:\CodexQA-preserved\community-v2\verified`, com hashes SHA-256 de todos
+  os arquivos conferidos e junções preservando os caminhos originais.
+  Ledger: `rv01-evidence-preservation.json` no QA root. Permissões ficaram
+  restritas ao usuário e SYSTEM; nenhum artefato foi descartado. Caches locais
+  receberam compressão transparente, sem alterar seu conteúdo.
+- QA integrado final `6543bd9dd78c4043b0e3da327d056236`: 20 aprovados e
+  uma falha de preparação na meta coletiva, em 19,9 min. A campanha QA
+  `20261023-130605-25df8a74` da execução anterior interrompida ainda estava
+  publicada. Foi arquivada somente essa campanha, sem exclusão de linhas.
+  O primeiro reteste `c23408062446430bbc35788a95861784` avançou até o estado
+  "Sem registros" e revelou nove sessões da mesma fixture anterior ainda
+  elegíveis (inclusive intervalos de borda futuros). Para o reteste final,
+  somente essas nove sessões QA foram isoladas temporariamente por endedAt,
+  com snapshot para restauração exata e verificação após a execução. Nenhuma
+  asserção ou código de produto foi alterado. Reteste final
+  `ad6e6f8897d9462296dd14dbcc6f9dae` passou **5/5** em 2,1 min.
+  Os nove endedAt originais foram restaurados e conferidos após o run,
+  inclusive os valores NULL originais. Não afirmar que o run integrado teve
+  21/21: sua única falha foi coberta pelo reteste focado; nenhuma outra
+  jornada foi repetida nem a Etapa 10 reaberta.
+- Rechecagem adversarial independente: aguardando resultado.
+- Spec protegido `apps/app/e2e/community-v2/community-groups.spec.ts` permanece
+  fora dos commits, hash Git `43bb75e8482c3638840cbfa760a91e01927ed770`.
+  O QA integrado usa esse overlay de teste preservado; o código de produto é o
+  candidato commitado. A revisão visual das 53 referências da Etapa 10 permanece
+  válida: não houve mudança de UI nesta correção.
+- Graphify AST: 8.440 nós, 22.124 arestas, 358 comunidades. Os 76 arquivos SQL
+  não foram extraídos por ausência do parser SQL; o SQL foi testado diretamente.
+
+## Requisito de compatibilidade para 12A
+
+A migration protege inserts omitindo a coluna, mas não pode tornar um leitor
+antigo seguro: esse binário ignora o escopo. A versão anterior `53d4ae5` também
+não é destino seguro de rollback porque deixa ambíguos os casos de grupo excluído.
+
+1. Preparar backup verificável de banco e Storage e um artefato de fallback
+   que retenha o schema/Prisma atual, os enums MODERATOR/COHORT e toda esta
+   correção. Preferir rollback por avanço compatível; não reverter para main
+   antiga nem apagar enums/linhas/notificações.
+2. Ensaiar localmente o artefato de fallback com os enums e com eventos antigos
+   e novos. A aprovação depende desse ensaio, não só do documento.
+3. Planejar retirada de tráfego de todos os leitores incompatíveis (App/API,
+   aliases e deployments antigos acessíveis) e pausa/drain de todos os workers
+   incompatíveis. APP_WRITE_FREEZE sozinho não bloqueia leituras.
+4. Só no processo de release autorizado, sem versões inseguras servindo,
+   aplicar ambas as migrations com checksum verificado, subir exclusivamente
+   App/API/workers compatíveis e confirmar grants/RLS/negação PostgREST.
+   Evitar janela de coexistência: o default não corrige um worker intermediário
+   que escreva NULL explicitamente. Não religar versões antigas em rollback.
+5. Liberar tráfego e recuperação somente após a reconciliação das filas,
+   origem/namespace, contagens e comportamento de membro removido. Preservar
+   backlog legado ambíguo sem revelar ou apagar seu conteúdo.
+
+Esse é um requisito operacional ainda não ensaiado, não uma comprovação de
+rollout/rollback remoto.
+
+## Escopo do preflight da Etapa 12A
+
+| Item | Classe | Condição para release |
+|---|---|---|
+| RV-01 / RV-06 | Código/segurança | Rechecagem independente do SHA `80f6c134`; corrigir eventual achado antes de qualquer release |
+| RV-02 / OPS-01 | Operacional | Diagnosticar recovery e observar runs periódicos com recuperação real |
+| RV-03 | Compatibilidade operacional | Ensaiar fallback compatível e retirada de leitores/workers antigos |
+| RV-04 | Preflight de dados | Consulta atual de duplicados de convites, backup e resultado esperado antes da migration |
+| RV-05 | Validação de performance | Percentis autenticados, papéis e rede/dispositivo/cache representativos |
+| Grants/RLS, Clerk/Supabase, Storage, crawler Preview, Broadcast | Validação remota | Confirmar no alvo real autorizado; QA local não substitui essas provas |
+
+Os gates remotos e operacionais mantêm o release em NO-GO. Não reabrem a Etapa
+10 nem exigem outra auditoria geral do código. O avanço para planejar/executar
+12A ocorre em conversa própria após rechecagem formal de RV-01/RV-06; nenhuma tarefa
+de 12A, migration remota, alteração em GREEN/BLUE/Production, mudança de cron,
+credencial, alias ou publicação foi executada aqui.

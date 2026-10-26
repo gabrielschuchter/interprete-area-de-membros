@@ -155,10 +155,12 @@ const identityErrorFor = (draft: OnboardingDraft) => {
 
 interface OnboardingExperienceProperties {
   readonly initial: OnboardingInitialData;
+  readonly returnTo?: string;
 }
 
 export const OnboardingExperience = ({
   initial,
+  returnTo = "/",
 }: OnboardingExperienceProperties) => {
   const router = useRouter();
   const storageKey = `interprete:onboarding:${initial.memberId}:${draftVersion}`;
@@ -291,7 +293,7 @@ export const OnboardingExperience = ({
         } catch {
           // Nothing else is required for completion.
         }
-        router.replace("/");
+        router.replace(returnTo);
         router.refresh();
       });
       return;
@@ -318,7 +320,7 @@ export const OnboardingExperience = ({
         }),
       (result) => setCurrentStep(result.nextStep ?? currentStep + 1)
     );
-  }, [currentStep, draft, router, runAction, storageKey]);
+  }, [currentStep, draft, router, runAction, storageKey, returnTo]);
 
   const goBack = () => {
     if (isPending || currentStep === 0) {

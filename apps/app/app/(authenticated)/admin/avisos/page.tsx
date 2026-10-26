@@ -1,8 +1,9 @@
-import { ContentStatus, database } from "@repo/database";
+import { AnnouncementAudience, ContentStatus, database } from "@repo/database";
 import { Button } from "@repo/design-system/components/ui/button";
 import { Input } from "@repo/design-system/components/ui/input";
 import { Textarea } from "@repo/design-system/components/ui/textarea";
 import Link from "next/link";
+import { announcementDateTimeForInput } from "@/lib/announcement-time";
 import { requireStaff } from "@/lib/authorization";
 import {
   createAnnouncement,
@@ -11,10 +12,13 @@ import {
   updateAnnouncement,
 } from "../actions";
 
-const dateForInput = (value: Date | null) =>
-  value
-    ? new Date(value.valueOf() - 3 * 60 * 60 * 1000).toISOString().slice(0, 16)
-    : "";
+const formatSaoPauloDate = (value: Date) =>
+  new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    timeZone: "America/Sao_Paulo",
+  }).format(value);
 
 const statusLabel = (status: string) => {
   if (status === ContentStatus.PUBLISHED) {
@@ -28,24 +32,42 @@ const statusLabel = (status: string) => {
 
 const AnnouncementFields = ({
   announcement,
+  cohorts,
   prefix,
 }: {
   readonly announcement?: {
     readonly audience: string;
     readonly body: string;
+    readonly cohortIds: readonly string[];
     readonly endsAt: Date | null;
     readonly href: string | null;
     readonly id: string;
+    readonly isImportant: boolean;
     readonly isPinned: boolean;
     readonly recipientIds: readonly string[];
     readonly startsAt: Date | null;
     readonly status: string;
     readonly title: string;
+    readonly version: number;
   };
+  readonly cohorts: readonly {
+    readonly archivedAt: Date | null;
+    readonly id: string;
+    readonly name: string;
+  }[];
   readonly prefix: string;
 }) => (
   <>
-    {announcement && <input name="id" type="hidden" value={announcement.id} />}
+    {announcement && (
+      <>
+        <input name="id" type="hidden" value={announcement.id} />
+        <input
+          name="expectedVersion"
+          type="hidden"
+          value={announcement.version}
+        />
+      </>
+    )}
     <label className="grid gap-2 text-sm" htmlFor={`${prefix}-title`}>
       <span className="font-medium">Título</span>
       <Input
@@ -79,6 +101,9 @@ const AnnouncementFields = ({
           <option value="ALL">Todos os membros</option>
           <option value="STAFF">Professores e administradores</option>
           <option value="SELECTED">Membros selecionados</option>
+          <option value={AnnouncementAudience.COHORT}>
+            Turmas selecionadas
+          </option>
         </select>
       </label>
       <label className="grid gap-2 text-sm" htmlFor={`${prefix}-status`}>
@@ -96,17 +121,42 @@ const AnnouncementFields = ({
       </label>
     </div>
     <label className="grid gap-2 text-sm" htmlFor={`${prefix}-recipients`}>
-      <span className="font-medium">IDs dos membros selecionados</span>
+      <span className="font-medium">Membros selecionados</span>
       <Input
         defaultValue={announcement?.recipientIds.join(", ")}
         id={`${prefix}-recipients`}
         name="recipientIds"
-        placeholder="Um ID por linha ou separado por vírgula"
+        placeholder="IDs já existentes, separados por vírgula"
       />
       <span className="text-muted-foreground text-xs">
-        Usado somente quando o destino for “Membros selecionados”.
+        Usado somente quando a audiência for “Membros selecionados”.
       </span>
     </label>
+    <fieldset className="grid gap-2 text-sm">
+      <legend className="font-medium">Turmas</legend>
+      <select
+        aria-label="Turmas da audiência"
+        className="min-h-28 rounded-md border border-input bg-background px-3 py-2 text-sm"
+        defaultValue={announcement?.cohortIds ?? []}
+        id={`${prefix}-cohorts`}
+        multiple
+        name="cohortIds"
+      >
+        {cohorts.map((cohort) => (
+          <option key={cohort.id} value={cohort.id}>
+            {cohort.name}
+            {cohort.archivedAt ? " · arquivada" : ""}
+          </option>
+        ))}
+      </select>
+      <span className="text-muted-foreground text-xs">
+        Usado somente para “Turmas selecionadas”. Digite Ctrl ou Command para
+        escolher mais de uma turma.
+      </span>
+    </fieldset>
+    <p className="text-muted-foreground text-xs">
+      Este aviso aparece somente na Comunidade.
+    </p>
     <label className="grid gap-2 text-sm" htmlFor={`${prefix}-href`}>
       <span className="font-medium">Link opcional</span>
       <Input
@@ -120,7 +170,9 @@ const AnnouncementFields = ({
       <label className="grid gap-2 text-sm" htmlFor={`${prefix}-starts-at`}>
         <span className="font-medium">Começa em (opcional)</span>
         <Input
-          defaultValue={dateForInput(announcement?.startsAt ?? null)}
+          defaultValue={announcementDateTimeForInput(
+            announcement?.startsAt ?? null
+          )}
           id={`${prefix}-starts-at`}
           name="startsAt"
           type="datetime-local"
@@ -129,13 +181,19 @@ const AnnouncementFields = ({
       <label className="grid gap-2 text-sm" htmlFor={`${prefix}-ends-at`}>
         <span className="font-medium">Termina em (opcional)</span>
         <Input
-          defaultValue={dateForInput(announcement?.endsAt ?? null)}
+          defaultValue={announcementDateTimeForInput(
+            announcement?.endsAt ?? null
+          )}
           id={`${prefix}-ends-at`}
           name="endsAt"
           type="datetime-local"
         />
       </label>
     </div>
+    <p className="text-muted-foreground text-xs">
+      Os horários seguem America/Sao_Paulo. O aviso começa no horário inicial e
+      deixa de aparecer no horário final.
+    </p>
     <label className="flex min-h-10 items-center gap-3 text-sm">
       <input
         defaultChecked={announcement?.isPinned ?? false}
@@ -144,11 +202,24 @@ const AnnouncementFields = ({
       />
       Fixar no topo dos avisos da comunidade
     </label>
+    <label className="flex min-h-10 items-center gap-3 text-sm">
+      <input
+        defaultChecked={announcement?.isImportant ?? false}
+        name="isImportant"
+        type="checkbox"
+      />
+      Aviso importante no topo do feed da comunidade
+    </label>
   </>
 );
 
-const AdminAnnouncementsPage = async () => {
+const AdminAnnouncementsPage = async ({
+  searchParams,
+}: {
+  readonly searchParams: Promise<{ readonly erro?: string }>;
+}) => {
   await requireStaff();
+  const { erro } = await searchParams;
   const announcements = await database.announcement.findMany({
     where: { deletedAt: null },
     orderBy: [{ status: "asc" }, { isPinned: "desc" }, { updatedAt: "desc" }],
@@ -164,9 +235,32 @@ const AdminAnnouncementsPage = async () => {
       startsAt: true,
       endsAt: true,
       isPinned: true,
+      isImportant: true,
+      version: true,
+      cohorts: {
+        select: {
+          cohortId: true,
+          cohort: { select: { id: true, name: true, archivedAt: true } },
+        },
+      },
       createdAt: true,
       updatedAt: true,
     },
+  });
+  const cohorts = await database.cohort.findMany({
+    where: {
+      OR: [
+        { archivedAt: null },
+        {
+          announcementTargets: {
+            some: { announcementId: { in: announcements.map(({ id }) => id) } },
+          },
+        },
+      ],
+    },
+    orderBy: [{ archivedAt: "asc" }, { name: "asc" }],
+    take: 250,
+    select: { id: true, name: true, archivedAt: true },
   });
 
   return (
@@ -189,6 +283,19 @@ const AdminAnnouncementsPage = async () => {
         </p>
       </header>
 
+      {erro === "conflito" ? (
+        <output className="mt-6 block rounded-md border border-amber-700/30 bg-amber-50 p-4 text-amber-950 text-sm">
+          Este aviso mudou em outra edição. Confira a versão atual e tente
+          novamente.
+        </output>
+      ) : null}
+      {erro === "destino" ? (
+        <p className="mt-6 rounded-md border border-destructive/30 bg-destructive/5 p-4 text-sm">
+          A audiência selecionada não está mais disponível. Revise os membros ou
+          turmas.
+        </p>
+      ) : null}
+
       <section className="paper-surface mt-10 border p-6 sm:p-8">
         <div className="border-border border-b pb-4">
           <p className="brand-eyebrow">Novo comunicado</p>
@@ -197,7 +304,7 @@ const AdminAnnouncementsPage = async () => {
           </h2>
         </div>
         <form action={createAnnouncement} className="mt-6 grid gap-5">
-          <AnnouncementFields prefix="new-announcement" />
+          <AnnouncementFields cohorts={cohorts} prefix="new-announcement" />
           <Button className="w-fit" type="submit">
             Salvar aviso
           </Button>
@@ -228,6 +335,7 @@ const AdminAnnouncementsPage = async () => {
             {announcements.map((announcement) => (
               <article
                 className="paper-surface border p-5 sm:p-7"
+                data-admin-announcement-id={announcement.id}
                 key={announcement.id}
               >
                 <div className="flex flex-wrap items-center gap-2">
@@ -239,9 +347,13 @@ const AdminAnnouncementsPage = async () => {
                       · Fixado
                     </span>
                   )}
+                  {announcement.isImportant && (
+                    <span className="text-muted-foreground text-xs">
+                      · Importante no feed
+                    </span>
+                  )}
                   <span className="text-muted-foreground text-xs">
-                    · Atualizado em{" "}
-                    {announcement.updatedAt.toLocaleDateString("pt-BR")}
+                    · Atualizado em {formatSaoPauloDate(announcement.updatedAt)}
                   </span>
                 </div>
                 <h3 className="mt-2 font-display text-2xl">
@@ -253,6 +365,11 @@ const AdminAnnouncementsPage = async () => {
                 <div className="mt-4 flex flex-wrap gap-2">
                   <form action={setAnnouncementStatus}>
                     <input name="id" type="hidden" value={announcement.id} />
+                    <input
+                      name="expectedVersion"
+                      type="hidden"
+                      value={announcement.version}
+                    />
                     <input
                       name="status"
                       type="hidden"
@@ -270,6 +387,11 @@ const AdminAnnouncementsPage = async () => {
                   </form>
                   <form action={deleteAnnouncement}>
                     <input name="id" type="hidden" value={announcement.id} />
+                    <input
+                      name="expectedVersion"
+                      type="hidden"
+                      value={announcement.version}
+                    />
                     <Button size="sm" type="submit" variant="ghost">
                       Excluir
                     </Button>
@@ -281,7 +403,13 @@ const AdminAnnouncementsPage = async () => {
                   </summary>
                   <form action={updateAnnouncement} className="mt-5 grid gap-5">
                     <AnnouncementFields
-                      announcement={announcement}
+                      announcement={{
+                        ...announcement,
+                        cohortIds: announcement.cohorts.map(
+                          ({ cohortId }) => cohortId
+                        ),
+                      }}
+                      cohorts={cohorts}
                       prefix={`edit-${announcement.id}`}
                     />
                     <Button className="w-fit" size="sm" type="submit">

@@ -1,14 +1,27 @@
 "use client";
 
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@repo/design-system/components/ui/avatar";
 import { Button } from "@repo/design-system/components/ui/button";
+import { cn } from "@repo/design-system/lib/utils";
 import { useRouter } from "next/navigation";
-import { type FormEvent, useRef, useState } from "react";
+import { type FormEvent, useId, useRef, useState } from "react";
 import { MentionTextarea } from "./mention-textarea";
 
 interface CommentComposerProperties {
   readonly ariaLabel?: string;
+  readonly autoFocus?: boolean;
   readonly className?: string;
+  readonly currentProfile?: {
+    readonly avatarUrl: string | null;
+    readonly displayName: string | null;
+    readonly username: string;
+  } | null;
   readonly helperText?: string;
+  readonly onSuccess?: () => void;
   readonly parentId?: string;
   readonly placeholder?: string;
   readonly postId: string;
@@ -22,6 +35,7 @@ interface CommentResponse {
 }
 
 const newAttemptKey = () => crypto.randomUUID();
+const nameWordsPattern = /\s+/;
 
 const parseDocument = (formData: FormData) => {
   const rawDocument = formData.get("contentDocument");
@@ -100,20 +114,25 @@ const submitLabel = (pending: boolean, error: string) => {
 
 export const CommentComposer = ({
   ariaLabel = "Sua contribuição",
+  autoFocus = false,
   className,
   helperText,
+  currentProfile,
+  onSuccess,
   parentId,
   placeholder = "Acrescente uma leitura, uma pergunta ou uma referência... Use @nome para mencionar alguém.",
   postId,
   spaceSlug,
 }: CommentComposerProperties) => {
   const router = useRouter();
+  const contentId = useId().replaceAll(":", "");
   const attemptKeyRef = useRef<string>(newAttemptKey());
   const submittingRef = useRef(false);
   const [composerVersion, setComposerVersion] = useState(0);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [hasContent, setHasContent] = useState(false);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -138,6 +157,8 @@ export const CommentComposer = ({
       attemptKeyRef.current = newAttemptKey();
       setSuccess(true);
       setComposerVersion((current) => current + 1);
+      setHasContent(false);
+      onSuccess?.();
       router.refresh();
     } catch (submitError) {
       setError(
@@ -152,50 +173,74 @@ export const CommentComposer = ({
   };
 
   return (
-    <form aria-busy={pending} className={className} onSubmit={handleSubmit}>
+    <form
+      aria-busy={pending}
+      className={cn("community-comment-composer", className)}
+      onSubmit={handleSubmit}
+    >
       <input name="postId" type="hidden" value={postId} />
       <input name="spaceSlug" type="hidden" value={spaceSlug} />
       {parentId ? (
         <input name="parentId" type="hidden" value={parentId} />
       ) : null}
-      <label
-        className="block"
-        htmlFor={parentId ? `reply-${parentId}` : "comment-content"}
-      >
-        <span className="brand-eyebrow">{ariaLabel}</span>
-        <MentionTextarea
-          aria-label={ariaLabel}
-          className="community-comment-textarea"
-          disabled={pending}
-          id={parentId ? `reply-${parentId}` : "comment-content"}
-          key={composerVersion}
-          name="content"
-          onChange={() => {
-            if (error) {
-              attemptKeyRef.current = newAttemptKey();
-              setError("");
-            }
-          }}
-          placeholder={placeholder}
-          required
-        />
-      </label>
-      {helperText ? (
-        <p className="community-comment-composer__hint">{helperText}</p>
-      ) : null}
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-        <span aria-live="polite" className="text-muted-foreground text-xs">
-          {statusMessage(pending, error, success)}
-        </span>
-        <Button disabled={pending} type="submit">
-          {submitLabel(pending, error)}
-        </Button>
+      <div className="community-comment-composer__row">
+        <Avatar
+          aria-hidden="true"
+          className="community-comment-composer__avatar"
+        >
+          {currentProfile?.avatarUrl && (
+            <AvatarImage alt="" src={currentProfile.avatarUrl} />
+          )}
+          <AvatarFallback>
+            {(currentProfile?.displayName ?? currentProfile?.username ?? "M")
+              .split(nameWordsPattern)
+              .slice(0, 2)
+              .map((part) => part[0])
+              .join("")
+              .toUpperCase()}
+          </AvatarFallback>
+        </Avatar>
+        <div className="community-comment-composer__fields">
+          <label className="block" htmlFor={contentId}>
+            <span className="brand-eyebrow">{ariaLabel}</span>
+            <MentionTextarea
+              aria-label={ariaLabel}
+              autoFocus={autoFocus}
+              className="community-comment-textarea"
+              disabled={pending}
+              id={contentId}
+              key={composerVersion}
+              name="content"
+              onChange={(value) => {
+                setHasContent(Boolean(value.trim()));
+                if (error) {
+                  attemptKeyRef.current = newAttemptKey();
+                  setError("");
+                }
+              }}
+              placeholder={placeholder}
+              postId={postId}
+              required
+            />
+          </label>
+          {helperText ? (
+            <p className="community-comment-composer__hint">{helperText}</p>
+          ) : null}
+          <div className="community-comment-composer__footer">
+            <span aria-live="polite" className="text-muted-foreground text-xs">
+              {statusMessage(pending, error, success)}
+            </span>
+            <Button disabled={pending || !hasContent} type="submit">
+              {submitLabel(pending, error)}
+            </Button>
+          </div>
+          {error ? (
+            <p className="mt-2 text-destructive text-sm" role="alert">
+              {error}
+            </p>
+          ) : null}
+        </div>
       </div>
-      {error ? (
-        <p className="mt-2 text-destructive text-sm" role="alert">
-          {error}
-        </p>
-      ) : null}
     </form>
   );
 };

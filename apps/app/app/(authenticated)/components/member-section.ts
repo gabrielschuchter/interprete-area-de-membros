@@ -6,6 +6,14 @@ export const personalContentNavigation = [
   },
 ] as const;
 
+const communityPublicationPrefixes = [
+  "/comunidade/meus-topicos",
+  "/comunidade/minhas-publicacoes",
+] as const;
+
+const isCommunityPublicationPath = (pathname: string) =>
+  communityPublicationPrefixes.some((prefix) => pathname.startsWith(prefix));
+
 export const memberSectionForPathname = (pathname: string) => {
   if (pathname === "/salvos") {
     return "Salvos";
@@ -25,8 +33,8 @@ export const memberSectionForPathname = (pathname: string) => {
   if (pathname.startsWith("/atividades")) {
     return "Atividades";
   }
-  if (pathname.startsWith("/comunidade/meus-topicos")) {
-    return "Meus tópicos";
+  if (isCommunityPublicationPath(pathname)) {
+    return "Minhas publicações";
   }
   if (pathname.startsWith("/comunidade/salvos")) {
     return "Comunidade";
@@ -97,8 +105,8 @@ export const memberBreadcrumbForPathname = (pathname: string) => {
   if (pathname.startsWith("/comunidade/salvos")) {
     return "Comunidade · Salvos";
   }
-  if (pathname.startsWith("/comunidade/meus-topicos")) {
-    return "Perfil · Meus tópicos";
+  if (isCommunityPublicationPath(pathname)) {
+    return "Comunidade · Minhas publicações";
   }
   if (pathname === "/comunidade" || pathname.startsWith("/comunidade/")) {
     return "Início › Comunidade";

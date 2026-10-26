@@ -1,0 +1,76 @@
+{
+  "preparation_only": true,
+  "remote_mutations": 0,
+  "config_created_staged_or_activated": false,
+  "implementation": "scripts/ops/community-release-host-guard.mjs",
+  "team_plan": "hobby",
+  "documented_plan_custom_rule_limit": 3,
+  "required_rules_per_project": 1,
+  "current_configuration": {
+    "app": {
+      "active": null,
+      "draft": null
+    },
+    "api": {
+      "active": null,
+      "draft": null
+    },
+    "source": "authenticated GET /v1/security/firewall/config with exact projectId and teamId",
+    "conditional_firewall_bypass_endpoint": "403 forbidden; absence is not asserted",
+    "team_firewall_endpoint": "404 not_found"
+  },
+  "rule_contract": {
+    "condition": "host ninc exact verified deployment hostname array",
+    "action": "deny",
+    "environment_condition": null,
+    "scope": "project, Preview and Production",
+    "priority": "first custom rule",
+    "persistent_action_duration": null,
+    "bypass_added": false,
+    "deployment_protection_altered": false,
+    "maintenance": "allow only explicitly selected immutable artifact hosts; public alias remains denied",
+    "release": "add canonical public alias only after its deployment ID resolves to an explicitly selected artifact"
+  },
+  "safety_controls": [
+    "Dry-run by default; GET requests only",
+    "Fixed App/API project IDs and team",
+    "Exact deployment ID, project, READY status and supplied 40-character SHA are checked",
+    "No wildcard or arbitrary unverified host is accepted",
+    "Existing unrelated draft is never overwritten",
+    "Existing rules and firewall settings are preserved and compared before activation",
+    "Reviewed plan digest required for staging or activation",
+    "Stage and activate are separate explicit invocations",
+    "Original configuration saved with DPAPI before mutation",
+    "Activation targets the exact reviewed numeric version",
+    "Activated configuration is read back and compared"
+  ],
+  "validation": {
+    "live_app_dry_run": "passed against an existing READY deployment identity; no release host selection is implied",
+    "live_api_dry_run": "passed against an existing READY deployment identity; no release host selection is implied",
+    "biome_targeted": "passed",
+    "mock_only_safety_checks": {
+      "passed": 7,
+      "real_network_mutations": 0,
+      "cases": [
+        "dry-run issues GET only",
+        "wrong SHA rejects before mutation",
+        "stale digest rejects before mutation",
+        "existing unrelated draft remains untouched",
+        "stage changes draft only, no activation",
+        "altered or bypass draft rejects before activation",
+        "activation pins reviewed numeric version and verifies readback"
+      ]
+    }
+  },
+  "live_denial_proven": false,
+  "remaining_execution_proof": "Activate only during the coordinated release window. Probe every inventory hostname with the applicable authorized Deployment Protection session, including an old Production artifact, old Preview artifact and branch aliases; confirm denied hosts never reach runtime. Anonymous SSO redirects occur before project WAF and are not themselves a WAF denial. Test the new allowed host still requires normal auth. Recheck inventory and active rule before migrations and before opening public aliases.",
+  "primary_sources": [
+    "https://vercel.com/docs/vercel-firewall/vercel-waf/rule-configuration",
+    "https://vercel.com/docs/vercel-firewall/firewall-concepts",
+    "https://vercel.com/docs/vercel-firewall/vercel-waf/custom-rules",
+    "https://vercel.com/docs/plans/hobby",
+    "https://vercel.com/docs/rest-api/security/returns-activated-waf-config",
+    "https://vercel.com/docs/rest-api/security/returns-activated-waf-config-2",
+    "Official installed Vercel CLI commands-bulk.js: patchFirewallDraft uses PATCH /config/draft; activateFirewallConfig uses POST /config/{version}/activate"
+  ]
+}
