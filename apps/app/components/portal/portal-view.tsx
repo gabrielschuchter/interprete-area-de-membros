@@ -203,7 +203,11 @@ const ShortcutRail = ({
   </nav>
 );
 
-export const PortalView = () => {
+export const PortalView = ({
+  note = null,
+}: {
+  readonly note?: string | null;
+}) => {
   const navigation = useMemberNavigation();
   const viewport = usePortalViewport();
   const [online, setOnline] = useState(true);
@@ -272,6 +276,7 @@ export const PortalView = () => {
             Por qual <span className="portal-title-accent">caminho</span> você
             quer seguir hoje?
           </h1>
+          {note ? <p className="portal-note">{note}</p> : null}
         </div>
 
         {online ? null : (

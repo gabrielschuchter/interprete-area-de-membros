@@ -1,15 +1,47 @@
 import Link from "next/link";
 import { forbidden } from "next/navigation";
 import { listGestaoRecognition } from "@/lib/gestao-recognition";
-import { GestaoPageHeading } from "../../gestao-shell";
+import { GestaoFilterBar } from "../../gestao-filter-bar";
+import { GestaoIcon } from "../../gestao-icon";
 
-const dateFormat = new Intl.DateTimeFormat("pt-BR", {
-  day: "numeric",
-  month: "short",
-  year: "numeric",
-  timeZone: "America/Sao_Paulo",
-});
-const visibleAwardees = 8;
+const visibleAwardees = 6;
+const whitespace = /\s+/;
+
+const periods = [
+  ["7", "Últimos 7 dias"],
+  ["30", "Últimos 30 dias"],
+  ["90", "Últimos 90 dias"],
+] as const;
+
+const initials = (name: string) =>
+  name
+    .split(whitespace)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
+
+const single = (value: string | string[] | undefined) =>
+  typeof value === "string" ? value : undefined;
+
+const Medal = ({
+  imageUrl,
+  title,
+}: {
+  readonly imageUrl: string | null;
+  readonly title: string;
+}) =>
+  imageUrl ? (
+    // biome-ignore lint/performance/noImgElement: símbolo vindo de armazenamento externo, tamanho fixo
+    <img alt="" className="gk-medal" height={60} src={imageUrl} width={60} />
+  ) : (
+    <span
+      aria-hidden="true"
+      className="gk-medal gk-medal--default"
+      title={title}
+    >
+      <GestaoIcon name="star" size={26} />
+    </span>
+  );
 
 const GestaoRecognitionPage = async ({
   searchParams,
@@ -20,99 +52,114 @@ const GestaoRecognitionPage = async ({
   if (Object.values(params).some(Array.isArray)) {
     forbidden();
   }
-  const cohortId = typeof params.turma === "string" ? params.turma : undefined;
-  const badgeId =
-    typeof params.medalha === "string" ? params.medalha : undefined;
+  const cohortId = single(params.turma);
+  const badgeId = single(params.medalha);
+  const query = single(params.q)?.slice(0, 120) ?? "";
+  const period = periods.find(([value]) => value === params.periodo)?.[0];
   const { actor, badges, cohorts, allBadges } = await listGestaoRecognition({
-    cohortId,
     badgeId,
+    cohortId,
+    periodDays: period ? Number(period) : null,
+    query,
   });
+  const filtered = Boolean(badgeId || cohortId || query || period);
+
   return (
-    <section className="gx-page">
-      <GestaoPageHeading
-        description="Quem conquistou cada medalha. As conquistas vêm do critério avaliado no servidor."
-        eyebrow="Gestão · Alunos"
-        title="Reconhecimento"
-      >
-        {actor.role === "ADMIN" ? (
-          <Link
-            className="gx-button-outline"
-            href="/gestao/administracao/medalhas"
-          >
-            Configurar medalhas
-          </Link>
-        ) : null}
-      </GestaoPageHeading>
-      <form
-        action="/gestao/alunos/reconhecimento"
-        className="gx-filters"
-        method="get"
-      >
-        <select
-          aria-label="Medalha"
-          defaultValue={badgeId ?? ""}
-          name="medalha"
-        >
-          <option value="">Todas as medalhas</option>
-          {allBadges.map((badge) => (
-            <option key={badge.id} value={badge.id}>
-              {badge.title}
-            </option>
-          ))}
-        </select>
-        <select aria-label="Turma" defaultValue={cohortId ?? ""} name="turma">
-          <option value="">Todas as turmas</option>
-          {cohorts.map((cohort) => (
-            <option key={cohort.id} value={cohort.id}>
-              {cohort.name}
-            </option>
-          ))}
-        </select>
-        <button className="gx-button" type="submit">
-          Filtrar
-        </button>
-        {badgeId || cohortId ? (
-          <Link className="gx-link" href="/gestao/alunos/reconhecimento">
-            Limpar filtros
-          </Link>
-        ) : null}
-      </form>
-      {badges.length === 0 ? (
-        <div className="gestao-empty-state">
-          <h2>Nenhuma medalha publicada</h2>
-          <p>As medalhas publicadas aparecem aqui com quem as conquistou.</p>
+    <section className="gt-page gk-recognition">
+      <header className="gk-head">
+        <div className="gk-head-copy">
+          <h1>Reconhecimento</h1>
+          <p>
+            Quem conquistou cada medalha. Os critérios são configurados pela
+            administração.
+          </p>
         </div>
+        {actor.role === "ADMIN" ? (
+          <div className="gk-head-actions">
+            <Link
+              className="gk-link-btn gk-link-btn--accent"
+              href="/gestao/administracao/medalhas"
+              prefetch={false}
+            >
+              Configurar medalhas (administração) →
+            </Link>
+          </div>
+        ) : null}
+      </header>
+
+      <div className="gk-toolbar">
+        <GestaoFilterBar
+          placeholder="Buscar aluno ou medalha"
+          query={query}
+          selects={[
+            {
+              label: "Medalha",
+              options: allBadges.map((badge) => [badge.id, badge.title]),
+              param: "medalha",
+              value: badgeId ?? "",
+            },
+            {
+              label: "Turma",
+              options: cohorts.map((cohort) => [cohort.id, cohort.name]),
+              param: "turma",
+              value: cohortId ?? "",
+            },
+            {
+              label: "Período",
+              options: periods.map(([value, label]) => [value, label]),
+              param: "periodo",
+              value: period ?? "",
+            },
+          ]}
+        />
+      </div>
+
+      {badges.length === 0 ? (
+        <p className="gk-hint gk-empty-block">
+          {filtered
+            ? "Nenhuma medalha com esses filtros."
+            : "As medalhas publicadas aparecem aqui com quem as conquistou."}
+        </p>
       ) : (
-        <div className="gx-grid">
+        <div className="gk-medalgrid">
           {badges.map((badge) => (
-            <article className="gx-card" key={badge.id}>
-              <div className="gx-card-heading">
-                <h2>{badge.title}</h2>
-                <span className="gx-muted">
-                  {badge.awards.length}{" "}
+            <article className="gk-medalcard" key={badge.id}>
+              <header>
+                <Medal imageUrl={badge.imageUrl} title={badge.title} />
+                <div>
+                  <h2>{badge.title}</h2>
+                  <p>{badge.description}</p>
+                </div>
+              </header>
+              <div className="gk-medalcount">
+                <strong>{badge.awards.length}</strong>
+                <span>
                   {badge.awards.length === 1 ? "conquista" : "conquistas"}
                 </span>
               </div>
-              <p className="gx-muted">{badge.description}</p>
               {badge.awards.length === 0 ? (
-                <p className="gx-muted">Ninguém conquistou ainda.</p>
+                <small>Ninguém conquistou ainda.</small>
               ) : (
-                <ul className="gx-list">
+                <div className="gk-avatarstack">
                   {badge.awards.slice(0, visibleAwardees).map((award) => (
-                    <li key={award.id}>
-                      <Link href={`/gestao/alunos/perfil/${award.member.id}`}>
-                        <strong>{award.member.displayName ?? "Aluno"}</strong>
-                        <span>{dateFormat.format(award.awardedAt)}</span>
-                      </Link>
-                    </li>
+                    <Link
+                      aria-label={`${award.member.displayName ?? "Aluno"}, perfil`}
+                      className="gk-avatar gk-avatar--lg"
+                      href={`/gestao/alunos/perfil/${award.member.id}`}
+                      key={award.id}
+                      prefetch={false}
+                      title={award.member.displayName ?? "Aluno"}
+                    >
+                      {initials(award.member.displayName ?? "Aluno")}
+                    </Link>
                   ))}
-                </ul>
+                  {badge.awards.length > visibleAwardees ? (
+                    <span className="gk-avatarstack-more">
+                      +{badge.awards.length - visibleAwardees}
+                    </span>
+                  ) : null}
+                </div>
               )}
-              {badge.awards.length > visibleAwardees ? (
-                <p className="gx-muted">
-                  e mais {badge.awards.length - visibleAwardees}
-                </p>
-              ) : null}
             </article>
           ))}
         </div>

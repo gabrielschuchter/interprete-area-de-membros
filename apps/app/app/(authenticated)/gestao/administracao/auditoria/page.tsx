@@ -1,19 +1,38 @@
 import Link from "next/link";
 import { forbidden } from "next/navigation";
-import { gestaoAuditLabels, listGestaoAudit } from "@/lib/gestao-audit";
-import { GestaoPageHeading } from "../../gestao-shell";
+import {
+  gestaoAuditLabels,
+  listGestaoAudit,
+  listGestaoAuditActors,
+} from "@/lib/gestao-audit";
+import { GestaoFilterBar } from "../../gestao-filter-bar";
 
-const dateTimeFormat = new Intl.DateTimeFormat("pt-BR", {
+const base = "/gestao/administracao/auditoria";
+const whitespace = /\s+/;
+
+const periods = [
+  ["7", "Últimos 7 dias"],
+  ["30", "Últimos 30 dias"],
+  ["90", "Últimos 90 dias"],
+] as const;
+
+const dateFormat = new Intl.DateTimeFormat("pt-BR", {
   day: "numeric",
-  month: "short",
-  year: "numeric",
   hour: "2-digit",
   minute: "2-digit",
+  month: "short",
   timeZone: "America/Sao_Paulo",
 });
 
 const single = (value: string | string[] | undefined) =>
   Array.isArray(value) ? undefined : value;
+
+const initials = (name: string) =>
+  name
+    .split(whitespace)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
 
 const GestaoAuditPage = async ({
   searchParams,
@@ -24,150 +43,165 @@ const GestaoAuditPage = async ({
   if (Object.values(params).some(Array.isArray)) {
     forbidden();
   }
+  const period = periods.find(([value]) => value === params.periodo)?.[0];
   const filters = {
     action: single(params.acao)?.slice(0, 80),
-    from: single(params.de)?.slice(0, 10),
-    to: single(params.ate)?.slice(0, 10),
-    query: single(params.q)?.slice(0, 120),
+    actorId: single(params.quem)?.slice(0, 255),
     page: Number(single(params.pagina)) || 1,
+    periodDays: period ? Number(period) : null,
+    query: single(params.q)?.slice(0, 120),
   };
-  const audit = await listGestaoAudit(filters);
-  const filterParams = new URLSearchParams();
+  const [audit, actors] = await Promise.all([
+    listGestaoAudit(filters),
+    listGestaoAuditActors(),
+  ]);
+  const query = new URLSearchParams();
   for (const [key, value] of [
     ["acao", filters.action],
-    ["de", filters.from],
-    ["ate", filters.to],
+    ["periodo", period],
     ["q", filters.query],
+    ["quem", filters.actorId],
   ] as const) {
     if (value) {
-      filterParams.set(key, value);
+      query.set(key, value);
     }
   }
   const pageHref = (target: number) => {
-    const next = new URLSearchParams(filterParams);
+    const next = new URLSearchParams(query);
     if (target > 1) {
       next.set("pagina", String(target));
     }
     const text = next.toString();
-    return `/gestao/administracao/auditoria${text ? `?${text}` : ""}`;
+    return `${base}${text ? `?${text}` : ""}`;
   };
+  const first = audit.total === 0 ? 0 : (audit.page - 1) * audit.pageSize + 1;
+  const last = Math.min(audit.total, audit.page * audit.pageSize);
+
   return (
-    <section className="gx-page">
-      <GestaoPageHeading
-        description="Quem fez o quê na Gestão. Somente leitura. Cada linha vem de um evento gravado no momento da ação."
-        eyebrow="Gestão · Administração"
-        title="Registro de atividades"
-      >
-        <a
-          className="gx-button-outline"
-          href={`/gestao/administracao/auditoria/exportar${filterParams.size ? `?${filterParams}` : ""}`}
-        >
-          Exportar CSV
-        </a>
-      </GestaoPageHeading>
-      <form
-        action="/gestao/administracao/auditoria"
-        className="gx-filters"
-        method="get"
-      >
-        <input
-          aria-label="Buscar por quem fez"
-          defaultValue={filters.query}
-          maxLength={120}
-          name="q"
-          placeholder="Quem fez (nome ou e-mail)"
-          type="search"
-        />
-        <select
-          aria-label="Ação"
-          defaultValue={filters.action ?? ""}
-          name="acao"
-        >
-          <option value="">Todas as ações</option>
-          {Object.entries(gestaoAuditLabels).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
-        <input
-          aria-label="De"
-          defaultValue={filters.from}
-          name="de"
-          type="date"
-        />
-        <input
-          aria-label="Até"
-          defaultValue={filters.to}
-          name="ate"
-          type="date"
-        />
-        <button className="gx-button" type="submit">
-          Filtrar
-        </button>
-        {filterParams.size ? (
-          <Link className="gx-link" href="/gestao/administracao/auditoria">
-            Limpar filtros
-          </Link>
-        ) : null}
-      </form>
-      {audit.rows.length === 0 ? (
-        <div className="gestao-empty-state">
-          <h2>Nenhuma atividade encontrada</h2>
+    <section className="gt-page">
+      <header className="gk-head">
+        <div className="gk-head-copy">
+          <h1>Registro de atividades</h1>
           <p>
-            {filterParams.size
-              ? "Ajuste ou limpe os filtros para ver outros registros."
+            Mudanças sensíveis, com autor e data: papéis, acessos, turmas,
+            publicações e integrações.
+          </p>
+        </div>
+        <div className="gk-head-actions">
+          <a
+            className="gk-btn gk-btn--wide"
+            href={`${base}/exportar${query.size ? `?${query}` : ""}`}
+          >
+            Exportar (.csv)
+          </a>
+        </div>
+      </header>
+
+      <div className="gk-toolbar">
+        <GestaoFilterBar
+          placeholder="Buscar no registro"
+          query={filters.query ?? ""}
+          selects={[
+            {
+              label: "Quem",
+              options: actors.map((actor) => [actor.id, actor.name]),
+              param: "quem",
+              value: filters.actorId ?? "",
+            },
+            {
+              label: "Ação",
+              options: Object.entries(gestaoAuditLabels).map(
+                ([value, label]) => [value, label]
+              ),
+              param: "acao",
+              value: filters.action ?? "",
+            },
+            {
+              label: "Período",
+              options: periods.map(([value, label]) => [value, label]),
+              param: "periodo",
+              value: period ?? "",
+            },
+          ]}
+        />
+      </div>
+
+      {audit.rows.length === 0 ? (
+        <div className="gk-table-card">
+          <p className="gk-empty-cell">
+            {query.size
+              ? "Nenhuma atividade encontrada. Ajuste ou limpe os filtros."
               : "As ações feitas na Gestão passam a aparecer aqui."}
           </p>
         </div>
       ) : (
-        <div className="gx-card">
-          <div className="gx-table-wrap">
-            <table className="gx-table">
-              <thead>
-                <tr>
-                  <th scope="col">Quando</th>
-                  <th scope="col">Quem</th>
-                  <th scope="col">Ação</th>
-                  <th scope="col">Objeto</th>
+        <div className="gk-table-card">
+          <table className="gk-table gk-qtable">
+            <thead>
+              <tr>
+                <th>Quando</th>
+                <th>Quem</th>
+                <th>Ação</th>
+                <th>Objeto</th>
+                <th>Detalhes</th>
+              </tr>
+            </thead>
+            <tbody>
+              {audit.rows.map((row) => (
+                <tr key={row.id}>
+                  <td>
+                    <time dateTime={row.at.toISOString()}>
+                      {dateFormat.format(row.at)}
+                    </time>
+                  </td>
+                  <td>
+                    <span className="gk-person">
+                      <span
+                        aria-hidden="true"
+                        className="gk-avatar gk-avatar--lg"
+                      >
+                        {initials(row.actor)}
+                      </span>
+                      <span className="gk-qtitle">{row.actor}</span>
+                    </span>
+                  </td>
+                  <td>
+                    <strong>{row.label}</strong>
+                  </td>
+                  <td>{row.object}</td>
+                  <td className="gk-qsub">{row.details}</td>
                 </tr>
-              </thead>
-              <tbody>
-                {audit.rows.map((row) => (
-                  <tr key={row.id}>
-                    <td>
-                      <time dateTime={row.at.toISOString()}>
-                        {dateTimeFormat.format(row.at)}
-                      </time>
-                    </td>
-                    <td>{row.actor}</td>
-                    <td>{row.label}</td>
-                    <td>{row.aggregate}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <nav aria-label="Páginas" className="gx-pagination">
-            <span>
-              {audit.total} {audit.total === 1 ? "registro" : "registros"}
-            </span>
-            <span>
-              {audit.page > 1 ? (
-                <Link className="gx-link" href={pageHref(audit.page - 1)}>
-                  Anterior
-                </Link>
-              ) : null}{" "}
-              Página {Math.min(audit.page, audit.pages)} de {audit.pages}{" "}
-              {audit.page < audit.pages ? (
-                <Link className="gx-link" href={pageHref(audit.page + 1)}>
-                  Próxima
-                </Link>
-              ) : null}
-            </span>
-          </nav>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
+
+      <nav aria-label="Páginas" className="gk-pager">
+        <span>
+          {first} a {last} de {audit.total}
+        </span>
+        <span className="gk-pager-actions">
+          {audit.page > 1 ? (
+            <Link
+              className="gk-btn"
+              href={pageHref(audit.page - 1)}
+              prefetch={false}
+            >
+              Anterior
+            </Link>
+          ) : null}
+          {audit.page < audit.pages ? (
+            <Link
+              className="gk-btn"
+              href={pageHref(audit.page + 1)}
+              prefetch={false}
+            >
+              Próxima
+            </Link>
+          ) : null}
+        </span>
+      </nav>
     </section>
   );
 };

@@ -10,6 +10,8 @@ import {
 export const listGestaoRecognition = async (input: {
   readonly badgeId?: string;
   readonly cohortId?: string;
+  readonly periodDays?: number | null;
+  readonly query?: string;
 }) => {
   const { actor } = await requireGestaoAction("students.read");
   const cohortId = input.cohortId?.trim();
@@ -17,6 +19,10 @@ export const listGestaoRecognition = async (input: {
   if ((cohortId?.length ?? 0) > 255 || (badgeId?.length ?? 0) > 255) {
     forbidden();
   }
+  const since = input.periodDays
+    ? new Date(Date.now() - input.periodDays * 86_400_000)
+    : null;
+  const needle = (input.query ?? "").trim().slice(0, 120).toLowerCase();
   const cohortScope = getGestaoCorrectionCohortScope(actor);
   const recipient = getGestaoCorrectionRecipientScope(actor);
   const memberFilter = cohortId
@@ -46,7 +52,10 @@ export const listGestaoRecognition = async (input: {
         description: true,
         imageUrl: true,
         awards: {
-          where: { member: { is: memberFilter } },
+          where: {
+            member: { is: memberFilter },
+            ...(since ? { awardedAt: { gte: since } } : {}),
+          },
           orderBy: [{ awardedAt: "desc" }, { id: "asc" }],
           select: {
             id: true,
@@ -63,6 +72,17 @@ export const listGestaoRecognition = async (input: {
       take: 200,
     }),
   ]);
+  const matching = needle
+    ? badges.flatMap((badge) => {
+        if (badge.title.toLowerCase().includes(needle)) {
+          return [badge];
+        }
+        const awards = badge.awards.filter((award) =>
+          (award.member.displayName ?? "").toLowerCase().includes(needle)
+        );
+        return awards.length > 0 ? [{ ...badge, awards }] : [];
+      })
+    : badges;
   const allBadges = badgeId
     ? await database.badgeDefinition.findMany({
         where: { status: "PUBLISHED" },
@@ -70,5 +90,10 @@ export const listGestaoRecognition = async (input: {
         select: { id: true, title: true },
       })
     : badges.map(({ id, title }) => ({ id, title }));
-  return { actor, badges, cohorts, allBadges };
+  const ranked = [...matching].sort(
+    (a, b) =>
+      b.awards.length - a.awards.length ||
+      a.title.localeCompare(b.title, "pt-BR")
+  );
+  return { actor, badges: ranked, cohorts, allBadges };
 };

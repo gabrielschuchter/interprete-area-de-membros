@@ -9,6 +9,7 @@ import {
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import "../cursos.css";
+import { EditInGestaoBar } from "@/components/gestao/edit-in-gestao-bar";
 import { buildCourseViewData } from "@/components/learning/cursos/course-data";
 import { CourseView } from "@/components/learning/cursos/course-view";
 import { LearningPageFrame } from "@/components/learning/learning-page-frame";
@@ -30,7 +31,10 @@ interface CoursePageProperties {
   }>;
 }
 
-const CoursePage = async ({ params, searchParams }: CoursePageProperties) => {
+const CoursePageContent = async ({
+  params,
+  searchParams,
+}: CoursePageProperties) => {
   const [{ slug }, memberId, routeSearchParams] = await Promise.all([
     params,
     requireMemberId(),
@@ -263,6 +267,16 @@ const CoursePage = async ({ params, searchParams }: CoursePageProperties) => {
         ))}
       </section>
     </LearningPageFrame>
+  );
+};
+
+const CoursePage = async (properties: CoursePageProperties) => {
+  const { slug } = await properties.params;
+  return (
+    <>
+      <EditInGestaoBar courseSlug={slug} />
+      <CoursePageContent {...properties} />
+    </>
   );
 };
 

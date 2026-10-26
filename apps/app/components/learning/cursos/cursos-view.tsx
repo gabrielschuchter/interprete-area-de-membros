@@ -353,12 +353,14 @@ const TrailBlock = ({
 
 export const CursosView = ({
   courses,
+  hideResume = false,
   rails,
   resume,
   resumeRecording,
   trails,
 }: {
   readonly courses: readonly CursosCourse[];
+  readonly hideResume?: boolean;
   readonly rails: readonly CursosRail[];
   readonly resume: CursosResumeView | null;
   readonly resumeRecording: LearningRailCard | null;
@@ -404,7 +406,7 @@ export const CursosView = ({
         ) : null}
       </div>
       <div aria-hidden="true" className="cb-rule" />
-      <ResumeBlock fallback={firstOpen} resume={resume} />
+      {hideResume ? null : <ResumeBlock fallback={firstOpen} resume={resume} />}
       {resumeRecording ? (
         <div className="cb-also">
           <div>

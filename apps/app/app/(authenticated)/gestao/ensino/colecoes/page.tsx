@@ -1,12 +1,12 @@
 import { randomUUID } from "node:crypto";
-import { Button } from "@repo/design-system/components/ui/button";
 import Link from "next/link";
 import { GestaoCollectionCatalog } from "@/components/gestao/collection-catalog";
 import { getGestaoCollectionsCatalog } from "@/lib/gestao-collections";
 import {
   buildGestaoCollectionsHref,
-  type GestaoCollectionStatus,
+  gestaoCollectionsPageSize,
 } from "@/lib/gestao-collections-domain";
+import { GestaoFilterBar } from "../../gestao-filter-bar";
 
 interface GestaoCollectionsPageProperties {
   readonly searchParams: Promise<{
@@ -39,14 +39,6 @@ const resultMessages: Record<string, { message: string; tone: string }> = {
   },
 };
 
-const statusOptions: ReadonlyArray<readonly [GestaoCollectionStatus, string]> =
-  [
-    ["ALL", "Estado"],
-    ["PUBLISHED", "Publicadas"],
-    ["DRAFT", "Rascunhos"],
-    ["ARCHIVED", "Arquivadas"],
-  ];
-
 const GestaoCollectionsPage = async ({
   searchParams,
 }: GestaoCollectionsPageProperties) => {
@@ -69,113 +61,98 @@ const GestaoCollectionsPage = async ({
     ])
   );
 
+  const filters = data.filters;
+  const base = "/gestao/ensino/colecoes";
+  const first =
+    data.total === 0 ? 0 : (filters.page - 1) * gestaoCollectionsPageSize + 1;
+  const last = Math.min(filters.page * gestaoCollectionsPageSize, data.total);
+
   return (
-    <section className="gestao-page-content gco-catalog-page">
-      <header className="gco-catalog-heading">
-        <div>
-          <p className="gestao-eyebrow">
-            Gestão <span aria-hidden="true">›</span> Ensino{" "}
-            <span aria-hidden="true">›</span> Coleções
-          </p>
+    <section className="gt-page gk-collections">
+      <header className="gk-head">
+        <div className="gk-head-copy">
           <h1>Coleções</h1>
           <p>
             Curadorias que reúnem aulas, listas, materiais e gravações de
             qualquer origem, sem duplicá-los.
           </p>
         </div>
-        <Button asChild>
-          <Link href="/gestao/ensino/colecoes/novo" prefetch={false}>
+        <div className="gk-head-actions">
+          <Link
+            className="gk-btn gk-btn--primary gk-btn--wide"
+            href={`${base}/novo`}
+            prefetch={false}
+          >
             Nova coleção
           </Link>
-        </Button>
+        </div>
       </header>
 
       {result ? (
-        <p
+        <output
           aria-live="polite"
-          className={`gco-result ${result.tone}`}
-          role={result.tone ? "alert" : "status"}
+          className={result.tone ? "gk-error-box" : "gk-result"}
         >
           {result.message}
-        </p>
+        </output>
       ) : null}
 
-      <form
-        action="/gestao/ensino/colecoes"
-        className="gco-filters"
-        method="get"
-      >
-        <label className="gco-search" htmlFor="gco-query">
-          <span aria-hidden="true">⌕</span>
-          <input
-            defaultValue={data.filters.query}
-            id="gco-query"
-            maxLength={120}
-            name="q"
-            placeholder="Buscar coleções"
-          />
-        </label>
-        <label className="gco-status-filter" htmlFor="gco-status">
-          <span className="sr-only">Estado da coleção</span>
-          <select
-            defaultValue={data.filters.status}
-            id="gco-status"
-            name="estado"
-          >
-            {statusOptions.map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <Button type="submit" variant="outline">
-          Buscar
-        </Button>
-      </form>
+      <div className="gk-toolbar">
+        <GestaoFilterBar
+          placeholder="Buscar coleções"
+          query={filters.query}
+          selects={[
+            {
+              label: "Estado",
+              param: "estado",
+              value: filters.status === "ALL" ? "" : filters.status,
+              options: [
+                ["PUBLISHED", "Publicadas"],
+                ["DRAFT", "Rascunhos"],
+                ["ARCHIVED", "Arquivadas"],
+              ],
+            },
+          ]}
+        />
+      </div>
 
       <GestaoCollectionCatalog actionKeys={actionKeys} data={data} />
-      <nav aria-label="Paginação das coleções" className="gco-pagination">
+      <nav aria-label="Paginação das coleções" className="gk-pager">
         <span>
-          {data.total} coleção(ões) · página {data.filters.page} de{" "}
-          {data.pageCount}
+          {data.total === 0
+            ? "0 coleções"
+            : `${first} a ${last} de ${data.total}`}
         </span>
         <div>
-          {data.filters.page <= 1 ? (
-            <Button disabled type="button" variant="outline">
+          {filters.page > 1 ? (
+            <Link
+              className="gk-btn"
+              href={buildGestaoCollectionsHref(base, filters, {
+                page: filters.page - 1,
+              })}
+              prefetch={false}
+            >
               Anterior
-            </Button>
+            </Link>
           ) : (
-            <Button asChild variant="outline">
-              <Link
-                href={buildGestaoCollectionsHref(
-                  "/gestao/ensino/colecoes",
-                  data.filters,
-                  { page: data.filters.page - 1 }
-                )}
-                prefetch={false}
-              >
-                Anterior
-              </Link>
-            </Button>
+            <span aria-disabled="true" className="gk-btn" data-disabled="true">
+              Anterior
+            </span>
           )}
-          {data.filters.page >= data.pageCount ? (
-            <Button disabled type="button" variant="outline">
+          {filters.page < data.pageCount ? (
+            <Link
+              className="gk-btn"
+              href={buildGestaoCollectionsHref(base, filters, {
+                page: filters.page + 1,
+              })}
+              prefetch={false}
+            >
               Próxima
-            </Button>
+            </Link>
           ) : (
-            <Button asChild variant="outline">
-              <Link
-                href={buildGestaoCollectionsHref(
-                  "/gestao/ensino/colecoes",
-                  data.filters,
-                  { page: data.filters.page + 1 }
-                )}
-                prefetch={false}
-              >
-                Próxima
-              </Link>
-            </Button>
+            <span aria-disabled="true" className="gk-btn" data-disabled="true">
+              Próxima
+            </span>
           )}
         </div>
       </nav>

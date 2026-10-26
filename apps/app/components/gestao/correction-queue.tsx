@@ -1,12 +1,8 @@
 import { ActivitySubmissionStatus } from "@repo/database";
-import { Button } from "@repo/design-system/components/ui/button";
-import {
-  ArrowLeftIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  SearchIcon,
-} from "lucide-react";
+import { ArrowLeftIcon, ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import Link from "next/link";
+import { GestaoFilterBar } from "@/app/(authenticated)/gestao/gestao-filter-bar";
+import { GestaoIcon } from "@/app/(authenticated)/gestao/gestao-icon";
 import { CorrectionFeedbackForm } from "@/components/gestao/correction-feedback-form";
 import { isReviewForCurrentSubmission } from "@/lib/gestao-activity-review-domain";
 import { correctionResultMessages } from "@/lib/gestao-correction-contract";
@@ -254,33 +250,20 @@ const QueuePanel = ({
         </Link>
       ))}
     </nav>
-    <form action={basePath} className="gc-filters" method="get">
-      <input name="estado" type="hidden" value={data.status} />
-      <label htmlFor="gc-cohort-filter">
-        <span className="sr-only">Filtrar por turma</span>
-        <select defaultValue={data.cohortId} id="gc-cohort-filter" name="turma">
-          <option value="">Todas as turmas</option>
-          {data.cohorts.map((cohort) => (
-            <option key={cohort.id} value={cohort.id}>
-              {cohort.name}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="gc-search" htmlFor="gc-search-input">
-        <SearchIcon aria-hidden="true" />
-        <input
-          defaultValue={data.query}
-          id="gc-search-input"
-          maxLength={120}
-          name="q"
-          placeholder="Buscar aluno ou atividade"
-        />
-      </label>
-      <Button size="sm" type="submit" variant="outline">
-        Filtrar
-      </Button>
-    </form>
+    <GestaoFilterBar
+      compact
+      placeholder="Buscar aluno ou atividade"
+      query={data.query}
+      resetParams={["pagina", "entrega"]}
+      selects={[
+        {
+          label: "Todas as turmas",
+          param: "turma",
+          value: data.cohortId ?? "",
+          options: data.cohorts.map((cohort) => [cohort.id, cohort.name]),
+        },
+      ]}
+    />
     <div className="gc-queue-list">
       {data.submissions.length ? (
         data.submissions.map((submission) => (
@@ -349,13 +332,13 @@ const SubmissionPanel = ({
           <strong>{displayName(selected)}</strong>
           <span>Enviada {dateLabel(selected.submittedAt, "sem data")}</span>
         </div>
-        <span
-          className={`gc-status-pill ${selected.status === ActivitySubmissionStatus.REVIEWED ? "is-reviewed" : "is-pending"}`}
+        <Link
+          className="gc-profile-link"
+          href={`/gestao/alunos/perfil/${selected.member.id}`}
+          prefetch={false}
         >
-          {selected.status === ActivitySubmissionStatus.REVIEWED
-            ? "Corrigida"
-            : "Pendente"}
-        </span>
+          Abrir perfil do aluno
+        </Link>
       </header>
       <div className="gc-submission-content">
         <p className="gestao-eyebrow">Atividade</p>
@@ -430,6 +413,56 @@ const FeedbackPanel = ({
   );
 };
 
+const QueueStepper = ({
+  basePath,
+  data,
+}: {
+  readonly basePath: string;
+  readonly data: CorrectionQueueData;
+}) => {
+  const index = data.submissions.findIndex(
+    ({ id }) => id === data.selectedSubmission?.id
+  );
+  const neighbours = [
+    ["Entrega anterior", "chevron-left", data.submissions[index - 1]],
+    ["Próxima entrega", "chevron-right", data.submissions[index + 1]],
+  ] as const;
+  return (
+    <div className="gk-stepper">
+      {neighbours.map(([label, icon, target]) =>
+        target && index >= 0 ? (
+          <Link
+            aria-label={label}
+            className="gk-icon-btn gk-icon-btn--square"
+            href={buildQueueHref(basePath, {
+              cohortId: data.cohortId,
+              page: data.page,
+              query: data.query,
+              selectedSubmissionId: target.id,
+              status: data.status,
+            })}
+            key={label}
+            prefetch={false}
+          >
+            <GestaoIcon name={icon} size={18} />
+          </Link>
+        ) : (
+          <span
+            aria-disabled="true"
+            aria-label={label}
+            className="gk-icon-btn gk-icon-btn--square"
+            data-disabled="true"
+            key={label}
+            role="img"
+          >
+            <GestaoIcon name={icon} size={18} />
+          </span>
+        )
+      )}
+    </div>
+  );
+};
+
 export const GestaoCorrectionQueue = ({
   basePath,
   data,
@@ -446,29 +479,27 @@ export const GestaoCorrectionQueue = ({
         ]
       : null;
   return (
-    <section className="gestao-page-content gc-page">
-      <header className="gc-page-heading">
-        <div>
-          <p className="gestao-eyebrow">
-            Gestão <span aria-hidden="true">›</span> Alunos{" "}
-            <span aria-hidden="true">›</span> Correções
-          </p>
+    <section className="gt-page gc-page">
+      <header className="gk-head">
+        <div className="gk-head-copy">
           <h1>Correções</h1>
           <p>
             Fila de entregas aguardando avaliação, com contexto e feedback no
             mesmo lugar.
           </p>
         </div>
-        {data.activity ? (
-          <Button asChild variant="outline">
+        <div className="gk-head-actions">
+          {data.activity ? (
             <Link
+              className="gk-btn"
               href={["/gestao/ensino/atividades", data.activity.id].join("/")}
               prefetch={false}
             >
-              <ArrowLeftIcon aria-hidden="true" /> Atividade
+              Atividade
             </Link>
-          </Button>
-        ) : null}
+          ) : null}
+          <QueueStepper basePath={basePath} data={data} />
+        </div>
       </header>
       {resultMessage ? (
         <output className="gc-result">{resultMessage}</output>

@@ -62,6 +62,7 @@ export const DirectCourseAccessPanel = ({
   readonly members: readonly CourseAccessPerson[];
 }) => {
   const [pending, setPending] = useState<PendingConfirmation | null>(null);
+  const [granting, setGranting] = useState(Boolean(memberQuery));
   const mutation = useCourseAccessMutation();
   const coursePath = `/gestao/ensino/cursos/${encodeURIComponent(courseId)}/turmas`;
 
@@ -113,73 +114,85 @@ export const DirectCourseAccessPanel = ({
             Exceções com prazo próprio, revogadas sem afetar outros acessos.
           </p>
         </div>
-        <a className="gca-text-action" href="#gca-grant-form">
-          <PlusIcon aria-hidden="true" /> Conceder acesso
-        </a>
-      </div>
-      <div className="gca-table-toolbar">
-        <CourseAccessSearch
-          action={coursePath}
-          label="Buscar membro por nome, e-mail ou usuário"
-          name="membro_busca"
-          pageField="membro_pagina"
-          value={memberQuery}
-        />
-        <span className="gca-result-count">
-          {directGrantCount} acesso(s) individual(is)
-        </span>
-      </div>
-
-      <form
-        className="gca-grant-form"
-        id="gca-grant-form"
-        onSubmit={submitGrant}
-      >
-        <label className="gca-field">
-          <span>Membro</span>
-          <select
-            disabled={mutation.pending || members.length === 0}
-            name="memberId"
-            required
-          >
-            <option value="">Selecione um membro</option>
-            {members.map((member) => (
-              <option key={member.id} value={member.id}>
-                {courseAccessPersonName(member)}
-                {member.email ? ` · ${member.email}` : ""}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="gca-field">
-          <span>Expira em (opcional)</span>
-          <input
-            disabled={mutation.pending}
-            name="expiresAt"
-            type="datetime-local"
-          />
-        </label>
-        <Button
-          disabled={mutation.pending || members.length === 0}
-          size="sm"
-          type="submit"
+        <button
+          aria-controls="gca-grant-form"
+          aria-expanded={granting}
+          className="gca-text-action"
+          onClick={() => setGranting((value) => !value)}
+          type="button"
         >
-          Continuar
-        </Button>
-      </form>
-      {members.length === 0 ? (
+          <PlusIcon aria-hidden="true" /> Conceder acesso
+        </button>
+      </div>
+      {granting ? (
+        <>
+          <div className="gca-table-toolbar">
+            <CourseAccessSearch
+              action={coursePath}
+              label="Buscar membro por nome, e-mail ou usuário"
+              name="membro_busca"
+              pageField="membro_pagina"
+              value={memberQuery}
+            />
+            <span className="gca-result-count">
+              {directGrantCount} acesso(s) individual(is)
+            </span>
+          </div>
+
+          <form
+            className="gca-grant-form"
+            id="gca-grant-form"
+            onSubmit={submitGrant}
+          >
+            <label className="gca-field">
+              <span>Membro</span>
+              <select
+                disabled={mutation.pending || members.length === 0}
+                name="memberId"
+                required
+              >
+                <option value="">Selecione um membro</option>
+                {members.map((member) => (
+                  <option key={member.id} value={member.id}>
+                    {courseAccessPersonName(member)}
+                    {member.email ? ` · ${member.email}` : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="gca-field">
+              <span>Expira em (opcional)</span>
+              <input
+                disabled={mutation.pending}
+                name="expiresAt"
+                type="datetime-local"
+              />
+            </label>
+            <Button
+              disabled={mutation.pending || members.length === 0}
+              size="sm"
+              type="submit"
+            >
+              Continuar
+            </Button>
+          </form>
+        </>
+      ) : null}
+      {granting && members.length === 0 ? (
         <p className="gca-empty-copy">
           {memberQuery
             ? "Nenhum membro ativo corresponde à busca."
             : "Não há membros ativos disponíveis para concessão."}
         </p>
       ) : null}
-      <CourseAccessPager
-        field="membro_pagina"
-        label="Resultados de membros"
-        page={memberPage}
-        totalPages={memberTotalPages}
-      />
+      {granting ? (
+        <CourseAccessPager
+          field="membro_pagina"
+          label="Resultados de membros"
+          page={memberPage}
+          totalPages={memberTotalPages}
+        />
+      ) : null}
 
       {directGrants.length ? (
         <div className="gca-grant-list">
@@ -208,30 +221,31 @@ export const DirectCourseAccessPanel = ({
           <p>Nenhum acesso individual ativo para este curso.</p>
         </div>
       )}
-      <div className="gca-grant-pagers">
-        <div>
-          <span>Novos acessos ({directSourceGrantCount})</span>
-          <CourseAccessPager
-            field="acesso_pagina"
-            label="Acessos individuais recentes"
-            page={directSourceGrantPage}
-            totalPages={directSourceGrantTotalPages}
-          />
+      {directSourceGrantTotalPages > 1 || directLegacyGrantTotalPages > 1 ? (
+        <div className="gca-grant-pagers">
+          <div>
+            <span>Novos acessos ({directSourceGrantCount})</span>
+            <CourseAccessPager
+              field="acesso_pagina"
+              label="Acessos individuais recentes"
+              page={directSourceGrantPage}
+              totalPages={directSourceGrantTotalPages}
+            />
+          </div>
+          <div>
+            <span>Concessões anteriores ({directLegacyGrantCount})</span>
+            <CourseAccessPager
+              field="legado_pagina"
+              label="Concessões anteriores"
+              page={directLegacyGrantPage}
+              totalPages={directLegacyGrantTotalPages}
+            />
+          </div>
         </div>
-        <div>
-          <span>Concessões anteriores ({directLegacyGrantCount})</span>
-          <CourseAccessPager
-            field="legado_pagina"
-            label="Concessões anteriores"
-            page={directLegacyGrantPage}
-            totalPages={directLegacyGrantTotalPages}
-          />
-        </div>
-      </div>
+      ) : null}
       <p className="gca-footnote">
-        Quem já recebe o curso por uma turma mantém esse acesso mesmo que uma
-        concessão individual seja revogada. {memberCount} membro(s) ativo(s)
-        disponíveis.
+        Servem para exceções. Quem está numa turma com o curso já tem acesso.
+        {granting ? ` ${memberCount} membro(s) ativo(s) disponíveis.` : ""}
       </p>
       <CourseAccessConfirmDialog
         confirmLabel="Confirmar acesso"

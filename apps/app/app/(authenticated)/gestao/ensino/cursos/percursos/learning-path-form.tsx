@@ -1,26 +1,16 @@
 "use client";
 
-import { Button } from "@repo/design-system/components/ui/button";
 import { Input } from "@repo/design-system/components/ui/input";
 import { Textarea } from "@repo/design-system/components/ui/textarea";
 import { useActionState, useState } from "react";
-import { useFormStatus } from "react-dom";
 import { CollectionCoverPicker } from "@/components/gestao/collection-cover-picker";
 import type { GestaoLearningPathFormState } from "@/lib/gestao-learning-path-domain";
+import { PathSubmitButton } from "./path-submit-button";
 
 type PathAction = (
   state: GestaoLearningPathFormState,
   formData: FormData
 ) => Promise<GestaoLearningPathFormState>;
-
-const SavePathButton = () => {
-  const { pending } = useFormStatus();
-  return (
-    <Button disabled={pending} type="submit">
-      {pending ? "Salvando…" : "Salvar percurso"}
-    </Button>
-  );
-};
 
 export const LearningPathForm = ({
   action,
@@ -185,13 +175,7 @@ export const LearningPathForm = ({
         ) : null}
       </fieldset>
       {path?.published ? (
-        <label className="ge-path-confirm">
-          <input name="confirmPublishedChange" required type="checkbox" />
-          <span>
-            Confirmo que as alterações podem ficar visíveis imediatamente para
-            os alunos.
-          </span>
-        </label>
+        <input name="confirmPublishedChange" type="hidden" value="on" />
       ) : null}
       {state.message ? (
         <output aria-live="polite" className="ge-path-feedback">
@@ -199,7 +183,17 @@ export const LearningPathForm = ({
         </output>
       ) : null}
       <div className="ge-path-form-actions">
-        <SavePathButton />
+        <PathSubmitButton
+          confirmText={
+            path?.published
+              ? "As alterações ficam visíveis imediatamente para os alunos."
+              : undefined
+          }
+          confirmTitle="Salvar alterações no percurso publicado?"
+          label={path ? "Salvar" : "Criar percurso"}
+          pendingLabel="Salvando…"
+          variant="default"
+        />
       </div>
     </form>
   );

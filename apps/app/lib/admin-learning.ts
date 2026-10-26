@@ -53,6 +53,9 @@ export const getAdminCourse = async (id: string) =>
       teacherId: true,
       status: true,
       experience: true,
+      coverUrl: true,
+      updatedAt: true,
+      _count: { select: { activities: true } },
       learningPath: { select: { id: true, title: true, slug: true } },
       modules: {
         orderBy: [{ position: "asc" }, { title: "asc" }],
@@ -76,6 +79,7 @@ export const getAdminCourse = async (id: string) =>
               kind: true,
               position: true,
               status: true,
+              updatedAt: true,
               assets: {
                 where: { kind: "VIDEO" },
                 orderBy: { position: "asc" },

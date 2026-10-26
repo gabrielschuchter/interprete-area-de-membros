@@ -72,9 +72,9 @@ const statusCopy: Record<
     tone: "warning",
   },
   NOT_CONFIGURED: {
-    title: "Verificação do YouTube não configurada",
+    title: "Verificação automática ainda não ativada",
     detail:
-      "Adicione YOUTUBE_API_KEY no ambiente de QA para verificar este vídeo.",
+      "Falta a chave da API do YouTube neste ambiente. Você pode salvar o link agora e verificar quando a chave for configurada.",
     tone: "warning",
   },
 };
@@ -333,6 +333,9 @@ export const YouTubeVerificationCard = ({
   const [result, setResult] = useState<YouTubeVerificationResult | null>(null);
   const [pending, setPending] = useState(false);
   const [requestError, setRequestError] = useState(false);
+  const [publicAccepted, setPublicAccepted] = useState(false);
+  const inputElement = useRef<HTMLInputElement>(null);
+  const lastVerified = useRef(youtubeUrl);
   const metadata = result?.metadata;
   const title = metadata?.title ?? initialTitle ?? lessonTitle;
   const thumbnailUrl = metadata?.thumbnailUrl ?? initialThumbnailUrl;
@@ -341,6 +344,8 @@ export const YouTubeVerificationCard = ({
     metadata?.captionsAvailable ?? initialCaptionsAvailable;
 
   const verify = async () => {
+    lastVerified.current = input;
+    setPublicAccepted(false);
     setPending(true);
     setStatus("UNREACHABLE");
     setRequestError(false);
@@ -364,9 +369,19 @@ export const YouTubeVerificationCard = ({
       </div>
       <div className="gestao-youtube-input-row">
         <Input
+          aria-invalid={status !== null && statusCopy[status].tone === "error"}
           aria-label="Link do vídeo no YouTube"
           autoComplete="url"
           name="youtubeUrl"
+          onBlur={() => {
+            if (
+              !pending &&
+              input.trim().length > 0 &&
+              input !== lastVerified.current
+            ) {
+              verify();
+            }
+          }}
           onChange={(event) => {
             setInput(event.target.value);
             setStatus(null);
@@ -374,6 +389,7 @@ export const YouTubeVerificationCard = ({
             setRequestError(false);
           }}
           placeholder="Cole o link do vídeo (não listado)"
+          ref={inputElement}
           type="url"
           value={input}
         />
@@ -389,7 +405,7 @@ export const YouTubeVerificationCard = ({
           ) : (
             <RotateCwIcon aria-hidden="true" />
           )}
-          Verificar
+          {status ? "Verificar de novo" : "Verificar"}
         </Button>
       </div>
 
@@ -401,6 +417,29 @@ export const YouTubeVerificationCard = ({
         result={result}
         status={status}
       />
+      {status === "PUBLIC" && !publicAccepted ? (
+        <div className="gestao-youtube-choices">
+          <Button
+            onClick={() => setPublicAccepted(true)}
+            type="button"
+            variant="outline"
+          >
+            Continuar assim
+          </Button>
+          <Button
+            onClick={() => {
+              setInput("");
+              setStatus(null);
+              setResult(null);
+              inputElement.current?.focus();
+            }}
+            type="button"
+            variant="outline"
+          >
+            Trocar o link
+          </Button>
+        </div>
+      ) : null}
       <VideoPreview
         assetId={assetId}
         durationSeconds={durationSeconds}

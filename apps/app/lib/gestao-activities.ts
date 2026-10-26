@@ -126,6 +126,7 @@ export const listGestaoActivities = async (input: {
       title: true,
       slug: true,
       status: true,
+      deliveryKind: true,
       dueAt: true,
       updatedAt: true,
       version: true,
@@ -357,6 +358,7 @@ export const getGestaoActivityEditorData = async (activityId?: string) => {
             courseId: true,
             lessonId: true,
             relatedLibraryItemId: true,
+            createdAt: true,
             version: true,
             rubricVersion: true,
             cohortTargets: {

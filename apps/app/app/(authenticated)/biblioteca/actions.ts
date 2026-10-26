@@ -163,6 +163,21 @@ const deleteReplacedLibraryAsset = async (input: {
   }
 };
 
+const statusForSaveMode = (saveMode: "draft" | "publish" | null) => {
+  if (saveMode === "publish") {
+    return ContentStatus.PUBLISHED;
+  }
+  return saveMode === "draft" ? ContentStatus.DRAFT : null;
+};
+
+const savedLibraryState = (
+  saveMode: "draft" | "publish" | null,
+  fallback: { readonly message: string; readonly result: string }
+) =>
+  saveMode === "publish"
+    ? libraryFormSuccess("material-publicado", "Material publicado.")
+    : libraryFormSuccess(fallback.result, fallback.message);
+
 const createLibraryItemRecord = async (
   formData: FormData
 ): Promise<LibraryItemFormState> => {
@@ -194,7 +209,12 @@ const createLibraryItemRecord = async (
     return parsed.state;
   }
   const input = parsed.input;
-  const { file, idempotencyKey: _idempotencyKey, ...inputData } = input;
+  const {
+    file,
+    idempotencyKey: _idempotencyKey,
+    saveMode,
+    ...inputData
+  } = input;
   const idempotencyKey = input.idempotencyKey as string;
   if (!(await libraryLessonExists(input.lessonId))) {
     return libraryFormError(
@@ -233,7 +253,7 @@ const createLibraryItemRecord = async (
         mimeType: uploaded?.mimeType ?? null,
         sizeBytes: uploaded?.sizeBytes ?? null,
         lessonId: input.lessonId || null,
-        status: ContentStatus.DRAFT,
+        status: statusForSaveMode(saveMode) ?? ContentStatus.DRAFT,
         createdBy: userId,
         updatedBy: userId,
       },
@@ -255,7 +275,10 @@ const createLibraryItemRecord = async (
     );
   }
   revalidateStaffLibrary();
-  return libraryFormSuccess("material-criado", "Material salvo como rascunho.");
+  return savedLibraryState(saveMode, {
+    message: "Material salvo como rascunho.",
+    result: "material-criado",
+  });
 };
 
 export const createGestaoLibraryItem = async (
@@ -331,7 +354,12 @@ const updateLibraryItemRecord = async (
     return parsed.state;
   }
   const input = parsed.input;
-  const { file, idempotencyKey: _idempotencyKey, ...inputData } = input;
+  const {
+    file,
+    idempotencyKey: _idempotencyKey,
+    saveMode,
+    ...inputData
+  } = input;
   if (!(await libraryLessonExists(input.lessonId))) {
     return libraryFormError(
       "lessonId",
@@ -367,6 +395,9 @@ const updateLibraryItemRecord = async (
         sizeBytes:
           uploaded?.sizeBytes ?? (input.url ? null : current.sizeBytes),
         lessonId: input.lessonId || null,
+        ...(statusForSaveMode(saveMode)
+          ? { status: statusForSaveMode(saveMode) as ContentStatus }
+          : {}),
         updatedBy: userId,
       },
     });
@@ -383,7 +414,10 @@ const updateLibraryItemRecord = async (
   });
   revalidateStaffLibrary();
   revalidatePath(`/biblioteca/${id}`);
-  return libraryFormSuccess("material-atualizado", "Material atualizado.");
+  return savedLibraryState(saveMode, {
+    message: "Material atualizado.",
+    result: "material-atualizado",
+  });
 };
 
 export const updateGestaoLibraryItem = async (

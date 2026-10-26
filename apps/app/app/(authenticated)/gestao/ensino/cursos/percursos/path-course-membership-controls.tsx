@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { ContentStatus } from "@repo/database";
+import { GestaoIcon } from "../../../gestao-icon";
 import {
   addGestaoLearningPathCourse,
   removeGestaoLearningPathCourse,
@@ -14,16 +15,11 @@ interface PathVersion {
 
 const PublishedChangeConfirmation = ({
   status,
-  text,
 }: {
   readonly status: ContentStatus;
-  readonly text: string;
 }) =>
   status === ContentStatus.PUBLISHED ? (
-    <label className="ge-path-membership-confirm">
-      <input name="confirmPublishedChange" required type="checkbox" />
-      <span>{text}</span>
-    </label>
+    <input name="confirmPublishedChange" type="hidden" value="on" />
   ) : null;
 
 export const AddPathCourseControl = ({
@@ -57,12 +53,15 @@ export const AddPathCourseControl = ({
       value={course.updatedAt.toISOString()}
     />
     <input name="idempotencyKey" type="hidden" value={randomUUID()} />
-    <PublishedChangeConfirmation
-      status={path.status}
-      text="Confirmo a inclusão visível para os alunos agora."
-    />
+    <PublishedChangeConfirmation status={path.status} />
     <PathSubmitButton
       ariaLabel={`Adicionar ${course.title} ao percurso`}
+      confirmText={
+        path.status === ContentStatus.PUBLISHED
+          ? "O curso passa a aparecer neste percurso para os alunos agora."
+          : undefined
+      }
+      confirmTitle="Adicionar ao percurso publicado?"
       label="Adicionar"
       pendingLabel="Adicionando…"
     />
@@ -100,36 +99,22 @@ export const RemovePathCourseControl = ({
       value={course.updatedAt.toISOString()}
     />
     <input name="idempotencyKey" type="hidden" value={randomUUID()} />
-    {path.status === ContentStatus.PUBLISHED ? (
-      <details className="ge-path-remove-confirm">
-        <summary
-          aria-label={`Abrir confirmação para tirar ${course.title} do percurso`}
-          className="ge-path-remove-course"
-          title="Tirar do percurso"
-        >
-          <span aria-hidden="true">×</span>
-        </summary>
-        <div className="ge-path-remove-confirm-popover">
-          <PublishedChangeConfirmation
-            status={path.status}
-            text="Confirmo a remoção visível para os alunos agora."
-          />
-          <PathSubmitButton
-            label="Confirmar remoção"
-            pendingLabel="Removendo…"
-          />
-        </div>
-      </details>
-    ) : (
-      <PathSubmitButton
-        ariaLabel={`Tirar ${course.title} do percurso`}
-        className="ge-path-remove-course"
-        label="×"
-        pendingLabel="…"
-        size="icon"
-        title="Tirar do percurso"
-        variant="outline"
-      />
-    )}
+    <PublishedChangeConfirmation status={path.status} />
+    <PathSubmitButton
+      ariaLabel={`Tirar ${course.title} do percurso`}
+      className="ge-path-remove-course"
+      confirmText={
+        path.status === ContentStatus.PUBLISHED
+          ? "O curso deixa de aparecer neste percurso para os alunos agora. O curso em si não é apagado."
+          : undefined
+      }
+      confirmTitle={`Tirar ${course.title} do percurso?`}
+      icon={<GestaoIcon name="x" size={16} />}
+      label="×"
+      pendingLabel="…"
+      size="icon"
+      title="Tirar do percurso"
+      variant="outline"
+    />
   </form>
 );

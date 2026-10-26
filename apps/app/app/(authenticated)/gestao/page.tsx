@@ -1,9 +1,9 @@
-import { InboxIcon } from "lucide-react";
 import Link from "next/link";
 import { forbidden } from "next/navigation";
 import { getGestaoOverviewAttention } from "@/lib/gestao-overview";
 import { getGestaoOverviewExtras } from "@/lib/gestao-overview-extras";
 import { getGestaoOverviewWeek } from "@/lib/gestao-overview-week";
+import { GestaoIcon, type GestaoIconName } from "./gestao-icon";
 import { OverviewCohortFilter } from "./overview-cohort-filter";
 import {
   AttentionRow,
@@ -32,12 +32,28 @@ const greetingForNow = (date: Date) => {
   return "Boa noite";
 };
 
-const shortcuts = [
-  { href: "/gestao/ensino/cursos/novo", label: "Novo curso" },
-  { href: "/gestao/ensino/atividades/nova", label: "Nova atividade" },
-  { href: "/gestao/comunidade/encontros", label: "Novo encontro" },
-  { href: "/gestao/comunidade/avisos", label: "Novo aviso" },
-  { href: "/gestao/alunos/atribuicoes", label: "Atribuir conteúdo" },
+const shortcuts: readonly {
+  readonly href: string;
+  readonly icon: GestaoIconName;
+  readonly label: string;
+}[] = [
+  { href: "/gestao/ensino/cursos/novo", icon: "book", label: "Novo curso" },
+  {
+    href: "/gestao/ensino/atividades/nova",
+    icon: "inbox",
+    label: "Nova atividade",
+  },
+  {
+    href: "/gestao/comunidade/encontros",
+    icon: "video",
+    label: "Novo encontro",
+  },
+  { href: "/gestao/comunidade/avisos", icon: "bell", label: "Novo aviso" },
+  {
+    href: "/gestao/alunos/atribuicoes",
+    icon: "arrow-right",
+    label: "Atribuir conteúdo",
+  },
 ];
 
 interface OverviewPageProperties {
@@ -73,11 +89,17 @@ const GestaoOverviewPage = async ({ searchParams }: OverviewPageProperties) => {
             atenção hoje.
           </p>
         </div>
-        <OverviewCohortFilter filter={overview.cohortFilter} />
+        <div className="go-heading-actions">
+          <OverviewCohortFilter filter={overview.cohortFilter} />
+          <Link className="go-outline-action" href="/gestao/previa">
+            Ver como aluno
+          </Link>
+        </div>
       </header>
       <nav aria-label="Atalhos" className="gx-shortcuts">
         {shortcuts.map((shortcut) => (
           <Link href={shortcut.href} key={shortcut.href} prefetch={false}>
+            <GestaoIcon name={shortcut.icon} size={18} />
             {shortcut.label}
           </Link>
         ))}
@@ -91,36 +113,38 @@ const GestaoOverviewPage = async ({ searchParams }: OverviewPageProperties) => {
                 {attentionCount} {attentionCount === 1 ? "item" : "itens"}
               </span>
             </div>
-            {overview.pendingCount ? (
-              <div
-                className="go-attention-row"
-                data-attention-item="corrections"
-              >
-                <span className="go-attention-icon">
-                  <InboxIcon aria-hidden="true" size={18} />
-                </span>
-                <div className="go-attention-copy">
-                  <h3>
-                    {overview.pendingCount}{" "}
-                    {overview.pendingCount === 1
-                      ? "entrega aguardando"
-                      : "entregas aguardando"}{" "}
-                    feedback
-                  </h3>
-                  <p>{overview.pendingActivityTitles.join(" · ")}</p>
-                </div>
-                <Link
-                  className="go-outline-action"
-                  href={overview.correctionsHref}
-                  prefetch={false}
+            <div className="go-rows">
+              {overview.pendingCount ? (
+                <div
+                  className="go-attention-row"
+                  data-attention-item="corrections"
                 >
-                  Corrigir
-                </Link>
-              </div>
-            ) : null}
-            {extras.items.map((item) => (
-              <AttentionRow item={item} key={item.id} />
-            ))}
+                  <span className="go-attention-icon">
+                    <GestaoIcon name="inbox" />
+                  </span>
+                  <div className="go-attention-copy">
+                    <h3>
+                      {overview.pendingCount}{" "}
+                      {overview.pendingCount === 1
+                        ? "entrega aguardando"
+                        : "entregas aguardando"}{" "}
+                      feedback
+                    </h3>
+                    <p>{overview.pendingActivityTitles.join(" · ")}</p>
+                  </div>
+                  <Link
+                    className="go-outline-action"
+                    href={overview.correctionsHref}
+                    prefetch={false}
+                  >
+                    Corrigir
+                  </Link>
+                </div>
+              ) : null}
+              {extras.items.map((item) => (
+                <AttentionRow item={item} key={item.id} />
+              ))}
+            </div>
             {attentionCount === 0 ? (
               <div className="go-attention-empty">
                 <h3>

@@ -86,6 +86,27 @@ const protectedRoutePrefixes = [
   "/search",
 ];
 
+// "Ver como aluno" é só leitura: com a prévia ativa, qualquer escrita fora da
+// Gestão (onde vale a identidade real) é recusada antes de chegar ao app.
+const previewCookie = "gestao_preview";
+const previewRealCookie = "gestao_preview_real";
+const safeMethods = new Set(["GET", "HEAD", "OPTIONS"]);
+
+const previewWriteDenial = (req: NextRequest) => {
+  if (
+    safeMethods.has(req.method) ||
+    !req.cookies.has(previewCookie) ||
+    req.cookies.has(previewRealCookie) ||
+    isClerkFrontendApiProxyPath(req.nextUrl.pathname)
+  ) {
+    return null;
+  }
+  return NextResponse.json(
+    { error: "Você está em uma prévia. Nada aqui altera dados." },
+    { status: 403, headers: { "Cache-Control": "private, no-store" } }
+  );
+};
+
 const matchesPath = (pathname: string, pathPrefix: string) =>
   pathPrefix === "/"
     ? pathname === "/"
@@ -201,6 +222,10 @@ const clerkProxy = useDevelopmentTestAuth
   : authMiddleware(
       // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: the middleware coordinates Clerk auth states, proxy routing and canonical host redirects in one ordered request boundary
       async (auth, req) => {
+        const previewDenial = previewWriteDenial(req);
+        if (previewDenial) {
+          return previewDenial;
+        }
         if (
           shouldBlockRequestDuringWriteFreeze({
             method: req.method,
@@ -314,6 +339,11 @@ const developmentTestAuthProxy = async (req: NextRequest) => {
   const host = req.nextUrl.hostname.toLowerCase();
   if (!loopbackHostnames.has(host)) {
     return new NextResponse(null, { status: 404 });
+  }
+
+  const previewDenial = previewWriteDenial(req);
+  if (previewDenial) {
+    return previewDenial;
   }
 
   if (

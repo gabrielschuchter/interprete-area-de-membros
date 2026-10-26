@@ -261,16 +261,18 @@ export const CohortCourseAccessPanel = ({
         </details>
       </div>
 
-      <div className="gca-table-toolbar">
-        <CourseAccessSearch
-          action={coursePath}
-          label="Buscar turma vinculada"
-          name="turma_busca"
-          pageField="turma_pagina"
-          value={cohortQuery}
-        />
-        <span className="gca-result-count">{cohortTotalCount} turma(s)</span>
-      </div>
+      {cohortQuery || cohortTotalCount > 8 ? (
+        <div className="gca-table-toolbar">
+          <CourseAccessSearch
+            action={coursePath}
+            label="Buscar turma vinculada"
+            name="turma_busca"
+            pageField="turma_pagina"
+            value={cohortQuery}
+          />
+          <span className="gca-result-count">{cohortTotalCount} turma(s)</span>
+        </div>
+      ) : null}
       {cohortAccesses.length ? (
         <section
           aria-label="Turmas com acesso ao curso"

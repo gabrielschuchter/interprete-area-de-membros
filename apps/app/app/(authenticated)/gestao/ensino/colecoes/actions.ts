@@ -894,6 +894,7 @@ export const setGestaoCollectionStatus = async (formData: FormData) => {
   const targetStatus = status as ContentStatus;
   const eventKey = actorScopedEventKey(actor.userId, key);
   const hash = requestHash({ id, status: targetStatus });
+  let resultPath: string;
   try {
     await database.$transaction(
       async (transaction) => {
@@ -939,16 +940,16 @@ export const setGestaoCollectionStatus = async (formData: FormData) => {
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
     );
     revalidateCollections();
-    redirect(statusResultPath("status-atualizado"));
+    resultPath = statusResultPath("status-atualizado");
   } catch (error) {
-    redirect(
-      statusResultPath(
-        error instanceof Error && error.message === "GESTAO_COLLECTION_CONFLICT"
-          ? "conflito"
-          : "erro"
-      )
+    resultPath = statusResultPath(
+      error instanceof Error && error.message === "GESTAO_COLLECTION_CONFLICT"
+        ? "conflito"
+        : "erro"
     );
   }
+  // redirect() lança; fora do try para não ser capturado como falha.
+  redirect(resultPath);
 };
 
 export const deleteGestaoCollection = async (formData: FormData) => {
@@ -965,6 +966,7 @@ export const deleteGestaoCollection = async (formData: FormData) => {
   }
   const eventKey = actorScopedEventKey(actor.userId, key);
   const hash = requestHash({ id, action: "delete" });
+  let resultPath: string;
   try {
     await database.$transaction(
       async (transaction) => {
@@ -1011,8 +1013,9 @@ export const deleteGestaoCollection = async (formData: FormData) => {
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
     );
     revalidateCollections();
-    redirect(statusResultPath("colecao-excluida"));
+    resultPath = statusResultPath("colecao-excluida");
   } catch (error) {
-    redirect(statusResultPath(collectionDeleteResult(error)));
+    resultPath = statusResultPath(collectionDeleteResult(error));
   }
+  redirect(resultPath);
 };

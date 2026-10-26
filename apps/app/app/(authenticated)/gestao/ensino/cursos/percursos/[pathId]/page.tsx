@@ -6,10 +6,11 @@ import { notFound } from "next/navigation";
 import {
   getGestaoLearningPath,
   getGestaoLearningPathCoverOptions,
+  listGestaoLearningPaths,
 } from "@/lib/gestao-courses";
 import { updateGestaoLearningPath } from "../actions";
 import { LearningPathForm } from "../learning-path-form";
-import { PathCoursesPanel, PathEvidencePanel } from "../path-course-panels";
+import { OtherPathsPanel, PathCoursesPanel } from "../path-course-panels";
 import { LearningPathStatusControls } from "../path-status-controls";
 
 type QueryValue = string | string[] | undefined;
@@ -98,9 +99,10 @@ const GestaoLearningPathPage = async ({
   const candidatePage = firstQueryValue(query.paginaCurso);
   const showCoursePicker = firstQueryValue(query.adicionar) === "1";
   const statusResult = firstQueryValue(query.estado);
-  const [path, coverOptions] = await Promise.all([
+  const [path, coverOptions, catalog] = await Promise.all([
     getGestaoLearningPath(pathId, pageValue, candidateQuery, candidatePage),
     getGestaoLearningPathCoverOptions(),
+    listGestaoLearningPaths({}),
   ]);
   if (!path) {
     notFound();
@@ -142,7 +144,7 @@ const GestaoLearningPathPage = async ({
       <div className="ge-path-editor-layout">
         <div className="ge-path-primary-column">
           <PathCoursesPanel path={path} showCoursePicker={showCoursePicker} />
-          <PathEvidencePanel path={path} />
+          <OtherPathsPanel currentId={path.id} paths={catalog.paths} />
         </div>
         <PathDetailsPanel coverOptions={coverOptions} path={path} />
       </div>
