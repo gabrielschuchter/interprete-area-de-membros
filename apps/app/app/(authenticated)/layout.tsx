@@ -3,6 +3,7 @@ import { tracePerformance } from "@repo/observability/performance";
 import { secure } from "@repo/security";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
+import { LearningFonts } from "@/components/learning/learning-fonts";
 import { env } from "@/env";
 import { getAuth } from "@/lib/auth";
 import { getMemberProductConfig } from "@/lib/product-config";
@@ -78,7 +79,7 @@ const AppLayout = async ({ children }: AppLayoutProperties) => {
   }
 
   return (
-    <>
+    <LearningFonts>
       <PreviewBanner />
       <MemberShellController
         avatarUrl={profile?.avatarUrl ?? member.avatarUrl ?? null}
@@ -95,7 +96,7 @@ const AppLayout = async ({ children }: AppLayoutProperties) => {
       >
         {children}
       </MemberShellController>
-    </>
+    </LearningFonts>
   );
 };
 

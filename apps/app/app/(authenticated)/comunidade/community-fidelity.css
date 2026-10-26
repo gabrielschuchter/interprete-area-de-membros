@@ -74,6 +74,38 @@
   background: #8c1535;
 }
 
+/* Rotas da Comunidade sem a barra própria (publicação, meta, editor) usam a barra do shell, com o mesmo desenho. */
+.member-area-tabs-shell[data-area="community"] {
+  min-height: 60px;
+  background: #f1ebe8;
+}
+.member-area-tabs-shell[data-area="community"] .member-area-tabs-desktop {
+  gap: 28px;
+  min-height: 60px;
+  padding: 0 40px;
+}
+.member-area-tabs-shell[data-area="community"] .member-area-tabs-section {
+  padding-right: 28px;
+  font-family: var(--font-display-family);
+  font-weight: 600;
+}
+.member-area-tabs-shell[data-area="community"] .member-area-tabs-links {
+  gap: 4px;
+}
+.member-area-tabs-shell[data-area="community"] .member-area-tab {
+  min-height: 60px;
+  padding: 0 14px;
+  font-family: var(--font-sans-family);
+  font-size: 14px;
+  font-weight: 500;
+  color: #5c4a52;
+}
+.member-area-tabs-shell[data-area="community"] .member-area-tab--active {
+  font-weight: 600;
+  color: #8c1535;
+  border-bottom-color: #8c1535;
+}
+
 /* Casca e grade de Explorar: 1280, padding 32/40/96, feed + 48 + lateral 320. */
 .community-page .community-shell {
   max-width: 1280px;
@@ -198,7 +230,12 @@
   border: 0;
   border-radius: 0;
 }
-.community-page .community-post-card--saved .community-post-card__media {
+.community-page .community-post-card--saved .community-post-card__media,
+.community-page
+  .community-my-publications-shell
+  .community-post-card--explore
+  .community-post-card__media,
+.public-profile .community-post-card--explore .community-post-card__media {
   aspect-ratio: 21 / 9;
 }
 .community-page .community-post-card__media img {
@@ -501,7 +538,8 @@
 }
 .community-group-header__cover {
   position: relative;
-  aspect-ratio: 4 / 1;
+  min-height: 128px;
+  aspect-ratio: 5 / 1;
   overflow: hidden;
   background: #f3ebe8;
   border-radius: 8px;
@@ -679,12 +717,13 @@
 .community-group-header__actions > * {
   flex: none;
   width: auto;
+  margin-top: 0;
 }
 .community-group-header__actions
   > button:not(.community-group-header__primary) {
   padding: 0 18px;
-  color: #8c1535;
-  border: 2px solid #8c1535;
+  color: #40222f;
+  border: 1px solid #e2d6d1;
 }
 
 /* Listas pessoais (boards 17 a 19): coluna de 880px centrada sob a barra. */

@@ -142,6 +142,9 @@ const isMemberSidebarPathActive = (
       (area) => activePath === area || activePath.startsWith(`${area}/`)
     );
   }
+  if (href === "/comunidade" && activePath.startsWith("/membros")) {
+    return true;
+  }
   if (
     href === "/comunidade" &&
     activePath.startsWith("/encontros") &&
