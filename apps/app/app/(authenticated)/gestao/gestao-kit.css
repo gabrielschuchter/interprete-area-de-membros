@@ -1091,7 +1091,8 @@ fieldset.gk-segmented {
   font: 400 13px / 1 var(--font-sans-family);
   color: var(--gestao-muted);
 }
-.gk-pager > div {
+.gk-pager > div,
+.gk-pager-actions {
   display: flex;
   gap: 10px;
 }
@@ -4284,4 +4285,8 @@ button.gca-text-action {
 .gk-int-facts dd {
   margin: 2px 0 0;
   font: 600 18px / 1.2 var(--font-display-family);
+}
+
+.gk-qtable td.gk-qsub {
+  vertical-align: middle;
 }
