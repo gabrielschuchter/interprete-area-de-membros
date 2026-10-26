@@ -57,6 +57,8 @@ export const gestaoAuditLabels: Readonly<Record<string, string>> = {
   "gestao.goal.archived": "Meta coletiva arquivada",
   "gestao.assignment.created": "Atribuição criada",
   "gestao.assignment.revoked": "Atribuição revogada",
+  "gestao.recording.assigned": "Gravações históricas vinculadas",
+  "gestao.recording.revoked": "Vínculo de gravações revogado",
   "learning.content.assigned": "Conteúdo atribuído",
 };
 

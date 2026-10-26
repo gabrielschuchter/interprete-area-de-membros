@@ -3706,7 +3706,7 @@ button.gca-text-action {
   background: #f9f1f1;
   box-shadow: inset 3px 0 0 var(--gestao-action);
 }
-.gk-access-list a {
+.gk-access-list li a {
   display: flex;
   gap: 12px;
   align-items: center;
@@ -3715,7 +3715,7 @@ button.gca-text-action {
   color: var(--gestao-text);
   text-decoration: none;
 }
-.gk-access-list a small {
+.gk-access-list li a small {
   margin-left: auto;
   font-weight: 400;
   color: var(--gestao-muted);
@@ -3802,4 +3802,90 @@ button.gca-text-action {
   flex: 1;
   flex-direction: column;
   min-height: 0;
+}
+
+/* Gravações históricas (85) */
+.gk-rec-grid {
+  grid-template-columns: 340px minmax(0, 1fr);
+}
+.gk-rec-grid .gk-segmented {
+  width: calc(100% - 24px);
+  margin: 12px;
+}
+.gk-rec-grid .gk-access-list li a {
+  justify-content: space-between;
+}
+.gk-access-list form .gk-field {
+  display: flex;
+  width: 100%;
+}
+.gk-access-list li a > span:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.gk-access-list li a > span:first-child small {
+  margin: 0;
+  font-weight: 400;
+  color: var(--gestao-muted);
+}
+.gk-rec-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.gk-rec-title {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.gk-rec-title h2 {
+  margin: 0;
+  font: 600 26px / 1.2 var(--font-display-family);
+}
+.gk-rec-counts {
+  margin: 8px 0 14px;
+  font: 400 13px / 1.4 var(--font-sans-family);
+  color: var(--gestao-muted);
+}
+.gk-rec-counts strong {
+  margin-left: 12px;
+  color: var(--gestao-text);
+}
+.gk-rec-counts strong:first-child {
+  margin-left: 0;
+}
+.gk-link-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.gk-link-actions {
+  display: flex;
+  gap: 12px;
+}
+.gk-check-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  font: 400 14px / 1.5 var(--font-sans-family);
+}
+.gk-textarea {
+  min-height: 84px;
+  resize: vertical;
+}
+.gk-rec-covers summary {
+  font: 600 13px / 1.4 var(--font-sans-family);
+  cursor: pointer;
+}
+.gk-rec-cover-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+  margin-top: 14px;
+}
+@media (max-width: 900px) {
+  .gk-rec-grid {
+    grid-template-columns: 1fr;
+  }
 }
