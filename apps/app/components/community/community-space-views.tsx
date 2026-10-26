@@ -1,4 +1,8 @@
-import { Badge } from "@repo/design-system/components/ui/badge";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@repo/design-system/components/ui/avatar";
 import { Button } from "@repo/design-system/components/ui/button";
 import { Input } from "@repo/design-system/components/ui/input";
 import { Textarea } from "@repo/design-system/components/ui/textarea";
@@ -58,71 +62,89 @@ export const viewHref = (slug: string, view: GroupView) =>
 
 export const CommunitySpaceHeader = ({
   canEditGroup,
+  canInvite,
   canPublish,
+  invitationManagement,
   isArchived,
   isMember,
   isModerator,
+  isOwner,
+  memberId,
   space,
 }: {
   readonly canEditGroup: boolean;
+  readonly canInvite: boolean;
   readonly canPublish: boolean;
+  readonly invitationManagement: GroupInvitationManagementSnapshot | null;
   readonly isArchived: boolean;
   readonly isMember: boolean;
   readonly isModerator: boolean;
+  readonly isOwner: boolean;
+  readonly memberId: string;
   readonly space: CommunitySpaceSnapshot;
-}) => (
-  <header className="mt-4 overflow-hidden border border-border bg-background">
-    {space.coverUrl ? (
-      <div className="relative aspect-[16/5] max-h-[440px] min-h-36 w-full overflow-hidden bg-brand-structural/10 sm:aspect-[16/4]">
-        <Image
-          alt={`Capa do grupo ${space.title}`}
-          className="object-cover"
-          fill
-          loading="eager"
-          priority
-          referrerPolicy="no-referrer"
-          sizes="(max-width: 768px) 100vw, 1280px"
-          src={space.coverUrl}
-          unoptimized
-        />
-      </div>
-    ) : (
-      <div className="flex aspect-[16/5] max-h-[300px] min-h-36 items-center justify-center bg-[radial-gradient(circle_at_72%_35%,rgba(143,19,57,0.24),transparent_34%),linear-gradient(125deg,rgba(143,19,57,0.12),rgba(74,0,46,0.04))] text-brand-structural sm:aspect-[16/4]">
-        <UsersRoundIcon aria-hidden="true" className="size-12 opacity-70" />
-      </div>
-    )}
-    <div className="flex flex-col justify-between gap-5 p-5 sm:p-7 lg:flex-row lg:items-end lg:p-9">
-      <div className="min-w-0 flex-1 [overflow-wrap:anywhere]">
-        <p className="brand-eyebrow">Grupo de estudo · /{space.slug}</p>
-        <h1 className="mt-3 font-display text-4xl leading-[0.98] sm:text-5xl lg:text-6xl">
-          {space.title}
-        </h1>
-        {space.description ? (
-          <p className="mt-4 max-w-3xl text-muted-foreground leading-7">
-            {space.description}
-          </p>
-        ) : null}
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          <Badge variant="outline">
-            {space.visibility === "PRIVATE" ? (
-              <LockKeyholeIcon aria-hidden="true" />
-            ) : (
-              <GlobeIcon aria-hidden="true" />
-            )}
-            {space.visibility === "PRIVATE" ? "Privado" : "Público"}
-          </Badge>
-          <Badge variant="secondary">
-            {space._count.members}{" "}
-            {space._count.members === 1 ? "membro" : "membros"}
-          </Badge>
-          {isModerator ? <Badge variant="outline">Moderador</Badge> : null}
-          {space.commentsClosed ? (
-            <Badge variant="outline">Comentários fechados</Badge>
-          ) : null}
-          {isArchived ? <Badge variant="destructive">Arquivado</Badge> : null}
+}) => {
+  let roleLabel: string | null = null;
+  if (isOwner) {
+    roleLabel = "Você é Dono";
+  } else if (isModerator) {
+    roleLabel = "Você é Moderador";
+  }
+  return (
+    <header className="community-group-header">
+      {space.coverUrl ? (
+        <div className="community-group-header__cover">
+          <Image
+            alt={`Capa do grupo ${space.title}`}
+            className="object-cover"
+            fill
+            loading="eager"
+            priority
+            referrerPolicy="no-referrer"
+            sizes="(max-width: 768px) 100vw, 1112px"
+            src={space.coverUrl}
+            unoptimized
+          />
         </div>
+      ) : (
+        <div className="community-group-header__cover community-group-header__cover--empty">
+          <UsersRoundIcon aria-hidden="true" className="size-12 opacity-70" />
+        </div>
+      )}
+      <div className="community-group-header__chips">
+        <span className="community-chip">
+          {space.visibility === "PRIVATE" ? (
+            <LockKeyholeIcon aria-hidden="true" />
+          ) : (
+            <GlobeIcon aria-hidden="true" />
+          )}
+          {space.visibility === "PRIVATE" ? "Privado" : "Público"}
+        </span>
+        <span className="community-chip">
+          <UsersRoundIcon aria-hidden="true" />
+          {space._count.members}{" "}
+          {space._count.members === 1 ? "membro" : "membros"}
+        </span>
+        {roleLabel ? (
+          <span className="community-chip community-chip--role">
+            {roleLabel}
+          </span>
+        ) : null}
+        {space.commentsClosed ? (
+          <span className="community-chip">Comentários fechados</span>
+        ) : null}
+        {isArchived ? (
+          <span className="community-chip community-chip--danger">
+            Arquivado
+          </span>
+        ) : null}
       </div>
-      <div className="flex w-full flex-col gap-2 sm:flex-row lg:w-auto lg:flex-wrap">
+      <h1 className="community-group-header__title">{space.title}</h1>
+      {space.description ? (
+        <p className="community-group-header__description">
+          {space.description}
+        </p>
+      ) : null}
+      <div className="community-group-header__actions">
         {!isMember && space.visibility === "PUBLIC" && !isArchived ? (
           <SingleFlightForm action={joinPublicStudyGroup}>
             <input name="groupId" type="hidden" value={space.id} />
@@ -133,17 +155,25 @@ export const CommunitySpaceHeader = ({
         ) : null}
         {canPublish ? (
           <CommunityDraftStarter
-            className="min-h-11 w-full sm:w-auto"
+            className="community-group-header__primary"
             returnTo={`/comunidade/grupos/${space.slug}`}
             spaceId={space.id}
           >
             <PlusIcon aria-hidden="true" /> Nova publicação
           </CommunityDraftStarter>
         ) : null}
+        {canInvite && invitationManagement ? (
+          <CommunityGroupInvitationDialog
+            groupId={space.id}
+            groupName={space.title}
+            management={invitationManagement}
+            memberId={memberId}
+          />
+        ) : null}
         {canEditGroup ? (
           <Button
             asChild
-            className="min-h-11 w-full sm:w-auto"
+            className="community-group-header__secondary"
             variant="outline"
           >
             <Link href={viewHref(space.slug, "settings")}>
@@ -152,9 +182,9 @@ export const CommunitySpaceHeader = ({
           </Button>
         ) : null}
       </div>
-    </div>
-  </header>
-);
+    </header>
+  );
+};
 
 export const CommunitySpaceTabs = ({
   canEditGroup,
@@ -227,99 +257,91 @@ const MobileGroupLink = ({
 );
 
 export const CommunitySpacePostsView = ({
-  invitationManagement,
-  isOwner,
-  isModerator,
-  isStaff,
-  memberId,
+  memberPreview,
   space,
 }: {
-  readonly isOwner: boolean;
-  readonly isModerator: boolean;
-  readonly isStaff: boolean;
-  readonly memberId: string;
-  readonly invitationManagement: GroupInvitationManagementSnapshot | null;
+  readonly memberPreview: readonly {
+    readonly id: string;
+    readonly member: {
+      readonly avatarUrl: string | null;
+      readonly displayName: string | null;
+    };
+  }[];
   readonly space: CommunitySpaceSnapshot;
 }) => (
-  <div className="mt-7 grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1.7fr)_minmax(280px,0.8fr)]">
+  <div className="community-group-body">
     <section
       aria-labelledby="posts-heading"
-      className="order-2 min-w-0 lg:order-1"
+      className="community-group-body__main"
     >
-      <div className="flex items-end justify-between border-border border-b pb-3">
-        <h2 className="font-display text-3xl" id="posts-heading">
-          Publicações
-        </h2>
-        <span className="font-data text-muted-foreground text-xs">
-          Página {space.page}
-        </span>
-      </div>
+      <h2 className="sr-only" id="posts-heading">
+        Publicações
+      </h2>
       {space.posts.length === 0 ? (
-        <div className="mt-5 border border-dashed p-7 sm:p-9">
+        <div className="community-group-empty">
           <p className="font-display text-2xl">A conversa começa aqui.</p>
           <p className="mt-2 text-muted-foreground">
             Este grupo ainda não tem publicações.
           </p>
         </div>
       ) : (
-        <div className="mt-5 divide-y border-border border-y">
+        <div className="community-feed-list">
           {space.posts.map((post) => (
             <CommunityFeedCard
               key={post.id}
               post={post}
               returnTo={`/comunidade/grupos/${space.slug}?page=${space.page}`}
               spaceSlug={space.slug}
+              variant="explore"
             />
           ))}
         </div>
       )}
       <CommunityPostPagination space={space} />
     </section>
-    <aside className="order-1 space-y-5 lg:order-2">
-      <section className="border p-5 sm:p-6">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="font-display text-2xl">Sobre</h2>
-          <Link
-            className="text-brand-structural text-sm hover:underline"
-            href={viewHref(space.slug, "about")}
-          >
-            Ver tudo
-          </Link>
-        </div>
-        <p className="mt-3 line-clamp-5 whitespace-pre-wrap text-muted-foreground text-sm leading-6">
+    <aside className="community-group-body__rail">
+      <section className="community-group-card">
+        <h2 className="community-group-card__title">Sobre o grupo</h2>
+        <p className="community-group-card__text">
           {space.details ||
             space.description ||
             "Este grupo ainda não adicionou informações."}
         </p>
-        <div className="mt-5 border-t pt-4 text-muted-foreground text-sm">
-          {space.visibility === "PRIVATE" ? "Grupo privado" : "Grupo público"} ·{" "}
-          {space._count.members} membros
-        </div>
+        <Link
+          className="community-group-card__link"
+          href={viewHref(space.slug, "about")}
+        >
+          Ler tudo
+        </Link>
       </section>
       <section
-        className="hidden border p-5 sm:p-6 lg:block"
+        className="community-group-card"
         data-testid="group-members-summary"
       >
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="font-display text-2xl">Membros</h2>
+        <div className="community-group-card__head">
+          <h2 className="community-group-card__title">Membros</h2>
           <Link
-            className="text-brand-structural text-sm hover:underline"
+            className="community-group-card__link"
             href={viewHref(space.slug, "members")}
           >
             Ver todos
           </Link>
         </div>
-        <p className="mt-3 text-muted-foreground text-sm leading-6">
+        <div aria-hidden="true" className="community-group-card__faces">
+          {memberPreview.slice(0, 6).map((entry) => (
+            <Avatar className="community-group-card__face" key={entry.id}>
+              {entry.member.avatarUrl ? (
+                <AvatarImage alt="" src={entry.member.avatarUrl} />
+              ) : null}
+              <AvatarFallback>
+                {(entry.member.displayName ?? "?").slice(0, 1).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+          ))}
+        </div>
+        <p className="sr-only">
           {space._count.members} pessoas fazem parte deste grupo.
         </p>
-        {invitationManagement && (isOwner || isModerator || isStaff) ? (
-          <CommunityGroupInvitationDialog
-            groupId={space.id}
-            groupName={space.title}
-            management={invitationManagement}
-            memberId={memberId}
-          />
-        ) : null}
       </section>
     </aside>
   </div>
@@ -351,7 +373,7 @@ const CommunityPostPagination = ({
           <Link
             href={`/comunidade/grupos/${space.slug}?page=${space.page + 1}`}
           >
-            Mais publicações <ArrowRightIcon aria-hidden="true" />
+            Carregar mais publicações <ArrowRightIcon aria-hidden="true" />
           </Link>
         </Button>
       ) : null}

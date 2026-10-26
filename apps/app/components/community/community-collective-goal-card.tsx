@@ -12,7 +12,7 @@ export const communityGoalSourceLabels: Record<string, string> = {
   RECORDING: "Gravações",
 };
 
-const dateTimeFormatter = new Intl.DateTimeFormat("pt-BR", {
+const _dateTimeFormatter = new Intl.DateTimeFormat("pt-BR", {
   dateStyle: "medium",
   timeStyle: "short",
   timeZone: "America/Sao_Paulo",

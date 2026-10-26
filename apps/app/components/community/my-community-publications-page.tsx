@@ -40,6 +40,15 @@ interface MyCommunityPageProperties {
   }>;
 }
 
+const statusAliases: Record<string, PublicationView> = {
+  archived: "archived",
+  arquivadas: "archived",
+  drafts: "drafts",
+  publicadas: "published",
+  published: "published",
+  rascunhos: "drafts",
+};
+
 const statusForView = (view: PublicationView) => {
   if (view === "drafts") {
     return ContentStatus.DRAFT;
@@ -158,8 +167,8 @@ const MyCommunityPublicationItem = ({
       </header>
       <div className="community-my-publication-card__body">
         <div className="community-my-publication-card__copy">
-          <h2>
-            <Link href={editHref}>{post.title}</Link>
+          <h2 className={post.title.trim() ? undefined : "is-untitled"}>
+            <Link href={editHref}>{post.title.trim() || "Sem título"}</Link>
           </h2>
           {post.subtitle || post.excerpt ? (
             <p>{post.subtitle || post.excerpt}</p>
@@ -211,9 +220,7 @@ const MyCommunityPublicationItem = ({
 const MyCommunityPage = async ({ searchParams }: MyCommunityPageProperties) => {
   const filters = await searchParams;
   const activeView: PublicationView =
-    filters.status === "drafts" || filters.status === "archived"
-      ? filters.status
-      : "published";
+    statusAliases[filters.status ?? ""] ?? "published";
   const sort: CommunityPublicationSort =
     filters.sort === "oldest" || filters.sort === "title"
       ? filters.sort

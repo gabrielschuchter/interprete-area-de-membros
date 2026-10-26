@@ -18,7 +18,7 @@ const visibleInitials = () =>
       .querySelectorAll(".community-avatars__item"),
   ].map((item) => {
     const layers = item.querySelectorAll(".community-avatars__layer");
-    return layers[layers.length - 1]?.textContent ?? "";
+    return layers.at(-1)?.textContent ?? "";
   });
 
 describe("CommunityAvatars", () => {
