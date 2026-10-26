@@ -1,17 +1,30 @@
-import { Button } from "@repo/design-system/components/ui/button";
-import { ArrowRightIcon, PlusIcon } from "lucide-react";
+import {
+  ChevronRightIcon,
+  GlobeIcon,
+  LockIcon,
+  MegaphoneIcon,
+  PlusIcon,
+  UsersIcon,
+} from "lucide-react";
 import type { ReactNode } from "react";
 import { IntentLink } from "@/app/(authenticated)/components/intent-link";
+import {
+  communityMediaImageUrl,
+  normalizeCommunityCoverUrl,
+} from "@/lib/community-media";
 import { CommunityAnnouncementDismissButton } from "./community-announcement-dismiss-button";
 import type { CommunityAvatarVisual } from "./community-avatars";
 import { CommunityAvatars } from "./community-avatars";
+import { CommunityCoverImage } from "./community-cover-image";
 import { CommunityDisclosure } from "./community-disclosure";
 
 interface CommunitySpaceSummary {
   readonly _count: { readonly posts: number };
+  readonly coverUrl?: string | null;
   readonly id: string;
   readonly slug: string;
   readonly title: string;
+  readonly visibility?: "PUBLIC" | "PRIVATE";
 }
 
 interface CommunityAnnouncementSummary {
@@ -50,20 +63,64 @@ const AnnouncementContent = ({
   readonly announcement: CommunityAnnouncementSummary;
 }) => (
   <>
-    <h3 className="font-medium text-sm leading-5">{announcement.title}</h3>
+    <span className="community-notice__label">
+      <MegaphoneIcon aria-hidden="true" className="size-3.5" />
+      Equipe ·{" "}
+      <time dateTime={announcement.createdAt.toISOString()}>
+        {formatAnnouncementDate(announcement.createdAt)}
+      </time>
+    </span>
+    <span className="community-notice__title">{announcement.title}</span>
     {announcement.body ? (
-      <p className="mt-1 line-clamp-3 text-muted-foreground text-xs leading-5">
-        {announcement.body}
-      </p>
+      <span className="community-notice__body">{announcement.body}</span>
     ) : null}
-    <time
-      className="mt-2 block font-data text-[0.68rem] text-muted-foreground"
-      dateTime={announcement.createdAt.toISOString()}
-    >
-      {formatAnnouncementDate(announcement.createdAt)}
-    </time>
   </>
 );
+
+const RailHead = ({
+  children,
+  id,
+  link,
+}: {
+  readonly children: string;
+  readonly id: string;
+  readonly link?: { readonly href: string; readonly label: string };
+}) => (
+  <div className="community-rail__head">
+    <h2 className="community-rail__title" id={id}>
+      {children}
+    </h2>
+    {link ? (
+      <IntentLink className="community-rail__head-link" href={link.href}>
+        {link.label}
+      </IntentLink>
+    ) : null}
+  </div>
+);
+
+const SpaceThumb = ({
+  coverUrl,
+  title,
+}: {
+  readonly coverUrl?: string | null;
+  readonly title: string;
+}) => {
+  const safe = normalizeCommunityCoverUrl(coverUrl);
+  return safe ? (
+    <CommunityCoverImage
+      alt=""
+      className="community-rail__space-thumb"
+      height={40}
+      src={communityMediaImageUrl(safe, "thumb")}
+      width={40}
+    />
+  ) : (
+    <span aria-hidden="true" className="community-rail__space-thumb">
+      <UsersIcon className="size-4" />
+      <span className="sr-only">{title}</span>
+    </span>
+  );
+};
 
 export const CommunityRightRail = ({
   announcements,
@@ -74,6 +131,120 @@ export const CommunityRightRail = ({
   <aside aria-label="Contexto da comunidade" className="community-right-rail">
     {goalCard}
 
+    <section
+      aria-labelledby="community-avatars-heading"
+      className="community-rail__block community-rail__avatars"
+    >
+      <RailHead id="community-avatars-heading">Pessoas da comunidade</RailHead>
+      <CommunityAvatars avatars={avatars} />
+    </section>
+
+    <section
+      aria-labelledby="community-spaces-heading"
+      className="community-rail__block community-rail__spaces"
+    >
+      <RailHead
+        id="community-spaces-heading"
+        link={{ href: "/comunidade/grupos", label: "Ver todos" }}
+      >
+        Grupos de estudo
+      </RailHead>
+      {spaces.length === 0 ? (
+        <p className="community-rail__empty">Nenhum grupo publicado ainda.</p>
+      ) : (
+        <div className="community-rail__space-list">
+          {spaces.slice(0, 5).map((space) => (
+            <IntentLink
+              className="community-rail__space group"
+              href={`/comunidade/grupos/${space.slug}`}
+              key={space.id}
+            >
+              <SpaceThumb coverUrl={space.coverUrl} title={space.title} />
+              <span className="community-rail__space-copy">
+                <span className="community-rail__space-name">
+                  {space.title}
+                </span>
+                <span className="community-rail__space-privacy">
+                  {space.visibility === "PRIVATE" ? (
+                    <LockIcon aria-hidden="true" className="size-3" />
+                  ) : (
+                    <GlobeIcon aria-hidden="true" className="size-3" />
+                  )}
+                  {space.visibility === "PRIVATE" ? "Privado" : "Público"}
+                </span>
+              </span>
+              <ChevronRightIcon
+                aria-hidden="true"
+                className="community-rail__space-arrow"
+              />
+            </IntentLink>
+          ))}
+        </div>
+      )}
+      <IntentLink
+        className="community-rail__create"
+        href="/comunidade/grupos/novo"
+      >
+        <PlusIcon aria-hidden="true" className="size-4" /> Criar grupo de estudo
+      </IntentLink>
+    </section>
+
+    {announcements.length > 0 ? (
+      <CommunityDisclosure
+        className="community-rail__context--notices"
+        label="Avisos"
+      >
+        <section
+          aria-labelledby="community-notices-heading"
+          className="community-rail__block community-rail__notices"
+        >
+          <RailHead id="community-notices-heading">Avisos</RailHead>
+          <div className="community-rail__notice-list">
+            {announcements.map((announcement) => {
+              const content = (
+                <AnnouncementContent announcement={announcement} />
+              );
+              const className = "community-notice group";
+              const key = announcement.groupKey ?? announcement.id;
+              let body = <div className={className}>{content}</div>;
+              if (announcement.href && isInternalHref(announcement.href)) {
+                body = (
+                  <IntentLink className={className} href={announcement.href}>
+                    {content}
+                  </IntentLink>
+                );
+              } else if (
+                announcement.href &&
+                isExternalHref(announcement.href)
+              ) {
+                body = (
+                  <a
+                    className={className}
+                    href={announcement.href}
+                    rel="noreferrer"
+                    target="_blank"
+                  >
+                    {content}
+                  </a>
+                );
+              }
+              return (
+                <article className="community-notice-item" key={key}>
+                  {body}
+                  <CommunityAnnouncementDismissButton
+                    announcementId={announcement.id}
+                    version={announcement.version}
+                  >
+                    Dispensar aviso
+                  </CommunityAnnouncementDismissButton>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      </CommunityDisclosure>
+    ) : null}
+
     <CommunityDisclosure
       className="community-rail__context--about"
       defaultExpanded
@@ -83,156 +254,29 @@ export const CommunityRightRail = ({
         aria-labelledby="community-about-heading"
         className="community-rail__block community-rail__about"
       >
-        <h2 className="brand-eyebrow" id="community-about-heading">
-          Sobre a comunidade
-        </h2>
-        <p className="mt-3 max-w-[30ch] text-muted-foreground text-sm leading-6">
+        <RailHead id="community-about-heading">Sobre a comunidade</RailHead>
+        <p className="community-rail__about-lead">
           Um espaço para trocar perguntas, casos e referências sobre
-          interpretação.
+          interpretação de evidências.
         </p>
-        <div className="mt-4">
-          <h3 className="font-medium text-sm">Regras</h3>
-          <ul className="mt-2 list-disc space-y-1 pl-4 text-muted-foreground text-sm leading-6">
-            <li>Respeite quem pensa diferente.</li>
-            <li>Cite a fonte ao compartilhar uma evidência.</li>
-            <li>Pergunte com contexto: conte o que você já tentou.</li>
-          </ul>
-        </div>
-        <div className="mt-4">
-          <h3 className="font-medium text-sm">Como participar</h3>
-          <ul className="mt-2 list-disc space-y-1 pl-4 text-muted-foreground text-sm leading-6">
-            <li>Faça uma pergunta ou compartilhe um artigo.</li>
-            <li>Responda com uma leitura, uma dúvida ou uma referência.</li>
-            <li>Entre em um grupo de estudo.</li>
-          </ul>
-        </div>
-      </section>
-    </CommunityDisclosure>
-
-    <section
-      aria-labelledby="community-avatars-heading"
-      className="community-rail__block community-rail__avatars"
-    >
-      <h2 className="brand-eyebrow" id="community-avatars-heading">
-        Pessoas da comunidade
-      </h2>
-      <CommunityAvatars avatars={avatars} />
-    </section>
-
-    <section
-      aria-labelledby="community-spaces-heading"
-      className="community-rail__block community-rail__spaces"
-    >
-      <h2 className="brand-eyebrow" id="community-spaces-heading">
-        Grupos de estudo
-      </h2>
-      {spaces.length === 0 ? (
-        <p className="mt-3 text-muted-foreground text-sm leading-6">
-          Nenhum grupo publicado ainda.
-        </p>
-      ) : (
-        <div className="mt-2 divide-y border-border border-y">
-          {spaces.map((space) => (
-            <IntentLink
-              className="community-rail__space group"
-              href={`/comunidade/grupos/${space.slug}`}
-              key={space.id}
-            >
-              <span className="min-w-0 truncate font-medium text-sm group-hover:text-brand-structural">
-                {space.title}
-              </span>
-              <span className="flex shrink-0 items-center gap-2 text-muted-foreground text-xs">
-                <span
-                  className="font-data"
-                  title={[String(space._count.posts), "conteúdos"].join(" ")}
-                >
-                  {space._count.posts}
-                </span>
-                <ArrowRightIcon
-                  aria-hidden="true"
-                  className="size-3.5 transition-transform group-hover:translate-x-1"
-                />
-              </span>
-            </IntentLink>
-          ))}
-        </div>
-      )}
-      <Button asChild className="mt-4 w-full" size="sm" variant="outline">
-        <IntentLink href="/comunidade/grupos/novo">
-          <PlusIcon aria-hidden="true" /> Criar grupo de estudo
-        </IntentLink>
-      </Button>
-    </section>
-
-    <CommunityDisclosure
-      className="community-rail__context--notices"
-      label="Avisos"
-    >
-      <section
-        aria-labelledby="community-notices-heading"
-        className="community-rail__block community-rail__notices"
-      >
-        <h2 className="brand-eyebrow" id="community-notices-heading">
-          Avisos
-        </h2>
-        {announcements.length === 0 ? (
-          <p className="mt-3 text-muted-foreground text-sm leading-6">
-            Nenhum aviso recente.
-          </p>
-        ) : (
-          <div className="mt-2 divide-y border-border border-y">
-            {announcements.map((announcement) => {
-              const content = (
-                <AnnouncementContent announcement={announcement} />
-              );
-              const className = "community-rail__announcement group";
-              const key = announcement.groupKey ?? announcement.id;
-
-              if (announcement.href && isInternalHref(announcement.href)) {
-                return (
-                  <article className="border-border border-b py-3" key={key}>
-                    <IntentLink className={className} href={announcement.href}>
-                      {content}
-                    </IntentLink>
-                    <CommunityAnnouncementDismissButton
-                      announcementId={announcement.id}
-                      version={announcement.version}
-                    />
-                  </article>
-                );
-              }
-
-              if (announcement.href && isExternalHref(announcement.href)) {
-                return (
-                  <article className="border-border border-b py-3" key={key}>
-                    <a
-                      className={className}
-                      href={announcement.href}
-                      rel="noreferrer"
-                      target="_blank"
-                    >
-                      {content}
-                    </a>
-                    <CommunityAnnouncementDismissButton
-                      announcementId={announcement.id}
-                      version={announcement.version}
-                    />
-                  </article>
-                );
-              }
-
-              return (
-                <article className="border-border border-b py-3" key={key}>
-                  <div className={className}>{content}</div>
-                  <CommunityAnnouncementDismissButton
-                    announcementId={announcement.id}
-                    version={announcement.version}
-                  />
-                </article>
-              );
-            })}
+        <div className="community-rail__guides">
+          <div>
+            <h3>Regras</h3>
+            <ul>
+              <li>Respeite quem pensa diferente.</li>
+              <li>Cite a fonte ao compartilhar uma evidência.</li>
+              <li>Pergunte com contexto: conte o que você já tentou.</li>
+            </ul>
           </div>
-        )}
+          <div>
+            <h3>Como participar</h3>
+            <ul>
+              <li>Faça uma pergunta ou compartilhe um artigo.</li>
+              <li>Responda com uma leitura, uma dúvida ou uma referência.</li>
+              <li>Entre em um grupo de estudo.</li>
+            </ul>
+          </div>
+        </div>
       </section>
     </CommunityDisclosure>
   </aside>

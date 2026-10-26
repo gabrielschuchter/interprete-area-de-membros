@@ -207,7 +207,11 @@ const SavedCommunityPage = async ({
           <ul className="grid gap-4">
             {saved.posts.map((post) => (
               <li key={post.id}>
-                <CommunityFeedCard post={post} returnTo={returnTo} />
+                <CommunityFeedCard
+                  post={post}
+                  returnTo={returnTo}
+                  variant="saved"
+                />
               </li>
             ))}
           </ul>

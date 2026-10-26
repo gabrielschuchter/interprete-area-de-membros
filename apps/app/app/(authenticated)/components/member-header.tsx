@@ -139,9 +139,11 @@ export const MemberHeader = ({
           </>
         )}
         <div className="hidden min-w-0 items-center gap-3 md:flex">
-          <p className="brand-eyebrow truncate text-foreground/75">
-            {resolvedSection}
-          </p>
+          {resolvedSection ? (
+            <p className="brand-eyebrow truncate text-foreground/75">
+              {resolvedSection}
+            </p>
+          ) : null}
         </div>
         <MemberHeaderControls memberId={memberId} />
       </div>

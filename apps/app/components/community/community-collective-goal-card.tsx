@@ -1,10 +1,6 @@
-import { Badge } from "@repo/design-system/components/ui/badge";
-import { Button } from "@repo/design-system/components/ui/button";
+import { TargetIcon } from "lucide-react";
 import { IntentLink } from "@/app/(authenticated)/components/intent-link";
-import type {
-  CommunityGoalState,
-  CommunityGoalSummary,
-} from "@/lib/community-goal";
+import type { CommunityGoalSummary } from "@/lib/community-goal";
 
 export const communityGoalSourceLabels: Record<string, string> = {
   ACTIVITY: "Atividades",
@@ -14,13 +10,6 @@ export const communityGoalSourceLabels: Record<string, string> = {
   LIBRARY_ITEM: "Biblioteca",
   PERSONAL_TIMER: "Cronômetro pessoal",
   RECORDING: "Gravações",
-};
-
-const stateLabels: Record<CommunityGoalState, string> = {
-  active: "Ativa",
-  empty: "Sem registros",
-  ended: "Encerrada",
-  scheduled: "Programada",
 };
 
 const dateTimeFormatter = new Intl.DateTimeFormat("pt-BR", {
@@ -36,64 +25,92 @@ const numberFormatter = new Intl.NumberFormat("pt-BR", {
 export const communityGoalHoursText = (seconds: number) =>
   `${numberFormatter.format(seconds / 3600)} h`;
 
-const CommunityGoalProgress = ({
+const hoursFormatter = new Intl.NumberFormat("pt-BR", {
+  maximumFractionDigits: 0,
+});
+const smallHoursFormatter = new Intl.NumberFormat("pt-BR", {
+  maximumFractionDigits: 1,
+});
+const monthFormatter = new Intl.DateTimeFormat("pt-BR", {
+  month: "long",
+  timeZone: "America/Sao_Paulo",
+});
+const dateFormatter = new Intl.DateTimeFormat("pt-BR", {
+  day: "2-digit",
+  month: "short",
+  timeZone: "America/Sao_Paulo",
+});
+const DAY_MS = 86_400_000;
+
+const wholeHours = (seconds: number) => {
+  const hours = seconds / 3600;
+  return hours < 10
+    ? smallHoursFormatter.format(Math.floor(hours * 10) / 10)
+    : hoursFormatter.format(Math.floor(hours));
+};
+
+const capitalize = (value: string) =>
+  value.charAt(0).toUpperCase() + value.slice(1);
+
+const remainingText = (endsAt: Date, now: number) => {
+  const days = Math.ceil((endsAt.getTime() - now) / DAY_MS);
+  if (days <= 0) {
+    return "Último dia";
+  }
+  return `${days} ${days === 1 ? "dia restante" : "dias restantes"}`;
+};
+
+const CommunityGoalStatus = ({
   goal,
+  now,
 }: {
   readonly goal: CommunityGoalSummary;
+  readonly now: number;
 }) => {
-  if (goal.state === "ended") {
-    return (
-      <p className="mt-4 font-display text-2xl">
-        {communityGoalHoursText(goal.totalSeconds)} de{" "}
-        {communityGoalHoursText(goal.targetMinutes * 60)}
-      </p>
-    );
-  }
+  const targetSeconds = goal.targetMinutes * 60;
+  const progressPercent = Math.min(
+    100,
+    Math.floor((goal.totalSeconds / targetSeconds) * 100)
+  );
+  const reached = goal.totalSeconds >= targetSeconds;
+  const nearlyThere = !reached && progressPercent >= 90;
+  const missingHours = Math.ceil((targetSeconds - goal.totalSeconds) / 3600);
 
   if (goal.state === "scheduled") {
     return (
-      <p className="mt-4 text-sm leading-6">
-        O período começa em {dateTimeFormatter.format(goal.startsAt)}.
+      <p className="community-goal__note">
+        O período começa em {dateFormatter.format(goal.startsAt)}.
       </p>
     );
   }
 
-  const progressPercent = Math.min(
-    100,
-    Math.floor((goal.totalSeconds / (goal.targetMinutes * 60)) * 100)
-  );
+  let left = `${progressPercent}% da meta`;
+  if (reached) {
+    left = "Meta atingida";
+  } else if (nearlyThere) {
+    left = `Faltam ${hoursFormatter.format(missingHours)} ${missingHours === 1 ? "hora" : "horas"}`;
+  }
 
   return (
     <>
-      <p className="mt-4 font-display text-2xl">
-        {communityGoalHoursText(goal.totalSeconds)}{" "}
-        <span className="font-sans text-muted-foreground text-sm">
-          de {communityGoalHoursText(goal.targetMinutes * 60)}
-        </span>
-      </p>
       <div
         aria-label="Progresso da meta coletiva"
         aria-valuemax={100}
         aria-valuemin={0}
         aria-valuenow={progressPercent}
-        className="mt-3 h-2 overflow-hidden rounded-full bg-muted"
+        className="community-goal__bar"
         role="progressbar"
       >
-        <span
-          className="block h-full rounded-full bg-primary transition-[width] duration-300"
-          style={{ width: `${progressPercent}%` }}
-        />
+        <span style={{ width: `${progressPercent}%` }} />
       </div>
-      <p className="mt-2 text-muted-foreground text-xs">
-        {goal.totalSeconds >= goal.targetMinutes * 60
-          ? "Meta atingida"
-          : `${progressPercent}% da meta`}
-      </p>
-      {goal.state === "empty" ? (
-        <p className="mt-2 text-muted-foreground text-sm leading-6">
-          Ainda não há registros elegíveis neste período.
-        </p>
-      ) : null}
+      <div className="community-goal__meta">
+        <span>{left}</span>
+        <span>
+          {goal.state === "ended"
+            ? "Período encerrado"
+            : remainingText(goal.endsAt, now)}
+        </span>
+      </div>
     </>
   );
 };
@@ -105,60 +122,71 @@ export const CommunityCollectiveGoalCard = ({
   readonly canManage: boolean;
   readonly goal: CommunityGoalSummary | null;
 }) => {
+  // Members never see an empty card; only staff get the prompt to set it up.
+  if (!(goal || canManage)) {
+    return null;
+  }
+
+  const now = Date.now();
+  const label = goal
+    ? `Meta coletiva · ${capitalize(monthFormatter.format(goal.startsAt))}`
+    : "Meta coletiva";
+
   return (
     <section
       aria-labelledby="community-goal-heading"
-      className="community-rail__block community-rail__goal"
+      className="community-rail__goal community-goal"
     >
-      <div className="rounded-xl border bg-card p-4 sm:p-5">
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <div>
-            <p className="brand-eyebrow">Meta coletiva</p>
-            <h2
-              className="mt-2 font-display text-xl leading-tight"
-              id="community-goal-heading"
-            >
-              {goal?.title ?? "Meta coletiva"}
-            </h2>
-          </div>
-          {goal ? (
-            <Badge variant="outline">{stateLabels[goal.state]}</Badge>
-          ) : null}
-        </div>
-
-        {goal ? (
-          <>
-            <p className="mt-3 text-muted-foreground text-xs leading-5">
-              {dateTimeFormatter.format(goal.startsAt)} –{" "}
-              {dateTimeFormatter.format(goal.endsAt)}
-            </p>
-            <CommunityGoalProgress goal={goal} />
-            <p className="mt-3 text-muted-foreground text-xs leading-5">
-              Fontes utilizadas:{" "}
-              {goal.sourceKinds.length > 0
-                ? goal.sourceKinds
-                    .map(
-                      (source) => communityGoalSourceLabels[source] ?? source
-                    )
-                    .join(", ")
-                : "nenhuma fonte elegível registrada neste período"}
-              .
-            </p>
-          </>
-        ) : (
-          <p className="mt-3 text-muted-foreground text-sm leading-6">
-            A meta coletiva ainda não foi configurada.
-          </p>
-        )}
-
-        {canManage ? (
-          <Button asChild className="mt-4 w-full" size="sm" variant="outline">
-            <IntentLink href="/comunidade/meta">
-              {goal ? "Editar meta" : "Definir meta"}
-            </IntentLink>
-          </Button>
+      <div className="community-goal__head">
+        <span aria-hidden="true" className="community-goal__icon">
+          <TargetIcon className="size-4" />
+        </span>
+        <h2 className="community-goal__label" id="community-goal-heading">
+          {label}
+        </h2>
+        {canManage && goal ? (
+          <IntentLink className="community-goal__edit" href="/comunidade/meta">
+            Editar meta
+          </IntentLink>
         ) : null}
       </div>
+
+      {goal ? (
+        <>
+          <p className="community-goal__value">
+            <strong>{wholeHours(goal.totalSeconds)}</strong>
+            <span>de {wholeHours(goal.targetMinutes * 60)} horas</span>
+          </p>
+          <CommunityGoalStatus goal={goal} now={now} />
+          <p className="community-goal__note">
+            Horas de estudo registradas pelos alunos da comunidade neste mês.
+          </p>
+          {goal.state === "empty" ? (
+            <p className="community-goal__note">
+              Ainda não há registros elegíveis neste período.
+            </p>
+          ) : null}
+          <p className="community-goal__sources">
+            Fontes:{" "}
+            {goal.sourceKinds.length > 0
+              ? goal.sourceKinds
+                  .map((source) => communityGoalSourceLabels[source] ?? source)
+                  .join(", ")
+              : "nenhuma fonte elegível registrada neste período"}
+            .
+          </p>
+        </>
+      ) : (
+        <>
+          <p className="community-goal__empty">Defina a meta coletiva</p>
+          <p className="community-goal__note">
+            Alunos só veem o cartão depois que a meta existe.
+          </p>
+          <IntentLink className="community-goal__cta" href="/comunidade/meta">
+            Definir meta
+          </IntentLink>
+        </>
+      )}
     </section>
   );
 };

@@ -56,6 +56,7 @@ export const CommunityNavigation = ({
 
   return (
     <nav aria-label="Navegação da comunidade" className="community-section-nav">
+      <span className="community-section-nav__label">Comunidade</span>
       <div className="community-section-nav__links community-section-nav__links--desktop">
         {communityViews.map((view) => (
           <IntentLink

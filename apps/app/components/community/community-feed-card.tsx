@@ -48,7 +48,7 @@ interface CommunityFeedCardProperties {
   readonly post: CommunityFeedCardPost;
   readonly returnTo?: string;
   readonly spaceSlug?: string;
-  readonly variant?: "explore";
+  readonly variant?: "explore" | "saved";
 }
 
 const formatDate = (date: Date) =>
@@ -73,16 +73,28 @@ export function CommunityFeedCard({
   const feedMedia = media.filter((item) => item.kind !== "image");
   const commentCount = post._count.comments;
 
+  const cover = coverUrl ? (
+    <CommunityCoverImage
+      alt={post.coverAltText || `Capa: ${post.title}`}
+      className="community-post-card__media relative z-10"
+      height={900}
+      loading="lazy"
+      src={communityMediaImageUrl(coverUrl, "thumb")}
+      width={1600}
+    />
+  ) : null;
+
   return (
     <article
       className={[
-        "community-post-card relative",
-        variant === "explore" ? "community-post-card--explore" : "",
+        "community-post-card community-post-card--explore relative",
+        variant === "saved" ? "community-post-card--saved" : "",
         post.isPinned ? "community-post-card--pinned" : "",
       ]
         .filter(Boolean)
         .join(" ")}
     >
+      {cover}
       {post.isPinned ? (
         <div className="community-post-card__pin">
           <PinIcon aria-hidden="true" className="size-3.5" />
@@ -90,77 +102,69 @@ export function CommunityFeedCard({
         </div>
       ) : null}
 
-      <header className="community-post-card__meta relative z-10">
-        <MemberIdentity
-          authorId={post.authorId}
-          compact
-          feedAvatar
-          profile={post.profile ?? undefined}
-          showHeadline={false}
-        />
-        <span aria-hidden="true" className="text-muted-foreground">
-          ·
-        </span>
-        {post.space ? (
-          <IntentLink
-            className="community-post-card__space"
-            href={`/comunidade/grupos/${post.space.slug}`}
-          >
-            {post.space.title}
-          </IntentLink>
-        ) : (
-          <span className="community-post-card__space">Feed geral</span>
-        )}
-        <span aria-hidden="true" className="text-muted-foreground">
-          ·
-        </span>
-        <time
-          className="text-muted-foreground"
-          dateTime={(post.publishedAt ?? post.createdAt).toISOString()}
-        >
-          {formatDate(post.publishedAt ?? post.createdAt)}
-        </time>
-      </header>
-
-      <div className="community-post-card__content">
-        <div className="community-post-card__copy">
-          <h2 className="community-post-card__title">
-            <IntentLink
-              className="after:absolute after:inset-0 after:z-0 focus-visible:outline-none focus-visible:after:rounded-md focus-visible:after:ring-2 focus-visible:after:ring-ring"
-              href={href}
-            >
-              {post.title}
-            </IntentLink>
-          </h2>
-          {summary ? (
-            <p className="community-post-card__excerpt">{summary}</p>
-          ) : null}
-        </div>
-        {coverUrl ? (
-          <CommunityCoverImage
-            alt={post.coverAltText || `Capa: ${post.title}`}
-            className="community-post-card__media relative z-10"
-            height={100}
-            loading="lazy"
-            src={communityMediaImageUrl(coverUrl, "thumb")}
-            width={148}
+      <div className="community-post-card__body">
+        <header className="community-post-card__meta relative z-10">
+          <MemberIdentity
+            authorId={post.authorId}
+            compact
+            feedAvatar
+            profile={post.profile ?? undefined}
+            showHeadline={false}
           />
+          <span aria-hidden="true" className="text-muted-foreground">
+            ·
+          </span>
+          {post.space ? (
+            <IntentLink
+              className="community-post-card__space"
+              href={`/comunidade/grupos/${post.space.slug}`}
+            >
+              {post.space.title}
+            </IntentLink>
+          ) : (
+            <span className="community-post-card__space">Feed geral</span>
+          )}
+          <span aria-hidden="true" className="text-muted-foreground">
+            ·
+          </span>
+          <time
+            className="text-muted-foreground"
+            dateTime={(post.publishedAt ?? post.createdAt).toISOString()}
+          >
+            {formatDate(post.publishedAt ?? post.createdAt)}
+          </time>
+        </header>
+
+        <div className="community-post-card__content">
+          <div className="community-post-card__copy">
+            <h2 className="community-post-card__title">
+              <IntentLink
+                className="after:absolute after:inset-0 after:z-0 focus-visible:outline-none focus-visible:after:rounded-md focus-visible:after:ring-2 focus-visible:after:ring-ring"
+                href={href}
+              >
+                {post.title}
+              </IntentLink>
+            </h2>
+            {summary ? (
+              <p className="community-post-card__excerpt">{summary}</p>
+            ) : null}
+          </div>
+        </div>
+
+        {post.tags.length > 0 ? (
+          <ul className="community-post-card__tags relative z-10">
+            {post.tags.map((tag) => (
+              <li key={tag}>#{tag}</li>
+            ))}
+          </ul>
+        ) : null}
+
+        {feedMedia.length > 0 ? (
+          <div className="community-post-card__attachments relative z-10">
+            <CommunityMediaGallery items={feedMedia} thumbnail />
+          </div>
         ) : null}
       </div>
-
-      {post.tags.length > 0 ? (
-        <ul className="community-post-card__tags relative z-10">
-          {post.tags.map((tag) => (
-            <li key={tag}>#{tag}</li>
-          ))}
-        </ul>
-      ) : null}
-
-      {feedMedia.length > 0 ? (
-        <div className="community-post-card__attachments relative z-10">
-          <CommunityMediaGallery items={feedMedia} thumbnail />
-        </div>
-      ) : null}
 
       <div className="community-post-card__actions relative z-10">
         <IntentLink
