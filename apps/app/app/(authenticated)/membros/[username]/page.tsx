@@ -4,24 +4,33 @@ import {
   AvatarFallback,
   AvatarImage,
 } from "@repo/design-system/components/ui/avatar";
-import { Badge } from "@repo/design-system/components/ui/badge";
-import { Button } from "@repo/design-system/components/ui/button";
 import {
   ArrowLeftIcon,
+  ChevronRightIcon,
   ExternalLinkIcon,
-  MessageCircleIcon,
+  PencilIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { RichDocument } from "@/components/learning/rich-document";
-import { ProfileBadges } from "@/components/profile/profile-badges";
+import { CommunityCoverImage } from "@/components/community/community-cover-image";
+import { CommunityFeedCard } from "@/components/community/community-feed-card";
+import { CommunityNavigation } from "@/components/community/community-navigation";
+import { PublicProfileBadges } from "@/components/profile/profile-badges";
 import { getMemberRole } from "@/lib/authorization";
-import { communityPostHref } from "@/lib/community";
+import {
+  getCommonCommunitySpaces,
+  getMemberCommunityPublications,
+} from "@/lib/community";
+import {
+  communityMediaImageUrl,
+  normalizeCommunityCoverUrl,
+} from "@/lib/community-media";
 import { safeCommunityReturnPath } from "@/lib/community-return-path";
-import { communityPostAudienceWhere } from "@/lib/community-space-rules";
 import { requireMemberId } from "@/lib/learning";
 import { getPublicProfile } from "@/lib/profile";
 import { splitProfileBadges } from "@/lib/profile-badge-catalog";
+import "../../comunidade/community-fidelity.css";
+import "./public-profile.css";
 
 interface PublicProfilePageProperties {
   readonly params: Promise<{ username: string }>;
@@ -61,6 +70,118 @@ const hostnameFor = (value: string | null) => {
   }
 };
 
+const memberSince = (date: Date) =>
+  date.toLocaleDateString("pt-BR", { month: "short", year: "numeric" });
+
+type PublicProfile = NonNullable<Awaited<ReturnType<typeof getPublicProfile>>>;
+
+const ProfileAbout = ({ profile }: { readonly profile: PublicProfile }) => {
+  const location = [profile.city, profile.state, profile.country]
+    .filter(Boolean)
+    .join(", ");
+  const links = [profile.website, profile.instagram, profile.linkedin].flatMap(
+    (url) => {
+      const hostname = hostnameFor(url);
+      return url && hostname ? [{ hostname, url }] : [];
+    }
+  );
+  const hasAbout = Boolean(
+    profile.bio ||
+      profile.headline ||
+      profile.occupation ||
+      profile.institution ||
+      location ||
+      profile.interests.length > 0 ||
+      links.length > 0
+  );
+
+  if (!hasAbout) {
+    return null;
+  }
+
+  return (
+    <section className="public-profile__panel">
+      <h2 className="public-profile__eyebrow">Sobre</h2>
+      {profile.headline ? (
+        <p className="public-profile__headline">{profile.headline}</p>
+      ) : null}
+      {profile.bio ? (
+        <p className="public-profile__bio">{profile.bio}</p>
+      ) : null}
+      {profile.occupation || profile.institution || location ? (
+        <p className="public-profile__facts">
+          {[profile.occupation, profile.institution, location]
+            .filter(Boolean)
+            .map((fact) => (
+              <span key={fact}>{fact}</span>
+            ))}
+        </p>
+      ) : null}
+      {profile.interests.length > 0 ? (
+        <ul className="public-profile__tags">
+          {profile.interests.map((interest) => (
+            <li key={interest}>{interest}</li>
+          ))}
+        </ul>
+      ) : null}
+      {links.length > 0 ? (
+        <p className="public-profile__links">
+          {links.map(({ hostname, url }) => (
+            <a href={url} key={url} rel="noreferrer" target="_blank">
+              <ExternalLinkIcon aria-hidden="true" />
+              {hostname}
+            </a>
+          ))}
+        </p>
+      ) : null}
+    </section>
+  );
+};
+
+const CommonGroups = ({
+  spaces,
+}: {
+  readonly spaces: Awaited<ReturnType<typeof getCommonCommunitySpaces>>;
+}) => {
+  if (spaces.length === 0) {
+    return null;
+  }
+
+  return (
+    <section className="public-profile__panel">
+      <h2 className="public-profile__eyebrow">Grupos em comum</h2>
+      <ul className="public-profile__groups">
+        {spaces.map((space) => {
+          const cover = normalizeCommunityCoverUrl(space.coverUrl);
+
+          return (
+            <li key={space.id}>
+              <Link href={`/comunidade/grupos/${space.slug}`}>
+                {cover ? (
+                  <CommunityCoverImage
+                    alt=""
+                    className="public-profile__group-thumb"
+                    height={80}
+                    src={communityMediaImageUrl(cover, "thumb")}
+                    width={80}
+                  />
+                ) : (
+                  <span
+                    aria-hidden="true"
+                    className="public-profile__group-thumb"
+                  />
+                )}
+                <strong>{space.title}</strong>
+                <ChevronRightIcon aria-hidden="true" />
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+};
+
 const PublicProfilePage = async ({
   params,
   searchParams,
@@ -75,215 +196,118 @@ const PublicProfilePage = async ({
   }
 
   const viewerId = await requireMemberId();
-  const [role, viewerRole, earnedBadges, publishedBadgeDefinitions] =
-    await Promise.all([
-      getMemberRole(profile.clerkUserId),
-      getMemberRole(viewerId),
-      database.badgeAward.findMany({
-        where: {
-          memberId: profile.clerkUserId,
-          badge: { is: { status: { in: ["PUBLISHED", "ARCHIVED"] } } },
-        },
-        orderBy: { awardedAt: "desc" },
-        take: 100,
-        select: {
-          id: true,
-          badgeId: true,
-          awardedAt: true,
-          definitionRevision: {
-            select: { title: true, description: true, criterion: true },
-          },
-        },
-      }),
-      database.badgeDefinition.findMany({
-        where: { status: "PUBLISHED" },
-        orderBy: [{ criterion: "asc" }, { threshold: "asc" }],
-        take: 200,
-        select: { id: true, title: true, description: true, criterion: true },
-      }),
-    ]);
-  const badgeCollections = splitProfileBadges(
-    earnedBadges,
-    publishedBadgeDefinitions
-  );
-  const topics = await database.communityPost.findMany({
-    where: {
-      authorId: profile.clerkUserId,
-      status: "PUBLISHED",
-      deletedAt: null,
-      ...communityPostAudienceWhere(
-        viewerId,
-        viewerRole === "ADMIN" || viewerRole === "TEACHER"
-      ),
-    },
-    orderBy: [{ isPinned: "desc" }, { createdAt: "desc" }],
-    take: 12,
-    select: {
-      id: true,
-      title: true,
-      subtitle: true,
-      slug: true,
-      kind: true,
-      content: true,
-      excerpt: true,
-      contentJson: true,
-      createdAt: true,
-      space: { select: { title: true, slug: true } },
-      _count: {
-        select: {
-          comments: { where: { deletedAt: null } },
-          votes: true,
+  const isOwner = viewerId === profile.clerkUserId;
+  const [role, earnedBadges, topics, commonSpaces] = await Promise.all([
+    getMemberRole(profile.clerkUserId),
+    database.badgeAward.findMany({
+      where: {
+        memberId: profile.clerkUserId,
+        badge: { is: { status: { in: ["PUBLISHED", "ARCHIVED"] } } },
+      },
+      orderBy: { awardedAt: "desc" },
+      take: 100,
+      select: {
+        id: true,
+        badgeId: true,
+        awardedAt: true,
+        definitionRevision: {
+          select: { title: true, description: true, criterion: true },
         },
       },
-    },
-  });
+    }),
+    getMemberCommunityPublications(viewerId, profile.clerkUserId),
+    isOwner
+      ? Promise.resolve([])
+      : getCommonCommunitySpaces(viewerId, profile.clerkUserId),
+  ]);
+  const badgeCollections = splitProfileBadges(earnedBadges, []);
 
   const name = profile.displayName ?? profile.username;
-  const location = [profile.city, profile.state, profile.country]
-    .filter(Boolean)
-    .join(", ");
-
+  const firstName = name.split(whitespacePattern)[0] ?? name;
   return (
-    <div className="min-h-svh bg-background">
-      <main className="mx-auto w-full max-w-[1120px] px-5 py-8 sm:px-8 lg:px-12 lg:py-14">
-        <Button asChild className="-ml-3" variant="ghost">
-          <Link href={returnTo ?? "/membros"}>
+    <div className="community-page public-profile-page min-h-svh bg-background">
+      <main className="community-shell mx-auto w-full">
+        <CommunityNavigation active="explore" />
+        <div className="public-profile">
+          <Link
+            className="community-back-link"
+            href={returnTo ?? "/comunidade"}
+          >
             <ArrowLeftIcon aria-hidden="true" />
-            {returnTo ? "Voltar para a discussão" : "Voltar para os membros"}
+            {returnTo ? "Voltar para a discussão" : "Voltar para a comunidade"}
           </Link>
-        </Button>
 
-        <section className="paper-surface mt-8 border p-6 sm:p-10">
-          <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
-            <Avatar className="size-20 shrink-0">
+          <section
+            aria-label={`Perfil público de ${name}`}
+            className="public-profile__card"
+          >
+            <div aria-hidden="true" className="public-profile__banner" />
+            <Avatar className="public-profile__avatar">
               {profile.avatarUrl ? (
                 <AvatarImage alt="" src={profile.avatarUrl} />
               ) : null}
-              <AvatarFallback className="bg-brand-structural text-primary-foreground text-xl">
+              <AvatarFallback className="bg-brand-structural text-2xl text-primary-foreground">
                 {initials(name)}
               </AvatarFallback>
             </Avatar>
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-3">
-                <h1 className="font-display text-4xl sm:text-5xl">{name}</h1>
-                <Badge variant="outline">
-                  {roleLabel(profile.member.role ?? role)}
-                </Badge>
-              </div>
-              <p className="mt-2 text-muted-foreground">
-                @{profile.username}
-                {profile.headline ? ` · ${profile.headline}` : ""}
-              </p>
-              {profile.bio && (
-                <p className="mt-6 max-w-2xl whitespace-pre-wrap text-base leading-7">
-                  {profile.bio}
+            <div className="public-profile__identity">
+              <div className="min-w-0">
+                <h1 className="public-profile__name">{name}</h1>
+                <p className="public-profile__meta">
+                  <span className="community-chip">
+                    {roleLabel(profile.member.role ?? role)}
+                  </span>
+                  <span>@{profile.username}</span>
+                  <span aria-hidden="true" className="public-profile__sep">
+                    ·
+                  </span>
+                  <span>
+                    Na comunidade desde {memberSince(profile.createdAt)}
+                  </span>
                 </p>
-              )}
-              <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-muted-foreground text-sm">
-                {profile.occupation && <span>{profile.occupation}</span>}
-                {profile.institution && <span>{profile.institution}</span>}
-                {location && <span>{location}</span>}
               </div>
-              <div className="mt-5 flex flex-wrap gap-2">
-                {profile.interests.map((interest) => (
-                  <Badge key={interest} variant="secondary">
-                    {interest}
-                  </Badge>
+              {isOwner ? (
+                <Link className="public-profile__action" href="/perfil/editar">
+                  <PencilIcon aria-hidden="true" />
+                  Editar perfil
+                </Link>
+              ) : null}
+            </div>
+          </section>
+
+          {isOwner ? (
+            <p className="public-profile__owner-note">
+              É assim que os outros membros veem você. Seu perfil pessoal, com
+              estudo, metas e configurações, continua só seu em{" "}
+              <Link href="/perfil">Perfil</Link>.
+            </p>
+          ) : null}
+
+          <ProfileAbout profile={profile} />
+
+          <CommonGroups spaces={commonSpaces} />
+
+          <PublicProfileBadges earnedBadges={badgeCollections.earned} />
+
+          <section
+            aria-labelledby="member-publications"
+            className="public-profile__publications"
+          >
+            <h2 id="member-publications">Publicações</h2>
+            <p>O que {firstName} publicou na Comunidade.</p>
+            {topics.length === 0 ? (
+              <p className="public-profile__empty">
+                Ainda não há publicações visíveis para você.
+              </p>
+            ) : (
+              <div className="public-profile__posts">
+                {topics.map((post) => (
+                  <CommunityFeedCard key={post.id} post={post} />
                 ))}
               </div>
-              <div className="mt-6 flex flex-wrap gap-4 text-sm">
-                {[profile.website, profile.instagram, profile.linkedin].map(
-                  (url) => {
-                    const hostname = hostnameFor(url);
-
-                    if (!(url && hostname)) {
-                      return null;
-                    }
-
-                    return (
-                      <a
-                        className="inline-flex items-center gap-1.5 text-brand-structural underline underline-offset-4"
-                        href={url}
-                        key={url}
-                        rel="noreferrer"
-                        target="_blank"
-                      >
-                        <ExternalLinkIcon
-                          aria-hidden="true"
-                          className="size-3.5"
-                        />{" "}
-                        {hostname}
-                      </a>
-                    );
-                  }
-                )}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <ProfileBadges
-          availableBadges={badgeCollections.available}
-          earnedBadges={badgeCollections.earned}
-        />
-
-        <section aria-labelledby="member-topics" className="mt-12">
-          <div className="flex items-end justify-between border-border border-b pb-4">
-            <div>
-              <p className="brand-eyebrow">Contribuições</p>
-              <h2 className="mt-2 font-display text-3xl" id="member-topics">
-                Tópicos publicados
-              </h2>
-            </div>
-            <span className="font-data text-muted-foreground text-xs">
-              {topics.length}
-            </span>
-          </div>
-          {topics.length === 0 ? (
-            <p className="mt-6 text-muted-foreground">
-              Ainda não há tópicos publicados.
-            </p>
-          ) : (
-            <div className="mt-6 divide-y border-border border-y">
-              {topics.map((topic) => (
-                <article className="py-6" key={topic.id}>
-                  <div className="flex flex-wrap items-center gap-2 text-muted-foreground text-xs">
-                    <span>{topic.space?.title ?? "Feed geral"}</span>
-                    <span>·</span>
-                    <span>{topic._count.comments} respostas</span>
-                    <span>·</span>
-                    <span>{topic._count.votes} apoios</span>
-                  </div>
-                  <h3 className="mt-3 font-display text-2xl">
-                    <Link
-                      className="hover:text-brand-structural"
-                      href={communityPostHref(topic)}
-                    >
-                      {topic.title}
-                    </Link>
-                  </h3>
-                  <div className="mt-3 line-clamp-3 text-muted-foreground leading-7">
-                    {topic.subtitle && (
-                      <p className="mb-2 line-clamp-2">{topic.subtitle}</p>
-                    )}
-                    {topic.contentJson ? (
-                      <RichDocument value={topic.contentJson} />
-                    ) : (
-                      topic.content
-                    )}
-                  </div>
-                  <Link
-                    className="mt-4 inline-flex items-center gap-2 text-brand-structural text-sm underline underline-offset-4"
-                    href={communityPostHref(topic)}
-                  >
-                    Ler tópico{" "}
-                    <MessageCircleIcon aria-hidden="true" className="size-4" />
-                  </Link>
-                </article>
-              ))}
-            </div>
-          )}
-        </section>
+            )}
+          </section>
+        </div>
       </main>
     </div>
   );

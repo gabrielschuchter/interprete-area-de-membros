@@ -485,12 +485,12 @@ const ProfilePage = async ({ searchParams }: ProfilePageProperties) => {
               />
             </Link>
           </li>
-          <li className="flex min-h-[60px] items-center justify-between gap-3 text-sm md:hidden">
+          <li className="flex min-h-[60px] items-center justify-between gap-3 text-sm">
             <Link
               className="flex min-h-[60px] flex-1 items-center justify-between"
               href={`/membros/${profile.username}`}
             >
-              <span>Perfil público</span>
+              <span>Ver como os outros veem seu perfil</span>
               <ChevronRightIcon
                 aria-hidden="true"
                 className="mr-2 size-4 text-muted-foreground"
