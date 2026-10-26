@@ -47,7 +47,7 @@ const formatDateTime = (value: Date) =>
     timeZone: "America/Sao_Paulo",
   }).format(value);
 
-const inputClass = "h-12 rounded-[4px] border-input bg-background px-3 text-sm";
+const inputClass = "h-12 rounded-[4px] border-input bg-white px-3 text-sm";
 
 const resultMessages: Record<string, string> = {
   conflito:

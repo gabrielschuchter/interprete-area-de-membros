@@ -63,7 +63,14 @@ const CommunityRightRailData = async ({
           <CommunityGoalData memberId={memberId} />
         </Suspense>
       }
-      spaces={spaces}
+      // Staff can moderate private groups, but the rail lists what the viewer
+      // takes part in: public groups plus the private ones they belong to.
+      spaces={spaces.filter(
+        (space) =>
+          space.visibility === "PUBLIC" ||
+          space.ownerId === memberId ||
+          space.members.length > 0
+      )}
     />
   );
 };

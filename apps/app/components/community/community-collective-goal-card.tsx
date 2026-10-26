@@ -159,22 +159,20 @@ export const CommunityCollectiveGoalCard = ({
           </p>
           <CommunityGoalStatus goal={goal} now={now} />
           <p className="community-goal__note">
-            Horas de estudo registradas pelos alunos da comunidade neste mês.
+            {goal.state === "empty"
+              ? "O mês está começando: cada hora de estudo registrada pelos alunos soma aqui."
+              : "Horas de estudo registradas pelos alunos da comunidade neste mês."}
           </p>
-          {goal.state === "empty" ? (
-            <p className="community-goal__note">
-              Ainda não há registros elegíveis neste período.
+          {canManage && goal.sourceKinds.length > 0 ? (
+            <p className="community-goal__sources">
+              Contam aqui:{" "}
+              {goal.sourceKinds
+                .map((source) => communityGoalSourceLabels[source] ?? source)
+                .join(", ")
+                .toLowerCase()}
+              .
             </p>
           ) : null}
-          <p className="community-goal__sources">
-            Fontes:{" "}
-            {goal.sourceKinds.length > 0
-              ? goal.sourceKinds
-                  .map((source) => communityGoalSourceLabels[source] ?? source)
-                  .join(", ")
-              : "nenhuma fonte elegível registrada neste período"}
-            .
-          </p>
         </>
       ) : (
         <>

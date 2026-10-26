@@ -29,7 +29,6 @@ import { safeCommunityReturnPath } from "@/lib/community-return-path";
 import { requireMemberId } from "@/lib/learning";
 import { getPublicProfile } from "@/lib/profile";
 import { splitProfileBadges } from "@/lib/profile-badge-catalog";
-import "../../comunidade/community-fidelity.css";
 import "./public-profile.css";
 
 interface PublicProfilePageProperties {

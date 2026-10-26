@@ -165,6 +165,7 @@ export const MemberAreaTabs = () => {
   return (
     <div
       className="member-area-tabs-shell"
+      data-area={isStudyPath ? "study" : "community"}
       data-hide-mobile-for-note={String(noteEditorOpen)}
     >
       {!noteEditorOpen &&
