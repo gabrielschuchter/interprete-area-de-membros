@@ -23,20 +23,39 @@ const hrefSchema = z
   .nullable()
   .optional();
 
-const notificationRequestSchema = z.object({
-  recipientId: z.string().trim().min(1).max(255),
-  type: z.string().trim().min(1).max(64),
-  entityType: z.string().trim().min(1).max(64).nullable().optional(),
-  entityId: z.string().trim().min(1).max(255).nullable().optional(),
-  title: z.string().trim().min(1).max(160).optional(),
-  body: z.string().trim().max(500).optional(),
-  parentEntityType: z.string().trim().min(1).max(64).nullable().optional(),
-  parentEntityId: z.string().trim().min(1).max(255).nullable().optional(),
-  groupKey: z.string().trim().min(1).max(255).nullable().optional(),
-  dedupeKey: z.string().trim().min(1).max(255),
-  priority: z.number().int().min(0).max(100).optional(),
-  href: hrefSchema,
-});
+const notificationRequestSchema = z
+  .object({
+    recipientId: z.string().trim().min(1).max(255),
+    type: z.string().trim().min(1).max(64),
+    entityType: z.string().trim().min(1).max(64).nullable().optional(),
+    entityId: z.string().trim().min(1).max(255).nullable().optional(),
+    announcementId: z.string().trim().min(1).max(255).nullable().optional(),
+    announcementVersion: z.number().int().positive().nullable().optional(),
+    title: z.string().trim().min(1).max(160).optional(),
+    body: z.string().trim().max(500).optional(),
+    parentEntityType: z.string().trim().min(1).max(64).nullable().optional(),
+    parentEntityId: z.string().trim().min(1).max(255).nullable().optional(),
+    groupKey: z.string().trim().min(1).max(255).nullable().optional(),
+    communitySpaceId: z.string().trim().min(1).max(255).nullable().optional(),
+    dedupeKey: z.string().trim().min(1).max(255),
+    priority: z.number().int().min(0).max(100).optional(),
+    href: hrefSchema,
+  })
+  .superRefine((request, context) => {
+    const hasAnnouncementId = Boolean(request.announcementId);
+    const hasAnnouncementVersion = Boolean(request.announcementVersion);
+    if (
+      hasAnnouncementId !== hasAnnouncementVersion ||
+      (request.type === "ANNOUNCEMENT" && !hasAnnouncementId)
+    ) {
+      context.addIssue({
+        code: "custom",
+        message:
+          "Announcement notifications require a versioned announcement id.",
+        path: ["announcementId"],
+      });
+    }
+  });
 
 const notificationBatchPayloadSchema = z.object({
   notifications: z.array(notificationRequestSchema).min(1).max(100),
@@ -61,6 +80,7 @@ export const enqueueNotificationBatch = async (
     readonly aggregateId: string;
     readonly idempotencyKey: string;
     readonly occurredAt: Date;
+    readonly availableAt?: Date;
     readonly notifications: readonly NotificationOutboxRequest[];
   }
 ) => {
@@ -101,6 +121,7 @@ export const enqueueNotificationBatch = async (
       idempotencyKey: `${idempotencyKey}:batch:${batchIndex}`,
       payload: jsonPayload,
       occurredAt: input.occurredAt,
+      availableAt: input.availableAt,
       consumers: [notificationOutboxConsumerKey],
     });
   }

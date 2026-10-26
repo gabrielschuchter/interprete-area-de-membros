@@ -1,0 +1,41 @@
+"use client";
+
+import { Button } from "@repo/design-system/components/ui/button";
+import { CloudAlertIcon } from "lucide-react";
+import { CommunityNavigation } from "@/components/community/community-navigation";
+
+interface CommunityMeetingsErrorProperties {
+  readonly error: Error & { digest?: string };
+  readonly reset: () => void;
+}
+
+const CommunityMeetingsError = ({
+  reset,
+}: CommunityMeetingsErrorProperties) => (
+  <main className="community-page min-h-svh bg-background">
+    <div className="community-shell mx-auto w-full">
+      <CommunityNavigation active="meetings" />
+      <section
+        aria-live="assertive"
+        className="paper-surface mx-auto mt-8 flex w-full max-w-3xl flex-col items-center rounded-md border border-[#E2D6D1] p-8 text-center sm:p-10"
+      >
+        <CloudAlertIcon
+          aria-hidden="true"
+          className="size-14 text-[#B9395A]"
+          strokeWidth={1.5}
+        />
+        <h1 className="mt-5 font-display font-semibold text-2xl text-[#40222F]">
+          Não deu para carregar os encontros
+        </h1>
+        <p className="mx-auto mt-3 max-w-xl text-[#7A5A69] leading-7">
+          Confira a conexão e tente de novo.
+        </p>
+        <Button className="mt-5" onClick={reset} type="button">
+          Tentar de novo
+        </Button>
+      </section>
+    </div>
+  </main>
+);
+
+export default CommunityMeetingsError;

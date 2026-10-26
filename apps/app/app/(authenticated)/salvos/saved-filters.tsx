@@ -2,7 +2,12 @@
 
 import { useRouter } from "next/navigation";
 
-export type SavedContentFilter = "todos" | "aulas" | "materiais" | "questoes";
+export type SavedContentFilter =
+  | "todos"
+  | "aulas"
+  | "materiais"
+  | "questoes"
+  | "comunidade";
 
 const filters: readonly {
   readonly id: SavedContentFilter;
@@ -12,6 +17,7 @@ const filters: readonly {
   { id: "aulas", label: "Aulas" },
   { id: "materiais", label: "Materiais" },
   { id: "questoes", label: "Questões" },
+  { id: "comunidade", label: "Comunidade" },
 ];
 
 interface SavedFiltersProperties {

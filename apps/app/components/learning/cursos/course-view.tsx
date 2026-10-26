@@ -200,6 +200,31 @@ const ModuleScreen = ({
   );
 };
 
+const CourseContinue = ({
+  data,
+  finished,
+}: {
+  readonly data: CourseViewData;
+  readonly finished: boolean;
+}) => {
+  const href = finished ? data.reviewHref : data.continueHref;
+  return (
+    <div className="cb-cp__cta">
+      {href ? (
+        <Link className="cb-btn" href={href}>
+          <PlayIcon aria-hidden="true" fill="currentColor" size={13} />
+          {finished ? "Rever do início" : data.continueLabel}
+        </Link>
+      ) : null}
+      {data.continueStoppedAt && !finished ? (
+        <span className="cb-after">
+          Parou em {clock(data.continueStoppedAt)}
+        </span>
+      ) : null}
+    </div>
+  );
+};
+
 export const CourseView = ({ data }: { readonly data: CourseViewData }) => {
   const [done, setDone] = useState<ReadonlyMap<string, boolean>>(new Map());
   const [open, setOpen] = useState<ReadonlySet<string>>(
@@ -352,22 +377,7 @@ export const CourseView = ({ data }: { readonly data: CourseViewData }) => {
               </b>
             </div>
           ) : null}
-          <div className="cb-cp__cta">
-            {(finished ? data.reviewHref : data.continueHref) ? (
-              <Link
-                className="cb-btn"
-                href={(finished ? data.reviewHref : data.continueHref) ?? "#"}
-              >
-                <PlayIcon aria-hidden="true" fill="currentColor" size={13} />
-                {finished ? "Rever do início" : data.continueLabel}
-              </Link>
-            ) : null}
-            {data.continueStoppedAt && !finished ? (
-              <span className="cb-after">
-                Parou em {clock(data.continueStoppedAt)}
-              </span>
-            ) : null}
-          </div>
+          <CourseContinue data={data} finished={finished} />
         </div>
       </div>
       <div aria-hidden="true" className="cb-rule" />

@@ -82,6 +82,7 @@ enum CommunitySpaceVisibility {
 
 enum CommunitySpaceMemberRole {
   OWNER
+  MODERATOR
   MEMBER
 }
 
@@ -139,6 +140,11 @@ enum StudyActivityKind {
 enum StudyGoalPeriod {
   WEEKLY
   MONTHLY
+}
+
+enum StudyCampaignRenewalMode {
+  AUTOMATIC
+  MANUAL
 }
 
 enum LearningTaskRecurrence {
@@ -242,6 +248,7 @@ enum AnnouncementAudience {
   ALL
   STAFF
   SELECTED
+  COHORT
 }
 
 enum MeetingKind {
@@ -443,11 +450,14 @@ model Member {
   communitySpaceMemberships           CommunitySpaceMember[]
   communitySpaceInvitationsReceived   CommunitySpaceInvitation[]         @relation("CommunitySpaceInvitationRecipient")
   communitySpaceInvitationsSent       CommunitySpaceInvitation[]         @relation("CommunitySpaceInvitationSender")
+  communitySpaceInviteLinksCreated    CommunitySpaceInviteLink[]         @relation("CommunitySpaceInviteLinkCreator")
+  communityPostShareLinksCreated      CommunityPostShareLink[]            @relation("CommunityPostShareLinkCreator")
   learningAssignmentBatchesCreated    LearningAssignmentBatch[]          @relation("LearningAssignmentBatchCreator")
   learningAssignmentsReceived         ActivityAssignment[]               @relation("LearningAssignmentRecipient")
   learningAssignmentsCreated          ActivityAssignment[]               @relation("LearningAssignmentAssigner")
   libraryItemViews                    LibraryItemView[]
   announcementsCreated                Announcement[]                     @relation("AnnouncementCreator")
+  announcementDismissals              AnnouncementDismissal[]
   exerciseBanksCreated                ExerciseBank[]                     @relation("ExerciseBankCreator")
   exerciseListsCreated                ExerciseList[]                     @relation("ExerciseListCreator")
   exerciseSessions                    ExerciseSession[]
@@ -485,6 +495,7 @@ model Profile {
   clerkUserId     String   @unique
   username        String   @unique
   showInDirectory Boolean  @default(true)
+  showInCommunityAvatars Boolean  @default(true)
   displayName     String?
   avatarUrl       String?
   headline        String?
@@ -757,6 +768,7 @@ model Cohort {
   calendarFeeds      CohortCalendarFeed[]
   accessGrantSources AccessGrantSource[]
   activityTargets    ActivityCohortTarget[]
+  announcementTargets AnnouncementCohort[]
 
   @@unique([createdByMemberId, idempotencyKey])
   @@index([archivedAt, startsAt, endsAt])
@@ -1269,6 +1281,8 @@ model Notification {
   id               String    @id @default(cuid())
   memberId         String
   actorId          String?
+  announcementId      String?
+  announcementVersion Int?
   type             String
   entityType       String?
   entityId         String?
@@ -1276,6 +1290,7 @@ model Notification {
   parentEntityId   String?
   metadata         Json?
   groupKey         String?
+  communitySpaceId String?   @default("__community_scope_unresolved__")
   dedupeKey        String?   @unique
   priority         Int       @default(0)
   title            String
@@ -1286,11 +1301,14 @@ model Notification {
   createdAt        DateTime  @default(now())
   member           Member    @relation("NotificationRecipient", fields: [memberId], references: [id], onDelete: Cascade)
   actor            Member?   @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
+  announcement     Announcement? @relation(fields: [announcementId], references: [id], onDelete: SetNull)
 
   @@index([memberId, readAt, createdAt])
   @@index([memberId, seenAt, createdAt])
   @@index([memberId, type, createdAt])
+  @@index([memberId, communitySpaceId, createdAt])
   @@index([groupKey, createdAt])
+  @@index([announcementId, announcementVersion, memberId])
 }
 
 model Mention {
@@ -1340,6 +1358,8 @@ model Announcement {
   startsAt          DateTime?
   endsAt            DateTime?
   isPinned          Boolean              @default(false)
+  isImportant       Boolean              @default(false)
+  version           Int                  @default(1)
   createdByMemberId String?
   publishedAt       DateTime?
   archivedAt        DateTime?
@@ -1347,10 +1367,36 @@ model Announcement {
   createdAt         DateTime             @default(now())
   updatedAt         DateTime             @updatedAt
   createdBy         Member?              @relation("AnnouncementCreator", fields: [createdByMemberId], references: [id], onDelete: SetNull)
+  cohorts           AnnouncementCohort[]
+  dismissals        AnnouncementDismissal[]
+  notifications     Notification[]
 
   @@index([status, isPinned, publishedAt])
   @@index([startsAt, endsAt])
   @@index([createdByMemberId, createdAt])
+}
+
+model AnnouncementCohort {
+  announcementId String
+  cohortId       String
+  createdAt      DateTime     @default(now())
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  cohort         Cohort       @relation(fields: [cohortId], references: [id], onDelete: Restrict)
+
+  @@id([announcementId, cohortId])
+  @@index([cohortId, announcementId])
+}
+
+model AnnouncementDismissal {
+  announcementId      String
+  memberId             String
+  announcementVersion Int
+  dismissedAt          DateTime     @default(now())
+  announcement         Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  member               Member       @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@id([announcementId, memberId, announcementVersion])
+  @@index([memberId, dismissedAt])
 }
 
 model TopicFollow {
@@ -1386,6 +1432,7 @@ model CommunitySpace {
   owner              Member?                    @relation("CommunitySpaceOwner", fields: [ownerId], references: [id], onDelete: SetNull)
   members            CommunitySpaceMember[]
   invitations        CommunitySpaceInvitation[]
+  inviteLinks        CommunitySpaceInviteLink[]
   assignmentBatches  LearningAssignmentBatch[]
   contentCollections ContentCollection[]
   posts              CommunityPost[]
@@ -1430,9 +1477,23 @@ model CommunitySpaceInvitation {
   @@index([inviterId, createdAt])
 }
 
+model CommunitySpaceInviteLink {
+  id          String         @id @default(cuid())
+  spaceId     String
+  tokenHash   String         @unique @db.VarChar(64)
+  createdById String?
+  createdAt   DateTime       @default(now())
+  revokedAt   DateTime?
+  space       CommunitySpace @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  createdBy   Member?        @relation("CommunitySpaceInviteLinkCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([spaceId, createdAt])
+}
+
 model CommunityPost {
   id             String              @id @default(cuid())
   spaceId        String?
+  audienceScope  String              @default("UNRESOLVED") @db.VarChar(16)
   authorId       String
   idempotencyKey String?
   kind           CommunityPostKind   @default(DISCUSSION)
@@ -1444,6 +1505,7 @@ model CommunityPost {
   contentJson    Json?
   tags           String[]            @default([])
   coverUrl       String?
+  coverAltText   String?             @db.Text
   status         ContentStatus       @default(PUBLISHED)
   isPinned       Boolean             @default(false)
   isFeatured     Boolean             @default(false)
@@ -1453,11 +1515,12 @@ model CommunityPost {
   updatedAt      DateTime            @updatedAt
   editedAt       DateTime?
   deletedAt      DateTime?
-  space          CommunitySpace?     @relation(fields: [spaceId], references: [id], onDelete: SetNull)
+  space          CommunitySpace?     @relation(fields: [spaceId], references: [id], onDelete: Restrict)
   comments       CommunityComment[]
   votes          PostVote[]
   bookmarks      CommunityBookmark[]
   followers      TopicFollow[]
+  shareLinks     CommunityPostShareLink[]
 
   @@unique([authorId, idempotencyKey])
   @@index([spaceId, status, createdAt])
@@ -1466,6 +1529,21 @@ model CommunityPost {
   @@index([authorId, createdAt])
   @@index([isPinned, status, createdAt])
   @@index([isFeatured, status, createdAt], map: "CommunityPost_isFeatured_status_createdAt_idx")
+  @@index([authorId, status, updatedAt, id], map: "CommunityPost_authorId_status_updatedAt_id_idx")
+}
+
+model CommunityPostShareLink {
+  id          String        @id @default(cuid())
+  postId      String
+  tokenHash   String        @unique @db.VarChar(64)
+  createdById String?
+  createdAt   DateTime      @default(now())
+  revokedAt   DateTime?
+  post        CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  createdBy   Member?       @relation("CommunityPostShareLinkCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([postId, createdAt])
+  @@index([createdById, createdAt])
 }
 
 model CommunityBookmark {
@@ -2086,6 +2164,7 @@ model StudyActivityInterval {
 
   @@unique([sessionId, sequence])
   @@index([memberId, startedAt])
+  @@index([startedAt])
   @@index([memberId, isPlayback, startedAt])
 }
 
@@ -2461,13 +2540,30 @@ model StudyCampaign {
   targetMinutes     Int
   startsAt          DateTime
   endsAt            DateTime
+  renewalMode       StudyCampaignRenewalMode @default(MANUAL)
   publishedAt       DateTime?
   archivedAt        DateTime?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
   createdBy         Member?   @relation("StudyCampaignCreator", fields: [createdByMemberId], references: [id], onDelete: SetNull)
+  snapshots         StudyCampaignSnapshot[]
 
   @@index([publishedAt, archivedAt, startsAt, endsAt])
+}
+
+model StudyCampaignSnapshot {
+  id             String              @id @default(cuid())
+  campaignId     String
+  periodStartsAt DateTime
+  periodEndsAt   DateTime
+  targetMinutes  Int
+  totalSeconds   BigInt
+  sourceKinds    StudyActivityKind[] @default([])
+  snapshottedAt  DateTime            @default(now())
+  campaign       StudyCampaign       @relation(fields: [campaignId], references: [id], onDelete: Restrict)
+
+  @@unique([campaignId, periodStartsAt, periodEndsAt])
+  @@index([campaignId, snapshottedAt])
 }
 
 model BadgeDefinition {

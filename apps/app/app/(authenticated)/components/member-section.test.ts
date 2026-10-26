@@ -13,7 +13,7 @@ describe("memberSectionForPathname", () => {
     ["/tarefas", "Metas e tarefas"],
     ["/tarefas/historico", "Metas e tarefas"],
     ["/configuracoes", "Configurações"],
-    ["/comunidade/meus-topicos", "Meus tópicos"],
+    ["/comunidade/minhas-publicacoes", "Minhas publicações"],
     ["/salvos", "Salvos"],
     ["/comunidade/salvos", "Comunidade"],
     ["/encontros/gravacoes", "Minhas gravações"],

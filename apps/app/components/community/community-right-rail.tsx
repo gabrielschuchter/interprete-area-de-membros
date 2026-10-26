@@ -1,13 +1,11 @@
 import { Button } from "@repo/design-system/components/ui/button";
-import { ArrowRightIcon, PlusIcon, SearchIcon } from "lucide-react";
+import { ArrowRightIcon, PlusIcon } from "lucide-react";
+import type { ReactNode } from "react";
 import { IntentLink } from "@/app/(authenticated)/components/intent-link";
-import { FilterForm } from "@/components/navigation/filter-form";
-import type { CommunitySort } from "@/lib/community-query";
+import { CommunityAnnouncementDismissButton } from "./community-announcement-dismiss-button";
+import type { CommunityAvatarVisual } from "./community-avatars";
+import { CommunityAvatars } from "./community-avatars";
 import { CommunityDisclosure } from "./community-disclosure";
-import {
-  CommunityPresence,
-  type CommunityPresenceProfile,
-} from "./community-presence";
 
 interface CommunitySpaceSummary {
   readonly _count: { readonly posts: number };
@@ -23,16 +21,13 @@ interface CommunityAnnouncementSummary {
   readonly href: string | null;
   readonly id: string;
   readonly title: string;
+  readonly version: number;
 }
 
 interface CommunityRightRailProperties {
   readonly announcements: readonly CommunityAnnouncementSummary[];
-  readonly memberId: string;
-  readonly presenceProfiles?: readonly CommunityPresenceProfile[];
-  readonly profile: CommunityPresenceProfile | null;
-  readonly query?: string;
-  readonly sort?: CommunitySort;
-  readonly spaceSlug?: string;
+  readonly avatars: readonly CommunityAvatarVisual[];
+  readonly goalCard: ReactNode;
   readonly spaces: readonly CommunitySpaceSummary[];
 }
 
@@ -40,6 +35,7 @@ const formatAnnouncementDate = (value: Date) =>
   new Intl.DateTimeFormat("pt-BR", {
     day: "2-digit",
     month: "short",
+    timeZone: "America/Sao_Paulo",
   }).format(value);
 
 const isInternalHref = (href: string) =>
@@ -71,48 +67,16 @@ const AnnouncementContent = ({
 
 export const CommunityRightRail = ({
   announcements,
-  memberId,
-  profile,
-  presenceProfiles,
-  query,
-  sort = "recent",
-  spaceSlug,
+  avatars,
+  goalCard,
   spaces,
 }: CommunityRightRailProperties) => (
   <aside aria-label="Contexto da comunidade" className="community-right-rail">
-    <section
-      aria-label="Buscar na comunidade"
-      className="community-rail__search"
-    >
-      <FilterForm action="/comunidade" className="community-search">
-        <label className="community-search__field">
-          <span className="sr-only">Buscar na comunidade</span>
-          <SearchIcon aria-hidden="true" className="community-search__icon" />
-          <input
-            aria-label="Buscar na comunidade"
-            defaultValue={query ?? ""}
-            name="q"
-            placeholder="Buscar na comunidade"
-          />
-        </label>
-        <input name="sort" type="hidden" value={sort} />
-        {spaceSlug ? (
-          <input name="space" type="hidden" value={spaceSlug} />
-        ) : null}
-        <Button
-          aria-label="Buscar"
-          className="community-search__submit"
-          size="icon"
-          type="submit"
-          variant="ghost"
-        >
-          <SearchIcon aria-hidden="true" />
-        </Button>
-      </FilterForm>
-    </section>
+    {goalCard}
 
     <CommunityDisclosure
       className="community-rail__context--about"
+      defaultExpanded
       label="Sobre a comunidade"
     >
       <section
@@ -126,21 +90,33 @@ export const CommunityRightRail = ({
           Um espaço para trocar perguntas, casos e referências sobre
           interpretação.
         </p>
+        <div className="mt-4">
+          <h3 className="font-medium text-sm">Regras</h3>
+          <ul className="mt-2 list-disc space-y-1 pl-4 text-muted-foreground text-sm leading-6">
+            <li>Respeite quem pensa diferente.</li>
+            <li>Cite a fonte ao compartilhar uma evidência.</li>
+            <li>Pergunte com contexto: conte o que você já tentou.</li>
+          </ul>
+        </div>
+        <div className="mt-4">
+          <h3 className="font-medium text-sm">Como participar</h3>
+          <ul className="mt-2 list-disc space-y-1 pl-4 text-muted-foreground text-sm leading-6">
+            <li>Faça uma pergunta ou compartilhe um artigo.</li>
+            <li>Responda com uma leitura, uma dúvida ou uma referência.</li>
+            <li>Entre em um grupo de estudo.</li>
+          </ul>
+        </div>
       </section>
     </CommunityDisclosure>
 
     <section
-      aria-labelledby="community-presence-heading"
-      className="community-rail__block community-rail__presence"
+      aria-labelledby="community-avatars-heading"
+      className="community-rail__block community-rail__avatars"
     >
-      <h2 className="brand-eyebrow" id="community-presence-heading">
-        Ativo agora
+      <h2 className="brand-eyebrow" id="community-avatars-heading">
+        Pessoas da comunidade
       </h2>
-      <CommunityPresence
-        fallbackProfiles={presenceProfiles}
-        memberId={memberId}
-        profile={profile}
-      />
+      <CommunityAvatars avatars={avatars} />
     </section>
 
     <section
@@ -159,7 +135,7 @@ export const CommunityRightRail = ({
           {spaces.map((space) => (
             <IntentLink
               className="community-rail__space group"
-              href={`/comunidade/${space.slug}`}
+              href={`/comunidade/grupos/${space.slug}`}
               key={space.id}
             >
               <span className="min-w-0 truncate font-medium text-sm group-hover:text-brand-structural">
@@ -210,39 +186,48 @@ export const CommunityRightRail = ({
                 <AnnouncementContent announcement={announcement} />
               );
               const className = "community-rail__announcement group";
+              const key = announcement.groupKey ?? announcement.id;
 
               if (announcement.href && isInternalHref(announcement.href)) {
                 return (
-                  <IntentLink
-                    className={className}
-                    href={announcement.href}
-                    key={announcement.groupKey ?? announcement.id}
-                  >
-                    {content}
-                  </IntentLink>
+                  <article className="border-border border-b py-3" key={key}>
+                    <IntentLink className={className} href={announcement.href}>
+                      {content}
+                    </IntentLink>
+                    <CommunityAnnouncementDismissButton
+                      announcementId={announcement.id}
+                      version={announcement.version}
+                    />
+                  </article>
                 );
               }
 
               if (announcement.href && isExternalHref(announcement.href)) {
                 return (
-                  <a
-                    className={className}
-                    href={announcement.href}
-                    key={announcement.groupKey ?? announcement.id}
-                    rel="noreferrer"
-                    target="_blank"
-                  >
-                    {content}
-                  </a>
+                  <article className="border-border border-b py-3" key={key}>
+                    <a
+                      className={className}
+                      href={announcement.href}
+                      rel="noreferrer"
+                      target="_blank"
+                    >
+                      {content}
+                    </a>
+                    <CommunityAnnouncementDismissButton
+                      announcementId={announcement.id}
+                      version={announcement.version}
+                    />
+                  </article>
                 );
               }
 
               return (
-                <article
-                  className={className}
-                  key={announcement.groupKey ?? announcement.id}
-                >
-                  {content}
+                <article className="border-border border-b py-3" key={key}>
+                  <div className={className}>{content}</div>
+                  <CommunityAnnouncementDismissButton
+                    announcementId={announcement.id}
+                    version={announcement.version}
+                  />
                 </article>
               );
             })}

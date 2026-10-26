@@ -3,6 +3,8 @@ import { tracePerformance } from "@repo/observability/performance";
 import { ArrowRightIcon } from "lucide-react";
 import { cache, Suspense } from "react";
 import { IntentLink } from "@/app/(authenticated)/components/intent-link";
+import { CommunityAnnouncementFeed } from "@/components/community/community-announcement-feed";
+import { CommunityCollectiveGoalCard } from "@/components/community/community-collective-goal-card";
 import { CommunityComposerPrompt } from "@/components/community/community-composer-prompt";
 import { CommunityEmptyState } from "@/components/community/community-empty-state";
 import { CommunityFeedCard } from "@/components/community/community-feed-card";
@@ -13,61 +15,97 @@ import {
 } from "@/components/community/community-navigation";
 import { CommunityRightRail } from "@/components/community/community-right-rail";
 import { Stagger } from "@/components/motion/motion";
+import { getMemberRole } from "@/lib/authorization";
 import {
+  getCommunityAvatarVisuals,
   getCommunityFeed,
-  getCommunityPresenceProfiles,
   getCommunitySpaces,
 } from "@/lib/community";
-import { communityHref, parseCommunitySort } from "@/lib/community-query";
+import { getCommunityAnnouncements } from "@/lib/community-announcements";
+import { getCommunityGoalSummary } from "@/lib/community-goal";
+import {
+  communityHref,
+  parseCommunityKind,
+  parseCommunitySort,
+} from "@/lib/community-query";
 import { requireMemberId } from "@/lib/learning";
-import { getRecentCommunityAnnouncements } from "@/lib/notifications";
-import { getOrCreateProfile } from "@/lib/profile";
 
 const getPageCommunitySpaces = cache((memberId: string) =>
   getCommunitySpaces(memberId)
 );
+const getPageCommunityAnnouncements = cache((memberId: string) =>
+  getCommunityAnnouncements(memberId, 100)
+);
 
 const CommunityRightRailData = async ({
   memberId,
-  query,
-  sort,
-  spaceSlug,
 }: {
   readonly memberId: string;
-  readonly query?: string;
-  readonly sort: ReturnType<typeof parseCommunitySort>;
-  readonly spaceSlug?: string;
 }) => {
-  const [spaces, profile, announcements, presenceProfiles] =
-    await tracePerformance("member.route.community.secondary-data", () =>
+  const [spaces, announcements, avatars] = await tracePerformance(
+    "member.route.community.secondary-data",
+    () =>
       Promise.all([
         getPageCommunitySpaces(memberId),
-        getOrCreateProfile(memberId),
-        getRecentCommunityAnnouncements(memberId),
-        getCommunityPresenceProfiles(memberId),
+        getPageCommunityAnnouncements(memberId),
+        getCommunityAvatarVisuals(),
       ])
-    );
+  );
 
   return (
     <CommunityRightRail
-      announcements={announcements}
-      memberId={memberId}
-      presenceProfiles={presenceProfiles}
-      profile={profile}
-      query={query}
-      sort={sort}
-      spaceSlug={spaceSlug}
+      announcements={announcements
+        .filter(({ isImportant }) => !isImportant)
+        .slice(0, 3)}
+      avatars={avatars}
+      goalCard={
+        <Suspense fallback={<CommunityGoalCardFallback />}>
+          <CommunityGoalData memberId={memberId} />
+        </Suspense>
+      }
       spaces={spaces}
     />
   );
 };
 
+const CommunityGoalData = async ({
+  memberId,
+}: {
+  readonly memberId: string;
+}) => {
+  const [goal, role] = await Promise.all([
+    getCommunityGoalSummary(),
+    getMemberRole(memberId),
+  ]);
+  return (
+    <CommunityCollectiveGoalCard
+      canManage={role === "ADMIN" || role === "TEACHER"}
+      goal={goal}
+    />
+  );
+};
+
+const CommunityGoalCardFallback = () => (
+  <section
+    aria-busy="true"
+    aria-label="Carregando meta coletiva"
+    className="community-rail__block community-rail__goal rounded-xl border p-4"
+  >
+    <span className="sr-only">Carregando meta coletiva</span>
+    <div className="h-3 w-32 rounded-sm bg-muted" />
+    <div className="mt-4 h-7 w-40 rounded-sm bg-muted" />
+    <div className="mt-4 h-2 rounded-full bg-muted" />
+  </section>
+);
+
 const CommunityFeedNavigationData = async ({
+  kind,
   memberId,
   query,
   sort,
   spaceSlug,
 }: {
+  readonly kind?: ReturnType<typeof parseCommunityKind>;
   readonly memberId: string;
   readonly query?: string;
   readonly sort: ReturnType<typeof parseCommunitySort>;
@@ -76,6 +114,7 @@ const CommunityFeedNavigationData = async ({
   const spaces = await getPageCommunitySpaces(memberId);
   return (
     <CommunityFeedNavigation
+      kind={kind}
       query={query}
       sort={sort}
       spaceSlug={spaceSlug}
@@ -84,30 +123,48 @@ const CommunityFeedNavigationData = async ({
   );
 };
 
+const CommunityAnnouncementsData = async ({
+  memberId,
+}: {
+  readonly memberId: string;
+}) => {
+  const announcements = await tracePerformance(
+    "member.route.community.announcements",
+    () => getPageCommunityAnnouncements(memberId)
+  );
+  return <CommunityAnnouncementFeed initialAnnouncements={announcements} />;
+};
+
 const CommunityFeedContent = async ({
+  cursor,
   filters,
   hasDiscoveryFilters,
   memberId,
-  page,
   sort,
 }: {
-  readonly filters: { readonly q?: string; readonly space?: string };
+  readonly cursor?: string;
+  readonly filters: {
+    readonly kind?: ReturnType<typeof parseCommunityKind>;
+    readonly q?: string;
+    readonly space?: string;
+  };
   readonly hasDiscoveryFilters: boolean;
   readonly memberId: string;
-  readonly page: number;
   readonly sort: ReturnType<typeof parseCommunitySort>;
 }) => {
   const feed = await tracePerformance("member.route.community.feed", () =>
     getCommunityFeed(memberId, {
       query: filters.q,
       sort,
-      page,
+      cursor,
+      kind: filters.kind,
       spaceSlug: filters.space,
     })
   );
-  const queryString = (nextPage: number) =>
+  const queryString = (nextCursor: string | undefined) =>
     communityHref({
-      page: nextPage,
+      cursor: nextCursor,
+      kind: filters.kind,
       query: filters.q,
       sort,
       spaceSlug: filters.space,
@@ -116,37 +173,41 @@ const CommunityFeedContent = async ({
   return (
     <div data-route-content-ready="community">
       {feed.posts.length === 0 ? (
-        <CommunityEmptyState hasFilters={hasDiscoveryFilters} sort={sort} />
+        <CommunityEmptyState
+          hasFilters={hasDiscoveryFilters}
+          query={filters.q}
+          sort={sort}
+        />
       ) : (
         <Stagger className="community-feed-list">
           {feed.posts.map((post) => (
-            <CommunityFeedCard key={post.id} post={post} />
+            <CommunityFeedCard
+              key={post.id}
+              post={post}
+              returnTo={communityHref({
+                cursor,
+                kind: filters.kind,
+                query: filters.q,
+                sort,
+                spaceSlug: filters.space,
+              })}
+              variant="explore"
+            />
           ))}
         </Stagger>
       )}
-      {(feed.page > 1 || feed.hasMore) && (
+      {feed.hasMore && feed.nextCursor ? (
         <nav
           aria-label="Paginação do feed"
-          className="mt-8 flex justify-between gap-3"
+          className="mt-8 flex justify-center"
         >
-          {feed.page > 1 ? (
-            <Button asChild variant="outline">
-              <IntentLink href={queryString(feed.page - 1)}>
-                Anterior
-              </IntentLink>
-            </Button>
-          ) : (
-            <span />
-          )}
-          {feed.hasMore && (
-            <Button asChild variant="outline">
-              <IntentLink href={queryString(feed.page + 1)}>
-                Mais conteúdo <ArrowRightIcon aria-hidden="true" />
-              </IntentLink>
-            </Button>
-          )}
+          <Button asChild variant="outline">
+            <IntentLink href={queryString(feed.nextCursor)}>
+              Carregar mais publicações <ArrowRightIcon aria-hidden="true" />
+            </IntentLink>
+          </Button>
         </nav>
-      )}
+      ) : null}
     </div>
   );
 };
@@ -187,6 +248,11 @@ const CommunityRightRailFallback = () => (
     className="community-right-rail h-fit space-y-6"
   >
     <div className="community-rail__block space-y-3">
+      <span className="sr-only">Carregando meta coletiva</span>
+      <div className="h-3 w-32 rounded-sm bg-muted" />
+      <div className="h-12 w-full rounded-sm bg-muted" />
+    </div>
+    <div className="community-rail__block space-y-3">
       <span className="sr-only">Carregando contexto da comunidade</span>
       <div className="h-3 w-32 animate-pulse rounded-sm bg-muted" />
       <div className="h-12 w-full animate-pulse rounded-sm bg-muted" />
@@ -201,9 +267,10 @@ const CommunityRightRailFallback = () => (
 
 interface CommunityPageProperties {
   readonly searchParams: Promise<{
+    cursor?: string;
     q?: string;
     sort?: string;
-    page?: string;
+    tipo?: string;
     space?: string;
   }>;
 }
@@ -214,9 +281,9 @@ const CommunityPage = async ({ searchParams }: CommunityPageProperties) => {
     requireMemberId(),
   ]);
   const sort = parseCommunitySort(filters.sort);
-  const page = Number.parseInt(filters.page ?? "1", 10);
+  const kind = parseCommunityKind(filters.tipo);
   const hasDiscoveryFilters = Boolean(
-    filters.q || filters.space || sort !== "recent"
+    filters.q || kind || filters.space || sort !== "recent"
   );
 
   return (
@@ -225,34 +292,32 @@ const CommunityPage = async ({ searchParams }: CommunityPageProperties) => {
         className="community-shell mx-auto w-full"
         data-route-structure-ready="community"
       >
-        <CommunityHero />
-        <div className="community-content-grid">
-          <div className="community-discovery-toolbar">
-            <CommunityNavigation active="explore" />
-            <Suspense
-              fallback={
-                <div aria-busy="true" className="community-feed-nav">
-                  <span className="sr-only">Carregando filtros</span>
-                  <span className="community-filter-placeholder" />
-                  <span className="community-filter-placeholder" />
-                </div>
-              }
-            >
-              <CommunityFeedNavigationData
-                memberId={memberId}
-                query={filters.q}
-                sort={sort}
-                spaceSlug={filters.space}
-              />
-            </Suspense>
-          </div>
-          <Suspense fallback={<CommunityRightRailFallback />}>
-            <CommunityRightRailData
+        <CommunityNavigation active="explore" />
+        <div className="community-content-grid community-content-grid--explore">
+          <CommunityHero />
+          <Suspense
+            fallback={
+              <div aria-busy="true" className="community-feed-nav">
+                <span className="sr-only">Carregando filtros</span>
+                {[0, 1, 2, 3].map((item) => (
+                  <span className="community-filter-placeholder" key={item} />
+                ))}
+              </div>
+            }
+          >
+            <CommunityFeedNavigationData
+              kind={kind}
               memberId={memberId}
               query={filters.q}
               sort={sort}
               spaceSlug={filters.space}
             />
+          </Suspense>
+          <Suspense fallback={null}>
+            <CommunityAnnouncementsData memberId={memberId} />
+          </Suspense>
+          <Suspense fallback={<CommunityRightRailFallback />}>
+            <CommunityRightRailData memberId={memberId} />
           </Suspense>
           <Suspense fallback={<CommunityComposerFallback />}>
             <CommunityComposerPrompt memberId={memberId} />
@@ -263,10 +328,10 @@ const CommunityPage = async ({ searchParams }: CommunityPageProperties) => {
           >
             <Suspense fallback={<CommunityFeedFallback />}>
               <CommunityFeedContent
-                filters={{ q: filters.q, space: filters.space }}
+                cursor={filters.cursor}
+                filters={{ kind, q: filters.q, space: filters.space }}
                 hasDiscoveryFilters={hasDiscoveryFilters}
                 memberId={memberId}
-                page={page}
                 sort={sort}
               />
             </Suspense>

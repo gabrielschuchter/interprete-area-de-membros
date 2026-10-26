@@ -27,6 +27,7 @@ const publishDraft = async (
 };
 
 interface CommunityPublishDraftButtonProperties {
+  readonly buttonLabel?: string;
   readonly confirmGroupMention?: boolean;
   readonly editHref: string;
   readonly postId: string;
@@ -34,6 +35,7 @@ interface CommunityPublishDraftButtonProperties {
 }
 
 export const CommunityPublishDraftButton = ({
+  buttonLabel = "Publicar",
   confirmGroupMention = false,
   editHref,
   postId,
@@ -56,7 +58,7 @@ export const CommunityPublishDraftButton = ({
           value={confirmGroupMention ? "1" : "0"}
         />
         <SingleFlightSubmit size="sm">
-          {isPending ? "Publicando…" : "Publicar"}
+          {isPending ? "Salvando…" : buttonLabel}
         </SingleFlightSubmit>
       </SingleFlightForm>
       {!state.ok && (

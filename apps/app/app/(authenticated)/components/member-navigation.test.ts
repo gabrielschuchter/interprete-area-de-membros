@@ -59,7 +59,9 @@ describe("member navigation transition contract", () => {
   it("maps the twelve links to eleven real destinations and their section side", () => {
     expect(Object.keys(portalShortcutPaths)).toHaveLength(11);
     expect(portalSideForPath("/encontros/gravacoes")).toBe("comunidade");
-    expect(portalSideForPath("/comunidade/meus-topicos")).toBe("comunidade");
+    expect(portalSideForPath("/comunidade/minhas-publicacoes")).toBe(
+      "comunidade"
+    );
     expect(portalSideForPath("/planejamento")).toBe("estudar");
   });
 

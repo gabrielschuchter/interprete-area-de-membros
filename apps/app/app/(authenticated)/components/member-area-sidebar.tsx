@@ -194,7 +194,7 @@ const MemberAreaSidebarView = ({
     "/admin",
     "/perfil",
     "/configuracoes",
-    "/comunidade/meus-topicos",
+    "/comunidade/minhas-publicacoes",
     "/encontros/gravacoes",
   ];
   const isActivePath = (href: string) =>
@@ -408,7 +408,7 @@ const MemberAreaSidebarView = ({
                 className="h-12 rounded-sm px-2"
                 isActive={
                   isActivePath("/perfil") ||
-                  pathname.startsWith("/comunidade/meus-topicos")
+                  pathname.startsWith("/comunidade/minhas-publicacoes")
                 }
                 tooltip={displayName}
               >

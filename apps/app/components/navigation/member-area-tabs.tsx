@@ -29,8 +29,18 @@ const studyAreas = [
 ] as const;
 
 const communityAreas = [
-  { href: "/comunidade", label: "Publicações" },
-  { href: "/encontros", label: "Encontros" },
+  { href: "/comunidade", label: "Explorar" },
+  { href: "/comunidade/grupos", label: "Grupos de estudo" },
+  { href: "/comunidade/encontros", label: "Encontros" },
+  { href: "/comunidade/salvos", label: "Salvos" },
+  { href: "/comunidade/minhas-publicacoes", label: "Minhas publicações" },
+] as const;
+
+const communityLocalNavigationPaths = [
+  "/comunidade/grupos",
+  "/comunidade/encontros",
+  "/comunidade/salvos",
+  "/comunidade/minhas-publicacoes",
 ] as const;
 
 const matchesPath = (pathname: string, href: string) =>
@@ -126,12 +136,16 @@ export const MemberAreaTabs = () => {
   const isStudyPath = studyAreas.some((area) =>
     matchesPath(pathname, area.href)
   );
+  const hasCommunityLocalNavigation =
+    communityLocalNavigationPaths.some(
+      (path) => pathname === path || pathname.startsWith(`${path}/`)
+    ) || pathname === "/comunidade";
   const isCommunityPath =
     (pathname === "/comunidade" ||
       pathname.startsWith("/comunidade/") ||
       pathname === "/encontros" ||
       pathname.startsWith("/encontros/")) &&
-    pathname !== "/comunidade/salvos" &&
+    !hasCommunityLocalNavigation &&
     pathname !== "/comunidade/meus-topicos" &&
     !pathname.startsWith("/encontros/gravacoes");
   const areas = navigationAreasForPath(isStudyPath, isCommunityPath);
@@ -140,8 +154,12 @@ export const MemberAreaTabs = () => {
     return null;
   }
 
-  const activeArea =
-    areas.find((area) => matchesPath(pathname, area.href)) ?? areas[0];
+  const activeArea = pathname.startsWith("/encontros/")
+    ? communityAreas[2]
+    : (areas
+        .filter((area) => matchesPath(pathname, area.href))
+        .sort((left, right) => right.href.length - left.href.length)[0] ??
+      areas[0]);
   const sectionLabel = isStudyPath ? "Estudar" : "Comunidade";
 
   return (

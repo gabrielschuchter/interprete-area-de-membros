@@ -1,0 +1,41 @@
+{
+  "observedAt": "2026-10-24T09:52:00Z",
+  "source": "Authenticated Vercel Request Logs UI",
+  "request": {
+    "startedAt": "2026-10-24T09:26:08.636Z",
+    "method": "POST",
+    "path": "/cron/outbox",
+    "host": "interprete-area-de-membro-git-afba70-gabrielschuchters-projects.vercel.app",
+    "requestId": "b7pbr-1792833968636-365bbec50c9e",
+    "status": 401,
+    "firewall": "Allowed",
+    "middlewareStatus": 200,
+    "functionRoute": "/cron/outbox",
+    "functionDurationSeconds": 1.51,
+    "totalDurationSeconds": 4.4,
+    "deploymentId": "dpl_BLNMNrdxd5ZjVjUUsRGUA5GGRwKr",
+    "environment": "preview",
+    "branch": "codex/comunidade-v2"
+  },
+  "workflow": {
+    "runId": 40068889714,
+    "attempt": 2,
+    "purpose": "Diagnostic rerun from prior session; not periodic recovery proof",
+    "oidcChecks": "all nine true",
+    "curlExit": 22,
+    "httpStatus": 401
+  },
+  "conclusion": "Deployment Protection accepted the request: middleware and application function executed. The deployed route returns 401 only when the exact Bearer comparison against CRON_SECRET fails. Required fix is Preview credential synchronization, not a Trusted Source relaxation.",
+  "trustedSource": {
+    "inspectedAt": "2026-10-24T09:49:00Z",
+    "target": "API preview only",
+    "issuer": "https://token.actions.githubusercontent.com",
+    "checks": "aud, repository, immutable sub, ref main, event schedule, workflow_ref and environment match workflow requirements",
+    "changed": false
+  },
+  "secretsExposed": false,
+  "productionChanged": false,
+  "greenWritten": false,
+  "automaticRecoveryProven": false,
+  "broadcastBadgeProven": false
+}

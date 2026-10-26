@@ -1,13 +1,9 @@
 "use server";
 
-import {
-  AnnouncementAudience,
-  ContentStatus,
-  database,
-  MemberRole,
-} from "@repo/database";
+import { AnnouncementAudience, ContentStatus, database } from "@repo/database";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { queueAnnouncementNotifications } from "@/lib/announcement-notification-outbox";
 import { resolveCohortStudents } from "@/lib/gestao-assignments";
 import { recordAuditEvent } from "@/lib/gestao-audit";
 import {
@@ -23,7 +19,7 @@ import {
 } from "@/lib/gestao-notices-domain";
 import { getLearningAssignmentRecipientScope } from "@/lib/learning-assignment-scope";
 import { consumeMutationRateLimit } from "@/lib/mutation-reliability";
-import { notifyAnnouncement } from "@/lib/notifications";
+import { dispatchPendingNotifications } from "@/lib/notification-outbox-dispatch";
 
 export interface GestaoNoticeFormState {
   readonly error: string | null;
@@ -132,39 +128,20 @@ const resolveAudience = async (
   return { error: "Escolha quem vai ver o aviso.", ok: false };
 };
 
-interface DispatchInput {
-  readonly audience: AnnouncementAudience;
-  readonly body: string;
-  readonly href: string | null;
-  readonly id: string;
-  readonly recipientIds: readonly string[];
-  readonly title: string;
-}
-
-const dispatchNotice = async (notice: DispatchInput, actorId: string) => {
-  let audienceWhere: Record<string, unknown> = {};
-  if (notice.audience === AnnouncementAudience.STAFF) {
-    audienceWhere = { role: { in: [MemberRole.TEACHER, MemberRole.ADMIN] } };
-  } else if (notice.audience === AnnouncementAudience.SELECTED) {
-    audienceWhere = { id: { in: [...notice.recipientIds] } };
-  }
-  const recipients = await database.member.findMany({
-    where: { deactivatedAt: null, id: { not: actorId }, ...audienceWhere },
-    select: { id: true },
-    take: 10_000,
+/** Enfileira as notificações pelo mesmo caminho do restante da Comunidade. */
+const dispatchNotice = async (id: string, actorId: string) => {
+  await database.$transaction(async (transaction) => {
+    const announcement = await transaction.announcement.findUniqueOrThrow({
+      where: { id },
+    });
+    await queueAnnouncementNotifications(
+      transaction,
+      announcement,
+      [],
+      actorId
+    );
   });
-  await Promise.all(
-    recipients.map(({ id }) =>
-      notifyAnnouncement({
-        actorId,
-        announcementId: notice.id,
-        body: notice.body,
-        href: notice.href ?? "/comunidade",
-        recipientId: id,
-        title: notice.title,
-      })
-    )
-  );
+  await dispatchPendingNotifications();
 };
 
 const startsNow = (startsAt: Date | null, now: Date) =>
@@ -337,6 +314,11 @@ const writeNotice = async ({
   actorId,
 }: PersistInput) => {
   const published = status === ContentStatus.PUBLISHED;
+  if (existing && !locked) {
+    await database.announcementCohort.deleteMany({
+      where: { announcementId: id },
+    });
+  }
   if (!existing) {
     return await database.announcement.create({
       data: {
@@ -370,7 +352,7 @@ const writeNotice = async ({
 
 /** Grava o aviso, registra a auditoria e entrega as notificações devidas. */
 const persistNotice = async (input: PersistInput) => {
-  const { actorId, audience, draft, existing, locked, now, status } = input;
+  const { actorId, audience, draft, existing, locked, status } = input;
   const saved = await writeNotice(input);
   if (!locked) {
     await recordNoticeAudience(
@@ -395,21 +377,8 @@ const persistNotice = async (input: PersistInput) => {
         title: draft.title,
       },
     });
-  } else if (
-    status === ContentStatus.PUBLISHED &&
-    startsNow(draft.period.startsAt, now)
-  ) {
-    await dispatchNotice(
-      {
-        audience: audience.audience,
-        body: draft.body,
-        href: draft.href,
-        id: saved.id,
-        recipientIds: audience.recipientIds,
-        title: draft.title,
-      },
-      actorId
-    );
+  } else if (status === ContentStatus.PUBLISHED) {
+    await dispatchNotice(saved.id, actorId);
   }
   return saved;
 };
@@ -596,8 +565,8 @@ export const setGestaoNoticeState = async (formData: FormData) => {
     memberId: actor.userId,
   });
   await database.announcement.update({ where: { id }, data: change });
-  if (operation === "publish" && startsNow(notice.startsAt, now)) {
-    await dispatchNotice({ ...notice, id }, actor.userId);
+  if (operation === "publish") {
+    await dispatchNotice(id, actor.userId);
   }
   await recordAuditEvent({
     actorId: actor.userId,

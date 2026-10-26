@@ -139,8 +139,9 @@ const hasResourceAccess = async (
           status: ContentStatus.PUBLISHED,
           deletedAt: null,
           OR: [
-            { spaceId: null },
+            { audienceScope: "GLOBAL" },
             {
+              audienceScope: "GROUP",
               space: {
                 is: {
                   status: ContentStatus.PUBLISHED,

@@ -37,8 +37,9 @@ describe("community space rules", () => {
     expect(communitySpaceAudienceWhere("teacher-1", true)).toEqual({});
     expect(communityPostAudienceWhere("member-1")).toEqual({
       OR: [
-        { spaceId: null },
+        { audienceScope: "GLOBAL" },
         {
+          audienceScope: "GROUP",
           space: {
             is: {
               status: "PUBLISHED",
@@ -64,8 +65,9 @@ describe("community space rules", () => {
     expect(communitySpaceMemberAudienceWhere("teacher-1", true)).toEqual({});
     expect(communityPostMutationAudienceWhere("member-1")).toEqual({
       OR: [
-        { spaceId: null },
+        { audienceScope: "GLOBAL" },
         {
+          audienceScope: "GROUP",
           space: {
             is: {
               status: "PUBLISHED",

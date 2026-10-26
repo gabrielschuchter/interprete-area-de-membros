@@ -1,0 +1,378 @@
+# Comunidade V2 — estado para continuidade
+
+## Publicado em Production — 26/10/2026, 15:48 UTC
+
+Comunidade V2 está liberada nos domínios públicos. App:
+https://interprete-area-de-membros.vercel.app
+(deployment dpl_5T61v53srxCJnkc9ffC29W3jzB1x, SHA
+1c57191542316654cc3b2da1f21e3f5474529408). API:
+https://interprete-area-de-membros-api.vercel.app
+(deployment dpl_5975utnkeZVCrQXyXUEAyk7UUNRW, SHA
+660595b1a83a0fec343207a35dcf09256709499a). Ambos READY/Production; API
+/health respondeu OK. Manutenção removida dos aliases públicos; o host guard
+v5 ainda nega hosts fora da lista compatível. Trusted Source de QA restaurada
+ao baseline, Clerk/SSO/RLS mantidos, Git da Vercel continua desconectado.
+
+O smoke de quatro atores comprovou autorização por papel, grupo privado, bloqueio a membro sem acesso, persistência da publicação e arquivamento ([componentes](evidence/production-smoke-20261026.json)). A reconciliação final encontrou zero avisos QA ativos ([cleanup](evidence/production-qa-cleanup-reconciliation-20261026.json)).
+
+Smoke autenticado no domínio público sem bypass passou: comunidade, grupos,
+salvos, resumo no-store, identidade do token Realtime e inscrição no canal
+privado. O scheduler interprete-member-outbox está ativo a cada cinco minutos;
+jobs QA foram recuperados automaticamente e a notificação ficou isolada ao
+destinatário. A ação de publicação no Admin também atualizou o badge em tempo
+real e o estado sobreviveu ao reload. Evidências: [smoke público autenticado](evidence/production-public-auth-smoke-20261026.json),
+[recovery automática](evidence/production-scheduler-realtime-repro-20261026.json),
+[teste de badge](evidence/production-realtime-badge-probe-20261026.json).
+
+13/13 migrations V2, 78 entradas no ledger, backup T0 e fallback compatível
+validados. Os dois posts legados ambíguos continuam UNRESOLVED e privados.
+Quatro atores QA foram desativados e seus perfis continuam ocultos ([evidência](evidence/production-qa-retirement-20261026.json)). Os três ciclos do cron
+de 15:35, 15:40 e 15:45 UTC passaram; não houve 5xx nem logs de erro em App/API
+na observação inicial de 15 minutos. [Estado consolidado](evidence/production-release-20261026.json).
+Detalhes e limites em [RELEASE-REPORT.md](RELEASE-REPORT.md).
+
+## Checkpoint anterior à promoção — 26/10/2026, 10:44 UTC
+
+Manutenção WAF ativa em App e API; aliases públicos e deployments antigos
+retornam 403 mesmo com OIDC autorizado. **Não reabrir esses leitores após a
+migração.** Runtime candidato `660595b1a83a0fec343207a35dcf09256709499a`;
+Production App `dpl_6sUFnu82hfq4jubt3QJDnupyMQKo`, API
+`dpl_5975utnkeZVCrQXyXUEAyk7UUNRW`. Fallback App
+`dpl_5LHrSMJxaL6uPJra2HnvkgcTrwt3`, API
+`dpl_GhbzsKSyBc4jTX6JtSM9Yka5NyAm`. Todos READY, sem domínios atribuídos.
+GREEN tem 78 migrations completas desde 10:54 UTC, sem drift ou pendências.
+T0 coordenado de 10:50 UTC restaurado e validado no alvo novo
+`interprete-community-t0-20261026`, portas loopback 54451/54452. Posts legados
+ambíguos continuam UNRESOLVED, grants de Notification revogados e RLS preservado.
+O Preview App selecionado também está permitido para QA pela WAF; o App público
+e os leitores antigos continuam bloqueados. Próximo gate: recovery automático
+e smoke autenticado remoto, antes de abrir o tráfego público.
+Helpers e recibos privados estão em
+`%LOCALAPPDATA%/Codex/qa/community-v2-t0-20261026`. O relatório e a
+[evidência de manutenção](evidence/maintenance-20261026.json) prevalecem sobre
+os checkpoints históricos abaixo. Não reiniciar QA geral ou RV-01.
+
+## Estado vigente — 24/10/2026
+
+**Release NO-GO; nenhum go-live foi iniciado.** O contrato OIDC do workflow e
+da Trusted Source da API Preview foi alinhado ao subject imutável efetivo e
+integrado em `main` pelo PR #17, commit `1586ed53240dd533dd3a38bc244ed49cfabf31ae`.
+Issuer, audience, repositório, branch, workflow e ambiente foram mantidos.
+App e API continuam sem conexão Git na Vercel.
+
+OPS-01 permanece bloqueado: até a consulta de `02:52Z`, não havia schedule
+real com o commit novo. Não foi iniciado job QA nem usado dispatch, rerun ou
+POST manual. Recovery por scheduler, isolamento, Broadcast/Realtime e badge
+persistido seguem sem prova. Proveniência de dados, grants, recuperação
+independente de backup, compatibilidade e smoke remoto também impedem a Etapa
+12B. Consulte [RELEASE-REPORT.md](RELEASE-REPORT.md) e [OPS-01.md](OPS-01.md).
+
+As seções abaixo são históricas onde divergirem deste estado. Não reabrir
+RV-01, QA visual ou E2E geral sem regressão concreta.
+
+## OPS-01 — ativação condicional do PR #16 — 23/10/2026
+
+**OPS-01 BLOQUEADO; divergência de subject OIDC comprovada.** O patch exclusivo do
+[PR #16](https://github.com/gabrielschuchter/interprete-area-de-membros/pull/16)
+foi integrado em main: `b5a2f06`, 20:19:37 UTC. Antes do merge, App e API foram
+desconectados do Git e a proteção foi confirmada por reload no painel.
+Production manteve os mesmos deployments, SHAs e aliases; nenhum deployment
+do merge foi observado. **Git permanece desconectado nos dois projetos.**
+Reconectar exige handoff controlado para evitar publicação.
+
+Diagnóstico encerrado: primeiro schedule com o patch, run
+[`40036220515`](https://github.com/gabrielschuchter/interprete-area-de-membros/actions/runs/40036220515),
+23/10 às 22:51 UTC, falhou em `oidc_claims`: `sub=false`, demais oito checks
+`true`. Repositório usa subject imutável com prefixo
+`repo:gabrielschuchter@291341266/interprete-area-de-membros@1386145986`;
+guard e Trusted Source Preview inspecionada esperam o formato sem IDs.
+O request Preview não foi alcançado; não há status HTTP desse run.
+
+Próxima ação requer autorização para alinhar o `sub` da regra Trusted Source
+somente Preview da API e do guard diagnóstico ao subject imutável, mantendo
+todas as demais restrições. Nenhuma política foi alterada. Acompanhamento
+`ops-01-pr-ximo-schedule-ap-s-pr-16` excluído após o diagnóstico.
+
+Não houve job QA novo, chamada manual, prova de recovery/Broadcast/badge,
+migration ou mudança de credencial, autenticação ou cron GREEN.
+Detalhes, proteção e evidências em [OPS-01.md](OPS-01.md).
+Os registros abaixo são históricos onde divergirem desta ativação.
+
+## Etapa 12A encerrada — NO-GO — 23/10/2026
+
+Preflight do candidato `4e026b59eb99521ed1c6b94c8444a52049d317c6` concluído.
+**Publicação 12B não iniciada.** O estado vigente e a sequência condicional estão
+em [RELEASE-PLAN.md](RELEASE-PLAN.md); as seções anteriores abaixo são históricas
+onde divergirem deste fechamento. RV-01 está encerrado no QA local conforme
+[POST-AUDIT-CLOSURE.md](POST-AUDIT-CLOSURE.md), sem nova rechecagem nesta etapa.
+
+- OPS-01: 48 schedules com falha, zero sucesso; cron GREEN inalterado e
+  respostas HTTP 200 do caminho atual não comprovam recovery/Broadcast V2.
+- GREEN: 65 migrations sem drift; 11 V2 pendentes. Convites pendentes e
+  conflitos de pin: zero. Há 28 posts sem grupo, incluindo dois publicados
+  que ficariam UNRESOLVED; exigem tratamento de proveniência/aceite explícito.
+- Notification ainda concede SELECT a authenticated. Migration/revogação e
+  smoke JWT/Realtime dependem da janela autorizada; nenhuma escrita remota.
+- Novos backups protegidos de banco e quatro objetos Storage foram gerados
+  e reabertos. Portabilidade de chave, reidratação Storage e fallback compatível
+  ainda precisam de prova; restauração histórica local foi reaproveitada.
+- Vercel gestão: 403; configuração efetiva/Trusted Source/Clerk atual não
+  confirmados. App/API/crawler anônimo recebem 302 SSO, sem bypass. Performance
+  remota autenticada depende da V2 migrada e permanece sem prova representativa.
+
+Nenhum deploy Production, migration, alteração de cron, credencial ou proteção.
+Spec preexistente `community-groups.spec.ts` preservado, hash Git
+`43bb75e8482c3638840cbfa760a91e01927ed770`, fora dos commits.
+Retomar somente os bloqueadores e provas faltantes do RELEASE-PLAN; não reabrir
+QA visual, RV-01 ou auditoria geral. Não iniciar publicação enquanto NO-GO.
+
+## Fechamento cirúrgico de RV-01 — 23/10/2026
+
+**RV-01 encerrado no QA local migrado; release continua NO-GO.** A reprodução
+original da fixture `qa-rv01-1792773100683` passou sem alteração do reproducer:
+`visible=false`, zero itens. O endpoint HTTP real excluiu a mesma notificação
+em MENTIONS/ALL; contagens e resumo coincidiram com os itens visíveis.
+A migration `20261023140000_notification_audience_reconcile` aplicada no QA
+teve checksum conferido; seu teste passou 3/3. Migration, teste e evidências
+integram o patch seletivo posterior ao fechamento documental `93f053c`.
+
+Evidências e limites: [POST-AUDIT-CLOSURE.md](POST-AUDIT-CLOSURE.md).
+Nenhuma suíte integrada, build geral, Graphify ou alteração remota foi executada.
+OPS-01 e os demais gates de infraestrutura continuam na Etapa 12A, não iniciada.
+Os registros abaixo são históricos e supersedidos por este fechamento.
+
+## Estado atual — correções pós-auditoria — 23/10/2026
+
+**Candidato publicado:** `80f6c1341acea4a56830d4091cc10e904e1cbbcc` em
+`origin/codex/comunidade-v2`. O commit adiciona audiência persistida aos posts,
+impede exclusão física de grupos com posts e aplica fail-closed a posts legados
+sem origem comprovável.
+
+**Bloqueadores de código:** RV-01 (notificações privadas após revogação) e
+RV-06 (post privado destacado de grupo e reclassificado como global) estão
+corrigidos no candidato e enviados para rechecagem adversarial independente no
+thread da Etapa 11. A rechecagem do SHA `80f6c13` está em andamento.
+
+**RV-06 antes/depois:** a reprodução em tabelas temporárias reproduziu
+`ON DELETE SET NULL`: antes da exclusão, 0 posts entravam no filtro global;
+depois, o corpo `CONTEUDO PRIVADO` passou a ser retornado. Após a correção,
+excluir fisicamente um grupo com post foi rejeitado e o post permaneceu com
+`audienceScope=GROUP` e o mesmo `spaceId` (E2E 1/1). Posts legados com FK nula
+permanecem armazenados como `UNRESOLVED` e invisíveis até proveniência ser
+confirmada; não foram promovidos por suposição.
+
+**Validação:** testes unitários direcionados de produtor/regras e consumer:
+24/24; shares E2E 8/8, incluindo a regressão de exclusão; QA integrado
+`8fd64ff585134fd8aab62c725bc7a827`: 21/22. A única falha foi a preparação da
+meta coletiva por nove sessões QA residuais de uma execução interrompida. A
+suíte focada `c681476924c84337ae2c7803a32e7779` passou 5/5; os nove IDs,
+membros e `endedAt` originais foram restaurados e comparados ao snapshot
+protegido. Não declarar o integrado 22/22.
+
+**Seis gates:** `check` 1.058; `typecheck` 16/16; `boundaries` 986/19;
+`test` scripts 32 pass/1 skip, App 853/177, API 14/14 e domínio 24/24;
+`build` 8/8 (aviso não fatal de IO do Turbo e warnings de assets Storybook);
+`performance:check` 26 rotas abaixo de 225 KiB gzip, Comunidade 216,2 KiB.
+`graphify update .`: 8.440 nós, 22.124 arestas e 358 comunidades.
+
+**Parecer:** **NO-GO para release** até a rechecagem adversarial e os gates
+externos RV-02/OPS-01, RV-03/rollback, RV-04/dados legados, RV-05/performance
+autenticada e confirmação remota de grants/RLS, Storage, Clerk/Supabase,
+crawler Preview e Broadcast/Realtime. Esse trabalho não autoriza nem inicia a
+Etapa 12. Nenhuma migration remota, publicação ou alteração de produção ocorreu.
+PostgreSQL QA foi o loopback isolado `127.0.0.1:54325`, TLS `verify-full`,
+75 migrations/zero pendentes.
+
+**Integridade:** `apps/app/e2e/community-v2/community-groups.spec.ts` permanece
+fora do commit, hash `43bb75e8482c3638840cbfa760a91e01927ed770`.
+
+## Histórico — candidato `a20b28d` supersedido
+
+**Código:** `a20b28d2d0854c82d543048cc66fb5d81981ea1a`, na branch
+`codex/comunidade-v2`. Migration complementar fail-closed, inserts legados,
+grupos excluídos e consumer corrigidos. Seis gates aprovados nesta conversa:
+check 1.058; typecheck 16/16; boundaries 986/19; App 852/177 e API 13/3;
+build 8/8; performance:check aprovado.
+
+Os seis gates validaram `4296978`; o único delta posterior é a remoção de um
+escape literal inválido da primeira migration. Ambas as migrations passaram
+depois no ensaio SQL completo em tabelas temporárias e transação revertida.
+Runtime, testes, schema Prisma e bundle são idênticos aos dos gates.
+
+**Validação final:** harness SQL/consumer real passou no PostgreSQL QA isolado,
+incluindo ambas as ordens de entrega/remoção concorrente e replay idempotente.
+QA final concluído: integrado `6543bd9d` com 20/21; a falha inicial da meta
+era fixture residual da execução interrompida. Após isolar somente essas
+fixtures, o reteste `ad6e6f88` passou 5/5; os nove endedAt originais foram
+restaurados e conferidos. Sem mudança de produto ou asserções. Rechecagem
+independente do SHA final pendente.
+O spec protegido mantém o hash `43bb75e8482c3638840cbfa760a91e01927ed770`.
+
+**Decisão:** correções ainda em fechamento. Release permanece NO-GO até os
+gates operacionais/remotos. RV-02–RV-05 e as provas remotas pertencem ao
+preflight 12A; não são declaração de regressão nova de código. O requisito de
+compatibilidade impede servir leitores/workers antigos durante rollout ou
+rollback. Detalhes e evidências: [POST-AUDIT-HANDOFF.md](./POST-AUDIT-HANDOFF.md).
+Nenhuma tarefa de 12A, migration remota ou publicação foi executada.
+
+Os checkpoints abaixo são históricos e são supersedidos por este estado.
+
+## Registro histórico — correção inicial de RV-01 em `53d4ae5`
+
+- **Estado:** correção de RV-01 commitada e enviada para `origin/codex/comunidade-v2`, SHA `53d4ae5c017eab9e7ed3136483dac3ecd4e79e08`. Rechecagem adversarial independente solicitada na conversa da Etapa 11; aguardando resposta.
+- **P1 RV-01:** escopo da notificação comunitária, backfill fail-closed, grants da Data API, filtro compartilhado de lista/resumo/contagem/mutações e revalidação do outbox corrigidos. A regressão PostgreSQL/API `77452eea0cdd45a6976aed3d67a54076` passou 1/1; o E2E integrado final `ea0e06a4ffd4408bbd4cfe324bc458ac` passou 21/21 em 17 min 58 s. A linha e o conteúdo privado continuam persistidos no banco após a revogação, mas desaparecem da API e das contagens.
+- **Seis gates do código candidato:** `check` 1.057; `typecheck` 16/16; `boundaries` 985/19; testes scripts 32 pass/1 skip, App 848/176, API 11/3, domínio 24/5; `build` 8/8; `performance:check` 216,2/225 KiB gzip. Build terminou com sucesso com aviso de IO do Turbo; `graphify update .` 8.420 nós/22.098 arestas/353 comunidades.
+- **QA local pós-run:** PostgreSQL isolado `127.0.0.1:54325`, TLS `verify-full`, 73 migrations/zero pendentes; migration de audiência aplicada localmente; Notification com RLS ativo e sem grant `SELECT` para `anon`/`authenticated`; trigger de broadcast restaurado ao estado original `D`. Nenhuma migration remota foi executada.
+- **Parecer:** **NO-GO para release** enquanto a rechecagem estiver pendente e RV-02 (OPS-01), RV-03 (rollback de enums), RV-04 (preflight dos convites legados), RV-05 (performance autenticada/mobile) e a confirmação remota dos grants/RLS permanecerem sem evidência. Storage remoto, crawler de Preview, Clerk/Supabase remoto e Broadcast/Realtime também não foram exercitados nesta etapa.
+- **Integridade:** spec protegido `apps/app/e2e/community-v2/community-groups.spec.ts` fora do commit e com hash `43bb75e8482c3638840cbfa760a91e01927ed770`. Nenhuma publicação, alteração de ambiente produtivo ou início da Etapa 12.
+
+## Etapa 10 — QA integrado e refinamento final — 23/10/2026
+
+- **Veredito:** **ETAPA 10 APROVADA EM QA LOCAL** para SHA validado `f4ada2616f23a48b3f17bdeb4bc90eb568d3cbfa`; não é aprovação de release remoto. A matriz A–G e os limites por board estão em [QA-MATRIX.md](./QA-MATRIX.md).
+- **E2E integrado:** run final `10a78facb659419bbee6205adbd1aaf5`, 20/20 em 21,9 min. PostgreSQL QA existente `interprete_community_v2_qa` em `127.0.0.1:54325`, TLS verificado, 72 migrations/zero pendentes; Clerk Development e Storage QA em 54322. Cluster mantido. O runner restaurou o trigger local de Notification ao estado `D`.
+- **Focados:** convites 6/6 (`6d5a84fc615641a29a281186b6d1e172`), share 8/8 (`32e784a832244e7780e12d7ef59ec332`) e visual 3/3 (`ad987cea7e824e63aa7ad3ff3bc3d834`). Isolamento dos contadores de rate limit foi exercitado com a função real e duas identidades QA; incrementos 5/3 foram independentes e o snapshot original foi restaurado.
+- **Visual:** os 53 HTMLs oficiais e fontes originais foram conferidos: 44 boards visuais, 46 pares (estados duplos 13/51) e 9 lógicos sem telas inventadas. Os boards 23, 36, 46 e 47 têm comparações atuais do run final no diretório `C:\Users\gabsc\AppData\Local\Codex\qa\community-v2-foundation-20261015\playwright\official-html-comparison\stage10-final-current-20261023-10a78fac`; as demais evidências permanecem listadas na matriz.
+- **Seis gates:** `check` 1.056; `typecheck` 16/16; `boundaries` 984/19; `test` scripts 32 pass/1 skip, App 845/175, API 9/3, domínio 24/5; `build` 8/8 com cache Turbo temporário; `performance:check` Comunidade 216,2 KiB gzip/225 KiB. Graphify foi atualizado no SHA validado: 8.392 nós, 22.048 links e 356 comunidades; 74 arquivos SQL não foram extraídos por falta de `tree_sitter_sql`. Warnings de assets Storybook, `ECONNRESET`/`aborted`, `destination stream closed early` e listeners Gzip foram registrados como não bloqueadores sem reprodução de falha.
+- **Gates externos:** Storage/capas remotos, crawler contra Preview protegido, Broadcast/Realtime e recuperação periódica/OPS-01, Web Vitals reais e teclado em aparelho físico continuam sem prova. Nenhuma escrita/migration remota, em GREEN, BLUE ou Production; cron, credenciais e proteções Vercel não foram alteradas.
+- **Integridade:** os hashes de `actions.ts`, `community-groups-db.ts` e `community-groups.spec.ts` seguem preservados; o diff local anterior do spec permanece fora do staging. Etapas 02–09 seguem fechadas. Etapa 11 não foi iniciada.
+
+## Etapa 09 — Meta coletiva e avatares — 22/10/2026
+
+- **Estado:** funcional implementada e validada no QA local; pronta para a Etapa 10. Meta opcional usa `StudyCampaign`, `StudyTrackingSession`, `StudyActivityInterval` e `FocusTimerSession` existentes. Snapshots de período são persistidos; renovação manual e automática usa lock transacional e concorrência coberta.
+- **Commit funcional:** `7e0936c` (`feat(comunidade): adicionar meta coletiva e avatares`), na branch `codex/comunidade-v2`; staging seletivo manteve fora os três arquivos preexistentes protegidos.
+- **Cálculo:** somente sessões-fonte fechadas e intervalos persistidos/elegíveis entram no total. Sobreposições são unidas por membro antes da agregação e os intervalos são limitados ao período. Intervalos de 30 s contam quando a sessão-fonte elegível soma mais de 60 s; não há limite de 60 s por intervalo.
+- **Privacidade/UI:** estados sem meta, sem registros, ativa, programada e encerrada; período e fontes elegíveis ficam explícitos. Avatares são decorativos e sem presença/contagem; a preferência `Profile.showInCommunityAvatars` é aplicada na consulta. A rotação para com a aba oculta. A decisão aprovada de não implementar `prefers-reduced-motion` foi preservada. Gestão está em `/comunidade/meta`, fora do bundle de entrada.
+- **E2E focado:** runner `goal` passou 5/5 em `2026-10-22`, run `7899f86041154902b3fc416885c10189`, com PostgreSQL QA loopback `interprete_community_v2_qa` e Clerk Development. Cobriu sessões sobrepostas, duas fontes reais, 30 s em sessão elegível, sessões-fonte de 59/60/61 s, bordas do período, snapshot, renovação manual/automática, concorrência, ausência de dados, permissões, opt-out e larguras 390/820/1280 px. Capturas e traces: `C:\Users\gabsc\AppData\Local\Codex\qa\community-v2-foundation-20261015\playwright\results\7899f86041154902b3fc416885c10189`.
+- **E2E integrado histórico:** run `b4b79173fcec482b931678f0fbd6a48b` terminou com 12 aprovados e 7 falhas antes dos ajustes de harness desta Etapa 10; a jornada da Etapa 09 passou. O resultado atual e os limites estão em `QA-MATRIX.md`.
+- **Seis gates:** `check` passou (1.055 arquivos); `typecheck` 16/16; `boundaries` 983 arquivos; `test` passou (scripts 32 pass/1 skip, App 845 testes/175 arquivos, API 9/3 arquivos, member-domain 24/5 arquivos); `build` 8/8; `performance:check` passou com Comunidade em 215,9 KiB gzip / 225 KiB. `graphify update .` atualizou para 8.361 nós, 21.987 arestas e 346 comunidades.
+- **Migration/ambiente:** migration aditiva `20261022150000_community_collective_goal` aplicada somente ao PostgreSQL QA local (loopback `127.0.0.1:54325`, TLS validado; 72 migrations, zero pendentes). O certificado TLS expirado desse PostgreSQL local foi renovado mantendo a chave existente; conexão verificada com TLS 1.3. Clerk Development foi usado. Nenhuma escrita/migration remota, GREEN, BLUE, Production, cron ou credencial alterada.
+- **Limites:** o E2E focado confirma a Etapa 09 no QA local; não prova entrega Realtime, recuperação periódica remota, crawler externo do Preview protegido ou release. A execução ampla atual tem os bloqueios acima, portanto não é evidência de QA integrado limpo para a Etapa 10.
+
+## Etapa 08 — Avisos da Comunidade V2 — 22/10/2026
+
+- **Estado:** implementação funcional e hierarquia visual corrigida; E2E integrado no PostgreSQL isolado com Clerk Development e seis gates do monorepo concluídos. Commits `cc950e8` e `9c9afbd` enviados a `origin/codex/comunidade-v2`. A Etapa 07 foi aceita para avanço; o crawler no Preview protegido permanece gate de release e não foi reaberto.
+- **Produto:** Gestão continua como única fonte de criação/edição. Avisos são consultados com autorização server-side na Comunidade, no destaque e no feed; não são incluídos na Início/portal. Público ALL/STAFF/SELECTED/COHORT verifica audiência e associação ativa à turma no banco. Intervalo usa `America/Sao_Paulo` e semântica `início <= agora < fim`; início/fim inexistentes ou inválidos são rejeitados. Edição usa versão/CAS; dispensa individual persiste por versão e recarrega sem reexibir a versão dispensada.
+- **Atualização e notificações:** endpoint sem cache persistente de identidade; polling de 30 s apenas com a aba visível, pausa em aba oculta e refresh ao voltar. Criação/alteração agenda notificações no outbox transacional com namespace `preview`; consumidor revalida status, versão, intervalo, audiência, turma e preferências antes de persistir Notification.
+- **QA E2E:** execução final em 22/10 passou 5/5 no runner `announcements` (quatro setups Clerk e fluxo funcional), run `20261022-124055-9263fe38`: audiência correta/incorreta, membro e não membro de turma, datas, dispensa/reload, alteração concorrente de versão/audiência, recipients do outbox, visitante 401, autorização de Gestão, ausência na Início e aba visível/oculta. A asserção geométrica confirmou aviso depois do hero e antes dos filtros em desktop 1440 px e mobile 390 px; no mobile também fica antes da presença. Capturas atuais foram comparadas aos HTMLs originais dos boards 07, 10, 31 e 37b.
+- **Migrations e OPS-01:** migration aditiva `20261022140000_community_announcement_integration` aplicada somente ao PostgreSQL QA local. A execução local desabilitou temporariamente o trigger de broadcast incompatível com a instalação isolada e o restaurou ao estado original (`O`). Isso não comprova Supabase Broadcast/Realtime nem recuperação periódica; OPS-01 segue sem prova real.
+- **Artefatos:** `C:\Users\gabsc\AppData\Local\Codex\qa\community-v2-foundation-20261015\playwright\results\008d399da5b0459fb4b1ca0fdb8cc56b`; screenshots `community-v2-stage08-community-desktop.png`, `community-v2-stage08-community-mobile.png` e `community-v2-stage08-gestao-desktop.png`.
+- **Integridade:** hashes dos três arquivos protegidos `actions.ts`, `community-groups-db.ts` e `community-groups.spec.ts` preservados; não incluir no staging. Nenhuma alteração em GREEN, BLUE, Production, cron ou credenciais.
+- **Gates:** `check` 1.047 arquivos; `typecheck` 16/16; `boundaries` 975 arquivos; `test` scripts 32 pass/1 skip, App 843 testes/174 arquivos, API 9, domínio 24; `build` 8/8 com exit 0; `performance:check` Comunidade 217,8 KiB gzip / 225 KiB; `git diff --check` passou; `graphify update .` 8.262 nós, 21.692 arestas e 336 comunidades. Após o build bem-sucedido, Turbo emitiu um aviso de IO por espaço; C: tinha 10,2 GB livres na verificação subsequente.
+- **Commits funcionais Etapa 08:** `cc950e8` (`feat(comunidade): integrar avisos V2`) e `9c9afbd` (`fix(comunidade): priorizar avisos no feed`), enviados a `origin/codex/comunidade-v2`. O segundo inclui ordem responsiva e asserção E2E de geometria. Os três arquivos protegidos permaneceram fora dos commits.
+- **Continuidade:** OPS-01 continua aguardando prova real de Broadcast/Realtime e recuperação periódica; o crawler no Preview protegido permanece gate de release da Etapa 07.
+
+- **Branch:** `codex/comunidade-v2`
+- **Worktree:** `C:\Users\gabsc\.codex\worktrees\comunidade-v2\interprete-area-de-membros`
+- **Etapa 07:** `ACEITA PARA AVANÇO`; o crawler no Preview protegido continua registrado como gate de release. Links individuais e revogáveis persistem só SHA-256 do token. A landing pública SSR mostra capa (quando permitida), título, subtítulo, trecho, data, tags e respostas; login retorna ao destino. Links privados não concedem acesso: HTML e OG permanecem genéricos, a rota de capa responde 404 para visitante, e páginas de grupo privado não oferecem compartilhamento.
+- **Commits funcionais Etapa 07:** `65b5e7d5d599922fe2dd84e9d3c694382ea01907` (`feat(comunidade): adicionar compartilhamento de publicações`) e `12e18bb` (`feat(comunidade): completar prévias de compartilhamento`).
+- **QA Etapa 07:** migration `20261022130000_community_post_share_links` aplicada somente no PostgreSQL QA loopback `interprete_community_v2_qa` (70 migrations, zero pendentes), com Clerk Development e namespace isolado. Playwright focado: 7/7, incluindo quatro setups Clerk e três fluxos. Sem JavaScript, a landing pública e o PNG OG responderam; não houve overflow em 320/360/390/768/820/1024/1280/1440 px. Para link privado, HTML ficou genérico, `/cover` respondeu 404 `no-store` e o OG foi idêntico ao de token inválido. A revogação confirmou hash persistido e `revokedAt`. Artefatos: `C:\Users\gabsc\AppData\Local\Codex\qa\community-v2-foundation-20261015\playwright\results\213f97a64bed4efca6680312a904098b`.
+- **Gates Etapa 07:** `check` 1.038 arquivos; `typecheck` 16/16; `boundaries` 966 arquivos; `test` scripts 32 pass/1 skip, App 840/173 arquivos, API 9 e domínio 24; `build` 8/8; `performance:check` Comunidade 216,4 KiB gzip/225 KiB; `graphify update .` 8.211 nós, 21.542 arestas e 352 comunidades. A jornada ampla anterior alcançou SSR/OG, privacidade, papéis, retorno Clerk e concorrência antes de parar num locator; os fluxos focados atuais validaram landing, capa privada e revogação sem repetir a jornada completa.
+- **Limites/Integridade Etapa 07:** sucesso de entrega da capa via Storage público não foi exercitado no harness isolado; a landing sem capa usa arte de fallback. Crawler externo no Preview protegido permanece gate de release. Nenhuma migration remota; GREEN, BLUE, Production, cron, credenciais e proteções Vercel não foram alterados. Referências visuais: HTMLs originais dos boards 27, 28, 29, 47 e 48.
+- **Etapa 06:** `CONCLUÍDA E VALIDADA EM QA LOCAL`. Convites individuais e em lote até 50, resultados por pessoa, estados persistentes e aceite idempotente; link sem expiração temporal, revogável/regenerável com token persistido somente como hash; retorno Clerk preservado; convite não concede acesso antes do aceite. OWNER, MODERATOR e staff podem convidar/revogar; MEMBER não convida nem altera papéis. Prévia autenticada do link segue o board 26; visitantes recebem HTML e metadados genéricos.
+- **Commit funcional Etapa 06:** `9444cd28fc87e3fa0777be6188e5c3281c8a57e7` (`feat(comunidade): adicionar convites V2`), na branch `codex/comunidade-v2`.
+- **QA Etapa 06:** PostgreSQL QA local `interprete_community_v2_qa`, Clerk Development e namespaces isolados; migrations aditivas `20261021130000_community_group_invite_links` e `20261021140000_community_group_invitation_pending_unique` seguem somente no QA local (69 encontradas, zero pendentes nesta rodada). Playwright `invitations`: 6/6 passaram em 5,6 min; duas jornadas cobriram OWNER, MODERATOR, MEMBER, ADMIN/TEACHER, visitante, lote parcial/duplicidade, concorrência de criação e aceite, estados/reload, revogação/regeneração, links inválidos, retorno pós-login e privacidade de grupo fechado, além de convite/link em grupo público e reabertura após aceite.
+- **Gates Etapa 06:** `check` 1.025 arquivos; `typecheck` 16/16; `boundaries` 953 arquivos; `test` scripts 32 pass/1 skip, App 836/171 arquivos, API 9, domínio 24; `build` 8/8; `performance:check` Comunidade 213,9 KiB gzip/225 KiB; `git diff --check` passou; `graphify update .` atualizou para 8.130 nós, 21.312 arestas e 338 comunidades.
+- **Limites de evidência Etapa 06:** produtor, persistência e consumer isolado do outbox verificados; consumer concluiu `SUCCEEDED` e uma `Notification` foi persistida. O QA instala stub local somente para o broadcast Realtime ausente; entrega Realtime real não comprovada. Recuperação periódica remota não validada conforme OPS-01. E-mail declarado indisponível e nenhum envio simulado. Boards oficiais 05/06/22/24–26/46 comparados com capturas autenticadas; os estados de convite válido e membro existente, alinhados ao board 26, foram recapturados em 1280/390 CSS px. Overflow sem ocorrência na matriz 320/360/390/768/820/1024/1280/1440 px. Artefatos finais: `C:\Users\gabsc\AppData\Local\Codex\qa\community-v2-foundation-20261015\playwright\results\c1a446bbaaf1426abfe6f1dc96d9f89c`.
+- **Etapa 05:** `CONCLUÍDA E VALIDADA EM QA LOCAL`. Qualquer MEMBER cria grupos; entrada pública imediata; conteúdo privado, membros e capas são autorizados no servidor; OWNER/MODERATOR/MEMBER têm capacidades separadas; acesso ADMIN/TEACHER a grupos privados gera auditoria; arquivamento é reversível e preserva histórico.
+- **QA Etapa 05:** migration aditiva `20261021120000_community_group_moderation` aplicada somente no PostgreSQL QA local; jornadas E2E reais com dois MEMBER, TEACHER e ADMIN em Clerk Development, Storage privado local isolado `community-v2-cover-qa`; sem alteração em GREEN, BLUE ou Production.
+- **Jornadas E2E Etapa 05:** execução Playwright integrada passou 5/5, incluindo o cenário real de grupos: negação de URL/conteúdo/capa a não membro, entrada pública, tentativas de escalonamento, permissões do moderador, leitura staff privada auditada, troca de papel, retirada de membro, persistência de publicação e arquivamento/restauração.
+- **Comparação visual Etapa 05:** boards 05, 20–23, 36, 44 e 45; capturas desktop/tablet/mobile comparadas com os HTMLs oficiais. Larguras verificadas: 320, 360, 390, 768, 820, 1024, 1280 e 1440 px; sem overflow horizontal. Artefatos: `C:\Users\gabsc\AppData\Local\Codex\qa\community-v2-foundation-20261015\playwright\results\89c3c64d3f8645b28243509b416d6085`.
+- **Gates Etapa 05:** `bun run check` 1018 arquivos; `typecheck` 16/16; `boundaries` 946 arquivos; `bun run test` scripts 32 pass/1 skip, App 835 testes/171 arquivos, API 9, domínio 24; `bun run build` 8/8; `performance:check` Comunidade 213,9 KiB gzip/225 KiB. `graphify update .` concluiu (8.069 nós, 21.095 arestas, 349 comunidades).
+- **Commit funcional Etapa 05:** `b415397b5ff7b376410b5536f2d108ccc1d9055f` (`feat(comunidade): adicionar grupos e moderação`), em `codex/comunidade-v2`.
+- **Deployments pendentes da Etapa 04:** status GitHub consultado sem mutação: App `success` / `Deployment has completed`; API `failure` / `Canceled from the Vercel Dashboard`. Não houve deploy manual da Etapa 05 nem promoção de alias.
+- **Preview automático Etapa 05:** após o push, os status GitHub do SHA `e8e7d912af4578321905112b3f25154721e4c7c9` mostraram App e API `pending` / `Vercel is deploying your app`. Nenhum deploy manual ou promoção de alias/Production foi feito.
+- **Integridade Etapa 06:** nenhuma migration foi aplicada remotamente; GREEN, BLUE, Production, cron e credenciais não foram alterados. O checkpoint Etapa 05 `5b68d0b` tinha App/API Preview `READY`, conforme confirmação do usuário. Não houve deployment manual desta etapa nem promoção de alias.
+- **Etapa 02:** `ACEITA PARA AVANÇO`; a captura autenticada do estado de erro real no runtime segue pendente no QA integrado e não bloqueia o avanço.
+- **Etapa 03:** `CONCLUÍDA`. Editor, autosave, estados de publicação, pin, exclusão lógica/recuperação, capa e permissões foram validados em Postgres QA local e Supabase Storage real isolado. A execução final `storage-cover` passou 4/4; nenhuma escrita foi feita em GREEN, BLUE ou Production.
+- **Etapa 04:** `IMPLEMENTADA E VALIDADA EM QA LOCAL`. Leitura, comentários, respostas de um nível, edição/remoção, menções contextuais, `@todos`, follow automático e mute passaram a jornada autenticada; gates do monorepo completos.
+- **Escopo que já existia ao entrar na Etapa 04:** leitura/paginação, respostas persistidas, criação idempotente, follow automático no comentário, mute básico, edição, exclusão e recipients de `@todos` foram iniciados durante a Etapa 03. Esses serviços foram estendidos, não duplicados.
+- **Etapa 04 — entrega:** sugestões de menção limitadas à discussão/comunidade, `@todos` para ADMIN/TEACHER com contagem reconciliada, confirmação explícita, follow/mute persistentes e reautorização transacional em operações de comentário. Composer de comentário/resposta usa diálogo mobile com contexto; captura QA cobre desktop e mobile.
+- **E2E Etapa 04:** PostgreSQL QA local `interprete_community_v2_qa`, Clerk Development MEMBER/ADMIN existentes e namespace `preview` com allowlist local; execução passou 4/4. Eventos ficaram no outbox local namespaced; nenhum consumer/envio real foi executado.
+- **Handoff visual recuperado:** arquivo original `C:\Users\gabsc\Downloads\files nova comunidade.zip`, SHA-256 `5C570782C1EA270DFD3514C0BEA39A4A6A8BEECDAD2E05EAFBFC8D1E7F515C44`; extraído em `C:\Users\gabsc\AppData\Local\Codex\qa\community-v2-handoff-20261021\original\interprete-comunidade-v2`. Boards 14/15/39/40 e capturas hidratadas foram comparados; saída QA mais recente: `C:\Users\gabsc\AppData\Local\Codex\qa\community-v2-foundation-20261015\playwright\results\e137669863ca4bbf82bc18105dcf6394`.
+- **Etapa 03/Storage:** checkpoints mantidos; Storage QA continua isolado em `interprete-community-storage-qa-20261021`, API/DB em loopback, bucket privado `community-v2-cover-qa`; sem GREEN/BLUE/Production.
+- **READY anterior:** o usuário confirmou App Preview e API Preview `READY` para o commit funcional `2c43980977741f09815553179588b642969d48fc`. Esta evidência é do checkpoint anterior; nenhuma consulta de deployment foi feita nesta etapa.
+- **Integridade:** sem migration remota, alteração de GREEN ou Production, nem envio de notificação real. Checkout original e arquivos de handoff restaurados fora do Git preservados.
+- **Gates da Etapa 04:** `bun run check` 1009 arquivos; `typecheck` 16/16; `boundaries` 937 arquivos; `bun run test` 829 App + 24 domínio + 9 API, scripts 32 pass/1 skip; `bun run build` 8/8; `performance:check` Comunidade 213,9 KiB gzip de 225 KiB; Playwright `discussion` 4/4. `graphify update .` executado (7.989 nós, 20.824 arestas).
+- **Fechamento da Etapa 04:** commit funcional `885a67cd1bd3e1bcbf4a37dded0dacc5e42076a2` enviado a `origin/codex/comunidade-v2`. O READY anterior não se estende a este SHA; sem promoção de alias, mudança de GREEN ou Production.
+
+## Implementado
+
+- Cinco destinos da Comunidade e navegação responsiva, incluindo o seletor mobile em bottom sheet.
+- Explorar com consultas reais, busca, filtros, URL preservada, paginação por cursor e retorno contextual.
+- Salvos da Comunidade integrado ao Salvos global; wrappers de Encontros e Gravações sobre os serviços e as autorizações existentes.
+- Diretório real com Meus grupos e descoberta pública, busca, filtros e paginação.
+- Estados vazios e de falha, sem migration ou implementação de funcionalidades de etapas posteriores.
+- O candidato 5072ee1 completa Salvos com cards reais da Comunidade, filtros por grupo/tipo/ordem, atalho global e preservação do contexto. Também alinha Composer, destaque de publicação fixada, conteúdo expandido Sobre/Regras/Como participar e cabeçalho do seletor mobile aos boards.
+
+## Gates locais do candidato `f04a7bb`
+
+- `bun run check`: passou, 978 arquivos.
+- `bun run build`: passou, 8/8 tarefas. Incluiu App 787 testes em 162 arquivos, API 9 testes e domínio de membros 24 testes.
+- `bun run performance:check`: passou; Comunidade 213,8 KiB gzip, dentro do orçamento de 225 KiB.
+- Build usou os `.env.local` Preview já configurados. A presença de `NEXT_PUBLIC_APP_URL` e a ausência de marcador BLUE foram verificadas sem imprimir valores.
+- O código alterado desde `04aeebb` é somente CSS; `typecheck` (16/16), `boundaries` (906 arquivos) e teste focado de navegação (3/3) foram aprovados em `04aeebb`, antes desse ajuste CSS.
+- `graphify update .` concluiu após o CSS. `graphify-out/` continua ignorado pelo `.gitignore` e foi preservado; nenhum artefato gerado foi incluído no Git.
+
+## Prova visual autenticada anterior — candidato `04aeebb`
+
+- Capturas do SHA exato `04aeebb` após hidratação, usando dados GREEN existentes, nas larguras 390, 820, 1280 e 1440 CSS px. Não houve overflow horizontal em nenhuma largura.
+- A matriz também mediu 320, 360, 768 e 1024 px: larguras do documento 309, 345, 753 e 1009 px, respectivamente, todas menores que o viewport. As larguras 390, 820, 1280 e 1440 mediram 375, 805, 1265 e 1425 px.
+- A 820 px, a capa mede 725 px; filtros e composer ficam sobre o feed. O feed termina em y=2131 e o título do rail “Ativo agora” começa em y=2147, conforme o board 35.
+- A 1280 px, capa e feed medem 609 px e a lateral ocupa coluna própria à direita. A 1440 px, capa/feed medem 769 px e a lateral começa à direita. Cinco destinos permanecem visíveis nas duas larguras.
+- A 390 px, o seletor mostra os cinco destinos e descrições com foco no acionador; capa e filtros medem 335 px. Salvos mostra o item GREEN existente e o atalho global; Grupos mostra Meus grupos vazio e o grupo público existente com dois membros; Encontros mostra zero próximos/anteriores; Gravações mostra zero itens e a informação de acesso controlado.
+- Comparações feitas com os boards 09, 35, 37, 38, 43, 44 e 50. Conteúdo e contagens refletem apenas dados existentes. Nenhuma fixture foi criada e nenhuma ação de salvar, apoiar, entrar/criar grupo ou publicar foi executada.
+- Estados de carregamento foram aguardados até os dados finais. Um erro não ocorreu naturalmente; não foi provocado nem fabricado.
+
+## Atualização do candidato `f04a7bb` — 20/10/2026
+
+- Vercel confirmou App Preview `Ready`, deployment `DbGqXYbem8TMmi2aURj3cqjQUWEy`, branch `codex/comunidade-v2` e SHA exato `f04a7bb6c1034883c5870258598934238d4886bb`. O status GitHub do App é `success` com descrição `Deployment has completed`; API `success` e `Skipped - Not affected`.
+- O ajuste CSS corrige a linha de título/fechar do seletor mobile, reduz os recuos mobile e reposiciona presença/rail no grid tablet. `git diff --check`, `bun run check`, `bun run build` e `bun run performance:check` passaram para esse código.
+- A sessão Clerk autenticada no host anterior foi redirecionada ao formulário `/sign-in` no novo host `7vui07hsh`. Após hidratação, o formulário de e-mail/senha ficou visível. Não houve captura autenticada, screenshots do candidato `f04a7bb` nem confirmação visual das correções nesse host.
+- Não foram copiados cookies, tokens ou credenciais entre origens. Nenhuma tentativa de login com senha/OTP, acesso a GREEN ou mutação foi realizada nesta atualização.
+- Portanto, as comparações autenticadas registradas acima continuam válidas somente para `04aeebb`; não comprovam a aparência/runtime do SHA `f04a7bb`. O estado da página de login não é evidência da tela Comunidade nem foi comparado aos boards.
+
+## Limites registrados antes da retomada da Etapa 03
+
+Este snapshot descreve o corte anterior; o estado operacional atual está no topo deste documento.
+
+- A medição de `performance:check` comprova o orçamento de JavaScript da rota. Percentis de navegação, LCP, INP e CLS não foram medidos neste gate e não são reivindicados.
+- As capturas do candidato `f04a7bb` registradas na atualização abaixo não comprovam o SHA atual. A conclusão visual da etapa exige autenticação QA no host 5072ee1 e novas capturas hidratadas em 390 e 820 px, incluindo o seletor mobile e rotas Salvos, Grupos, Encontros e Gravações.
+- Não houve escrita de QA em GREEN, migração, mudança em Production, cron, OIDC ou SSO.
+- Próxima unidade prevista no plano: Etapa 03 — Rascunhos e publicações, quando autorizada. OPS-01 continua sendo dependência apenas das jornadas e do release que a exigem.
+
+O checkout original `C:\Users\gabsc\Documents\Codex\interprete-area-de-membros` permanece intocado.
+
+## Candidato atual `ecc1dca` — 20/10/2026
+
+- O registro GitHub de deployment App Preview `7199735169` ficou `success` para o SHA exato `ecc1dcaf67d3a0fd8275606ede564da994395230`; o App concluiu, a API foi `Skipped - Not affected` e o alias autenticado serviu a aplicação da branch.
+- Após hidratação, Explorar foi capturado em 390, 820 e 1280 CSS px. O documento mediu 375, 805 e 1265 px, respectivamente, sem overflow horizontal. O seletor mobile exibiu os cinco destinos.
+- Comparações autenticadas de leitura: boards 09/35/37 (Explorar), 38 (seletor), 11 (busca sem resultados), 43 (Salvos), 44 (Grupos) e 50 (Encontros/Gravações). O GREEN exibiu Meus grupos vazio, um grupo público com dois membros, um salvo, nenhum encontro futuro e nenhuma gravação. Nenhuma fixture ou ação de escrita foi usada.
+- O ajuste atual da busca vazia corresponde ao card centralizado do board 11, com termo na mensagem e ação para limpar filtros. Os boundaries de erro foram ajustados e têm testes focados; erro real não ocorreu naturalmente no Preview. Os boards de erro 11/33 foram consultados como referência, mas a captura de runtime de erro segue pendente.
+- Gates do candidato: `bun run check` 980 arquivos; `bun run typecheck` 16/16 pacotes; `bun run boundaries` 908 arquivos; testes focados 5/5; `bun run build` 8/8 tarefas, App 793 testes/164 arquivos, API 9/3 arquivos e domínio 24/5 arquivos; `bun run performance:check` 213,8 KiB gzip / orçamento 225 KiB. Ambiente Preview foi verificado sem imprimir valores, sem marcador BLUE e com seeds desabilitadas.
+- `graphify update .` concluiu com 7.834 nós, 20.366 arestas e 340 comunidades; 67 arquivos SQL foram ignorados por ausência do extrator `tree_sitter_sql`. `graphify-out/` foi confirmado como ignorado pelo Git e preservado; nenhum artefato gerado foi adicionado nem houve refatoração do tooling.
+- O QA foi somente leitura. Não houve escrita no GREEN, migration, mudança em Production ou alteração do checkout original. O `performance:check` mede orçamento de bundle, não LCP/INP/CLS ou percentis.
+- Estado de encerramento: implementação, gates locais, deployment e comparações de estados de dados estão comprovados; a Etapa 02 permanece `IN PROGRESS` até existir captura autenticada do erro em runtime. A sessão CUA não tem interceptação/offline e não expõe DevTools nativo; aguardar ocorrência natural ou mecanismo isolado disponível, sem fabricar dados nem afetar o GREEN.
+
+## Fechamento visual do candidato `a1d87b0` — 20/10/2026
+
+- O primeiro deployment `Ready` de `a1d87b0` serviu uma folha CSS sem as regras novas de grupos. Um redeploy Preview sem reutilizar o build cache criou o deployment `6PuY9Ej6wXsCwZX82etnW8b7D2x7`, `Ready`, no mesmo branch e SHA. O navegador confirmou a regra mobile carregada: intro `display:none`, filtros antes do CTA, cartão duplicado `display:none`.
+- Capturas após hidratação e comparação: Explorar 390, 820 e 1280 px; seletor mobile com os cinco destinos; Grupos 390; Salvos 390 com filtros expandidos; Encontros 390; Gravações 390. Boards: 09, 35, 37, 38, 43, 44 e 50. Conteúdo GREEN permaneceu real: um grupo público com dois membros, Meus grupos vazio, um salvo, zero encontros e zero gravações.
+- Largura do documento sem overflow: Explorar 390→375/375, 820→805/805 e 1280→1265/1265 px (viewport/documento); Grupos, Salvos, Encontros e Gravações também mediram 375/375 px no viewport mobile de 390 px. No desktop, capa/feed medem 609 px e a lateral permanece à direita.
+- `bun run check` passou (978 arquivos); `bun run typecheck` (16/16); `bun run boundaries` (906 arquivos); teste focado de navegação (3/3); `bun run build` passou (8/8 tarefas, App 788 testes/162 arquivos, API 9/3 arquivos, domínio de membros 24/5 arquivos); `bun run performance:check` passou (Comunidade 213,8 KiB gzip / 225 KiB). `graphify update .` concluiu; `graphify-out/` segue ignorado e fora do Git.
+- Loading skeletons foram observados em transições e aguardados até hidratação. O console não registrou erros; um estado de erro da aplicação não ocorreu naturalmente e continua sem prova visual de runtime. Percentis LCP/INP/CLS não foram medidos.
+- QA foi somente de leitura: nenhum apoio, salvamento, entrada/criação de grupo ou publicação. Não houve fixture, migration, mutação GREEN, mudança Production, cron, OIDC/SSO ou alteração do checkout original.
+
+## Atualização do candidato 5072ee1 — 20/10/2026
+
+- O commit 5072ee15d5b9058693cb6c422da0a058034cf48e foi enviado à branch codex/comunidade-v2. O deployment App B4uZvEmKgxVZADX8J7ubfCrwnTGb concluiu Ready e o painel Vercel mostra a branch e o SHA candidato. O status GitHub do App é success; o deployment API foi Skipped - Not affected.
+- Gates executados para o código deste SHA: bun run check (978 arquivos), bun run typecheck (16 tarefas), bun run boundaries (906 arquivos), bun run test (788 testes do App em 162 arquivos; API 9/3 arquivos; domínio 24/5 arquivos; testes internos 32 aprovados e 1 harness aposentado ignorado), bun run build (8/8 tarefas) e bun run performance:check (Comunidade 213,8 KiB gzip, orçamento 225 KiB). git diff --check passou antes do commit.
+- O ambiente efetivo do worktree foi conferido sem mostrar valores: URLs de App/API e configuração de Preview presentes, variáveis necessárias de build/banco presentes, seeds de desenvolvimento desabilitados e nenhum marcador BLUE. graphify update . concluiu após as edições; os arquivos em graphify-out/ continuam ignorados, preservados e fora do commit.
+- A prova visual autenticada do commit f04a7bb foi feita após hidratação e antes das alterações que compõem 5072ee1. Em 390 px, Explorar carregou dados GREEN, cinco destinos e conteúdo real; em 820 px, uma leitura estabilizada mediu documento de 820 px sem overflow e feed acima do rail em duas colunas; em 1280 px, documento de 1265 px sem overflow, feed/capa de 609 px e rail à direita. Comparações: boards 09, 35, 37 e 38. A presença online real foi preservada conforme o escopo vigente.
+- Na prova f04a7bb, Grupos exibiu Meus grupos vazio e um grupo público real com dois membros; Encontros e Gravações exibiram seus estados vazios reais; Salvos exibiu um item real. Essa captura revelou que Salvos não mostrava o card completo/filtros dos boards 19/43 e que Composer, texto expandido Sobre/Regras/Como participar, contraste da fixada e linha de título/fechar do seletor divergiam dos boards. Essas diferenças foram corrigidas no código 5072ee1; ainda não há screenshot autenticado desse novo código.
+- O host do deployment 5072ee1 foi aberto diretamente em /comunidade após Ready; a sessão de outro host Preview não se aplicou e a página exibiu /sign-in. Os campos de login foram verificados visualmente, mas nenhum formulário foi submetido. Não houve acesso adicional ao GREEN nem escrita de QA.
+- Logo, o código e os gates locais do candidato estão comprovados; a inspeção Vercel confirma SHA e Ready; a fidelidade visual/runtime autenticada do SHA atual não está comprovada. Nenhum estado de erro foi fabricado; percentis de navegação, LCP, INP e CLS não foram medidos.
+- Próximo passo recomendado: concluir QA autenticado e somente de leitura no host do SHA 5072ee1, comparar as telas hidratadas com boards 09, 19, 35, 37, 38, 43 e 50, e então atualizar o estado da Etapa 02. Não avançar a Etapa 03 antes desse aceite. OPS-01 e as etapas futuras permanecem fora do escopo.
+
+### Retificação da observação de login do candidato f04a7bb
+
+A seção histórica de f04a7bb acima registra o primeiro estado daquele host, quando /sign-in ainda era exibido. Em seguida, uma sessão QA existente foi autenticada nesse host e as capturas de 390, 820 e 1280 CSS px descritas na atualização 5072ee1 foram realizadas após hidratação. Isso comprova somente o predecessor f04a7bb; no host novo do SHA 5072ee1, /sign-in continua visível.

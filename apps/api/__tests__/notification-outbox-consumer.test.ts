@@ -1,6 +1,118 @@
 import type { Prisma } from "@repo/database";
-import { expect, test, vi } from "vitest";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { notificationOutboxConsumer } from "../lib/notification-outbox-consumer";
+
+vi.mock("server-only", () => ({}));
+vi.mock("@repo/database", () => ({
+  AnnouncementAudience: {
+    ALL: "ALL",
+    COHORT: "COHORT",
+    SELECTED: "SELECTED",
+    STAFF: "STAFF",
+  },
+  ContentStatus: { PUBLISHED: "PUBLISHED" },
+  MemberRole: { ADMIN: "ADMIN", TEACHER: "TEACHER" },
+}));
+
+beforeEach(() => {
+  vi.stubEnv("VERCEL_ENV", "production");
+  vi.stubEnv("OUTBOX_QUEUE_NAMESPACE", "");
+  vi.stubEnv("OUTBOX_PREVIEW_MEMBER_IDS", "");
+});
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
+
+const deliverPrivateCommentMention = async (
+  memberIsCurrent: boolean,
+  options: {
+    readonly groupDeleted?: boolean;
+    readonly includeScope?: boolean;
+    readonly audienceScope?: "GLOBAL" | "GROUP" | "UNRESOLVED";
+  } = {}
+) => {
+  const notificationCreateMany = vi.fn().mockResolvedValue({ count: 1 });
+  const spaceId = options.groupDeleted ? null : "private_group_1";
+  const post = {
+    id: "post_private_1",
+    title: "Título privado",
+    spaceId,
+    audienceScope: options.audienceScope ?? "GROUP",
+    status: "PUBLISHED",
+    deletedAt: null,
+    space: options.groupDeleted
+      ? null
+      : {
+          id: "private_group_1",
+          visibility: "PRIVATE",
+          status: "PUBLISHED",
+          ownerId: "owner_1",
+          members: memberIsCurrent ? [{ memberId: "removed_member_1" }] : [],
+        },
+  };
+  let commentQuery = 0;
+  const transaction = {
+    member: {
+      findMany: vi.fn().mockResolvedValue([{ id: "removed_member_1" }]),
+    },
+    notificationPreference: { findMany: vi.fn().mockResolvedValue([]) },
+    communityComment: {
+      findMany: vi.fn().mockImplementation(() => {
+        commentQuery += 1;
+        return commentQuery === 1
+          ? [{ postId: post.id }]
+          : [{ id: "comment_private_1", post }];
+      }),
+    },
+    communityPost: {
+      findMany: vi
+        .fn()
+        .mockResolvedValueOnce([{ spaceId: post.spaceId }])
+        .mockResolvedValue([post]),
+    },
+    $queryRaw: vi.fn().mockResolvedValue([]),
+    notification: { createMany: notificationCreateMany },
+  } as unknown as Prisma.TransactionClient;
+
+  await notificationOutboxConsumer.handle(
+    transaction,
+    {
+      id: `event_private_mention_${memberIsCurrent}`,
+      eventType: "notifications.batch_requested",
+      schemaVersion: 1,
+      actorId: "author_1",
+      aggregateType: "COMMUNITY_COMMENT",
+      aggregateId: "comment_private_1",
+      payload: {
+        notifications: [
+          {
+            recipientId: "removed_member_1",
+            type: "MENTION",
+            entityType: "COMMENT",
+            entityId: "comment_private_1",
+            parentEntityType: "TOPIC",
+            parentEntityId: post.id,
+            ...(options.includeScope === false
+              ? {}
+              : { communitySpaceId: post.spaceId }),
+            dedupeKey: `mention:removed_member_1:${memberIsCurrent}`,
+            body: post.title,
+            href: "/comunidade/publicacoes/privada?commentId=comment_private_1",
+          },
+        ],
+      },
+      occurredAt: new Date("2026-10-23T10:00:00.000Z"),
+    },
+    {
+      id: `job_private_mention_${memberIsCurrent}`,
+      consumerKey: "notifications.create.v1",
+      idempotencyKey: `private-mention:${memberIsCurrent}`,
+      attemptCount: 1,
+    }
+  );
+
+  return { notificationCreateMany, transaction };
+};
 
 test("batches active recipients, honors preferences, and excludes the actor", async () => {
   const notificationCreateMany = vi.fn().mockResolvedValue({ count: 1 });
@@ -56,8 +168,8 @@ test("batches active recipients, honors preferences, and excludes the actor", as
         notifications: [
           {
             recipientId: "teacher_1",
-            type: "ANNOUNCEMENT",
-            dedupeKey: "announcement:teacher_1:event_1",
+            type: "MENTION",
+            dedupeKey: "mention:teacher_1:event_1",
           },
           {
             recipientId: "student_1",
@@ -72,8 +184,8 @@ test("batches active recipients, honors preferences, and excludes the actor", as
           },
           {
             recipientId: "deactivated_member",
-            type: "ANNOUNCEMENT",
-            dedupeKey: "announcement:deactivated:event_1",
+            type: "MENTION",
+            dedupeKey: "mention:deactivated:event_1",
           },
         ],
       },
@@ -119,17 +231,35 @@ test("sends group-post notices only to current owners and members", async () => 
       findMany: vi.fn().mockResolvedValue([]),
     },
     communityPost: {
-      findMany: vi.fn().mockResolvedValue([{ id: "post_1", title: "Roteiro" }]),
+      findMany: vi.fn().mockResolvedValue([
+        {
+          id: "post_1",
+          title: "Roteiro",
+          spaceId: "private_group_1",
+          audienceScope: "GROUP",
+          status: "PUBLISHED",
+          deletedAt: null,
+          space: {
+            id: "private_group_1",
+            visibility: "PRIVATE",
+            status: "PUBLISHED",
+            ownerId: "owner_1",
+            members: [{ memberId: "member_1" }],
+          },
+        },
+      ]),
     },
     communitySpace: {
       findMany: vi.fn().mockResolvedValue([
         {
           id: "private_group_1",
           ownerId: "owner_1",
+          visibility: "PRIVATE",
           members: [{ memberId: "member_1" }],
         },
       ]),
     },
+    $queryRaw: vi.fn().mockResolvedValue([]),
     notification: { createMany: notificationCreateMany },
   } as unknown as Prisma.TransactionClient;
 
@@ -190,8 +320,74 @@ test("sends group-post notices only to current owners and members", async () => 
 
   expect(notificationCreateMany).toHaveBeenCalledWith({
     data: [
-      expect.objectContaining({ memberId: "owner_1", type: "GROUP_POST" }),
-      expect.objectContaining({ memberId: "member_1", type: "GROUP_POST" }),
+      expect.objectContaining({
+        memberId: "owner_1",
+        type: "GROUP_POST",
+        communitySpaceId: "private_group_1",
+      }),
+      expect.objectContaining({
+        memberId: "member_1",
+        type: "GROUP_POST",
+        communitySpaceId: "private_group_1",
+      }),
+    ],
+    skipDuplicates: true,
+  });
+});
+
+test("drops a delayed private-group mention after membership is removed", async () => {
+  const { notificationCreateMany, transaction } =
+    await deliverPrivateCommentMention(false);
+
+  expect(transaction.$queryRaw).toHaveBeenCalledTimes(2);
+  expect(notificationCreateMany).not.toHaveBeenCalled();
+});
+
+test("persists private notification scope while the recipient is a member", async () => {
+  const { notificationCreateMany } = await deliverPrivateCommentMention(true);
+
+  expect(notificationCreateMany).toHaveBeenCalledWith({
+    data: [
+      expect.objectContaining({
+        memberId: "removed_member_1",
+        type: "MENTION",
+        body: "Título privado",
+        communitySpaceId: "private_group_1",
+      }),
+    ],
+    skipDuplicates: true,
+  });
+});
+
+test("drops a legacy comment event when a deleted group's scope is ambiguous", async () => {
+  const { notificationCreateMany } = await deliverPrivateCommentMention(true, {
+    groupDeleted: true,
+    includeScope: false,
+  });
+
+  expect(notificationCreateMany).not.toHaveBeenCalled();
+});
+
+test("drops an explicit null-scope event for a detached group post", async () => {
+  const { notificationCreateMany } = await deliverPrivateCommentMention(true, {
+    groupDeleted: true,
+  });
+
+  expect(notificationCreateMany).not.toHaveBeenCalled();
+});
+
+test("keeps a current explicitly global comment notification", async () => {
+  const { notificationCreateMany } = await deliverPrivateCommentMention(true, {
+    groupDeleted: true,
+    audienceScope: "GLOBAL",
+  });
+
+  expect(notificationCreateMany).toHaveBeenCalledWith({
+    data: [
+      expect.objectContaining({
+        type: "MENTION",
+        communitySpaceId: null,
+      }),
     ],
     skipDuplicates: true,
   });
@@ -207,10 +403,11 @@ test("keeps group invitations tied to a current pending invitation", async () =>
         {
           id: "invitation_1",
           inviteeId: "invitee_1",
-          space: { title: "Grupo privado" },
+          space: { id: "private_group_1", title: "Grupo privado" },
         },
       ]),
     },
+    $queryRaw: vi.fn().mockResolvedValue([]),
     notification: { createMany: notificationCreateMany },
   } as unknown as Prisma.TransactionClient;
 

@@ -1,3 +1,4 @@
+import { getSafeInternalPath } from "@repo/auth/redirects";
 import { database } from "@repo/database";
 import { redirect } from "next/navigation";
 import { OnboardingExperience } from "@/components/onboarding/onboarding-experience";
@@ -10,7 +11,19 @@ import { getCurrentUser } from "@/lib/auth";
 import { getOrCreateNotificationPreferences } from "@/lib/notifications";
 import { getOrCreateProfile } from "@/lib/profile";
 
-const OnboardingPage = async () => {
+const OnboardingPage = async ({
+  searchParams,
+}: {
+  readonly searchParams: Promise<{
+    redirect_url?: string;
+    redirectUrl?: string;
+  }>;
+}) => {
+  const search = await searchParams;
+  const returnTo = getSafeInternalPath(
+    search.redirect_url ?? search.redirectUrl ?? "/",
+    "https://interprete.invalid"
+  );
   const user = await getCurrentUser();
   if (!user) {
     redirect("/sign-in");
@@ -81,7 +94,7 @@ const OnboardingPage = async () => {
     },
   };
 
-  return <OnboardingExperience initial={initial} />;
+  return <OnboardingExperience initial={initial} returnTo={returnTo} />;
 };
 
 export default OnboardingPage;

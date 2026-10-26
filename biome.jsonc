@@ -16,6 +16,7 @@
       "!packages/design-system/hooks",
       "!apps/email/.react-email",
       "!output",
+      "!graphify-out",
       "!interprete-gestao-handoff"
     ]
   }

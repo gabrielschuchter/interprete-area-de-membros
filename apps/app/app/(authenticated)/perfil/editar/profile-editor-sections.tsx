@@ -24,6 +24,7 @@ export interface ProfileFormValues {
   interests: string;
   linkedin: string;
   occupation: string;
+  showInCommunityAvatars: boolean;
   showInDirectory: boolean;
   state: string;
   username: string;
@@ -565,6 +566,26 @@ export const ProfileAccountSection = ({
       name="showInDirectory"
       type="hidden"
       value={values.showInDirectory ? "true" : "false"}
+    />
+    <label
+      className="flex min-h-11 cursor-pointer items-center gap-3 text-[15px] leading-[1.4]"
+      htmlFor="profile-showInCommunityAvatars"
+    >
+      <input
+        checked={values.showInCommunityAvatars}
+        className="size-5 accent-primary"
+        id="profile-showInCommunityAvatars"
+        onChange={(event) =>
+          update("showInCommunityAvatars", event.target.checked)
+        }
+        type="checkbox"
+      />
+      <span>Exibir meu avatar no bloco visual da Comunidade</span>
+    </label>
+    <input
+      name="showInCommunityAvatars"
+      type="hidden"
+      value={values.showInCommunityAvatars ? "true" : "false"}
     />
   </section>
 );

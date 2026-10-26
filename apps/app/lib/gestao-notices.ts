@@ -54,15 +54,29 @@ const getNoticeCohortIds = async (noticeIds: readonly string[]) => {
   if (noticeIds.length === 0) {
     return result;
   }
-  const events = await database.domainEvent.findMany({
-    where: {
-      aggregateType: "Announcement",
-      aggregateId: { in: [...noticeIds] },
-      eventType: { in: [noticeAudienceEvent, legacyCohortNoticeEvent] },
-    },
-    orderBy: { occurredAt: "desc" },
-    select: { aggregateId: true, eventType: true, payload: true },
-  });
+  const [events, native] = await Promise.all([
+    database.domainEvent.findMany({
+      where: {
+        aggregateType: "Announcement",
+        aggregateId: { in: [...noticeIds] },
+        eventType: { in: [noticeAudienceEvent, legacyCohortNoticeEvent] },
+      },
+      orderBy: { occurredAt: "desc" },
+      select: { aggregateId: true, eventType: true, payload: true },
+    }),
+    database.announcementCohort.findMany({
+      where: { announcementId: { in: [...noticeIds] } },
+      select: { announcementId: true, cohortId: true },
+    }),
+  ]);
+  // Avisos com público por turma criados na Comunidade guardam as turmas
+  // no próprio aviso.
+  for (const entry of native) {
+    result.set(entry.announcementId, [
+      ...(result.get(entry.announcementId) ?? []),
+      entry.cohortId,
+    ]);
+  }
   // O registro de público é a decisão final; sem ele, valem os registros
   // por turma de avisos criados na aba da turma.
   const audience = events.filter(

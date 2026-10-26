@@ -157,7 +157,7 @@ export const gestaoNoticeAudienceLabel = ({
   cohortNames,
   people,
 }: {
-  readonly audience: "ALL" | "SELECTED" | "STAFF";
+  readonly audience: "ALL" | "COHORT" | "SELECTED" | "STAFF";
   readonly cohortNames: readonly string[];
   readonly people: number;
 }) => {
@@ -171,6 +171,9 @@ export const gestaoNoticeAudienceLabel = ({
     const [first, ...rest] = cohortNames;
     return rest.length > 0 ? `${first} e mais ${rest.length}` : (first ?? "");
   }
+  if (audience === "COHORT") {
+    return "Turmas";
+  }
   return `${people} ${people === 1 ? "pessoa" : "pessoas"}`;
 };
 
@@ -178,7 +181,7 @@ export const gestaoNoticeAudienceKind = ({
   audience,
   cohortNames,
 }: {
-  readonly audience: "ALL" | "SELECTED" | "STAFF";
+  readonly audience: "ALL" | "COHORT" | "SELECTED" | "STAFF";
   readonly cohortNames: readonly string[];
 }): GestaoNoticeAudienceKind => {
   if (audience === "ALL") {
@@ -187,5 +190,5 @@ export const gestaoNoticeAudienceKind = ({
   if (audience === "STAFF") {
     return "staff";
   }
-  return cohortNames.length > 0 ? "cohorts" : "people";
+  return audience === "COHORT" || cohortNames.length > 0 ? "cohorts" : "people";
 };

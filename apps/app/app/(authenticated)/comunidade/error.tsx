@@ -1,25 +1,40 @@
 "use client";
 
 import { Button } from "@repo/design-system/components/ui/button";
-import Link from "next/link";
+import { CloudAlertIcon } from "lucide-react";
+import { CommunityNavigation } from "@/components/community/community-navigation";
 
-const CommunityError = () => (
-  <div className="mx-auto flex min-h-[60svh] w-full max-w-2xl flex-col justify-center px-5 py-16 sm:px-8">
-    <p className="brand-eyebrow">A comunidade precisa de um minuto</p>
-    <h1 className="mt-4 font-display text-4xl">
-      Não foi possível carregar as conversas.
-    </h1>
-    <p className="mt-4 text-muted-foreground leading-7">
-      Tente novamente. Se o problema continuar, volte ao início para seguir
-      estudando.
-    </p>
-    <div className="mt-6 flex gap-3">
-      <Button onClick={() => window.location.reload()}>Tentar novamente</Button>
-      <Button asChild variant="outline">
-        <Link href="/">Voltar ao início</Link>
-      </Button>
+interface CommunityErrorProperties {
+  readonly error: Error & { digest?: string };
+  readonly reset: () => void;
+}
+
+const CommunityError = ({ reset }: CommunityErrorProperties) => (
+  <main className="community-page min-h-svh bg-background">
+    <div className="community-shell mx-auto w-full">
+      <CommunityNavigation active="explore" />
+      <section
+        aria-live="assertive"
+        className="paper-surface mx-auto mt-8 flex w-full flex-col items-center rounded-md border px-6 py-10 text-center sm:px-8 sm:py-12"
+      >
+        <CloudAlertIcon
+          aria-hidden="true"
+          className="size-14 text-[#B9395A]"
+          strokeWidth={1.5}
+        />
+        <h1 className="mt-5 font-display font-semibold text-2xl text-[#40222F]">
+          Não deu para carregar o feed
+        </h1>
+        <p className="mx-auto mt-3 max-w-xl text-[#7A5A69] leading-7">
+          Confira sua conexão e tente de novo. Suas publicações não foram
+          afetadas.
+        </p>
+        <Button className="mt-5" onClick={reset} type="button">
+          Tentar de novo
+        </Button>
+      </section>
     </div>
-  </div>
+  </main>
 );
 
 export default CommunityError;

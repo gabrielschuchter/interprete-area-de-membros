@@ -23,6 +23,9 @@ interface GroupMemberInvitePickerProperties {
   readonly fieldName?: string;
   readonly label?: string;
   readonly maxSelected?: number;
+  readonly onSelectionChange?: (
+    people: readonly { readonly id: string; readonly name: string }[]
+  ) => void;
   readonly searchEndpoint?: string;
   readonly studentsOnly?: boolean;
 }
@@ -33,6 +36,7 @@ export const GroupMemberInvitePicker = ({
   fieldName = "inviteeIds",
   label = "Convidar pessoas",
   maxSelected = 50,
+  onSelectionChange,
   searchEndpoint = "/api/members/search",
   studentsOnly = false,
 }: GroupMemberInvitePickerProperties) => {
@@ -105,6 +109,12 @@ export const GroupMemberInvitePicker = ({
   };
 
   const searchId = `member-picker-${fieldName}`;
+
+  useEffect(() => {
+    onSelectionChange?.(
+      selected.map(({ id, displayName }) => ({ id, name: displayName }))
+    );
+  }, [onSelectionChange, selected]);
 
   return (
     <div>

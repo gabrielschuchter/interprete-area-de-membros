@@ -1,0 +1,90 @@
+{
+  "captured_at_utc": "2026-10-24T10:06:16.284Z",
+  "target": {
+    "id": "supabase_db_interprete-community-recovery2-20261024",
+    "kind": "fresh local Supabase stack Docker",
+    "database_port_loopback": 54442,
+    "storage_api_port_loopback": 54441,
+    "source_QA_GREEN_BLUE_modified": false,
+    "TLS_verified": true,
+    "TLS_version": "TLSv1.3",
+    "retained": true
+  },
+  "portable_recovery": {
+    "format": "INTERPRETE-PORTABLE-RECOVERY-V1",
+    "cipher": "AES-256-GCM",
+    "decryptor": "node:24-alpine on Linux",
+    "network": "none",
+    "Windows_DPAPI_unavailable_in_decryptor": true,
+    "authenticated_decryption_and_database_Storage_hashes_passed": true,
+    "key_stored_separately_under_restricted_user_ACL": true,
+    "off_host_copy_or_operator_handoff_performed": false
+  },
+  "database_restore": {
+    "restored": true,
+    "archive_bytes": 573006,
+    "archive_sha256": "2784de6c5b2620434e7fe2b81cf75367b39d80554b466bfa620d132da88ee113",
+    "schemas": ["public", "supabase_migrations"],
+    "owner_mapping": "--no-owner restores application objects under postgres; platform roles retain fresh local ownership",
+    "table_data_verified": 106,
+    "rows_verified": 1513,
+    "verification": "all sorted COPY rows match archive SHA256 per table",
+    "target": "supabase_db_interprete-community-recovery2-20261024",
+    "new_target_only": true,
+    "source_QA_GREEN_BLUE_modified": false
+  },
+  "bootstrap": {
+    "fresh_platform_roles_auth_realtime_storage_initialized_by": "Supabase CLI 2.121.0",
+    "archive_schema_creation_entries_skipped": [
+      "public",
+      "supabase_migrations"
+    ],
+    "managed_default_ACL_entries_skipped": 3,
+    "managed_defaults_verified_present": true,
+    "owner_mapping": "application objects postgres; existing managed platform ACL/owners retained",
+    "inherited_platform_table_grants_detected_and_corrected": "REVOKE ALL ON ALL TABLES IN SCHEMA public FROM anon, authenticated",
+    "requires_same_hardening_for_disaster_restore_to_fresh_Supabase": true
+  },
+  "final_migration_rehearsal": {
+    "applied_pending": 13,
+    "ledger_completed": 78,
+    "checksum_mismatches": 0,
+    "applied_with": "Prisma migrate deploy using candidate schema/config",
+    "lock_timeout": "2s",
+    "statement_timeout": "60s",
+    "catalog": {
+      "read_only": "on",
+      "post_total": 31,
+      "domain_tables": 109,
+      "notification_total": 23,
+      "completed_migrations": 78,
+      "post_audience_counts": {
+        "GROUP": 3,
+        "UNRESOLVED": 28
+      },
+      "published_unresolved": 2,
+      "notification_unresolved": 4,
+      "all_catalog_assertions_passed": true
+    }
+  },
+  "storage_restore": {
+    "storage_rehydrated": true,
+    "target_only": true,
+    "bucket_private": true,
+    "objects_uploaded": 4,
+    "bytes": 11092,
+    "authenticated_GET_SHA256_matches": 4,
+    "anonymous_public_endpoint_denied": 4,
+    "remote_storage_modified": false,
+    "metadata_mimetype_and_size_matches": 4,
+    "domain_path_references_matching_recovered_object_names": 0
+  },
+  "limits": {
+    "snapshot_is_preflight_not_coordinated_T0": true,
+    "restored_target_is_not_production": true,
+    "app_API_fallback_runtime_smoke": "delegated to root using protected env artifact",
+    "source_QA_read_only": true,
+    "remote_queries_or_writes_by_this_agent": false
+  },
+  "private_data_or_secrets_in_evidence": false
+}
