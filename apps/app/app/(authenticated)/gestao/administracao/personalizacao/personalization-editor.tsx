@@ -6,7 +6,7 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@repo/design-system/components/ui/dialog";
-import { useActionState, useEffect, useMemo, useRef, useState } from "react";
+import { useActionState, useMemo, useRef, useState } from "react";
 import {
   type CursosBlockConfig,
   cursosBlockMeta,
@@ -15,6 +15,7 @@ import {
   maxNoteText,
   type PortalNoteConfig,
 } from "@/lib/personalization-domain";
+import { useGestaoDirtyRegistration } from "../../dirty-registry";
 import { GestaoIcon } from "../../gestao-icon";
 import { GestaoSwitch } from "../../gestao-switch";
 import { type PublishState, publishGestaoPersonalization } from "./actions";
@@ -260,14 +261,7 @@ export const PersonalizationEditor = ({
     return before?.enabled && !block.enabled;
   });
 
-  useEffect(() => {
-    if (!dirty) {
-      return;
-    }
-    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [dirty]);
+  useGestaoDirtyRegistration(dirty);
 
   const patchBlock = (id: string, patch: Partial<CursosBlockConfig>) =>
     setDraft((current) => ({

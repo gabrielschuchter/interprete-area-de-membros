@@ -6,7 +6,8 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@repo/design-system/components/ui/dialog";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useGestaoDirtyRegistration } from "@/app/(authenticated)/gestao/dirty-registry";
 import {
   findMissingExerciseExplanationOptionReferences,
   validateExerciseDraft,
@@ -543,14 +544,7 @@ export const QuestionEditorForm = (props: Properties) => {
   const [previewing, setPreviewing] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!dirty) {
-      return;
-    }
-    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [dirty]);
+  useGestaoDirtyRegistration(dirty);
 
   const touch =
     <T,>(setter: (value: T) => void) =>

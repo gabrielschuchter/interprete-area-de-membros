@@ -4398,3 +4398,139 @@ button.gca-text-action {
     flex: 1 0 100%;
   }
 }
+
+/* Salvaguardas globais: conexão, acesso removido e rascunho restaurado */
+.gk-connection {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  left: 16px;
+  z-index: 60;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 16px;
+  font: 500 14px / 1.4 var(--font-sans-family);
+  color: #fff;
+  background: var(--gestao-text);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 22%);
+}
+.gk-connection[data-state="offline"],
+.gk-connection[data-state="forbidden"] {
+  background: #7a1f1f;
+}
+.gk-connection button {
+  height: 32px;
+  padding: 0 12px;
+  font: 600 13px / 1 var(--font-sans-family);
+  color: var(--gestao-text);
+  cursor: pointer;
+  background: #fff;
+  border: 0;
+  border-radius: 8px;
+}
+.gk-restored {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  z-index: 60;
+  max-width: calc(100vw - 32px);
+  padding: 10px 14px;
+  font: 500 13px / 1.4 var(--font-sans-family);
+  color: var(--gestao-text);
+  background: #fff;
+  border: 1px solid var(--gestao-line);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 14%);
+  transform: translateX(-50%);
+}
+
+/* Chegada à Gestão: aviso curto (visível no celular, lido por leitor de tela no desktop) */
+.gk-entry-toast {
+  position: fixed;
+  top: 12px;
+  right: 16px;
+  left: 16px;
+  z-index: 60;
+  padding: 10px 14px;
+  font: 500 13px / 1.4 var(--font-sans-family);
+  color: #fff;
+  background: var(--gestao-text);
+  border-radius: 10px;
+}
+.gk-entry-toast a {
+  font-weight: 600;
+  color: #fff;
+  text-decoration: underline;
+}
+@media (min-width: 768px) {
+  .gk-entry-toast {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+}
+
+/* Transição de entrada: só opacidade e deslocamento */
+@keyframes gk-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes gk-enter-reduced {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.gestao-main-column {
+  animation: gk-enter 240ms cubic-bezier(0.45, 0, 0.2, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .gestao-main-column {
+    animation: gk-enter-reduced 120ms linear both;
+  }
+}
+
+/* Avisos da turma */
+.gk-notice-form {
+  display: grid;
+  gap: 14px;
+  max-width: 820px;
+  padding: 24px;
+  margin-bottom: 20px;
+}
+.gk-notice-form textarea {
+  width: 100%;
+  min-height: 130px;
+  padding: 12px;
+  font: 400 14.5px / 1.5 var(--font-sans-family);
+  color: var(--gestao-text);
+  resize: vertical;
+  background: #fff;
+  border: 1px solid var(--gestao-line);
+  border-radius: 8px;
+}
+.gk-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.gk-row-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: flex-end;
+}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useGestaoDirtyRegistration } from "./dirty-registry";
 import { GestaoIcon } from "./gestao-icon";
 
 /**
@@ -32,14 +33,7 @@ export const FormDirtyIndicator = ({
     };
   }, []);
 
-  useEffect(() => {
-    if (!dirty) {
-      return;
-    }
-    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [dirty]);
+  useGestaoDirtyRegistration(dirty);
 
   return (
     <span className="gk-savestate" data-dirty={dirty} ref={anchor}>

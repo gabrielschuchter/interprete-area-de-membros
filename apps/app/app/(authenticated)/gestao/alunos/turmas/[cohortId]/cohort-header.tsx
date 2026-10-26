@@ -13,6 +13,7 @@ const tabs = [
   ["conteudo", "Conteúdo e cronograma", "/conteudo"],
   ["calendario", "Encontros e calendário", "/calendario"],
   ["atividades", "Atividades", "/atividades"],
+  ["avisos", "Avisos", "/avisos"],
   ["configuracoes", "Configurações", "/configuracoes"],
 ] as const;
 const labels = {

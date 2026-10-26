@@ -38,6 +38,10 @@ const GestaoMobileDrawer = dynamic(
   () => import("./gestao-shell-dialogs").then((m) => m.GestaoMobileDrawer),
   { ssr: false }
 );
+const GestaoGuards = dynamic(
+  () => import("./gestao-guards").then((m) => m.GestaoGuards),
+  { ssr: false }
+);
 const GestaoWelcomeDialog = dynamic(
   () => import("./gestao-shell-dialogs").then((m) => m.GestaoWelcomeDialog),
   { ssr: false }
@@ -811,6 +815,7 @@ const GestaoShellFrame = ({
           </main>
         </div>
       </div>
+      <GestaoGuards memberId={memberId} />
       {welcomeOpen ? (
         <GestaoWelcomeDialog onDismiss={dismissWelcome} open={welcomeOpen} />
       ) : null}
