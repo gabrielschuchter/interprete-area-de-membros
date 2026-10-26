@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  gestaoAdministrationDestination,
-  gestaoCommunityDestination,
   gestaoLegacyAdminDestination,
-  gestaoStudentDestination,
   isGestaoShellPath,
   professorDestination,
   safeGestaoReturnPath,
@@ -26,47 +23,6 @@ describe("Gestão navigation", () => {
   it("keeps legacy staff routes available while the feature flag is off", () => {
     expect(professorDestination(["conteudo"], false)).toBe("/admin/learning");
     expect(professorDestination(["rota-desconhecida"], false)).toBe("/admin");
-  });
-
-  it("maps Gestão community sections to existing staff workflows only", () => {
-    expect(gestaoCommunityDestination(["publicacoes"])).toBe(
-      "/admin/community"
-    );
-    expect(gestaoCommunityDestination(["avisos"])).toBe("/admin/avisos");
-    expect(gestaoCommunityDestination(["avisos", "novo"])).toBe(
-      "/admin/avisos"
-    );
-    expect(gestaoCommunityDestination(["encontros"])).toBe("/admin/meetings");
-    expect(gestaoCommunityDestination(["desconhecido"])).toBeNull();
-    expect(gestaoCommunityDestination(["publicacoes", "post"])).toBeNull();
-  });
-
-  it("maps only implemented Gestão administration sections", () => {
-    expect(gestaoAdministrationDestination(["membros"])).toBe("/admin/membros");
-    expect(gestaoAdministrationDestination(["acessos"])).toBe("/admin/acessos");
-    expect(gestaoAdministrationDestination(["gravacoes-historicas"])).toBe(
-      "/admin/gravacoes"
-    );
-    expect(gestaoAdministrationDestination(["personalizacao"])).toBe(
-      "/admin/personalizacao"
-    );
-    expect(gestaoAdministrationDestination(["medalhas"])).toBe("/admin/badges");
-    expect(gestaoAdministrationDestination(["integracoes"])).toBeNull();
-    expect(gestaoAdministrationDestination(["auditoria"])).toBeNull();
-    expect(gestaoAdministrationDestination(["membros", "member-1"])).toBeNull();
-  });
-
-  it("routes assignment and study shortcuts to existing staff workflows", () => {
-    expect(gestaoStudentDestination(["atribuicoes"])).toBe(
-      "/admin/atribuicoes"
-    );
-    expect(gestaoStudentDestination(["atribuicoes", "nova"])).toBe(
-      "/admin/atribuicoes"
-    );
-    expect(gestaoStudentDestination(["tarefas"])).toBe("/admin/estudo");
-    expect(gestaoStudentDestination(["atribuicoes", "desconhecida"])).toBe(
-      null
-    );
   });
 
   it("rejects external, management, and malformed return destinations", () => {

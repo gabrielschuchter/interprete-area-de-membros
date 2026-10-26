@@ -6,6 +6,7 @@ import {
   getLearningAccessScope,
   type LearningAccessScope,
 } from "./content-access";
+import { publishDueGestaoMeetings } from "./gestao-meetings-schedule";
 import {
   canReadMeeting,
   hasConfiguredExternalRecordingSource,
@@ -84,6 +85,7 @@ export const getMeetings = async (
   accessScope?: LearningAccessScope | Promise<LearningAccessScope>
 ) => {
   const now = new Date();
+  await publishDueGestaoMeetings(now);
   const calendarStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const calendarEnd = new Date(now.getFullYear(), now.getMonth() + 3, 1);
   const scopePromise = accessScope
@@ -155,6 +157,7 @@ export const getUpcomingMeetings = async (
   memberId: string,
   accessScope?: LearningAccessScope | Promise<LearningAccessScope>
 ) => {
+  await publishDueGestaoMeetings();
   const scopePromise = accessScope
     ? Promise.resolve(accessScope)
     : getLearningAccessScope(memberId);

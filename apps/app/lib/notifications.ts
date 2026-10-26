@@ -910,5 +910,58 @@ export const notifyAnnouncement = (input: {
     dedupeKey: `announcement:${input.announcementId}:${input.recipientId}`,
   });
 
+/**
+ * Aviso interno "Entrega recebida" aos professores das turmas ativas do aluno.
+ * Falhar aqui nunca pode impedir o envio da resposta.
+ */
+export const notifySubmissionReceived = async (input: {
+  readonly activityId: string;
+  readonly activityTitle: string;
+  readonly studentId: string;
+  readonly submittedAt: Date;
+}) => {
+  const [student, teachers] = await Promise.all([
+    database.member.findUnique({
+      where: { id: input.studentId },
+      select: { displayName: true },
+    }),
+    database.cohortTeacher.findMany({
+      where: {
+        cohort: {
+          is: {
+            archivedAt: null,
+            memberships: {
+              some: {
+                memberId: input.studentId,
+                status: "ACTIVE",
+                leftAt: null,
+              },
+            },
+          },
+        },
+      },
+      distinct: ["memberId"],
+      select: { memberId: true },
+      take: 50,
+    }),
+  ]);
+  const name = student?.displayName ?? "Um aluno";
+  await Promise.all(
+    teachers.map(({ memberId }) =>
+      createNotification({
+        actorId: input.studentId,
+        body: `${name} enviou “${input.activityTitle}”.`,
+        dedupeKey: `submission-received:${memberId}:${input.activityId}:${input.studentId}:${input.submittedAt.getTime()}`,
+        entityId: input.activityId,
+        entityType: "SUBMISSION",
+        href: "/gestao/alunos/correcoes",
+        recipientId: memberId,
+        title: "Entrega recebida",
+        type: notificationTypes.announcement,
+      })
+    )
+  );
+};
+
 export const notificationTitle = (type: string) =>
   titleForType[asNotificationType(type)];

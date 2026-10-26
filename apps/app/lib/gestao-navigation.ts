@@ -36,37 +36,6 @@ const legacyAdminRoutesByPath: Record<string, string> = {
   personalizacao: "/admin/personalizacao",
 };
 
-const gestaoCommunityDestinations: Record<string, string> = {
-  publicacoes: "/admin/community",
-  avisos: "/admin/avisos",
-  "avisos/novo": "/admin/avisos",
-  encontros: "/admin/meetings",
-};
-
-export const gestaoCommunityDestination = (pathSegments: readonly string[]) =>
-  gestaoCommunityDestinations[pathSegments.join("/")] ?? null;
-
-const gestaoAdministrationDestinations: Record<string, string> = {
-  membros: "/admin/membros",
-  acessos: "/admin/acessos",
-  "gravacoes-historicas": "/admin/gravacoes",
-  personalizacao: "/admin/personalizacao",
-  medalhas: "/admin/badges",
-};
-
-export const gestaoAdministrationDestination = (
-  pathSegments: readonly string[]
-) => gestaoAdministrationDestinations[pathSegments.join("/")] ?? null;
-
-const gestaoStudentDestinations: Record<string, string> = {
-  atribuicoes: "/admin/atribuicoes",
-  "atribuicoes/nova": "/admin/atribuicoes",
-  tarefas: "/admin/estudo",
-};
-
-export const gestaoStudentDestination = (pathSegments: readonly string[]) =>
-  gestaoStudentDestinations[pathSegments.join("/")] ?? null;
-
 export type RedirectSearchParams = Record<
   string,
   string | string[] | undefined
