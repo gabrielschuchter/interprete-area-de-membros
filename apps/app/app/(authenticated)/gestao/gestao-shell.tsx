@@ -6,15 +6,6 @@ import {
   AvatarFallback,
   AvatarImage,
 } from "@repo/design-system/components/ui/avatar";
-import { Button } from "@repo/design-system/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@repo/design-system/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,6 +16,7 @@ import {
 } from "@repo/design-system/components/ui/dropdown-menu";
 import { toast } from "@repo/design-system/lib/toast";
 import { MenuIcon, XIcon } from "lucide-react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { MouseEvent as ReactMouseEvent, ReactNode } from "react";
@@ -39,7 +31,17 @@ import { useMemberNavigation } from "../components/member-navigation-context";
 import { GestaoCrumbsProvider, useGestaoCrumbTail } from "./gestao-crumbs";
 import { GestaoIcon, type GestaoIconName } from "./gestao-icon";
 import { GestaoSearch } from "./gestao-search";
+
 import { useGestaoReturnPath } from "./use-gestao-return-path";
+
+const GestaoMobileDrawer = dynamic(
+  () => import("./gestao-shell-dialogs").then((m) => m.GestaoMobileDrawer),
+  { ssr: false }
+);
+const GestaoWelcomeDialog = dynamic(
+  () => import("./gestao-shell-dialogs").then((m) => m.GestaoWelcomeDialog),
+  { ssr: false }
+);
 
 interface GestaoShellProperties {
   readonly avatarUrl: string | null;
@@ -447,6 +449,12 @@ const GestaoShellFrame = ({
   const searchParams = useSearchParams();
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [drawerLoaded, setDrawerLoaded] = useState(false);
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      setDrawerLoaded(true);
+    }
+  }, [mobileMenuOpen]);
   const [welcomeOpen, setWelcomeOpen] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const mobileMenuTrigger = useRef<HTMLButtonElement>(null);
@@ -688,14 +696,10 @@ const GestaoShellFrame = ({
       <aside className="gestao-sidebar" ref={sidebar}>
         {sidebarContent}
       </aside>
-      <Dialog onOpenChange={setMobileMenuOpen} open={mobileMenuOpen}>
-        <DialogContent
-          aria-describedby={undefined}
-          className="gestao-drawer translate-x-0 translate-y-0"
-          id="gestao-mobile-navigation"
+      {drawerLoaded ? (
+        <GestaoMobileDrawer
           onClickCapture={handleShellNavigation}
-          onCloseAutoFocus={(event) => {
-            event.preventDefault();
+          onCloseFocus={() => {
             if (window.matchMedia("(max-width: 1023px)").matches) {
               mobileMenuTrigger.current?.focus();
             } else {
@@ -706,13 +710,12 @@ const GestaoShellFrame = ({
                 ?.focus();
             }
           }}
-          overlayClassName="gestao-drawer-overlay"
-          showCloseButton={false}
+          onOpenChange={setMobileMenuOpen}
+          open={mobileMenuOpen}
         >
-          <DialogTitle className="sr-only">Menu da Gestão</DialogTitle>
           {sidebarContent}
-        </DialogContent>
-      </Dialog>
+        </GestaoMobileDrawer>
+      ) : null}
       <div className="gestao-main-column">
         <header className="gestao-topbar">
           <button
@@ -808,41 +811,9 @@ const GestaoShellFrame = ({
           </main>
         </div>
       </div>
-      <Dialog
-        onOpenChange={(open) => {
-          if (!open) {
-            dismissWelcome();
-          }
-        }}
-        open={welcomeOpen}
-      >
-        <DialogContent
-          className="gestao-welcome-dialog"
-          onCloseAutoFocus={(event) => {
-            event.preventDefault();
-            const heading = document.querySelector<HTMLElement>(
-              "#gestao-main-content h1"
-            );
-            heading?.setAttribute("tabindex", "-1");
-            heading?.focus({ preventScroll: true });
-          }}
-        >
-          <DialogHeader>
-            <p className="gestao-eyebrow">Interprete · Gestão</p>
-            <DialogTitle className="gestao-welcome-title">
-              Seu espaço de ensino, em um só lugar.
-            </DialogTitle>
-            <DialogDescription>
-              Aqui você acompanha turmas, organiza conteúdos e cuida da
-              comunidade. As permissões da sua conta definem quais áreas
-              aparecem para você.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button onClick={dismissWelcome}>Começar</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {welcomeOpen ? (
+        <GestaoWelcomeDialog onDismiss={dismissWelcome} open={welcomeOpen} />
+      ) : null}
     </div>
   );
 };
