@@ -1,5 +1,25 @@
 # OPS-01 — recuperação operacional — 24/10/2026
 
+## Atualização de execução — 26/10/2026
+
+O 401 foi identificado no bearer do handler, após passagem pela proteção, e
+corrigido somente no Preview. Foram observados 14 schedules GitHub bem-sucedidos;
+os três logs mais recentes têm nove guards OIDC true, curl 0 e HTTP 200 JSON.
+Isso comprova autenticação automática, ainda sem job QA recuperado. A cadência
+best-effort teve intervalos de 131–287 minutos; por isso o candidato acrescenta
+um hop limitado do cron canônico existente para o consumer Preview isolado.
+O cron GREEN mantém endpoint/comando/agenda originais. O candidato API está
+preparado com esse hop habilitado, mas ainda não recebe o alias canônico.
+
+O Preview também comprovou token Clerk nativo válido, SUBSCRIBED no tópico
+privado próprio e CHANNEL_ERROR no tópico alheio, sem escrita solicitada no
+GREEN. Faltam job automático, entrega Broadcast e badge após reload. Durante
+a manutenção atual, cron e Preview antigos estão barrados por WAF. Evidências:
+[scheduler atual](evidence/ops01-live-20261025.json) e
+[Realtime privado](evidence/preview-realtime-readonly-20261026.json).
+
+As seções abaixo são históricas onde divergirem deste estado.
+
 **Estado: BLOQUEADO; contrato OIDC corrigido, recuperação real ainda não comprovada.**
 Este registro atualiza o diagnóstico da base `04b5e5c` sem substituir as provas
 pendentes de scheduler, outbox, Broadcast/Realtime e badge.

@@ -1,0 +1,84 @@
+{
+  "captured_at_utc": "2026-10-26T10:19:08.230Z",
+  "run": "fallback-20261026101908",
+  "target": "isolated recovery2; Production builds App3103/API3104",
+  "remote_product_database_modified": false,
+  "authentication": "real Clerk Development sessions",
+  "results": [
+    {
+      "check": "authenticated-role",
+      "passed": true,
+      "actor": 0,
+      "role": "MEMBER",
+      "identity_verified": true,
+      "notifications_status": 200,
+      "cache_private_no_store": true
+    },
+    {
+      "check": "authenticated-role",
+      "passed": true,
+      "actor": 1,
+      "role": "MEMBER",
+      "identity_verified": true,
+      "notifications_status": 200,
+      "cache_private_no_store": true
+    },
+    {
+      "check": "authenticated-role",
+      "passed": true,
+      "actor": 2,
+      "role": "TEACHER",
+      "identity_verified": true,
+      "notifications_status": 200,
+      "cache_private_no_store": true
+    },
+    {
+      "check": "authenticated-role",
+      "passed": true,
+      "actor": 3,
+      "role": "ADMIN",
+      "identity_verified": true,
+      "notifications_status": 200,
+      "cache_private_no_store": true
+    },
+    {
+      "check": "invitation-accepted-persisted",
+      "passed": true,
+      "role": "MEMBER",
+      "cover_after_accept": 200,
+      "reused_prior_acceptance": true
+    },
+    {
+      "check": "post-write-and-reload-compatible",
+      "passed": true,
+      "status": "PUBLISHED",
+      "scope": "GROUP",
+      "author_and_member_reload": true
+    },
+    {
+      "check": "comment-and-follow-persisted",
+      "passed": true,
+      "separate_member": true
+    },
+    {
+      "check": "isolated-outbox-schema-compatibility",
+      "passed": true,
+      "manual_diagnostic_only": true,
+      "automatic_recovery_claimed": false,
+      "claimed": 0,
+      "succeeded": 0,
+      "canonical_unchanged": true,
+      "notification_persisted": true
+    },
+    {
+      "check": "notification-read-after-reload",
+      "passed": true,
+      "http_status": 200,
+      "shape_stable": true,
+      "cache_private_no_store": true
+    }
+  ],
+  "remote_supabase_attempts_blocked": 0,
+  "passed": true,
+  "completed_at_utc": "2026-10-26T10:19:22.266Z"
+}

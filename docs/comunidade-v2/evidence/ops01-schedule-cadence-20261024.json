@@ -1,0 +1,131 @@
+{
+  "observedAt": "2026-10-24T10:04:38.7637601Z",
+  "workflow": {
+    "cron": "3-58/5 * * * *",
+    "path": ".github/workflows/community-v2-preview-outbox.yml",
+    "state": "active",
+    "id": 386088870
+  },
+  "repository": {
+    "archived": false,
+    "default_branch": "main",
+    "disabled": false,
+    "visibility": "public"
+  },
+  "actionsPermissions": {
+    "enabled": true,
+    "allowed_actions": "all",
+    "sha_pinning_required": false
+  },
+  "recentRuns": [
+    {
+      "conclusion": "failure",
+      "created_at": "2026-10-24T06:06:34Z",
+      "head_sha": "bb92322703e017e9d633074784f9d883392d8599",
+      "id": 40068889714,
+      "status": "completed"
+    },
+    {
+      "conclusion": "failure",
+      "created_at": "2026-10-24T01:19:58Z",
+      "head_sha": "b5a2f067d75adf16bf84193ecea290c1bd318f5e",
+      "id": 40049295827,
+      "status": "completed"
+    },
+    {
+      "conclusion": "failure",
+      "created_at": "2026-10-23T22:51:14Z",
+      "head_sha": "b5a2f067d75adf16bf84193ecea290c1bd318f5e",
+      "id": 40036220515,
+      "status": "completed"
+    },
+    {
+      "conclusion": "failure",
+      "created_at": "2026-10-23T19:51:09Z",
+      "head_sha": "7a7c8e4d0167490308f54bb8d79b3577c2f0aaa6",
+      "id": 40014660675,
+      "status": "completed"
+    },
+    {
+      "conclusion": "failure",
+      "created_at": "2026-10-23T15:53:53Z",
+      "head_sha": "90aa250e3d50a077df013edec38f90ce3e828316",
+      "id": 39982199840,
+      "status": "completed"
+    },
+    {
+      "conclusion": "failure",
+      "created_at": "2026-10-23T11:30:11Z",
+      "head_sha": "90aa250e3d50a077df013edec38f90ce3e828316",
+      "id": 39946517224,
+      "status": "completed"
+    },
+    {
+      "conclusion": "failure",
+      "created_at": "2026-10-23T05:59:27Z",
+      "head_sha": "90aa250e3d50a077df013edec38f90ce3e828316",
+      "id": 39908818699,
+      "status": "completed"
+    },
+    {
+      "conclusion": "failure",
+      "created_at": "2026-10-23T01:01:37Z",
+      "head_sha": "90aa250e3d50a077df013edec38f90ce3e828316",
+      "id": 39881607621,
+      "status": "completed"
+    },
+    {
+      "conclusion": "failure",
+      "created_at": "2026-10-22T22:44:10Z",
+      "head_sha": "90aa250e3d50a077df013edec38f90ce3e828316",
+      "id": 39867080366,
+      "status": "completed"
+    },
+    {
+      "conclusion": "failure",
+      "created_at": "2026-10-22T19:32:19Z",
+      "head_sha": "90aa250e3d50a077df013edec38f90ce3e828316",
+      "id": 39840969234,
+      "status": "completed"
+    },
+    {
+      "conclusion": "failure",
+      "created_at": "2026-10-22T15:39:25Z",
+      "head_sha": "90aa250e3d50a077df013edec38f90ce3e828316",
+      "id": 39806873562,
+      "status": "completed"
+    },
+    {
+      "conclusion": "failure",
+      "created_at": "2026-10-22T10:35:18Z",
+      "head_sha": "90aa250e3d50a077df013edec38f90ce3e828316",
+      "id": 39764219940,
+      "status": "completed"
+    },
+    {
+      "conclusion": "failure",
+      "created_at": "2026-10-22T05:29:42Z",
+      "head_sha": "90aa250e3d50a077df013edec38f90ce3e828316",
+      "id": 39728335149,
+      "status": "completed"
+    },
+    {
+      "conclusion": "failure",
+      "created_at": "2026-10-22T00:45:08Z",
+      "head_sha": "90aa250e3d50a077df013edec38f90ce3e828316",
+      "id": 39701567309,
+      "status": "completed"
+    },
+    {
+      "conclusion": "failure",
+      "created_at": "2026-10-21T22:16:43Z",
+      "head_sha": "90aa250e3d50a077df013edec38f90ce3e828316",
+      "id": 39685313461,
+      "status": "completed"
+    }
+  ],
+  "documentedLimitation": "GitHub schedule is best effort; events can be delayed or dropped before run creation. No local setting explains or repairs observed multi-hour gaps.",
+  "source": "https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule",
+  "externalDependency": "GitHub scheduling service",
+  "noManualRunCountedAsRecovery": true
+}

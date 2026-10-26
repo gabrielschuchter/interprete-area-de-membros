@@ -166,6 +166,27 @@ test("the Preview hop alias requires an explicit compatible Preview selection", 
   );
 });
 
+test("maintenance can allow one verified App Preview without public aliases", () => {
+  const configuration = appConfiguration();
+  configuration.deployments.dpl_Preview = deployment(appId, null);
+  const appPreviewAlias =
+    "interprete-area-de-membro-git-553be9-gabrielschuchters-projects.vercel.app";
+  configuration.aliases[appPreviewAlias] = alias(appId, "dpl_Preview");
+  const result = run("app", "maintenance", configuration, [
+    "--preview-deployment",
+    "dpl_Preview",
+  ]);
+  assert.equal(result.status, 0, result.failure);
+  assert.deepEqual(result.output.verifiedAliases, [
+    { host: appPreviewAlias, deploymentId: "dpl_Preview" },
+  ]);
+  assert.deepEqual(result.output.rule.conditionGroup[0].conditions[0].value, [
+    appPreviewAlias,
+    "preview.vercel.app",
+    "production.vercel.app",
+  ]);
+});
+
 test("a stale Preview alias or different SHA never enters the host allowlist", () => {
   const configuration = apiConfiguration();
   configuration.aliases[previewAlias].deploymentId = "dpl_Old";

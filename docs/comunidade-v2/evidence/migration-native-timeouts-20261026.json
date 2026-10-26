@@ -1,0 +1,11 @@
+{
+  "observedAt": "2026-10-26T10:54:14.920Z",
+  "nativeTimeoutsVerified": true,
+  "migrationPassed": true,
+  "temporaryRoleDefaultsRestored": true,
+  "currentLockTimeout": "0",
+  "currentStatementTimeout": "2min",
+  "activeClientsTerminated": 0,
+  "idleSupavisorBackendsRefreshed": 2,
+  "scope": "only postgres role in postgres database during verified maintenance; no global timeout change"
+}

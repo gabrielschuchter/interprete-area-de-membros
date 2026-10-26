@@ -1,5 +1,36 @@
 # Comunidade V2 — resultado do preflight de go-live
 
+## Execução vigente — 26/10/2026, após migrations de 10:54 UTC
+
+**Etapa 12B em execução; manutenção ativa, membros ainda não liberados.** O
+candidato de runtime é `660595b1a83a0fec343207a35dcf09256709499a`. App e API
+Production principal e fallback estão READY, preparados sem atribuição dos
+domínios públicos. Os aliases ainda apontam para as versões anteriores, agora
+barradas pela regra WAF nos dois projetos. Requisições autenticadas por OIDC
+confirmaram 403 nos aliases, leitores imutáveis antigos e Preview; apenas os
+artefatos compatíveis selecionados responderam 200. Evidência:
+[manutenção](evidence/maintenance-20261026.json).
+
+A recuperação independente de banco e bytes Storage, o ensaio das 13 migrations
+até 78 entradas e o runtime do fallback no destino restaurado foram comprovados.
+O Preview confirmou JWT Clerk válido, assinatura no tópico privado próprio e
+negação do tópico alheio. O scheduler GitHub acumula 14 sucessos automáticos,
+mas recovery de job, Broadcast recebido e badge remoto persistido continuam
+pendentes. O T0 de 10:50 UTC foi decifrado independentemente em Linux e restaurado
+no destino novo: 106 tabelas/1.513 linhas conferidas por hash, quatro objetos
+Storage/11.092 bytes, metadados corretos e acesso público negado. As 13 migrations
+foram aplicadas no GREEN: 78 entradas completas, zero drift/pendências. Os 31
+posts e 23 notificações existentes foram preservados; os dois publicados sem
+proveniência continuam UNRESOLVED. Grants de Notification revogados, zero tabelas
+de domínio sem RLS e zero constraints não validadas. Timeouts nativos 2s/60s
+foram comprovados durante a execução e os defaults anteriores restaurados.
+Evidências: [T0](evidence/t0-restore-20261026.json),
+[migrations](evidence/green-migrations-20261026.json) e
+[timeouts](evidence/migration-native-timeouts-20261026.json).
+
+As seções anteriores abaixo são históricas onde contradizem esta execução.
+Não há declaração de GO ou de publicação concluída neste checkpoint.
+
 ## Atualização final — 24/10/2026 — diagnóstico 401 seguro
 
 **Release permanece NO-GO.** O run automático `40068889714` (SHA `bb923227`) chegou até a requisição Preview, com todos os nove checks OIDC aprovados, mas recebeu HTTP 401. Um rerun diagnóstico explícito (attempt 2, job `120837090924`), sem ser apresentado como prova de recuperação periódica, reproduziu o mesmo resultado em 24/10 às 09:26Z. Na consulta imediata à Vercel não apareceram logs do handler; ausência de logs não distingue SSO de rejeição silenciosa pela aplicação.

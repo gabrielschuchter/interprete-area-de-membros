@@ -1,0 +1,43 @@
+{
+  "observedAt": "2026-10-26T10:54:14.125Z",
+  "sourceSha": "660595b1a83a0fec343207a35dcf09256709499a",
+  "GREEN": true,
+  "tlsVerified": true,
+  "migrationsApplied": 13,
+  "ledgerComplete": 78,
+  "checksumMismatches": 0,
+  "pending": 0,
+  "existingPostValuesUnchanged": 31,
+  "existingNotificationRowsPreserved": 23,
+  "postAudiences": [
+    {
+      "audienceScope": "GROUP",
+      "status": "ARCHIVED",
+      "n": 3
+    },
+    {
+      "audienceScope": "UNRESOLVED",
+      "status": "DRAFT",
+      "n": 8
+    },
+    {
+      "audienceScope": "UNRESOLVED",
+      "status": "PUBLISHED",
+      "n": 2
+    },
+    {
+      "audienceScope": "UNRESOLVED",
+      "status": "ARCHIVED",
+      "n": 18
+    }
+  ],
+  "security": {
+    "anon_denied": true,
+    "authenticated_denied": true,
+    "missing_rls": 0,
+    "unvalidated": 0
+  },
+  "backupArchiveSha256": "927c80f8adb44a77c071d5f2824058b523daf8242624fc8bd451e10ec59330a9",
+  "maintenanceRetained": true,
+  "publicTrafficReleased": false
+}

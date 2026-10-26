@@ -14,6 +14,8 @@ const PROJECTS = {
       "interprete-area-de-membros.vercel.app",
       "interprete-area-de-membros-app.vercel.app",
     ],
+    previewAlias:
+      "interprete-area-de-membro-git-553be9-gabrielschuchters-projects.vercel.app",
   },
   api: {
     id: "prj_LzsMnY95oPtOdp6KUwUaPRQ5lfh6",
@@ -77,11 +79,10 @@ if (
   values.deployment.length > 4 ||
   !SHA_PATTERN.test(values.sha ?? "") ||
   !["maintenance", "release"].includes(values.mode) ||
-  (values["preview-deployment"] && !project.previewAlias) ||
   (values.stage && values.activate)
 ) {
   fail(
-    "Required: --project app|api --deployment dpl_PRODUCTION [repeat up to four] --sha SHA40 --mode maintenance|release. API may explicitly select --preview-deployment dpl_PREVIEW at the same SHA. Optional: --stage or --activate, with --confirm-digest from the dry-run."
+    "Required: --project app|api --deployment dpl_PRODUCTION [repeat up to four] --sha SHA40 --mode maintenance|release. An explicit --preview-deployment dpl_PREVIEW at the same SHA permits its immutable host; API also verifies its configured worker alias. Optional: --stage or --activate, with --confirm-digest from the dry-run."
   );
 }
 const auth = JSON.parse(
@@ -244,7 +245,11 @@ const main = async () => {
       values["preview-deployment"],
       true
     );
-    verifiedAliases.push(await validateAlias(project.previewAlias, [preview]));
+    if (project.previewAlias) {
+      verifiedAliases.push(
+        await validateAlias(project.previewAlias, [preview])
+      );
+    }
     deployments.push(preview);
   }
   if (values.mode === "release") {
@@ -335,7 +340,8 @@ const main = async () => {
   if (!Number.isInteger(version)) {
     fail("A stable numeric draft version is required for activation.");
   }
-  await request(scopedPath(`/${version}/activate`), "POST", {});
+  // Vercel's publish API selects the reviewed draft; `version` is metadata.
+  await request(scopedPath("/draft/activate"), "POST", {});
   const activated = await request(configPath);
   verifyDraft(active, activated.active, rule);
   console.log(

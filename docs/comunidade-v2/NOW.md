@@ -1,5 +1,26 @@
 # Comunidade V2 — estado para continuidade
 
+## Janela ativa — 26/10/2026, 10:44 UTC
+
+Manutenção WAF ativa em App e API; aliases públicos e deployments antigos
+retornam 403 mesmo com OIDC autorizado. **Não reabrir esses leitores após a
+migração.** Runtime candidato `660595b1a83a0fec343207a35dcf09256709499a`;
+Production App `dpl_6sUFnu82hfq4jubt3QJDnupyMQKo`, API
+`dpl_5975utnkeZVCrQXyXUEAyk7UUNRW`. Fallback App
+`dpl_5LHrSMJxaL6uPJra2HnvkgcTrwt3`, API
+`dpl_GhbzsKSyBc4jTX6JtSM9Yka5NyAm`. Todos READY, sem domínios atribuídos.
+GREEN tem 78 migrations completas desde 10:54 UTC, sem drift ou pendências.
+T0 coordenado de 10:50 UTC restaurado e validado no alvo novo
+`interprete-community-t0-20261026`, portas loopback 54451/54452. Posts legados
+ambíguos continuam UNRESOLVED, grants de Notification revogados e RLS preservado.
+O Preview App selecionado também está permitido para QA pela WAF; o App público
+e os leitores antigos continuam bloqueados. Próximo gate: recovery automático
+e smoke autenticado remoto, antes de abrir o tráfego público.
+Helpers e recibos privados estão em
+`%LOCALAPPDATA%/Codex/qa/community-v2-t0-20261026`. O relatório e a
+[evidência de manutenção](evidence/maintenance-20261026.json) prevalecem sobre
+os checkpoints históricos abaixo. Não reiniciar QA geral ou RV-01.
+
 ## Estado vigente — 24/10/2026
 
 **Release NO-GO; nenhum go-live foi iniciado.** O contrato OIDC do workflow e

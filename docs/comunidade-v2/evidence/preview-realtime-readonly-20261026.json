@@ -1,0 +1,22 @@
+{
+  "observedAt": "2026-10-26T10:35:38.809Z",
+  "deployment": "dpl_9NnkqNPSaNW5EpVVGL23KZnsNy3P",
+  "sha": "660595b1a83a0fec343207a35dcf09256709499a",
+  "remoteDatabaseWritesRequested": false,
+  "results": [
+    {
+      "check": "authenticated-native-token",
+      "status": 200
+    },
+    {
+      "check": "own-private-subscription",
+      "state": "SUBSCRIBED"
+    },
+    {
+      "check": "foreign-private-denied",
+      "state": "CHANNEL_ERROR"
+    }
+  ],
+  "passed": true,
+  "completedAt": "2026-10-26T10:35:52.241Z"
+}

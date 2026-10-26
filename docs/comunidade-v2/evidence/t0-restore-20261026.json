@@ -1,0 +1,16 @@
+{
+  "observedAt": "2026-10-26T10:53:33.271Z",
+  "coordinatedT0": true,
+  "archiveSha256": "927c80f8adb44a77c071d5f2824058b523daf8242624fc8bd451e10ec59330a9",
+  "tableDataVerified": 106,
+  "rowsVerified": 1513,
+  "verification": "every table sorted COPY rows SHA256 equals archive",
+  "storageObjects": 4,
+  "storageBytes": 11092,
+  "storageHashAndMetadataVerified": true,
+  "publicStorageDenied": true,
+  "grantsHardened": true,
+  "target": "supabase_db_interprete-community-t0-20261026",
+  "tlsVerified": true,
+  "GREEN_BLUE_PreexistingQA_Modified": false
+}
