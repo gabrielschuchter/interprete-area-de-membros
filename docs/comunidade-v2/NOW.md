@@ -1,6 +1,37 @@
 # Comunidade V2 — estado para continuidade
 
-## Janela ativa — 26/10/2026, 10:44 UTC
+## Publicado em Production — 26/10/2026, 15:48 UTC
+
+Comunidade V2 está liberada nos domínios públicos. App:
+https://interprete-area-de-membros.vercel.app
+(deployment dpl_5T61v53srxCJnkc9ffC29W3jzB1x, SHA
+1c57191542316654cc3b2da1f21e3f5474529408). API:
+https://interprete-area-de-membros-api.vercel.app
+(deployment dpl_5975utnkeZVCrQXyXUEAyk7UUNRW, SHA
+660595b1a83a0fec343207a35dcf09256709499a). Ambos READY/Production; API
+/health respondeu OK. Manutenção removida dos aliases públicos; o host guard
+v5 ainda nega hosts fora da lista compatível. Trusted Source de QA restaurada
+ao baseline, Clerk/SSO/RLS mantidos, Git da Vercel continua desconectado.
+
+O smoke de quatro atores comprovou autorização por papel, grupo privado, bloqueio a membro sem acesso, persistência da publicação e arquivamento ([componentes](evidence/production-smoke-20261026.json)). A reconciliação final encontrou zero avisos QA ativos ([cleanup](evidence/production-qa-cleanup-reconciliation-20261026.json)).
+
+Smoke autenticado no domínio público sem bypass passou: comunidade, grupos,
+salvos, resumo no-store, identidade do token Realtime e inscrição no canal
+privado. O scheduler interprete-member-outbox está ativo a cada cinco minutos;
+jobs QA foram recuperados automaticamente e a notificação ficou isolada ao
+destinatário. A ação de publicação no Admin também atualizou o badge em tempo
+real e o estado sobreviveu ao reload. Evidências: [smoke público autenticado](evidence/production-public-auth-smoke-20261026.json),
+[recovery automática](evidence/production-scheduler-realtime-repro-20261026.json),
+[teste de badge](evidence/production-realtime-badge-probe-20261026.json).
+
+13/13 migrations V2, 78 entradas no ledger, backup T0 e fallback compatível
+validados. Os dois posts legados ambíguos continuam UNRESOLVED e privados.
+Quatro atores QA foram desativados e seus perfis continuam ocultos ([evidência](evidence/production-qa-retirement-20261026.json)). Os três ciclos do cron
+de 15:35, 15:40 e 15:45 UTC passaram; não houve 5xx nem logs de erro em App/API
+na observação inicial de 15 minutos. [Estado consolidado](evidence/production-release-20261026.json).
+Detalhes e limites em [RELEASE-REPORT.md](RELEASE-REPORT.md).
+
+## Checkpoint anterior à promoção — 26/10/2026, 10:44 UTC
 
 Manutenção WAF ativa em App e API; aliases públicos e deployments antigos
 retornam 403 mesmo com OIDC autorizado. **Não reabrir esses leitores após a
@@ -67,7 +98,6 @@ migration ou mudança de credencial, autenticação ou cron GREEN.
 Detalhes, proteção e evidências em [OPS-01.md](OPS-01.md).
 Os registros abaixo são históricos onde divergirem desta ativação.
 
-
 ## Etapa 12A encerrada — NO-GO — 23/10/2026
 
 Preflight do candidato `4e026b59eb99521ed1c6b94c8444a52049d317c6` concluído.
@@ -95,7 +125,6 @@ Spec preexistente `community-groups.spec.ts` preservado, hash Git
 `43bb75e8482c3638840cbfa760a91e01927ed770`, fora dos commits.
 Retomar somente os bloqueadores e provas faltantes do RELEASE-PLAN; não reabrir
 QA visual, RV-01 ou auditoria geral. Não iniciar publicação enquanto NO-GO.
-
 
 ## Fechamento cirúrgico de RV-01 — 23/10/2026
 

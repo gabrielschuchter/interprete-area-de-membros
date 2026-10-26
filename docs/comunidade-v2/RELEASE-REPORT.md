@@ -1,6 +1,63 @@
-# Comunidade V2 — resultado do preflight de go-live
+# Comunidade V2 — resultado do go-live
 
-## Execução vigente — 26/10/2026, após migrations de 10:54 UTC
+## Etapa 12B publicada — 26/10/2026, 15:48 UTC
+
+**PUBLICADO em Production.** O App e a API corretos estão READY, os domínios
+públicos servem os artifacts compatíveis e a manutenção foi retirada desses
+aliases. O App candidato é SHA 1c57191542316654cc3b2da1f21e3f5474529408,
+deployment dpl_5T61v53srxCJnkc9ffC29W3jzB1x; os aliases
+https://interprete-area-de-membros.vercel.app e
+https://interprete-area-de-membros-app.vercel.app apontam para ele. A API é SHA
+660595b1a83a0fec343207a35dcf09256709499a, deployment
+dpl_5975utnkeZVCrQXyXUEAyk7UUNRW; o alias
+https://interprete-area-de-membros-api.vercel.app está ativo e /health respondeu
+OK. A integração Git da Vercel permanece desconectada intencionalmente ([estado consolidado](evidence/production-release-20261026.json)).
+
+O host guard ativo está na versão 5: libera somente os deployments compatíveis
+verificados e os aliases públicos, mantendo a negação para hosts restantes.
+As regras Trusted Source temporárias de QA foram restauradas ao baseline;
+SSO, Clerk, RLS e isolamento de namespaces continuam ativos.
+
+O smoke pós-promoção autenticado usou um dos usuários QA controlados, sem
+bypass de Deployment Protection e sem impersonar membro real. Clerk confirmou
+a identidade; /comunidade, /comunidade/grupos e /comunidade/salvos responderam
+sem erro; resumo de notificações permaneceu private/no-store, token Realtime
+ficou vinculado ao usuário autenticado e o canal privado recebeu SUBSCRIBED.
+O App teve zero respostas 5xx e zero erros de página durante o smoke
+([evidência](evidence/production-public-auth-smoke-20261026.json)). A API
+
+O smoke de quatro atores também comprovou autorização por papel, criação do grupo privado, bloqueio do membro não autorizado, persistência da publicação e arquivamento do grupo. A primeira rodada terminou na etapa de notificações antes do reparo; o smoke público e o probe direto de badge posteriores fecharam esses itens. [Evidência de componentes](evidence/production-smoke-20261026.json). A reconciliação final encontrou zero avisos QA ativos ([cleanup](evidence/production-qa-cleanup-reconciliation-20261026.json)).
+/health foi aberta no domínio público real.
+
+O cron interprete-member-outbox permanece ativo em */5 * * * *. Um job QA
+enfileirado antes do vencimento foi recuperado pelo scheduler Production sem
+POST ou execução manual de worker; criou a notificação somente para o membro
+selecionado, com isolamento de namespace e destinatário. Separadamente, a ação
+real de publicação no Admin confirmou a atualização imediata do badge do
+destinatário, nenhum badge dos não destinatários mudou e o estado persistiu
+após reload
+([recuperação automática](evidence/production-scheduler-realtime-repro-20261026.json),
+[badge e persistência](evidence/production-realtime-badge-probe-20261026.json)).
+O probe do scheduler registrou falha apenas na observação de Broadcast/badge:
+ele não capturou frames nem salvou os valores do DOM; por isso não é usado como
+prova de badge. A medição direta da UI subsequente passou. A publicação
+realtime.messages agora integra supabase_realtime sem mudança de grants ou
+policies RLS ([reparo](evidence/realtime-publication-repair-20261026.json)).
+Os ciclos Production de 15:35, 15:40 e 15:45 UTC terminaram succeeded. Na janela
+de 15 minutos até 15:48 UTC, o App registrou 50 requests (37 status 200, 6
+status 304 e 7 redirecionamentos 307), a API registrou quatro status 200, e
+ambos tiveram zero respostas 5xx e zero entradas de erro nos logs Vercel. A
+consulta de request logs não expôs percentis de latência; não há alegação de p95
+pós-release.
+
+As 13 migrations V2 seguem aplicadas no GREEN, com 78 entradas de ledger,
+integridade preservada e sem drift. O backup T0 e o fallback compatível foram
+restaurados e validados em destino isolado; Production permaneceu no GREEN e BLUE continuou congelado. Os dois posts legados sem
+proveniência continuam UNRESOLVED e privados. Os quatro usuários QA
+controlados foram desativados após o smoke, com papéis MEMBER e perfis ocultos;
+zero linhas de membros reais foram alteradas ([retirada QA](evidence/production-qa-retirement-20261026.json)). A evidência consolidada é [production-release-20261026.json](evidence/production-release-20261026.json).
+
+## Snapshot anterior à promoção — 26/10/2026, após migrations de 10:54 UTC
 
 **Etapa 12B em execução; manutenção ativa, membros ainda não liberados.** O
 candidato de runtime é `660595b1a83a0fec343207a35dcf09256709499a`. App e API
@@ -44,7 +101,6 @@ Não há declaração de GO ou de publicação concluída neste checkpoint.
 - A conexão Supabase expõe somente o projeto antigo inativo `wkclodjbrynerfgufmyb`, e acesso explícito ao GREEN `qffqhilydtnrggbcnogh` retornou **permission denied**. Nenhuma migration, restore, reclassificação de post ou alteração no GREEN foi executada.
 
 **Ponto de decisão:** esperar o próximo evento automático já instrumentado para classificar o 401; a resolução exige acesso autenticado que permita ajustar apenas o secret Preview ou a Trusted Source Preview conforme a camada demonstrada. Para liberar 12B continuam indispensáveis fonte autoritativa dos dois posts publicados, ensaio independente de restore banco/Storage e rollback compatível. Nenhuma dessas garantias foi inventada nem removida do gate.
-
 
 ## Rechecagem de execução — 24/10/2026 — OPS-01 HTTP 401
 

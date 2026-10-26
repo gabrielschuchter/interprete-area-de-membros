@@ -1,0 +1,13 @@
+{
+  "observedAt": "2026-10-26T15:42:45.437Z",
+  "environment": "Production",
+  "controlledQaAccountsRetired": 4,
+  "role": "MEMBER",
+  "deactivated": 4,
+  "profileVisibility": {
+    "showInDirectory": false,
+    "showInCommunityAvatars": false
+  },
+  "realMemberRowsTouched": 0,
+  "passed": true
+}

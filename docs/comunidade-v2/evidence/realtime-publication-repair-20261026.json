@@ -1,0 +1,16 @@
+{
+  "observedAt": "2026-10-26T15:21:42.943Z",
+  "project": "GREEN",
+  "publication": "supabase_realtime",
+  "table": "realtime.messages",
+  "beforePresent": false,
+  "afterPresent": true,
+  "exactPublicationRelation": true,
+  "publishedMessagePartitionCount": 7,
+  "existingRlsPolicyCount": 3,
+  "memberScopedBroadcastReadPolicies": 1,
+  "rlsChanged": false,
+  "grantsChanged": false,
+  "operation": "ADD TABLE",
+  "passed": true
+}

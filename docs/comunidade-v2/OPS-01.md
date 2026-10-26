@@ -1,6 +1,34 @@
 # OPS-01 — recuperação operacional — 24/10/2026
 
-## Atualização de execução — 26/10/2026
+## OPS-01 encerrado em Production — 26/10/2026, 15:48 UTC
+
+**Resolvido e ativo em Production.** O cron interprete-member-outbox segue
+ativo em */5 * * * *; os ciclos de 15:35, 15:40 e 15:45 UTC terminaram
+succeeded. Um job QA
+enfileirado e vencido foi recuperado por um schedule real, sem POST ou chamada
+manual do worker. O job escreveu uma Notification apenas para o destinatário
+selecionado e permaneceu isolado no namespace Production.
+
+O fluxo de notificação e badge foi confirmado no App publicado: a ação de
+Admin gerou a notificação persistida, atualizou o badge do destinatário sem
+reload, deixou os não destinatários inalterados e manteve a contagem após
+reload. O probe de recovery não capturou frames nem comparou os valores DOM;
+por isso a prova de badge vem do probe direto de UI, em arquivo separado.
+O smoke de autenticação pública, sem TrustedSource, confirmou Clerk, resumo
+private/no-store, token Realtime scoped e canal privado SUBSCRIBED. Ver:
+[recovery agendada](evidence/production-scheduler-realtime-repro-20261026.json),
+[badge persistido](evidence/production-realtime-badge-probe-20261026.json),
+[smoke autenticado](evidence/production-public-auth-smoke-20261026.json).
+
+O realtime.messages foi incluído na publicação supabase_realtime para habilitar
+Broadcast pela replicação; nenhuma policy RLS ou grant foi alterada. A
+manutenção foi retirada dos aliases públicos por regra host allowlist v5,
+mantendo Clerk, SSO e isolamento. Os quatro atores QA foram desativados após a
+validação ([retirada QA](evidence/production-qa-retirement-20261026.json)).
+
+**OPS-01 encerrado.** O status anterior abaixo é histórico. Estado consolidado: [production-release-20261026.json](evidence/production-release-20261026.json).
+
+## Checkpoint anterior — 26/10/2026
 
 O 401 foi identificado no bearer do handler, após passagem pela proteção, e
 corrigido somente no Preview. Foram observados 14 schedules GitHub bem-sucedidos;
@@ -20,7 +48,7 @@ a manutenção atual, cron e Preview antigos estão barrados por WAF. Evidência
 
 As seções abaixo são históricas onde divergirem deste estado.
 
-**Estado: BLOQUEADO; contrato OIDC corrigido, recuperação real ainda não comprovada.**
+**Estado naquele checkpoint: BLOQUEADO; contrato OIDC corrigido, recovery ainda não comprovado.**
 Este registro atualiza o diagnóstico da base `04b5e5c` sem substituir as provas
 pendentes de scheduler, outbox, Broadcast/Realtime e badge.
 
