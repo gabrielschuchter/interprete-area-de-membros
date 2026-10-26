@@ -29,7 +29,7 @@ jobs:
         run: |
           set -euo pipefail
           phase=repository_guard
-          trap 'result=$?; printf "OPS-01 phase=%s exit=%s\n" "$phase" "$result"' EXIT
+          trap 'result=$?; if [[ -n "${response_file:-}" ]]; then rm -f "$response_file"; fi; printf "OPS-01 phase=%s exit=%s\n" "$phase" "$result"' EXIT
 
           [[ "$GITHUB_REPOSITORY" == "gabrielschuchter/interprete-area-de-membros" ]]
           phase=ref_guard
@@ -85,8 +85,10 @@ jobs:
 
           api_url="https://${API_PREVIEW_HOST}/cron/outbox"
           phase=preview_request
+          response_file="$(mktemp)"
+          chmod 600 "$response_file"
           set +e
-          http_status="$(curl \
+          http_result="$(curl \
             --fail \
             --silent \
             --show-error \
@@ -94,15 +96,28 @@ jobs:
             --max-time 70 \
             --retry 2 \
             --retry-delay 1 \
-            --output /dev/null \
-            --write-out '%{http_code}' \
+            --output "$response_file" \
+            --write-out '%{http_code}|%{content_type}' \
             --request POST \
             --header "Authorization: Bearer ${PREVIEW_OUTBOX_CRON_SECRET}" \
             --header "x-vercel-trusted-oidc-idp-token: ${oidc_token}" \
             "$api_url")"
           curl_exit=$?
           set -e
-          printf 'OPS-01 phase=preview_response curl_exit=%s http_status=%s\n' "$curl_exit" "$http_status"
+          http_status="${http_result%%|*}"
+          response_content_type="${http_result#*|}"
+          case "$response_content_type" in
+            application/json*|application/problem+json*) response_body_type=json ;;
+            text/html*) response_body_type=html ;;
+            *) response_body_type=other ;;
+          esac
+          denial_source=undetermined
+          if [[ "$http_status" == "401" && "$response_body_type" == "json" ]]; then
+            if jq -e '.error == "Não autorizado."' "$response_file" > /dev/null 2>&1; then
+              denial_source=application_cron_auth
+            fi
+          fi
+          printf 'OPS-01 phase=preview_response curl_exit=%s http_status=%s response_body_type=%s denial_source=%s\n' "$curl_exit" "$http_status" "$response_body_type" "$denial_source"
           [[ "$curl_exit" == "0" ]]
           [[ "$http_status" == "200" ]]
           phase=complete
