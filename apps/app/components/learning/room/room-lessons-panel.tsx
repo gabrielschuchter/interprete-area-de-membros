@@ -1,9 +1,9 @@
 "use client";
 
 import { ChevronDownIcon, LockIcon } from "lucide-react";
-import Link from "next/link";
 import { type ReactNode, useState } from "react";
 import type { RoomOutline, RoomOutlineItem } from "@/lib/room-outline";
+import { LessonRowShell } from "../lesson-row-shell";
 import { RoomTemple } from "./room-art";
 import {
   type RoomKind,
@@ -91,35 +91,24 @@ const LessonRow = ({
   );
 
   return (
-    <li
-      className="room-lesson"
-      data-current={item.isCurrent ? "true" : undefined}
-    >
-      <label className="room-lesson__check">
-        <input
-          aria-label={roomTextFor(
-            kind,
-            item.completed ? "checkboxUnmark" : "checkboxMark",
-            { n: item.ordinal }
-          )}
-          checked={item.completed}
-          disabled={item.locked || pending}
-          onChange={(event) => onToggle(item, event.target.checked)}
-          type="checkbox"
-        />
-      </label>
-      {item.href ? (
-        <Link
-          aria-current={item.isCurrent ? "page" : undefined}
-          className="room-lesson__link"
-          href={item.href}
-        >
-          {text}
-        </Link>
-      ) : (
-        <span className="room-lesson__link">{text}</span>
+    <LessonRowShell
+      checkClassName="room-lesson__check"
+      checked={item.completed}
+      checkLabel={roomTextFor(
+        kind,
+        item.completed ? "checkboxUnmark" : "checkboxMark",
+        { n: item.ordinal }
       )}
-    </li>
+      className="room-lesson"
+      current={item.isCurrent}
+      disabled={item.locked || pending}
+      href={item.href ?? null}
+      linkAriaCurrent={item.isCurrent ? "page" : undefined}
+      linkClassName="room-lesson__link"
+      onToggle={(completed) => onToggle(item, completed)}
+    >
+      {text}
+    </LessonRowShell>
   );
 };
 

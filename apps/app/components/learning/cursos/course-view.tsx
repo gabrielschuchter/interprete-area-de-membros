@@ -3,12 +3,15 @@
 import {
   ArrowLeftIcon,
   ChevronDownIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
   LockIcon,
   PlayIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { setRoomLessonCompleted } from "@/app/(authenticated)/cursos/room-actions";
+import { LessonRowShell } from "../lesson-row-shell";
 import { CourseCover, clock } from "./cover";
 
 interface CourseViewLesson {
@@ -105,31 +108,95 @@ const LessonRow = ({
     </>
   );
   return (
-    <li
-      aria-current={current ? "true" : undefined}
+    <LessonRowShell
+      checkClassName="cb-li__ck"
+      checked={lesson.completed}
+      checkLabel={`Marcar aula ${lesson.ordinal} como feita`}
       className="cb-li"
-      data-current={current ? "true" : undefined}
-      data-flash={flash ? "true" : undefined}
-      data-off={locked ? "true" : undefined}
+      current={current}
+      dataFlash={flash}
+      dataOff={locked}
+      disabled={locked || pending}
+      href={locked ? null : lesson.href}
       id={rowId}
+      linkClassName="cb-li__a"
+      onToggle={(value) => onToggle(lesson, value)}
+      rowAriaCurrent={current ? "true" : undefined}
     >
-      <label className="cb-li__ck">
-        <input
-          aria-label={`Marcar aula ${lesson.ordinal} como feita`}
-          checked={lesson.completed}
-          disabled={locked || pending}
-          onChange={(event) => onToggle(lesson, event.target.checked)}
-          type="checkbox"
-        />
-      </label>
-      {locked ? (
-        <span className="cb-li__a">{body}</span>
-      ) : (
-        <Link className="cb-li__a" href={lesson.href}>
-          {body}
-        </Link>
-      )}
-    </li>
+      {body}
+    </LessonRowShell>
+  );
+};
+
+const ModuleScreen = ({
+  courseTitle,
+  currentLessonId,
+  index,
+  modules,
+  onBack,
+  onGo,
+  onToggle,
+  pending,
+}: {
+  readonly courseTitle: string;
+  readonly currentLessonId: string | null;
+  readonly index: number;
+  readonly modules: readonly CourseViewModule[];
+  readonly onBack: () => void;
+  readonly onGo: (index: number) => void;
+  readonly onToggle: (lesson: CourseViewLesson, completed: boolean) => void;
+  readonly pending: ReadonlySet<string>;
+}) => {
+  const module = modules[index];
+  const previous = modules[index - 1];
+  const next = modules[index + 1];
+  if (!module) {
+    return null;
+  }
+  return (
+    <section aria-label={module.title} className="cb-mscreen">
+      <button className="cb-back" onClick={onBack} type="button">
+        <ArrowLeftIcon aria-hidden="true" size={16} />
+        {courseTitle}
+      </button>
+      <div className="cb-eyebrow" style={{ marginTop: 6 }}>
+        Módulo {module.numeral}
+      </div>
+      <h1>{module.title}</h1>
+      <p className="cb-mscreen__sub">
+        {module.completedCount} de {module.lessons.length} aulas
+      </p>
+      <div aria-hidden="true" className="cb-rule" />
+      <ul className="cb-mod__bd">
+        {module.lessons.map((lesson) => (
+          <LessonRow
+            current={lesson.id === currentLessonId}
+            flash={false}
+            key={lesson.id}
+            lesson={lesson}
+            onToggle={onToggle}
+            pending={pending.has(lesson.id)}
+            rowId={`cb-screen-lesson-${lesson.id}`}
+          />
+        ))}
+      </ul>
+      <div className="cb-mscreen__nav">
+        {previous ? (
+          <button onClick={() => onGo(index - 1)} type="button">
+            <ChevronLeftIcon aria-hidden="true" size={14} />
+            Módulo {previous.numeral}
+          </button>
+        ) : (
+          <span />
+        )}
+        {next ? (
+          <button onClick={() => onGo(index + 1)} type="button">
+            Módulo {next.numeral}
+            <ChevronRightIcon aria-hidden="true" size={14} />
+          </button>
+        ) : null}
+      </div>
+    </section>
   );
 };
 
@@ -143,6 +210,7 @@ export const CourseView = ({ data }: { readonly data: CourseViewData }) => {
     readonly lesson: CourseViewLesson;
     readonly message: string;
   } | null>(null);
+  const [screen, setScreen] = useState<number | null>(null);
   const [, startTransition] = useTransition();
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -238,11 +306,19 @@ export const CourseView = ({ data }: { readonly data: CourseViewData }) => {
       </em>
     </a>
   ));
+  const openScreen = (index: number | null) => {
+    setScreen(index);
+    window.scrollTo({ top: 0 });
+  };
   const finished = data.continueHref === null;
   const started = completed > 0;
 
   return (
-    <div className="cb" data-route-content-ready="course">
+    <div
+      className="cb"
+      data-route-content-ready="course"
+      data-screen={screen === null ? undefined : "true"}
+    >
       <Link className="cb-back" href="/cursos">
         <ArrowLeftIcon aria-hidden="true" size={16} />
         Cursos
@@ -326,6 +402,28 @@ export const CourseView = ({ data }: { readonly data: CourseViewData }) => {
                 </div>
               ) : null}
             </div>
+            <div className="cb-mstack">
+              {modules.map((module, index) => (
+                <button
+                  className="cb-mrow"
+                  data-here={
+                    module.id === currentModule?.id && !finished
+                      ? "true"
+                      : undefined
+                  }
+                  key={module.id}
+                  onClick={() => openScreen(index)}
+                  type="button"
+                >
+                  <i>{module.numeral}</i>
+                  <span>{module.title}</span>
+                  <em>
+                    {module.completedCount}/{module.lessons.length}
+                  </em>
+                  <ChevronRightIcon aria-hidden="true" size={16} />
+                </button>
+              ))}
+            </div>
             {modules.map((module) => {
               const expanded = open.has(module.id);
               return (
@@ -396,6 +494,21 @@ export const CourseView = ({ data }: { readonly data: CourseViewData }) => {
             </aside>
           ) : null}
         </div>
+      )}
+      {screen === null ? null : (
+        <ModuleScreen
+          courseTitle={data.title}
+          currentLessonId={data.currentLessonId}
+          index={screen}
+          modules={modules.map((m) => ({
+            ...m,
+            lessons: m.lessons.map((l) => ({ ...l, completed: isDone(l) })),
+          }))}
+          onBack={() => openScreen(null)}
+          onGo={openScreen}
+          onToggle={toggle}
+          pending={pending}
+        />
       )}
       {toast ? (
         <output className="cb-toast">
