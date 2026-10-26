@@ -98,13 +98,7 @@ const RailHead = ({
   </div>
 );
 
-const SpaceThumb = ({
-  coverUrl,
-  title,
-}: {
-  readonly coverUrl?: string | null;
-  readonly title: string;
-}) => {
+const SpaceThumb = ({ coverUrl }: { readonly coverUrl?: string | null }) => {
   const safe = normalizeCommunityCoverUrl(coverUrl);
   return safe ? (
     <CommunityCoverImage
@@ -117,7 +111,6 @@ const SpaceThumb = ({
   ) : (
     <span aria-hidden="true" className="community-rail__space-thumb">
       <UsersIcon className="size-4" />
-      <span className="sr-only">{title}</span>
     </span>
   );
 };
@@ -159,7 +152,7 @@ export const CommunityRightRail = ({
               href={`/comunidade/grupos/${space.slug}`}
               key={space.id}
             >
-              <SpaceThumb coverUrl={space.coverUrl} title={space.title} />
+              <SpaceThumb coverUrl={space.coverUrl} />
               <span className="community-rail__space-copy">
                 <span className="community-rail__space-name">
                   {space.title}

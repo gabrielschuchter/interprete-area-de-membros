@@ -781,3 +781,29 @@
     font-size: 13px;
   }
 }
+.community-goal .community-goal__value {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+}
+.community-goal .community-goal__meta {
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+.community-goal .community-goal__sources {
+  font-size: 12px;
+  line-height: 1.5;
+  color: #5c4a52;
+}
+.community-avatars .community-avatars__fallback {
+  font-size: 12px;
+  font-weight: 600;
+  color: #40222f;
+  background: #ecdfe0;
+}
+.community-avatars .community-avatars__layer,
+.community-avatars .community-avatars__image {
+  overflow: hidden;
+  border-radius: 999px;
+}

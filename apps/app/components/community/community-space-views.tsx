@@ -88,6 +88,8 @@ export const CommunitySpaceHeader = ({
     roleLabel = "Você é Dono";
   } else if (isModerator) {
     roleLabel = "Você é Moderador";
+  } else if (isMember) {
+    roleLabel = "Você é Membro";
   }
   return (
     <header className="community-group-header">
