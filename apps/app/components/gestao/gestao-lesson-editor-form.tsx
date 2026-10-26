@@ -18,8 +18,15 @@ import {
 } from "@/app/(authenticated)/gestao/ensino/cursos/actions";
 import { GestaoIcon } from "@/app/(authenticated)/gestao/gestao-icon";
 import { isYouTubeVerificationStatus } from "@/lib/youtube-verification";
-import { GestaoLessonVideoUpload } from "./gestao-lesson-video-upload";
 import { YouTubeVerificationCard } from "./youtube-verification-card";
+
+// The resumable uploader is the heaviest piece of this route and is only
+// needed once the editor chooses a file, so it loads outside the initial JS.
+const GestaoLessonVideoUpload = dynamic(() =>
+  import("./gestao-lesson-video-upload").then(
+    (module) => module.GestaoLessonVideoUpload
+  )
+);
 
 const TopicEditor = dynamic(
   () =>
