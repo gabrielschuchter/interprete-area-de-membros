@@ -1197,17 +1197,35 @@ export type CommunityPublicationSort = "recent" | "oldest" | "title";
 const MY_PUBLICATIONS_PAGE_SIZE = 20;
 const COMMUNITY_PUBLICATIONS_CURSOR_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
 
+// "Publicadas" lists only what readers can open: a post in an archived group,
+// or a legacy post whose audience is still UNRESOLVED, is hidden everywhere
+// else and would show up here as a publication that does not exist.
+const myPublishedReachableWhere = {
+  OR: [
+    { audienceScope: "GLOBAL" as const },
+    { space: { is: { status: ContentStatus.PUBLISHED } } },
+  ],
+} satisfies Prisma.CommunityPostWhereInput;
+
 export const getMyCommunityPublicationCounts = async (memberId: string) => {
-  const rows = await database.communityPost.groupBy({
-    by: ["status"],
-    where: { authorId: memberId, deletedAt: null },
-    _count: { _all: true },
-  });
-  const counts = { archived: 0, drafts: 0, published: 0 };
+  const [rows, published] = await Promise.all([
+    database.communityPost.groupBy({
+      by: ["status"],
+      where: { authorId: memberId, deletedAt: null },
+      _count: { _all: true },
+    }),
+    database.communityPost.count({
+      where: {
+        authorId: memberId,
+        deletedAt: null,
+        status: ContentStatus.PUBLISHED,
+        ...myPublishedReachableWhere,
+      },
+    }),
+  ]);
+  const counts = { archived: 0, drafts: 0, published };
   for (const row of rows) {
-    if (row.status === ContentStatus.PUBLISHED) {
-      counts.published = row._count._all;
-    } else if (row.status === ContentStatus.DRAFT) {
+    if (row.status === ContentStatus.DRAFT) {
       counts.drafts = row._count._all;
     } else if (row.status === ContentStatus.ARCHIVED) {
       counts.archived = row._count._all;
@@ -1243,6 +1261,9 @@ export const getMyCommunityPublicationPage = async (
       authorId: memberId,
       deletedAt: null,
       status: options.status,
+      ...(options.status === ContentStatus.PUBLISHED
+        ? myPublishedReachableWhere
+        : {}),
       ...(query
         ? {
             OR: [

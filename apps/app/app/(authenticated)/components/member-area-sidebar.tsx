@@ -318,7 +318,7 @@ const MemberAreaSidebarView = ({
                       aria-hidden="true"
                       className="hidden h-7 w-4 group-data-[collapsible=icon]:block"
                       height={896}
-                      src="/brand/meta/interprete-mark.svg"
+                      src="/brand/logo/mark-branco.svg"
                       width={520}
                     />
                     <span className="sr-only">Interprete.</span>
@@ -405,14 +405,14 @@ const MemberAreaSidebarView = ({
             <DropdownMenuTrigger asChild>
               <SidebarMenuButton
                 aria-label={`Abrir menu da conta de ${displayName}`}
-                className="h-12 rounded-sm px-2"
+                className="h-12 rounded-sm px-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0!"
                 isActive={
                   isActivePath("/perfil") ||
                   pathname.startsWith("/comunidade/minhas-publicacoes")
                 }
                 tooltip={displayName}
               >
-                <Avatar className="size-8 shrink-0">
+                <Avatar className="size-8 shrink-0 group-data-[collapsible=icon]:size-7">
                   {avatarUrl ? <AvatarImage alt="" src={avatarUrl} /> : null}
                   <AvatarFallback className="bg-brand-action text-primary-foreground text-xs">
                     {initialsFor(displayName)}
