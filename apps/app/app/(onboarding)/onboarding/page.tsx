@@ -1,17 +1,11 @@
 import { getSafeInternalPath } from "@repo/auth/redirects";
 import { database } from "@repo/database";
 import { redirect } from "next/navigation";
-import { OnboardingExperience } from "@/components/onboarding/onboarding-experience";
-import {
-  defaultOnboardingPreferences,
-  type OnboardingInitialData,
-} from "@/components/onboarding/types";
-import { env } from "@/env";
-import { getCurrentUser } from "@/lib/auth";
-import { getOrCreateNotificationPreferences } from "@/lib/notifications";
-import { getOrCreateProfile } from "@/lib/profile";
+import { auth } from "@/lib/auth";
+import { clampStepIndex, onboardingStepPath } from "@/lib/onboarding/steps";
 
-const OnboardingPage = async ({
+// /onboarding always lands on the step where the person stopped.
+const OnboardingIndexPage = async ({
   searchParams,
 }: {
   readonly searchParams: Promise<{
@@ -24,77 +18,22 @@ const OnboardingPage = async ({
     search.redirect_url ?? search.redirectUrl ?? "/",
     "https://interprete.invalid"
   );
-  const user = await getCurrentUser();
-  if (!user) {
+  const { userId } = await auth();
+  if (!userId) {
     redirect("/sign-in");
   }
-
-  const profile = await getOrCreateProfile(user.id);
-  if (!profile) {
-    if (env.APP_WRITE_FREEZE === "true") {
-      return (
-        <main className="mx-auto flex min-h-[60vh] max-w-xl flex-col justify-center gap-3 px-6 py-12 text-center">
-          <h1 className="font-semibold text-2xl">Atualização temporária</h1>
-          <p className="text-muted-foreground">
-            Estamos concluindo uma atualização segura. Seu cadastro não foi
-            alterado. Tente novamente em alguns minutos.
-          </p>
-        </main>
-      );
-    }
-    redirect("/sign-in");
-  }
-
-  const [member, preferences] = await Promise.all([
-    database.member.findUnique({
-      where: { id: user.id },
-      select: { onboardingStep: true },
-    }),
-    getOrCreateNotificationPreferences(user.id),
-  ]);
-
-  const initial: OnboardingInitialData = {
-    memberId: user.id,
-    step: Math.max(0, Math.min(member?.onboardingStep ?? 0, 6)),
-    displayName:
-      profile.displayName ?? user.fullName ?? user.firstName ?? "Membro",
-    email: user.primaryEmailAddress?.emailAddress ?? "",
-    profile: {
-      displayName:
-        profile.displayName ?? user.fullName ?? user.firstName ?? "Membro",
-      username: profile.username,
-      avatarUrl: profile.avatarUrl ?? user.imageUrl ?? "",
-      headline: profile.headline ?? "",
-      bio: profile.bio ?? "",
-      occupation: profile.occupation ?? "",
-      institution: profile.institution ?? "",
-      city: profile.city ?? "",
-      state: profile.state ?? "",
-      country: profile.country ?? "",
-      interests: profile.interests.join(", "),
-      website: profile.website ?? "",
-      instagram: profile.instagram ?? "",
-      linkedin: profile.linkedin ?? "",
-    },
-    preferences: {
-      ...defaultOnboardingPreferences,
-      mentions: preferences.mentions,
-      commentReplies: preferences.commentReplies,
-      topicComments: preferences.topicComments,
-      followedTopicActivity: preferences.followedTopicActivity,
-      lessonAvailable: preferences.lessonAvailable,
-      moduleAvailable: preferences.moduleAvailable,
-      activityAssigned: preferences.activityAssigned,
-      feedbackReceived: preferences.feedbackReceived,
-      activityDeadline: preferences.activityDeadline,
-      announcements: preferences.announcements,
-      groupInvitations: preferences.groupInvitations,
-      groupPosts: preferences.groupPosts,
-      contentAssignments: preferences.contentAssignments,
-    },
-  };
-
-  return <OnboardingExperience initial={initial} returnTo={returnTo} />;
+  const member = await database.member.findUnique({
+    where: { id: userId },
+    select: { onboardingStatus: true, onboardingStep: true },
+  });
+  redirect(
+    onboardingStepPath(
+      member?.onboardingStatus === "IN_PROGRESS"
+        ? clampStepIndex(member.onboardingStep)
+        : 0,
+      returnTo
+    )
+  );
 };
 
-export default OnboardingPage;
+export default OnboardingIndexPage;

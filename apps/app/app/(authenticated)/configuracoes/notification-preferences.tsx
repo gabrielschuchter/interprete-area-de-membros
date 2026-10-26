@@ -3,79 +3,18 @@
 import { cn } from "@repo/design-system/lib/utils";
 import { BellIcon, Loader2Icon } from "lucide-react";
 import { useEffect, useState } from "react";
+import {
+  allNotificationPreferencesOn,
+  type NotificationPreferenceKey,
+  type NotificationPreferenceValues,
+  notificationPreferenceGroups,
+} from "@/lib/notification-preference-groups";
 
-type PreferenceKey =
-  | "mentions"
-  | "commentReplies"
-  | "topicComments"
-  | "followedTopicActivity"
-  | "lessonAvailable"
-  | "moduleAvailable"
-  | "activityAssigned"
-  | "feedbackReceived"
-  | "activityDeadline"
-  | "announcements"
-  | "groupInvitations"
-  | "groupPosts"
-  | "contentAssignments";
+type PreferenceKey = NotificationPreferenceKey;
+type Preferences = NotificationPreferenceValues;
 
-type Preferences = Record<PreferenceKey, boolean>;
-
-const groups: readonly {
-  items: readonly { key: PreferenceKey; label: string }[];
-  label: string;
-}[] = [
-  {
-    label: "Comunidade",
-    items: [
-      { key: "mentions", label: "Menções" },
-      { key: "commentReplies", label: "Respostas aos meus comentários" },
-      { key: "topicComments", label: "Comentários nos meus tópicos" },
-      {
-        key: "followedTopicActivity",
-        label: "Atualizações de discussões que sigo",
-      },
-      { key: "groupInvitations", label: "Convites para grupos de estudo" },
-      { key: "groupPosts", label: "Novas publicações nos meus grupos" },
-    ],
-  },
-  {
-    label: "Aprendizado",
-    items: [
-      { key: "lessonAvailable", label: "Novas aulas disponíveis" },
-      { key: "moduleAvailable", label: "Novos módulos disponíveis" },
-      { key: "contentAssignments", label: "Conteúdos atribuídos a mim" },
-    ],
-  },
-  {
-    label: "Atividades",
-    items: [
-      { key: "activityAssigned", label: "Nova atividade" },
-      { key: "feedbackReceived", label: "Feedback recebido" },
-      { key: "activityDeadline", label: "Lembretes de prazo" },
-    ],
-  },
-  {
-    label: "Avisos",
-    items: [{ key: "announcements", label: "Comunicados dos professores" }],
-  },
-];
-
-const emptyPreferences: Preferences = {
-  activityAssigned: true,
-  activityDeadline: true,
-  announcements: true,
-  commentReplies: true,
-  feedbackReceived: true,
-  followedTopicActivity: true,
-  groupInvitations: true,
-  groupPosts: true,
-  contentAssignments: true,
-  lessonAvailable: true,
-  mentions: true,
-  moduleAvailable: true,
-  topicComments: true,
-};
+const groups = notificationPreferenceGroups;
+const emptyPreferences: Preferences = allNotificationPreferencesOn;
 
 export const NotificationPreferences = () => {
   const [preferences, setPreferences] = useState<Preferences>(emptyPreferences);

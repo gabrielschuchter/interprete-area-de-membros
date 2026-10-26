@@ -6,24 +6,9 @@ import { tracePerformance } from "@repo/observability/performance";
 import { cache } from "react";
 import { env } from "@/env";
 import { getCurrentUser, getMemberIdentitySnapshot } from "./auth";
+import { normalizeUsername, USERNAME_MAX_LENGTH } from "./username-rules";
 
-const USERNAME_MAX_LENGTH = 30;
-const USERNAME_PATTERN = /^[a-z0-9](?:[a-z0-9-]{1,28}[a-z0-9])?$/;
-
-export const normalizeUsername = (value: string) =>
-  value
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, USERNAME_MAX_LENGTH)
-    .replace(/-+$/g, "");
-
-export const isValidUsername = (value: string) =>
-  value.length >= 3 &&
-  value.length <= USERNAME_MAX_LENGTH &&
-  USERNAME_PATTERN.test(value);
+export { isValidUsername, normalizeUsername } from "./username-rules";
 
 const usernameFromClerkUser = (
   user: NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>
