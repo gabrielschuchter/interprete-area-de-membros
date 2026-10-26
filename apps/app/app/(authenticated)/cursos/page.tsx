@@ -18,6 +18,7 @@ import {
   getPublishedStandaloneCourses,
 } from "@/lib/learning";
 import { getMemberLearningBookmarkKeys } from "@/lib/library";
+import { getCursosBlocks } from "@/lib/personalization";
 import { getMemberContinueWatching } from "@/lib/recordings";
 
 export const dynamic = "force-dynamic";
@@ -144,6 +145,7 @@ const EmptyState = () => (
 
 const LearnPage = async () => {
   const memberId = await requireOnboardedMemberId();
+  const blocksPromise = getCursosBlocks();
   const [learningData, continueData, bookmarkKeys, resume] =
     await tracePerformance("member.route.learn.primary-data", () => {
       const pathsPromise = getPublishedLearningPaths(memberId);
@@ -311,7 +313,32 @@ const LearnPage = async () => {
         trail.courseIds.map((courseId) => [courseId, trail.id] as const)
       )
     );
-    const [resumeRecording, ...otherRecordings] = resumeCards;
+    const blocks = await blocksPromise;
+    const blockFor = (id: "collections" | "recordings" | "resume") =>
+      blocks.find((block) => block.id === id);
+    const showResume = blockFor("resume")?.enabled !== false;
+    const [firstRecording, ...restRecordings] = resumeCards;
+    const resumeRecording = showResume ? firstRecording : undefined;
+    const recordingCards = showResume ? restRecordings : resumeCards;
+    const recordingsBlock = blockFor("recordings");
+    const railsById = {
+      collections:
+        blockFor("collections")?.enabled === false ? [] : collectionRails,
+      recordings:
+        recordingsBlock?.enabled === false
+          ? []
+          : [
+              {
+                cards: recordingCards,
+                description: recordingsBlock?.subtitle ?? null,
+                headingId: "resume-learning-title",
+                title: recordingsBlock?.title ?? "Continue assistindo",
+              },
+            ],
+    };
+    const orderedRails = blocks.flatMap((block) =>
+      block.id === "resume" ? [] : railsById[block.id]
+    );
     return (
       <div className="flex min-h-svh flex-1 flex-col bg-background">
         <main className="flex flex-1 flex-col">
@@ -327,16 +354,10 @@ const LearnPage = async () => {
                 courseFacts.get(card.bookmark.targetId)?.moduleCount ?? 0,
               trailId: trailByCourse.get(card.bookmark.targetId) ?? null,
             }))}
-            rails={[
-              {
-                cards: otherRecordings,
-                headingId: "resume-learning-title",
-                title: "Continue assistindo",
-              },
-              ...collectionRails,
-            ]}
+            hideResume={!showResume}
+            rails={orderedRails}
             resume={
-              resume
+              resume && showResume
                 ? {
                     ...resume,
                     courseHref: `/cursos/${encodeURIComponent(resume.courseSlug)}`,
