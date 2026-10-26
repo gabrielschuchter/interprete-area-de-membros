@@ -63,6 +63,7 @@ export const gestaoAuditLabels: Readonly<Record<string, string>> = {
   "gestao.medal.created": "Medalha criada",
   "gestao.medal.updated": "Critério ou texto da medalha alterado",
   "gestao.medal.status_changed": "Situação da medalha alterada",
+  "gestao.integration.updated": "Regras do YouTube alteradas",
   "learning.content.assigned": "Conteúdo atribuído",
 };
 

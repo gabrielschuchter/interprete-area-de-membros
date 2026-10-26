@@ -26,6 +26,7 @@ import {
 import { sanitizeRichDocument } from "@/lib/community-content";
 import { activeGrantFilter } from "@/lib/content-access";
 import { requireGestaoAction } from "@/lib/gestao-authorization";
+import { getYouTubePolicy } from "@/lib/integrations-settings";
 import { activeAssignmentStatuses } from "@/lib/learning-assignments";
 import { readIdempotencyKey } from "@/lib/mutation-contract";
 import {
@@ -1415,6 +1416,15 @@ export const saveGestaoLesson = async (
   if (provider === LessonAssetMediaProvider.YOUTUBE) {
     const { adapter } = await getYouTubeDataAdapter();
     const verification = await verifyYouTubeVideo(youtubeUrl, adapter);
+    if (
+      verification.status === "PUBLIC" &&
+      (await getYouTubePolicy()).unlistedOnly
+    ) {
+      return result(
+        "invalid",
+        "Este vídeo é público. As Integrações estão configuradas para aceitar só vídeos não listados."
+      );
+    }
     mediaData = youtubeAssetFields(
       verification,
       youtubeUrl,
