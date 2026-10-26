@@ -127,6 +127,7 @@
   border-bottom: 1px solid var(--gestao-line);
 }
 .gk-tab {
+  flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   height: 46px;
@@ -3226,6 +3227,15 @@ button.gca-text-action {
   grid-auto-flow: column;
   width: 100%;
 }
+@media (max-width: 520px) {
+  .gk-segmented--full {
+    grid-auto-flow: row;
+    height: auto;
+  }
+  .gk-segmented--full button {
+    white-space: normal;
+  }
+}
 .gk-contentlist {
   display: grid;
   max-height: 340px;
@@ -4331,4 +4341,60 @@ button.gca-text-action {
 }
 .gk-previewopts .gk-radio small {
   color: var(--gestao-muted);
+}
+
+/* Membros: cartões no celular */
+@media (max-width: 640px) {
+  .gk-members .gk-qtable thead {
+    display: none;
+  }
+  .gk-members .gk-qtable,
+  .gk-members .gk-qtable tbody {
+    display: block;
+  }
+  .gk-members .gk-qtable tr {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 10px;
+    align-content: flex-start;
+    align-items: center;
+    height: auto;
+    min-height: 0;
+    padding: 14px 52px 14px 16px;
+    border-bottom: 1px solid var(--gestao-line);
+  }
+  .gk-members .gk-qtable td {
+    display: block;
+    flex: 0 0 auto;
+    width: auto;
+    height: auto;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+  }
+  .gk-members .gk-cohortpill {
+    height: 28px;
+    padding: 0 10px;
+    font-size: 12px;
+  }
+  .gk-members .gk-qtable td:first-child {
+    flex: 1 0 100%;
+  }
+  .gk-members .gk-qtable td.gk-col-menu {
+    position: absolute;
+    top: 12px;
+    right: 8px;
+  }
+  .gk-members .gk-qtable td:nth-child(5),
+  .gk-members .gk-qtable td:nth-child(6) {
+    font: 400 12px / 1.4 var(--font-sans-family);
+    color: var(--gestao-muted);
+  }
+  .gk-members .gk-qtable td:nth-child(6):not(:has(.gk-dash))::after {
+    content: " acessos diretos";
+  }
+  .gk-members .gk-qtable td.gk-empty-cell {
+    flex: 1 0 100%;
+  }
 }
