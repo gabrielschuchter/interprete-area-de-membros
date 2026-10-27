@@ -5,6 +5,7 @@ import {
   SidebarProvider,
   useSidebar,
 } from "@repo/design-system/components/ui/sidebar";
+import dynamic from "next/dynamic";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type {
   CSSProperties,
@@ -20,7 +21,6 @@ import {
   useState,
 } from "react";
 import { IntentLink } from "@/app/(authenticated)/components/intent-link";
-import { OptimisticRouteSkeleton } from "@/components/loading/optimistic-route-skeleton";
 import { MemberAreaTabs } from "@/components/navigation/member-area-tabs";
 import { isGestaoShellPath } from "@/lib/gestao-navigation";
 import { ActiveTimerPill } from "./active-timer-pill";
@@ -50,6 +50,15 @@ import { PortalStageLayer } from "./portal-stage-layer";
 import { RouteMotion } from "./route-motion";
 import { usePortalViewport } from "./use-portal-viewport";
 import { useShellNavigation } from "./use-shell-navigation";
+
+// Kept out of the initial bundle: the skeleton set is only needed once a navigation is slow, and it is prefetched when the shell is idle.
+const loadOptimisticSkeleton = () =>
+  import("@/components/loading/optimistic-route-skeleton").then(
+    (module_) => module_.OptimisticRouteSkeleton
+  );
+const OptimisticRouteSkeleton = dynamic(loadOptimisticSkeleton, {
+  ssr: false,
+});
 
 interface MemberShellControllerProperties {
   readonly avatarUrl: string | null;
@@ -528,6 +537,13 @@ const MemberShellView = ({
       setActiveTransition(null);
     }
   }, [clearOptimistic, clearTimer, setActiveTransition]);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      loadOptimisticSkeleton().catch(() => undefined);
+    }, 1500);
+    return () => window.clearTimeout(timeout);
+  }, []);
 
   useEffect(() => {
     if (navigationFailure) {
