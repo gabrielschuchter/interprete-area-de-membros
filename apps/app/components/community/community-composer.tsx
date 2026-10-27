@@ -226,9 +226,12 @@ export function CommunityComposer({
     }
     postWasNewRef.current = false;
     const nextUrl = new URLSearchParams({ from: backHref });
-    router.replace(
-      `/comunidade/editor/${persistedPostId}?${nextUrl.toString()}`,
-      { scroll: false }
+    // Trocar a URL sem navegar: router.replace remontava o editor no primeiro
+    // salvamento e engolia o foco, o cursor e a menção em andamento.
+    window.history.replaceState(
+      window.history.state,
+      "",
+      `/comunidade/editor/${persistedPostId}?${nextUrl.toString()}`
     );
   };
 

@@ -41,7 +41,7 @@ import {
 } from "./community-media-nodes";
 import { MentionNode } from "./mention-extension";
 
-const mentionQueryPattern = /(?:^|\s)@([a-z0-9-]{0,30})$/i;
+const mentionQueryPattern = /(?:^|\s)@([\p{L}\p{N}_.-]{0,30})$/iu;
 const noteSlashQueryPattern = /(?:^|\s)\/([\p{L}\p{N} ]{0,28})$/u;
 
 const emptyDocument: JSONContent = {
@@ -262,6 +262,13 @@ function TopicEditorCore({
     MentionCandidate[]
   >([]);
   const [selectedMentionIndex, setSelectedMentionIndex] = useState(0);
+  const [mentionStatus, setMentionStatus] = useState<
+    "idle" | "loading" | "ready" | "error"
+  >("idle");
+  const [mentionPosition, setMentionPosition] = useState<{
+    readonly left: number;
+    readonly top: number;
+  } | null>(null);
   const [groupMentionConfirmed, setGroupMentionConfirmed] = useState(false);
   const [slashState, setSlashState] = useState<NoteSlashState | null>(null);
   const [selectedSlashIndex, setSelectedSlashIndex] = useState(0);
@@ -484,33 +491,59 @@ function TopicEditorCore({
     if (!mentionState) {
       mentionCandidatesRef.current = [];
       setMentionCandidates([]);
+      setMentionStatus("idle");
       return;
     }
     const controller = new AbortController();
-    fetch(`/api/members/search?q=${encodeURIComponent(mentionState.query)}`, {
-      signal: controller.signal,
-      headers: { Accept: "application/json" },
-    })
-      .then(async (response) => {
-        if (!response.ok) {
-          return { items: [] };
-        }
-        return (await response.json()) as { items?: MentionCandidate[] };
+    setMentionStatus("loading");
+    const timer = window.setTimeout(() => {
+      fetch(`/api/members/search?q=${encodeURIComponent(mentionState.query)}`, {
+        signal: controller.signal,
+        headers: { Accept: "application/json" },
       })
-      .then((payload) => {
-        const items = payload.items ?? [];
-        mentionCandidatesRef.current = items;
-        setMentionCandidates(items);
-        setSelectedMentionIndex(0);
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) {
-          mentionCandidatesRef.current = [];
-          setMentionCandidates([]);
-        }
-      });
-    return () => controller.abort();
+        .then(async (response) => {
+          if (!response.ok) {
+            throw new Error("search failed");
+          }
+          return (await response.json()) as { items?: MentionCandidate[] };
+        })
+        .then((payload) => {
+          const items = payload.items ?? [];
+          mentionCandidatesRef.current = items;
+          setMentionCandidates(items);
+          setSelectedMentionIndex(0);
+          setMentionStatus("ready");
+        })
+        .catch(() => {
+          if (!controller.signal.aborted) {
+            mentionCandidatesRef.current = [];
+            setMentionCandidates([]);
+            setMentionStatus("error");
+          }
+        });
+    }, 120);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
   }, [mentionState]);
+
+  useEffect(() => {
+    if (!(mentionState && editor)) {
+      setMentionPosition(null);
+      return;
+    }
+    try {
+      const coords = editor.view.coordsAtPos(mentionState.from);
+      const width = Math.min(352, window.innerWidth - 16);
+      setMentionPosition({
+        left: Math.max(8, Math.min(coords.left, window.innerWidth - width - 8)),
+        top: coords.bottom + 6,
+      });
+    } catch {
+      setMentionPosition(null);
+    }
+  }, [editor, mentionState]);
 
   const editorReady = editor !== null;
   useEffect(() => {
@@ -1493,11 +1526,33 @@ function TopicEditorCore({
         </div>
       ) : null}
       <EditorContent editor={editor} />
-      {mentionState && mentionCandidates.length > 0 && (
+      {mentionState && mentionPosition && mentionStatus === "error" && (
+        <div
+          className="fixed z-50 w-[min(22rem,calc(100vw-1rem))] rounded-md border border-border bg-background px-3 py-2 text-muted-foreground text-sm shadow-[var(--shadow-floating)]"
+          role="alert"
+          style={mentionPosition}
+        >
+          Não foi possível buscar pessoas agora. Continue digitando para tentar
+          de novo.
+        </div>
+      )}
+      {mentionState &&
+        mentionPosition &&
+        mentionStatus === "ready" &&
+        mentionCandidates.length === 0 && (
+          <div
+            className="fixed z-50 w-[min(22rem,calc(100vw-1rem))] rounded-md border border-border bg-background px-3 py-2 text-muted-foreground text-sm shadow-[var(--shadow-floating)]"
+            style={mentionPosition}
+          >
+            Ninguém encontrado para @{mentionState.query}.
+          </div>
+        )}
+      {mentionState && mentionPosition && mentionCandidates.length > 0 && (
         <div
           aria-label="Membros para mencionar"
-          className="motion-layer max-h-56 overflow-y-auto border-border border-t bg-background p-1 shadow-[var(--shadow-floating)]"
+          className="fixed z-50 max-h-64 w-[min(22rem,calc(100vw-1rem))] overflow-y-auto rounded-md border border-border bg-background p-1 shadow-[var(--shadow-floating)]"
           role="listbox"
+          style={mentionPosition}
         >
           {mentionCandidates.slice(0, 8).map((candidate, index) => (
             <button

@@ -14,7 +14,7 @@ export const mutationLimits = {
   "community.bookmark": { max: 30, windowMs: 60_000 },
   "community.follow": { max: 30, windowMs: 60_000 },
   "community.moderation": { max: 30, windowMs: 60_000 },
-  "member.search": { max: 60, windowMs: 60_000 },
+  "member.search": { max: 240, windowMs: 60_000 },
   "member.search-history": { max: 60, windowMs: 60_000 },
   "member.focus-timer": { max: 60, windowMs: 60_000 },
   "member.planner-calendar-feed": { max: 5, windowMs: 60_000 },

@@ -240,25 +240,27 @@ export const MentionTextarea = ({
       params.set("scope", searchScope);
     }
     setSearchPending(true);
-    fetch(`/api/members/search?${params.toString()}`, {
-      signal: controller.signal,
-      headers: { Accept: "application/json" },
-    })
-      .then(async (response) => {
-        if (!response.ok) {
-          return {};
-        }
-        return (await response.json()) as MentionSearchResponse;
+    const searchTimer = window.setTimeout(() => {
+      fetch(`/api/members/search?${params.toString()}`, {
+        signal: controller.signal,
+        headers: { Accept: "application/json" },
       })
-      .then((payload: MentionSearchResponse) => {
-        setSearchResult(payload);
-        setSelectedIndex(0);
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) {
-          setSearchResult({});
-        }
-      });
+        .then(async (response) => {
+          if (!response.ok) {
+            return {};
+          }
+          return (await response.json()) as MentionSearchResponse;
+        })
+        .then((payload: MentionSearchResponse) => {
+          setSearchResult(payload);
+          setSelectedIndex(0);
+        })
+        .catch(() => {
+          if (!controller.signal.aborted) {
+            setSearchResult({});
+          }
+        });
+    }, 120);
     const updatePopoverPosition = () => {
       const textarea = textareaRef.current;
       if (!(textarea && window.matchMedia("(max-width: 767px)").matches)) {
@@ -283,6 +285,7 @@ export const MentionTextarea = ({
     window.visualViewport?.addEventListener("resize", updatePopoverPosition);
     window.visualViewport?.addEventListener("scroll", updatePopoverPosition);
     return () => {
+      window.clearTimeout(searchTimer);
       controller.abort();
       window.removeEventListener("resize", updatePopoverPosition);
       window.visualViewport?.removeEventListener(

@@ -116,6 +116,10 @@ export const CommunityGroupInvitationDialog = ({
   const [pending, startTransition] = useTransition();
   const [batchResult, setBatchResult] =
     useState<CommunityInviteBatchResult | null>(null);
+  const [clearSignal, setClearSignal] = useState(0);
+  const [sentPeople, setSentPeople] = useState<
+    readonly { readonly id: string; readonly name: string }[]
+  >([]);
   const [selectedPeople, setSelectedPeople] = useState<
     readonly { readonly id: string; readonly name: string }[]
   >([]);
@@ -203,10 +207,14 @@ export const CommunityGroupInvitationDialog = ({
       return;
     }
     setBatchResult(null);
+    setSentPeople(selectedPeople);
     const formData = new FormData(event.currentTarget);
     startTransition(async () => {
       const result = await inviteStudyGroupMembers(formData);
       setBatchResult(result);
+      if (result.status === "sent" || result.status === "partial") {
+        setClearSignal((current) => current + 1);
+      }
     });
   };
 
@@ -549,11 +557,16 @@ export const CommunityGroupInvitationDialog = ({
               <form className="space-y-4" onSubmit={submitInvitations}>
                 <input name="groupId" type="hidden" value={groupId} />
                 <GroupMemberInvitePicker
+                  clearSignal={clearSignal}
                   currentMemberId={memberId}
                   onSelectionChange={updateSelectedPeople}
+                  searchEndpoint={`/api/community/groups/${groupId}/invite-candidates`}
                 />
                 <div className="flex justify-end border-t pt-4">
-                  <Button disabled={pending} type="submit">
+                  <Button
+                    disabled={pending || selectedPeople.length === 0}
+                    type="submit"
+                  >
                     {pending ? "Enviando…" : "Enviar convites"}
                   </Button>
                 </div>
@@ -571,7 +584,7 @@ export const CommunityGroupInvitationDialog = ({
                     <ul className="mt-2 space-y-1 text-sm">
                       {batchResult.results.map(({ inviteeId, status }) => (
                         <li key={inviteeId}>
-                          {selectedPeople.find(({ id }) => id === inviteeId)
+                          {sentPeople.find(({ id }) => id === inviteeId)
                             ?.name ?? "Pessoa selecionada"}
                           : {recipientStatusLabel[status]}
                         </li>
