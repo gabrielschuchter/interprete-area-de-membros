@@ -33,7 +33,7 @@ describe("NavigationFeedback", () => {
     fireEvent.click(screen.getByRole("link", { name: "Abrir destino" }));
 
     expect(screen.queryByText("Abrindo conteúdo")).toBeNull();
-    act(() => vi.advanceTimersByTime(120));
+    act(() => vi.advanceTimersByTime(0));
     expect(screen.getByText("Abrindo conteúdo")).toBeTruthy();
   });
 
@@ -64,10 +64,10 @@ describe("NavigationFeedback", () => {
     );
 
     fireEvent.pointerDown(screen.getByRole("link", { name: "Abrir destino" }));
-    act(() => vi.advanceTimersByTime(120));
+    act(() => vi.advanceTimersByTime(0));
     expect(screen.getByText("Abrindo conteúdo")).toBeTruthy();
 
-    act(() => vi.advanceTimersByTime(7879));
+    act(() => vi.advanceTimersByTime(7999));
     expect(screen.getByText("Abrindo conteúdo")).toBeTruthy();
 
     act(() => vi.advanceTimersByTime(1));
@@ -90,7 +90,7 @@ describe("NavigationFeedback", () => {
     });
 
     expect(screen.queryByText("Abrindo conteúdo")).toBeNull();
-    act(() => vi.advanceTimersByTime(120));
+    act(() => vi.advanceTimersByTime(0));
     expect(screen.getByText("Abrindo conteúdo")).toBeTruthy();
   });
 
@@ -104,7 +104,7 @@ describe("NavigationFeedback", () => {
     );
 
     fireEvent.pointerDown(screen.getByRole("link", { name: "Abrir destino" }));
-    act(() => vi.advanceTimersByTime(120));
+    act(() => vi.advanceTimersByTime(0));
     navigationState.pathname = "/destino";
     rerender(
       <>

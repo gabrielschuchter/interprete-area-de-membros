@@ -56,6 +56,32 @@ sample as a pass.
   need explicit invalidation on publish, edit, and archive, plus a fresh access
   check before delivery.
 
+### Section switching
+
+Two things sit between a click and usable content, and each has its own fix.
+
+The first is the wait before the server answers. The sidebar and the area tabs
+move to the destination on the click itself (the tabs read the shell's pending
+transition), and the progress line starts without a delay. If the route has not
+committed after 80 ms, the shell covers the outgoing page with the destination's
+placeholder (`OptimisticRouteSkeleton`, chosen by path from the shared
+`member-skeletons`). The cover is `aria-hidden`, scrolls the page to the top
+because the destination opens there, and goes away once the destination has
+committed and finished its entry transition, so the route's own `loading.tsx`
+takes over without a second fade. A navigation that commits before 80 ms never
+shows it. Placeholders use the brand amaranth at 14% so they read on the pink
+canvas.
+
+The second is serial database work. The runtime pool is `DATABASE_POOL_MAX`
+(default 6, clamped to 1 to 12) instead of a fixed 2: one page render fans out
+into 5 to 15 independent reads, and two sockets queued them. The Supabase
+transaction pooler holds a server connection only while a statement runs, so
+extra client sockets are cheap. The Prisma generator also enables
+`relationJoins`, which makes the default relation strategy a single join query.
+Before, every nested `select` level was one more round trip, for example Lesson
+then Module. Relations without a total `orderBy` can come back in a
+different tie order, so give any list that must be stable a unique tiebreaker.
+
 ### Library browse and bookmark path
 
 `/biblioteca` resolves the member and category list in parallel, then streams
