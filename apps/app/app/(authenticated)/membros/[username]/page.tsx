@@ -4,17 +4,13 @@ import {
   AvatarFallback,
   AvatarImage,
 } from "@repo/design-system/components/ui/avatar";
-import {
-  ArrowLeftIcon,
-  ChevronRightIcon,
-  ExternalLinkIcon,
-  PencilIcon,
-} from "lucide-react";
+import { ChevronRightIcon, ExternalLinkIcon, PencilIcon } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CommunityCoverImage } from "@/components/community/community-cover-image";
 import { CommunityFeedCard } from "@/components/community/community-feed-card";
 import { CommunityNavigation } from "@/components/community/community-navigation";
+import { ProfileBackLink } from "@/components/community/profile-back-link";
 import { PublicProfileBadges } from "@/components/profile/profile-badges";
 import { getMemberRole } from "@/lib/authorization";
 import {
@@ -228,13 +224,13 @@ const PublicProfilePage = async ({
       <main className="community-shell mx-auto w-full">
         <CommunityNavigation active="explore" />
         <div className="public-profile">
-          <Link
-            className="community-back-link"
-            href={returnTo ?? "/comunidade"}
-          >
-            <ArrowLeftIcon aria-hidden="true" />
-            {returnTo ? "Voltar para a discussão" : "Voltar para a comunidade"}
-          </Link>
+          <ProfileBackLink
+            currentPathname={`/membros/${username}`}
+            fallbackHref={returnTo ?? "/comunidade"}
+            fallbackLabel={
+              returnTo ? "Voltar para a discussão" : "Voltar para a comunidade"
+            }
+          />
 
           <section
             aria-label={`Perfil público de ${name}`}

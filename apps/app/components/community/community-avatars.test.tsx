@@ -1,87 +1,57 @@
-import { act, cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
-import {
-  CommunityAvatars,
-  initialCommunityAvatarSlots,
-  pickCommunityAvatarSwap,
-} from "./community-avatars";
+import { CommunityAvatars } from "./community-avatars";
+
+vi.mock("next/link", () => ({
+  default: ({
+    children,
+    href,
+    ...rest
+  }: {
+    readonly children: ReactNode;
+    readonly href: string;
+  }) => (
+    <a href={href} {...rest}>
+      {children}
+    </a>
+  ),
+}));
+
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/comunidade",
+  useRouter: () => ({ push: () => undefined }),
+  useSearchParams: () => ({ toString: () => "" }),
+}));
 
 const avatars = "ABCDEFGHIJ".split("").map((initials) => ({
   avatarUrl: null,
+  displayName: `Pessoa ${initials}`,
   initials,
+  username: `pessoa-${initials.toLowerCase()}`,
 }));
 
-const visibleInitials = () =>
-  [
-    ...screen
-      .getByTestId("community-avatars")
-      .querySelectorAll(".community-avatars__item"),
-  ].map((item) => {
-    const layers = [...item.querySelectorAll(".community-avatars__layer")];
-    return layers.at(-1)?.textContent ?? "";
-  });
-
 describe("CommunityAvatars", () => {
-  afterEach(() => {
-    cleanup();
-    vi.useRealTimers();
-    vi.restoreAllMocks();
-  });
+  afterEach(cleanup);
 
-  test("starts with a bounded decorative window and no identity text", () => {
-    expect(initialCommunityAvatarSlots(avatars)).toEqual([0, 1, 2, 3, 4, 5, 6]);
-
+  test("renders every person as a link to the public profile, in a single row", () => {
     render(<CommunityAvatars avatars={avatars} />);
-    expect(visibleInitials().join("")).toBe("ABCDEFG");
-    expect(
-      screen.getByTestId("community-avatars").getAttribute("aria-hidden")
-    ).toBe("true");
-  });
-
-  test("a swap never repeats a face that is already visible", () => {
-    const slots = [0, 1, 2, 3, 4, 5, 6];
-    for (let seed = 0; seed < 50; seed += 1) {
-      const swap = pickCommunityAvatarSwap(10, slots, () => (seed % 10) / 10);
-      expect(swap).not.toBeNull();
-      expect(slots).not.toContain(swap?.avatar);
-    }
-    expect(pickCommunityAvatarSwap(7, slots)).toBeNull();
-  });
-
-  test("swaps one position every 5 to 8 seconds and pauses while the tab is hidden", () => {
-    vi.useFakeTimers();
-    vi.spyOn(Math, "random").mockReturnValue(0);
-    const originalVisibility = Object.getOwnPropertyDescriptor(
-      document,
-      "visibilityState"
+    const links = screen.getAllByRole("link");
+    expect(links).toHaveLength(avatars.length);
+    expect(links[0]?.getAttribute("href")).toBe(
+      "/membros/pessoa-a?returnTo=%2Fcomunidade"
     );
-    let visibilityState: DocumentVisibilityState = "visible";
-    Object.defineProperty(document, "visibilityState", {
-      configurable: true,
-      get: () => visibilityState,
-    });
+    expect(links[0]?.getAttribute("aria-label")).toBe(
+      "Abrir perfil de Pessoa A"
+    );
+    expect(links[0]?.getAttribute("title")).toBe("Pessoa A");
+    expect(
+      screen.getByTestId("community-avatars").textContent?.replace(/\s/g, "")
+    ).toBe("ABCDEFGHIJ");
+  });
 
-    try {
-      render(<CommunityAvatars avatars={avatars} />);
-      act(() => vi.advanceTimersByTime(5100));
-      expect(visibleInitials().join("")).toBe("HBCDEFG");
-
-      visibilityState = "hidden";
-      document.dispatchEvent(new Event("visibilitychange"));
-      act(() => vi.advanceTimersByTime(30_000));
-      expect(visibleInitials().join("")).toBe("HBCDEFG");
-
-      visibilityState = "visible";
-      document.dispatchEvent(new Event("visibilitychange"));
-      act(() => vi.advanceTimersByTime(5100));
-      // With random pinned at 0 the first free face is picked again: "A" left slot 0 and is free.
-      expect(visibleInitials().join("")).toBe("ABCDEFG");
-    } finally {
-      if (originalVisibility) {
-        Object.defineProperty(document, "visibilityState", originalVisibility);
-      } else {
-        Reflect.deleteProperty(document, "visibilityState");
-      }
-    }
+  test("renders nothing clickable for an empty pool", () => {
+    render(<CommunityAvatars avatars={[]} />);
+    expect(screen.queryAllByRole("link")).toHaveLength(0);
   });
 });

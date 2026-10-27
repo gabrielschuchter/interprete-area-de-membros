@@ -241,7 +241,9 @@ export const getCommunityAvatarVisuals = () =>
         avatarUrl && safeCommunityAvatarPattern.test(avatarUrl)
           ? avatarUrl
           : null,
+      displayName: displayName?.trim() || username,
       initials: communityNameInitials(displayName?.trim() || username),
+      username,
     }));
   });
 
