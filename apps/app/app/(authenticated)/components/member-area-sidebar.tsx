@@ -98,7 +98,7 @@ const ManagementSidebarEntry = ({
       <SidebarMenuItem>
         <SidebarMenuButton
           asChild
-          className="rounded-sm py-2.5 data-[active=true]:border-sidebar-primary data-[active=true]:border-l-2 data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground"
+          className="rounded-sm py-2.5 data-[active=true]:border-sidebar-primary data-[active=true]:border-l-2 data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground group-data-[collapsible=icon]:data-[active=true]:border-l-0 group-data-[collapsible=icon]:data-[active=true]:shadow-[inset_2px_0_0_var(--sidebar-primary)]"
           isActive={active}
           tooltip={label}
         >
@@ -298,7 +298,7 @@ const MemberAreaSidebarView = ({
         data-portal-mode={String(portalMode)}
         variant="sidebar"
       >
-        <SidebarHeader className="border-sidebar-border border-b px-4 py-5 group-data-[collapsible=icon]:px-2">
+        <SidebarHeader className="border-sidebar-border border-b px-4 py-5 group-data-[collapsible=icon]:px-0">
           <div className="flex min-w-0 items-center gap-1 group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:gap-0">
             <SidebarMenu className="min-w-0 flex-1 group-data-[collapsible=icon]:flex-none">
               <SidebarMenuItem>
@@ -343,7 +343,7 @@ const MemberAreaSidebarView = ({
               <SidebarMenuItem>
                 <SidebarMenuButton
                   asChild
-                  className="rounded-sm py-2.5 data-[active=true]:border-sidebar-primary data-[active=true]:border-l-2 data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground"
+                  className="rounded-sm py-2.5 data-[active=true]:border-sidebar-primary data-[active=true]:border-l-2 data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground group-data-[collapsible=icon]:data-[active=true]:border-l-0 group-data-[collapsible=icon]:data-[active=true]:shadow-[inset_2px_0_0_var(--sidebar-primary)]"
                   isActive={isActivePath("/encontros/gravacoes")}
                   tooltip="Minhas gravações"
                 >
@@ -367,13 +367,13 @@ const MemberAreaSidebarView = ({
         </SidebarHeader>
         <Separator className="mx-4 w-auto bg-sidebar-border" />
         <SidebarContent>
-          <SidebarGroup className="pt-3">
+          <SidebarGroup className="pt-3 group-data-[collapsible=icon]:px-0">
             <SidebarMenu>
               {mainNavigation.map((item) => (
                 <SidebarMenuItem key={item.href}>
                   <SidebarMenuButton
                     asChild
-                    className="rounded-sm py-2.5 data-[active=true]:border-sidebar-primary data-[active=true]:border-l-2 data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground"
+                    className="rounded-sm py-2.5 data-[active=true]:border-sidebar-primary data-[active=true]:border-l-2 data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground group-data-[collapsible=icon]:data-[active=true]:border-l-0 group-data-[collapsible=icon]:data-[active=true]:shadow-[inset_2px_0_0_var(--sidebar-primary)]"
                     isActive={isActivePath(item.href)}
                     tooltip={item.label}
                   >
@@ -403,7 +403,7 @@ const MemberAreaSidebarView = ({
             ) : null}
           </SidebarGroup>
         </SidebarContent>
-        <SidebarFooter className="border-sidebar-border border-t p-2">
+        <SidebarFooter className="border-sidebar-border border-t p-2 group-data-[collapsible=icon]:px-0">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <SidebarMenuButton

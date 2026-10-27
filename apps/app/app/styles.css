@@ -5452,7 +5452,7 @@ html[data-shell-fallback][data-shell-arrival="return"] .member-route-page {
     position: absolute;
     bottom: -28%;
     left: 8%;
-    font-family: Georgia, serif;
+    font-family: var(--font-display-family);
     font-size: clamp(150px, 21vw, 250px);
     font-weight: 700;
     line-height: 1;

@@ -52,7 +52,14 @@ describe("CommunityRightRail", () => {
             title: "Roda de discussão",
           },
         ]}
-        avatars={[{ avatarUrl: null, initials: "A" }]}
+        avatars={[
+          {
+            avatarUrl: null,
+            displayName: "Ana Souza",
+            initials: "A",
+            username: "ana",
+          },
+        ]}
         goalCard={<div data-testid="goal-summary">Meta coletiva</div>}
         spaces={[
           {
@@ -77,8 +84,11 @@ describe("CommunityRightRail", () => {
     ]);
     expect(screen.getByTestId("goal-summary")).toBeTruthy();
     expect(
-      screen.getByTestId("community-avatars").getAttribute("aria-hidden")
-    ).toBe("true");
+      screen
+        .getByTestId("community-avatars")
+        .querySelector("a")
+        ?.getAttribute("href")
+    ).toBe("/membros/ana?returnTo=%2Fcomunidade");
     expect(screen.queryByText(onlineStatusPattern)).toBeNull();
     expect(
       screen.getByRole("link", { name: clinicalSpaceName }).getAttribute("href")

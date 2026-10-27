@@ -6,6 +6,10 @@ import { fonts } from "@repo/design-system/lib/fonts";
 import { createMetadata } from "@repo/seo/metadata";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import {
+  learningFontClassName,
+  learningFontTokens,
+} from "@/components/learning/learning-fonts";
 
 interface RootLayoutProperties {
   readonly children: ReactNode;
@@ -17,7 +21,12 @@ export const metadata: Metadata = createMetadata({
 });
 
 const RootLayout = ({ children }: RootLayoutProperties) => (
-  <html className={fonts} lang="pt-BR" suppressHydrationWarning>
+  <html
+    className={`${fonts} ${learningFontClassName}`}
+    lang="pt-BR"
+    style={learningFontTokens}
+    suppressHydrationWarning
+  >
     <body>
       <DesignSystemProvider>{children}</DesignSystemProvider>
     </body>

@@ -476,51 +476,47 @@
   color: #5c4a52;
 }
 
-/* Avatares: 40px, anel 2px de fundo + 1px a 30%, troca de 600ms. */
+/* Avatares: 40px, anel 2px de fundo + 1px a 30%. Uma linha só: o contêiner tem
+   a altura de um avatar e esconde o que não cabe, nunca quebra para uma segunda. */
 .community-avatars {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+  align-content: flex-start;
+  height: 46px;
   padding: 3px;
-  overflow: visible;
+  margin: 0;
+  overflow: hidden;
+  list-style: none;
 }
 .community-avatars__item {
-  position: relative;
   flex: none;
   width: 40px;
   height: 40px;
   padding: 0;
   margin: 0;
-  border: 0;
   border-radius: 999px;
   box-shadow:
     0 0 0 2px #fff,
     0 0 0 3px rgba(64, 34, 47, 0.18);
 }
-.community-avatars__layer {
-  position: absolute;
-  inset: 0;
+.community-avatars__link {
+  display: block;
+  width: 100%;
+  height: 100%;
   border-radius: 999px;
+  transition: transform 150ms ease;
 }
-.community-avatars__layer--in {
-  animation: community-avatar-in 600ms ease both;
+.community-avatars__link:hover {
+  transform: translateY(-1px);
 }
-.community-avatars__layer--out {
-  animation: community-avatar-out 600ms ease both;
+.community-avatars__link:focus-visible {
+  outline: 2px solid #8c1535;
+  outline-offset: 3px;
 }
 .community-avatars__image {
   width: 100%;
   height: 100%;
-}
-@keyframes community-avatar-in {
-  from {
-    opacity: 0;
-  }
-}
-@keyframes community-avatar-out {
-  to {
-    opacity: 0;
-  }
 }
 
 /* Página do grupo (board 21): voltar, capa, chips, título, ações, abas, corpo. */
@@ -905,7 +901,6 @@
   color: #40222f;
   background: #ecdfe0;
 }
-.community-avatars .community-avatars__layer,
 .community-avatars .community-avatars__image {
   overflow: hidden;
   border-radius: 999px;

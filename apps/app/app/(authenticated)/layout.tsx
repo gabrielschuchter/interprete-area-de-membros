@@ -2,13 +2,14 @@ import { database } from "@repo/database";
 import { tracePerformance } from "@repo/observability/performance";
 import { secure } from "@repo/security";
 import { redirect } from "next/navigation";
-import type { ReactNode } from "react";
+import { type ReactNode, Suspense } from "react";
 import { LearningFonts } from "@/components/learning/learning-fonts";
 import { env } from "@/env";
 import { getAuth } from "@/lib/auth";
 import { getMemberProductConfig } from "@/lib/product-config";
 import { getOrCreateProfile } from "@/lib/profile";
 import { MemberShellController } from "./components/member-shell-controller";
+import { NavigationHistoryTracker } from "./components/navigation-history-tracker";
 import { PreviewBanner } from "./components/preview-banner";
 
 export const dynamic = "force-dynamic";
@@ -81,6 +82,9 @@ const AppLayout = async ({ children }: AppLayoutProperties) => {
   return (
     <LearningFonts>
       <PreviewBanner />
+      <Suspense fallback={null}>
+        <NavigationHistoryTracker />
+      </Suspense>
       <MemberShellController
         avatarUrl={profile?.avatarUrl ?? member.avatarUrl ?? null}
         canManageContent={member.role === "TEACHER" || member.role === "ADMIN"}

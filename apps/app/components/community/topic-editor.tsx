@@ -108,6 +108,14 @@ interface MentionCandidate {
   readonly username: string;
 }
 
+const mentionAttributes = (candidate: MentionCandidate) => ({
+  id: candidate.id,
+  kind: candidate.kind === "GROUP" ? "GROUP" : "USER",
+  recipientCount: candidate.recipientCount,
+  username: candidate.username,
+  label: candidate.displayName ?? candidate.username,
+});
+
 interface MentionState {
   readonly from: number;
   readonly query: string;
@@ -272,6 +280,10 @@ function TopicEditorCore({
   const [groupMentionConfirmed, setGroupMentionConfirmed] = useState(false);
   const [slashState, setSlashState] = useState<NoteSlashState | null>(null);
   const [selectedSlashIndex, setSelectedSlashIndex] = useState(0);
+  // The editor is created once, so its key handlers must read the highlighted
+  // option from refs; state captured at creation would always be option 0.
+  const selectedMentionIndexRef = useRef(0);
+  const selectedSlashIndexRef = useRef(0);
   const [mobileToolbarActive, setMobileToolbarActive] = useState(false);
   const toolbarSentinelRef = useRef<HTMLDivElement>(null);
   const editorRootRef = useRef<HTMLDivElement>(null);
@@ -303,10 +315,12 @@ function TopicEditorCore({
     }
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
       event.preventDefault();
-      setSelectedSlashIndex((current) => {
-        const offset = event.key === "ArrowDown" ? 1 : -1;
-        return (current + offset + slashMatches.length) % slashMatches.length;
-      });
+      const offset = event.key === "ArrowDown" ? 1 : -1;
+      const next =
+        (selectedSlashIndexRef.current + offset + slashMatches.length) %
+        slashMatches.length;
+      selectedSlashIndexRef.current = next;
+      setSelectedSlashIndex(next);
       return true;
     }
     if (event.key === "Escape") {
@@ -319,7 +333,8 @@ function TopicEditorCore({
       return false;
     }
     event.preventDefault();
-    const command = slashMatches[selectedSlashIndex] ?? slashMatches[0];
+    const command =
+      slashMatches[selectedSlashIndexRef.current] ?? slashMatches[0];
     if (!command) {
       return false;
     }
@@ -349,10 +364,12 @@ function TopicEditorCore({
     }
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
       event.preventDefault();
-      setSelectedMentionIndex((current) => {
-        const offset = event.key === "ArrowDown" ? 1 : -1;
-        return (current + offset + candidates.length) % candidates.length;
-      });
+      const offset = event.key === "ArrowDown" ? 1 : -1;
+      const next =
+        (selectedMentionIndexRef.current + offset + candidates.length) %
+        candidates.length;
+      selectedMentionIndexRef.current = next;
+      setSelectedMentionIndex(next);
       return true;
     }
     if (event.key === "Escape") {
@@ -365,17 +382,14 @@ function TopicEditorCore({
       return false;
     }
     event.preventDefault();
-    const candidate = candidates[selectedMentionIndex] ?? candidates[0];
+    const candidate =
+      candidates[selectedMentionIndexRef.current] ?? candidates[0];
     if (!candidate) {
       return false;
     }
-    const mention = view.state.schema.nodes.mention?.create({
-      id: candidate.id,
-      kind: candidate.kind === "GROUP" ? "GROUP" : "USER",
-      recipientCount: candidate.recipientCount,
-      username: candidate.username,
-      label: candidate.displayName ?? candidate.username,
-    });
+    const mention = view.state.schema.nodes.mention?.create(
+      mentionAttributes(candidate)
+    );
     if (!mention) {
       return false;
     }
@@ -471,6 +485,7 @@ function TopicEditorCore({
           : null;
       slashStateRef.current = nextSlashState;
       setSlashState(nextSlashState);
+      selectedSlashIndexRef.current = 0;
       setSelectedSlashIndex(0);
       // Do not autosave a blob URL. The local image is intentionally visible
       // while the server processes it, then the persisted member-asset URL is
@@ -511,6 +526,7 @@ function TopicEditorCore({
           const items = payload.items ?? [];
           mentionCandidatesRef.current = items;
           setMentionCandidates(items);
+          selectedMentionIndexRef.current = 0;
           setSelectedMentionIndex(0);
           setMentionStatus("ready");
         })
