@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 
 const NAVIGATION_TIMEOUT = 8000;
-const PROGRESS_DELAY = 120;
+const PROGRESS_DELAY = 0;
 const MINIMUM_FEEDBACK_DURATION = 150;
 
 const getInternalDestination = (target: EventTarget | null) => {

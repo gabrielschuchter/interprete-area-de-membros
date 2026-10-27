@@ -17,6 +17,7 @@ import {
 import { usePathname, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { IntentLink } from "@/app/(authenticated)/components/intent-link";
+import { useMemberNavigation } from "@/app/(authenticated)/components/member-navigation-context";
 
 const studyAreas = [
   { href: "/estudar", label: "Visão geral" },
@@ -127,8 +128,16 @@ const AreaSheet = ({
 };
 
 export const MemberAreaTabs = () => {
-  const pathname = usePathname();
+  const committedPathname = usePathname();
   const searchParams = useSearchParams();
+  const transition = useMemberNavigation()?.transition;
+  // The active tab follows the click instead of waiting for the server.
+  const pathname =
+    transition &&
+    transition.phase !== "entering" &&
+    transition.targetPath !== "/"
+      ? transition.targetPath
+      : committedPathname;
   const noteEditorOpen =
     pathname === "/ferramentas" &&
     searchParams.get("view") === "notes" &&

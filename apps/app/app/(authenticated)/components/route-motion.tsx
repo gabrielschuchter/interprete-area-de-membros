@@ -8,6 +8,7 @@ interface RouteMotionProperties {
   readonly ariaHidden?: boolean;
   readonly children: ReactNode;
   readonly chromeVisible?: boolean;
+  readonly overlay?: ReactNode;
   readonly transition?: PortalTransition | null;
 }
 
@@ -15,6 +16,7 @@ export const RouteMotion = ({
   ariaHidden = false,
   children,
   chromeVisible = true,
+  overlay = null,
   transition = null,
 }: RouteMotionProperties) => {
   const pathname = usePathname();
@@ -27,7 +29,7 @@ export const RouteMotion = ({
     <section
       aria-hidden={ariaHidden || undefined}
       aria-label="Conteúdo principal"
-      className="w-full min-w-0 flex-1 focus-visible:ring-2 focus-visible:ring-brand-action focus-visible:ring-offset-2"
+      className="relative w-full min-w-0 flex-1 focus-visible:ring-2 focus-visible:ring-brand-action focus-visible:ring-offset-2"
       data-chrome-visible={String(chromeVisible)}
       data-portal-page={String(pathname === "/")}
       id="member-main-content"
@@ -48,6 +50,7 @@ export const RouteMotion = ({
           <div className="member-route-page__content">{children}</div>
         </div>
       </div>
+      {overlay}
     </section>
   );
 };

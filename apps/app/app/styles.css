@@ -6108,3 +6108,12 @@ html[data-shell-fallback][data-shell-arrival="return"] .member-route-page {
     }
   }
 }
+
+/* Loading placeholders must read at a glance on the pink canvas. */
+.member-app-shell [data-slot="skeleton"] {
+  background-color: color-mix(
+    in srgb,
+    var(--brand-dark-amaranth, #8c1535) 14%,
+    transparent
+  );
+}
