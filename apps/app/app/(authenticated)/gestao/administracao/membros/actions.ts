@@ -1,10 +1,16 @@
 "use server";
 
+import { clerkClient } from "@repo/auth/server";
 import { database, MemberRole } from "@repo/database";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { recordAuditEvent } from "@/lib/gestao-audit";
 import { requireGestaoAdmin } from "@/lib/gestao-authorization";
+import {
+  eraseMemberRecords,
+  erasureConfirmation,
+  getErasurePreview,
+} from "@/lib/gestao-member-erasure";
 import { consumeMutationRateLimit } from "@/lib/mutation-reliability";
 
 const listPath = "/gestao/administracao/membros";
@@ -75,5 +81,76 @@ export const changeGestaoMemberRole = async (formData: FormData) => {
   revalidatePath("/gestao", "layout");
   redirect(
     `${listPath}?membro=${encodeURIComponent(memberId)}&resultado=${outcome}`
+  );
+};
+
+type Erasure =
+  | "blocked"
+  | "clerk-failed"
+  | "confirmation"
+  | "erased"
+  | "erased-with-clerk"
+  | "missing";
+
+export const eraseGestaoMemberData = async (formData: FormData) => {
+  const actor = await requireGestaoAdmin();
+  await consumeMutationRateLimit({
+    action: "admin.mutation",
+    memberId: actor.userId,
+  });
+  const memberId = text(formData, "memberId");
+  const typed = text(formData, "confirmation").toLowerCase();
+  const alsoClerk = formData.get("clerk") === "on";
+  let outcome: Erasure = "missing";
+  let erasedId: string | null = null;
+  if (memberId) {
+    const preview = await getErasurePreview(memberId, actor.userId);
+    if (!preview) {
+      outcome = "missing";
+    } else if (preview.blockers.length > 0) {
+      outcome = "blocked";
+    } else if (typed !== erasureConfirmation(preview)) {
+      outcome = "confirmation";
+    } else {
+      await database.$transaction(async (transaction) => {
+        await eraseMemberRecords(transaction, memberId);
+        await recordAuditEvent(
+          {
+            actorId: actor.userId,
+            aggregateId: memberId,
+            aggregateType: "Member",
+            eventType: "gestao.member.data_erased",
+            payload: {
+              clerkRequested: alsoClerk,
+              counts: { ...preview.counts },
+              displayName: preview.displayName,
+              memberId,
+            },
+          },
+          transaction
+        );
+      });
+      erasedId = memberId;
+      outcome = "erased";
+    }
+  }
+  if (erasedId && alsoClerk && erasedId.startsWith("user_")) {
+    // Depois do banco: se o Clerk falhar, os dados já saíram e o aviso diz
+    // que a conta de login continua existindo.
+    try {
+      const client = await clerkClient();
+      await client.users.deleteUser(erasedId);
+      outcome = "erased-with-clerk";
+    } catch {
+      outcome = "clerk-failed";
+    }
+  }
+  revalidatePath(listPath);
+  revalidatePath("/gestao", "layout");
+  revalidatePath("/comunidade", "layout");
+  redirect(
+    erasedId
+      ? `${listPath}?resultado=${outcome}`
+      : `${listPath}?membro=${encodeURIComponent(memberId)}&resultado=${outcome}`
   );
 };

@@ -157,6 +157,22 @@ const deactivateMember = async (
       return;
     }
 
+    // Membro apagado de propósito pela Gestão: a remoção da conta no Clerk não
+    // deve recriar uma linha "Membro removido".
+    if (!existing) {
+      const erased = await transaction.domainEvent.findFirst({
+        where: {
+          aggregateId: memberId,
+          aggregateType: "Member",
+          eventType: "gestao.member.data_erased",
+        },
+        select: { id: true },
+      });
+      if (erased) {
+        return;
+      }
+    }
+
     const now = new Date();
     await transaction.member.upsert({
       where: { id: memberId },

@@ -10,6 +10,7 @@ const maxExportRows = 5000;
 
 export const gestaoAuditLabels: Readonly<Record<string, string>> = {
   "gestao.member.role_changed": "Papel alterado",
+  "gestao.member.data_erased": "Dados do membro apagados",
   "gestao.access.granted": "Acesso concedido",
   "gestao.access.revoked": "Acesso revogado",
   "gestao.cohort.created": "Turma criada",

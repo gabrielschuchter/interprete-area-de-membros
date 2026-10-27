@@ -9,13 +9,18 @@ import {
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import {
+  type ErasureBlocker,
+  type ErasureCounts,
+  erasureBlockerLabels,
+} from "@/lib/gestao-member-erasure-labels";
+import {
   memberRoleLabels,
   roleCapabilities,
   roleEffects,
 } from "@/lib/gestao-members-domain";
 import type { GestaoRole } from "@/lib/gestao-permissions";
 import { GestaoIcon } from "../../gestao-icon";
-import { changeGestaoMemberRole } from "./actions";
+import { changeGestaoMemberRole, eraseGestaoMemberData } from "./actions";
 
 export interface MemberDrawerData {
   readonly email: string | null;
@@ -28,6 +33,138 @@ export interface MemberDrawerData {
   readonly since: string;
   readonly situationLabel: string;
 }
+
+export interface MemberErasureData {
+  readonly blockers: readonly ErasureBlocker[];
+  readonly canUseClerk: boolean;
+  readonly confirmation: string;
+  readonly counts: ErasureCounts;
+}
+
+const countLines = (counts: ErasureCounts) =>
+  [
+    [counts.posts, "publicação", "publicações"],
+    [counts.comments, "comentário", "comentários"],
+    [
+      counts.commentsFromOthers,
+      "comentário de outras pessoas nas publicações dele",
+      "comentários de outras pessoas nas publicações dele",
+    ],
+    [counts.votes, "voto", "votos"],
+    [counts.bookmarks, "item salvo", "itens salvos"],
+    [counts.enrollments, "matrícula", "matrículas"],
+    [
+      counts.lessonProgress,
+      "registro de progresso em aulas",
+      "registros de progresso em aulas",
+    ],
+    [counts.cohortMemberships, "vínculo com turma", "vínculos com turmas"],
+    [counts.submissions, "entrega de atividade", "entregas de atividades"],
+    [counts.notes, "nota pessoal", "notas pessoais"],
+  ].filter(([n]) => (n as number) > 0) as [number, string, string][];
+
+const ConfirmErase = ({
+  erasure,
+  member,
+  onClose,
+}: {
+  readonly erasure: MemberErasureData;
+  readonly member: MemberDrawerData;
+  readonly onClose: () => void;
+}) => {
+  const [typed, setTyped] = useState("");
+  const lines = countLines(erasure.counts);
+  const ready = typed.trim().toLowerCase() === erasure.confirmation;
+  return (
+    <Dialog onOpenChange={(open) => (open ? null : onClose())} open>
+      <DialogContent
+        className="gk-modal"
+        overlayClassName="gk-modal-overlay"
+        showCloseButton={false}
+      >
+        <form action={eraseGestaoMemberData}>
+          <input name="memberId" type="hidden" value={member.id} />
+          <div className="gk-modal-head">
+            <div>
+              <DialogTitle className="gk-modal-title">
+                Apagar os dados de {member.name}?
+              </DialogTitle>
+              <DialogDescription className="gk-modal-sub">
+                Isso não pode ser desfeito.
+              </DialogDescription>
+            </div>
+            <button
+              aria-label="Fechar"
+              className="gk-modal-close"
+              onClick={onClose}
+              type="button"
+            >
+              <GestaoIcon name="x" size={18} />
+            </button>
+          </div>
+          <div className="gk-modal-body">
+            <ul className="gk-effects">
+              <li data-gain="false">
+                <GestaoIcon name="x" size={16} /> O perfil, as preferências e
+                tudo o que a pessoa criou saem do banco.
+              </li>
+              {lines.map(([n, one, many]) => (
+                <li data-gain="false" key={one}>
+                  <GestaoIcon name="x" size={16} /> {n} {n === 1 ? one : many}
+                </li>
+              ))}
+              <li data-gain="true">
+                <GestaoIcon name="check" size={16} /> O registro desta ação fica
+                na auditoria.
+              </li>
+            </ul>
+            <label className="gk-switch-row" htmlFor="erase-clerk">
+              <span>
+                Apagar também a conta de login (Clerk)
+                <small>
+                  {erasure.canUseClerk
+                    ? "Sem isso, a pessoa ainda consegue entrar e uma conta nova é criada no primeiro acesso."
+                    : "Esta conta não tem login no Clerk."}
+                </small>
+              </span>
+              <input
+                disabled={!erasure.canUseClerk}
+                id="erase-clerk"
+                name="clerk"
+                type="checkbox"
+              />
+            </label>
+            <div className="gk-label">
+              <label htmlFor="erase-confirmation">
+                Para confirmar, digite <strong>{erasure.confirmation}</strong>
+              </label>
+              <input
+                autoComplete="off"
+                className="gk-input"
+                id="erase-confirmation"
+                name="confirmation"
+                onChange={(event) => setTyped(event.target.value)}
+                value={typed}
+              />
+            </div>
+          </div>
+          <div className="gk-modal-foot">
+            <button
+              className="gk-btn gk-btn--primary"
+              disabled={!ready}
+              type="submit"
+            >
+              Apagar definitivamente
+            </button>
+            <button className="gk-btn" onClick={onClose} type="button">
+              Cancelar
+            </button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+};
 
 const roles = ["MEMBER", "TEACHER", "ADMIN"] as const;
 
@@ -116,14 +253,17 @@ const ConfirmRole = ({
 
 export const MemberDrawer = ({
   closeHref,
+  erasure,
   member,
 }: {
   readonly closeHref: string;
+  readonly erasure: MemberErasureData | null;
   readonly member: MemberDrawerData;
 }) => {
   const router = useRouter();
   const [role, setRole] = useState<GestaoRole>(member.role);
   const [confirming, setConfirming] = useState(false);
+  const [erasing, setErasing] = useState(false);
   const close = () => router.push(closeHref);
   return (
     <>
@@ -244,6 +384,32 @@ export const MemberDrawer = ({
                 </ul>
               )}
             </section>
+            {erasure ? (
+              <section aria-label="Apagar dados">
+                <p className="gk-eyebrow">Apagar dados</p>
+                {erasure.blockers.length > 0 ? (
+                  <ul className="gk-history">
+                    {erasure.blockers.map((blocker) => (
+                      <li key={blocker}>{erasureBlockerLabels[blocker]}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <>
+                    <small className="gk-hint">
+                      Remove a pessoa e tudo o que ela produziu, por exemplo
+                      perfis criados em testes. Pede confirmação digitada.
+                    </small>
+                    <button
+                      className="gk-btn gk-btn--wide"
+                      onClick={() => setErasing(true)}
+                      type="button"
+                    >
+                      Apagar dados do membro
+                    </button>
+                  </>
+                )}
+              </section>
+            ) : null}
           </div>
           <div className="gk-drawer-foot">
             <a
@@ -261,6 +427,13 @@ export const MemberDrawer = ({
           </div>
         </DialogContent>
       </Dialog>
+      {erasing && erasure ? (
+        <ConfirmErase
+          erasure={erasure}
+          member={member}
+          onClose={() => setErasing(false)}
+        />
+      ) : null}
       {confirming ? (
         <ConfirmRole
           member={member}

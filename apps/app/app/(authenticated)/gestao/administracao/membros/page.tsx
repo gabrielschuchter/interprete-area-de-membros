@@ -1,5 +1,9 @@
 import Link from "next/link";
 import { requireGestaoAdmin } from "@/lib/gestao-authorization";
+import {
+  erasureConfirmation,
+  getErasurePreview,
+} from "@/lib/gestao-member-erasure";
 import { getGestaoMemberDetail, getGestaoMembers } from "@/lib/gestao-members";
 import {
   inactiveAfterDays,
@@ -32,6 +36,16 @@ const messages: Record<string, string> = {
   invalid: "Não foi possível alterar: o papel atual mudou. Reabra o membro.",
   "last-admin": "Não é possível rebaixar o último administrador ativo.",
   unchanged: "O papel já era esse.",
+  blocked:
+    "Não foi possível apagar: há uma salvaguarda ativa para este membro.",
+  confirmation: "A confirmação digitada não confere. Nada foi apagado.",
+  erased:
+    "Dados do membro apagados e registrados na auditoria. A conta de login não foi tocada.",
+  "erased-with-clerk":
+    "Dados do membro e conta de login apagados. Registrado na auditoria.",
+  "clerk-failed":
+    "Dados do membro apagados, mas a conta de login não pôde ser removida. Remova-a no painel do Clerk.",
+  missing: "Esse membro não existe mais.",
 };
 
 const situationChips: Record<MemberSituation, readonly [string, string]> = {
@@ -164,6 +178,9 @@ const GestaoMembersPage = async ({
   });
   const detail = params.membro
     ? await getGestaoMemberDetail(params.membro)
+    : null;
+  const erasure = detail
+    ? await getErasurePreview(detail.id, actor.userId)
     : null;
   const now = new Date();
   const total = list.counts.ADMIN + list.counts.TEACHER + list.counts.MEMBER;
@@ -336,6 +353,16 @@ const GestaoMembersPage = async ({
       {detail ? (
         <MemberDrawer
           closeHref={hrefFor({})}
+          erasure={
+            erasure
+              ? {
+                  blockers: erasure.blockers,
+                  confirmation: erasureConfirmation(erasure),
+                  counts: erasure.counts,
+                  canUseClerk: erasure.id.startsWith("user_"),
+                }
+              : null
+          }
           member={{
             email: detail.email,
             history: detail.history.map((entry) => ({
