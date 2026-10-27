@@ -132,6 +132,9 @@ it("does not create a blank draft when a new editor is only opened", async () =>
 });
 
 it("creates one canonical post on the first edit using the stable creation key", async () => {
+  const replaceState = vi
+    .spyOn(window.history, "replaceState")
+    .mockImplementation(() => undefined);
   render(
     <CommunityComposer
       backHref="/comunidade"
@@ -161,9 +164,12 @@ it("creates one canonical post on the first edit using the stable creation key",
     "00000000-0000-4000-8000-000000000002"
   );
   expect(submittedForm.get("postId")).toBeNull();
-  expect(actions.router.replace).toHaveBeenCalledWith(
-    "/comunidade/editor/qa-local?from=%2Fcomunidade",
-    { scroll: false }
+  // A URL troca sem navegação para o editor não remontar durante a digitação.
+  expect(actions.router.replace).not.toHaveBeenCalled();
+  expect(replaceState).toHaveBeenCalledWith(
+    window.history.state,
+    "",
+    "/comunidade/editor/qa-local?from=%2Fcomunidade"
   );
 });
 

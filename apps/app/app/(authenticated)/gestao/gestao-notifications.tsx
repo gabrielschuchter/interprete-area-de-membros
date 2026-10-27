@@ -9,6 +9,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import "../components/notification-bell.css";
 import { GestaoIcon, type GestaoIconName } from "./gestao-icon";
 import {
   type GestaoNotificationItem,
@@ -207,11 +208,14 @@ export const GestaoNotificationsBell = ({
             aria-label={
               unread > 0 ? `Notificações, ${unread} não lidas` : "Notificações"
             }
-            className="gk-bell"
+            className="gk-bell bell-trigger"
+            data-fresh={unread > 0}
             type="button"
           >
             <GestaoIcon name="bell" size={18} strokeWidth={1.6} />
-            {unread > 0 ? <span className="gk-bell-badge">{badge}</span> : null}
+            {unread > 0 ? (
+              <span className="gk-bell-badge bell-ping">{badge}</span>
+            ) : null}
           </button>
         </PopoverTrigger>
         <PopoverContent

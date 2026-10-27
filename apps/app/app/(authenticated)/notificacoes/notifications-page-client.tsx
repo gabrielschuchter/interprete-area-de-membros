@@ -12,6 +12,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
+import { NotificationInvitationActions } from "../components/notification-invitation-actions";
 
 type Filter =
   | "ALL"
@@ -99,6 +100,9 @@ const displayTitle = (item: Item) => {
   const name = actorName(item);
   if (item.type === "MENTION") {
     return `${name} mencionou você`;
+  }
+  if (item.type === "GROUP_INVITATION") {
+    return `${name} convidou você para um grupo de estudo`;
   }
   if (item.type === "COMMENT_REPLY") {
     return `${name} respondeu ao seu comentário`;
@@ -379,6 +383,14 @@ export const NotificationsPageClient = ({ initial }: Properties) => {
                       <p className="mt-2 text-muted-foreground text-xs">
                         {dateLabel(item.createdAt)}
                       </p>
+                      {item.type === "GROUP_INVITATION" && item.entityId ? (
+                        <NotificationInvitationActions
+                          invitationId={item.entityId}
+                          onResponded={() =>
+                            setRead(item, true).catch(() => undefined)
+                          }
+                        />
+                      ) : null}
                       <div className="mt-3 flex flex-wrap items-center gap-3 text-xs">
                         {item.href && (
                           <Link

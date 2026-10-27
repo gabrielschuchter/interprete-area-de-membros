@@ -363,7 +363,11 @@ const ProfilePage = async ({ searchParams }: ProfilePageProperties) => {
             </Link>
           </li>
           <li>
-            <details className="group">
+            <details
+              className="group"
+              id="convites"
+              open={pendingInvitationCount > 0}
+            >
               <summary className="flex min-h-[60px] cursor-pointer list-none items-center justify-between gap-3 text-sm [&::-webkit-details-marker]:hidden">
                 <span>
                   Convites para grupos

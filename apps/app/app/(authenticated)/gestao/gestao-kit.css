@@ -4780,8 +4780,9 @@ button.gca-text-action {
   font: 700 10px / 1 var(--font-sans-family);
   color: #fff;
   text-align: center;
-  background: var(--gestao-action);
+  background: #d62839;
   border-radius: 8px;
+  box-shadow: 0 0 0 2px var(--gestao-surface, #f1ebe8);
 }
 .gk-bellmenu.gk-bellmenu {
   width: min(440px, calc(100vw - 24px));
