@@ -5,14 +5,21 @@ import {
   SidebarProvider,
   useSidebar,
 } from "@repo/design-system/components/ui/sidebar";
-import dynamic from "next/dynamic";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type {
   CSSProperties,
   MouseEvent as ReactMouseEvent,
   ReactNode,
 } from "react";
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { IntentLink } from "@/app/(authenticated)/components/intent-link";
 import { MemberAreaTabs } from "@/components/navigation/member-area-tabs";
 import { isGestaoShellPath } from "@/lib/gestao-navigation";
@@ -45,12 +52,10 @@ import { usePortalViewport } from "./use-portal-viewport";
 import { useShellNavigation } from "./use-shell-navigation";
 
 // Loaded on demand so the skeleton set stays out of the initial bundle.
-const OptimisticCover = dynamic(
-  () =>
-    import("@/components/loading/optimistic-route-skeleton").then(
-      (module_) => module_.OptimisticCover
-    ),
-  { ssr: false }
+const OptimisticCover = lazy(() =>
+  import("@/components/loading/optimistic-route-skeleton").then((module_) => ({
+    default: module_.OptimisticCover,
+  }))
 );
 
 interface MemberShellControllerProperties {
@@ -689,11 +694,13 @@ const MemberShellView = ({
             ariaHidden={false}
             chromeVisible={chromeVisible}
             overlay={
-              <OptimisticCover
-                failed={navigationFailure !== null}
-                pathname={pathname}
-                transition={transition}
-              />
+              <Suspense fallback={null}>
+                <OptimisticCover
+                  failed={navigationFailure !== null}
+                  pathname={pathname}
+                  transition={transition}
+                />
+              </Suspense>
             }
             transition={transition}
           >
