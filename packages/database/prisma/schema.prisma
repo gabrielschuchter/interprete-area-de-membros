@@ -1548,6 +1548,7 @@ model CommunityBookmark {
   id        String        @id @default(cuid())
   postId    String
   memberId  String
+  labels    String[]      @default([])
   createdAt DateTime      @default(now())
   post      CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
 

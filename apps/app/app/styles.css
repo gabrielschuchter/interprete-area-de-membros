@@ -1,6 +1,14 @@
 @import "tailwindcss" source(none);
 @import "@repo/design-system/styles/globals.css";
 @import "./study.css";
+
+/* O preflight zera a margem de todos os elementos, e um <dialog> modal sem
+   margem automática abre colado no canto superior esquerdo. */
+@layer base {
+  dialog:modal {
+    margin: auto;
+  }
+}
 @source "../**/*.{ts,tsx}";
 
 @layer components {
@@ -5581,6 +5589,62 @@ html[data-shell-fallback][data-shell-arrival="return"] .member-route-page {
     border-radius: 6px;
   }
 
+  .community-saved-labels {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    min-width: 0;
+    padding: 8px 2px 0;
+    margin: 0;
+    color: #7a5a69;
+    border: 0;
+  }
+
+  .community-saved-label {
+    display: inline-flex;
+    gap: 2px;
+    align-items: center;
+    min-height: 28px;
+    padding: 0 4px 0 10px;
+    font-size: 12px;
+    color: #40222f;
+    background: #f1ebe8;
+    border-radius: 999px;
+  }
+
+  .community-saved-label button {
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    color: #7a5a69;
+    border-radius: 999px;
+  }
+
+  .community-saved-label button:hover,
+  .community-saved-label button:focus-visible {
+    color: #8c1535;
+    background: #fff;
+  }
+
+  .community-saved-label-form input {
+    width: 150px;
+    min-height: 32px;
+    padding: 0 10px;
+    font-size: 12px;
+    color: #40222f;
+    background: transparent;
+    border: 1px dashed #cdbbb5;
+    border-radius: 999px;
+  }
+
+  .community-saved-label-form input:focus-visible {
+    outline: 2px solid #8c1535;
+    outline-offset: 1px;
+    border-style: solid;
+  }
+
   .community-share-destinations {
     display: flex;
     flex-wrap: wrap;
@@ -5588,7 +5652,7 @@ html[data-shell-fallback][data-shell-arrival="return"] .member-route-page {
     margin-top: 10px;
   }
 
-  .community-share-destinations a,
+  .community-share-destinations button,
   .community-share-destination-disabled {
     display: inline-flex;
     gap: 8px;
@@ -5599,13 +5663,14 @@ html[data-shell-fallback][data-shell-arrival="return"] .member-route-page {
     font-weight: 500;
     color: #40222f;
     text-decoration: none;
+    cursor: pointer;
     background: #fff;
     border: 1px solid #e2d6d1;
     border-radius: 6px;
   }
 
-  .community-share-destinations a:hover,
-  .community-share-destinations a:focus-visible {
+  .community-share-destinations button:hover,
+  .community-share-destinations button:focus-visible {
     color: #8c1535;
     outline: none;
     border-color: #8c1535;
