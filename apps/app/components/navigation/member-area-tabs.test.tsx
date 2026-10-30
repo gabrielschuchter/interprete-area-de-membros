@@ -1,4 +1,10 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import {
@@ -86,5 +92,17 @@ describe("MemberAreaTabs", () => {
     renderTabs(transition("/biblioteca", "entering"));
 
     expect(activeTab()).toEqual(["Biblioteca"]);
+  });
+
+  test("opens the lazy area picker with its available destinations", async () => {
+    renderTabs(null);
+
+    fireEvent.click(screen.getByRole("button", { name: "Trocar área" }));
+
+    await waitFor(() => expect(screen.getByRole("dialog")).not.toBeNull());
+    expect(screen.getByRole("navigation", { name: "Estudar" })).not.toBeNull();
+    expect(
+      screen.getByRole("link", { name: "Biblioteca" }).getAttribute("href")
+    ).toBe("/biblioteca");
   });
 });
