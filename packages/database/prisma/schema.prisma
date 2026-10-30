@@ -295,7 +295,6 @@ enum CohortLateJoinPolicy {
   FROM_JOIN
 }
 
-
 enum CohortMemberSource {
   MANUAL
   CSV
@@ -303,18 +302,15 @@ enum CohortMemberSource {
   MOVE
 }
 
-
 enum CohortMemberStatus {
   ACTIVE
   REMOVED
 }
 
-
 enum CohortReleaseMode {
   ALL_AT_ONCE
   SCHEDULE
 }
-
 
 enum AccessGrantOrigin {
   DIRECT
@@ -390,129 +386,129 @@ enum HomeBlockType {
 }
 
 model Member {
-  id                                  String                             @id
-  displayName                         String?
-  email                               String?
-  avatarUrl                           String?
-  role                                MemberRole                         @default(MEMBER)
-  onboardingStatus                    OnboardingStatus                   @default(NOT_STARTED)
-  onboardingStep                      Int                                @default(0)
-  onboardingVersion                   Int                                @default(1)
-  onboardingStartedAt                 DateTime?
-  onboardingCompletedAt               DateTime?
-  deactivatedAt                       DateTime?
-  createdAt                           DateTime                           @default(now())
-  updatedAt                           DateTime                           @updatedAt
-  profile                             Profile?
-  ownedAssets                         LessonAsset[]                      @relation("OwnedLessonAssets")
-  accessGrants                        AccessGrant[]
-  cohortsCreated                      Cohort[]                           @relation("CohortCreator")
-  cohortTeaching                      CohortTeacher[]                    @relation("CohortTeacherMember")
-  cohortAssignments                   CohortTeacher[]                    @relation("CohortTeacherAssigner")
-  cohortMemberships                   CohortMembership[]
-  cohortInvitesCreated                CohortInvite[]                     @relation("CohortInviteCreator")
-  accessGrantSourcesAsMember          AccessGrantSource[]                @relation("AccessGrantSourceMember")
-  accessGrantSourcesAsCreator         AccessGrantSource[]                @relation("AccessGrantSourceCreator")
-  cohortCourseAccessesCreated         CohortCourseAccess[]               @relation("CohortCourseAccessCreator")
-  cohortLessonReleasesUpdated         CohortLessonRelease[]              @relation("CohortLessonReleaseUpdater")
-  cohortEventsCreated                  CohortEvent[]                      @relation("CohortEventCreator")
+  id                                     String                             @id
+  displayName                            String?
+  email                                  String?
+  avatarUrl                              String?
+  role                                   MemberRole                         @default(MEMBER)
+  onboardingStatus                       OnboardingStatus                   @default(NOT_STARTED)
+  onboardingStep                         Int                                @default(0)
+  onboardingVersion                      Int                                @default(1)
+  onboardingStartedAt                    DateTime?
+  onboardingCompletedAt                  DateTime?
+  deactivatedAt                          DateTime?
+  createdAt                              DateTime                           @default(now())
+  updatedAt                              DateTime                           @updatedAt
+  profile                                Profile?
+  ownedAssets                            LessonAsset[]                      @relation("OwnedLessonAssets")
+  accessGrants                           AccessGrant[]
+  cohortsCreated                         Cohort[]                           @relation("CohortCreator")
+  cohortTeaching                         CohortTeacher[]                    @relation("CohortTeacherMember")
+  cohortAssignments                      CohortTeacher[]                    @relation("CohortTeacherAssigner")
+  cohortMemberships                      CohortMembership[]
+  cohortInvitesCreated                   CohortInvite[]                     @relation("CohortInviteCreator")
+  accessGrantSourcesAsMember             AccessGrantSource[]                @relation("AccessGrantSourceMember")
+  accessGrantSourcesAsCreator            AccessGrantSource[]                @relation("AccessGrantSourceCreator")
+  cohortCourseAccessesCreated            CohortCourseAccess[]               @relation("CohortCourseAccessCreator")
+  cohortLessonReleasesUpdated            CohortLessonRelease[]              @relation("CohortLessonReleaseUpdater")
+  cohortEventsCreated                    CohortEvent[]                      @relation("CohortEventCreator")
   cohortEventOccurrenceExceptionsUpdated CohortEventOccurrenceException[]   @relation("CohortEventOccurrenceExceptionUpdater")
   cohortCalendarFeeds                    CohortCalendarFeed[]
   meetingCohortTargetsCreated            MeetingCohortTarget[]              @relation("MeetingCohortTargetCreator")
   meetingOccurrenceExceptionsUpdated     MeetingOccurrenceException[]       @relation("MeetingOccurrenceExceptionUpdater")
-  activityCohortTargetsCreated        ActivityCohortTarget[]             @relation("ActivityCohortTargetCreator")
-  activityFeedbackDrafts              ActivityFeedbackDraft[]             @relation("ActivityFeedbackDraftReviewer")
-  cohortMembershipsCreated            CohortMembership[]                 @relation("CohortMembershipCreator")
-  migrationStudents                   MigrationStudent[]                 @relation("MigrationStudentMember")
-  notifications                       Notification[]                     @relation("NotificationRecipient")
-  notificationsAsActor                Notification[]                     @relation("NotificationActor")
-  mentionsSent                        Mention[]                          @relation("MentionActor")
-  mentionsReceived                    Mention[]                          @relation("MentionTarget")
-  notificationPreference              NotificationPreference?
-  topicFollows                        TopicFollow[]
-  mutationRateLimits                  MutationRateLimit[]
-  activitySubmissions                 ActivitySubmission[]
-  libraryBookmarks                    LibraryBookmark[]
-  meetingParticipations               MeetingParticipant[]
-  meetingAttendance                   MeetingAttendance[]                @relation("MeetingAttendanceMember")
-  meetingAttendanceMarked             MeetingAttendance[]                @relation("MeetingAttendanceMarker")
-  playbackProgress                    PlaybackProgress[]
-  importedRecordingGroups             ImportedRecordingGroup[]           @relation("ImportedRecordingGroupMember")
-  recordingGroupAssignmentsAsMember   ImportedRecordingGroupAssignment[] @relation("ImportedRecordingGroupMemberTarget")
-  recordingGroupAssignmentsAsPrevious ImportedRecordingGroupAssignment[] @relation("ImportedRecordingGroupPreviousMember")
-  recordingGroupAssignmentsBy         ImportedRecordingGroupAssignment[] @relation("ImportedRecordingGroupChangedBy")
-  recordingGroupAssignmentsAsAssigner ImportedRecordingGroup[]           @relation("ImportedRecordingGroupAssignedBy")
-  productSettingsUpdated              ProductSetting[]                   @relation("ProductSettingUpdatedBy")
-  homeBlocksCreated                   HomeBlockConfiguration[]           @relation("HomeBlockCreatedBy")
-  homeBlocksUpdated                   HomeBlockConfiguration[]           @relation("HomeBlockUpdatedBy")
-  contentCollectionsCreated           ContentCollection[]                @relation("ContentCollectionCreatedBy")
-  contentCollectionsUpdated           ContentCollection[]                @relation("ContentCollectionUpdatedBy")
-  communitySpacesOwned                CommunitySpace[]                   @relation("CommunitySpaceOwner")
-  communitySpaceMemberships           CommunitySpaceMember[]
-  communitySpaceInvitationsReceived   CommunitySpaceInvitation[]         @relation("CommunitySpaceInvitationRecipient")
-  communitySpaceInvitationsSent       CommunitySpaceInvitation[]         @relation("CommunitySpaceInvitationSender")
-  communitySpaceInviteLinksCreated    CommunitySpaceInviteLink[]         @relation("CommunitySpaceInviteLinkCreator")
-  communityPostShareLinksCreated      CommunityPostShareLink[]            @relation("CommunityPostShareLinkCreator")
-  learningAssignmentBatchesCreated    LearningAssignmentBatch[]          @relation("LearningAssignmentBatchCreator")
-  learningAssignmentsReceived         ActivityAssignment[]               @relation("LearningAssignmentRecipient")
-  learningAssignmentsCreated          ActivityAssignment[]               @relation("LearningAssignmentAssigner")
-  libraryItemViews                    LibraryItemView[]
-  announcementsCreated                Announcement[]                     @relation("AnnouncementCreator")
-  announcementDismissals              AnnouncementDismissal[]
-  exerciseBanksCreated                ExerciseBank[]                     @relation("ExerciseBankCreator")
-  exerciseListsCreated                ExerciseList[]                     @relation("ExerciseListCreator")
-  exerciseSessions                    ExerciseSession[]
-  exerciseQuestionBookmarks           ExerciseQuestionBookmark[]
-  studyTrackingSessions               StudyTrackingSession[]
-  studyActivityIntervals              StudyActivityInterval[]
-  studyGoals                          StudyGoal[]
-  learningTasksCreated                LearningTask[]                     @relation("LearningTaskCreator")
-  learningTaskAssignments             LearningTaskRecipient[]
-  learningTaskCompletions             LearningTaskCompletion[]
-  studyCampaignsCreated               StudyCampaign[]                    @relation("StudyCampaignCreator")
-  badgeAwards                         BadgeAward[]
-  badgeEvaluationState                BadgeEvaluationState?
-  studyGoalAchievements               StudyGoalAchievement[]
-  badgeDefinitionsCreated             BadgeDefinition[]                  @relation("BadgeDefinitionCreator")
-  badgeDefinitionRevisionsCreated     BadgeDefinitionRevision[]          @relation("BadgeRevisionCreator")
-  plannerPreferences                  PlannerPreferences?
-  plannerCalendarFeed                 PlannerCalendarFeed?
-  plannerColumns                      PlannerBoardColumn[]
-  plannerTasks                        PlannerTask[]
-  plannerEvents                       PlannerEvent[]
-  plannerReminders                    PlannerReminder[]
-  focusTimerSessions                  FocusTimerSession[]
-  plannerNoteFolders                  PlannerNoteFolder[]
-  plannerNotes                        PlannerNote[]
-  plannerNoteTags                     PlannerNoteTag[]
-  globalSearchHistory                 GlobalSearchHistory[]
+  activityCohortTargetsCreated           ActivityCohortTarget[]             @relation("ActivityCohortTargetCreator")
+  activityFeedbackDrafts                 ActivityFeedbackDraft[]            @relation("ActivityFeedbackDraftReviewer")
+  cohortMembershipsCreated               CohortMembership[]                 @relation("CohortMembershipCreator")
+  migrationStudents                      MigrationStudent[]                 @relation("MigrationStudentMember")
+  notifications                          Notification[]                     @relation("NotificationRecipient")
+  notificationsAsActor                   Notification[]                     @relation("NotificationActor")
+  mentionsSent                           Mention[]                          @relation("MentionActor")
+  mentionsReceived                       Mention[]                          @relation("MentionTarget")
+  notificationPreference                 NotificationPreference?
+  topicFollows                           TopicFollow[]
+  mutationRateLimits                     MutationRateLimit[]
+  activitySubmissions                    ActivitySubmission[]
+  libraryBookmarks                       LibraryBookmark[]
+  meetingParticipations                  MeetingParticipant[]
+  meetingAttendance                      MeetingAttendance[]                @relation("MeetingAttendanceMember")
+  meetingAttendanceMarked                MeetingAttendance[]                @relation("MeetingAttendanceMarker")
+  playbackProgress                       PlaybackProgress[]
+  importedRecordingGroups                ImportedRecordingGroup[]           @relation("ImportedRecordingGroupMember")
+  recordingGroupAssignmentsAsMember      ImportedRecordingGroupAssignment[] @relation("ImportedRecordingGroupMemberTarget")
+  recordingGroupAssignmentsAsPrevious    ImportedRecordingGroupAssignment[] @relation("ImportedRecordingGroupPreviousMember")
+  recordingGroupAssignmentsBy            ImportedRecordingGroupAssignment[] @relation("ImportedRecordingGroupChangedBy")
+  recordingGroupAssignmentsAsAssigner    ImportedRecordingGroup[]           @relation("ImportedRecordingGroupAssignedBy")
+  productSettingsUpdated                 ProductSetting[]                   @relation("ProductSettingUpdatedBy")
+  homeBlocksCreated                      HomeBlockConfiguration[]           @relation("HomeBlockCreatedBy")
+  homeBlocksUpdated                      HomeBlockConfiguration[]           @relation("HomeBlockUpdatedBy")
+  contentCollectionsCreated              ContentCollection[]                @relation("ContentCollectionCreatedBy")
+  contentCollectionsUpdated              ContentCollection[]                @relation("ContentCollectionUpdatedBy")
+  communitySpacesOwned                   CommunitySpace[]                   @relation("CommunitySpaceOwner")
+  communitySpaceMemberships              CommunitySpaceMember[]
+  communitySpaceInvitationsReceived      CommunitySpaceInvitation[]         @relation("CommunitySpaceInvitationRecipient")
+  communitySpaceInvitationsSent          CommunitySpaceInvitation[]         @relation("CommunitySpaceInvitationSender")
+  communitySpaceInviteLinksCreated       CommunitySpaceInviteLink[]         @relation("CommunitySpaceInviteLinkCreator")
+  communityPostShareLinksCreated         CommunityPostShareLink[]           @relation("CommunityPostShareLinkCreator")
+  learningAssignmentBatchesCreated       LearningAssignmentBatch[]          @relation("LearningAssignmentBatchCreator")
+  learningAssignmentsReceived            ActivityAssignment[]               @relation("LearningAssignmentRecipient")
+  learningAssignmentsCreated             ActivityAssignment[]               @relation("LearningAssignmentAssigner")
+  libraryItemViews                       LibraryItemView[]
+  announcementsCreated                   Announcement[]                     @relation("AnnouncementCreator")
+  announcementDismissals                 AnnouncementDismissal[]
+  exerciseBanksCreated                   ExerciseBank[]                     @relation("ExerciseBankCreator")
+  exerciseListsCreated                   ExerciseList[]                     @relation("ExerciseListCreator")
+  exerciseSessions                       ExerciseSession[]
+  exerciseQuestionBookmarks              ExerciseQuestionBookmark[]
+  studyTrackingSessions                  StudyTrackingSession[]
+  studyActivityIntervals                 StudyActivityInterval[]
+  studyGoals                             StudyGoal[]
+  learningTasksCreated                   LearningTask[]                     @relation("LearningTaskCreator")
+  learningTaskAssignments                LearningTaskRecipient[]
+  learningTaskCompletions                LearningTaskCompletion[]
+  studyCampaignsCreated                  StudyCampaign[]                    @relation("StudyCampaignCreator")
+  badgeAwards                            BadgeAward[]
+  badgeEvaluationState                   BadgeEvaluationState?
+  studyGoalAchievements                  StudyGoalAchievement[]
+  badgeDefinitionsCreated                BadgeDefinition[]                  @relation("BadgeDefinitionCreator")
+  badgeDefinitionRevisionsCreated        BadgeDefinitionRevision[]          @relation("BadgeRevisionCreator")
+  plannerPreferences                     PlannerPreferences?
+  plannerCalendarFeed                    PlannerCalendarFeed?
+  plannerColumns                         PlannerBoardColumn[]
+  plannerTasks                           PlannerTask[]
+  plannerEvents                          PlannerEvent[]
+  plannerReminders                       PlannerReminder[]
+  focusTimerSessions                     FocusTimerSession[]
+  plannerNoteFolders                     PlannerNoteFolder[]
+  plannerNotes                           PlannerNote[]
+  plannerNoteTags                        PlannerNoteTag[]
+  globalSearchHistory                    GlobalSearchHistory[]
 
   @@index([role])
   @@index([onboardingStatus], map: "Member_onboardingStatus_idx")
 }
 
 model Profile {
-  id              String   @id @default(cuid())
-  clerkUserId     String   @unique
-  username        String   @unique
-  showInDirectory Boolean  @default(true)
+  id                     String   @id @default(cuid())
+  clerkUserId            String   @unique
+  username               String   @unique
+  showInDirectory        Boolean  @default(true)
   showInCommunityAvatars Boolean  @default(true)
-  displayName     String?
-  avatarUrl       String?
-  headline        String?
-  bio             String?  @db.Text
-  occupation      String?
-  institution     String?
-  city            String?
-  state           String?
-  country         String?
-  website         String?
-  instagram       String?
-  linkedin        String?
-  interests       String[] @default([])
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  member          Member   @relation(fields: [clerkUserId], references: [id], onDelete: Cascade)
+  displayName            String?
+  avatarUrl              String?
+  headline               String?
+  bio                    String?  @db.Text
+  occupation             String?
+  institution            String?
+  city                   String?
+  state                  String?
+  country                String?
+  website                String?
+  instagram              String?
+  linkedin               String?
+  interests              String[] @default([])
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+  member                 Member   @relation(fields: [clerkUserId], references: [id], onDelete: Cascade)
 
   @@index([displayName])
 }
@@ -534,34 +530,34 @@ model LearningPath {
 }
 
 model Course {
-  id               String                  @id @default(cuid())
-  title            String
-  subtitle         String?                 @db.Text
-  slug             String                  @unique
-  description      String?                 @db.Text
-  coverUrl         String?
-  format           String?
-  category         String?
-  level            String?
-  durationMinutes  Int?
-  tags             String[]                @default([])
-  experience       CourseExperience        @default(ASYNC)
-  teacherId        String?
-  status           ContentStatus           @default(DRAFT)
-  position         Int                     @default(0)
-  publishedAt      DateTime?
-  createdBy        String?
-  updatedBy        String?
-  learningPathId   String?
-  createdAt        DateTime                @default(now())
-  updatedAt        DateTime                @updatedAt
-  learningPath     LearningPath?           @relation(fields: [learningPathId], references: [id], onDelete: SetNull)
-  modules          Module[]
-  enrollments      Enrollment[]
-  activities       Activity[]
-  meetings         Meeting[]
-  libraryBookmarks LibraryBookmark[]
-  collectionItems  ContentCollectionItem[]
+  id                   String                  @id @default(cuid())
+  title                String
+  subtitle             String?                 @db.Text
+  slug                 String                  @unique
+  description          String?                 @db.Text
+  coverUrl             String?
+  format               String?
+  category             String?
+  level                String?
+  durationMinutes      Int?
+  tags                 String[]                @default([])
+  experience           CourseExperience        @default(ASYNC)
+  teacherId            String?
+  status               ContentStatus           @default(DRAFT)
+  position             Int                     @default(0)
+  publishedAt          DateTime?
+  createdBy            String?
+  updatedBy            String?
+  learningPathId       String?
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+  learningPath         LearningPath?           @relation(fields: [learningPathId], references: [id], onDelete: SetNull)
+  modules              Module[]
+  enrollments          Enrollment[]
+  activities           Activity[]
+  meetings             Meeting[]
+  libraryBookmarks     LibraryBookmark[]
+  collectionItems      ContentCollectionItem[]
   cohortCourseAccesses CohortCourseAccess[]
 
   @@unique([learningPathId, position])
@@ -591,31 +587,31 @@ model Module {
 }
 
 model Lesson {
-  id                 String                  @id @default(cuid())
-  title              String
-  slug               String
-  description        String?                 @db.Text
-  objectives         String[]                @default([])
-  content            Json
-  kind               LessonKind              @default(TEXT)
-  status             ContentStatus           @default(DRAFT)
-  position           Int                     @default(0)
-  publishedAt        DateTime?
-  createdBy          String?
-  updatedBy          String?
-  moduleId           String
-  createdAt          DateTime                @default(now())
-  updatedAt          DateTime                @updatedAt
-  module             Module                  @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-  resources          LessonResource[]
-  libraryItems       LibraryItem[]
-  assets             LessonAsset[]
-  assetUploads       LessonAssetUpload[]
-  progress           LessonProgress[]
-  activities         Activity[]
-  importedRecordings ImportedRecording[]
-  collectionItems    ContentCollectionItem[]
-  libraryBookmarks   LibraryBookmark[]
+  id                   String                  @id @default(cuid())
+  title                String
+  slug                 String
+  description          String?                 @db.Text
+  objectives           String[]                @default([])
+  content              Json
+  kind                 LessonKind              @default(TEXT)
+  status               ContentStatus           @default(DRAFT)
+  position             Int                     @default(0)
+  publishedAt          DateTime?
+  createdBy            String?
+  updatedBy            String?
+  moduleId             String
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+  module               Module                  @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  resources            LessonResource[]
+  libraryItems         LibraryItem[]
+  assets               LessonAsset[]
+  assetUploads         LessonAssetUpload[]
+  progress             LessonProgress[]
+  activities           Activity[]
+  importedRecordings   ImportedRecording[]
+  collectionItems      ContentCollectionItem[]
+  libraryBookmarks     LibraryBookmark[]
   cohortLessonReleases CohortLessonRelease[]
 
   @@unique([moduleId, slug])
@@ -638,43 +634,43 @@ model LessonResource {
 }
 
 model LessonAsset {
-  id                String                   @id @default(cuid())
-  title             String
-  kind              LessonAssetKind
-  scope             LessonAssetScope         @default(GENERAL)
-  mediaProvider     LessonAssetMediaProvider @default(STORAGE)
-  mediaExternalId   String?                  @db.VarChar(64)
-  youtubeSourceUrl  String?                  @db.Text
-  youtubeVideoTitle String?                  @db.Text
-  youtubeThumbnailUrl String?                @db.Text
-  youtubePrivacyStatus String?               @db.VarChar(16)
-  youtubeEmbeddable Boolean?
-  youtubeCaptionsAvailable Boolean?
-  youtubeVerificationStatus String?           @db.VarChar(32)
-  youtubeCheckedAt DateTime?
-  youtubeStartAtSeconds Int?
-  youtubeEndAtSeconds Int?
-  storagePath       String?                  @db.Text
-  externalUrl       String?                  @db.Text
-  mimeType          String?
-  sizeBytes         BigInt?
-  durationSeconds   Int?
-  checksum          String?
-  sourcePlatform    String?
-  sourceId          String?
-  originalTitle     String?
-  position          Int                      @default(0)
-  ownerMemberId     String?
-  lessonId          String
-  createdAt         DateTime                 @default(now())
-  updatedAt         DateTime                 @updatedAt
-  lesson            Lesson                   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
-  ownerMember       Member?                  @relation("OwnedLessonAssets", fields: [ownerMemberId], references: [id], onDelete: SetNull)
-  importedRecording ImportedRecording?
-  playbackProgress  PlaybackProgress[]
-  uploadVersions    LessonAssetUpload[]      @relation("LessonAssetUploadAsset")
-  collectionItems   ContentCollectionItem[]
-  libraryBookmarks  LibraryBookmark[]
+  id                        String                   @id @default(cuid())
+  title                     String
+  kind                      LessonAssetKind
+  scope                     LessonAssetScope         @default(GENERAL)
+  mediaProvider             LessonAssetMediaProvider @default(STORAGE)
+  mediaExternalId           String?                  @db.VarChar(64)
+  youtubeSourceUrl          String?                  @db.Text
+  youtubeVideoTitle         String?                  @db.Text
+  youtubeThumbnailUrl       String?                  @db.Text
+  youtubePrivacyStatus      String?                  @db.VarChar(16)
+  youtubeEmbeddable         Boolean?
+  youtubeCaptionsAvailable  Boolean?
+  youtubeVerificationStatus String?                  @db.VarChar(32)
+  youtubeCheckedAt          DateTime?
+  youtubeStartAtSeconds     Int?
+  youtubeEndAtSeconds       Int?
+  storagePath               String?                  @db.Text
+  externalUrl               String?                  @db.Text
+  mimeType                  String?
+  sizeBytes                 BigInt?
+  durationSeconds           Int?
+  checksum                  String?
+  sourcePlatform            String?
+  sourceId                  String?
+  originalTitle             String?
+  position                  Int                      @default(0)
+  ownerMemberId             String?
+  lessonId                  String
+  createdAt                 DateTime                 @default(now())
+  updatedAt                 DateTime                 @updatedAt
+  lesson                    Lesson                   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  ownerMember               Member?                  @relation("OwnedLessonAssets", fields: [ownerMemberId], references: [id], onDelete: SetNull)
+  importedRecording         ImportedRecording?
+  playbackProgress          PlaybackProgress[]
+  uploadVersions            LessonAssetUpload[]      @relation("LessonAssetUploadAsset")
+  collectionItems           ContentCollectionItem[]
+  libraryBookmarks          LibraryBookmark[]
 
   @@unique([lessonId, position])
   @@unique([sourcePlatform, sourceId])
@@ -683,25 +679,25 @@ model LessonAsset {
 }
 
 model LessonAssetUpload {
-  id                      String                  @id @default(cuid())
-  actorId                 String                  @db.VarChar(128)
-  idempotencyKey          String                  @db.Uuid
-  lessonId                String
-  expectedAssetId         String?
-  expectedAssetUpdatedAt  DateTime?
-  assetId                 String?
-  storagePath             String                  @unique @db.Text
-  originalFileName        String                  @db.VarChar(255)
-  mimeType                String                  @db.VarChar(128)
-  sizeBytes               BigInt
-  status                  LessonAssetUploadStatus @default(PENDING)
-  expiresAt               DateTime
-  completedAt             DateTime?
-  storageDeletedAt        DateTime?
-  createdAt               DateTime                @default(now())
-  updatedAt               DateTime                @updatedAt
-  lesson                  Lesson                  @relation(fields: [lessonId], references: [id], onDelete: Cascade)
-  asset                   LessonAsset?            @relation("LessonAssetUploadAsset", fields: [assetId], references: [id], onDelete: SetNull)
+  id                     String                  @id @default(cuid())
+  actorId                String                  @db.VarChar(128)
+  idempotencyKey         String                  @db.Uuid
+  lessonId               String
+  expectedAssetId        String?
+  expectedAssetUpdatedAt DateTime?
+  assetId                String?
+  storagePath            String                  @unique @db.Text
+  originalFileName       String                  @db.VarChar(255)
+  mimeType               String                  @db.VarChar(128)
+  sizeBytes              BigInt
+  status                 LessonAssetUploadStatus @default(PENDING)
+  expiresAt              DateTime
+  completedAt            DateTime?
+  storageDeletedAt       DateTime?
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+  lesson                 Lesson                  @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  asset                  LessonAsset?            @relation("LessonAssetUploadAsset", fields: [assetId], references: [id], onDelete: SetNull)
 
   @@unique([actorId, idempotencyKey])
   @@index([lessonId, status, createdAt])
@@ -743,32 +739,32 @@ model AccessGrant {
 }
 
 model Cohort {
-  id                 String                @id @default(cuid())
-  name               String
-  normalizedName     String                @unique
-  slug               String                @unique
-  startsAt           DateTime
-  endsAt             DateTime?
-  lateJoinPolicy     CohortLateJoinPolicy  @default(ALL_ACTIVE)
-  readAfterEndDays   Int                   @default(90)
-  notifyOnNews       Boolean               @default(true)
-  archivedAt         DateTime?
-  version            Int                   @default(1)
-  idempotencyKey     String?
-  createdByMemberId  String
-  createdAt          DateTime              @default(now())
-  updatedAt          DateTime              @updatedAt
-  createdBy          Member                @relation("CohortCreator", fields: [createdByMemberId], references: [id], onDelete: Restrict)
-  teachers           CohortTeacher[]
-  memberships        CohortMembership[]
-  invites            CohortInvite[]
-  courseAccesses     CohortCourseAccess[]
-  lessonReleases     CohortLessonRelease[]
-  events             CohortEvent[]
-  meetingTargets     MeetingCohortTarget[]
-  calendarFeeds      CohortCalendarFeed[]
-  accessGrantSources AccessGrantSource[]
-  activityTargets    ActivityCohortTarget[]
+  id                  String                 @id @default(cuid())
+  name                String
+  normalizedName      String                 @unique
+  slug                String                 @unique
+  startsAt            DateTime
+  endsAt              DateTime?
+  lateJoinPolicy      CohortLateJoinPolicy   @default(ALL_ACTIVE)
+  readAfterEndDays    Int                    @default(90)
+  notifyOnNews        Boolean                @default(true)
+  archivedAt          DateTime?
+  version             Int                    @default(1)
+  idempotencyKey      String?
+  createdByMemberId   String
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
+  createdBy           Member                 @relation("CohortCreator", fields: [createdByMemberId], references: [id], onDelete: Restrict)
+  teachers            CohortTeacher[]
+  memberships         CohortMembership[]
+  invites             CohortInvite[]
+  courseAccesses      CohortCourseAccess[]
+  lessonReleases      CohortLessonRelease[]
+  events              CohortEvent[]
+  meetingTargets      MeetingCohortTarget[]
+  calendarFeeds       CohortCalendarFeed[]
+  accessGrantSources  AccessGrantSource[]
+  activityTargets     ActivityCohortTarget[]
   announcementTargets AnnouncementCohort[]
 
   @@unique([createdByMemberId, idempotencyKey])
@@ -868,25 +864,25 @@ model CohortLessonRelease {
 }
 
 model CohortEvent {
-  id                String        @id @default(cuid())
-  idempotencyKey    String?
-  cohortId          String
-  title             String
-  description       String?       @db.Text
-  startsAt          DateTime
-  endsAt            DateTime?
-  allDay            Boolean       @default(false)
-  color             String        @default("#6B5B64")
+  id                   String                           @id @default(cuid())
+  idempotencyKey       String?
+  cohortId             String
+  title                String
+  description          String?                          @db.Text
+  startsAt             DateTime
+  endsAt               DateTime?
+  allDay               Boolean                          @default(false)
+  color                String                           @default("#6B5B64")
   recurrence           PlannerRecurrence                @default(NONE)
   recurrenceUntil      DateTime?
-  status            ContentStatus @default(DRAFT)
-  version           Int           @default(1)
-  publishedAt       DateTime?
-  createdByMemberId String
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
-  cohort            Cohort        @relation(fields: [cohortId], references: [id], onDelete: Restrict)
-  createdBy         Member        @relation("CohortEventCreator", fields: [createdByMemberId], references: [id], onDelete: Restrict)
+  status               ContentStatus                    @default(DRAFT)
+  version              Int                              @default(1)
+  publishedAt          DateTime?
+  createdByMemberId    String
+  createdAt            DateTime                         @default(now())
+  updatedAt            DateTime                         @updatedAt
+  cohort               Cohort                           @relation(fields: [cohortId], references: [id], onDelete: Restrict)
+  createdBy            Member                           @relation("CohortEventCreator", fields: [createdByMemberId], references: [id], onDelete: Restrict)
   occurrenceExceptions CohortEventOccurrenceException[]
 
   @@unique([createdByMemberId, idempotencyKey])
@@ -955,6 +951,7 @@ model AccessGrantSource {
   @@index([subjectCohortId, resourceType, resourceId, validUntil])
   @@index([origin, originRefId])
 }
+
 model MigrationRecord {
   id             String              @id @default(cuid())
   sourcePlatform String
@@ -1101,15 +1098,15 @@ model LessonProgress {
 }
 
 model Activity {
-  id                   String               @id @default(cuid())
+  id                   String                    @id @default(cuid())
   idempotencyKey       String?
   title                String
-  slug                 String               @unique
-  prompt               String               @db.Text
-  instructions         String?              @db.Text
-  deliveryKind         ActivityDeliveryKind @default(TEXT)
-  status               ContentStatus        @default(DRAFT)
-  position             Int                  @default(0)
+  slug                 String                    @unique
+  prompt               String                    @db.Text
+  instructions         String?                   @db.Text
+  deliveryKind         ActivityDeliveryKind      @default(TEXT)
+  status               ContentStatus             @default(DRAFT)
+  position             Int                       @default(0)
   dueAt                DateTime?
   courseId             String?
   lessonId             String?
@@ -1118,16 +1115,16 @@ model Activity {
   version              Int                       @default(1)
   createdBy            String?
   updatedBy            String?
-  createdAt            DateTime             @default(now())
-  updatedAt            DateTime             @updatedAt
-  course               Course?              @relation(fields: [courseId], references: [id], onDelete: SetNull)
-  lesson               Lesson?              @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+  createdAt            DateTime                  @default(now())
+  updatedAt            DateTime                  @updatedAt
+  course               Course?                   @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  lesson               Lesson?                   @relation(fields: [lessonId], references: [id], onDelete: SetNull)
   submissions          ActivitySubmission[]
   assignments          ActivityAssignment[]
   cohortTargets        ActivityCohortTarget[]
   rubricCriteria       ActivityRubricCriterion[]
-  meetings             Meeting[]            @relation("MeetingActivity")
-  relatedLibraryItem   LibraryItem?         @relation("ActivityLibraryItem", fields: [relatedLibraryItemId], references: [id], onDelete: SetNull)
+  meetings             Meeting[]                 @relation("MeetingActivity")
+  relatedLibraryItem   LibraryItem?              @relation("ActivityLibraryItem", fields: [relatedLibraryItemId], references: [id], onDelete: SetNull)
 
   @@unique([createdBy, idempotencyKey])
   @@index([status, position])
@@ -1263,46 +1260,46 @@ model Feedback {
 }
 
 model ActivityFeedbackDraft {
-  id            String             @id @default(cuid())
-  submissionId  String             @unique
-  reviewerId    String?
-  content       String             @db.Text
-  rubricVersion Int                @default(0)
+  id             String             @id @default(cuid())
+  submissionId   String             @unique
+  reviewerId     String?
+  content        String             @db.Text
+  rubricVersion  Int                @default(0)
   criteriaScores Json?
-  version       Int                @default(1)
-  createdAt     DateTime           @default(now())
-  updatedAt     DateTime           @updatedAt
-  submission    ActivitySubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
-  reviewer      Member?            @relation("ActivityFeedbackDraftReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
+  version        Int                @default(1)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  submission     ActivitySubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  reviewer       Member?            @relation("ActivityFeedbackDraftReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
 
   @@index([reviewerId, updatedAt])
 }
 
 model Notification {
-  id               String    @id @default(cuid())
-  memberId         String
-  actorId          String?
+  id                  String        @id @default(cuid())
+  memberId            String
+  actorId             String?
   announcementId      String?
   announcementVersion Int?
-  type             String
-  entityType       String?
-  entityId         String?
-  parentEntityType String?
-  parentEntityId   String?
-  metadata         Json?
-  groupKey         String?
-  communitySpaceId String?   @default("__community_scope_unresolved__")
-  dedupeKey        String?   @unique
-  priority         Int       @default(0)
-  title            String
-  body             String?   @db.Text
-  href             String?   @db.Text
-  seenAt           DateTime?
-  readAt           DateTime?
-  createdAt        DateTime  @default(now())
-  member           Member    @relation("NotificationRecipient", fields: [memberId], references: [id], onDelete: Cascade)
-  actor            Member?   @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
-  announcement     Announcement? @relation(fields: [announcementId], references: [id], onDelete: SetNull)
+  type                String
+  entityType          String?
+  entityId            String?
+  parentEntityType    String?
+  parentEntityId      String?
+  metadata            Json?
+  groupKey            String?
+  communitySpaceId    String?       @default("__community_scope_unresolved__")
+  dedupeKey           String?       @unique
+  priority            Int           @default(0)
+  title               String
+  body                String?       @db.Text
+  href                String?       @db.Text
+  seenAt              DateTime?
+  readAt              DateTime?
+  createdAt           DateTime      @default(now())
+  member              Member        @relation("NotificationRecipient", fields: [memberId], references: [id], onDelete: Cascade)
+  actor               Member?       @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
+  announcement        Announcement? @relation(fields: [announcementId], references: [id], onDelete: SetNull)
 
   @@index([memberId, readAt, createdAt])
   @@index([memberId, seenAt, createdAt])
@@ -1349,25 +1346,25 @@ model NotificationPreference {
 }
 
 model Announcement {
-  id                String               @id @default(cuid())
+  id                String                  @id @default(cuid())
   title             String
-  body              String               @db.Text
+  body              String                  @db.Text
   href              String?
-  audience          AnnouncementAudience @default(ALL)
-  recipientIds      String[]             @default([])
-  status            ContentStatus        @default(DRAFT)
+  audience          AnnouncementAudience    @default(ALL)
+  recipientIds      String[]                @default([])
+  status            ContentStatus           @default(DRAFT)
   startsAt          DateTime?
   endsAt            DateTime?
-  isPinned          Boolean              @default(false)
-  isImportant       Boolean              @default(false)
-  version           Int                  @default(1)
+  isPinned          Boolean                 @default(false)
+  isImportant       Boolean                 @default(false)
+  version           Int                     @default(1)
   createdByMemberId String?
   publishedAt       DateTime?
   archivedAt        DateTime?
   deletedAt         DateTime?
-  createdAt         DateTime             @default(now())
-  updatedAt         DateTime             @updatedAt
-  createdBy         Member?              @relation("AnnouncementCreator", fields: [createdByMemberId], references: [id], onDelete: SetNull)
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+  createdBy         Member?                 @relation("AnnouncementCreator", fields: [createdByMemberId], references: [id], onDelete: SetNull)
   cohorts           AnnouncementCohort[]
   dismissals        AnnouncementDismissal[]
   notifications     Notification[]
@@ -1390,11 +1387,11 @@ model AnnouncementCohort {
 
 model AnnouncementDismissal {
   announcementId      String
-  memberId             String
+  memberId            String
   announcementVersion Int
-  dismissedAt          DateTime     @default(now())
-  announcement         Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
-  member               Member       @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  dismissedAt         DateTime     @default(now())
+  announcement        Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  member              Member       @relation(fields: [memberId], references: [id], onDelete: Cascade)
 
   @@id([announcementId, memberId, announcementVersion])
   @@index([memberId, dismissedAt])
@@ -1492,31 +1489,31 @@ model CommunitySpaceInviteLink {
 }
 
 model CommunityPost {
-  id             String              @id @default(cuid())
+  id             String                   @id @default(cuid())
   spaceId        String?
-  audienceScope  String              @default("UNRESOLVED") @db.VarChar(16)
+  audienceScope  String                   @default("UNRESOLVED") @db.VarChar(16)
   authorId       String
   idempotencyKey String?
-  kind           CommunityPostKind   @default(DISCUSSION)
+  kind           CommunityPostKind        @default(DISCUSSION)
   title          String
-  subtitle       String?             @db.Text
-  slug           String?             @unique
-  content        String              @db.Text
-  excerpt        String?             @db.Text
+  subtitle       String?                  @db.Text
+  slug           String?                  @unique
+  content        String                   @db.Text
+  excerpt        String?                  @db.Text
   contentJson    Json?
-  tags           String[]            @default([])
+  tags           String[]                 @default([])
   coverUrl       String?
-  coverAltText   String?             @db.Text
-  status         ContentStatus       @default(PUBLISHED)
-  isPinned       Boolean             @default(false)
-  isFeatured     Boolean             @default(false)
+  coverAltText   String?                  @db.Text
+  status         ContentStatus            @default(PUBLISHED)
+  isPinned       Boolean                  @default(false)
+  isFeatured     Boolean                  @default(false)
   featuredAt     DateTime?
   publishedAt    DateTime?
-  createdAt      DateTime            @default(now())
-  updatedAt      DateTime            @updatedAt
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
   editedAt       DateTime?
   deletedAt      DateTime?
-  space          CommunitySpace?     @relation(fields: [spaceId], references: [id], onDelete: Restrict)
+  space          CommunitySpace?          @relation(fields: [spaceId], references: [id], onDelete: Restrict)
   comments       CommunityComment[]
   votes          PostVote[]
   bookmarks      CommunityBookmark[]
@@ -1620,31 +1617,31 @@ model MutationRateLimit {
 }
 
 model Meeting {
-  id                   String               @id @default(cuid())
+  id                   String                       @id @default(cuid())
   idempotencyKey       String?
   title                String
-  description          String?              @db.Text
+  description          String?                      @db.Text
   startsAt             DateTime
   endsAt               DateTime?
-  timezone             String               @default("America/Sao_Paulo")
-  joinUrl              String               @db.Text
-  recordingUrl         String?              @db.Text
-  status               ContentStatus        @default(DRAFT)
+  timezone             String                       @default("America/Sao_Paulo")
+  joinUrl              String                       @db.Text
+  recordingUrl         String?                      @db.Text
+  status               ContentStatus                @default(DRAFT)
   publishedAt          DateTime?
   teacherId            String?
   courseId             String?
-  position             Int                  @default(0)
-  kind                 MeetingKind          @default(OTHER)
+  position             Int                          @default(0)
+  kind                 MeetingKind                  @default(OTHER)
   recurrenceRule       String?
   recurrenceUntil      DateTime?
-  demoKey              String?              @unique
+  demoKey              String?                      @unique
   relatedActivityId    String?
   relatedLibraryItemId String?
-  createdAt            DateTime             @default(now())
-  updatedAt            DateTime             @updatedAt
-  course               Course?              @relation(fields: [courseId], references: [id], onDelete: SetNull)
-  relatedActivity      Activity?            @relation("MeetingActivity", fields: [relatedActivityId], references: [id], onDelete: SetNull)
-  relatedLibraryItem   LibraryItem?         @relation("MeetingLibraryItem", fields: [relatedLibraryItemId], references: [id], onDelete: SetNull)
+  createdAt            DateTime                     @default(now())
+  updatedAt            DateTime                     @updatedAt
+  course               Course?                      @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  relatedActivity      Activity?                    @relation("MeetingActivity", fields: [relatedActivityId], references: [id], onDelete: SetNull)
+  relatedLibraryItem   LibraryItem?                 @relation("MeetingLibraryItem", fields: [relatedLibraryItemId], references: [id], onDelete: SetNull)
   participants         MeetingParticipant[]
   attendance           MeetingAttendance[]
   recordings           ImportedRecording[]
@@ -2179,9 +2176,22 @@ model StudyGoal {
   member        Member                 @relation(fields: [memberId], references: [id], onDelete: Cascade)
   revisions     StudyGoalRevision[]
   achievements  StudyGoalAchievement[]
+  topics        StudyGoalTopic[]
 
   @@unique([memberId, period])
   @@index([memberId, updatedAt])
+}
+
+model StudyGoalTopic {
+  id           String    @id @default(cuid())
+  goalId       String
+  topic        String
+  sharePercent Int
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  goal         StudyGoal @relation(fields: [goalId], references: [id], onDelete: Cascade)
+
+  @@unique([goalId, topic])
 }
 
 model StudyGoalRevision {
@@ -2428,9 +2438,9 @@ model FocusTimerSession {
   completedAt        DateTime?
   linkedResourceType String?
   linkedResourceId   String?
-  sessionNote        String?                     @db.Text
-  needsReview        Boolean                     @default(false)
-  manuallyEntered    Boolean                     @default(false)
+  sessionNote        String?                    @db.Text
+  needsReview        Boolean                    @default(false)
+  manuallyEntered    Boolean                    @default(false)
   studyLoggedAt      DateTime?
   createdAt          DateTime                   @default(now())
   updatedAt          DateTime                   @updatedAt
@@ -2454,17 +2464,17 @@ model FocusTimerSessionSegment {
 }
 
 model PlannerNoteFolder {
-  id        String        @id @default(cuid())
+  id        String              @id @default(cuid())
   memberId  String
   parentId  String?
   name      String
-  icon      String        @default("folder")
-  position  Int           @default(0)
+  icon      String              @default("folder")
+  position  Int                 @default(0)
   deletedAt DateTime?
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
-  member    Member        @relation(fields: [memberId], references: [id], onDelete: Cascade)
-  parent    PlannerNoteFolder? @relation("PlannerNoteFolderTree", fields: [parentId, memberId], references: [id, memberId], onDelete: Cascade)
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+  member    Member              @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  parent    PlannerNoteFolder?  @relation("PlannerNoteFolderTree", fields: [parentId, memberId], references: [id, memberId], onDelete: Cascade)
   children  PlannerNoteFolder[] @relation("PlannerNoteFolderTree")
   notes     PlannerNote[]
 
@@ -2474,22 +2484,22 @@ model PlannerNoteFolder {
 }
 
 model PlannerNote {
-  id          String                     @id @default(cuid())
-  memberId    String
-  folderId    String?
-  title       String                     @default("Sem título")
-  contentJson Json
-  contentText String                     @default("") @db.Text
+  id                 String                     @id @default(cuid())
+  memberId           String
+  folderId           String?
+  title              String                     @default("Sem título")
+  contentJson        Json
+  contentText        String                     @default("") @db.Text
   linkedResourceType String?
   linkedResourceId   String?
   videoTimeSeconds   Int?
-  pinnedAt    DateTime?
-  deletedAt   DateTime?
-  createdAt   DateTime                   @default(now())
-  updatedAt   DateTime                   @updatedAt
-  member      Member                     @relation(fields: [memberId], references: [id], onDelete: Cascade)
-  folder      PlannerNoteFolder?         @relation(fields: [folderId, memberId], references: [id, memberId], onDelete: Restrict)
-  tags        PlannerNoteTagAssignment[]
+  pinnedAt           DateTime?
+  deletedAt          DateTime?
+  createdAt          DateTime                   @default(now())
+  updatedAt          DateTime                   @updatedAt
+  member             Member                     @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  folder             PlannerNoteFolder?         @relation(fields: [folderId, memberId], references: [id, memberId], onDelete: Restrict)
+  tags               PlannerNoteTagAssignment[]
 
   @@unique([id, memberId])
   @@index([memberId, deletedAt, pinnedAt, updatedAt])
@@ -2534,19 +2544,19 @@ model GlobalSearchHistory {
 }
 
 model StudyCampaign {
-  id                String    @id @default(cuid())
+  id                String                   @id @default(cuid())
   createdByMemberId String?
   title             String
-  description       String?   @db.Text
+  description       String?                  @db.Text
   targetMinutes     Int
   startsAt          DateTime
   endsAt            DateTime
   renewalMode       StudyCampaignRenewalMode @default(MANUAL)
   publishedAt       DateTime?
   archivedAt        DateTime?
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
-  createdBy         Member?   @relation("StudyCampaignCreator", fields: [createdByMemberId], references: [id], onDelete: SetNull)
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
+  createdBy         Member?                  @relation("StudyCampaignCreator", fields: [createdByMemberId], references: [id], onDelete: SetNull)
   snapshots         StudyCampaignSnapshot[]
 
   @@index([publishedAt, archivedAt, startsAt, endsAt])

@@ -12,18 +12,14 @@ import {
 import { Input } from "@repo/design-system/components/ui/input";
 import { toast } from "@repo/design-system/lib/toast";
 import {
-  CheckIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   CopyIcon,
-  PencilIcon,
   PlusIcon,
-  Trash2Icon,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
   type CSSProperties,
-  Fragment,
   useEffect,
   useId,
   useMemo,
@@ -32,25 +28,24 @@ import {
 } from "react";
 import { cohortCalendarEventDateRange } from "@/lib/cohort-calendar-domain";
 import type { getPlannerDashboard } from "@/lib/planner";
+import type { StudyGoalTopicOverview } from "@/lib/study-goal-topics";
 import {
-  changePlannerTaskStatusAction,
   deletePlannerEventAction,
   deletePlannerTaskAction,
   duplicatePlannerEventAction,
-  duplicatePlannerTaskAction,
   loadPlannerAction,
   restorePlannerTaskAction,
-  savePlannerColumnAction,
   savePlannerEventAction,
   savePlannerGoalAction,
   savePlannerTaskAction,
 } from "./actions";
+import { GoalTopics } from "./goal-topics";
 
 type PlannerData = Awaited<ReturnType<typeof getPlannerDashboard>>;
 type PlannerTask = PlannerData["tasks"][number];
 type PlannerEvent = PlannerData["events"][number];
 type TaskStatus = "TODO" | "IN_PROGRESS" | "DONE";
-type PlannerView = "goals" | "tasks" | "board" | "calendar";
+type PlannerView = "goals" | "calendar";
 type CalendarMode = "month" | "week" | "day" | "list";
 
 const HTTP_SCHEME_PATTERN = /^https?:/;
@@ -123,17 +118,6 @@ const isoFromLocalInput = (value: string, timezone: string) => {
   }
   return new Date(guess).toISOString();
 };
-
-const dateLabel = (value: Date | null, timezone: string) =>
-  value
-    ? new Intl.DateTimeFormat("pt-BR", {
-        day: "2-digit",
-        month: "short",
-        hour: "2-digit",
-        minute: "2-digit",
-        timeZone: timezone,
-      }).format(value)
-    : "Sem prazo";
 
 const dateKeyInTimezone = (value: Date, timezone: string) => {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -391,36 +375,6 @@ const monthLabel = (month: Date) =>
     timeZone: "UTC",
   }).format(month);
 
-const statusClass = (status: TaskStatus) => {
-  if (status === "DONE") {
-    return "border-[#D9E4D7] bg-[#F2F7F0] text-[#426044]";
-  }
-  if (status === "IN_PROGRESS") {
-    return "border-[#E8C8D0] bg-[#FBF3F4] text-[#8C1535]";
-  }
-  return "border-[#E2D6D1] bg-white text-[#7A5A69]";
-};
-
-const priorityClass = (priority: PlannerTask["priority"]) => {
-  if (priority === "HIGH") {
-    return "bg-[#F9E8EB] text-[#A8182A]";
-  }
-  if (priority === "MEDIUM") {
-    return "bg-[#F7EEF0] text-[#8C1535]";
-  }
-  return "bg-[#F1EBE8] text-[#7A5A69]";
-};
-
-const priorityLabel = (priority: PlannerTask["priority"]) => {
-  if (priority === "HIGH") {
-    return "Alta";
-  }
-  if (priority === "MEDIUM") {
-    return "Média";
-  }
-  return "Baixa";
-};
-
 const showError = (error: unknown) =>
   toast.error(
     error instanceof Error ? error.message : "Não foi possível salvar agora."
@@ -428,6 +382,7 @@ const showError = (error: unknown) =>
 
 function TaskEditorDialog({
   onClose,
+  onDelete,
   onSave,
   open,
   parentTaskId,
@@ -435,6 +390,7 @@ function TaskEditorDialog({
   timezone,
 }: {
   readonly onClose: () => void;
+  readonly onDelete: (task: PlannerTask) => void;
   readonly onSave: (input: Record<string, unknown>) => Promise<void>;
   readonly open: boolean;
   readonly parentTaskId?: string | null;
@@ -664,6 +620,16 @@ function TaskEditorDialog({
             <p className="text-[#7A5A69] text-xs">Fuso horário: {timezone}</p>
           </div>
           <DialogFooter className="mt-6 flex-row justify-end gap-2 sm:justify-end">
+            {task ? (
+              <Button
+                className="mr-auto"
+                onClick={() => onDelete(task)}
+                type="button"
+                variant="ghost"
+              >
+                Excluir
+              </Button>
+            ) : null}
             <Button onClick={onClose} type="button" variant="outline">
               Cancelar
             </Button>
@@ -958,6 +924,7 @@ function EventEditorDialog({
 
 function PlannerWorkspaceContent({
   data,
+  goalTopics,
   selectedEventId,
   selectedEventOccurrence,
   selectedTaskId,
@@ -965,6 +932,7 @@ function PlannerWorkspaceContent({
   view,
 }: {
   readonly data: PlannerData;
+  readonly goalTopics: StudyGoalTopicOverview | null;
   readonly selectedEventId: string | null;
   readonly selectedEventOccurrence: string | null;
   readonly selectedTaskId: string | null;
@@ -978,7 +946,6 @@ function PlannerWorkspaceContent({
   const [editingTask, setEditingTask] = useState<PlannerTask | null>(null);
   const [editingEvent, setEditingEvent] = useState<PlannerEvent | null>(null);
   const [newSubtaskParent, setNewSubtaskParent] = useState<string | null>(null);
-  const [taskFilter, setTaskFilter] = useState("ALL");
   const [calendarMode, setCalendarMode] = useState<CalendarMode>("month");
   const [calendarFocusDate, setCalendarFocusDate] = useState(() =>
     dateFromKey(dateKeyInTimezone(new Date(), data.preferences.timezone))
@@ -994,22 +961,11 @@ function PlannerWorkspaceContent({
     )
   );
   const plannerLoadSequence = useRef(0);
-  const [mobileBoardStatus, setMobileBoardStatus] =
-    useState<TaskStatus>("TODO");
-  const [draggedTask, setDraggedTask] = useState<{
-    id: string;
-    occurrenceAt?: string;
-  } | null>(null);
   const [deleteTaskTarget, setDeleteTaskTarget] = useState<PlannerTask | null>(
     null
   );
   const [deleteEventTarget, setDeleteEventTarget] =
     useState<PlannerEvent | null>(null);
-  const [columnDraft, setColumnDraft] = useState<{
-    status: TaskStatus;
-    label: string;
-    color: string;
-  } | null>(null);
   const [pending, setPending] = useState<string | null>(null);
   const [enabledLayers, setEnabledLayers] = useState({
     tasks: true,
@@ -1033,7 +989,7 @@ function PlannerWorkspaceContent({
   }, []);
 
   useEffect(() => {
-    if (view === "tasks" && selectedTaskId) {
+    if (selectedTaskId) {
       const matchingTasks = currentData.tasks.filter(
         (item) => item.id === selectedTaskId
       );
@@ -1116,8 +1072,6 @@ function PlannerWorkspaceContent({
     };
   }, [calendarFocusDate, calendarMode, currentData.preferences.timezone, view]);
 
-  const columnFor = (status: TaskStatus) =>
-    currentData.columns.find((column) => column.status === status);
   const refreshCurrentRoute = () => router.refresh();
 
   const createCalendarFeedLink = async () => {
@@ -1177,38 +1131,6 @@ function PlannerWorkspaceContent({
     } catch (error) {
       showError(error);
       throw error;
-    } finally {
-      setPending(null);
-    }
-  };
-
-  const updateTaskStatus = async (
-    task: PlannerTask | { id: string; occurrenceKey?: string | null },
-    status: TaskStatus
-  ) => {
-    setPending(`status:${task.id}`);
-    try {
-      await changePlannerTaskStatusAction({
-        id: task.id,
-        status,
-        ...(task.occurrenceKey ? { occurrenceAt: task.occurrenceKey } : {}),
-      });
-      setCurrentData((previous) => ({
-        ...previous,
-        tasks: previous.tasks.map((item) =>
-          item.id === task.id &&
-          item.occurrenceKey === (task.occurrenceKey ?? null)
-            ? {
-                ...item,
-                status,
-                completedAt: status === "DONE" ? new Date() : null,
-              }
-            : item
-        ),
-      }));
-      toast.success("Estado atualizado.");
-    } catch (error) {
-      showError(error);
     } finally {
       setPending(null);
     }
@@ -1382,229 +1304,6 @@ function PlannerWorkspaceContent({
     }
   };
 
-  const visibleTasks = useMemo(() => {
-    const now = Date.now();
-    return currentData.tasks.filter((task) => {
-      if (taskFilter === "OPEN") {
-        return task.status !== "DONE";
-      }
-      if (taskFilter === "DONE") {
-        return task.status === "DONE";
-      }
-      if (taskFilter === "OVERDUE") {
-        return Boolean(
-          task.dueAt && task.dueAt.getTime() < now && task.status !== "DONE"
-        );
-      }
-      return true;
-    });
-  }, [currentData.tasks, taskFilter]);
-
-  const taskCard = (task: PlannerTask, dense = false) => {
-    const statusLabel = columnFor(task.status)?.label ?? "A fazer";
-    return (
-      <article
-        className="rounded-lg border border-[#E2D6D1] bg-white p-4 shadow-[0_1px_2px_rgba(64,34,47,.04)]"
-        key={`${task.id}:${task.occurrenceKey ?? "single"}`}
-      >
-        <div className="flex items-start gap-3">
-          <button
-            aria-label={`Arrastar tarefa ${task.title}`}
-            className="mt-0.5 grid size-5 shrink-0 cursor-grab place-items-center rounded text-[#7A5A69] active:cursor-grabbing"
-            draggable={view === "board"}
-            onDragEnd={() => setDraggedTask(null)}
-            onDragStart={(event) => {
-              setDraggedTask({
-                id: task.id,
-                occurrenceAt: task.occurrenceKey ?? undefined,
-              });
-              event.dataTransfer.setData(
-                "text/plain",
-                `${task.id}|${task.occurrenceKey ?? ""}`
-              );
-              event.dataTransfer.effectAllowed = "move";
-            }}
-            title="Arraste para outra coluna"
-            type="button"
-          >
-            <span aria-hidden="true">⠿</span>
-          </button>
-          <button
-            aria-label={
-              (task.status === "DONE" ? "Reabrir: " : "Concluir: ") + task.title
-            }
-            className={
-              "mt-0.5 grid size-5 shrink-0 place-items-center rounded border" +
-              (task.status === "DONE"
-                ? "border-[#8C1535] bg-[#8C1535] text-white"
-                : "border-[#BFA9A3] bg-white text-transparent hover:border-[#8C1535]")
-            }
-            disabled={pending === `status:${task.id}`}
-            onClick={() => {
-              updateTaskStatus(task, task.status === "DONE" ? "TODO" : "DONE");
-            }}
-            type="button"
-          >
-            <CheckIcon aria-hidden="true" className="size-3" />
-          </button>
-          <div className="min-w-0 flex-1">
-            <button
-              className={
-                "block max-w-full text-left font-medium text-[#40222F] hover:text-[#8C1535]" +
-                (task.status === "DONE" ? "line-through opacity-70" : "")
-              }
-              onClick={() => {
-                setEditingTask(task);
-                setTaskDialogOpen(true);
-              }}
-              type="button"
-            >
-              {task.title}
-            </button>
-            {!dense && task.description ? (
-              <p className="mt-1 line-clamp-2 text-[#7A5A69] text-sm">
-                {task.description}
-              </p>
-            ) : null}
-            <div className="mt-3 flex flex-wrap items-center gap-2 text-[#7A5A69] text-xs">
-              <span
-                className={`rounded-full border px-2 py-1${statusClass(task.status)}`}
-              >
-                {statusLabel}
-              </span>
-              <span
-                className={`rounded-full px-2 py-1${priorityClass(task.priority)}`}
-              >
-                {priorityLabel(task.priority)}
-              </span>
-              <span>
-                {dateLabel(task.dueAt, currentData.preferences.timezone)}
-              </span>
-              {task.recurrence !== "NONE" ? (
-                <span className="rounded-full bg-[#F1EBE8] px-2 py-1">
-                  Repetida
-                </span>
-              ) : null}
-              {task.category ? <span>· {task.category}</span> : null}
-            </div>
-            <div className="mt-3 flex flex-wrap items-center gap-1">
-              {task.subtasks.map((subtask) => (
-                <button
-                  aria-label={
-                    (subtask.status === "DONE"
-                      ? "Reabrir subtarefa: "
-                      : "Concluir subtarefa: ") + subtask.title
-                  }
-                  className={
-                    "flex min-h-8 items-center gap-2 rounded px-2 text-xs hover:bg-[#F8F4F1]" +
-                    (subtask.status === "DONE"
-                      ? "text-[#7A5A69] line-through"
-                      : "text-[#40222F]")
-                  }
-                  key={subtask.id}
-                  onClick={() => {
-                    updateTaskStatus(
-                      { id: subtask.id },
-                      subtask.status === "DONE" ? "TODO" : "DONE"
-                    );
-                  }}
-                  type="button"
-                >
-                  <span
-                    className={
-                      "size-3 rounded-sm border" +
-                      (subtask.status === "DONE"
-                        ? "border-[#8C1535] bg-[#8C1535]"
-                        : "border-[#BFA9A3] bg-white")
-                    }
-                  />
-                  {subtask.title}
-                </button>
-              ))}
-              <button
-                className="min-h-8 rounded px-2 text-[#8C1535] text-xs hover:bg-[#FBF3F4]"
-                hidden={dense}
-                onClick={() => {
-                  setEditingTask(null);
-                  setNewSubtaskParent(task.id);
-                  setTaskDialogOpen(true);
-                }}
-                type="button"
-              >
-                + Subtarefa
-              </button>
-            </div>
-          </div>
-          <div className="flex shrink-0 items-center gap-0.5">
-            <label
-              className={
-                view === "board"
-                  ? "grid gap-1 text-[#7A5A69] text-[10px]"
-                  : "sr-only"
-              }
-            >
-              Mover para
-              <select
-                aria-label={`Mover ${task.title} para um estado`}
-                className={
-                  view === "board"
-                    ? "h-8 max-w-32 rounded-md border border-[#E2D6D1] bg-white px-2 text-[#40222F] text-xs"
-                    : ""
-                }
-                onChange={(event) => {
-                  updateTaskStatus(task, event.target.value as TaskStatus);
-                }}
-                value={task.status}
-              >
-                {taskStatusOptions.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {columnFor(item.id)?.label ?? item.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <Button
-              aria-label={`Duplicar ${task.title}`}
-              className="size-8 text-[#7A5A69]"
-              onClick={() => {
-                duplicatePlannerTaskAction(task.id)
-                  .then(() => router.refresh())
-                  .catch(showError);
-              }}
-              size="icon-sm"
-              type="button"
-              variant="ghost"
-            >
-              <CopyIcon aria-hidden="true" className="size-4" />
-            </Button>
-            <Button
-              aria-label={`Editar ${task.title}`}
-              className="size-8 text-[#7A5A69]"
-              onClick={() => {
-                setEditingTask(task);
-                setTaskDialogOpen(true);
-              }}
-              size="icon-sm"
-              type="button"
-              variant="ghost"
-            >
-              <PencilIcon aria-hidden="true" className="size-4" />
-            </Button>
-            <Button
-              aria-label={`Excluir ${task.title}`}
-              className="size-8 text-[#A8182A]"
-              onClick={() => setDeleteTaskTarget(task)}
-              size="icon-sm"
-              type="button"
-              variant="ghost"
-            >
-              <Trash2Icon aria-hidden="true" className="size-4" />
-            </Button>
-          </div>
-        </div>
-      </article>
-    );
-  };
   const eventFormSave = async (input: Record<string, unknown>) =>
     saveEvent(input);
   const duplicateEvent = async (event: PlannerEvent) => {
@@ -2134,6 +1833,14 @@ function PlannerWorkspaceContent({
             A meta começa a contar apenas os minutos de estudo realmente salvos.
           </p>
         )}
+        {goal && goalTopics ? (
+          <GoalTopics
+            overview={goalTopics}
+            period={period}
+            studied={goalTopics.periods[period]}
+            targetMinutes={goal.targetMinutes}
+          />
+        ) : null}
       </article>
     );
   };
@@ -2186,206 +1893,6 @@ function PlannerWorkspaceContent({
             </p>
           </section>
         </div>
-      ) : null}
-    </>
-  );
-
-  const renderTasksPanel = () => (
-    <>
-      {view === "tasks" ? (
-        <section aria-labelledby="planner-tasks-heading">
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <p className="brand-eyebrow text-[#8C1535]">Seu trabalho</p>
-              <h2
-                className="mt-1 font-display text-3xl text-[#40222F]"
-                id="planner-tasks-heading"
-              >
-                Tarefas
-              </h2>
-            </div>
-            <Button
-              onClick={() => {
-                setEditingTask(null);
-                setNewSubtaskParent(null);
-                setTaskDialogOpen(true);
-              }}
-              type="button"
-            >
-              <PlusIcon aria-hidden="true" className="size-4" /> Nova tarefa
-            </Button>
-          </div>
-          <div className="mt-5 flex flex-wrap items-center gap-2">
-            {[
-              { id: "ALL", label: "Todas" },
-              { id: "OPEN", label: "Em aberto" },
-              { id: "OVERDUE", label: "Atrasadas" },
-              { id: "DONE", label: "Concluídas" },
-            ].map((filter) => (
-              <button
-                className={`rounded-full border px-4 py-2 text-sm ${taskFilter === filter.id ? "border-[#8C1535] bg-[#8C1535] text-white" : "border-[#E2D6D1] bg-white text-[#40222F] hover:bg-[#F8F4F1]"}`}
-                key={filter.id}
-                onClick={() => setTaskFilter(filter.id)}
-                type="button"
-              >
-                {filter.label}
-              </button>
-            ))}
-          </div>
-          <div className="mt-4 space-y-3">
-            {visibleTasks.length ? (
-              visibleTasks.map((task) => taskCard(task))
-            ) : (
-              <div className="rounded-xl border border-[#CDBBB5] border-dashed bg-white/70 px-5 py-12 text-center">
-                <p className="font-display text-2xl text-[#40222F]">
-                  Nenhuma tarefa nesta lista
-                </p>
-                <p className="mt-2 text-[#7A5A69] text-sm">
-                  Crie uma tarefa para organizar seu próximo passo.
-                </p>
-              </div>
-            )}
-          </div>
-        </section>
-      ) : null}
-    </>
-  );
-
-  const renderBoardPanel = () => (
-    <>
-      {view === "board" ? (
-        <section aria-labelledby="planner-board-heading">
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <p className="brand-eyebrow text-[#8C1535]">Quadro de tarefas</p>
-              <h2
-                className="mt-1 font-display text-3xl text-[#40222F]"
-                id="planner-board-heading"
-              >
-                Seu fluxo
-              </h2>
-            </div>
-            <Button
-              onClick={() => {
-                setEditingTask(null);
-                setNewSubtaskParent(null);
-                setTaskDialogOpen(true);
-              }}
-              type="button"
-            >
-              <PlusIcon aria-hidden="true" className="size-4" /> Nova tarefa
-            </Button>
-          </div>
-          <label className="mt-4 grid gap-1 text-[#7A5A69] text-sm md:hidden">
-            Coluna
-            <select
-              className="h-10 rounded-md border border-[#E2D6D1] bg-white px-3"
-              onChange={(event) =>
-                setMobileBoardStatus(event.target.value as TaskStatus)
-              }
-              value={mobileBoardStatus}
-            >
-              {taskStatusOptions.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {columnFor(item.id)?.label ?? item.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <div className="mt-5 grid gap-4 md:grid-cols-3">
-            {currentData.columns.map((column) => {
-              const tasks = currentData.tasks.filter(
-                (task) => task.status === column.status
-              );
-              return (
-                <Fragment key={column.status}>
-                  {/* biome-ignore lint/a11y/noNoninteractiveElementInteractions: Native drop target complements the task state select used by keyboard and touch users. */}
-                  <section
-                    aria-label={column.label}
-                    className={`min-h-72 rounded-xl border border-[#E2D6D1] bg-[#F8F4F1] p-3 md:block ${mobileBoardStatus === column.status ? "block" : "hidden"}`}
-                    key={column.status}
-                    onDragOver={(event) => event.preventDefault()}
-                    onDrop={(event) => {
-                      event.preventDefault();
-                      const raw = event.dataTransfer.getData("text/plain");
-                      const [id, occurrenceAt] = raw.split("|");
-                      if (!id) {
-                        return;
-                      }
-                      const dragged = currentData.tasks.find(
-                        (task) =>
-                          task.id === id &&
-                          (task.occurrenceKey ?? "") === (occurrenceAt ?? "")
-                      );
-                      if (dragged) {
-                        updateTaskStatus(dragged, column.status);
-                      }
-                      setDraggedTask(null);
-                    }}
-                  >
-                    <header className="mb-3 flex items-center justify-between gap-2 px-1">
-                      <div className="flex min-w-0 items-center gap-2">
-                        <span
-                          aria-hidden="true"
-                          className="size-2.5 rounded-full"
-                          style={{ backgroundColor: column.color }}
-                        />
-                        <h3 className="truncate font-semibold text-[#40222F]">
-                          {column.label}
-                        </h3>
-                        <span className="rounded-full bg-white px-2 py-0.5 text-[#7A5A69] text-xs">
-                          {tasks.length}
-                        </span>
-                      </div>
-                      <Button
-                        aria-label={`Editar coluna ${column.label}`}
-                        className="size-8 text-[#7A5A69]"
-                        onClick={() =>
-                          setColumnDraft({
-                            status: column.status,
-                            label: column.label,
-                            color: column.color,
-                          })
-                        }
-                        size="icon-sm"
-                        type="button"
-                        variant="ghost"
-                      >
-                        <PencilIcon aria-hidden="true" className="size-4" />
-                      </Button>
-                    </header>
-                    <div className="space-y-3">
-                      {tasks.map((task) => taskCard(task, true))}
-                      {tasks.length === 0 ? (
-                        <p className="rounded-lg border border-[#D9C9C3] border-dashed px-3 py-8 text-center text-[#7A5A69] text-xs">
-                          Arraste um cartão ou crie uma tarefa.
-                        </p>
-                      ) : null}
-                    </div>
-                    <Button
-                      className="mt-3 w-full justify-start text-[#8C1535]"
-                      onClick={() => {
-                        setEditingTask(null);
-                        setNewSubtaskParent(null);
-                        setTaskDialogOpen(true);
-                      }}
-                      type="button"
-                      variant="ghost"
-                    >
-                      <PlusIcon aria-hidden="true" className="size-4" />{" "}
-                      Adicionar tarefa
-                    </Button>
-                  </section>
-                </Fragment>
-              );
-            })}
-          </div>
-          {draggedTask ? (
-            <output aria-live="polite" className="sr-only">
-              Cartão selecionado. Solte sobre uma coluna para alterar o estado.
-            </output>
-          ) : null}
-        </section>
       ) : null}
     </>
   );
@@ -3052,10 +2559,6 @@ function PlannerWorkspaceContent({
     <section className="mt-8 space-y-6">
       {renderGoalsPanel()}
 
-      {renderTasksPanel()}
-
-      {renderBoardPanel()}
-
       {renderCalendarPanel()}
 
       <TaskEditorDialog
@@ -3063,6 +2566,10 @@ function PlannerWorkspaceContent({
           setTaskDialogOpen(false);
           setEditingTask(null);
           setNewSubtaskParent(null);
+        }}
+        onDelete={(target) => {
+          setDeleteTaskTarget(target);
+          setTaskDialogOpen(false);
         }}
         onSave={taskFormSave}
         open={taskDialogOpen}
@@ -3172,94 +2679,13 @@ function PlannerWorkspaceContent({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      <Dialog
-        onOpenChange={(open) => !open && setColumnDraft(null)}
-        open={Boolean(columnDraft)}
-      >
-        <DialogContent className="max-w-md border-[#E2D6D1] bg-[#F8F4F1]">
-          <DialogHeader>
-            <DialogTitle className="font-display text-2xl text-[#40222F]">
-              Editar coluna
-            </DialogTitle>
-            <DialogDescription>
-              Os três estados permanecem fixos; personalize o nome e a cor.
-            </DialogDescription>
-          </DialogHeader>
-          {columnDraft ? (
-            <form
-              className="grid gap-4"
-              onSubmit={(event) => {
-                event.preventDefault();
-                savePlannerColumnAction(columnDraft)
-                  .then((column) => {
-                    setCurrentData((previous) => ({
-                      ...previous,
-                      columns: previous.columns.map((item) =>
-                        item.status === column.status
-                          ? {
-                              ...item,
-                              label: column.label,
-                              color: column.color,
-                            }
-                          : item
-                      ),
-                    }));
-                    setColumnDraft(null);
-                    toast.success("Coluna atualizada.");
-                  })
-                  .catch(showError);
-              }}
-            >
-              <label className="grid gap-1.5 text-sm">
-                Nome
-                <input
-                  className="h-10 rounded-md border border-[#E2D6D1] bg-white px-3"
-                  maxLength={40}
-                  onChange={(event) =>
-                    setColumnDraft({
-                      ...columnDraft,
-                      label: event.target.value,
-                    })
-                  }
-                  required
-                  value={columnDraft.label}
-                />
-              </label>
-              <label className="grid gap-1.5 text-sm">
-                Cor
-                <input
-                  className="h-10 rounded-md border border-[#E2D6D1] bg-white px-3"
-                  onChange={(event) =>
-                    setColumnDraft({
-                      ...columnDraft,
-                      color: event.target.value,
-                    })
-                  }
-                  pattern="^#[0-9a-fA-F]{6}$"
-                  required
-                  value={columnDraft.color}
-                />
-              </label>
-              <DialogFooter className="flex-row justify-end gap-2 sm:justify-end">
-                <Button
-                  onClick={() => setColumnDraft(null)}
-                  type="button"
-                  variant="outline"
-                >
-                  Cancelar
-                </Button>
-                <Button type="submit">Salvar coluna</Button>
-              </DialogFooter>
-            </form>
-          ) : null}
-        </DialogContent>
-      </Dialog>
     </section>
   );
 }
 
 export const PlannerWorkspace = (props: {
   readonly data: PlannerData;
+  readonly goalTopics: StudyGoalTopicOverview | null;
   readonly selectedEventId: string | null;
   readonly selectedEventOccurrence: string | null;
   readonly selectedTaskId: string | null;
@@ -3268,6 +2694,7 @@ export const PlannerWorkspace = (props: {
 }) => (
   <PlannerWorkspaceContent
     data={props.data}
+    goalTopics={props.goalTopics}
     selectedEventId={props.selectedEventId}
     selectedEventOccurrence={props.selectedEventOccurrence}
     selectedTaskId={props.selectedTaskId}
