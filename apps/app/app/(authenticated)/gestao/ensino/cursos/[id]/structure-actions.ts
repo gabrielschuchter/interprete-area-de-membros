@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { recordAuditEvent } from "@/lib/gestao-audit";
 import { requireGestaoAction } from "@/lib/gestao-authorization";
+import { verifyCoursePublication } from "@/lib/gestao-course-verification";
 import { consumeMutationRateLimit } from "@/lib/mutation-reliability";
 import {
   duplicateCourse,
@@ -456,4 +457,9 @@ export const reorderGestaoItems = async (
   });
   refresh(courseId);
   return { ok: true };
+};
+
+export const verifyGestaoCoursePublication = async (courseId: string) => {
+  await requireGestaoAction("content.manage", { contentId: courseId });
+  return verifyCoursePublication(courseId);
 };

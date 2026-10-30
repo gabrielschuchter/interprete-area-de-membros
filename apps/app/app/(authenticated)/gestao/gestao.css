@@ -10923,3 +10923,16 @@
     align-items: flex-start;
   }
 }
+
+.gk-verify {
+  display: contents;
+}
+
+.gk-verify-result {
+  order: 3;
+  flex: 1 1 100%;
+}
+
+.gk-verify-result:empty {
+  display: none;
+}
