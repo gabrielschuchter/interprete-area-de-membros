@@ -592,13 +592,6 @@ export const RoomNotesPanel = ({
                         note.pinned ? "notesMenuUnpin" : "notesMenuPin"
                       )}
                     </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <a
-                        href={`/ferramentas?view=notes&note=${encodeURIComponent(note.id)}`}
-                      >
-                        {roomText("notesOpenInNotes")}
-                      </a>
-                    </DropdownMenuItem>
                     <DropdownMenuItem
                       className="room-menu__danger"
                       onSelect={() => trash(note)}

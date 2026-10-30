@@ -10,6 +10,7 @@ import {
 import { GestaoIcon } from "../../../../gestao-icon";
 import { GestaoCourseHeader } from "../course-header";
 import { CourseStatusButton } from "../course-status-button";
+import { CourseVerifyButton } from "../course-verify-button";
 import { duplicateGestaoCourse } from "../structure-actions";
 
 const stateCopy = {
@@ -60,7 +61,10 @@ const CoursePublicationPage = async ({
                 </li>
               ))}
             </ul>
-            <CourseStatusButton courseId={course.id} status={course.status} />
+            <div className="flex flex-wrap items-start gap-3">
+              <CourseVerifyButton courseId={course.id} />
+              <CourseStatusButton courseId={course.id} status={course.status} />
+            </div>
           </section>
           <section className="gk-panel" id="importar-youtube">
             <h2 className="gk-panel-title">Importar aulas do YouTube</h2>

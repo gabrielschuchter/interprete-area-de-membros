@@ -30,8 +30,8 @@ import { useMemberNavigation } from "../components/member-navigation-context";
 import { GestaoCrumbsProvider, useGestaoCrumbTail } from "./gestao-crumbs";
 import { GestaoIcon, type GestaoIconName } from "./gestao-icon";
 import { GestaoSearch } from "./gestao-search";
-
 import { useGestaoReturnPath } from "./use-gestao-return-path";
+import { markGestaoWelcomeSeen } from "./welcome-action";
 
 const GestaoMobileDrawer = dynamic(
   () => import("./gestao-shell-dialogs").then((m) => m.GestaoMobileDrawer),
@@ -71,6 +71,7 @@ interface GestaoShellProperties {
   readonly localQaAuth: boolean;
   readonly memberId: string;
   readonly role: GestaoRole;
+  readonly welcomeSeen: boolean;
 }
 
 interface GestaoShellViewProperties extends GestaoShellProperties {
@@ -463,6 +464,7 @@ const GestaoShellFrame = ({
   email,
   localQaAuth,
   memberId,
+  welcomeSeen,
   role,
   signOut,
 }: GestaoShellViewProperties) => {
@@ -524,14 +526,14 @@ const GestaoShellFrame = ({
     } catch {
       seen = false;
     }
-    if (seen) {
+    if (seen || welcomeSeen) {
       return;
     }
     // A modal marks its siblings aria-hidden; opening it while the streamed
     // page is still hydrating trips React's hydration check on those nodes.
     const timer = window.setTimeout(() => setWelcomeOpen(true), welcomeDelayMs);
     return () => window.clearTimeout(timer);
-  }, [memberId]);
+  }, [memberId, welcomeSeen]);
 
   const dismissWelcome = useCallback(() => {
     try {
@@ -542,6 +544,7 @@ const GestaoShellFrame = ({
     } catch {
       // The dialog still closes if browser storage is unavailable.
     }
+    markGestaoWelcomeSeen().catch(() => undefined);
     setWelcomeOpen(false);
   }, [memberId]);
 

@@ -1,5 +1,6 @@
 import { Button } from "@repo/design-system/components/ui/button";
 import { ArrowLeftIcon } from "lucide-react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { PersonalLibraryGrid } from "@/components/library/personal-library-grid";
 import { requireMemberId } from "@/lib/learning";
@@ -81,3 +82,5 @@ const PersonalLibraryPage = async () => {
 };
 
 export default PersonalLibraryPage;
+
+export const metadata: Metadata = { title: "Minha biblioteca | Interprete" };

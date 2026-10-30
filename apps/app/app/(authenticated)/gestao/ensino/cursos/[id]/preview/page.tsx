@@ -1,9 +1,18 @@
 import { Button } from "@repo/design-system/components/ui/button";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { RichDocument } from "@/components/learning/rich-document";
+import "@/app/(authenticated)/cursos/cursos.css";
+import { buildCoursePreviewData } from "@/components/learning/cursos/course-data";
+import { CourseView } from "@/components/learning/cursos/course-view";
 import { getAdminCourse } from "@/lib/admin-learning";
 import { requireGestaoAction } from "@/lib/gestao-authorization";
+
+const statusNote = {
+  ARCHIVED: "Arquivado: os alunos não veem este curso.",
+  DRAFT: "Rascunho: os alunos ainda não veem este curso.",
+  PUBLISHED: "Publicado: é assim que um aluno com acesso vê o curso.",
+  SCHEDULED: "Agendado: os alunos veem o curso quando chegar a data.",
+} as const;
 
 const GestaoCoursePreview = async ({
   params,
@@ -16,53 +25,46 @@ const GestaoCoursePreview = async ({
   if (!course) {
     notFound();
   }
+  const hiddenLessons = course.modules
+    .flatMap((module) => module.lessons)
+    .filter((lesson) => lesson.status !== "PUBLISHED").length;
 
   return (
     <main className="gca-preview-page">
       <div className="gca-preview-topline">
         <p>
-          Prévia privada · somente leitura · não altera o progresso do aluno
+          Prévia oficial · mesma tela do aluno · somente leitura, sem alterar
+          progresso. {statusNote[course.status]}
+          {hiddenLessons > 0
+            ? ` ${hiddenLessons} ${hiddenLessons === 1 ? "aula fora da publicação não aparece" : "aulas fora da publicação não aparecem"}.`
+            : ""}
         </p>
-        <Button asChild size="sm" variant="outline">
-          <Link
-            href={`/gestao/ensino/cursos/${encodeURIComponent(course.id)}/turmas`}
-            prefetch={false}
-          >
-            Voltar ao curso
-          </Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button asChild size="sm" variant="outline">
+            <Link
+              href={`/gestao/ensino/cursos/${encodeURIComponent(course.id)}/publicacao`}
+              prefetch={false}
+            >
+              Verificar publicação
+            </Link>
+          </Button>
+          <Button asChild size="sm" variant="outline">
+            <Link
+              href={`/gestao/ensino/cursos/${encodeURIComponent(course.id)}`}
+              prefetch={false}
+            >
+              Voltar ao curso
+            </Link>
+          </Button>
+        </div>
       </div>
-      <p className="gca-preview-eyebrow">
-        {course.learningPath?.title ?? "Sem percurso"} · /{course.slug}
-      </p>
-      <h1>{course.title}</h1>
-      {course.subtitle ? (
-        <p className="gca-preview-subtitle">{course.subtitle}</p>
-      ) : null}
-      {course.description ? (
-        <p className="gca-preview-description">{course.description}</p>
-      ) : null}
-      <div className="gca-preview-modules">
-        {course.modules.map((module, moduleIndex) => (
-          <section className="gca-preview-module" key={module.id}>
-            <p className="gca-preview-eyebrow">Módulo {moduleIndex + 1}</p>
-            <h2>{module.title}</h2>
-            {module.description ? <p>{module.description}</p> : null}
-            <div className="gca-preview-lessons">
-              {module.lessons.map((lesson) => (
-                <article className="gca-preview-lesson" key={lesson.id}>
-                  <span>
-                    {lesson.kind} · {lesson.status}
-                  </span>
-                  <h3>{lesson.title}</h3>
-                  {lesson.description ? <p>{lesson.description}</p> : null}
-                  <RichDocument value={lesson.content} />
-                </article>
-              ))}
-            </div>
-          </section>
-        ))}
-      </div>
+      <CourseView
+        data={buildCoursePreviewData({
+          ...course,
+          coverUrl: course.coverUrl,
+          modules: course.modules,
+        })}
+      />
     </main>
   );
 };

@@ -53,7 +53,6 @@ export const roomCopy = {
   notesMenuTrash: "Mover para a lixeira",
   notesMenuUnpin: "Desafixar nota",
   notesNew: "Nova nota",
-  notesOpenInNotes: "Abrir em Notas",
   notesPlaceholder: "Anotar neste momento…",
   notesSavedAt: "{quando} · salvo",
   notesStampAria: "Alternar carimbo do vídeo",

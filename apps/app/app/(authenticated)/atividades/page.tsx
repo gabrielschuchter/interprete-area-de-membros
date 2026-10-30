@@ -1,4 +1,5 @@
 import { ClipboardListIcon } from "lucide-react";
+import type { Metadata } from "next";
 import { IntentLink } from "@/app/(authenticated)/components/intent-link";
 import { ActivityFilter } from "@/components/learning/activity-filter";
 import { LearningPageFrame } from "@/components/learning/learning-page-frame";
@@ -140,3 +141,5 @@ const ActivitiesPage = async ({
   );
 };
 export default ActivitiesPage;
+
+export const metadata: Metadata = { title: "Atividades | Interprete" };

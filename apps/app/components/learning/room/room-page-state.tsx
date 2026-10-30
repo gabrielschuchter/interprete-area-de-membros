@@ -32,7 +32,9 @@ export const RoomPageState = ({
             <Link
               className="room-button room-button--primary"
               href={
-                content === "recording" ? "/encontros/gravacoes" : "/cursos"
+                content === "recording"
+                  ? "/comunidade/encontros/gravacoes"
+                  : "/cursos"
               }
             >
               {text(forbidden ? "forbiddenCta" : "notFoundCta")}

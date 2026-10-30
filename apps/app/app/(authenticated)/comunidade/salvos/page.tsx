@@ -5,11 +5,17 @@ import {
   ExternalLinkIcon,
   SearchIcon,
 } from "lucide-react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { CommunityFeedCard } from "@/components/community/community-feed-card";
 import { CommunityNavigation } from "@/components/community/community-navigation";
+import { CommunitySavedLabels } from "@/components/community/community-saved-labels";
 import { CommunitySelectSubmitForm } from "@/components/community/community-select-submit-form";
-import { getCommunitySpaces, getSavedCommunityPosts } from "@/lib/community";
+import {
+  getCommunitySpaces,
+  getSavedCommunityLabels,
+  getSavedCommunityPosts,
+} from "@/lib/community";
 import {
   COMMUNITY_KIND_OPTIONS,
   COMMUNITY_SORT_OPTIONS,
@@ -22,6 +28,7 @@ import { requireMemberId } from "@/lib/learning";
 interface SavedCommunityPageProperties {
   readonly searchParams: Promise<{
     readonly cursor?: string;
+    readonly etiqueta?: string;
     readonly q?: string;
     readonly sort?: string;
     readonly space?: string;
@@ -31,6 +38,8 @@ interface SavedCommunityPageProperties {
 
 interface SavedCommunityFiltersProperties {
   readonly kind: (typeof COMMUNITY_KIND_OPTIONS)[number]["value"] | undefined;
+  readonly label: string | undefined;
+  readonly labels: readonly string[];
   readonly query: string;
   readonly sort: (typeof COMMUNITY_SORT_OPTIONS)[number]["value"];
   readonly spaceSlug: string | undefined;
@@ -39,13 +48,15 @@ interface SavedCommunityFiltersProperties {
 
 const SavedCommunityFilters = ({
   kind,
+  label,
+  labels,
   query,
   sort,
   spaceSlug,
   spaces,
 }: SavedCommunityFiltersProperties) => (
   <CommunitySelectSubmitForm
-    className="community-saved-filters grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_176px_120px_136px]"
+    className={`community-saved-filters grid gap-3 sm:grid-cols-2 ${labels.length ? "lg:grid-cols-[minmax(0,1fr)_176px_120px_136px_160px]" : "lg:grid-cols-[minmax(0,1fr)_176px_120px_136px]"}`}
     method="get"
   >
     <label className="relative min-w-0 sm:col-span-2 lg:col-span-1">
@@ -110,6 +121,24 @@ const SavedCommunityFilters = ({
         ))}
       </select>
     </label>
+    {labels.length ? (
+      <label>
+        <span className="sr-only">Filtrar salvos por etiqueta</span>
+        <select
+          aria-label="Filtrar salvos por etiqueta"
+          className="h-11 w-full border bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          defaultValue={label ?? ""}
+          name="etiqueta"
+        >
+          <option value="">Todas as etiquetas</option>
+          {labels.map((item) => (
+            <option key={item} value={item}>
+              {item}
+            </option>
+          ))}
+        </select>
+      </label>
+    ) : null}
   </CommunitySelectSubmitForm>
 );
 
@@ -120,7 +149,11 @@ const SavedCommunityPage = async ({
     requireMemberId(),
     searchParams,
   ]);
-  const spaces = await getCommunitySpaces(memberId);
+  const [spaces, labels] = await Promise.all([
+    getCommunitySpaces(memberId),
+    getSavedCommunityLabels(memberId),
+  ]);
+  const label = labels.find((item) => item === filters.etiqueta?.trim());
   const requestedSpaceSlug = filters.space?.trim().slice(0, 100);
   const spaceSlug = spaces.some((space) => space.slug === requestedSpaceSlug)
     ? requestedSpaceSlug
@@ -131,6 +164,7 @@ const SavedCommunityPage = async ({
   const saved = await getSavedCommunityPosts(memberId, {
     cursor: filters.cursor,
     kind,
+    label,
     query,
     sort,
     spaceSlug,
@@ -140,6 +174,7 @@ const SavedCommunityPage = async ({
     ? communitySavedHref({
         cursor: saved.nextCursor,
         kind,
+        label,
         query,
         sort,
         spaceSlug,
@@ -148,6 +183,7 @@ const SavedCommunityPage = async ({
   const returnTo = communitySavedHref({
     cursor: filters.cursor,
     kind,
+    label,
     query,
     sort,
     spaceSlug,
@@ -155,6 +191,8 @@ const SavedCommunityPage = async ({
   const savedFilters = (
     <SavedCommunityFilters
       kind={kind}
+      label={label}
+      labels={labels}
       query={query}
       sort={sort}
       spaceSlug={spaceSlug}
@@ -211,6 +249,12 @@ const SavedCommunityPage = async ({
                     returnTo={returnTo}
                     variant="saved"
                   />
+                  <CommunitySavedLabels
+                    knownLabels={labels}
+                    labels={post.savedLabels}
+                    postId={post.id}
+                    postTitle={post.title}
+                  />
                 </li>
               ))}
             </ul>
@@ -222,7 +266,7 @@ const SavedCommunityPage = async ({
               className="size-6 text-brand-action-text"
             />
             <h2 className="mt-5 font-display text-3xl">
-              {query || kind || spaceSlug
+              {query || kind || spaceSlug || label
                 ? "Nenhuma publicação corresponde aos filtros."
                 : "Você ainda não salvou publicações."}
             </h2>
@@ -249,3 +293,7 @@ const SavedCommunityPage = async ({
 };
 
 export default SavedCommunityPage;
+
+export const metadata: Metadata = {
+  title: "Salvos da comunidade | Interprete",
+};

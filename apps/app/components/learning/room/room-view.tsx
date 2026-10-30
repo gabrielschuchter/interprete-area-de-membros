@@ -380,14 +380,6 @@ export const RoomView = ({
               </button>
               <h2 className="room-panel__title">{panelTitles[panel]}</h2>
               <div className="room-panel__header-actions">
-                {panel === "notas" ? (
-                  <a
-                    className="room-panel__link"
-                    href="/ferramentas?view=notes"
-                  >
-                    {roomText("notesOpenInNotes")}
-                  </a>
-                ) : null}
                 <button
                   aria-label={roomText("panelClose")}
                   className="room-icon-button room-panel__close"

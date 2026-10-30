@@ -1,6 +1,6 @@
 export const personalContentNavigation = [
   {
-    href: "/encontros/gravacoes",
+    href: "/comunidade/encontros/gravacoes",
     icon: "recordings",
     label: "Minhas gravações",
   },

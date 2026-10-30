@@ -198,7 +198,7 @@ const MemberAreaSidebarView = ({
     "/perfil",
     "/configuracoes",
     "/comunidade/minhas-publicacoes",
-    "/encontros/gravacoes",
+    "/comunidade/encontros/gravacoes",
   ];
   const isActivePath = (href: string) =>
     isMemberSidebarPathActive(activePath, href, navigationHrefs);
@@ -344,15 +344,17 @@ const MemberAreaSidebarView = ({
                 <SidebarMenuButton
                   asChild
                   className="rounded-sm py-2.5 data-[active=true]:border-sidebar-primary data-[active=true]:border-l-2 data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground group-data-[collapsible=icon]:data-[active=true]:border-l-0 group-data-[collapsible=icon]:data-[active=true]:shadow-[inset_2px_0_0_var(--sidebar-primary)]"
-                  isActive={isActivePath("/encontros/gravacoes")}
+                  isActive={isActivePath("/comunidade/encontros/gravacoes")}
                   tooltip="Minhas gravações"
                 >
                   <IntentLink
                     aria-current={
-                      isActivePath("/encontros/gravacoes") ? "page" : undefined
+                      isActivePath("/comunidade/encontros/gravacoes")
+                        ? "page"
+                        : undefined
                     }
                     aria-label="Minhas gravações"
-                    href="/encontros/gravacoes"
+                    href="/comunidade/encontros/gravacoes"
                     onNavigationStart={handleNavigationStart}
                   >
                     <VideoIcon aria-hidden="true" />

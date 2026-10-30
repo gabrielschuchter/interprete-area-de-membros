@@ -455,16 +455,6 @@ export const searchGlobal = async (memberId: string, rawQuery: string) => {
       take: MAX_RESULTS_PER_TYPE,
       select: { id: true, title: true, description: true, startsAt: true },
     }),
-    database.plannerNote.findMany({
-      where: {
-        memberId,
-        deletedAt: null,
-        OR: [{ title: contains(query) }, { contentText: contains(query) }],
-      },
-      orderBy: [{ pinnedAt: "desc" }, { updatedAt: "desc" }],
-      take: MAX_RESULTS_PER_TYPE,
-      select: { id: true, title: true, contentText: true },
-    }),
     database.studyGoal.findMany({
       where: { memberId },
       select: { id: true, period: true, targetMinutes: true },
@@ -488,7 +478,7 @@ export const searchGlobal = async (memberId: string, rawQuery: string) => {
     library,
     profiles,
   ] = resultGroups;
-  const [plannerTasks, plannerEvents, notes, goals] = personalResults;
+  const [plannerTasks, plannerEvents, goals] = personalResults;
 
   const pathResults = paths
     .filter((path) =>
@@ -576,7 +566,7 @@ export const searchGlobal = async (memberId: string, rawQuery: string) => {
       "recording",
       "Gravação",
       `${recording.group.legacyModule.course.title} · ${recording.group.legacyModule.title}`,
-      `/encontros/gravacoes?asset=${encodeURIComponent(recording.asset.id)}#asset-${encodeURIComponent(recording.asset.id)}`
+      `/comunidade/encontros/gravacoes?asset=${encodeURIComponent(recording.asset.id)}#asset-${encodeURIComponent(recording.asset.id)}`
     )
   );
   const communityResults = posts.map((post) =>
@@ -640,7 +630,7 @@ export const searchGlobal = async (memberId: string, rawQuery: string) => {
       task.dueAt
         ? `Prazo ${task.dueAt.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })} · ${preview(task.description) ?? "Tarefa pessoal"}`
         : preview(task.description),
-      `/planejamento?view=tasks&task=${encodeURIComponent(task.id)}`
+      `/planejamento?view=calendar&task=${encodeURIComponent(task.id)}`
     )
   );
   const plannerEventResults = plannerEvents.map((event) =>
@@ -665,16 +655,6 @@ export const searchGlobal = async (memberId: string, rawQuery: string) => {
         )
       )
     : [];
-  const noteResults = notes.map((note) =>
-    result(
-      note.id,
-      note.title,
-      "note",
-      "Nota",
-      preview(note.contentText),
-      `/ferramentas?view=notes&note=${encodeURIComponent(note.id)}`
-    )
-  );
 
   const byArea = {
     Estudar: [
@@ -697,12 +677,10 @@ export const searchGlobal = async (memberId: string, rawQuery: string) => {
       ...plannerTaskResults,
       ...plannerEventResults,
     ].slice(0, 4),
-    Ferramentas: noteResults.slice(0, 2),
   };
   return [
     ...byArea.Estudar,
     ...byArea.Comunidade,
     ...byArea.Planejamento,
-    ...byArea.Ferramentas,
   ].slice(0, MAX_RESULTS);
 };

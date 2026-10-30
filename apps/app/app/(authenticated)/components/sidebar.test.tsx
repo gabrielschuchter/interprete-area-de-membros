@@ -114,7 +114,7 @@ describe("GlobalSidebar personal content group", () => {
       "Minhas gravações",
     ]);
     expect(links.map((link) => link.getAttribute("href"))).toEqual([
-      "/encontros/gravacoes",
+      "/comunidade/encontros/gravacoes",
     ]);
   });
 
@@ -130,7 +130,7 @@ describe("GlobalSidebar personal content group", () => {
   });
 
   test("activates only recordings on the recordings route", () => {
-    renderSidebarAt("/encontros/gravacoes");
+    renderSidebarAt("/comunidade/encontros/gravacoes");
 
     const { links } = personalLinks();
     expect(links).toHaveLength(1);
@@ -188,7 +188,9 @@ describe("GlobalSidebar personal content group", () => {
       expect(sidebar?.getAttribute("data-state")).toBe("collapsed");
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Toggle Sidebar" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Alternar barra lateral" })
+    );
     await waitFor(() =>
       expect(sidebar?.getAttribute("data-state")).toBe("expanded")
     );
@@ -198,7 +200,9 @@ describe("GlobalSidebar personal content group", () => {
     const view = renderSidebarAt("/");
     const sidebar = document.querySelector('[data-slot="sidebar"]');
 
-    fireEvent.click(screen.getByRole("button", { name: "Toggle Sidebar" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Alternar barra lateral" })
+    );
     await waitFor(() =>
       expect(sidebar?.getAttribute("data-state")).toBe("collapsed")
     );

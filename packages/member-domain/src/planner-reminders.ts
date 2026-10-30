@@ -246,7 +246,7 @@ const scheduleNextTaskReminder = async (
     entityId: current.entityId,
     ...next,
     timezone,
-    href: `/planejamento?view=tasks&task=${encodeURIComponent(current.entityId)}&occurrence=${encodeURIComponent(next.occurrenceAt.toISOString())}`,
+    href: `/planejamento?view=calendar&task=${encodeURIComponent(current.entityId)}&occurrence=${encodeURIComponent(next.occurrenceAt.toISOString())}`,
   });
 };
 

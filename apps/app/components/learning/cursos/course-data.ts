@@ -134,3 +134,64 @@ export const buildCourseViewData = (
     totalLessons: course.progress.totalLessons,
   };
 };
+
+interface PreviewCourseSource {
+  readonly coverUrl: string | null;
+  readonly description: string | null;
+  readonly id: string;
+  readonly learningPath: { readonly title: string } | null;
+  readonly modules: readonly {
+    readonly id: string;
+    readonly lessons: readonly {
+      readonly description: string | null;
+      readonly id: string;
+      readonly slug: string;
+      readonly status: string;
+      readonly title: string;
+    }[];
+    readonly status: string;
+    readonly title: string;
+  }[];
+  readonly slug: string;
+  readonly title: string;
+}
+
+/**
+ * Dados da tela oficial do curso para a prévia da Gestão: só módulos e aulas
+ * publicados (o que o aluno enxerga), sem progresso e sem ações.
+ */
+export const buildCoursePreviewData = (
+  course: PreviewCourseSource
+): CourseViewData => {
+  const published = course.modules
+    .filter((module) => module.status === "PUBLISHED")
+    .map((module) => ({
+      ...module,
+      lessons: module.lessons.filter((lesson) => lesson.status === "PUBLISHED"),
+    }));
+  const data = buildCourseViewData({
+    ...course,
+    modules: published.map((module) => ({
+      ...module,
+      lessons: module.lessons.map((lesson) => ({ ...lesson, progress: [] })),
+    })),
+    progress: {
+      completedLessons: 0,
+      percentage: 0,
+      totalLessons: published.reduce(
+        (total, module) => total + module.lessons.length,
+        0
+      ),
+    },
+  });
+  return {
+    ...data,
+    continueHref: null,
+    modules: data.modules.map((module) => ({
+      ...module,
+      lessons: module.lessons.map((lesson) => ({ ...lesson, readOnly: true })),
+      open: true,
+    })),
+    reviewHref: null,
+  };
+};

@@ -5,9 +5,11 @@ import {
   CheckIcon,
   CopyIcon,
   ExternalLinkIcon,
+  InstagramIcon,
   Link2Icon,
   MailIcon,
   MessageCircleIcon,
+  SendIcon,
   XIcon,
 } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
@@ -146,18 +148,133 @@ const ShareLinksList = ({
   </section>
 );
 
-const ShareDestinations = ({ shareUrl }: { readonly shareUrl: string }) => {
-  const whatsappHref = `https://wa.me/?text=${encodeURIComponent(`Olha esta publicação na Comunidade do Interprete: ${shareUrl}`)}`;
+const instagramDirectUrl = "https://www.instagram.com/direct/inbox/";
+const instagramStoryUrl = "instagram://story-camera";
+const instagramWebUrl = "https://www.instagram.com/";
+
+const isTouchDevice = () =>
+  typeof window !== "undefined" &&
+  typeof window.matchMedia === "function" &&
+  window.matchMedia("(hover: none) and (pointer: coarse)").matches;
+
+const copyText = (value: string) =>
+  navigator.clipboard
+    .writeText(value)
+    .then(() => true)
+    .catch(() => false);
+
+/**
+ * Abre o destino numa aba criada ainda no clique: o link pode precisar ser
+ * gerado antes, e uma aba aberta depois de um await é barrada como pop-up.
+ */
+const openAfter = async (resolveUrl: () => Promise<string | null>) => {
+  const opened = window.open("", "_blank");
+  const url = await resolveUrl();
+  if (!url) {
+    opened?.close();
+    return;
+  }
+  if (opened) {
+    opened.opener = null;
+    opened.location.href = url;
+  } else {
+    window.location.href = url;
+  }
+};
+
+const ShareDestinations = ({
+  ensureLink,
+  onStatus,
+  storyFile,
+  title,
+}: {
+  readonly ensureLink: () => Promise<string | null>;
+  readonly onStatus: (message: string) => void;
+  readonly storyFile: File | null;
+  readonly title: string;
+}) => {
+  // O Instagram não recebe link pronto vindo do navegador. Nos stories, a
+  // imagem do cartão vai pela folha de compartilhamento do aparelho; sem ela,
+  // o link é copiado para a figurinha de link. No direct, o link é copiado e
+  // a caixa de mensagens abre.
+  const shareStory = async () => {
+    if (storyFile && navigator.canShare?.({ files: [storyFile] })) {
+      try {
+        await navigator.share({ files: [storyFile], title });
+        onStatus(
+          "Escolha o Instagram e depois Stories. Use a figurinha de link com o endereço copiado."
+        );
+        return;
+      } catch (cause) {
+        if (cause instanceof DOMException && cause.name === "AbortError") {
+          return;
+        }
+      }
+    }
+    const resolveStory = async () => {
+      const link = await ensureLink();
+      if (!link) {
+        return null;
+      }
+      const copied = await copyText(link);
+      onStatus(
+        copied
+          ? "Link copiado. No story, use a figurinha de link e cole o endereço."
+          : "Copie o endereço acima e use a figurinha de link no story."
+      );
+      return isTouchDevice() ? instagramStoryUrl : instagramWebUrl;
+    };
+    if (isTouchDevice()) {
+      const url = await resolveStory();
+      if (url) {
+        window.location.href = url;
+      }
+      return;
+    }
+    await openAfter(resolveStory);
+  };
+
+  const shareDirect = () =>
+    openAfter(async () => {
+      const link = await ensureLink();
+      if (!link) {
+        return null;
+      }
+      const copied = await copyText(link);
+      onStatus(
+        copied
+          ? "Link copiado. Escolha a conversa no Instagram e cole."
+          : "Copie o endereço acima e cole na conversa do Instagram."
+      );
+      return instagramDirectUrl;
+    });
+
+  const shareWhatsapp = () =>
+    openAfter(async () => {
+      const link = await ensureLink();
+      return link
+        ? `https://wa.me/?text=${encodeURIComponent(`Olha esta publicação na Comunidade do Interprete: ${link}`)}`
+        : null;
+    });
+
   return (
     <section
-      aria-label="Outras formas de compartilhar"
+      aria-label="Compartilhar nas redes"
       className="community-share-destinations"
     >
-      <a href={whatsappHref} rel="noopener noreferrer" target="_blank">
+      <button onClick={shareStory} type="button">
+        <InstagramIcon aria-hidden="true" className="size-4" />
+        Stories
+      </button>
+      <button onClick={shareDirect} type="button">
+        <SendIcon aria-hidden="true" className="size-4" />
+        Direct
+      </button>
+      <button onClick={shareWhatsapp} type="button">
         <MessageCircleIcon aria-hidden="true" className="size-4" />
         WhatsApp
         <ExternalLinkIcon aria-hidden="true" className="size-3.5" />
-      </a>
+      </button>
       <span
         aria-disabled="true"
         className="community-share-destination-disabled"
@@ -188,6 +305,34 @@ export function CommunityPostShareDialog({
   const linkInputRef = useRef<HTMLInputElement>(null);
   const createInFlightRef = useRef(false);
   const titleId = useId();
+  const [storyFile, setStoryFile] = useState<File | null>(null);
+
+  // No celular, a imagem do cartão fica pronta antes do toque em Stories:
+  // a folha de compartilhamento só abre dentro do gesto do usuário.
+  useEffect(() => {
+    setStoryFile(null);
+    if (
+      !(shareUrl && isTouchDevice() && typeof navigator.canShare === "function")
+    ) {
+      return;
+    }
+    let cancelled = false;
+    fetch(`${shareUrl}/opengraph-image`, { credentials: "same-origin" })
+      .then((response) => (response.ok ? response.blob() : null))
+      .then((blob) => {
+        if (blob && !cancelled) {
+          setStoryFile(
+            new File([blob], "interprete-publicacao.png", {
+              type: blob.type || "image/png",
+            })
+          );
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [shareUrl]);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -237,9 +382,9 @@ export function CommunityPostShareDialog({
     };
   }, [open, postId]);
 
-  const createLink = async () => {
+  const requestLink = async (): Promise<string | null> => {
     if (createInFlightRef.current) {
-      return;
+      return null;
     }
     createInFlightRef.current = true;
     setIsCreating(true);
@@ -283,18 +428,28 @@ export function CommunityPostShareDialog({
         },
         ...current.filter((link) => link.id !== payload.id),
       ]);
-      try {
-        await navigator.clipboard.writeText(payload.url);
-        setStatus("Link copiado.");
-      } catch {
-        setStatus("Link criado. Copie o endereço abaixo para compartilhar.");
-        window.setTimeout(() => linkInputRef.current?.select(), 0);
-      }
+      return payload.url;
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : genericError);
+      return null;
     } finally {
       createInFlightRef.current = false;
       setIsCreating(false);
+    }
+  };
+
+  const ensureLink = async () => shareUrl || (await requestLink());
+
+  const createLink = async () => {
+    const url = await requestLink();
+    if (!url) {
+      return;
+    }
+    if (await copyText(url)) {
+      setStatus("Link copiado.");
+    } else {
+      setStatus("Link criado. Copie o endereço abaixo para compartilhar.");
+      window.setTimeout(() => linkInputRef.current?.select(), 0);
     }
   };
 
@@ -469,7 +624,15 @@ export function CommunityPostShareDialog({
                   </Button>
                 </div>
 
-                {shareUrl ? <ShareDestinations shareUrl={shareUrl} /> : null}
+                <ShareDestinations
+                  ensureLink={ensureLink}
+                  onStatus={(message) => {
+                    setError("");
+                    setStatus(message);
+                  }}
+                  storyFile={storyFile}
+                  title={title}
+                />
 
                 {status ? (
                   <output

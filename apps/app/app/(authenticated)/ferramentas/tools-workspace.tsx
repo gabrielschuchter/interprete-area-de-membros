@@ -14,7 +14,6 @@ import { toast } from "@repo/design-system/lib/toast";
 import {
   Clock3Icon,
   DownloadIcon,
-  FilePlus2Icon,
   PauseIcon,
   PencilIcon,
   PlayIcon,
@@ -22,7 +21,6 @@ import {
   SquareIcon,
   Trash2Icon,
 } from "lucide-react";
-import dynamic from "next/dynamic";
 import {
   type Dispatch,
   memo,
@@ -42,32 +40,12 @@ import {
   stopTimerCompletionAlarm,
   unlockTimerAudio,
 } from "@/components/focus-timer-audio";
-import {
-  type MemberViewOption,
-  MemberViewSwitcher,
-} from "@/components/navigation/member-view-switcher";
 import type { getFocusTimerState } from "@/lib/focus-timer";
 import {
   defaultTimerSettings,
   type TimerSettings,
 } from "@/lib/focus-timer-settings";
-import type { getPlannerNotes } from "@/lib/planner-notes";
 import { formatStudyTimestamp as textDate } from "@/lib/study-date";
-
-type NotesData = Awaited<ReturnType<typeof getPlannerNotes>>;
-const NotesWorkspace = dynamic(
-  () => import("./notes-workspace").then((module) => module.NotesWorkspace),
-  {
-    loading: () => (
-      <output
-        aria-busy="true"
-        className="grid min-h-64 place-items-center rounded-xl border border-[#E2D6D1] bg-[#FBF8F5] text-[#7A5A69] text-sm"
-      >
-        Carregando suas notas…
-      </output>
-    ),
-  }
-);
 
 type TimerServerState = Awaited<ReturnType<typeof getFocusTimerState>>;
 interface TimerLinkResource {
@@ -1127,96 +1105,26 @@ function FocusTimerWorkspace({
   );
 }
 
-interface NotesWorkspaceToolbarActions {
-  createNote: () => Promise<unknown>;
-}
-
 export const ToolsWorkspace = ({
   focusModeInitial = false,
   settingsInitialOpen = false,
-  initialNotes,
   initialTimer,
-  noteId,
   timerResources = [],
-  views,
-  view,
 }: {
   readonly focusModeInitial?: boolean;
   readonly settingsInitialOpen?: boolean;
-  readonly initialNotes: NotesData | null;
   readonly initialTimer: TimerServerState | null;
-  readonly noteId: string | null;
   readonly timerResources?: readonly TimerLinkResource[];
-  readonly views: readonly MemberViewOption[];
-  readonly view: string;
-}) => {
-  const noteToolbarActions = useRef<NotesWorkspaceToolbarActions | null>(null);
-  const [notesToolbarReady, setNotesToolbarReady] = useState(false);
-  const registerNotesToolbarActions = useCallback(
-    (actions: NotesWorkspaceToolbarActions | null) => {
-      noteToolbarActions.current = actions;
-      setNotesToolbarReady(Boolean(actions));
-    },
-    []
-  );
-
-  return (
-    <>
-      <div
-        className={
-          view === "notes"
-            ? "mt-5 flex flex-wrap items-center justify-between gap-4 md:mt-0"
-            : "mt-7 flex flex-wrap items-center justify-between gap-4"
-        }
-        data-tools-page-switcher
-      >
-        <MemberViewSwitcher activeView={view} views={views} />
-        {view === "notes" ? (
-          <div className="hidden items-center gap-2 md:flex">
-            <Button
-              className="h-11 rounded-md border-2 border-[#8C1535] px-6 font-semibold text-[#8C1535] hover:bg-[#8C1535]/5"
-              disabled={!notesToolbarReady}
-              onClick={async () => {
-                await noteToolbarActions.current?.createNote();
-              }}
-              type="button"
-              variant="outline"
-            >
-              <FilePlus2Icon aria-hidden="true" className="mr-2 size-4" />
-              Nova nota
-            </Button>
-          </div>
-        ) : null}
-      </div>
-      <div data-tools-workspace>
-        {view === "notes" ? (
-          <NotesWorkspace
-            initialData={
-              initialNotes ?? {
-                folders: [],
-                notes: [],
-                tags: [],
-                trashRetentionDays: 30,
-                timezone: "America/Sao_Paulo",
-                referenceNow: "1970-01-01T00:00:00.000Z",
-              }
-            }
-            initialNoteId={noteId}
-            linkResources={timerResources}
-            registerToolbarActions={registerNotesToolbarActions}
-          />
-        ) : (
-          <FocusTimerWorkspace
-            initialFocusMode={focusModeInitial}
-            initialSettingsOpen={settingsInitialOpen}
-            initialTimer={initialTimer as TimerServerState}
-            linkResources={timerResources}
-          />
-        )}
-      </div>
-    </>
-  );
-};
+}) => (
+  <div className="mt-7" data-tools-workspace>
+    <FocusTimerWorkspace
+      initialFocusMode={focusModeInitial}
+      initialSettingsOpen={settingsInitialOpen}
+      initialTimer={initialTimer as TimerServerState}
+      linkResources={timerResources}
+    />
+  </div>
+);
 const TimerSummarySidebar = memo(function TimerSummarySidebar({
   state,
   todayMinutes,
