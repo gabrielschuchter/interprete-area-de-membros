@@ -10211,11 +10211,17 @@
 
 .gca-preview-topline {
   display: flex;
+  flex-wrap: wrap;
   gap: 14px;
   align-items: center;
   justify-content: space-between;
   padding-bottom: 16px;
   border-bottom: 1px solid #e2d6d1;
+}
+
+.gca-preview-topline p {
+  flex: 1 1 320px;
+  min-width: 0;
 }
 
 .gca-preview-topline p,
@@ -10922,6 +10928,10 @@
   .go-week-heading {
     align-items: flex-start;
   }
+}
+
+.gk-course-heading .gt-detail-actions {
+  flex-wrap: wrap;
 }
 
 .gk-verify {
