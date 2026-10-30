@@ -31,7 +31,6 @@ import {
   type CohortCalendarDateConflict,
   type CohortCalendarItem,
   type CohortCalendarItemType,
-  cohortCalendarEventColors,
   cohortCalendarEventLastDate,
   cohortCalendarMonthGridLength,
   cohortCalendarTimezone,
@@ -73,6 +72,35 @@ const CalendarOccurrenceDialog = dynamic(() =>
     (module) => module.CalendarOccurrenceDialog
   )
 );
+const CalendarListView = dynamic(
+  () =>
+    import("./cohort-calendar-list-view").then(
+      (module) => module.CohortCalendarListView
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <output aria-live="polite" className="gt-panel-empty">
+        Carregando a lista do calendário…
+      </output>
+    ),
+  }
+);
+const CohortCalendarEventForm = dynamic(
+  () =>
+    import("./cohort-calendar-event-form").then(
+      (module) => module.CohortCalendarEventForm
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <section aria-busy="true" className="gt-panel">
+        <h2>Preparando o formulário do evento…</h2>
+        <output aria-live="polite">Carregando os campos…</output>
+      </section>
+    ),
+  }
+);
 
 interface CalendarCopySource {
   readonly id: string;
@@ -90,7 +118,7 @@ const calendarLayerOptions = [
   readonly color: string;
 }[];
 
-interface CalendarEvent {
+export interface CalendarEvent {
   readonly allDay: boolean;
   readonly color: string;
   readonly description: string | null;
@@ -105,7 +133,7 @@ interface CalendarEvent {
   readonly version: number;
 }
 
-interface EventForm {
+export interface EventForm {
   allDay: boolean;
   color: string;
   description: string;
@@ -232,7 +260,7 @@ interface CalendarDay {
   readonly number: number;
 }
 
-interface CalendarDisplayProps {
+export interface CalendarDisplayProps {
   readonly archived: boolean;
   readonly days: readonly CalendarDay[];
   readonly events: readonly CalendarEvent[];
@@ -501,158 +529,6 @@ const WeekCalendarView = ({
   </div>
 );
 
-const CalendarListPrimaryAction = ({
-  archived,
-  event,
-  item,
-  onEdit,
-  onEditMeeting,
-}: {
-  readonly archived: boolean;
-  readonly event: CalendarEvent | undefined;
-  readonly item: CohortCalendarItem;
-  readonly onEdit: (event: CalendarEvent) => void;
-  readonly onEditMeeting: (meetingId: string) => void;
-}) => {
-  if (event) {
-    return (
-      <Button
-        disabled={archived}
-        onClick={() => onEdit(event)}
-        type="button"
-        variant="outline"
-      >
-        Editar
-      </Button>
-    );
-  }
-  if (item.sourceType === "meeting") {
-    return (
-      <Button
-        aria-label={`Editar encontro: ${item.title}`}
-        disabled={archived || item.status === "ARCHIVED"}
-        onClick={() => onEditMeeting(item.sourceId)}
-        type="button"
-        variant="outline"
-      >
-        Editar
-      </Button>
-    );
-  }
-  return (
-    <Link className="gt-calendar-open-link" href={item.href}>
-      Abrir
-    </Link>
-  );
-};
-
-const CalendarListOccurrenceAction = ({
-  archived,
-  item,
-  onException,
-}: {
-  readonly archived: boolean;
-  readonly item: CohortCalendarItem;
-  readonly onException: (item: CohortCalendarItem) => void;
-}) => {
-  if (item.recurrence === "NONE") {
-    return null;
-  }
-  return (
-    <Button
-      disabled={archived || item.status === "ARCHIVED"}
-      onClick={() => onException(item)}
-      type="button"
-      variant="outline"
-    >
-      {item.cancelled ? "Restaurar data" : "Esta data"}
-    </Button>
-  );
-};
-
-const CalendarListRow = ({
-  archived,
-  events,
-  item,
-  onEdit,
-  onEditMeeting,
-  onException,
-}: {
-  readonly archived: boolean;
-  readonly events: readonly CalendarEvent[];
-  readonly item: CohortCalendarItem;
-  readonly onEdit: (event: CalendarEvent) => void;
-  readonly onEditMeeting: (meetingId: string) => void;
-  readonly onException: (item: CohortCalendarItem) => void;
-}) => {
-  const event =
-    item.sourceType === "event"
-      ? events.find((candidate) => candidate.id === item.sourceId)
-      : undefined;
-  return (
-    <li>
-      <span
-        aria-hidden="true"
-        className="gt-cohort-event-dot"
-        style={{ backgroundColor: item.color }}
-      />
-      <span className="gt-cohort-event-copy">
-        <strong>{item.title}</strong>
-        <small>
-          {item.cancelled ? "Cancelado · " : ""}
-          {item.allDay ? "Dia inteiro" : dateTimeLabel(item.startsAt)}
-          {item.endsAt ? ` · até ${dateTimeLabel(item.endsAt)}` : ""}
-          {item.recurrence !== "NONE" ? " · recorrente" : ""}
-        </small>
-      </span>
-      <span className={`gt-status-pill gt-status-${item.status.toLowerCase()}`}>
-        {statusLabel[item.status]}
-      </span>
-      <CalendarListPrimaryAction
-        archived={archived}
-        event={event}
-        item={item}
-        onEdit={onEdit}
-        onEditMeeting={onEditMeeting}
-      />
-      <CalendarListOccurrenceAction
-        archived={archived}
-        item={item}
-        onException={onException}
-      />
-    </li>
-  );
-};
-
-const ListCalendarView = ({
-  archived,
-  events,
-  items,
-  onEdit,
-  onEditMeeting,
-  onException,
-}: Pick<
-  CalendarDisplayProps,
-  "archived" | "events" | "items" | "onEdit" | "onEditMeeting" | "onException"
->) => (
-  <ol className="gt-cohort-event-rows">
-    {items.map((item) => (
-      <CalendarListRow
-        archived={archived}
-        events={events}
-        item={item}
-        key={item.id}
-        onEdit={onEdit}
-        onEditMeeting={onEditMeeting}
-        onException={onException}
-      />
-    ))}
-    {items.length === 0 ? (
-      <li className="gt-panel-empty">Não há itens neste período.</li>
-    ) : null}
-  </ol>
-);
-
 const CalendarDisplay = (props: CalendarDisplayProps) => {
   if (props.view === "month") {
     return <MonthCalendarView {...props} />;
@@ -660,7 +536,7 @@ const CalendarDisplay = (props: CalendarDisplayProps) => {
   if (props.view === "week") {
     return <WeekCalendarView {...props} />;
   }
-  return <ListCalendarView {...props} />;
+  return <CalendarListView {...props} />;
 };
 
 interface CalendarEditorSidebarProps {
@@ -692,48 +568,6 @@ interface CalendarEditorSidebarProps {
   readonly pending: boolean;
   readonly result: CohortCalendarActionResult | null;
 }
-
-const calendarFieldError = (
-  result: CohortCalendarActionResult | null,
-  name: "title" | "startsAt" | "endsAt"
-) => (result?.ok === false ? result.fields?.[name] : undefined);
-
-const CalendarFieldError = ({
-  name,
-  result,
-}: {
-  readonly name: "title" | "startsAt" | "endsAt";
-  readonly result: CohortCalendarActionResult | null;
-}) => {
-  const error = calendarFieldError(result, name);
-  return error ? <em className="gt-field-error">{error}</em> : null;
-};
-
-const CalendarResultMessages = ({
-  onRefresh,
-  result,
-}: {
-  readonly onRefresh: () => void;
-  readonly result: CohortCalendarActionResult | null;
-}) => {
-  if (result?.ok === false) {
-    return (
-      <>
-        <p className="gt-error-summary" role="alert">
-          {result.message}
-        </p>
-        {result.code === "conflict" ? (
-          <Button onClick={onRefresh} type="button" variant="outline">
-            Atualizar versões e conferir
-          </Button>
-        ) : null}
-      </>
-    );
-  }
-  return result?.ok === true ? (
-    <output className="gt-success-message">Alteração salva.</output>
-  ) : null;
-};
 
 const CalendarStatusPanel = ({
   archived,
@@ -874,161 +708,24 @@ const CalendarEditorSidebar = ({
   pending,
   result,
 }: CalendarEditorSidebarProps) => {
-  const formRef = useRef<HTMLFormElement | null>(null);
-  const requestPublish = () => {
-    if (formRef.current?.reportValidity()) {
-      onPublish();
-    }
-  };
-  let saveLabel = "Salvar rascunho";
-  if (pending) {
-    saveLabel = "Salvando…";
-  } else if (eventPublished) {
-    saveLabel = "Salvar alterações";
-  }
-
   return (
     <aside className="gt-calendar-aside">
       {eventFormVisible ? (
-        <section className="gt-panel">
-          <div className="gt-panel-heading">
-            <h2>{eventId ? "Editar evento" : "Novo evento da turma"}</h2>
-            <div className="gt-calendar-form-heading-actions">
-              {eventId ? (
-                <Button onClick={onCreate} type="button" variant="ghost">
-                  Novo
-                </Button>
-              ) : null}
-              <Button onClick={onClose} type="button" variant="ghost">
-                Fechar
-              </Button>
-            </div>
-          </div>
-          {archived ? (
-            <p className="gt-panel-copy">
-              A turma está arquivada. O calendário permanece em modo de leitura.
-            </p>
-          ) : (
-            <form
-              className="gt-cohort-event-form"
-              onSubmit={(event) => {
-                event.preventDefault();
-                onSaveDraft();
-              }}
-              ref={formRef}
-            >
-              <label className="gt-field">
-                <span>Título</span>
-                <input
-                  aria-invalid={Boolean(calendarFieldError(result, "title"))}
-                  maxLength={140}
-                  onChange={(event) => onChange("title", event.target.value)}
-                  required
-                  value={form.title}
-                />
-                <CalendarFieldError name="title" result={result} />
-              </label>
-              <label className="gt-field">
-                <span>Início · horário de Brasília</span>
-                <input
-                  aria-invalid={Boolean(calendarFieldError(result, "startsAt"))}
-                  onChange={(event) => onChange("startsAt", event.target.value)}
-                  required
-                  type="datetime-local"
-                  value={form.startsAt}
-                />
-                <CalendarFieldError name="startsAt" result={result} />
-              </label>
-              <label className="gt-field">
-                <span>Término · opcional</span>
-                <input
-                  aria-invalid={Boolean(calendarFieldError(result, "endsAt"))}
-                  onChange={(event) => onChange("endsAt", event.target.value)}
-                  type="datetime-local"
-                  value={form.endsAt}
-                />
-                <CalendarFieldError name="endsAt" result={result} />
-              </label>
-              <label className="gt-field">
-                <span>Repetição</span>
-                <select
-                  onChange={(event) =>
-                    onChange(
-                      "recurrence",
-                      event.target.value as EventForm["recurrence"]
-                    )
-                  }
-                  value={form.recurrence}
-                >
-                  <option value="NONE">Não se repete</option>
-                  <option value="DAILY">Diária</option>
-                  <option value="WEEKLY">Semanal</option>
-                  <option value="MONTHLY">Mensal</option>
-                </select>
-              </label>
-              {form.recurrence !== "NONE" ? (
-                <label className="gt-field">
-                  <span>Repetir até · opcional</span>
-                  <input
-                    onChange={(event) =>
-                      onChange("recurrenceUntil", event.target.value)
-                    }
-                    type="datetime-local"
-                    value={form.recurrenceUntil}
-                  />
-                </label>
-              ) : null}
-              <label className="gt-cohort-event-checkbox">
-                <input
-                  checked={form.allDay}
-                  onChange={(event) => onChange("allDay", event.target.checked)}
-                  type="checkbox"
-                />
-                <span>Dia inteiro</span>
-              </label>
-              <label className="gt-field">
-                <span>Descrição</span>
-                <textarea
-                  maxLength={4000}
-                  onChange={(event) =>
-                    onChange("description", event.target.value)
-                  }
-                  rows={3}
-                  value={form.description}
-                />
-              </label>
-              <label className="gt-field">
-                <span>Cor</span>
-                <select
-                  onChange={(event) => onChange("color", event.target.value)}
-                  value={form.color}
-                >
-                  {cohortCalendarEventColors.map((item) => (
-                    <option key={item} value={item}>
-                      {item}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <div className="gt-cohort-event-actions">
-                <Button disabled={pending} type="submit" variant="outline">
-                  {saveLabel}
-                </Button>
-                {eventPublished ? null : (
-                  <Button
-                    disabled={pending}
-                    onClick={requestPublish}
-                    type="button"
-                  >
-                    {pending ? "Salvando…" : "Publicar para alunos"}
-                  </Button>
-                )}
-              </div>
-              <CalendarResultMessages onRefresh={onRefresh} result={result} />
-            </form>
-          )}
-        </section>
-      ) : null}
+        <CohortCalendarEventForm
+          archived={archived}
+          eventId={eventId}
+          eventPublished={eventPublished}
+          form={form}
+          onChange={onChange}
+          onClose={onClose}
+          onCreate={onCreate}
+          onPublish={onPublish}
+          onRefresh={onRefresh}
+          onSaveDraft={onSaveDraft}
+          pending={pending}
+          result={result}
+        />
+      ) : null}{" "}
       <section className="gt-panel gt-calendar-publish-help">
         <h2>O que os alunos veem</h2>
         <p>
