@@ -79,6 +79,8 @@ test("Preview never falls back to the Production origin", () => {
     resolveApplicationOrigin({
       applicationUrl: canonicalOrigin,
       environment: "preview",
+      branchUrl: "",
+      deploymentUrl: "",
       nodeEnvironment: "production",
     })
   ).toThrow("Vercel Preview requires VERCEL_BRANCH_URL or VERCEL_URL");
@@ -87,6 +89,7 @@ test("Preview never falls back to the Production origin", () => {
       applicationUrl: canonicalOrigin,
       environment: "preview",
       branchUrl: "http://preview.example.vercel.app",
+      deploymentUrl: "",
       nodeEnvironment: "production",
     })
   ).toThrow("Vercel Preview requires VERCEL_BRANCH_URL or VERCEL_URL");
@@ -110,6 +113,7 @@ test("local development and tests accept localhost and have a local fallback", (
   expect(
     resolveApplicationOrigin({
       applicationUrl: "",
+      environment: "",
       nodeEnvironment: "test",
     })
   ).toBe("http://localhost:3000");
