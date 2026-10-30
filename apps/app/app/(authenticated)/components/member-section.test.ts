@@ -54,7 +54,7 @@ describe("personal sidebar active states", () => {
   test("keeps only recordings in the isolated personal navigation group", () => {
     expect(personalContentNavigation).toEqual([
       {
-        href: "/encontros/gravacoes",
+        href: "/comunidade/encontros/gravacoes",
         icon: "recordings",
         label: "Minhas gravações",
       },

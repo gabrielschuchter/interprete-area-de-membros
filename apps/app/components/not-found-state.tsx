@@ -22,8 +22,8 @@ export const NotFoundState = ({
     </h1>
     <p className="text-[#7A5A69] leading-relaxed">
       O endereço pode ter mudado, o conteúdo pode ter sido removido ou ela não
-      está disponível para a sua conta. Se você chegou por um link antigo,
-      volte ao início e procure pelo menu.
+      está disponível para a sua conta. Se você chegou por um link antigo, volte
+      ao início e procure pelo menu.
     </p>
     <div>
       <Button asChild>

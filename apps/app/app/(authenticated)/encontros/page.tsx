@@ -1,5 +1,7 @@
-import type { Metadata } from "next";
+import { permanentRedirect } from "next/navigation";
 
-export { default } from "@/components/meetings/meetings-page-content";
+// Encontros vive na Comunidade; /encontros/[id] continua sendo a página de
+// cada encontro (calendário e notificações apontam para ela).
+const LegacyMeetingsPage = () => permanentRedirect("/comunidade/encontros");
 
-export const metadata: Metadata = { title: "Encontros | Interprete" };
+export default LegacyMeetingsPage;

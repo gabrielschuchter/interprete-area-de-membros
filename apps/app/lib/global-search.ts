@@ -566,7 +566,7 @@ export const searchGlobal = async (memberId: string, rawQuery: string) => {
       "recording",
       "Gravação",
       `${recording.group.legacyModule.course.title} · ${recording.group.legacyModule.title}`,
-      `/encontros/gravacoes?asset=${encodeURIComponent(recording.asset.id)}#asset-${encodeURIComponent(recording.asset.id)}`
+      `/comunidade/encontros/gravacoes?asset=${encodeURIComponent(recording.asset.id)}#asset-${encodeURIComponent(recording.asset.id)}`
     )
   );
   const communityResults = posts.map((post) =>
