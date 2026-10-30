@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import {
   LibraryExperience,
@@ -55,3 +56,5 @@ const LibraryPage = async ({ searchParams }: LibraryPageProperties) => {
 };
 
 export default LibraryPage;
+
+export const metadata: Metadata = { title: "Biblioteca | Interprete" };

@@ -10929,8 +10929,8 @@
 }
 
 .gk-verify-result {
-  order: 3;
   flex: 1 1 100%;
+  order: 3;
 }
 
 .gk-verify-result:empty {

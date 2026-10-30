@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { getNotifications } from "@/lib/notifications";
@@ -25,3 +26,5 @@ const NotificationsPage = async () => {
 };
 
 export default NotificationsPage;
+
+export const metadata: Metadata = { title: "Notificações | Interprete" };

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getAuth } from "@/lib/auth";
 import { getOrCreateProfile } from "@/lib/profile";
@@ -29,3 +30,5 @@ const ProfileEditPage = async () => {
 };
 
 export default ProfileEditPage;
+
+export const metadata: Metadata = { title: "Editar perfil | Interprete" };

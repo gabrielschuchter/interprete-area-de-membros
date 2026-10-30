@@ -188,7 +188,7 @@ describe("GlobalSidebar personal content group", () => {
       expect(sidebar?.getAttribute("data-state")).toBe("collapsed");
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Toggle Sidebar" }));
+    fireEvent.click(screen.getByRole("button", { name: "Alternar barra lateral" }));
     await waitFor(() =>
       expect(sidebar?.getAttribute("data-state")).toBe("expanded")
     );
@@ -198,7 +198,7 @@ describe("GlobalSidebar personal content group", () => {
     const view = renderSidebarAt("/");
     const sidebar = document.querySelector('[data-slot="sidebar"]');
 
-    fireEvent.click(screen.getByRole("button", { name: "Toggle Sidebar" }));
+    fireEvent.click(screen.getByRole("button", { name: "Alternar barra lateral" }));
     await waitFor(() =>
       expect(sidebar?.getAttribute("data-state")).toBe("collapsed")
     );

@@ -6,6 +6,7 @@ import {
   PlusIcon,
   XIcon,
 } from "lucide-react";
+import type { Metadata } from "next";
 import {
   SingleFlightForm,
   SingleFlightSubmit,
@@ -508,3 +509,5 @@ const ProfilePage = async ({ searchParams }: ProfilePageProperties) => {
 };
 
 export default ProfilePage;
+
+export const metadata: Metadata = { title: "Perfil | Interprete" };

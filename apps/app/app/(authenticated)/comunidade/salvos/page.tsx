@@ -5,6 +5,7 @@ import {
   ExternalLinkIcon,
   SearchIcon,
 } from "lucide-react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { CommunityFeedCard } from "@/components/community/community-feed-card";
 import { CommunityNavigation } from "@/components/community/community-navigation";
@@ -292,3 +293,7 @@ const SavedCommunityPage = async ({
 };
 
 export default SavedCommunityPage;
+
+export const metadata: Metadata = {
+  title: "Salvos da comunidade | Interprete",
+};

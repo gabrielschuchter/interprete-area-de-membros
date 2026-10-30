@@ -2,6 +2,7 @@ import { Badge } from "@repo/design-system/components/ui/badge";
 import { Button } from "@repo/design-system/components/ui/button";
 import { Input } from "@repo/design-system/components/ui/input";
 import { ChevronDownIcon, SearchIcon } from "lucide-react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { IntentLink } from "@/app/(authenticated)/components/intent-link";
 import { ExerciseEmptyIllustration } from "@/components/exercises/exercise-empty-illustration";
@@ -413,3 +414,5 @@ const ExercisesPage = async ({ searchParams }: ExercisesPageProperties) => {
 };
 
 export default ExercisesPage;
+
+export const metadata: Metadata = { title: "Exercícios | Interprete" };

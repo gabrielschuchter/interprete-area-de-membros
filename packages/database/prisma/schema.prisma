@@ -394,6 +394,7 @@ model Member {
   onboardingStatus                       OnboardingStatus                   @default(NOT_STARTED)
   onboardingStep                         Int                                @default(0)
   onboardingVersion                      Int                                @default(1)
+  gestaoWelcomeSeenAt                    DateTime?
   onboardingStartedAt                    DateTime?
   onboardingCompletedAt                  DateTime?
   deactivatedAt                          DateTime?

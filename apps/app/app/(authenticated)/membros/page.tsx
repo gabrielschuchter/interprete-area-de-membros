@@ -7,6 +7,7 @@ import { Badge } from "@repo/design-system/components/ui/badge";
 import { Button } from "@repo/design-system/components/ui/button";
 import { Input } from "@repo/design-system/components/ui/input";
 import { SearchIcon } from "lucide-react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { getMemberDirectory } from "@/lib/profile";
 
@@ -155,3 +156,5 @@ const MembersPage = async ({ searchParams }: MembersPageProperties) => {
 };
 
 export default MembersPage;
+
+export const metadata: Metadata = { title: "Membros | Interprete" };

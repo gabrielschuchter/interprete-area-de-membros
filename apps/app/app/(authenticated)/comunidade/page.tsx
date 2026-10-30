@@ -1,6 +1,7 @@
 import { Button } from "@repo/design-system/components/ui/button";
 import { tracePerformance } from "@repo/observability/performance";
 import { ArrowRightIcon } from "lucide-react";
+import type { Metadata } from "next";
 import { cache, Suspense } from "react";
 import { IntentLink } from "@/app/(authenticated)/components/intent-link";
 import { CommunityAnnouncementFeed } from "@/components/community/community-announcement-feed";
@@ -350,3 +351,5 @@ const CommunityPage = async ({ searchParams }: CommunityPageProperties) => {
 };
 
 export default CommunityPage;
+
+export const metadata: Metadata = { title: "Comunidade | Interprete" };

@@ -1,5 +1,6 @@
 import { Button } from "@repo/design-system/components/ui/button";
 import { Input } from "@repo/design-system/components/ui/input";
+import type { Metadata } from "next";
 import { IntentLink } from "@/app/(authenticated)/components/intent-link";
 import {
   communityGoalHoursText,
@@ -378,3 +379,5 @@ const CommunityGoalPage = async ({
 };
 
 export default CommunityGoalPage;
+
+export const metadata: Metadata = { title: "Meta coletiva | Interprete" };
