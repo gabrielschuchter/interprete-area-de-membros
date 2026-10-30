@@ -2,7 +2,17 @@
 
 import { Button } from "@repo/design-system/components/ui/button";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, useTransition } from "react";
+import {
+  type ReactNode,
+  useEffect,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
+import {
+  type CohortCalendarDateConflict,
+  cohortCalendarTimezone,
+} from "@/lib/cohort-calendar-domain";
 import {
   type CohortCalendarCopyResult,
   copyGestaoCohortCalendarAgenda,
@@ -269,5 +279,84 @@ export const CalendarCopyControls = ({
         />
       ) : null}
     </>
+  );
+};
+
+const conflictDayLabel = (day: string) =>
+  new Intl.DateTimeFormat("pt-BR", {
+    timeZone: cohortCalendarTimezone,
+    dateStyle: "full",
+  }).format(new Date(`${day}T12:00:00Z`));
+
+const calendarConflictSummary = (conflict: CohortCalendarDateConflict) => {
+  const names = {
+    event: ["um evento da turma", "eventos da turma"],
+    meeting: ["um encontro", "encontros"],
+    activity: ["um prazo de atividade", "prazos de atividade"],
+    "lesson-release": ["uma liberação de aula", "liberações de aula"],
+  } as const;
+  const types = ["meeting", "activity", "lesson-release", "event"] as const;
+  const parts = types.flatMap((type) => {
+    const count = conflict.sourceCounts[type] ?? 0;
+    if (count === 0) {
+      return [];
+    }
+    return [count === 1 ? names[type][0] : `${count} ${names[type][1]}`];
+  });
+  const kinds = parts.join(" e ");
+  const capitalizedKinds = kinds
+    ? `${kinds.slice(0, 1).toLocaleUpperCase("pt-BR")}${kinds.slice(1)}`
+    : "Itens da turma";
+  return `${conflict.eventCount} itens no mesmo dia. ${capitalizedKinds}. Não bloqueia.`;
+};
+
+export const CalendarConflictPanel = ({
+  conflicts,
+  limited,
+}: {
+  readonly conflicts: readonly CohortCalendarDateConflict[];
+  readonly limited: boolean;
+}) => {
+  let content: ReactNode;
+  if (limited) {
+    content = (
+      <p>
+        Há muitos eventos publicados neste período para comparar de uma vez.
+        Revise a lista completa antes de publicar.
+      </p>
+    );
+  } else if (conflicts.length === 0) {
+    content = <p>Não há eventos publicados no mesmo dia neste período.</p>;
+  } else {
+    content = (
+      <>
+        <p>
+          Estes avisos são informativos e não impedem salvar ou publicar.
+          Confira os horários antes de confirmar.
+        </p>
+        <ul className="gt-calendar-conflict-list">
+          {conflicts.map((conflict) => (
+            <li key={conflict.day}>
+              <strong>{conflictDayLabel(conflict.day)}</strong>
+              <span>{calendarConflictSummary(conflict)}</span>
+              <small>{conflict.titles.join(" · ")}</small>
+            </li>
+          ))}
+        </ul>
+      </>
+    );
+  }
+
+  return (
+    <section
+      aria-labelledby="gt-calendar-conflicts-heading"
+      aria-live="polite"
+      className="gt-panel gt-calendar-conflicts"
+    >
+      <div className="gt-panel-heading">
+        <h2 id="gt-calendar-conflicts-heading">Conflitos de data</h2>
+      </div>
+      {content}
+    </section>
   );
 };

@@ -17,6 +17,7 @@ import {
   CopyIcon,
   PlusIcon,
 } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import {
   type CSSProperties,
@@ -39,7 +40,11 @@ import {
   savePlannerGoalAction,
   savePlannerTaskAction,
 } from "./actions";
-import { GoalTopics } from "./goal-topics";
+
+// Só aparece dentro de uma meta já criada, então fica fora do JS inicial.
+const GoalTopics = dynamic(() =>
+  import("./goal-topics").then((module) => module.GoalTopics)
+);
 
 type PlannerData = Awaited<ReturnType<typeof getPlannerDashboard>>;
 type PlannerTask = PlannerData["tasks"][number];
