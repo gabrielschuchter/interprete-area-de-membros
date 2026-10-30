@@ -3512,6 +3512,112 @@
     border-radius: 4px;
   }
 
+  .community-toolbar-separator {
+    flex: none;
+    align-self: stretch;
+    width: 1px;
+    margin: 6px 4px;
+    background: #e2d6d1;
+  }
+
+  .community-toolbar-button:disabled {
+    opacity: 0.35;
+  }
+
+  .community-toolbar-style select {
+    height: 44px;
+    padding: 0 10px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #40222f;
+    cursor: pointer;
+    background: transparent;
+    border: 0;
+    border-radius: 4px;
+  }
+
+  .community-toolbar-style select:hover,
+  .community-toolbar-style select:focus-visible {
+    background: #f1ebe8;
+  }
+
+  .community-toolbar-more {
+    position: relative;
+  }
+
+  .community-toolbar-more summary {
+    display: inline-flex;
+    gap: 4px;
+    align-items: center;
+    height: 44px;
+    padding: 0 10px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #40222f;
+    cursor: pointer;
+    list-style: none;
+    border-radius: 4px;
+  }
+
+  .community-toolbar-more summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .community-toolbar-more summary svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .community-toolbar-more summary:hover,
+  .community-toolbar-more[open] summary {
+    background: #f1ebe8;
+  }
+
+  .community-toolbar-more__menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    z-index: 50;
+    display: grid;
+    min-width: 200px;
+    padding: 4px;
+    background: #fff;
+    border: 1px solid #e2d6d1;
+    border-radius: 8px;
+    box-shadow: 0 10px 30px rgb(64 34 47 / 16%);
+  }
+
+  .community-toolbar-more__menu button {
+    min-height: 40px;
+    padding: 0 12px;
+    font-size: 14px;
+    color: #40222f;
+    text-align: left;
+    border-radius: 4px;
+  }
+
+  .community-toolbar-more__menu button:hover,
+  .community-toolbar-more__menu button:focus-visible {
+    background: #f1ebe8;
+  }
+
+  .community-editor-toolbar-host {
+    position: sticky;
+    top: calc(var(--member-header-height, 64px) + 69px);
+    z-index: 30;
+    margin-inline: -24px;
+  }
+
+  .community-editor-toolbar-host .community-editor-toolbar-slot {
+    position: static;
+  }
+
+  .community-editor-toolbar-host .community-editor-toolbar {
+    justify-content: center;
+    border-block: 1px solid #e2d6d1;
+    border-radius: 0;
+  }
+
   .community-toolbar-button:hover,
   .community-toolbar-button:focus-visible {
     color: #8c1535;
