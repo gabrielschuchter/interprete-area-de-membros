@@ -1311,6 +1311,7 @@ model Notification {
   @@index([memberId, communitySpaceId, createdAt])
   @@index([groupKey, createdAt])
   @@index([announcementId, announcementVersion, memberId])
+  @@index([actorId])
 }
 
 model Mention {
@@ -1886,6 +1887,11 @@ model ContentCollectionItem {
   @@index([itemType, recordingId])
   @@index([recordingId])
   @@index([itemType, libraryItemId])
+  @@index([lessonId])
+  @@index([courseId])
+  @@index([exerciseListId])
+  @@index([assetId])
+  @@index([libraryItemId])
 }
 
 model HomeBlockConfiguration {
@@ -2009,6 +2015,7 @@ model ExerciseQuestion {
   @@unique([bankId, slug])
   @@index([bankId, status, categoryId])
   @@index([status, updatedAt])
+  @@index([categoryId])
 }
 
 model ExerciseQuestionVersion {
@@ -2079,6 +2086,7 @@ model ExerciseListItem {
   @@unique([listId, position])
   @@unique([listId, questionId])
   @@index([questionVersionId])
+  @@index([questionId])
 }
 
 model ExerciseSession {
