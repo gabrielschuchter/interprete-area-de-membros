@@ -1,9 +1,9 @@
-import { getClerkDevelopmentConfigurationError } from "@repo/auth/clerk-proxy";
+import { getClerkEnvironmentConfigurationError } from "@repo/auth/clerk-environment";
 import { expect, test } from "vitest";
 
 test("rejects Clerk production credentials in local development", () => {
   expect(
-    getClerkDevelopmentConfigurationError({
+    getClerkEnvironmentConfigurationError({
       nodeEnv: "development",
       publishableKey: "pk_live_redacted",
       secretKey: "sk_live_redacted",
@@ -13,7 +13,7 @@ test("rejects Clerk production credentials in local development", () => {
 
 test("rejects publishable and secret keys from different Clerk environments", () => {
   expect(
-    getClerkDevelopmentConfigurationError({
+    getClerkEnvironmentConfigurationError({
       nodeEnv: "development",
       publishableKey: "pk_test_redacted",
       secretKey: "sk_live_redacted",
@@ -23,7 +23,7 @@ test("rejects publishable and secret keys from different Clerk environments", ()
 
 test("rejects publishable and secret keys from different environments everywhere", () => {
   expect(
-    getClerkDevelopmentConfigurationError({
+    getClerkEnvironmentConfigurationError({
       nodeEnv: "production",
       publishableKey: "pk_test_redacted",
       secretKey: "sk_live_redacted",
@@ -31,18 +31,9 @@ test("rejects publishable and secret keys from different environments everywhere
   ).toContain("prefixos de ambiente");
 });
 
-test("keeps the local Development instance on its direct Frontend API", () => {
+test("keeps local Development keys paired with the Development instance", () => {
   expect(
-    getClerkDevelopmentConfigurationError({
-      nodeEnv: "development",
-      publishableKey: "pk_test_redacted",
-      secretKey: "sk_test_redacted",
-      proxyUrl: "https://production.example/__clerk",
-    })
-  ).toContain("diretamente");
-
-  expect(
-    getClerkDevelopmentConfigurationError({
+    getClerkEnvironmentConfigurationError({
       nodeEnv: "development",
       publishableKey: "pk_test_redacted",
       secretKey: "sk_test_redacted",
@@ -50,13 +41,13 @@ test("keeps the local Development instance on its direct Frontend API", () => {
   ).toBeUndefined();
 });
 
-test("does not change production Clerk proxy configuration", () => {
+test("rejects obsolete Frontend API proxy variables in every environment", () => {
   expect(
-    getClerkDevelopmentConfigurationError({
+    getClerkEnvironmentConfigurationError({
       nodeEnv: "production",
       publishableKey: "pk_live_redacted",
       secretKey: "sk_live_redacted",
-      proxyUrl: "https://members.example/__clerk",
+      proxyVariables: ["NEXT_PUBLIC_CLERK_PROXY_URL"],
     })
-  ).toBeUndefined();
+  ).toContain("NEXT_PUBLIC_CLERK_PROXY_URL");
 });

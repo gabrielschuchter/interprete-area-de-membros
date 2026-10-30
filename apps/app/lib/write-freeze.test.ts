@@ -2,7 +2,6 @@ import {
   createUploadsPausedResponse,
   createWriteFreezeResponse,
   isAppWriteFreezeEnabled,
-  isClerkFrontendApiProxyPath,
   shouldBlockRequestDuringWriteFreeze,
   shouldPauseStorageUploadDuringRollback,
   shouldPauseUploadDuringRollback,
@@ -22,7 +21,7 @@ describe("write freeze", () => {
     expect(isAppWriteFreezeEnabled("1")).toBe(false);
   });
 
-  it("leaves ordinary reads and the Clerk Frontend API proxy available", () => {
+  it("leaves ordinary reads available", () => {
     expect(
       shouldBlockRequestDuringWriteFreeze({
         method: "GET",
@@ -30,16 +29,6 @@ describe("write freeze", () => {
         enabled: true,
       })
     ).toBe(false);
-    expect(
-      shouldBlockRequestDuringWriteFreeze({
-        method: "POST",
-        pathname: "/__clerk/v1/client/sign_ins",
-        enabled: true,
-        clerkFrontendApiProxy: true,
-      })
-    ).toBe(false);
-    expect(isClerkFrontendApiProxyPath("/__clerk/v1/client")).toBe(true);
-    expect(isClerkFrontendApiProxyPath("/api/__clerk/v1/client")).toBe(false);
   });
 
   it("blocks Server Actions and API writes regardless of their page route", () => {

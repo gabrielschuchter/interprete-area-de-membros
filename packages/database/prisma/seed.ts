@@ -728,7 +728,7 @@ const seed = async () => {
         duration: 60,
         kind: MeetingKind.INDIVIDUAL,
         recordingUrl:
-          "https://interprete-area-de-membros.vercel.app/cursos/introducao-a-pratica-baseada-em-evidencias",
+          "https://membros.escolainterprete.com.br/cursos/introducao-a-pratica-baseada-em-evidencias",
         relatedActivityId: undefined,
         relatedLibraryItemId: undefined,
       },

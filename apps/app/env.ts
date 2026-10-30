@@ -35,8 +35,11 @@ export const env = createEnv({
       .default(500_000_000),
     ROOM_V2_ENABLED: z.enum(["true", "false"]).default("false"),
   },
-  client: {},
+  client: {
+    NEXT_PUBLIC_APP_URL: z.url(),
+  },
   runtimeEnv: {
+    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
     YOUTUBE_API_KEY: process.env.YOUTUBE_API_KEY,
     YOUTUBE_DEVELOPMENT_ADAPTER: process.env.YOUTUBE_DEVELOPMENT_ADAPTER,
     CRON_SECRET: process.env.CRON_SECRET,

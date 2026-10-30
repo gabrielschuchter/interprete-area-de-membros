@@ -1,8 +1,8 @@
 import { getSafeInternalPath, getSignInPath } from "@repo/auth/redirects";
 import { Button } from "@repo/design-system/components/ui/button";
+import { resolveApplicationOrigin } from "@repo/next-config/application-origin";
 import { ArrowRightIcon, LockKeyholeIcon } from "lucide-react";
 import type { Metadata } from "next";
-import { headers } from "next/headers";
 import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -17,8 +17,6 @@ export const revalidate = 0;
 const genericTitle = "Publicação da Comunidade | Interprete";
 const genericDescription = "Acesse o Interprete para continuar a conversa.";
 const genericImage = "/brand/meta/interprete-social-v2.png";
-const loopbackHostPattern = /^(localhost|127\.0\.0\.1|\[::1\])(?::\d{1,5})?$/;
-const httpProtocolPrefixPattern = /^https?:\/\//;
 
 const resolvePreview = cache(async (token: string) => {
   try {
@@ -38,36 +36,6 @@ const resolvePreview = cache(async (token: string) => {
     return { memberId: null, preview: null, session: null };
   }
 });
-
-const isLoopbackHost = (host: string) => loopbackHostPattern.test(host);
-
-const metadataBaseForHost = (incomingHost: string | null) => {
-  const host = incomingHost?.split(",")[0]?.trim().toLowerCase() ?? "";
-  if (isLoopbackHost(host)) {
-    return new URL(`http://${host}`);
-  }
-
-  const trustedHosts = new Set(
-    [
-      process.env.VERCEL_URL,
-      process.env.VERCEL_PROJECT_PRODUCTION_URL,
-      "interprete-area-de-membros.vercel.app",
-      "interprete-area-de-membros-app.vercel.app",
-    ]
-      .filter((value): value is string => Boolean(value))
-      .map((value) =>
-        value.replace(httpProtocolPrefixPattern, "").toLowerCase()
-      )
-  );
-  const trustedHost = trustedHosts.has(host)
-    ? host
-    : (process.env.VERCEL_URL ??
-      process.env.VERCEL_PROJECT_PRODUCTION_URL ??
-      "interprete-area-de-membros.vercel.app");
-  return new URL(
-    `https://${trustedHost.replace(httpProtocolPrefixPattern, "")}`
-  );
-};
 
 const makeMetadata = (
   title: string,
@@ -103,11 +71,9 @@ export const generateMetadata = async ({
 }: {
   readonly params: Promise<{ token: string }>;
 }): Promise<Metadata> => {
-  const [{ token }, requestHeaders] = await Promise.all([params, headers()]);
+  const { token } = await params;
   const { preview } = await resolvePreview(token);
-  const base = metadataBaseForHost(
-    requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host")
-  );
+  const base = new URL(resolveApplicationOrigin());
   if (!preview) {
     return makeMetadata(genericTitle, genericDescription, genericImage, base);
   }

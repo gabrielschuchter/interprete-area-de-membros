@@ -1,12 +1,12 @@
-const previewOutboxUrl =
-  "https://interprete-area-de-membro-git-afba70-gabrielschuchters-projects.vercel.app/cron/outbox";
 const recoveryTimeoutMilliseconds = 8000;
 const latestStartMilliseconds = 45_000;
+const previewBranchHostnamePattern = /(?:^|-)git-/;
 
 interface PreviewRecoveryConfiguration {
   readonly enabled: boolean;
   readonly environment: string | undefined;
   readonly namespace: string | undefined;
+  readonly previewEndpoint: string | undefined;
   readonly secret: string | undefined;
 }
 
@@ -40,13 +40,31 @@ export const recoverPreviewOutbox = async (
   if (!configuration.secret || configuration.secret.trim().length < 32) {
     return { status: "failed", reason: "configuration" };
   }
+  let previewEndpoint: URL;
+  try {
+    previewEndpoint = new URL(configuration.previewEndpoint ?? "");
+  } catch {
+    return { status: "failed", reason: "configuration" };
+  }
+  if (
+    previewEndpoint.protocol !== "https:" ||
+    !previewEndpoint.hostname.endsWith(".vercel.app") ||
+    !previewBranchHostnamePattern.test(previewEndpoint.hostname) ||
+    previewEndpoint.pathname !== "/cron/outbox" ||
+    previewEndpoint.username ||
+    previewEndpoint.password ||
+    previewEndpoint.search ||
+    previewEndpoint.hash
+  ) {
+    return { status: "failed", reason: "configuration" };
+  }
   const oidcToken = request.headers.get("x-vercel-oidc-token");
   if (!oidcToken) {
     return { status: "failed", reason: "oidc" };
   }
 
   try {
-    const response = await fetcher(previewOutboxUrl, {
+    const response = await fetcher(previewEndpoint, {
       method: "POST",
       redirect: "error",
       cache: "no-store",

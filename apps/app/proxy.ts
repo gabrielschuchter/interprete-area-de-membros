@@ -1,4 +1,3 @@
-import { shouldProxyClerkFrontendApi } from "@repo/auth/clerk-proxy";
 import { authMiddleware } from "@repo/auth/proxy";
 import {
   getAuthRedirectPath,
@@ -6,29 +5,26 @@ import {
   getSessionTaskPath,
   getSignInPath,
 } from "@repo/auth/redirects";
+import {
+  resolveApplicationAuthOrigins,
+  resolveApplicationOrigin,
+} from "@repo/next-config/application-origin";
 import { noseconeOptions, securityMiddleware } from "@repo/security/proxy";
 import {
   createWriteFreezeResponse,
-  isClerkFrontendApiProxyPath,
   shouldBlockRequestDuringWriteFreeze,
 } from "@repo/security/write-freeze";
-import { type NextProxy, type NextRequest, NextResponse } from "next/server";
+import {
+  type NextFetchEvent,
+  type NextProxy,
+  type NextRequest,
+  NextResponse,
+} from "next/server";
 import { env } from "@/env";
+import { getLegacyApplicationRedirect } from "./lib/application-host";
 import { gestaoLegacyAdminDestination } from "./lib/gestao-navigation";
 
 const securityHeaders = securityMiddleware(noseconeOptions);
-// Clerk's production Frontend API proxy is registered on this Vercel alias.
-// Keep it as the single visible host until a real custom domain is configured
-// in Clerk; the other project alias is redirected here so both URLs cannot
-// serve different authentication origins.
-const canonicalAppHost = "interprete-area-de-membros.vercel.app";
-const legacyAppHost = "interprete-area-de-membros-app.vercel.app";
-const clerkProxyPrefix = "/__clerk";
-// Clerk's Frontend API proxy is configured for the production instance only.
-// Development instances use their accounts.dev host directly.
-const shouldProxyClerkRequests = shouldProxyClerkFrontendApi(
-  process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
-);
 const sessionTaskPath = "/session-tasks";
 const loopbackHostnames = new Set(["localhost", "127.0.0.1", "[::1]"]);
 const developmentServerAuthFlag = process.env.GESTAO_DEV_AUTH;
@@ -96,8 +92,7 @@ const previewWriteDenial = (req: NextRequest) => {
   if (
     safeMethods.has(req.method) ||
     !req.cookies.has(previewCookie) ||
-    req.cookies.has(previewRealCookie) ||
-    isClerkFrontendApiProxyPath(req.nextUrl.pathname)
+    req.cookies.has(previewRealCookie)
   ) {
     return null;
   }
@@ -192,35 +187,13 @@ const isAuthenticationEntryRoute = (pathname: string) =>
 const redirectToSessionTask = (req: NextRequest, returnPath: string) =>
   NextResponse.redirect(new URL(getSessionTaskPath(returnPath), req.url));
 
-const redirectLegacyAppHost = (req: NextRequest) => {
-  const url = req.nextUrl.clone();
-  url.hostname = canonicalAppHost;
-
-  const redirectUrl = url.searchParams.get("redirect_url");
-  if (redirectUrl) {
-    try {
-      const redirect = new URL(redirectUrl);
-      if (redirect.hostname === legacyAppHost) {
-        redirect.hostname = canonicalAppHost;
-        url.searchParams.set("redirect_url", redirect.toString());
-      }
-    } catch {
-      // Clerk will apply its normal fallback for malformed redirect URLs.
-    }
-  } else {
-    url.searchParams.set("redirect_url", `https://${canonicalAppHost}/`);
-  }
-
-  return NextResponse.redirect(url, 308);
-};
-
 // Clerk middleware wraps other middleware in its callback
 // For apps using Clerk, compose middleware inside authMiddleware callback
 // For apps without Clerk, use createNEMO for composition (see apps/web)
-const clerkProxy = useDevelopmentTestAuth
+const clerkAuthProxy = useDevelopmentTestAuth
   ? null
   : authMiddleware(
-      // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: the middleware coordinates Clerk auth states, proxy routing and canonical host redirects in one ordered request boundary
+      // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: the middleware coordinates Clerk state with the app's internal route guards
       async (auth, req) => {
         const previewDenial = previewWriteDenial(req);
         if (previewDenial) {
@@ -231,21 +204,9 @@ const clerkProxy = useDevelopmentTestAuth
             method: req.method,
             pathname: req.nextUrl.pathname,
             enabled: env.APP_WRITE_FREEZE === "true",
-            clerkFrontendApiProxy: isClerkFrontendApiProxyPath(
-              req.nextUrl.pathname
-            ),
           })
         ) {
           return createWriteFreezeResponse(req);
-        }
-
-        // Keep one visible application host. The legacy alias remains available
-        // only long enough to redirect users to the current production project.
-        if (
-          req.nextUrl.hostname === legacyAppHost &&
-          !req.nextUrl.pathname.startsWith(clerkProxyPrefix)
-        ) {
-          return redirectLegacyAppHost(req);
         }
 
         // Keep the commonly used /login URL compatible with the custom Clerk UI.
@@ -301,9 +262,9 @@ const clerkProxy = useDevelopmentTestAuth
             if (denial) {
               return denial;
             }
-            const legacyRedirect = legacyAdminRedirect(req);
-            if (legacyRedirect) {
-              return legacyRedirect;
+            const adminRedirect = legacyAdminRedirect(req);
+            if (adminRedirect) {
+              return adminRedirect;
             }
           }
         }
@@ -332,7 +293,11 @@ const clerkProxy = useDevelopmentTestAuth
 
         return securityHeaders();
       },
-      { frontendApiProxy: { enabled: shouldProxyClerkRequests } }
+      {
+        authorizedParties: resolveApplicationAuthOrigins({
+          applicationUrl: env.NEXT_PUBLIC_APP_URL,
+        }),
+      }
     );
 
 const developmentTestAuthProxy = async (req: NextRequest) => {
@@ -351,7 +316,6 @@ const developmentTestAuthProxy = async (req: NextRequest) => {
       method: req.method,
       pathname: req.nextUrl.pathname,
       enabled: env.APP_WRITE_FREEZE === "true",
-      clerkFrontendApiProxy: isClerkFrontendApiProxyPath(req.nextUrl.pathname),
     })
   ) {
     return createWriteFreezeResponse(req);
@@ -370,9 +334,33 @@ const developmentTestAuthProxy = async (req: NextRequest) => {
   return denial ?? legacyAdminRedirect(req) ?? securityHeaders();
 };
 
-export default (useDevelopmentTestAuth
-  ? developmentTestAuthProxy
-  : clerkProxy) as unknown as NextProxy;
+const applicationProxy = (req: NextRequest, event: NextFetchEvent) => {
+  // Redirect legacy production aliases before Clerk reads cookies or validates
+  // origins. Unsafe requests fail closed so a form/action body is never replayed.
+  if (process.env.VERCEL_ENV === "production") {
+    const legacyRedirect = getLegacyApplicationRedirect(
+      req.nextUrl,
+      resolveApplicationOrigin({
+        applicationUrl: env.NEXT_PUBLIC_APP_URL,
+      })
+    );
+    if (legacyRedirect) {
+      if (req.method === "GET" || req.method === "HEAD") {
+        return NextResponse.redirect(legacyRedirect, 308);
+      }
+      return new NextResponse(null, {
+        status: 421,
+        headers: { "Cache-Control": "private, no-store" },
+      });
+    }
+  }
+
+  return useDevelopmentTestAuth
+    ? developmentTestAuthProxy(req)
+    : (clerkAuthProxy as NextProxy)(req, event);
+};
+
+export default applicationProxy as unknown as NextProxy;
 
 export const config = {
   matcher: [
@@ -380,7 +368,5 @@ export const config = {
     "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
     // Always run for API routes
     "/(api|trpc)(.*)",
-    // Clerk Frontend API proxy path
-    "/__clerk/:path*",
   ],
 };

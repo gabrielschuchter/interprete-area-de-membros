@@ -43,6 +43,7 @@ const processOutbox = async (request: Request) => {
         environment: process.env.VERCEL_ENV,
         namespace: env.OUTBOX_QUEUE_NAMESPACE,
         secret: env.PREVIEW_OUTBOX_CRON_SECRET,
+        previewEndpoint: env.PREVIEW_OUTBOX_RECOVERY_URL,
       },
       Date.now() - startedAt
     );

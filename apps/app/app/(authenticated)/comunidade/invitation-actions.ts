@@ -10,8 +10,8 @@ import {
   Prisma,
 } from "@repo/database";
 import { enqueueNotificationBatch } from "@repo/member-domain";
+import { resolveApplicationOrigin } from "@repo/next-config/application-origin";
 import { revalidatePath } from "next/cache";
-import { env } from "@/env";
 import { auth } from "@/lib/auth";
 import { canManageStudyGroupParticipants } from "@/lib/community-group-permissions";
 import { consumeMutationRateLimit } from "@/lib/mutation-reliability";
@@ -394,7 +394,10 @@ const hashInviteToken = (token: string) =>
 const invitationLinkPath = (token: string) => `/comunidade/convite/${token}`;
 
 const linkUrl = (token: string) => {
-  return new URL(invitationLinkPath(token), env.NEXT_PUBLIC_APP_URL).toString();
+  return new URL(
+    invitationLinkPath(token),
+    resolveApplicationOrigin()
+  ).toString();
 };
 
 const lockPublishedGroup = async (

@@ -17,6 +17,12 @@ const sha = "a".repeat(40);
 const appId = "prj_bwG8vDd4x2flyPaRMq8HEvi7t5Lj";
 const apiId = "prj_LzsMnY95oPtOdp6KUwUaPRQ5lfh6";
 const appAliases = [
+  "membros.escolainterprete.com.br",
+  "interprete-area-de-membros.vercel.app",
+  "interprete-area-de-membros-app.vercel.app",
+];
+const appCanonical = "membros.escolainterprete.com.br";
+const appRollbackAliases = [
   "interprete-area-de-membros.vercel.app",
   "interprete-area-de-membros-app.vercel.app",
 ];
@@ -113,7 +119,7 @@ const apiConfiguration = () => ({
   },
 });
 
-test("release keeps both verified App public aliases usable", () => {
+test("release keeps all verified App public aliases usable", () => {
   const result = run("app", "release", appConfiguration());
   assert.equal(result.status, 0, result.failure);
   assert.deepEqual(
@@ -134,13 +140,100 @@ test("one stale App public alias rejects the release instead of allowing an old 
   assert.ok(result.failure.includes("Each allowed alias"));
 });
 
-test("maintenance excludes both App public aliases", () => {
+test("maintenance excludes all App public aliases", () => {
   const result = run("app", "maintenance", appConfiguration());
   assert.equal(result.status, 0, result.failure);
   assert.deepEqual(result.output.verifiedAliases, []);
   assert.deepEqual(result.output.rule.conditionGroup[0].conditions[0].value, [
     "production.vercel.app",
   ]);
+});
+
+test("transition keeps the previous App aliases while opening the canonical candidate", () => {
+  const configuration = {
+    deployments: {
+      dpl_Production: deployment(appId),
+      dpl_Rollback: {
+        ...deployment(appId),
+        meta: {
+          githubCommitSha: "b".repeat(40),
+          githubCommitRef: "main",
+        },
+        url: "previous-production.vercel.app",
+      },
+    },
+    aliases: {
+      [appCanonical]: alias(appId, "dpl_Production"),
+      ...Object.fromEntries(
+        appRollbackAliases.map((host) => [host, alias(appId, "dpl_Rollback")])
+      ),
+    },
+  };
+  const result = run("app", "transition", configuration, [
+    "--rollback-deployment",
+    "dpl_Rollback",
+  ]);
+  assert.equal(result.status, 0, result.failure);
+  assert.deepEqual(
+    result.output.verifiedAliases.map((item) => [item.host, item.deploymentId]),
+    [
+      [appCanonical, "dpl_Production"],
+      ...appRollbackAliases.map((host) => [host, "dpl_Rollback"]),
+    ]
+  );
+  assert.deepEqual(
+    result.output.rule.conditionGroup[0].conditions[0].value,
+    [
+      appCanonical,
+      ...appRollbackAliases,
+      "production.vercel.app",
+      "previous-production.vercel.app",
+    ].sort()
+  );
+});
+
+test("transition rejects stale canonical or legacy alias assignments", () => {
+  const configuration = {
+    deployments: {
+      dpl_Production: deployment(appId),
+      dpl_Rollback: {
+        ...deployment(appId),
+        meta: { githubCommitSha: "b".repeat(40) },
+        url: "previous-production.vercel.app",
+      },
+    },
+    aliases: {
+      [appCanonical]: alias(appId, "dpl_Production"),
+      ...Object.fromEntries(
+        appRollbackAliases.map((host) => [host, alias(appId, "dpl_Rollback")])
+      ),
+    },
+  };
+  configuration.aliases[appCanonical].deploymentId = "dpl_Rollback";
+  const staleCanonical = run("app", "transition", configuration, [
+    "--rollback-deployment",
+    "dpl_Rollback",
+  ]);
+  assert.equal(staleCanonical.status, 1);
+  assert.ok(staleCanonical.failure.includes("Each allowed alias"));
+
+  configuration.aliases[appCanonical].deploymentId = "dpl_Production";
+  configuration.aliases[appRollbackAliases[0]].deploymentId = "dpl_Production";
+  const staleLegacy = run("app", "transition", configuration, [
+    "--rollback-deployment",
+    "dpl_Rollback",
+  ]);
+  assert.equal(staleLegacy.status, 1);
+  assert.ok(staleLegacy.failure.includes("Each allowed alias"));
+});
+
+test("transition mode cannot be used for the API project", () => {
+  const result = run("api", "transition", apiConfiguration(), [
+    "--rollback-deployment",
+    "dpl_Preview",
+  ]);
+  assert.equal(result.status, 1);
+  assert.ok(result.failure.includes("Transition is App-only"));
 });
 
 test("the Preview hop alias requires an explicit compatible Preview selection", () => {

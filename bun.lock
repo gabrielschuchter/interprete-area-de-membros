@@ -368,6 +368,7 @@
       "name": "@repo/seo",
       "version": "0.0.0",
       "dependencies": {
+        "@repo/next-config": "workspace:*",
         "lodash.merge": "^4.6.2",
         "react": "19.2.4",
         "schema-dts": "^1.1.5",
