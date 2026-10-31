@@ -1,5 +1,16 @@
 # Interprete Product Roadmap
 
+## Nota operacional — domínio Production, 30/10/2026
+
+A área de membros atende `https://membros.escolainterprete.com.br` no deployment
+`dpl_GjqW96cC3peZVjaCuSmZeLepUx5Q`, construído a partir do SHA
+`76a62e94d0f1137068925e8600d7e2a21b2f6ab4`. A troca de domínio não altera a
+ordem, o aceite ou o estado de nenhuma fase de produto, nem executa migração de
+Supabase. O histórico de dados e releases abaixo continua sendo o registro das
+fases; a arquitetura e os gates do domínio ficam em
+[`docs/architecture/domain-architecture.md`](../architecture/domain-architecture.md)
+e [`docs/deployment/vercel.md`](../deployment/vercel.md).
+
 ## Reauditoria e conclusão pós-cutover — 05/10/2026
 
 Esta sequência substitui os checkpoints históricos abaixo para o trabalho de

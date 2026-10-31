@@ -28,6 +28,11 @@
   `clerk.membros` aponta para o target publicado pelo Clerk (`frontend-api.clerk.services`).
   Não configure proxy `/__clerk` ou variáveis `CLERK_PROXY_URL`,
   `NEXT_PUBLIC_CLERK_PROXY_URL`, `CLERK_FAPI` ou `NEXT_PUBLIC_CLERK_FAPI`.
+- `CLERK_DISABLE_AUTO_PROXY=true` no app Production impede que o SDK escolha
+  automaticamente `/__clerk` quando `VERCEL_PROJECT_PRODUCTION_URL` é um alias
+  `vercel.app`. Essa variável deve estar presente no build e no runtime. Sua
+  ausência fez o handshake de sessão expirada falhar com `host_invalid` em
+  31/10/2026; validar a renovação de sessão após qualquer mudança de deployment.
 - O Clerk Development local usa o par `pk_test_`/`sk_test_` e o Frontend API
   `accounts.dev` diretamente. Não copie chaves Production para local ou Preview.
 - `PREVIEW_OUTBOX_RECOVERY_URL` é server-only no projeto API Production quando
@@ -50,7 +55,11 @@ Não desabilite a regra para destravar um domínio. Use
 stage e ativação com o digest exato. O CNAME `membros` da Vercel e os aliases
 históricos precisam resolver para o deployment que contém os redirects.
 
-O branch `main` é a referência de release. A promoção deve registrar o SHA do
+Em 31/10/2026, `origin/main` (`f644467`) havia avançado com alterações de
+produto e migrations não presentes no app em Production; o branch de domínio
+divergia dele. A conexão Git automática da Vercel está desabilitada. Integre e
+valide as duas linhas com QA e os gates de banco antes de publicar `main`; não
+presuma que um deploy de `main` contenha esta correção. A promoção deve registrar o SHA do
 código, deployment `READY`, aliases verificados e digest do firewall. Para
 rollback, reatribua os aliases ao deployment Production anterior e restaure a
 configuração Clerk correspondente antes de restaurar os redirects da Hostinger.
@@ -69,29 +78,58 @@ Hostinger não tem repositório conectado. Os atalhos publicados ficam no bloco
 | `/membros` | `https://membros.escolainterprete.com.br/` |
 | `/login` | `https://membros.escolainterprete.com.br/sign-in` |
 
-Mantenha o status `302` desses atalhos enquanto o destino do app estiver sob
-validação. Após o cutover, `301`/`308` pode ser aplicado se desejado; os redirects
-de Vercel antigos para o origin canônico já são `308`. Preserve todo o restante
-do `.htaccess`, inclusive CSP, regras do site e newsletter.
+Os atalhos continuam em `302` deliberadamente: são entradas operacionais do
+site, e esse status permite rollback imediato sem cache permanente no navegador.
+Eles sempre apontam ao origin canônico. Os dois aliases Vercel históricos usam
+`308` porque só redirecionam navegação segura (`GET`/`HEAD`); mutações recebem
+`421` sem replay do corpo. Preserve todo o restante do `.htaccess`, inclusive
+CSP, regras do site e newsletter.
 
-## Verificação de Production
+## Verificação de Production — 30/10/2026
 
-Registre cada gate após a publicação:
+Em 31/10/2026, o host canônico foi atribuído ao deployment de correção
+`dpl_GjqW96cC3peZVjaCuSmZeLepUx5Q`, `READY`, construído a partir do SHA
+`76a62e94d0f1137068925e8600d7e2a21b2f6ab4` com mudanças locais de documentação.
+Os dois aliases Vercel históricos também foram atribuídos ao deployment corrigido
+e redirecionam ao host canônico. A regra WAF `Community V2 compatible release
+hosts` permanece ativa em modo `release`; nenhum bypass ou desativação foi usado.
+Rollback imediato da correção de 31/10: deployment
+`dpl_8MhPh2GpQttToAnPXw5qJf7eHmxa` (mas ele apresenta a falha de renovação de
+sessão documentada abaixo). O deployment anterior ao cutover é
+`dpl_HfdYrMaNLy3cE1DbbPvGfs3smwFm` (SHA
+`a99ef910aaef3450385c00eb11b85db12bf3de10`, `READY`); sua reversão exige
+restaurar também configuração Clerk, host guard e atalhos do site.
 
-1. DNS `membros` → target Vercel e certificado HTTPS do app válidos.
-2. DNS Clerk `clerk.membros` → target Clerk; domínio FAPI e certificado SSL
-   Clerk verificados antes de alterar o domínio primário da instância.
-3. Chave pública Clerk Production emitida para o domínio novo no env Production;
-   par `pk_live_`/`sk_live_` compatível; novo deployment `READY`.
-4. `GET /health`, `/sign-in`, `/sign-up`, rota protegida anônima e redirects dos
-   aliases Vercel; nenhum destino público novo deve usar `vercel.app`.
-5. Site institucional `/entrar`, `/criar-conta`, `/membros`, `/login` em desktop
-   e viewport móvel; sessão real, recuperação de senha e retorno após
-   autenticação precisam de um usuário de teste autorizado.
-6. Host guard ativo com o SHA e aliases verificados. Nenhuma alteração de banco
-   é necessária para este rollout.
+| Gate de produção | Estado observado |
+| --- | --- |
+| DNS do app | `membros` CNAME → `bbb51c26bfce45fc.vercel-dns-017.com`; os servidores autoritativos respondem com o target esperado. |
+| HTTPS do app | Certificado TLS válido no host canônico. |
+| Domínio Clerk/FAPI | `membros.escolainterprete.com.br` `Verified`; `clerk.membros` CNAME → `frontend-api.clerk.services`, `Verified`; `/v1/health` retornou HTTP 200 com TLS válido. |
+| E-mail Clerk | Os três CNAMEs abaixo estão propagados e `Email 3/3 Verified`; Clerk informa certificado SSL emitido. |
+| Navegação pública | `/`, `/sign-in`, `/sign-up` e rota protegida anônima respondem com os destinos esperados. Os aliases Vercel fazem redirect `308` preservando path/query; métodos de escrita recebem `421`. |
+| Site institucional | `/entrar`, `/criar-conta`, `/membros` e `/login` chegam ao host canônico em desktop e viewport móvel. |
+| Dados | Nenhuma alteração de Supabase, schema, usuários, papéis ou permissões foi feita. |
 
-O deployment anterior e o domínio Clerk antigo são mantidos durante a
-validação para rollback. A troca de origin pode pedir aos usuários que entrem
-novamente no próximo acesso por causa do escopo dos cookies; isso não altera a
-identidade nem os dados persistidos.
+Registros de e-mail Clerk publicados na zona DNS Hostinger (TTL 14400):
+
+| Nome | Tipo | Destino |
+| --- | --- | --- |
+| `clkmail.membros` | CNAME | `mail.gxrbxlyw7jo4.clerk.services` |
+| `clk._domainkey.membros` | CNAME | `dkim1.gxrbxlyw7jo4.clerk.services` |
+| `clk2._domainkey.membros` | CNAME | `dkim2.gxrbxlyw7jo4.clerk.services` |
+
+O login inicial e acesso autenticado foram verificados em 30/10. Em 31/10, a
+renovação de uma sessão expirada revelou `host_invalid` no caminho automático
+`/__clerk`; após o deployment com a variável acima, o proprietário confirmou a
+abertura e a sessão autenticada foi observada no host canônico.
+Recuperação de senha e entrega efetiva de e-mail não foram testadas com envio.
+O domínio Clerk
+antigo continua listado como `Checking` e não é destino público; mantê-lo nesta
+janela conserva opção de rollback. A mudança de origin pode exigir novo login
+por causa do escopo dos cookies, sem alterar identidade ou dados persistidos.
+
+Em 31/10, os atalhos institucionais haviam voltado ao alias antigo. Foram
+corrigidos novamente no `.htaccess` ativo, preservando regras adicionais de
+blog. O arquivo declara geração por scripts que não foram encontrados nos
+repositórios locais ou no Git conectado da Hostinger; atualizar a fonte real do
+build é pendência para impedir que uma futura publicação reverta os destinos.

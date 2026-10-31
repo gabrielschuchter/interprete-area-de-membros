@@ -1,5 +1,13 @@
 # Migração blue/green do Supabase
 
+> **Nota de escopo — 30/10/2026:** esta página contém um snapshot da investigação
+> de 05/10 e suas decisões históricas, não o estado operacional mais recente do
+> Supabase. O cutover do domínio da aplicação em 30/10 não alterou projeto,
+> schema, migrations, RLS, usuários ou dados do Supabase. Para o estado de
+> produto posterior, use [`docs/comunidade-v2/NOW.md`](../comunidade-v2/NOW.md);
+> para domínio, Clerk e rollback, use
+> [`docs/deployment/vercel.md`](../deployment/vercel.md).
+
 **Origem (blue):** `wkclodjbrynerfgufmyb`
 
 **Destino (green):** `qffqhilydtnrggbcnogh`

@@ -1,5 +1,15 @@
 # Comunidade V2 — estado para continuidade
 
+> **Atualização operacional — 30/10/2026:** o app Production está no origin
+> canônico `https://membros.escolainterprete.com.br`, deployment
+> `dpl_GjqW96cC3peZVjaCuSmZeLepUx5Q`, construído a partir do SHA
+> `76a62e94d0f1137068925e8600d7e2a21b2f6ab4`. Os domínios
+> `vercel.app` abaixo registram o go-live da funcionalidade de Comunidade em
+> 26/10; hoje são aliases de redirect, não endereços para compartilhar. Não
+> houve alteração nos dados ou permissões da Comunidade neste cutover. Consulte
+> o estado de DNS, Clerk e rollback em
+> [`docs/deployment/vercel.md`](../deployment/vercel.md).
+
 ## Publicado em Production — 26/10/2026, 15:48 UTC
 
 Comunidade V2 está liberada nos domínios públicos. App:

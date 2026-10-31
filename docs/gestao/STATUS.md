@@ -1,5 +1,13 @@
 # Gestão V2 — estado operacional
 
+> **Atualização de domínio — 30/10/2026:** o app Production foi promovido para
+> `https://membros.escolainterprete.com.br` no deployment
+> `dpl_GjqW96cC3peZVjaCuSmZeLepUx5Q` (construído a partir do SHA
+> `76a62e94d0f1137068925e8600d7e2a21b2f6ab4`). A tabela e os endereços Vercel
+> abaixo documentam o release de Gestão de 14/10; não são os endpoints
+> canônicos atuais. O histórico de produto e a API não foram alterados por este
+> cutover. Estado e rollback atuais: [`docs/deployment/vercel.md`](../deployment/vercel.md).
+
 **Base funcional do MVP publicada e smoke concluído em 14/10/2026, às 15:12 BRT.** YouTube foi adiado expressamente pelo usuário; os 101 quadros continuam como referência integral, com aceite visual separado. Nenhum bloqueador funcional conhecido permanece nesta publicação.
 
 ## Versão publicada

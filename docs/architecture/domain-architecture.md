@@ -68,9 +68,32 @@ CTAs, convites ou mensagens novas.
 - CORS não é aberto entre os dois sites: os links são navegações de browser, e
   as operações autenticadas continuam no origin do app.
 
+## Estado confirmado em Production — 30/10/2026
+
+- Vercel: desde 31/10, `membros.escolainterprete.com.br` atende o deployment
+  `dpl_GjqW96cC3peZVjaCuSmZeLepUx5Q`; aliases Vercel antigos redirecionam e não
+  são destinos de links novos. Veja a proveniência e o rollback no runbook.
+- Hostinger: o CNAME `membros` aponta para
+  `bbb51c26bfce45fc.vercel-dns-017.com`; os CNAMEs do FAPI e de e-mail do Clerk
+  estão publicados e verificados. Não houve alteração em MX, SPF ou DMARC do
+  domínio raiz.
+- Clerk Production: domínio do app `Verified`, FAPI em
+  `clerk.membros.escolainterprete.com.br` `Verified`, e-mail `3/3 Verified` e
+  certificado SSL emitido.
+- A sessão de Production foi autenticada no host canônico; entrar em
+  `/sign-in?redirect_url=%2Fcomunidade` com sessão ativa chegou a
+  `/comunidade`. Não houve mudanças em usuário, papel, banco ou dado de produto.
+- Em 31/10 foi identificado erro na renovação de sessão: o SDK escolheu o proxy
+  automático `/__clerk` a partir do hostname Vercel. A configuração
+  `CLERK_DISABLE_AUTO_PROXY=true` foi criada em Production; após o deployment,
+  o proprietário abriu o app e a sessão autenticada foi observada novamente.
+- O domínio Clerk antigo continua listado como `Checking` durante a janela de
+  rollback. Ele não é canônico nem destino de novas URLs; veja o procedimento e
+  o estado atual em [`docs/deployment/vercel.md`](../deployment/vercel.md).
+
 ## Verificação live
 
-O estado do DNS, certificado Clerk, allowlist Vercel e atalhos Hostinger deve
-ser registrado em [`docs/deployment/vercel.md`](../deployment/vercel.md) após
-cada cutover. Builds e testes locais não são evidência suficiente de autenticação
-em Production.
+O DNS, certificados, aliases, host guard, atalhos Hostinger e evidência
+autenticada estão registrados em
+[`docs/deployment/vercel.md`](../deployment/vercel.md). Refaça a verificação
+após qualquer mudança de domínio, publishable key Clerk ou ambiente Vercel.
