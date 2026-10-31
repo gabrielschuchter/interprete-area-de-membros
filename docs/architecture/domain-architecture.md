@@ -71,7 +71,7 @@ CTAs, convites ou mensagens novas.
 ## Estado confirmado em Production — 30/10/2026
 
 - Vercel: desde 31/10, `membros.escolainterprete.com.br` atende o deployment
-  `dpl_GjqW96cC3peZVjaCuSmZeLepUx5Q`; aliases Vercel antigos redirecionam e não
+  `dpl_66YutdxcatGhoM1Y7RnNzFngLfFG`; aliases Vercel antigos redirecionam e não
   são destinos de links novos. Veja a proveniência e o rollback no runbook.
 - Hostinger: o CNAME `membros` aponta para
   `bbb51c26bfce45fc.vercel-dns-017.com`; os CNAMEs do FAPI e de e-mail do Clerk

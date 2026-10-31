@@ -88,14 +88,15 @@ CSP, regras do site e newsletter.
 ## Verificação de Production — 30/10/2026
 
 Em 31/10/2026, o host canônico foi atribuído ao deployment de correção
-`dpl_GjqW96cC3peZVjaCuSmZeLepUx5Q`, `READY`, construído a partir do SHA
-`76a62e94d0f1137068925e8600d7e2a21b2f6ab4` com mudanças locais de documentação.
+`dpl_66YutdxcatGhoM1Y7RnNzFngLfFG`, `READY`, SHA
+`0b4ff565321853b246ba4bcc7df9e2bd72a1d611`.
 Os dois aliases Vercel históricos também foram atribuídos ao deployment corrigido
 e redirecionam ao host canônico. A regra WAF `Community V2 compatible release
 hosts` permanece ativa em modo `release`; nenhum bypass ou desativação foi usado.
-Rollback imediato da correção de 31/10: deployment
-`dpl_8MhPh2GpQttToAnPXw5qJf7eHmxa` (mas ele apresenta a falha de renovação de
-sessão documentada abaixo). O deployment anterior ao cutover é
+Rollback imediato da proteção adicional: deployment
+`dpl_GjqW96cC3peZVjaCuSmZeLepUx5Q`, que também contém a correção de ambiente.
+O deployment `dpl_8MhPh2GpQttToAnPXw5qJf7eHmxa` apresenta a falha de renovação
+de sessão documentada abaixo e não é o rollback recomendado. O deployment anterior ao cutover é
 `dpl_HfdYrMaNLy3cE1DbbPvGfs3smwFm` (SHA
 `a99ef910aaef3450385c00eb11b85db12bf3de10`, `READY`); sua reversão exige
 restaurar também configuração Clerk, host guard e atalhos do site.
