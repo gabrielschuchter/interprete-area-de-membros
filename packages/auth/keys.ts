@@ -21,11 +21,15 @@ const optionalPath = z.preprocess((value) => {
   return normalized || undefined;
 }, z.string().startsWith("/").optional());
 
-export const keys = () => {
+export const keys = (options?: { autoProxyGuardEnabled?: boolean }) => {
   const clerkConfigurationError = getClerkEnvironmentConfigurationError({
+    autoProxyGuardEnabled: options?.autoProxyGuardEnabled,
     nodeEnv: process.env.NODE_ENV,
     publishableKey: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
     secretKey: process.env.CLERK_SECRET_KEY,
+    vercelTargetEnv: process.env.VERCEL_TARGET_ENV,
+    vercelProductionUrl: process.env.VERCEL_PROJECT_PRODUCTION_URL,
+    disableAutoProxy: process.env.CLERK_DISABLE_AUTO_PROXY,
     proxyVariables: [
       { name: "CLERK_PROXY_URL", value: process.env.CLERK_PROXY_URL },
       {

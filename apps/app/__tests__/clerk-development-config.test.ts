@@ -51,3 +51,28 @@ test("rejects obsolete Frontend API proxy variables in every environment", () =>
     })
   ).toContain("NEXT_PUBLIC_CLERK_PROXY_URL");
 });
+
+test("requires disabling Clerk auto proxy when Vercel production host triggers it", () => {
+  const configuration = {
+    autoProxyGuardEnabled: true,
+    vercelTargetEnv: "production",
+    vercelProductionUrl: "interprete-area-de-membros-app.vercel.app",
+    publishableKey: "pk_live_redacted",
+    secretKey: "sk_live_redacted",
+  };
+  expect(getClerkEnvironmentConfigurationError(configuration)).toContain(
+    "CLERK_DISABLE_AUTO_PROXY=true"
+  );
+  expect(
+    getClerkEnvironmentConfigurationError({
+      ...configuration,
+      disableAutoProxy: "true",
+    })
+  ).toBeUndefined();
+  expect(
+    getClerkEnvironmentConfigurationError({
+      ...configuration,
+      vercelTargetEnv: "preview",
+    })
+  ).toBeUndefined();
+});

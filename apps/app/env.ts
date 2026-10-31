@@ -11,7 +11,7 @@ export const env = createEnv({
   emptyStringAsUndefined: true,
   skipValidation: process.env.SKIP_ENV_VALIDATION === "true",
   extends: [
-    auth(),
+    auth({ autoProxyGuardEnabled: true }),
     analytics(),
     core(),
     database(),
