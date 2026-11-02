@@ -12,15 +12,15 @@ import type {
   ReactNode,
 } from "react";
 import {
+  lazy,
+  Suspense,
   useCallback,
-  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
 import { IntentLink } from "@/app/(authenticated)/components/intent-link";
-import { OptimisticRouteSkeleton } from "@/components/loading/optimistic-route-skeleton";
 import { MemberAreaTabs } from "@/components/navigation/member-area-tabs";
 import { isGestaoShellPath } from "@/lib/gestao-navigation";
 import { ActiveTimerPill } from "./active-timer-pill";
@@ -51,6 +51,13 @@ import { RouteMotion } from "./route-motion";
 import { usePortalViewport } from "./use-portal-viewport";
 import { useShellNavigation } from "./use-shell-navigation";
 
+// Loaded on demand so the skeleton set stays out of the initial bundle.
+const OptimisticCover = lazy(() =>
+  import("@/components/loading/optimistic-route-skeleton").then((module_) => ({
+    default: module_.OptimisticCover,
+  }))
+);
+
 interface MemberShellControllerProperties {
   readonly avatarUrl: string | null;
   readonly canManageContent: boolean;
@@ -66,9 +73,6 @@ interface MemberShellControllerProperties {
 }
 
 const NAVIGATION_TIMEOUT = 8000;
-// Feedback under the 100 ms budget: the sidebar, tabs and progress line react on
-// the click itself; the cover appears only when the route has not committed.
-const OPTIMISTIC_SKELETON_DELAY = 80;
 const ROUTE_SEPARATOR_PATTERN = /[?#]/;
 
 const currentRouteKey = (pathname: string, search: string) =>
@@ -261,19 +265,6 @@ const MemberShellView = ({
   const timer = useRef<number | null>(null);
   const dispatchedTransition = useRef<number | null>(null);
   const lastViewport = useRef(viewport);
-  const [optimistic, setOptimistic] = useState<{
-    readonly origin: string;
-    readonly target: string;
-  } | null>(null);
-  const optimisticTimer = useRef<number | null>(null);
-
-  const clearOptimistic = useCallback(() => {
-    if (optimisticTimer.current !== null) {
-      window.clearTimeout(optimisticTimer.current);
-      optimisticTimer.current = null;
-    }
-    setOptimistic(null);
-  }, []);
 
   const setActiveTransition = useCallback((next: PortalTransition | null) => {
     transitionRef.current = next;
@@ -401,21 +392,6 @@ const MemberShellView = ({
       });
       setActiveTransition(next);
       dispatchedTransition.current = null;
-      if (optimisticTimer.current !== null) {
-        window.clearTimeout(optimisticTimer.current);
-        optimisticTimer.current = null;
-      }
-      if (pathname !== "/" && url.pathname !== "/") {
-        const origin = pathname;
-        optimisticTimer.current = window.setTimeout(() => {
-          optimisticTimer.current = null;
-          if (window.location.pathname === origin) {
-            // The destination opens at the top, so the cover does too.
-            window.scrollTo(0, 0);
-            setOptimistic({ origin, target: url.pathname });
-          }
-        }, OPTIMISTIC_SKELETON_DELAY);
-      }
       const exitDuration = next.exitDurationMs;
       if (exitDuration === 0) {
         commitTransition(id);
@@ -521,36 +497,12 @@ const MemberShellView = ({
   }, []);
 
   const onPopState = useCallback(() => {
-    clearOptimistic();
     const active = transitionRef.current;
     if (active?.phase === "leaving") {
       clearTimer();
       setActiveTransition(null);
     }
-  }, [clearOptimistic, clearTimer, setActiveTransition]);
-
-  useEffect(() => {
-    if (navigationFailure) {
-      clearOptimistic();
-    }
-  }, [clearOptimistic, navigationFailure]);
-
-  // The destination owns the stage once it has committed and finished its
-  // entry transition; a redirect may land elsewhere, so compare with the origin.
-  useEffect(() => {
-    if (optimistic && pathname !== optimistic.origin && transition === null) {
-      clearOptimistic();
-    }
-  }, [clearOptimistic, optimistic, pathname, transition]);
-
-  useEffect(
-    () => () => {
-      if (optimisticTimer.current !== null) {
-        window.clearTimeout(optimisticTimer.current);
-      }
-    },
-    []
-  );
+  }, [clearTimer, setActiveTransition]);
 
   useLayoutEffect(() => {
     const previous = previousRouteKey.current;
@@ -742,12 +694,13 @@ const MemberShellView = ({
             ariaHidden={false}
             chromeVisible={chromeVisible}
             overlay={
-              optimistic ? (
-                <OptimisticRouteSkeleton
-                  onSettled={clearOptimistic}
-                  targetPath={optimistic.target}
+              <Suspense fallback={null}>
+                <OptimisticCover
+                  failed={navigationFailure !== null}
+                  pathname={pathname}
+                  transition={transition}
                 />
-              ) : null
+              </Suspense>
             }
             transition={transition}
           >
