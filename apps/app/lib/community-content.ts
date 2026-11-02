@@ -17,7 +17,7 @@ const allowedNodes = new Set([
   "mention",
 ]);
 
-const allowedMarks = new Set(["bold", "italic", "code", "link"]);
+const allowedMarks = new Set(["bold", "italic", "strike", "code", "link"]);
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === "object" && !Array.isArray(value);

@@ -300,7 +300,7 @@ export const getPlannerCalendarFeedItems = async (
       endsAt: new Date(task.dueAt.getTime() + 30 * 60_000),
       description: task.description,
       url: absoluteUrl(
-        `/planejamento?view=tasks&task=${encodeURIComponent(task.id)}`
+        `/planejamento?view=calendar&task=${encodeURIComponent(task.id)}`
       ),
     });
   }

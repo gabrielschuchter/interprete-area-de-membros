@@ -8,6 +8,7 @@ import {
   LockKeyholeIcon,
   UsersRoundIcon,
 } from "lucide-react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { CommunityNavigation } from "@/components/community/community-navigation";
 import { GroupCoverUpload } from "@/components/community/group-cover-upload";
@@ -264,3 +265,5 @@ const NewStudyGroupPage = async ({
 };
 
 export default NewStudyGroupPage;
+
+export const metadata: Metadata = { title: "Novo grupo | Interprete" };

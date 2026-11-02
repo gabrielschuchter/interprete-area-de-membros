@@ -451,11 +451,7 @@ const MeetingsPage = async ({
               title: recording.originalTitle ?? recording.asset.title,
             })),
           }))}
-          recordingsBasePath={
-            inCommunity
-              ? "/comunidade/encontros/gravacoes"
-              : "/encontros/gravacoes"
-          }
+          recordingsBasePath={"/comunidade/encontros/gravacoes"}
         />
         <section aria-labelledby="upcoming-heading" className="mt-14">
           <div className="flex items-end justify-between border-border border-b pb-3">
@@ -540,9 +536,7 @@ const MeetingsPage = async ({
                       <Button asChild size="sm" variant="outline">
                         <Link
                           href={
-                            (inCommunity
-                              ? "/comunidade/encontros/gravacoes"
-                              : "/encontros/gravacoes") +
+                            "/comunidade/encontros/gravacoes" +
                             "?asset=" +
                             encodeURIComponent(internalRecording.asset.id)
                           }

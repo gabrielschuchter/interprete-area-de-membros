@@ -1,5 +1,6 @@
 import { BadgeCriterion, database } from "@repo/database";
 import { BadgeCheckIcon } from "lucide-react";
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { ProfileBadgeIcon } from "@/components/profile/profile-badge-icon";
 import { getAuth } from "@/lib/auth";
@@ -215,3 +216,5 @@ const AchievementsPage = async () => {
 };
 
 export default AchievementsPage;
+
+export const metadata: Metadata = { title: "Conquistas | Interprete" };

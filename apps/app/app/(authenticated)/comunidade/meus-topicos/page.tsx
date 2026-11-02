@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 const LegacyMyPublicationsPage = () => {
@@ -5,3 +6,5 @@ const LegacyMyPublicationsPage = () => {
 };
 
 export default LegacyMyPublicationsPage;
+
+export const metadata: Metadata = { title: "Meus tópicos | Interprete" };

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import RecordingLibraryPageContent from "@/components/meetings/recording-library-page-content";
 
 export const dynamic = "force-dynamic";
@@ -18,3 +19,5 @@ const CommunityRecordingsPage = ({
 );
 
 export default CommunityRecordingsPage;
+
+export const metadata: Metadata = { title: "Minhas gravações | Interprete" };

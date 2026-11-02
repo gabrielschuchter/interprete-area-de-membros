@@ -1,4 +1,5 @@
 import { Button } from "@repo/design-system/components/ui/button";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { ExerciseEyebrow } from "@/components/exercises/exercise-eyebrow";
 import { ExerciseProgress } from "@/components/exercises/exercise-progress";
@@ -144,3 +145,7 @@ const ExerciseHistoryPage = async ({
 };
 
 export default ExerciseHistoryPage;
+
+export const metadata: Metadata = {
+  title: "Histórico de exercícios | Interprete",
+};

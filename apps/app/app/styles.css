@@ -1,6 +1,14 @@
 @import "tailwindcss" source(none);
 @import "@repo/design-system/styles/globals.css";
 @import "./study.css";
+
+/* O preflight zera a margem de todos os elementos, e um <dialog> modal sem
+   margem automática abre colado no canto superior esquerdo. */
+@layer base {
+  dialog:modal {
+    margin: auto;
+  }
+}
 @source "../**/*.{ts,tsx}";
 
 @layer components {
@@ -3504,6 +3512,112 @@
     border-radius: 4px;
   }
 
+  .community-toolbar-separator {
+    flex: none;
+    align-self: stretch;
+    width: 1px;
+    margin: 6px 4px;
+    background: #e2d6d1;
+  }
+
+  .community-toolbar-button:disabled {
+    opacity: 0.35;
+  }
+
+  .community-toolbar-style select {
+    height: 44px;
+    padding: 0 10px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #40222f;
+    cursor: pointer;
+    background: transparent;
+    border: 0;
+    border-radius: 4px;
+  }
+
+  .community-toolbar-style select:hover,
+  .community-toolbar-style select:focus-visible {
+    background: #f1ebe8;
+  }
+
+  .community-toolbar-more {
+    position: relative;
+  }
+
+  .community-toolbar-more summary {
+    display: inline-flex;
+    gap: 4px;
+    align-items: center;
+    height: 44px;
+    padding: 0 10px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #40222f;
+    cursor: pointer;
+    list-style: none;
+    border-radius: 4px;
+  }
+
+  .community-toolbar-more summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .community-toolbar-more summary svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .community-toolbar-more summary:hover,
+  .community-toolbar-more[open] summary {
+    background: #f1ebe8;
+  }
+
+  .community-toolbar-more__menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    z-index: 50;
+    display: grid;
+    min-width: 200px;
+    padding: 4px;
+    background: #fff;
+    border: 1px solid #e2d6d1;
+    border-radius: 8px;
+    box-shadow: 0 10px 30px rgb(64 34 47 / 16%);
+  }
+
+  .community-toolbar-more__menu button {
+    min-height: 40px;
+    padding: 0 12px;
+    font-size: 14px;
+    color: #40222f;
+    text-align: left;
+    border-radius: 4px;
+  }
+
+  .community-toolbar-more__menu button:hover,
+  .community-toolbar-more__menu button:focus-visible {
+    background: #f1ebe8;
+  }
+
+  .community-editor-toolbar-host {
+    position: sticky;
+    top: calc(var(--member-header-height, 64px) + 69px);
+    z-index: 30;
+    margin-inline: -24px;
+  }
+
+  .community-editor-toolbar-host .community-editor-toolbar-slot {
+    position: static;
+  }
+
+  .community-editor-toolbar-host .community-editor-toolbar {
+    justify-content: center;
+    border-block: 1px solid #e2d6d1;
+    border-radius: 0;
+  }
+
   .community-toolbar-button:hover,
   .community-toolbar-button:focus-visible {
     color: #8c1535;
@@ -5581,6 +5695,62 @@ html[data-shell-fallback][data-shell-arrival="return"] .member-route-page {
     border-radius: 6px;
   }
 
+  .community-saved-labels {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    min-width: 0;
+    padding: 8px 2px 0;
+    margin: 0;
+    color: #7a5a69;
+    border: 0;
+  }
+
+  .community-saved-label {
+    display: inline-flex;
+    gap: 2px;
+    align-items: center;
+    min-height: 28px;
+    padding: 0 4px 0 10px;
+    font-size: 12px;
+    color: #40222f;
+    background: #f1ebe8;
+    border-radius: 999px;
+  }
+
+  .community-saved-label button {
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    color: #7a5a69;
+    border-radius: 999px;
+  }
+
+  .community-saved-label button:hover,
+  .community-saved-label button:focus-visible {
+    color: #8c1535;
+    background: #fff;
+  }
+
+  .community-saved-label-form input {
+    width: 150px;
+    min-height: 32px;
+    padding: 0 10px;
+    font-size: 12px;
+    color: #40222f;
+    background: transparent;
+    border: 1px dashed #cdbbb5;
+    border-radius: 999px;
+  }
+
+  .community-saved-label-form input:focus-visible {
+    outline: 2px solid #8c1535;
+    outline-offset: 1px;
+    border-style: solid;
+  }
+
   .community-share-destinations {
     display: flex;
     flex-wrap: wrap;
@@ -5588,7 +5758,7 @@ html[data-shell-fallback][data-shell-arrival="return"] .member-route-page {
     margin-top: 10px;
   }
 
-  .community-share-destinations a,
+  .community-share-destinations button,
   .community-share-destination-disabled {
     display: inline-flex;
     gap: 8px;
@@ -5599,13 +5769,14 @@ html[data-shell-fallback][data-shell-arrival="return"] .member-route-page {
     font-weight: 500;
     color: #40222f;
     text-decoration: none;
+    cursor: pointer;
     background: #fff;
     border: 1px solid #e2d6d1;
     border-radius: 6px;
   }
 
-  .community-share-destinations a:hover,
-  .community-share-destinations a:focus-visible {
+  .community-share-destinations button:hover,
+  .community-share-destinations button:focus-visible {
     color: #8c1535;
     outline: none;
     border-color: #8c1535;

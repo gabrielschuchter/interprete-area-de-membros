@@ -325,7 +325,7 @@ const syncTaskOccurrenceReminder = async (
     reminderAt: new Date(dueAt.getTime() - task.reminderMinutes * 60_000),
     occurrenceAt,
     timezone,
-    href: `/planejamento?view=tasks&task=${encodeURIComponent(taskId)}&occurrence=${encodeURIComponent(occurrenceAt.toISOString())}`,
+    href: `/planejamento?view=calendar&task=${encodeURIComponent(taskId)}&occurrence=${encodeURIComponent(occurrenceAt.toISOString())}`,
   });
 };
 
@@ -1065,6 +1065,12 @@ export const getPlannerDashboard = async (
     cohortEvents: calendar.cohortEvents,
     studySessions: calendarStudySessions,
     goals,
+    goalWindows: {
+      weekStart: weekStartDate,
+      weekEnd,
+      monthStart,
+      monthEnd,
+    },
     preferences,
     stats: {
       weeklyMinutes: Math.floor((weekMinutes._sum.seconds ?? 0) / 60),
@@ -1191,7 +1197,7 @@ const syncTaskReminder = async (
     reminderAt: new Date(dueAt.getTime() - values.reminderMinutes * 60_000),
     occurrenceAt,
     timezone,
-    href: `/planejamento?view=tasks&task=${encodeURIComponent(id)}${values.recurrence !== PlannerRecurrence.NONE ? `&occurrence=${encodeURIComponent(occurrenceAt.toISOString())}` : ""}`,
+    href: `/planejamento?view=calendar&task=${encodeURIComponent(id)}${values.recurrence !== PlannerRecurrence.NONE ? `&occurrence=${encodeURIComponent(occurrenceAt.toISOString())}` : ""}`,
   });
 };
 
@@ -2176,7 +2182,7 @@ export const upcomingPlannerNotice = async (memberId: string) => {
     kind: "task" as const,
     title: task.title,
     startsAt: task.dueAt.toISOString(),
-    href: `/planejamento?view=tasks&task=${encodeURIComponent(task.id)}${task.occurrenceAt ? `&occurrence=${encodeURIComponent(task.occurrenceAt.toISOString())}` : ""}`,
+    href: `/planejamento?view=calendar&task=${encodeURIComponent(task.id)}${task.occurrenceAt ? `&occurrence=${encodeURIComponent(task.occurrenceAt.toISOString())}` : ""}`,
     timezone,
   };
 };

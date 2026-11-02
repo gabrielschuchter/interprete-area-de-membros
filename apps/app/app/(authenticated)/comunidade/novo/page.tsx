@@ -1,4 +1,5 @@
 import type { JSONContent } from "@tiptap/core";
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { CommunityComposer } from "@/components/community/community-composer";
 import { getCommunitySpaces } from "@/lib/community";
@@ -70,3 +71,5 @@ const NewCommunityContentPage = async ({
 };
 
 export default NewCommunityContentPage;
+
+export const metadata: Metadata = { title: "Nova publicação | Interprete" };

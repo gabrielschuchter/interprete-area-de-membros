@@ -398,6 +398,7 @@ model Member {
   onboardingStatus                    OnboardingStatus                   @default(NOT_STARTED)
   onboardingStep                      Int                                @default(0)
   onboardingVersion                   Int                                @default(1)
+  gestaoWelcomeSeenAt                 DateTime?
   onboardingStartedAt                 DateTime?
   onboardingCompletedAt               DateTime?
   deactivatedAt                       DateTime?
@@ -1310,6 +1311,7 @@ model Notification {
   @@index([memberId, communitySpaceId, createdAt])
   @@index([groupKey, createdAt])
   @@index([announcementId, announcementVersion, memberId])
+  @@index([actorId])
 }
 
 model Mention {
@@ -1551,6 +1553,7 @@ model CommunityBookmark {
   id        String        @id @default(cuid())
   postId    String
   memberId  String
+  labels    String[]      @default([])
   createdAt DateTime      @default(now())
   post      CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
 
@@ -1884,6 +1887,11 @@ model ContentCollectionItem {
   @@index([itemType, recordingId])
   @@index([recordingId])
   @@index([itemType, libraryItemId])
+  @@index([lessonId])
+  @@index([courseId])
+  @@index([exerciseListId])
+  @@index([assetId])
+  @@index([libraryItemId])
 }
 
 model HomeBlockConfiguration {
@@ -2007,6 +2015,7 @@ model ExerciseQuestion {
   @@unique([bankId, slug])
   @@index([bankId, status, categoryId])
   @@index([status, updatedAt])
+  @@index([categoryId])
 }
 
 model ExerciseQuestionVersion {
@@ -2077,6 +2086,7 @@ model ExerciseListItem {
   @@unique([listId, position])
   @@unique([listId, questionId])
   @@index([questionVersionId])
+  @@index([questionId])
 }
 
 model ExerciseSession {
@@ -2179,9 +2189,22 @@ model StudyGoal {
   member        Member                 @relation(fields: [memberId], references: [id], onDelete: Cascade)
   revisions     StudyGoalRevision[]
   achievements  StudyGoalAchievement[]
+  topics        StudyGoalTopic[]
 
   @@unique([memberId, period])
   @@index([memberId, updatedAt])
+}
+
+model StudyGoalTopic {
+  id           String    @id @default(cuid())
+  goalId       String
+  topic        String
+  sharePercent Int
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  goal         StudyGoal @relation(fields: [goalId], references: [id], onDelete: Cascade)
+
+  @@unique([goalId, topic])
 }
 
 model StudyGoalRevision {

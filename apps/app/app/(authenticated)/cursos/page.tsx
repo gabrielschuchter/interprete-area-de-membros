@@ -1,4 +1,5 @@
 import { tracePerformance } from "@repo/observability/performance";
+import type { Metadata } from "next";
 import "./cursos.css";
 import { CursosView } from "@/components/learning/cursos/cursos-view";
 import { LearningCatalog } from "@/components/learning/learning-catalog";
@@ -421,3 +422,5 @@ const LearnPage = async () => {
 };
 
 export default LearnPage;
+
+export const metadata: Metadata = { title: "Cursos | Interprete" };

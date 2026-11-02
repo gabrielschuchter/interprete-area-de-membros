@@ -23,6 +23,8 @@ interface CourseViewLesson {
   readonly ordinal: number;
   readonly positionSeconds: number | null;
   readonly progressPercent: number | null;
+  /** Prévia da Gestão: a linha aparece como o aluno a vê, sem ação. */
+  readonly readOnly?: boolean;
   readonly releaseLabel: string | null;
   readonly title: string;
 }
@@ -71,6 +73,7 @@ const LessonRow = ({
   readonly rowId: string;
 }) => {
   const locked = lesson.releaseLabel !== null;
+  const inert = locked || lesson.readOnly === true;
   let sub = lesson.minutes ? `${lesson.minutes} min` : "";
   if (locked) {
     sub = lesson.releaseLabel ?? "";
@@ -116,8 +119,8 @@ const LessonRow = ({
       current={current}
       dataFlash={flash}
       dataOff={locked}
-      disabled={locked || pending}
-      href={locked ? null : lesson.href}
+      disabled={inert || pending}
+      href={inert ? null : lesson.href}
       id={rowId}
       linkClassName="cb-li__a"
       onToggle={(value) => onToggle(lesson, value)}

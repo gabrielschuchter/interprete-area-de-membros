@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { database } from "@repo/database";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { YouTubePlaylistImport } from "@/components/gestao/youtube-playlist-import";
+import { LazyYouTubePlaylistImport } from "@/components/gestao/lazy-youtube-playlist-import";
 import { getAdminCourse } from "@/lib/admin-learning";
 import { requireGestaoAction } from "@/lib/gestao-authorization";
 import {
@@ -188,7 +188,7 @@ const GestaoCourseEditorPage = async ({
           {course.modules.length > 0 ? (
             <div className="gk-course-yt">
               <p>Tem uma lista de reprodução no YouTube?</p>
-              <YouTubePlaylistImport
+              <LazyYouTubePlaylistImport
                 courseId={course.id}
                 courseStatus={course.status}
                 initialIdempotencyKey={randomUUID()}

@@ -47,7 +47,7 @@ const MeetingPage = async ({ params }: MeetingPageProperties) => {
     <div className="min-h-svh bg-background">
       <main className="mx-auto w-full max-w-[960px] px-5 py-8 sm:px-8 lg:px-12 lg:py-14">
         <Button asChild className="-ml-3" variant="ghost">
-          <Link href="/encontros">
+          <Link href="/comunidade/encontros">
             <ArrowLeftIcon aria-hidden="true" /> Voltar para encontros
           </Link>
         </Button>
@@ -133,7 +133,9 @@ const MeetingPage = async ({ params }: MeetingPageProperties) => {
             )}
             {meeting.recordings.map((recording) => (
               <Button asChild key={recording.id} size="lg" variant="outline">
-                <Link href={`/encontros/gravacoes?asset=${recording.asset.id}`}>
+                <Link
+                  href={`/comunidade/encontros/gravacoes?asset=${recording.asset.id}`}
+                >
                   {recording.originalTitle ?? recording.asset.title}
                 </Link>
               </Button>

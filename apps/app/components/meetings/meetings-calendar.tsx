@@ -82,7 +82,7 @@ const meetingStateClass = (isSelected: boolean, isPast: boolean) => {
 
 export const MeetingsCalendar = ({
   meetings,
-  recordingsBasePath = "/encontros/gravacoes",
+  recordingsBasePath = "/comunidade/encontros/gravacoes",
 }: MeetingsCalendarProperties) => {
   const today = new Date();
   const [view, setView] = useState<"month" | "week">("month");

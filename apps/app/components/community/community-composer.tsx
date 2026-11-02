@@ -159,6 +159,7 @@ export function CommunityComposer({
   );
   const [errorMessage, setErrorMessage] = useState("");
   const [publishing, setPublishing] = useState(false);
+  const [toolbarHost, setToolbarHost] = useState<HTMLDivElement | null>(null);
   const [leaving, setLeaving] = useState(false);
   const [exitDialogOpen, setExitDialogOpen] = useState(false);
   const [savedPostId, setSavedPostId] = useState(postId);
@@ -846,6 +847,7 @@ export function CommunityComposer({
         </div>
       )}
 
+      <div className="community-editor-toolbar-host" ref={setToolbarHost} />
       <form
         className="community-editor-form"
         id="community-editor-form"
@@ -1033,6 +1035,7 @@ export function CommunityComposer({
               groupMentionConfirmedRef.current = confirmed;
             }}
             onUploadStateChange={setIsUploadingInlineImage}
+            toolbarTarget={toolbarHost}
           />
         </div>
       </form>

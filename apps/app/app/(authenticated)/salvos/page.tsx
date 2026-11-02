@@ -6,6 +6,7 @@ import {
   ListChecksIcon,
   MessageCircleIcon,
 } from "lucide-react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { toggleLearningBookmark } from "@/app/(authenticated)/biblioteca/actions";
 import { IntentLink } from "@/app/(authenticated)/components/intent-link";
@@ -346,3 +347,5 @@ const SavedPage = async ({ searchParams }: SavedPageProperties) => {
 };
 
 export default SavedPage;
+
+export const metadata: Metadata = { title: "Salvos | Interprete" };

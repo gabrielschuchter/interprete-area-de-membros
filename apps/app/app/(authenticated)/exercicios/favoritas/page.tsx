@@ -1,4 +1,5 @@
 import { Button } from "@repo/design-system/components/ui/button";
+import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { ExerciseEmptyIllustration } from "@/components/exercises/exercise-empty-illustration";
@@ -133,3 +134,5 @@ const ExerciseFavoritesPage = async ({
 };
 
 export default ExerciseFavoritesPage;
+
+export const metadata: Metadata = { title: "Questões favoritas | Interprete" };

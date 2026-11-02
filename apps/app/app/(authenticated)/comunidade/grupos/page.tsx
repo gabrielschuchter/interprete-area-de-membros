@@ -1,5 +1,6 @@
 import { Button } from "@repo/design-system/components/ui/button";
 import { PlusIcon } from "lucide-react";
+import type { Metadata } from "next";
 import { IntentLink as Link } from "@/app/(authenticated)/components/intent-link";
 import {
   CommunityGroupFilters,
@@ -84,3 +85,5 @@ const StudyGroupsPage = async ({ searchParams }: StudyGroupsPageProperties) => {
 };
 
 export default StudyGroupsPage;
+
+export const metadata: Metadata = { title: "Grupos | Interprete" };

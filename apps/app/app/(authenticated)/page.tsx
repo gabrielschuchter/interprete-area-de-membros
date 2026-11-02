@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { PortalView } from "@/components/portal/portal-view";
 import { requireOnboardedMemberId } from "@/lib/authorization";
 import { getPortalNoteText } from "@/lib/personalization";
@@ -37,3 +38,5 @@ const PortalPage = async () => {
 };
 
 export default PortalPage;
+
+export const metadata: Metadata = { title: "Início | Interprete" };

@@ -87,6 +87,8 @@ const applyMark = (
       return <strong key={`${key}-bold`}>{content}</strong>;
     case "italic":
       return <em key={`${key}-italic`}>{content}</em>;
+    case "strike":
+      return <s key={`${key}-strike`}>{content}</s>;
     case "code":
       return (
         <code

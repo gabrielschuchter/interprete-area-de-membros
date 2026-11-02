@@ -1469,7 +1469,6 @@
   font-size: 15px;
   font-style: italic;
   line-height: 22px;
-  color: var(--portal-muted);
-  background: rgb(255 255 255 / 55%);
-  border-radius: 4px;
+  color: var(--portal-brass);
+  background: transparent;
 }

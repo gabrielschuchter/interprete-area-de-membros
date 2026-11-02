@@ -159,9 +159,7 @@ const RecordingLibraryPage = async ({
   const nextHref = page.nextCursor
     ? recordingArchiveHref({
         asset,
-        basePath: inCommunity
-          ? "/comunidade/encontros/gravacoes"
-          : "/encontros/gravacoes",
+        basePath: "/comunidade/encontros/gravacoes",
         cursor: page.nextCursor,
         query: q,
         year,
@@ -225,15 +223,7 @@ const RecordingLibraryPage = async ({
           </Button>
           {(q || year) && (
             <Button asChild type="button" variant="ghost">
-              <Link
-                href={
-                  inCommunity
-                    ? "/comunidade/encontros/gravacoes"
-                    : "/encontros/gravacoes"
-                }
-              >
-                Limpar
-              </Link>
+              <Link href={"/comunidade/encontros/gravacoes"}>Limpar</Link>
             </Button>
           )}
         </form>

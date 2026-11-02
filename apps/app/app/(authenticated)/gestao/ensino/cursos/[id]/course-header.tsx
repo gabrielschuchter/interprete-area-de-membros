@@ -68,6 +68,13 @@ export const GestaoCourseHeader = ({
           >
             Pré-visualizar como aluno
           </Link>
+          <Link
+            className="gk-btn"
+            href={`/gestao/ensino/cursos/${course.id}/publicacao`}
+            prefetch={false}
+          >
+            Verificar publicação
+          </Link>
           <CourseStatusButton courseId={course.id} status={course.status} />
         </div>
       </header>

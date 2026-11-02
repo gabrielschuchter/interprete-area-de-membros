@@ -1341,6 +1341,7 @@ export const getSavedCommunityPosts = async (
   options: {
     readonly cursor?: string;
     readonly kind?: CommunityPostKind;
+    readonly label?: string;
     readonly query?: string;
     readonly sort?: CommunityFeedOptions["sort"];
     readonly spaceSlug?: string;
@@ -1353,6 +1354,7 @@ export const getSavedCommunityPosts = async (
   const authorIds = await findMatchingCommunityAuthorIds(query);
   const where: Prisma.CommunityBookmarkWhereInput = {
     memberId,
+    ...(options.label ? { labels: { has: options.label } } : {}),
     post: {
       is: {
         status: ContentStatus.PUBLISHED,
@@ -1407,20 +1409,24 @@ export const getSavedCommunityPosts = async (
       select: {
         id: true,
         createdAt: true,
+        labels: true,
         post: { select: communityFeedSelect(memberId) },
       },
     }),
     database.communityBookmark.count({ where }),
   ]);
   const visibleBookmarks = bookmarks.slice(0, pageSize);
-  const posts = visibleBookmarks.map(({ createdAt: savedAt, post }) => ({
-    ...post,
-    coverUrl: normalizeCommunityCoverUrl(post.coverUrl),
-    excerpt: post.excerpt ?? "",
-    media: extractCommunityMedia(post.contentJson),
-    readingMinutes: readingMinutes(post.excerpt ?? ""),
-    savedAt,
-  }));
+  const posts = visibleBookmarks.map(
+    ({ createdAt: savedAt, labels, post }) => ({
+      ...post,
+      coverUrl: normalizeCommunityCoverUrl(post.coverUrl),
+      excerpt: post.excerpt ?? "",
+      media: extractCommunityMedia(post.contentJson),
+      readingMinutes: readingMinutes(post.excerpt ?? ""),
+      savedAt,
+      savedLabels: labels,
+    })
+  );
   return {
     posts: await enrichAuthors(posts),
     hasMore: bookmarks.length > pageSize,
@@ -1428,6 +1434,58 @@ export const getSavedCommunityPosts = async (
     nextCursor:
       bookmarks.length > pageSize ? visibleBookmarks.at(-1)?.id : undefined,
   };
+};
+
+export const COMMUNITY_SAVED_LABEL_LIMIT = 8;
+export const COMMUNITY_SAVED_LABEL_MAX_LENGTH = 32;
+
+/** Etiquetas pessoais já usadas pelo membro nos salvos, em ordem alfabética. */
+export const getSavedCommunityLabels = async (memberId: string) => {
+  const rows = await database.communityBookmark.findMany({
+    where: { memberId, labels: { isEmpty: false } },
+    select: { labels: true },
+    take: 1000,
+  });
+  return [...new Set(rows.flatMap((row) => row.labels))].sort((left, right) =>
+    left.localeCompare(right, "pt-BR")
+  );
+};
+
+export const normalizeSavedCommunityLabels = (labels: readonly unknown[]) => {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const value of labels) {
+    if (typeof value !== "string") {
+      continue;
+    }
+    const label = value
+      .replaceAll(/\s+/g, " ")
+      .trim()
+      .slice(0, COMMUNITY_SAVED_LABEL_MAX_LENGTH);
+    const key = label.toLocaleLowerCase("pt-BR");
+    if (label && !seen.has(key)) {
+      seen.add(key);
+      result.push(label);
+    }
+  }
+  return result.slice(0, COMMUNITY_SAVED_LABEL_LIMIT);
+};
+
+/** Troca as etiquetas de um salvo do próprio membro. */
+export const setSavedCommunityLabels = async (
+  memberId: string,
+  postId: string,
+  labels: readonly unknown[]
+) => {
+  const normalized = normalizeSavedCommunityLabels(labels);
+  const result = await database.communityBookmark.updateMany({
+    where: { memberId, postId },
+    data: { labels: normalized },
+  });
+  if (result.count === 0) {
+    throw new Error("Esta publicação não está nos seus salvos.");
+  }
+  return normalized;
 };
 
 export const auditStaffPrivateCommunityAccess = async (

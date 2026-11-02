@@ -1,5 +1,6 @@
 import { Button } from "@repo/design-system/components/ui/button";
 import { MailIcon, UserRoundIcon } from "lucide-react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { getOrCreateProfile } from "@/lib/profile";
@@ -121,3 +122,5 @@ const SettingsPage = async () => {
 };
 
 export default SettingsPage;
+
+export const metadata: Metadata = { title: "Configurações | Interprete" };

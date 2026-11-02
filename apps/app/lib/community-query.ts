@@ -77,12 +77,14 @@ export const communityHref = ({
 export const communitySavedHref = ({
   cursor,
   kind,
+  label,
   query,
   sort = "recent",
   spaceSlug,
 }: {
   readonly cursor?: string;
   readonly kind?: CommunityKind;
+  readonly label?: string;
   readonly query?: string;
   readonly sort?: CommunitySort;
   readonly spaceSlug?: string;
@@ -97,6 +99,9 @@ export const communitySavedHref = ({
   }
   if (kind) {
     params.set("tipo", kind);
+  }
+  if (label) {
+    params.set("etiqueta", label);
   }
   if (sort !== "recent") {
     params.set("sort", sort);

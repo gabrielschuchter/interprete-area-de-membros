@@ -2,6 +2,7 @@ import "./gestao.css";
 import "./gestao-areas.css";
 import "./gestao-fonts.css";
 import "./gestao-kit.css";
+import { database } from "@repo/database";
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
@@ -21,6 +22,10 @@ const GestaoLayout = async ({ children }: { readonly children: ReactNode }) => {
   const preview = decodePreviewToken(
     (await cookies()).get(previewCookieName)?.value
   );
+  const seen = await database.member.findUnique({
+    where: { id: actor.userId },
+    select: { gestaoWelcomeSeenAt: true },
+  });
   return (
     <GestaoShell
       avatarUrl={actor.avatarUrl}
@@ -32,6 +37,7 @@ const GestaoLayout = async ({ children }: { readonly children: ReactNode }) => {
       }
       memberId={actor.userId}
       role={actor.role}
+      welcomeSeen={Boolean(seen?.gestaoWelcomeSeenAt)}
     >
       {preview ? (
         <output className="gk-preview-note">

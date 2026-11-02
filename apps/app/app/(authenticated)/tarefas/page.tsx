@@ -2,6 +2,7 @@ import { Badge } from "@repo/design-system/components/ui/badge";
 import { Input } from "@repo/design-system/components/ui/input";
 import { Textarea } from "@repo/design-system/components/ui/textarea";
 import { CheckCircle2Icon, CircleIcon } from "lucide-react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import {
   SingleFlightForm,
@@ -326,3 +327,5 @@ const TasksPage = async ({ searchParams }: TasksPageProperties) => {
 };
 
 export default TasksPage;
+
+export const metadata: Metadata = { title: "Tarefas | Interprete" };
