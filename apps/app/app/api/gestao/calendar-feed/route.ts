@@ -1,4 +1,4 @@
-import { env } from "@/env";
+import { resolveApplicationOrigin } from "@repo/next-config/application-origin";
 import {
   readCohortCalendarFeed,
   serializeCohortCalendarFeed,
@@ -19,7 +19,7 @@ export const GET = async (request: Request) => {
         start: new Date(now.getTime() - 14 * 86_400_000),
         end: new Date(now.getTime() + 180 * 86_400_000),
       },
-      env.NEXT_PUBLIC_APP_URL
+      resolveApplicationOrigin()
     );
     if (!feed) {
       return new Response("Calendário indisponível.", {

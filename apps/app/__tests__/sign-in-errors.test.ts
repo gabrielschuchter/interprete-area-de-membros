@@ -1,4 +1,3 @@
-import { shouldProxyClerkFrontendApi } from "@repo/auth/clerk-proxy";
 import {
   getAuthRedirectPath,
   getPasswordRecoveryErrorState,
@@ -111,10 +110,4 @@ test("preserves same-origin return URLs and rejects external redirects", () => {
       "https://members.example/sign-in?redirect_url=https%3A%2F%2Fevil.example"
     )
   ).toBe("/");
-});
-
-test("only enables the Clerk frontend proxy for production publishable keys", () => {
-  expect(shouldProxyClerkFrontendApi("pk_live_abc")).toBe(true);
-  expect(shouldProxyClerkFrontendApi("pk_test_abc")).toBe(false);
-  expect(shouldProxyClerkFrontendApi(undefined)).toBe(false);
 });

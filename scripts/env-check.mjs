@@ -77,7 +77,6 @@ const requirements = [
   ["app", "DATABASE_URL", "core"],
   ["app", "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", "core"],
   ["app", "CLERK_SECRET_KEY", "core"],
-  ["api", "NEXT_PUBLIC_APP_URL", "core"],
   ["api", "DATABASE_URL", "core"],
   ["api", "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", "core"],
   ["api", "CLERK_SECRET_KEY", "core"],

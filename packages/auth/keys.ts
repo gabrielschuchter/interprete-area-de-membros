@@ -1,6 +1,6 @@
 import { createEnv } from "@t3-oss/env-nextjs";
 import { z } from "zod";
-import { getClerkDevelopmentConfigurationError } from "./clerk-proxy";
+import { getClerkEnvironmentConfigurationError } from "./clerk-environment";
 
 const optionalPrefixedString = (prefix: string) =>
   z.preprocess((value) => {
@@ -21,18 +21,33 @@ const optionalPath = z.preprocess((value) => {
   return normalized || undefined;
 }, z.string().startsWith("/").optional());
 
-export const keys = () => {
-  const developmentConfigurationError = getClerkDevelopmentConfigurationError({
+export const keys = (options?: { autoProxyGuardEnabled?: boolean }) => {
+  const clerkConfigurationError = getClerkEnvironmentConfigurationError({
+    autoProxyGuardEnabled: options?.autoProxyGuardEnabled,
     nodeEnv: process.env.NODE_ENV,
     publishableKey: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
     secretKey: process.env.CLERK_SECRET_KEY,
-    proxyUrl:
-      process.env.NEXT_PUBLIC_CLERK_PROXY_URL ?? process.env.CLERK_PROXY_URL,
-    frontendApi: process.env.NEXT_PUBLIC_CLERK_FAPI ?? process.env.CLERK_FAPI,
+    vercelTargetEnv: process.env.VERCEL_TARGET_ENV,
+    vercelProductionUrl: process.env.VERCEL_PROJECT_PRODUCTION_URL,
+    disableAutoProxy: process.env.CLERK_DISABLE_AUTO_PROXY,
+    proxyVariables: [
+      { name: "CLERK_PROXY_URL", value: process.env.CLERK_PROXY_URL },
+      {
+        name: "NEXT_PUBLIC_CLERK_PROXY_URL",
+        value: process.env.NEXT_PUBLIC_CLERK_PROXY_URL,
+      },
+      { name: "CLERK_FAPI", value: process.env.CLERK_FAPI },
+      {
+        name: "NEXT_PUBLIC_CLERK_FAPI",
+        value: process.env.NEXT_PUBLIC_CLERK_FAPI,
+      },
+    ]
+      .filter(({ value }) => Boolean(value?.trim()))
+      .map(({ name }) => name),
   });
 
-  if (developmentConfigurationError) {
-    throw new Error(developmentConfigurationError);
+  if (clerkConfigurationError) {
+    throw new Error(clerkConfigurationError);
   }
 
   return createEnv({

@@ -1,21 +1,13 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { resolveApiOrigin } from "../lib/application-origin";
 
 interface RootLayoutProperties {
   readonly children: ReactNode;
 }
 
-const configuredUrl =
-  process.env.VERCEL_PROJECT_PRODUCTION_URL ??
-  process.env.NEXT_PUBLIC_APP_URL ??
-  "http://localhost:3002";
-
 export const metadata: Metadata = {
-  metadataBase: new URL(
-    configuredUrl.startsWith("http")
-      ? configuredUrl
-      : `https://${configuredUrl}`
-  ),
+  metadataBase: new URL(resolveApiOrigin()),
 };
 
 const RootLayout = ({ children }: RootLayoutProperties) => (

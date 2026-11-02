@@ -19,6 +19,10 @@ secrets.
   `@repo/auth/appearance`.
 - Deployments: Vercel projects linked to
   `gabrielschuchter/interprete-area-de-membros`.
+- Public origins: institutional site `https://escolainterprete.com.br` and
+  member app `https://membros.escolainterprete.com.br`. The Clerk Production
+  Frontend API uses the dedicated `clerk.membros` DNS record. See
+  [`domain-architecture.md`](../architecture/domain-architecture.md).
 
 ## Core variables
 
@@ -27,7 +31,7 @@ secrets.
 | `DATABASE_URL` | `apps/app`, `apps/api`, `@repo/database` runtime | `apps/*/.env.local` | Vercel project environments | Yes | Supabase Connect, transaction pooler (`6543`) |
 | `DIRECT_URL` | Prisma CLI and migrations | `packages/database/.env` | Normally not set; add only where Prisma CLI runs | Yes for Prisma CLI | Supabase Connect, session pooler (`5432`) |
 | `DATABASE_CA_CERT_PATH` | Prisma/PostgreSQL TLS verification | `packages/database/.env` when overriding the bundled certificate | Add only when the platform needs an explicit CA path | Optional | Supabase Database settings, CA certificate |
-| `NEXT_PUBLIC_APP_URL` | Next config and metadata | app/API env file | Per Vercel environment | Yes | The current app origin for that environment |
+| `NEXT_PUBLIC_APP_URL` | App metadata, auth origin and public member links | app env file | Per Vercel environment | Yes | The current member app origin; Preview links resolve to the active Vercel branch/deployment |
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk browser SDK | app/API env file | Development locally; Preview / Production in Vercel | Yes | Clerk Dashboard, matching instance API keys |
 | `CLERK_SECRET_KEY` | Clerk server SDK | app/API env file | Development locally; Preview / Production in Vercel | Yes | Clerk Dashboard, matching instance API keys |
 | `CLERK_WEBHOOK_SIGNING_SECRET` | API Clerk webhook route | API env file | Preview / Production when webhook is enabled | Feature | Clerk Dashboard webhook endpoint |
@@ -42,6 +46,11 @@ is the session pooler URL used by `packages/database/prisma.config.ts` for
 migrations and introspection. The database password is not recoverable from the
 Supabase dashboard after creation; resetting it is a coordinated credential
 rotation and is not performed automatically.
+
+The API project does not consume `NEXT_PUBLIC_APP_URL`. Its metadata origin is
+resolved from the API project's own Vercel Production hostname or Preview
+branch/deployment, with `NEXT_PUBLIC_API_URL` available as an explicit override.
+This keeps an API deploy independent from the member app's public hostname.
 
 `prisma.config.ts` enforces `sslmode=verify-full` and the bundled Supabase CA
 for Prisma CLI connections, even if a copied connection string contains a
@@ -58,12 +67,22 @@ certificate elsewhere. TLS verification is not disabled.
 
 For local sign-in, configure the matching `pk_test_` and `sk_test_` keys from
 the Clerk Development instance in both `apps/app/.env.local` and, when running
-the local API, `apps/api/.env.local`. The app's local development setup uses
-the Development Frontend API directly: leave `CLERK_PROXY_URL`,
-`NEXT_PUBLIC_CLERK_PROXY_URL`, `CLERK_FAPI`, and `NEXT_PUBLIC_CLERK_FAPI`
-unset. The local development guard rejects Production keys and environment
-overrides that would route Development credentials through the Production
-proxy. Production continues to use the same-origin `/__clerk` proxy.
+the local API, `apps/api/.env.local`. Development uses the Development
+Frontend API directly. Production uses the Clerk Frontend API CNAME
+`clerk.membros.escolainterprete.com.br` and the public app origin
+`https://membros.escolainterprete.com.br`.
+
+Do not configure `CLERK_PROXY_URL`, `NEXT_PUBLIC_CLERK_PROXY_URL`, `CLERK_FAPI`
+or `NEXT_PUBLIC_CLERK_FAPI` in any environment. The shared auth configuration
+rejects these retired proxy variables instead of silently choosing an
+inconsistent FAPI. `NEXT_PUBLIC_APP_URL` is HTTPS in deployed environments;
+Preview link generation prefers `VERCEL_BRANCH_URL`, then `VERCEL_URL`, and
+fails closed if neither is present. Local HTTP is restricted to loopback.
+
+The API's `PREVIEW_OUTBOX_RECOVERY_URL` is an optional server-only Production
+setting used only when `PREVIEW_OUTBOX_RECOVERY_ENABLED=true`. It must point to
+the verified API Preview branch's HTTPS `/cron/outbox` endpoint; the runtime
+validates that it is a Vercel Preview host before forwarding a recovery call.
 
 The local `dev` scripts start Bun with `--use-system-ca`, so Windows uses its
 trusted operating-system CA store for outbound Clerk requests. This preserves

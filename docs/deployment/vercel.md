@@ -1,78 +1,136 @@
-# Vercel — member app and API
+# Vercel — área de membros e API
 
 ## Projetos
 
-- Projeto da área de membros: `interprete-area-de-membros-app`
-  - Project ID: `prj_bwG8vDd4x2flyPaRMq8HEvi7t5Lj`
-  - Root Directory: `apps/app`
-  - Framework: Next.js
-  - Node: `24.x`
-  - Production aliases: `interprete-area-de-membros.vercel.app` e
-    `interprete-area-de-membros-app.vercel.app`
-- Projeto da API: `interprete-area-de-membros-api`
-  - Project ID: `prj_LzsMnY95oPtOdp6KUwUaPRQ5lfh6`
-  - Root Directory: `apps/api`
-  - Framework: Next.js
-  - Node: `24.x`
-- Package manager: Bun via `bun.lock`
-- Build: Vercel/Turborepo detecta o pacote `api`
-- Região efetiva das funções Production, conferida em 06/10/2026 pelo header
-  `x-vercel-id`: app `iad1`, API `gru1`. Como o Supabase GREEN está em
-  `sa-east-1`, `apps/app/vercel.json` agora fixa o app em `gru1`, mesma região
-  do banco e da API; o deployment publicado continua em `iad1` até a próxima
-  publicação. A mudança ainda precisa de verificação pelo header do alias após
-  o release.
+- Área de membros: `interprete-area-de-membros-app`, projeto
+  `prj_bwG8vDd4x2flyPaRMq8HEvi7t5Lj`, root `apps/app`, Next.js, Node `24.x`.
+- API: `interprete-area-de-membros-api`, projeto
+  `prj_LzsMnY95oPtOdp6KUwUaPRQ5lfh6`, root `apps/api`, Next.js, Node `24.x`.
+- A instalação usa Bun via `bun.lock` e Turborepo.
+- O app Production atende `membros.escolainterprete.com.br`. Os aliases
+  `interprete-area-de-membros.vercel.app` e
+  `interprete-area-de-membros-app.vercel.app` são mantidos apenas como entradas
+  de redirect para links históricos.
+- A API mantém seu domínio Vercel próprio. Webhooks Clerk Production continuam
+  em `/webhooks/auth` nesse projeto; nenhuma URL de webhook deve apontar ao app.
 
-O deploy é acionado pelo branch `main`. O `.vercelignore` exclui estado local e artefatos gerados de deploys iniciados pela CLI.
+## Origins e variáveis
 
-## Variáveis
+- `NEXT_PUBLIC_APP_URL` no app Production é
+  `https://membros.escolainterprete.com.br`.
+- O app resolve Preview em runtime/build pelo `VERCEL_BRANCH_URL`, com
+  `VERCEL_URL` como fallback. A URL Production configurada não é usada para
+  emitir links de Preview. Um Preview sem origin HTTPS próprio falha fechado.
+- A metadata da API usa o hostname Production do próprio projeto e, em Preview,
+  o branch/deployment Vercel da API; não usa o hostname Production como base de
+  páginas Preview.
+- O Clerk Production usa DNS/CNAME direto para sua Frontend API. O registro
+  `clerk.membros` aponta para o target publicado pelo Clerk (`frontend-api.clerk.services`).
+  Não configure proxy `/__clerk` ou variáveis `CLERK_PROXY_URL`,
+  `NEXT_PUBLIC_CLERK_PROXY_URL`, `CLERK_FAPI` ou `NEXT_PUBLIC_CLERK_FAPI`.
+- `CLERK_DISABLE_AUTO_PROXY=true` no app Production impede que o SDK escolha
+  automaticamente `/__clerk` quando `VERCEL_PROJECT_PRODUCTION_URL` é um alias
+  `vercel.app`. Essa variável deve estar presente no build e no runtime. Sua
+  ausência fez o handshake de sessão expirada falhar com `host_invalid` em
+  31/10/2026; validar a renovação de sessão após qualquer mudança de deployment.
+- O Clerk Development local usa o par `pk_test_`/`sk_test_` e o Frontend API
+  `accounts.dev` diretamente. Não copie chaves Production para local ou Preview.
+- `PREVIEW_OUTBOX_RECOVERY_URL` é server-only no projeto API Production quando
+  a recuperação Preview está habilitada. Deve apontar ao alias de Preview
+  verificado do endpoint `/cron/outbox`; o código recusa HTTP, domínio que não
+  seja `*.vercel.app`, host sem marcador de branch Vercel ou path diferente.
 
-Os dois projetos possuem as credenciais Clerk de Preview e Production configuradas. O endpoint de webhook Clerk de Production aponta para `/webhooks/auth` no projeto API e `CLERK_WEBHOOK_SIGNING_SECRET` está configurado apenas no ambiente Production da API. O app Production também possui a configuração server-only do bucket privado do Supabase Storage.
+`DATABASE_URL` e `DIRECT_URL` permanecem configuradas como secrets/configs da
+Vercel e não são registrados aqui. O runtime continua no pooler de transação do
+Supabase; migrations usam o pooler de sessão. Chaves, secrets, webhook URLs e
+tokens não devem ser copiados para esta documentação.
 
-`DATABASE_URL` e `DIRECT_URL` existem nos ambientes Production/Preview dos dois
-projetos. Os valores são secrets/configs da Vercel e não são registrados nesta
-documentação. A conexão oficial foi validada diretamente no PostgreSQL/Supabase
-durante a auditoria live-first; não há placeholders de banco na produção.
+## Host guard e publicação
 
-As rotas Clerk são `/sign-in` e `/sign-up`, com retorno para `/`. `NEXT_PUBLIC_APP_URL` do app aponta para o alias estável do projeto da área de membros. O publishable key é público por natureza e fica como Config; segredos permanecem Secret.
+A regra de host guard `Community V2 compatible release hosts` continua ativa e
+em prioridade 0. Ela aceita somente hostnames conferidos para o deployment
+Production selecionado e para o Preview da mesma revisão quando necessário.
+Não desabilite a regra para destravar um domínio. Use
+`scripts/ops/community-release-host-guard.mjs`: dry-run, inspeção do digest,
+stage e ativação com o digest exato. O CNAME `membros` da Vercel e os aliases
+históricos precisam resolver para o deployment que contém os redirects.
 
-Resend, Stripe, SVIX, Better Stack, PostHog e Google Analytics permanecem ausentes quando não há credencial válida; integrações opcionais não devem bloquear o build.
+Em 31/10/2026, `origin/main` (`f644467`) havia avançado com alterações de
+produto e migrations não presentes no app em Production; o branch de domínio
+divergia dele. A conexão Git automática da Vercel está desabilitada. Integre e
+valide as duas linhas com QA e os gates de banco antes de publicar `main`; não
+presuma que um deploy de `main` contenha esta correção. A promoção deve registrar o SHA do
+código, deployment `READY`, aliases verificados e digest do firewall. Para
+rollback, reatribua os aliases ao deployment Production anterior e restaure a
+configuração Clerk correspondente antes de restaurar os redirects da Hostinger.
 
-## Recuperação da fila de notificações
+## Integração do site institucional
 
-`apps/api` expõe `POST /cron/outbox`, protegido por `CRON_SECRET`. Configure
-um segredo aleatório de pelo menos 32 caracteres no ambiente Production do
-projeto `interprete-area-de-membros-api`. A rota de prazos existente em
-`apps/app` usa o mesmo nome de variável no projeto da aplicação para a agenda
-Vercel já configurada.
+O site institucional está em `https://escolainterprete.com.br`, hospedado na
+Hostinger. O projeto Git local não é a fonte da página publicada e o painel
+Hostinger não tem repositório conectado. Os atalhos publicados ficam no bloco
+`@atalhos-inicio` / `@atalhos-fim` de `public_html/.htaccess`:
 
-Para a recuperação durável do outbox, habilite `pg_cron` e `pg_net` no projeto
-Supabase. No Vault, crie `interprete_member_outbox_url` com a URL HTTPS de
-Production terminada em `/cron/outbox` e `interprete_member_outbox_secret` com o
-mesmo valor de `CRON_SECRET` configurado na API. Execute
-[`supabase-outbox-cron.sql`](supabase-outbox-cron.sql) no SQL Editor; o script
-valida os pré-requisitos, substitui somente o job com nome
-`interprete-member-outbox` e agenda a chamada a cada cinco minutos. Ele lê os segredos
-do Vault durante cada execução e não grava seus valores no comando agendado.
+| Entrada | Destino |
+| --- | --- |
+| `/entrar` | `https://membros.escolainterprete.com.br/sign-in` |
+| `/criar-conta` | `https://membros.escolainterprete.com.br/sign-up` |
+| `/membros` | `https://membros.escolainterprete.com.br/` |
+| `/login` | `https://membros.escolainterprete.com.br/sign-in` |
 
-Depois da configuração, confirme `POST /cron/outbox` autenticado, a linha do
-job em `cron.job`, o resultado HTTP correspondente em `net._http_response` e a
-redução do backlog `PENDING`/`RETRY`. O SQL não foi aplicado ao projeto oficial
-nesta execução por causa da restrição temporária de quota informada pelo
-usuário.
+Os atalhos continuam em `302` deliberadamente: são entradas operacionais do
+site, e esse status permite rollback imediato sem cache permanente no navegador.
+Eles sempre apontam ao origin canônico. Os dois aliases Vercel históricos usam
+`308` porque só redirecionam navegação segura (`GET`/`HEAD`); mutações recebem
+`421` sem replay do corpo. Preserve todo o restante do `.htaccess`, inclusive
+CSP, regras do site e newsletter.
 
-## Verificação
+## Verificação de Production — 30/10/2026
 
-O branch de produção é `main`. O projeto correto e o alias oficial foram
-conferidos com a CLI da Vercel; o deployment de produção deve ser sempre
-confirmado pelo `target=production`, pelo alias estável e pelo commit da
-integração Git antes de ser considerado publicado. O lote de hardening foi
-iniciado em `f09e28768eba9505ec87132f068301d22f3471be` (`main`); as correções
-posteriores também devem ser promovidas pelo mesmo fluxo Git, sem deploy manual
-fora do projeto. O alias estável `interprete-area-de-membros.vercel.app` e o
-alias de projeto `interprete-area-de-membros-app.vercel.app` devem apontar para
-o deployment Production correspondente ao HEAD publicado.
+Em 31/10/2026, o host canônico foi atribuído ao deployment de correção
+`dpl_66YutdxcatGhoM1Y7RnNzFngLfFG`, `READY`, SHA
+`0b4ff565321853b246ba4bcc7df9e2bd72a1d611`.
+Os dois aliases Vercel históricos também foram atribuídos ao deployment corrigido
+e redirecionam ao host canônico. A regra WAF `Community V2 compatible release
+hosts` permanece ativa em modo `release`; nenhum bypass ou desativação foi usado.
+Rollback imediato da proteção adicional: deployment
+`dpl_GjqW96cC3peZVjaCuSmZeLepUx5Q`, que também contém a correção de ambiente.
+O deployment `dpl_8MhPh2GpQttToAnPXw5qJf7eHmxa` apresenta a falha de renovação
+de sessão documentada abaixo e não é o rollback recomendado. O deployment anterior ao cutover é
+`dpl_HfdYrMaNLy3cE1DbbPvGfs3smwFm` (SHA
+`a99ef910aaef3450385c00eb11b85db12bf3de10`, `READY`); sua reversão exige
+restaurar também configuração Clerk, host guard e atalhos do site.
 
-O endpoint público de saúde, páginas protegidas e redirects anônimos devem ser
-testados separadamente: build verde não substitui autorização, persistência ou
-QA autenticado.
+| Gate de produção | Estado observado |
+| --- | --- |
+| DNS do app | `membros` CNAME → `bbb51c26bfce45fc.vercel-dns-017.com`; os servidores autoritativos respondem com o target esperado. |
+| HTTPS do app | Certificado TLS válido no host canônico. |
+| Domínio Clerk/FAPI | `membros.escolainterprete.com.br` `Verified`; `clerk.membros` CNAME → `frontend-api.clerk.services`, `Verified`; `/v1/health` retornou HTTP 200 com TLS válido. |
+| E-mail Clerk | Os três CNAMEs abaixo estão propagados e `Email 3/3 Verified`; Clerk informa certificado SSL emitido. |
+| Navegação pública | `/`, `/sign-in`, `/sign-up` e rota protegida anônima respondem com os destinos esperados. Os aliases Vercel fazem redirect `308` preservando path/query; métodos de escrita recebem `421`. |
+| Site institucional | `/entrar`, `/criar-conta`, `/membros` e `/login` chegam ao host canônico em desktop e viewport móvel. |
+| Dados | Nenhuma alteração de Supabase, schema, usuários, papéis ou permissões foi feita. |
+
+Registros de e-mail Clerk publicados na zona DNS Hostinger (TTL 14400):
+
+| Nome | Tipo | Destino |
+| --- | --- | --- |
+| `clkmail.membros` | CNAME | `mail.gxrbxlyw7jo4.clerk.services` |
+| `clk._domainkey.membros` | CNAME | `dkim1.gxrbxlyw7jo4.clerk.services` |
+| `clk2._domainkey.membros` | CNAME | `dkim2.gxrbxlyw7jo4.clerk.services` |
+
+O login inicial e acesso autenticado foram verificados em 30/10. Em 31/10, a
+renovação de uma sessão expirada revelou `host_invalid` no caminho automático
+`/__clerk`; após o deployment com a variável acima, o proprietário confirmou a
+abertura e a sessão autenticada foi observada no host canônico.
+Recuperação de senha e entrega efetiva de e-mail não foram testadas com envio.
+O domínio Clerk
+antigo continua listado como `Checking` e não é destino público; mantê-lo nesta
+janela conserva opção de rollback. A mudança de origin pode exigir novo login
+por causa do escopo dos cookies, sem alterar identidade ou dados persistidos.
+
+Em 31/10, os atalhos institucionais haviam voltado ao alias antigo. Foram
+corrigidos novamente no `.htaccess` ativo, preservando regras adicionais de
+blog. O arquivo declara geração por scripts que não foram encontrados nos
+repositórios locais ou no Git conectado da Hostinger; atualizar a fonte real do
+build é pendência para impedir que uma futura publicação reverta os destinos.

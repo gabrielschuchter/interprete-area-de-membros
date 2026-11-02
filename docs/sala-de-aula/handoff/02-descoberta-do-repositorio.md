@@ -10,7 +10,7 @@ Para cada item: caminho dos arquivos, o que faz, e decisão (reutilizar/estender
 - [ ] Monorepo (next-forge): apps, packages, onde vive a área de membros, onde vive o design system/UI.
 - [ ] Scripts: `typecheck`, `lint`, `build`, `test`, E2E (Playwright?). Anote os comandos exatos.
 - [ ] Padrão de rotas (App Router): como Estudar/Aprender é organizado hoje.
-- [ ] Middleware de autenticação (Clerk) e o proxy `/__clerk`. **Não alterar.** Anote como obter o usuário no servidor.
+- [ ] Middleware de autenticação (Clerk) e origins por ambiente. Production usa Frontend API Clerk por DNS direto; não há proxy `/__clerk`. Preserve Clerk como única fonte de identidade e anote como obter o usuário no servidor.
 - [ ] Mapeamento Clerk → usuário no banco (coluna `user_id`/`clerk_id`).
 - [ ] Padrão de acesso a dados: Supabase client, Prisma, SQL puro? RLS ou checagem no servidor? Anote o padrão **que as tabelas existentes seguem**.
 - [ ] Mecanismo de feature flags (se não houver, use variável de ambiente; veja `14`).

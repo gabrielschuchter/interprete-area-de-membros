@@ -8,7 +8,7 @@ Você vai implementar a **Sala de Aula de aulas gravadas** da área de membros d
 
 ## Regras inegociáveis
 
-1. **Não altere** a autenticação com Clerk, o proxy `/__clerk`, a arquitetura next-forge/Bun, nem a escolha de banco (Supabase PostgreSQL). Siga o padrão de acesso a dados que o repositório já usa.
+1. Preserve Clerk como única fonte de identidade, next-forge/Bun e Supabase PostgreSQL; não crie autenticação paralela. Production usa o Frontend API Clerk por DNS direto e o origin canônico e os redirects estão em `docs/architecture/domain-architecture.md`. Siga o padrão de acesso a dados que o repositório já usa.
 2. **Escopo único:** Sala de Aula de conteúdo gravado (aulas de curso e gravações de encontros) e a abertura de gravações a partir de Minhas gravações. Fora de escopo: encontros ao vivo, Comunidade, Início, Biblioteca, Exercícios, Gestão (exceto leitura de dados), Ferramentas (exceto integração descrita no `09`).
 3. **Reutilizar > estender > criar.** Barra lateral global, editor de notas, cronômetro/Pomodoro/regressivo, Modo foco, biblioteca, listas de exercícios e atividades já existem ou têm equivalentes: integre, não duplique.
 4. **Preserve todas as funcionalidades atuais** da sala e das áreas vizinhas. Nada é removido sem estar listado neste pacote.

@@ -22,23 +22,12 @@ const isReadMethodWithSideEffects = (method: string, pathname: string) =>
   (method === "GET" || method === "HEAD") &&
   (isCronPath(pathname) || isWebhookPath(pathname));
 
-export const isClerkFrontendApiProxyPath = (pathname: string) =>
-  pathname === "/__clerk" || pathname.startsWith("/__clerk/");
-
 export const shouldBlockRequestDuringWriteFreeze = (input: {
   readonly method: string;
   readonly pathname: string;
   readonly enabled: boolean;
-  readonly clerkFrontendApiProxy?: boolean;
 }) => {
   if (!input.enabled) {
-    return false;
-  }
-
-  if (
-    input.clerkFrontendApiProxy &&
-    isClerkFrontendApiProxyPath(input.pathname)
-  ) {
     return false;
   }
 
