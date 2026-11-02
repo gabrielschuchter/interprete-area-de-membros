@@ -65,6 +65,7 @@ test("Preview uses its deployment URL when no branch alias exists", () => {
     resolveApplicationOrigin({
       applicationUrl: canonicalOrigin,
       environment: "preview",
+      branchUrl: "",
       deploymentUrl:
         "interprete-area-de-membros-app-abc123-gabrielschuchters-projects.vercel.app",
       nodeEnvironment: "production",
