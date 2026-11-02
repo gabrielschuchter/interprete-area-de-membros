@@ -10,15 +10,21 @@ import {
   AlertDialogTitle,
 } from "@repo/design-system/components/ui/alert-dialog";
 import { Button } from "@repo/design-system/components/ui/button";
-import { Input } from "@repo/design-system/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@repo/design-system/components/ui/dialog";
 import type { JSONContent } from "@tiptap/core";
 import {
   ArrowLeftIcon,
   CheckIcon,
   EyeIcon,
+  FolderInputIcon,
   ImageIcon,
   SaveIcon,
-  XIcon,
+  Trash2Icon,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -29,6 +35,7 @@ import {
   updateDraft,
   updatePost,
 } from "@/app/(authenticated)/comunidade/actions";
+import { CommunityEditorField } from "./community-editor-field";
 import { TopicEditor } from "./topic-editor";
 
 type PostStatus = "DRAFT" | "PUBLISHED" | "ARCHIVED";
@@ -117,11 +124,18 @@ const editorSaveLabel = (
   return saveLabel(state);
 };
 
-const publishButtonLabel = (status: PostStatus, publishing: boolean) => {
+const publishConfirmLabel = (
+  status: PostStatus,
+  publishing: boolean,
+  spaceTitle: string | null
+) => {
   if (status === "ARCHIVED") {
     return publishing ? "Republicando…" : "Republicar";
   }
-  return publishing ? "Publicando…" : "Publicar";
+  if (publishing) {
+    return "Publicando…";
+  }
+  return spaceTitle ? `Publicar em ${spaceTitle}` : "Publicar no feed";
 };
 
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: the editor coordinates autosave, preview, publish, and metadata controls as one deliberate workflow.
@@ -159,14 +173,18 @@ export function CommunityComposer({
   );
   const [errorMessage, setErrorMessage] = useState("");
   const [publishing, setPublishing] = useState(false);
-  const [toolbarHost, setToolbarHost] = useState<HTMLDivElement | null>(null);
+  const [stripHost, setStripHost] = useState<HTMLDivElement | null>(null);
+  const [inlineHost, setInlineHost] = useState<HTMLDivElement | null>(null);
+  const [publishOpen, setPublishOpen] = useState(false);
+  const [groupMention, setGroupMention] = useState({ count: 0, has: false });
+  const [groupMentionConfirmed, setGroupMentionConfirmed] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const [exitDialogOpen, setExitDialogOpen] = useState(false);
   const [savedPostId, setSavedPostId] = useState(postId);
   const [isUploadingCover, setIsUploadingCover] = useState(false);
   const [isUploadingInlineImage, setIsUploadingInlineImage] = useState(false);
   const coverInputRef = useRef<HTMLInputElement>(null);
-  const actionsSentinelRef = useRef<HTMLDivElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
   const uploadedCoverUrlRef = useRef<string | null>(null);
   const coverUploadInFlight = useRef(false);
   const publishingRef = useRef(false);
@@ -179,7 +197,6 @@ export function CommunityComposer({
   const conflictUpdatedAtRef = useRef<string | null>(null);
   const dirtyRef = useRef(false);
   const disposedRef = useRef(false);
-  const [actionsCompact, setActionsCompact] = useState(false);
   const snapshot = useRef({
     title: initialTitle,
     subtitle: initialSubtitle ?? "",
@@ -465,19 +482,6 @@ export function CommunityComposer({
     };
   }, [coverPreviewUrl]);
 
-  useEffect(() => {
-    const sentinel = actionsSentinelRef.current;
-    if (!sentinel) {
-      return;
-    }
-    const observer = new IntersectionObserver(
-      ([entry]) => setActionsCompact(!entry.isIntersecting),
-      { rootMargin: "-64px 0px 0px 0px", threshold: 0 }
-    );
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, []);
-
   const removeTemporaryCover = async () => {
     const value = uploadedCoverUrlRef.current;
     if (!value) {
@@ -717,23 +721,62 @@ export function CommunityComposer({
     }
   };
 
-  let coverButtonLabel = coverUrl ? "Trocar capa" : "Adicionar capa";
-  if (isUploadingCover) {
-    coverButtonLabel = "Enviando…";
-  }
+  const saveDestination = async () => {
+    setSaveState("saving");
+    setErrorMessage("");
+    try {
+      if (await updatePublishedPost()) {
+        setPublishOpen(false);
+      } else if (conflictUpdatedAtRef.current === null) {
+        setSaveState("error");
+      }
+    } catch {
+      setSaveState("error");
+      setErrorMessage(
+        "Não foi possível salvar por causa da conexão. Tente novamente."
+      );
+    }
+  };
+
+  const chooseSpace = (nextSpaceId: string) => {
+    const nextSpace = spaces.find(({ id }) => id === nextSpaceId);
+    setSpaceId(nextSpaceId);
+    setSpaceSlug(nextSpace?.slug ?? "");
+    updateSnapshot({
+      spaceId: nextSpaceId,
+      spaceSlug: nextSpace?.slug ?? "",
+    });
+  };
+
+  const focusBody = () =>
+    bodyRef.current?.querySelector<HTMLElement>("[role=textbox]")?.focus();
+
+  const selectedSpace = spaces.find((space) => space.id === spaceId) ?? null;
+  const isMoveDialog = status === "PUBLISHED";
+  const uploading = isUploadingCover || isUploadingInlineImage;
+  const showNotice =
+    Boolean(errorMessage) || saveState === "error" || saveState === "conflict";
+  const hasCover = Boolean(coverUrl || coverPreviewUrl);
+  const destinationOptions = [
+    { id: "", note: "Visível para todos os membros", title: "Feed geral" },
+    ...spaces.map((space) => ({
+      id: space.id,
+      note:
+        space.visibility === "PRIVATE"
+          ? "Grupo privado · só os membros veem"
+          : "Grupo de estudo",
+      title: space.title,
+    })),
+  ];
+  const confirmBlocked =
+    publishing ||
+    uploading ||
+    leaving ||
+    (groupMention.has && !groupMentionConfirmed);
 
   return (
-    <div
-      className={["community-editor", "pb-12", actionsCompact && "is-scrolled"]
-        .filter(Boolean)
-        .join(" ")}
-    >
-      <div
-        aria-hidden="true"
-        className="community-editor-sticky-sentinel"
-        ref={actionsSentinelRef}
-      />
-      <div className="community-editor-actions">
+    <div className="community-editor">
+      <div className="community-editor-bar">
         <Link
           aria-disabled={leaving}
           className="community-editor-back"
@@ -743,23 +786,20 @@ export function CommunityComposer({
           <ArrowLeftIcon aria-hidden="true" />
           <span>{leaving ? "Salvando…" : "Voltar"}</span>
         </Link>
-        <span aria-hidden="true" className="community-editor-sticky-title">
-          {title || draftTitle}
-        </span>
         <output aria-live="polite" className="community-editor-save-status">
           {saveState === "error" ? (
             <SaveIcon aria-hidden="true" />
           ) : (
             <CheckIcon aria-hidden="true" />
           )}
-          {editorSaveLabel(status, dirtyRef.current, saveState)}
+          <span>{editorSaveLabel(status, dirtyRef.current, saveState)}</span>
         </output>
         <div className="community-editor-action-buttons">
           {savedPostId ? (
             <Button
               asChild
               className="community-editor-preview"
-              variant="outline"
+              variant="ghost"
             >
               <Link
                 aria-label="Pré-visualizar publicação"
@@ -773,207 +813,173 @@ export function CommunityComposer({
               className="community-editor-preview"
               disabled
               type="button"
-              variant="outline"
+              variant="ghost"
             >
               <EyeIcon aria-hidden="true" /> <span>Pré-visualizar</span>
             </Button>
           )}
-          {status !== "PUBLISHED" ? (
+          {isMoveDialog && spaces.length > 0 ? (
+            <Button
+              aria-label="Onde a publicação aparece"
+              className="community-editor-destination"
+              onClick={() => setPublishOpen(true)}
+              type="button"
+              variant="ghost"
+            >
+              <FolderInputIcon aria-hidden="true" />{" "}
+              <span>{selectedSpace?.title ?? "Feed geral"}</span>
+            </Button>
+          ) : null}
+          {isMoveDialog ? (
             <Button
               className="community-editor-publish"
-              disabled={
-                publishing ||
-                isUploadingCover ||
-                isUploadingInlineImage ||
-                title.trim().length < 4 ||
-                !documentHasText(content)
-              }
-              onClick={handlePublish}
+              disabled={uploading || leaving}
+              onClick={handlePublishedSave}
               type="button"
+              variant="ghost"
             >
-              {publishButtonLabel(status, publishing)}
+              <SaveIcon aria-hidden="true" /> Salvar alterações
             </Button>
           ) : (
             <Button
               className="community-editor-publish"
-              disabled={isUploadingCover || isUploadingInlineImage || leaving}
-              onClick={handlePublishedSave}
+              disabled={
+                publishing ||
+                uploading ||
+                title.trim().length < 4 ||
+                !documentHasText(content)
+              }
+              onClick={() => {
+                setErrorMessage("");
+                setPublishOpen(true);
+              }}
               type="button"
+              variant="ghost"
             >
-              <SaveIcon aria-hidden="true" /> Salvar alterações
+              {status === "ARCHIVED" ? "Republicar" : "Publicar"}
             </Button>
           )}
         </div>
       </div>
 
-      {errorMessage && (
-        <p
-          className="mt-5 border border-destructive/35 bg-destructive/5 px-4 py-3 text-destructive text-sm"
-          role="alert"
-        >
-          {errorMessage}
-        </p>
-      )}
-      {saveState === "error" && (
-        <Button
-          className="mt-3"
-          onClick={() =>
-            (status === "DRAFT" ? flushSave() : handlePublishedSave()).catch(
-              () => undefined
-            )
-          }
-          type="button"
-          variant="outline"
-        >
-          Tentar salvar novamente
-        </Button>
-      )}
-      {saveState === "conflict" && (
-        <div className="mt-3 flex flex-wrap gap-2">
-          <Button
-            onClick={() => window.location.reload()}
-            type="button"
-            variant="outline"
-          >
-            Recarregar versão salva
-          </Button>
-          <Button
-            onClick={() => handleKeepLocalVersion().catch(() => undefined)}
-            type="button"
-            variant="outline"
-          >
-            Manter minha versão
-          </Button>
+      {showNotice && !publishOpen ? (
+        <div className="community-editor-notice" role="alert">
+          {errorMessage ? <p>{errorMessage}</p> : null}
+          {saveState === "error" ? (
+            <div className="community-editor-notice-actions">
+              <button
+                onClick={() =>
+                  (status === "DRAFT"
+                    ? flushSave()
+                    : handlePublishedSave()
+                  ).catch(() => undefined)
+                }
+                type="button"
+              >
+                Tentar salvar novamente
+              </button>
+            </div>
+          ) : null}
+          {saveState === "conflict" ? (
+            <div className="community-editor-notice-actions">
+              <button onClick={() => window.location.reload()} type="button">
+                Recarregar versão salva
+              </button>
+              <button
+                onClick={() => handleKeepLocalVersion().catch(() => undefined)}
+                type="button"
+              >
+                Manter minha versão
+              </button>
+            </div>
+          ) : null}
         </div>
-      )}
+      ) : null}
 
-      <div className="community-editor-toolbar-host" ref={setToolbarHost} />
-      <form
-        className="community-editor-form"
-        id="community-editor-form"
-        onSubmit={handleFormSubmit}
-      >
-        {savedPostId ? (
-          <input name="postId" type="hidden" value={savedPostId} />
-        ) : (
-          <input name="idempotencyKey" type="hidden" value={idempotencyKey} />
-        )}
-        <div className="community-editor-fields">
-          <div className="community-editor-publish-target">
-            <label
-              className="community-editor-publish-label"
-              htmlFor="community-post-space"
-            >
-              Publicar em
-            </label>
-            <select
-              aria-label="Publicar em feed ou grupo de estudo"
-              className="community-editor-publish-select"
-              id="community-post-space"
-              name="spaceId"
-              onChange={(event) => {
-                const nextSpaceId = event.target.value;
-                const nextSpace = spaces.find(({ id }) => id === nextSpaceId);
-                setSpaceId(nextSpaceId);
-                setSpaceSlug(nextSpace?.slug ?? "");
-                updateSnapshot({
-                  spaceId: nextSpaceId,
-                  spaceSlug: nextSpace?.slug ?? "",
-                });
-              }}
-              value={spaceId}
-            >
-              <option value="">Feed geral</option>
-              {spaces.map((space) => (
-                <option key={space.id} value={space.id}>
-                  {space.title}
-                </option>
-              ))}
-            </select>
+      <div className="community-editor-strip-host" ref={setStripHost} />
+
+      <div className="community-editor-page">
+        <div className="community-editor-sheet">
+          <form
+            className="community-editor-form"
+            id="community-editor-form"
+            onSubmit={handleFormSubmit}
+          >
+            {savedPostId ? (
+              <input name="postId" type="hidden" value={savedPostId} />
+            ) : (
+              <input
+                name="idempotencyKey"
+                type="hidden"
+                value={idempotencyKey}
+              />
+            )}
+            <input name="spaceId" type="hidden" value={spaceId} />
             <input name="spaceSlug" type="hidden" value={spaceSlug} />
             <input name="tags" type="hidden" value={snapshot.current.tags} />
-          </div>
 
-          <Input
-            aria-label="Título"
-            className="community-editor-title"
-            name="title"
-            onBlur={() => flushSave().catch(() => undefined)}
-            onChange={(event) => {
-              const nextTitle = event.target.value;
-              setTitle(nextTitle);
-              updateSnapshot({ title: nextTitle || draftTitle });
-            }}
-            placeholder="Título da publicação"
-            required={status !== "DRAFT"}
-            value={title === draftTitle ? "" : title}
-          />
-
-          <Input
-            aria-label="Subtítulo opcional"
-            className="community-editor-subtitle"
-            name="subtitle"
-            onBlur={() => flushSave().catch(() => undefined)}
-            onChange={(event) => {
-              const nextSubtitle = event.target.value;
-              setSubtitle(nextSubtitle);
-              updateSnapshot({ subtitle: nextSubtitle });
-            }}
-            placeholder="Subtítulo opcional"
-            value={subtitle}
-          />
-
-          <div className="community-editor-cover-row">
-            <div className="community-editor-cover-controls">
-              <Button
-                className="community-editor-cover-button"
+            {hasCover ? (
+              <div className="community-editor-cover">
+                {/* The authenticated media route resolves the private object. */}
+                {/* biome-ignore lint/performance/noImgElement: this is a small upload preview. */}
+                <img
+                  alt={coverAltText || `Capa: ${title || draftTitle}`}
+                  className="community-editor-cover-preview"
+                  height={224}
+                  src={coverPreviewUrl ?? coverUrl}
+                  width={900}
+                />
+                <div className="community-editor-cover-controls">
+                  <button
+                    disabled={isUploadingCover}
+                    onClick={() => coverInputRef.current?.click()}
+                    type="button"
+                  >
+                    <ImageIcon aria-hidden="true" />
+                    {isUploadingCover ? "Enviando…" : "Trocar capa"}
+                  </button>
+                  <button
+                    aria-label="Remover capa"
+                    disabled={isUploadingCover}
+                    onClick={() => {
+                      removeTemporaryCover().catch(() => undefined);
+                      setCoverPreviewUrl(null);
+                      setCoverUrl("");
+                      updateSnapshot({ coverUrl: "" });
+                    }}
+                    type="button"
+                  >
+                    <Trash2Icon aria-hidden="true" />
+                    Remover
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                className="community-editor-cover-add"
                 onClick={() => coverInputRef.current?.click()}
+                title="JPG, PNG ou WebP, até 5 MB"
                 type="button"
-                variant="outline"
               >
                 <ImageIcon aria-hidden="true" />
-                {coverButtonLabel}
-              </Button>
-              {coverUrl || coverPreviewUrl ? (
-                <Button
-                  aria-label="Remover capa"
-                  onClick={() => {
-                    removeTemporaryCover().catch(() => undefined);
-                    setCoverPreviewUrl(null);
-                    setCoverUrl("");
-                    updateSnapshot({ coverUrl: "" });
-                  }}
-                  type="button"
-                  variant="ghost"
-                >
-                  <XIcon aria-hidden="true" />
-                </Button>
-              ) : null}
-              <input
-                accept="image/jpeg,image/png,image/webp"
-                className="sr-only"
-                onChange={(event) => {
-                  const file = event.target.files?.[0];
-                  if (file) {
-                    uploadCover(file).catch(() => undefined);
-                  }
-                  event.currentTarget.value = "";
-                }}
-                ref={coverInputRef}
-                type="file"
-              />
-            </div>
-            {coverUrl || coverPreviewUrl ? (
-              // The authenticated media route resolves the private object.
-              // biome-ignore lint/performance/noImgElement: this is a small upload preview.
-              <img
-                alt={coverAltText || `Capa: ${title || draftTitle}`}
-                className="community-editor-cover-preview"
-                height={224}
-                src={coverPreviewUrl ?? coverUrl}
-                width={900}
-              />
-            ) : null}
+                Adicionar capa
+              </button>
+            )}
+            <input
+              accept="image/jpeg,image/png,image/webp"
+              aria-label="Arquivo da capa"
+              className="sr-only"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) {
+                  uploadCover(file).catch(() => undefined);
+                }
+                event.currentTarget.value = "";
+              }}
+              ref={coverInputRef}
+              tabIndex={-1}
+              type="file"
+            />
             {isUploadingCover ? (
               <div
                 aria-label={`Enviando capa: ${coverUploadPercent}%`}
@@ -987,14 +993,11 @@ export function CommunityComposer({
               </div>
             ) : null}
             {enableCoverAltText && coverUrl ? (
-              <label
-                className="community-editor-cover-alt-label"
-                htmlFor="community-cover-alt"
-              >
-                Texto alternativo
-                <Input
+              <label className="community-editor-cover-alt">
+                <span>Texto alternativo</span>
+                <input
                   aria-label="Texto alternativo da capa"
-                  id="community-cover-alt"
+                  className="community-editor-cover-alt-input"
                   maxLength={500}
                   onBlur={() => flushSave().catch(() => undefined)}
                   onChange={(event) => {
@@ -1007,38 +1010,170 @@ export function CommunityComposer({
                 />
               </label>
             ) : null}
-            <p className="community-editor-cover-note">
-              {isUploadingCover
-                ? `Enviando capa · ${coverUploadPercent}%`
-                : "JPG, PNG ou WebP · até 5 MB. O upload é salvo junto do rascunho."}
-            </p>
-          </div>
-          {spaces.find((space) => space.id === spaceId)?.visibility ===
-          "PRIVATE" ? (
-            <p className="community-editor-private-notice">
+
+            <CommunityEditorField
+              aria-label="Título"
+              className="community-editor-title"
+              name="title"
+              onBlur={() => flushSave().catch(() => undefined)}
+              onEnter={focusBody}
+              onValueChange={(nextTitle) => {
+                setTitle(nextTitle);
+                updateSnapshot({ title: nextTitle || draftTitle });
+              }}
+              placeholder="Título da publicação"
+              required={status !== "DRAFT"}
+              value={title === draftTitle ? "" : title}
+            />
+            <CommunityEditorField
+              aria-label="Subtítulo opcional"
+              className="community-editor-subtitle"
+              name="subtitle"
+              onBlur={() => flushSave().catch(() => undefined)}
+              onEnter={focusBody}
+              onValueChange={(nextSubtitle) => {
+                setSubtitle(nextSubtitle);
+                updateSnapshot({ subtitle: nextSubtitle });
+              }}
+              placeholder="Subtítulo opcional"
+              value={subtitle}
+            />
+            <div aria-hidden="true" className="community-editor-rule" />
+
+            <div className="community-editor-inline-host" ref={setInlineHost} />
+
+            <div className="community-editor-body" ref={bodyRef}>
+              <TopicEditor
+                ariaLabel="Conteúdo da publicação"
+                compactToolbarTarget={inlineHost}
+                defaultValue={content}
+                enableCommunityMedia
+                groupMentionConfirmed={groupMentionConfirmed}
+                hideGroupMentionConfirmation
+                onDocumentChange={(nextContent) => {
+                  setContent(nextContent);
+                  updateSnapshot({ content: nextContent });
+                }}
+                onEditorBlur={() => flushSave().catch(() => undefined)}
+                onGroupMentionChange={(hasGroup, confirmed, count) => {
+                  groupMentionConfirmedRef.current = confirmed;
+                  setGroupMention((previous) =>
+                    previous.has === hasGroup && previous.count === count
+                      ? previous
+                      : { count, has: hasGroup }
+                  );
+                }}
+                onGroupMentionConfirmedChange={(confirmed) => {
+                  groupMentionConfirmedRef.current = confirmed;
+                  setGroupMentionConfirmed(confirmed);
+                }}
+                onUploadStateChange={setIsUploadingInlineImage}
+                toolbarTarget={stripHost}
+              />
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <Dialog onOpenChange={setPublishOpen} open={publishOpen}>
+        <DialogContent
+          className="community-publish-dialog"
+          showCloseButton={false}
+        >
+          <DialogTitle className="community-publish-title">
+            {isMoveDialog ? "Onde a publicação aparece" : "Publicar"}
+          </DialogTitle>
+          <DialogDescription className="community-publish-subtitle">
+            {isMoveDialog
+              ? "Escolha o destino e salve as alterações."
+              : "Escolha onde a publicação aparece. Você pode editar depois."}
+          </DialogDescription>
+          <fieldset className="community-publish-options">
+            <legend className="community-publish-label">Publicar em</legend>
+            {destinationOptions.map((option) => (
+              <label
+                className="community-publish-option"
+                key={option.id || "feed"}
+              >
+                <input
+                  checked={option.id === spaceId}
+                  className="sr-only"
+                  name="community-publish-destination"
+                  onChange={() => chooseSpace(option.id)}
+                  type="radio"
+                  value={option.id}
+                />
+                <span aria-hidden="true" className="community-publish-radio" />
+                <span>
+                  {option.title}
+                  <small>{option.note}</small>
+                </span>
+              </label>
+            ))}
+          </fieldset>
+          {selectedSpace?.visibility === "PRIVATE" ? (
+            <p className="community-publish-private">
               Esta publicação ficará visível apenas para membros do grupo.
             </p>
           ) : null}
-        </div>
+          {groupMention.has ? (
+            <label className="community-publish-confirm">
+              <input
+                checked={groupMentionConfirmed}
+                className="community-publish-confirm-box"
+                onChange={(event) => {
+                  groupMentionConfirmedRef.current = event.target.checked;
+                  setGroupMentionConfirmed(event.target.checked);
+                }}
+                type="checkbox"
+              />
+              <span>
+                Você mencionou um grupo e vai notificar{" "}
+                <strong>
+                  {groupMention.count
+                    ? `${groupMention.count} membros`
+                    : "os membros do grupo"}
+                </strong>
+                . Confirme o envio para continuar.
+              </span>
+            </label>
+          ) : null}
+          {errorMessage && publishOpen ? (
+            <p className="community-publish-private" role="alert">
+              {errorMessage}
+            </p>
+          ) : null}
+          <div className="community-publish-actions">
+            <button
+              className="community-publish-secondary"
+              disabled={publishing}
+              onClick={() => setPublishOpen(false)}
+              type="button"
+            >
+              Voltar a escrever
+            </button>
+            <button
+              className="community-publish-primary"
+              disabled={confirmBlocked}
+              onClick={() =>
+                (isMoveDialog ? saveDestination() : handlePublish()).catch(
+                  () => undefined
+                )
+              }
+              type="button"
+            >
+              {isMoveDialog
+                ? "Salvar alterações"
+                : publishConfirmLabel(
+                    status,
+                    publishing,
+                    selectedSpace?.title ?? null
+                  )}
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
-        <div className="community-editor-body">
-          <TopicEditor
-            ariaLabel="Conteúdo da publicação"
-            defaultValue={content}
-            enableCommunityMedia
-            onDocumentChange={(nextContent) => {
-              setContent(nextContent);
-              updateSnapshot({ content: nextContent });
-            }}
-            onEditorBlur={() => flushSave().catch(() => undefined)}
-            onGroupMentionChange={(_hasGroupMention, confirmed) => {
-              groupMentionConfirmedRef.current = confirmed;
-            }}
-            onUploadStateChange={setIsUploadingInlineImage}
-            toolbarTarget={toolbarHost}
-          />
-        </div>
-      </form>
       <AlertDialog onOpenChange={setExitDialogOpen} open={exitDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>

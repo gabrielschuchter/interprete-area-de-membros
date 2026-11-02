@@ -37,8 +37,8 @@ const NewCommunityContentPage = async ({
   const returnTo = safeCommunityReturnPath(filters.returnTo);
 
   return (
-    <div className="min-h-svh bg-background">
-      <main className="community-editor-shell mx-auto w-full">
+    <div className="community-editor-desk">
+      <main className="w-full">
         <h1 className="sr-only">Escrever publicação</h1>
         <CommunityComposer
           backHref={

@@ -116,6 +116,10 @@ test("creates once, autosaves, publishes, edits, archives, deletes and undoes", 
   await page.setViewportSize({ width: 1440, height: 1000 });
 
   await page.getByRole("button", { name: "Publicar", exact: true }).click();
+
+  // A publicação confirma o destino na tela de Publicar.
+
+  await page.locator(".community-publish-primary").click();
   await expect(page).toHaveURL(publicationPath, {
     timeout: 30_000,
   });

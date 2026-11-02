@@ -58,6 +58,8 @@ interface MemberAreaSidebarProperties {
   readonly canManageContent: boolean;
   readonly children: ReactNode;
   readonly chromeVisible: boolean;
+  /** Editor em tela cheia: a barra lateral fica recolhida e sem gatilho. */
+  readonly focusMode?: boolean;
   readonly displayName: string;
   readonly email: string;
   readonly gestaoV2Enabled?: boolean;
@@ -172,6 +174,7 @@ const MemberAreaSidebarView = ({
   chromeVisible,
   displayName,
   email,
+  focusMode = false,
   gestaoV2Enabled = false,
   portalMode,
   signOut,
@@ -227,7 +230,7 @@ const MemberAreaSidebarView = ({
     );
     const syncSidebar = () => {
       const isTablet = tabletViewport.matches;
-      const needsDrawer = isTablet || portalMode;
+      const needsDrawer = isTablet || portalMode || focusMode;
       setTabletDrawer(isTablet);
 
       if (needsDrawer) {
@@ -238,7 +241,7 @@ const MemberAreaSidebarView = ({
         }
         previousSidebarOpen.current = sidebarOpen;
         setSidebarOpen(false);
-        if (portalMode) {
+        if (portalMode || focusMode) {
           setOpenMobile(false);
         }
         return;
@@ -254,7 +257,7 @@ const MemberAreaSidebarView = ({
     syncSidebar();
     tabletViewport.addEventListener("change", syncSidebar);
     return () => tabletViewport.removeEventListener("change", syncSidebar);
-  }, [portalMode, setOpenMobile, setSidebarOpen, sidebarOpen]);
+  }, [focusMode, portalMode, setOpenMobile, setSidebarOpen, sidebarOpen]);
 
   const handleSignOut = async () => {
     if (!signOut) {
@@ -273,7 +276,7 @@ const MemberAreaSidebarView = ({
   };
 
   const collapsible =
-    portalMode || tabletDrawer || isMobile ? "offcanvas" : "icon";
+    portalMode || focusMode || tabletDrawer || isMobile ? "offcanvas" : "icon";
   const sidebarIsOffCanvas = collapsible === "offcanvas";
 
   return (

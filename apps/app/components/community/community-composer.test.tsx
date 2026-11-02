@@ -9,6 +9,9 @@ import { StrictMode } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { CommunityComposer } from "./community-composer";
 
+const feedRadioName = /Feed geral/;
+const privateRadioName = /Estudo privado/;
+
 const actions = vi.hoisted(() => ({
   updateDraft: vi.fn().mockResolvedValue({
     ok: true,
@@ -99,11 +102,102 @@ it("keeps autosave and publish active after StrictMode effect replay", async () 
   });
   expect(actions.updateDraft).toHaveBeenCalledTimes(1);
   expect(actions.updateDraft.mock.calls[0][0].get("title")).toBe("QA local");
+  fireEvent.click(screen.getByRole("button", { name: "Publicar" }));
+  expect(screen.getByRole("dialog")).toBeTruthy();
   await act(async () => {
-    fireEvent.click(screen.getByRole("button", { name: "Publicar" }));
+    fireEvent.click(screen.getByRole("button", { name: "Publicar no feed" }));
     await Promise.resolve();
   });
   expect(actions.publishPost).toHaveBeenCalledTimes(1);
+});
+
+it("chooses the destination on the publish screen and publishes there", async () => {
+  render(
+    <CommunityComposer
+      backHref="/comunidade/meus-topicos"
+      idempotencyKey=""
+      initialContent={{ type: "doc", content: [{ type: "paragraph" }] }}
+      initialCoverUrl={null}
+      initialSpaceId={null}
+      initialSpaceSlug={null}
+      initialSubtitle={null}
+      initialTags={[]}
+      initialTitle=""
+      initialUpdatedAt="2026-10-20T15:30:00.122Z"
+      postId="qa-local"
+      spaces={[
+        {
+          id: "space-1",
+          slug: "estudo-privado",
+          title: "Estudo privado",
+          visibility: "PRIVATE",
+        },
+      ]}
+      status="DRAFT"
+    />
+  );
+  fireEvent.change(screen.getByRole("textbox", { name: "Título" }), {
+    target: { value: "QA local" },
+  });
+  fireEvent.click(
+    screen.getByRole("button", { name: "Inserir texto de teste" })
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Publicar" }));
+  expect(
+    (screen.getByRole("radio", { name: feedRadioName }) as HTMLInputElement)
+      .checked
+  ).toBe(true);
+  fireEvent.click(screen.getByRole("radio", { name: privateRadioName }));
+  expect(
+    screen.getByText(
+      "Esta publicação ficará visível apenas para membros do grupo."
+    )
+  ).toBeTruthy();
+  await act(async () => {
+    fireEvent.click(
+      screen.getByRole("button", { name: "Publicar em Estudo privado" })
+    );
+    await vi.advanceTimersByTimeAsync(800);
+  });
+  expect(actions.publishPost).toHaveBeenCalledTimes(1);
+  expect(actions.publishPost.mock.calls[0][0].get("spaceId")).toBe("space-1");
+});
+
+it("keeps the destination control out of the bar for drafts and offers it for published posts", () => {
+  const properties = {
+    backHref: "/comunidade/meus-topicos",
+    idempotencyKey: "",
+    initialContent: { type: "doc", content: [{ type: "paragraph" }] },
+    initialCoverUrl: null,
+    initialSpaceId: null,
+    initialSpaceSlug: null,
+    initialSubtitle: null,
+    initialTags: [],
+    initialTitle: "Publicação",
+    initialUpdatedAt: "2026-10-20T15:30:00.122Z",
+    postId: "qa-local",
+    spaces: [
+      {
+        id: "space-1",
+        slug: "estudo",
+        title: "Estudo",
+        visibility: "PUBLIC" as const,
+      },
+    ],
+  };
+  const { rerender } = render(
+    <CommunityComposer {...properties} status="DRAFT" />
+  );
+  expect(
+    screen.queryByRole("button", { name: "Onde a publicação aparece" })
+  ).toBeNull();
+  rerender(<CommunityComposer {...properties} status="PUBLISHED" />);
+  fireEvent.click(
+    screen.getByRole("button", { name: "Onde a publicação aparece" })
+  );
+  expect(
+    screen.getByRole("button", { name: "Salvar alterações", hidden: false })
+  ).toBeTruthy();
 });
 
 it("does not create a blank draft when a new editor is only opened", async () => {

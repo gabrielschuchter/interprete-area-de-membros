@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import "./community-editor.css";
 import "./community-fidelity.css";
 
 const CommunityLayout = ({ children }: { readonly children: ReactNode }) => (

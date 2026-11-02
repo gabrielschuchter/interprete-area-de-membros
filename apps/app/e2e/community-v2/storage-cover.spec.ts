@@ -181,9 +181,7 @@ test("uploads, persists, publishes, replaces and removes real private cover obje
   ).toBeVisible({ timeout: 20_000 });
   await expect(page).toHaveURL(editorUrlPattern);
   const editorUrl = page.url();
-  const coverInput = page.locator(
-    ".community-editor-cover-controls input[type=file]"
-  );
+  const coverInput = page.getByLabel("Arquivo da capa");
   const originalImage = resolve(
     process.cwd(),
     "public/brand/community/study-group.png"
@@ -415,6 +413,8 @@ test("uploads, persists, publishes, replaces and removes real private cover obje
   ).toBeVisible({ timeout: 20_000 });
   await expectImageLoaded(page.locator(".community-editor-cover-preview"));
   await page.getByRole("button", { name: "Publicar", exact: true }).click();
+  // A publicação confirma o destino na tela de Publicar.
+  await page.locator(".community-publish-primary").click();
   await expect(page).toHaveURL(publishedPostUrlPattern, {
     timeout: 30_000,
   });
