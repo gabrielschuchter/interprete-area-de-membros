@@ -22,6 +22,7 @@ import {
 } from "react";
 import { IntentLink } from "@/app/(authenticated)/components/intent-link";
 import { MemberAreaTabs } from "@/components/navigation/member-area-tabs";
+import { isCommunityEditorRoute } from "@/lib/community-editor-route";
 import { isGestaoShellPath } from "@/lib/gestao-navigation";
 import { ActiveTimerPill } from "./active-timer-pill";
 import { MemberAreaSidebar } from "./member-area-sidebar";
@@ -248,6 +249,10 @@ const MemberShellView = ({
   const mobile = viewport === "mobile" || viewport === "landscape";
   const { setOpen, setOpenMobile } = useSidebar();
   const routeKey = currentRouteKey(pathname, searchParams.toString());
+  const editorRoute = isCommunityEditorRoute(
+    pathname,
+    searchParams.get("preview")
+  );
   const [chromeVisible, setChromeVisible] = useState(pathname !== "/");
   const [transition, setTransition] = useState<PortalTransition | null>(null);
   const [navigationFailure, setNavigationFailure] = useState<string | null>(
@@ -677,6 +682,7 @@ const MemberShellView = ({
           displayName={displayName}
           email={email}
           gestaoV2Enabled={gestaoV2Enabled}
+          focusMode={editorRoute}
           localQaAuth={localQaAuth}
           portalMode={
             pathname === "/" ||
@@ -684,11 +690,11 @@ const MemberShellView = ({
           }
         >
           <MemberHeader
-            chromeVisible={chromeVisible}
+            chromeVisible={chromeVisible && !editorRoute}
             memberId={memberId}
             transitionActive={transition !== null}
           />
-          {chromeVisible ? <MemberAreaTabs /> : null}
+          {chromeVisible && !editorRoute ? <MemberAreaTabs /> : null}
           <NavigationFeedback />
           <RouteMotion
             ariaHidden={false}

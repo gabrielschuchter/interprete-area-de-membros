@@ -512,6 +512,8 @@ test("cria, modera, restringe, audita, remove e restaura um grupo real", async (
       page.getByText("Rascunho salvo · visível só para você")
     ).toBeVisible({ timeout: 20_000 });
     await page.getByRole("button", { name: "Publicar", exact: true }).click();
+    // A publicação confirma o destino na tela de Publicar.
+    await page.locator(".community-publish-primary").click();
     const publishedPost = await queryGroupDatabase<{ id: string } | null>(
       "published-post",
       { groupId: group?.id ?? "", postTitle }

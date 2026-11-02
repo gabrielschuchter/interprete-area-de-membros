@@ -56,6 +56,8 @@ test("lê e mantém uma discussão, respostas, menções e acompanhamento", asyn
     page.getByText("Rascunho salvo · visível só para você")
   ).toBeVisible({ timeout: 20_000 });
   await page.getByRole("button", { name: "Publicar", exact: true }).click();
+  // A publicação confirma o destino na tela de Publicar.
+  await page.locator(".community-publish-primary").click();
   await expect(page).toHaveURL(publicationPath, { timeout: 30_000 });
   await expect(page.getByRole("heading", { name: title })).toBeVisible();
 
