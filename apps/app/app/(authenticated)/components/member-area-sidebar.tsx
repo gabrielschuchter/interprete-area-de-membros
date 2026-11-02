@@ -58,10 +58,10 @@ interface MemberAreaSidebarProperties {
   readonly canManageContent: boolean;
   readonly children: ReactNode;
   readonly chromeVisible: boolean;
-  /** Editor em tela cheia: a barra lateral fica recolhida e sem gatilho. */
-  readonly focusMode?: boolean;
   readonly displayName: string;
   readonly email: string;
+  /** Editor em tela cheia: a barra lateral fica recolhida e sem gatilho. */
+  readonly focusMode?: boolean;
   readonly gestaoV2Enabled?: boolean;
   readonly localQaAuth?: boolean;
   readonly portalMode: boolean;

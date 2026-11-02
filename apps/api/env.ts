@@ -27,6 +27,7 @@ export const env = createEnv({
     OUTBOX_PREVIEW_MEMBER_IDS: z.string().optional(),
     PREVIEW_OUTBOX_RECOVERY_ENABLED: z.enum(["true", "false"]).default("false"),
     PREVIEW_OUTBOX_CRON_SECRET: z.string().min(32).optional(),
+    PREVIEW_OUTBOX_RECOVERY_URL: z.string().url().optional(),
   },
   client: {},
   runtimeEnv: {
@@ -37,5 +38,6 @@ export const env = createEnv({
     PREVIEW_OUTBOX_RECOVERY_ENABLED:
       process.env.PREVIEW_OUTBOX_RECOVERY_ENABLED,
     PREVIEW_OUTBOX_CRON_SECRET: process.env.PREVIEW_OUTBOX_CRON_SECRET,
+    PREVIEW_OUTBOX_RECOVERY_URL: process.env.PREVIEW_OUTBOX_RECOVERY_URL,
   },
 });

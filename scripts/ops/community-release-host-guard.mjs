@@ -10,7 +10,13 @@ const TEAM_ID = "team_CCjIuZlYnLPF0Bjgc74lGy9H";
 const PROJECTS = {
   app: {
     id: "prj_bwG8vDd4x2flyPaRMq8HEvi7t5Lj",
+    canonicalAlias: "membros.escolainterprete.com.br",
+    rollbackAliases: [
+      "interprete-area-de-membros.vercel.app",
+      "interprete-area-de-membros-app.vercel.app",
+    ],
     aliases: [
+      "membros.escolainterprete.com.br",
       "interprete-area-de-membros.vercel.app",
       "interprete-area-de-membros-app.vercel.app",
     ],
@@ -65,6 +71,7 @@ const { values } = parseArgs({
   options: {
     project: { type: "string" },
     deployment: { type: "string", multiple: true },
+    "rollback-deployment": { type: "string" },
     "preview-deployment": { type: "string" },
     sha: { type: "string" },
     mode: { type: "string", default: "maintenance" },
@@ -78,11 +85,17 @@ if (
   !(project && values.deployment?.length) ||
   values.deployment.length > 4 ||
   !SHA_PATTERN.test(values.sha ?? "") ||
-  !["maintenance", "release"].includes(values.mode) ||
+  !["maintenance", "transition", "release"].includes(values.mode) ||
+  (values.mode === "transition" &&
+    (values.project !== "app" ||
+      values.deployment.length !== 1 ||
+      !DEPLOYMENT_ID_PATTERN.test(values["rollback-deployment"] ?? "") ||
+      values["preview-deployment"])) ||
+  (values.mode !== "transition" && values["rollback-deployment"]) ||
   (values.stage && values.activate)
 ) {
   fail(
-    "Required: --project app|api --deployment dpl_PRODUCTION [repeat up to four] --sha SHA40 --mode maintenance|release. An explicit --preview-deployment dpl_PREVIEW at the same SHA permits its immutable host; API also verifies its configured worker alias. Optional: --stage or --activate, with --confirm-digest from the dry-run."
+    "Required: --project app|api --deployment dpl_PRODUCTION [repeat up to four] --sha SHA40 --mode maintenance|transition|release. Transition is App-only and requires one --rollback-deployment dpl_PREVIOUS_PRODUCTION. An explicit --preview-deployment dpl_PREVIEW at the same SHA permits its immutable host; API also verifies its configured worker alias. Optional: --stage or --activate, with --confirm-digest from the dry-run."
   );
 }
 const auth = JSON.parse(
@@ -114,7 +127,11 @@ const request = async (apiPath, method = "GET", body = undefined) => {
   return response.json();
 };
 
-const validateDeployment = async (id, preview = false) => {
+const validateDeployment = async (
+  id,
+  preview = false,
+  expectedSha = values.sha
+) => {
   if (!DEPLOYMENT_ID_PATTERN.test(id)) {
     fail("Only exact deployment IDs are accepted.");
   }
@@ -123,7 +140,7 @@ const validateDeployment = async (id, preview = false) => {
   if (
     deployment.projectId !== project.id ||
     deployment.readyState !== "READY" ||
-    sha !== values.sha ||
+    (expectedSha !== null && sha !== expectedSha) ||
     !HOST_PATTERN.test(deployment.url ?? "") ||
     !deployment.url.endsWith(".vercel.app")
   ) {
@@ -240,6 +257,21 @@ const main = async () => {
     [...new Set(values.deployment)].map((id) => validateDeployment(id))
   );
   const verifiedAliases = [];
+  if (values.mode === "transition") {
+    const candidate = deployments[0];
+    const rollback = await validateDeployment(
+      values["rollback-deployment"],
+      false,
+      null
+    );
+    verifiedAliases.push(
+      await validateAlias(project.canonicalAlias, [candidate]),
+      ...(await Promise.all(
+        project.rollbackAliases.map((host) => validateAlias(host, [rollback]))
+      ))
+    );
+    deployments.push(rollback);
+  }
   if (values["preview-deployment"]) {
     const preview = await validateDeployment(
       values["preview-deployment"],
@@ -275,7 +307,9 @@ const main = async () => {
   const rule = {
     name: RULE_NAME,
     description:
-      "Release safety: reject all hosts except explicitly verified compatible artifacts.",
+      values.mode === "transition"
+        ? "Release transition: allow the canonical candidate and exact previous Production artifact for rollback."
+        : "Release safety: reject all hosts except explicitly verified compatible artifacts.",
     active: true,
     conditionGroup: [
       { conditions: [{ type: "host", op: "ninc", value: hosts }] },

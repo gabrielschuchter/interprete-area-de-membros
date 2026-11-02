@@ -18,7 +18,6 @@ export const getSafeInternalPath = (value: string, origin: string) => {
 
     if (
       target.origin !== base.origin ||
-      target.pathname.startsWith("/__clerk") ||
       isAuthenticationOnlyPath(target.pathname)
     ) {
       return "/";

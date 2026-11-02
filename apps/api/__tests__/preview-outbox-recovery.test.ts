@@ -8,6 +8,8 @@ const configuration = {
   environment: "production",
   namespace: undefined,
   secret: previewSecret,
+  previewEndpoint:
+    "https://interprete-area-de-membro-git-afba70-gabrielschuchters-projects.vercel.app/cron/outbox",
 };
 const request = (token: string | undefined = oidcToken) =>
   new Request("https://canonical.example.test/cron/outbox", {
@@ -38,7 +40,7 @@ test.each([
   expect(fetcher).not.toHaveBeenCalled();
 });
 
-test("uses only the fixed Preview endpoint and its own exact bearer with platform OIDC", async () => {
+test("uses the configured Preview endpoint and its own exact bearer with platform OIDC", async () => {
   const fetcher = vi
     .fn<typeof fetch>()
     .mockResolvedValue(new Response(null, { status: 200 }));
@@ -46,9 +48,8 @@ test("uses only the fixed Preview endpoint and its own exact bearer with platfor
     await recoverPreviewOutbox(request(), configuration, 0, fetcher)
   ).toEqual({ status: "succeeded" });
   const [url, options] = fetcher.mock.calls[0];
-  expect(url).toBe(
-    "https://interprete-area-de-membro-git-afba70-gabrielschuchters-projects.vercel.app/cron/outbox"
-  );
+  expect(url).toBeInstanceOf(URL);
+  expect(url?.toString()).toBe(configuration.previewEndpoint);
   expect(options).toMatchObject({
     method: "POST",
     redirect: "error",
@@ -70,6 +71,25 @@ test.each([
     await recoverPreviewOutbox(
       request(),
       { ...configuration, secret },
+      0,
+      fetcher
+    )
+  ).toEqual({ status: "failed", reason: "configuration" });
+  expect(fetcher).not.toHaveBeenCalled();
+});
+
+test.each([
+  undefined,
+  "https://api.escolainterprete.com.br/cron/outbox",
+  "http://api-git-preview.vercel.app/cron/outbox",
+  "https://api-git-preview.vercel.app/other",
+  "https://api-git-preview.vercel.app/cron/outbox?unsafe=true",
+])("does not fetch with an invalid Preview recovery endpoint: %s", async (previewEndpoint) => {
+  const fetcher = vi.fn<typeof fetch>();
+  expect(
+    await recoverPreviewOutbox(
+      request(),
+      { ...configuration, previewEndpoint },
       0,
       fetcher
     )

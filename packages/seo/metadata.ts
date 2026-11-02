@@ -1,3 +1,4 @@
+import { resolveApplicationOrigin } from "@repo/next-config/application-origin";
 import merge from "lodash.merge";
 import type { Metadata } from "next";
 
@@ -8,21 +9,7 @@ type MetadataGenerator = Omit<Metadata, "description" | "title"> & {
 };
 
 const applicationName = "Interprete";
-const canonicalProductionHost = "interprete-area-de-membros-app.vercel.app";
-const protocol = process.env.NODE_ENV === "production" ? "https" : "http";
-const configuredUrl =
-  process.env.NODE_ENV === "production"
-    ? (process.env.VERCEL_PROJECT_PRODUCTION_URL ?? canonicalProductionHost)
-    : (process.env.NEXT_PUBLIC_APP_URL ?? "localhost:3000");
-const normalizedUrl = configuredUrl.replace(
-  "interprete-area-de-membros.vercel.app",
-  canonicalProductionHost
-);
-const metadataBase = new URL(
-  normalizedUrl.startsWith("http")
-    ? normalizedUrl
-    : `${protocol}://${normalizedUrl}`
-);
+const metadataBase = new URL(resolveApplicationOrigin());
 const defaultSocialImage = "/brand/meta/interprete-social-v2.png";
 
 export const createMetadata = ({

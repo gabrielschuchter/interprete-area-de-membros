@@ -681,8 +681,8 @@ const MemberShellView = ({
           chromeVisible={chromeVisible}
           displayName={displayName}
           email={email}
-          gestaoV2Enabled={gestaoV2Enabled}
           focusMode={editorRoute}
+          gestaoV2Enabled={gestaoV2Enabled}
           localQaAuth={localQaAuth}
           portalMode={
             pathname === "/" ||

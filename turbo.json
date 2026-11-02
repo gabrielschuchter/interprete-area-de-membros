@@ -6,6 +6,11 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build", "test"],
+      "env": [
+        "CLERK_DISABLE_AUTO_PROXY",
+        "VERCEL_TARGET_ENV",
+        "VERCEL_PROJECT_PRODUCTION_URL"
+      ],
       "outputs": [
         ".next/**",
         "!.next/cache/**",

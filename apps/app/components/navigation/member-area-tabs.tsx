@@ -2,22 +2,25 @@
 
 import { Button } from "@repo/design-system/components/ui/button";
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@repo/design-system/components/ui/sheet";
-import {
   ChevronDownIcon,
   ChevronRightIcon,
   LayoutGridIcon,
 } from "lucide-react";
+import dynamic from "next/dynamic";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { IntentLink } from "@/app/(authenticated)/components/intent-link";
 import { useMemberNavigation } from "@/app/(authenticated)/components/member-navigation-context";
+
+const loadAreaPickerSheet = () =>
+  import("./member-area-picker-sheet").then(
+    (module) => module.MemberAreaPickerSheet
+  );
+
+const AreaPickerSheet = dynamic(loadAreaPickerSheet, {
+  ssr: false,
+  loading: () => null,
+});
 
 const studyAreas = [
   { href: "/estudar", label: "Visão geral" },
@@ -62,71 +65,6 @@ const navigationAreasForPath = (
   return [];
 };
 
-const AreaSheet = ({
-  activeLabel,
-  areas,
-  label,
-}: {
-  readonly activeLabel: string;
-  readonly areas: ReadonlyArray<{
-    readonly href: string;
-    readonly label: string;
-  }>;
-  readonly label: string;
-}) => {
-  const [open, setOpen] = useState(false);
-
-  return (
-    <Sheet onOpenChange={setOpen} open={open}>
-      <SheetTrigger asChild>
-        {label === "Estudar" ? (
-          <Button
-            aria-label="Trocar área"
-            className="h-10 shrink-0 gap-2 px-0 font-semibold text-[#8C1535]"
-            variant="ghost"
-          >
-            <LayoutGridIcon aria-hidden="true" className="size-4" />
-            Trocar área
-          </Button>
-        ) : (
-          <Button
-            aria-label={`Trocar ${label.toLowerCase()}`}
-            className="h-11 w-full justify-between rounded-sm border-border bg-background px-3"
-            variant="outline"
-          >
-            <span className="min-w-0 truncate">
-              <span className="text-muted-foreground">{label} · </span>
-              <span className="font-medium text-foreground">{activeLabel}</span>
-            </span>
-            <ChevronDownIcon aria-hidden="true" className="size-4 shrink-0" />
-          </Button>
-        )}
-      </SheetTrigger>
-      <SheetContent className="w-[min(88vw,360px)] bg-background" side="left">
-        <SheetHeader className="border-b px-5 py-5 text-left">
-          <SheetTitle className="font-display text-2xl">
-            Trocar {label.toLowerCase()}
-          </SheetTitle>
-          <SheetDescription>Escolha uma área para continuar.</SheetDescription>
-        </SheetHeader>
-        <nav aria-label={label} className="grid gap-1 px-3 py-4">
-          {areas.map((area) => (
-            <IntentLink
-              aria-current={area.label === activeLabel ? "page" : undefined}
-              className={`flex min-h-11 items-center rounded-sm px-3 text-sm transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${area.label === activeLabel ? "bg-accent font-semibold text-foreground" : "text-muted-foreground"}`}
-              href={area.href}
-              key={area.href}
-              onClick={() => setOpen(false)}
-            >
-              {area.label}
-            </IntentLink>
-          ))}
-        </nav>
-      </SheetContent>
-    </Sheet>
-  );
-};
-
 export const MemberAreaTabs = () => {
   const committedPathname = usePathname();
   const searchParams = useSearchParams();
@@ -158,6 +96,16 @@ export const MemberAreaTabs = () => {
     pathname !== "/comunidade/meus-topicos" &&
     !pathname.startsWith("/encontros/gravacoes");
   const areas = navigationAreasForPath(isStudyPath, isCommunityPath);
+  const sectionLabel = isStudyPath ? "Estudar" : "Comunidade";
+  const [areaPickerOpen, setAreaPickerOpen] = useState(false);
+  const [areaPickerReady, setAreaPickerReady] = useState(false);
+  const preloadAreaPicker = useCallback(() => {
+    return loadAreaPickerSheet().then(() => setAreaPickerReady(true));
+  }, []);
+  const openAreaPicker = useCallback(() => {
+    setAreaPickerOpen(true);
+    return preloadAreaPicker();
+  }, [preloadAreaPicker]);
 
   if (areas.length === 0) {
     return null;
@@ -169,7 +117,6 @@ export const MemberAreaTabs = () => {
         .filter((area) => matchesPath(pathname, area.href))
         .sort((left, right) => right.href.length - left.href.length)[0] ??
       areas[0]);
-  const sectionLabel = isStudyPath ? "Estudar" : "Comunidade";
 
   return (
     <div
@@ -196,19 +143,40 @@ export const MemberAreaTabs = () => {
                 {activeArea.label}
               </span>
             </IntentLink>
-            <AreaSheet
-              activeLabel={activeArea.label}
-              areas={areas}
-              label={sectionLabel}
-            />
+            <Button
+              aria-busy={areaPickerOpen && !areaPickerReady}
+              aria-label="Trocar área"
+              className="h-10 shrink-0 gap-2 px-0 font-semibold text-[#8C1535]"
+              onClick={openAreaPicker}
+              onFocus={preloadAreaPicker}
+              onPointerEnter={preloadAreaPicker}
+              variant="ghost"
+            >
+              <LayoutGridIcon aria-hidden="true" className="size-4" />
+              {areaPickerOpen && !areaPickerReady
+                ? "Abrindo áreas…"
+                : "Trocar área"}
+            </Button>
           </div>
         ) : (
           <div className="member-area-tabs-mobile md:hidden">
-            <AreaSheet
-              activeLabel={activeArea.label}
-              areas={areas}
-              label={sectionLabel}
-            />
+            <Button
+              aria-busy={areaPickerOpen && !areaPickerReady}
+              aria-label={`Trocar ${sectionLabel.toLowerCase()}`}
+              className="h-11 w-full justify-between rounded-sm border-border bg-background px-3"
+              onClick={openAreaPicker}
+              onFocus={preloadAreaPicker}
+              onPointerEnter={preloadAreaPicker}
+              variant="outline"
+            >
+              <span className="min-w-0 truncate">
+                <span className="text-muted-foreground">{sectionLabel} · </span>
+                <span className="font-medium text-foreground">
+                  {activeArea.label}
+                </span>
+              </span>
+              <ChevronDownIcon aria-hidden="true" className="size-4 shrink-0" />
+            </Button>
           </div>
         ))}
       <nav
@@ -237,6 +205,20 @@ export const MemberAreaTabs = () => {
           ))}
         </div>
       </nav>
+      {areaPickerOpen ? (
+        <AreaPickerSheet
+          activeLabel={activeArea.label}
+          areas={areas}
+          label={sectionLabel}
+          onOpenChange={(open: boolean) => {
+            setAreaPickerOpen(open);
+            if (!open) {
+              setAreaPickerReady(false);
+            }
+          }}
+          open
+        />
+      ) : null}
     </div>
   );
 };
