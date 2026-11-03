@@ -29,6 +29,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useEffect, useRef, useState } from "react";
+import { useMemberNavigation } from "@/app/(authenticated)/components/member-navigation-context";
 import {
   discardCommunityDraft,
   publishPost,
@@ -157,6 +158,11 @@ export function CommunityComposer({
   status,
 }: CommunityComposerProperties) {
   const router = useRouter();
+  const memberNavigation = useMemberNavigation();
+  // Leaving goes through the shell when there is one, so the destination gets
+  // its cover and transition like any other link; tests render without it.
+  const leaveTo = (href: string) =>
+    memberNavigation ? memberNavigation.navigate(href) : router.push(href);
   const [title, setTitle] = useState(initialTitle);
   const [subtitle, setSubtitle] = useState(initialSubtitle ?? "");
   const [coverUrl, setCoverUrl] = useState(initialCoverUrl ?? "");
@@ -651,7 +657,7 @@ export function CommunityComposer({
       return;
     }
     if (!dirtyRef.current) {
-      router.push(backHref);
+      leaveTo(backHref);
       return;
     }
     setExitDialogOpen(true);
@@ -668,7 +674,7 @@ export function CommunityComposer({
         (status === "DRAFT" ? await flushSave() : await updatePublishedPost());
       if (saved) {
         setExitDialogOpen(false);
-        router.push(backHref);
+        leaveTo(backHref);
       }
     } catch {
       setErrorMessage(
@@ -712,7 +718,7 @@ export function CommunityComposer({
         }
       }
       await removeTemporaryCover();
-      router.push(backHref);
+      leaveTo(backHref);
     } catch {
       setErrorMessage("Não foi possível descartar o rascunho agora.");
     } finally {
@@ -780,6 +786,7 @@ export function CommunityComposer({
         <Link
           aria-disabled={leaving}
           className="community-editor-back"
+          data-member-navigation="manual"
           href={backHref}
           onClickCapture={requestLeave}
         >

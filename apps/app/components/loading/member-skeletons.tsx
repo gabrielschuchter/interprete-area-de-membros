@@ -210,3 +210,49 @@ export const LibraryLoading = () => (
     </div>
   </LoadingFrame>
 );
+
+/**
+ * The editor's own frame: the purple bar, the formatting strip and the sheet
+ * on the desk, with the measures of community-editor.css. It uses utilities
+ * only, so it renders right even when the cover shows it from a section whose
+ * route has not loaded the editor stylesheet yet.
+ */
+export const CommunityEditorLoading = () => (
+  <div
+    className="min-h-svh w-full bg-[#dcd0cf]"
+    data-editor-skeleton
+    data-route-loading
+  >
+    <output aria-label="Carregando editor" className="block">
+      <div className="flex h-[52px] items-center gap-3 bg-[#410230] pr-2.5 pl-4 md:h-12 md:px-5">
+        <span className="h-4 w-16 rounded-sm bg-[#f1ebe8]/25" />
+        <span className="hidden h-3 w-44 rounded-sm bg-[#f1ebe8]/15 sm:block" />
+        <span className="ml-auto hidden h-4 w-24 rounded-sm bg-[#f1ebe8]/15 md:block" />
+        <span className="h-9 w-[86px] rounded bg-[#f1ebe8]/30" />
+      </div>
+      <div className="hidden h-[45px] items-center justify-center gap-3 border-[#a68f99] border-b bg-[#f7f3f1] md:flex">
+        {skeletonKeys("editor-tool", 9).map((key) => (
+          <Skeleton className="size-6 rounded" key={key} />
+        ))}
+      </div>
+      <div className="md:p-6">
+        <div className="mx-auto box-border min-h-[calc(100svh-52px)] w-full bg-[#f7f3f1] px-5 pt-5 md:min-h-[1040px] md:w-[min(100%,calc(62ch+176px))] md:rounded md:border md:border-[#a68f99] md:px-12 md:pt-14 lg:px-[88px] lg:pt-[72px]">
+          <div className="-mx-2 mb-5 flex h-[52px] items-center gap-2 border-[#dcd0cf] border-y px-2 md:hidden">
+            {skeletonKeys("editor-tool-inline", 7).map((key) => (
+              <Skeleton className="h-6 flex-1 rounded" key={key} />
+            ))}
+          </div>
+          <Skeleton className="h-4 w-28" />
+          <Skeleton className="mt-8 h-11 w-4/5 max-w-[30rem]" />
+          <Skeleton className="mt-5 h-5 w-1/2 max-w-[16rem]" />
+          <span className="mt-8 block h-0.5 w-12 bg-[#8c1535]/40" />
+          <div className="mt-8 space-y-3">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-11/12" />
+            <Skeleton className="h-4 w-3/5" />
+          </div>
+        </div>
+      </div>
+    </output>
+  </div>
+);
