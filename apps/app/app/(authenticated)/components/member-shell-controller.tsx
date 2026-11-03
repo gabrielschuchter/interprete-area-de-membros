@@ -435,7 +435,9 @@ const MemberShellView = ({
   const handleNavigationCapture = useCallback(
     (event: ReactMouseEvent<HTMLDivElement>) => {
       const anchor = anchorForTarget(event.target);
-      if (!anchor) {
+      // A link that decides for itself whether to leave (the editor's "Voltar"
+      // asks first when there are unsaved changes) calls navigate() on its own.
+      if (!anchor || anchor.dataset.memberNavigation === "manual") {
         return;
       }
       const url = sameOriginUrlForAnchor(anchor);

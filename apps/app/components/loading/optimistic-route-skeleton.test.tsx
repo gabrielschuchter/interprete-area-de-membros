@@ -43,6 +43,16 @@ describe("OptimisticRouteSkeleton", () => {
     expect(cover?.className).toContain("absolute");
   });
 
+  test("paints above the outgoing page's sticky bars", () => {
+    const { container } = render(
+      <OptimisticRouteSkeleton onSettled={vi.fn()} targetPath="/comunidade" />
+    );
+
+    expect(
+      container.querySelector("[data-optimistic-skeleton]")?.className
+    ).toContain("z-[60]");
+  });
+
   test("releases itself after eight seconds if the navigation never lands", () => {
     vi.useFakeTimers();
     const onSettled = vi.fn();
@@ -119,5 +129,36 @@ describe("OptimisticCover", () => {
     act(() => vi.advanceTimersByTime(200));
 
     expect(container.querySelector("[data-optimistic-skeleton]")).toBeNull();
+  });
+
+  test("never covers a page that is already on screen", () => {
+    vi.useFakeTimers();
+    window.history.pushState({}, "", "/comunidade/novo");
+    const { container } = render(
+      <OptimisticCover
+        failed={false}
+        pathname="/comunidade/novo"
+        transition={{
+          ...pending("/comunidade/novo"),
+          id: 7,
+          phase: "entering",
+        }}
+      />
+    );
+
+    act(() => vi.advanceTimersByTime(400));
+
+    expect(container.querySelector("[data-optimistic-skeleton]")).toBeNull();
+  });
+});
+
+describe("skeletonForPath on editor routes", () => {
+  test.each([
+    "/comunidade/novo",
+    "/comunidade/editor/post-1",
+  ])("draws the editor, not the feed, for %s", (pathname) => {
+    const { container } = render(skeletonForPath(pathname));
+
+    expect(container.querySelector("[data-editor-skeleton]")).not.toBeNull();
   });
 });

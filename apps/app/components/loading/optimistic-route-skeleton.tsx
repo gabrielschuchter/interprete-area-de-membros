@@ -2,8 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { PortalTransition } from "@/app/(authenticated)/components/member-navigation-context";
+import { isCommunityEditorRoute } from "@/lib/community-editor-route";
 import {
   ActivitiesLoading,
+  CommunityEditorLoading,
   CommunityLoading,
   HomeLoading,
   LearningLoading,
@@ -37,6 +39,9 @@ export const skeletonForPath = (pathname: string) => {
     pathname === "/comunidade/encontros"
   ) {
     return <MeetingsLoading />;
+  }
+  if (isCommunityEditorRoute(pathname)) {
+    return <CommunityEditorLoading />;
   }
   if (startsWithSegment(pathname, "/comunidade")) {
     return <CommunityLoading />;
@@ -94,7 +99,9 @@ export const OptimisticRouteSkeleton = ({
   return (
     <div
       aria-hidden="true"
-      className="member-route-optimistic absolute inset-0 z-[5] bg-background"
+      // Above the outgoing page's sticky layers (the section bar at z-20, the
+      // editor's bar at z-50), which otherwise paint over the skeleton.
+      className="member-route-optimistic absolute inset-0 z-[60] bg-background"
       data-optimistic-skeleton=""
     >
       {skeletonForPath(targetPath)}
@@ -127,14 +134,19 @@ export const OptimisticCover = ({
   pathnameRef.current = pathname;
   const transitionId = transition?.id ?? null;
   const targetPath = transition?.targetPath ?? null;
+  // Only a navigation that has not committed yet needs a cover. A transition
+  // that starts already "entering" (router.push, a server action redirect,
+  // the browser's back button) belongs to a page that is on screen: covering
+  // it would hide the real content behind a skeleton until the settle timeout.
+  const pending = transition !== null && transition.phase !== "entering";
   const clear = useCallback(() => setCover(null), []);
 
   useEffect(() => {
     const origin = pathnameRef.current;
-    if (transitionId === null || targetPath === null) {
+    if (!pending || transitionId === null || targetPath === null) {
       return;
     }
-    if (origin === "/" || targetPath === "/") {
+    if (origin === "/" || targetPath === "/" || origin === targetPath) {
       return;
     }
     const timeout = window.setTimeout(() => {
@@ -145,7 +157,7 @@ export const OptimisticCover = ({
       }
     }, OPTIMISTIC_SKELETON_DELAY);
     return () => window.clearTimeout(timeout);
-  }, [targetPath, transitionId]);
+  }, [pending, targetPath, transitionId]);
 
   // A redirect may land elsewhere, so compare with the origin.
   useEffect(() => {
