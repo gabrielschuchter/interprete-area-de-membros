@@ -60,14 +60,14 @@ describe("Gestão environment navigation", () => {
     expect(second.result.current).toBe("/biblioteca?q=leitura#retomar");
     second.unmount();
     const other = renderHook(() => useGestaoReturnPath("actor-b", null));
-    expect(other.result.current).toBe("/estudar");
+    expect(other.result.current).toBe("/cursos");
     other.unmount();
     sessionStorage.setItem(
       "interprete:gestao:return:v1:actor-a",
       "//external.example"
     );
     const unsafe = renderHook(() => useGestaoReturnPath("actor-a", null));
-    expect(unsafe.result.current).toBe("/estudar");
+    expect(unsafe.result.current).toBe("/cursos");
   });
 
   it("does not dispatch offline and allows a fresh retry", () => {

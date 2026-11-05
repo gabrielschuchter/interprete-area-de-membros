@@ -20,7 +20,6 @@ const AreaPickerSheet = dynamic(loadAreaPickerSheet, {
 });
 
 const studyAreas = [
-  { href: "/estudar", label: "Visão geral" },
   { href: "/cursos", label: "Cursos" },
   { href: "/exercicios", label: "Exercícios" },
   ...(memberActivitiesEnabled
@@ -32,9 +31,8 @@ const studyAreas = [
 
 const communityAreas = [
   { href: "/comunidade", label: "Explorar" },
-  { href: "/comunidade/grupos", label: "Grupos" },
+  { href: "/comunidade/grupos", label: "Grupos de estudo" },
   { href: "/comunidade/encontros", label: "Encontros" },
-  { href: "/comunidade/salvos", label: "Salvos" },
   { href: "/comunidade/minhas-publicacoes", label: "Minhas publicações" },
 ] as const;
 
@@ -73,9 +71,7 @@ const communityActiveArea = (pathname: string) => {
 };
 
 const matchesPath = (pathname: string, href: string) =>
-  href === "/estudar"
-    ? pathname === href
-    : pathname === href || pathname.startsWith(`${href}/`);
+  pathname === href || pathname.startsWith(`${href}/`);
 
 const navigationAreasForPath = (
   isStudyPath: boolean,
@@ -139,7 +135,7 @@ export const MemberAreaTabs = () => {
         .sort((left, right) => right.href.length - left.href.length)[0] ??
       areas[0])
     : communityActiveArea(pathname);
-  const sectionHref = isStudyPath ? "/estudar" : "/comunidade";
+  const sectionHref = isStudyPath ? "/cursos" : "/comunidade";
 
   return (
     <div

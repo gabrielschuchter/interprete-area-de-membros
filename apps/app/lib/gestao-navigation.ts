@@ -75,14 +75,14 @@ export const isGestaoShellPath = (pathname: string) =>
 
 export const safeGestaoReturnPath = (value: string | null | undefined) => {
   if (!value || value.includes("\\")) {
-    return "/estudar";
+    return "/cursos";
   }
 
   try {
     const origin = "https://gestao-return.invalid";
     const url = new URL(value, origin);
     if (url.origin !== origin) {
-      return "/estudar";
+      return "/cursos";
     }
     if (
       url.pathname === "/gestao" ||
@@ -94,11 +94,11 @@ export const safeGestaoReturnPath = (value: string | null | undefined) => {
       url.pathname === "/sign-in" ||
       url.pathname.startsWith("/sign-in/")
     ) {
-      return "/estudar";
+      return "/cursos";
     }
     return `${url.pathname}${url.search}${url.hash}`;
   } catch {
-    return "/estudar";
+    return "/cursos";
   }
 };
 

@@ -114,7 +114,7 @@ describe("GlobalSidebar personal content group", () => {
       "Minhas gravações",
     ]);
     expect(links.map((link) => link.getAttribute("href"))).toEqual([
-      "/comunidade/encontros/gravacoes",
+      "/gravacoes",
     ]);
   });
 
@@ -130,7 +130,7 @@ describe("GlobalSidebar personal content group", () => {
   });
 
   test("activates only recordings on the recordings route", () => {
-    renderSidebarAt("/comunidade/encontros/gravacoes");
+    renderSidebarAt("/gravacoes");
 
     const { links } = personalLinks();
     expect(links).toHaveLength(1);

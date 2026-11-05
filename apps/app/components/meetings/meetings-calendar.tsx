@@ -94,7 +94,7 @@ const RelatedActivityLink = ({
 
 export const MeetingsCalendar = ({
   meetings,
-  recordingsBasePath = "/comunidade/encontros/gravacoes",
+  recordingsBasePath = "/gravacoes",
 }: MeetingsCalendarProperties) => {
   const today = new Date();
   const [view, setView] = useState<"month" | "week">("month");

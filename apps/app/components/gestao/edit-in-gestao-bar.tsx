@@ -64,8 +64,9 @@ export const EditInGestaoBar = async (
     <div
       style={{
         alignItems: "center",
-        background: "#410230",
-        color: "#fff",
+        background: "#F1EBE8",
+        borderBottom: "1px solid #E2D6D1",
+        color: "#40222F",
         display: "flex",
         font: "500 13px/1 var(--font-sans-family, system-ui, sans-serif)",
         gap: 12,
@@ -77,13 +78,13 @@ export const EditInGestaoBar = async (
         zIndex: 40,
       }}
     >
-      <span>Você está vendo a página como o aluno a vê.</span>
+      <span>Atalho da equipe</span>
       <a
         href={target.href}
         style={{
-          background: "#fff",
+          background: "#8C1535",
           borderRadius: 6,
-          color: "#410230",
+          color: "#fff",
           fontWeight: 600,
           padding: "8px 12px",
           textDecoration: "none",

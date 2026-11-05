@@ -46,7 +46,7 @@ const CoursePageContent = async ({
   ]);
   const courseExperience = await getCourseExperience(slug);
   if (courseExperience?.experience === "RECORDING_ARCHIVE") {
-    redirect("/encontros/gravacoes");
+    redirect("/gravacoes");
   }
   const assignedModuleId =
     typeof routeSearchParams.module === "string"

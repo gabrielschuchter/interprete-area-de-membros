@@ -1,5 +1,6 @@
 import "server-only";
 import { database } from "@repo/database";
+import { readCollectiveGoalSeconds } from "./community-goal";
 import type { GestaoActor } from "./gestao-authorization";
 import {
   campaignState,
@@ -8,7 +9,6 @@ import {
   type TaskRecurrence,
   taskState,
 } from "./gestao-tasks-domain";
-import { readCampaignContribution } from "./study-dashboard";
 import { studyPeriodKey } from "./study-periods";
 
 const pageSize = 20;
@@ -121,12 +121,12 @@ export const getGestaoCampaigns = async (limit: number) => {
     campaigns.map(async (campaign) => {
       const started = campaign.startsAt <= now;
       const seconds = started
-        ? await readCampaignContribution(
+        ? await readCollectiveGoalSeconds(
             campaign.startsAt,
             campaign.endsAt < now ? campaign.endsAt : now
           )
-        : [];
-      const minutes = Math.floor(Number(seconds[0]?.seconds ?? 0) / 60);
+        : 0;
+      const minutes = Math.floor(seconds / 60);
       return {
         ...campaign,
         contributedMinutes: minutes,

@@ -279,7 +279,7 @@ const GestaoTasksPage = async ({
       query: params.q,
       state: params.estado,
     }),
-    getGestaoCampaigns(isGoals ? 12 : 2),
+    isGoals ? getGestaoCampaigns(12) : Promise.resolve([]),
     getGestaoAssignmentOptions(actor),
   ]);
   const message = params.resultado ? resultMessages[params.resultado] : null;
@@ -384,20 +384,6 @@ const GestaoTasksPage = async ({
               />
             </div>
           </nav>
-
-          <section aria-labelledby="gk-goals-heading" className="gk-goals">
-            <div className="gk-goals-head">
-              <h2 id="gk-goals-heading">Metas coletivas</h2>
-              <Link
-                className="gk-link-btn"
-                href={`${base}?aba=metas`}
-                prefetch={false}
-              >
-                Ver todas
-              </Link>
-            </div>
-            <GoalGrid campaigns={campaigns} canManage={canManageGoals} />
-          </section>
         </>
       )}
     </section>

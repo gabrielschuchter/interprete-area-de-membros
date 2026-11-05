@@ -94,6 +94,7 @@ const ProfilePage = async ({ searchParams }: ProfilePageProperties) => {
         id: true,
         badgeId: true,
         awardedAt: true,
+        badge: { select: { imageUrl: true } },
         definitionRevision: {
           select: { title: true, description: true, criterion: true },
         },
@@ -103,7 +104,13 @@ const ProfilePage = async ({ searchParams }: ProfilePageProperties) => {
       where: { status: "PUBLISHED" },
       orderBy: [{ criterion: "asc" }, { threshold: "asc" }],
       take: 200,
-      select: { id: true, title: true, description: true, criterion: true },
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        criterion: true,
+        imageUrl: true,
+      },
     }),
   ]);
 
@@ -324,6 +331,7 @@ const ProfilePage = async ({ searchParams }: ProfilePageProperties) => {
                   <ProfileBadgeIcon
                     criterion={badge.criterion}
                     earned={earned}
+                    imageUrl={badge.imageUrl}
                     size="small"
                   />
                   <span className="sr-only">

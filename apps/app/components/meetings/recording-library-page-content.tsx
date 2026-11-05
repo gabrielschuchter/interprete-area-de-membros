@@ -37,7 +37,7 @@ interface RecordingLibraryPageProperties {
 const recordingHref = (assetId: string, inCommunity = false) =>
   `${recordingArchiveHref({
     asset: assetId,
-    basePath: inCommunity ? "/comunidade/encontros/gravacoes" : undefined,
+    basePath: inCommunity ? "/gravacoes" : undefined,
   })}#asset-${encodeURIComponent(assetId)}`;
 
 const formatDate = (value: Date | null, timezone = "America/Sao_Paulo") =>
@@ -158,7 +158,7 @@ const RecordingLibraryPage = async ({
   const nextHref = page.nextCursor
     ? recordingArchiveHref({
         asset,
-        basePath: "/comunidade/encontros/gravacoes",
+        basePath: "/gravacoes",
         cursor: page.nextCursor,
         query: q,
         year,
@@ -216,7 +216,7 @@ const RecordingLibraryPage = async ({
         </Button>
         {(q || year) && (
           <Button asChild type="button" variant="ghost">
-            <Link href={"/comunidade/encontros/gravacoes"}>Limpar</Link>
+            <Link href={"/gravacoes"}>Limpar</Link>
           </Button>
         )}
       </form>

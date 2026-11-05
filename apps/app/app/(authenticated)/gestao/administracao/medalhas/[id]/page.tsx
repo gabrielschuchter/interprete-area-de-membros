@@ -7,6 +7,7 @@ import {
   medalStatusLabel,
   medalStatusTone,
 } from "@/lib/gestao-medals-domain";
+import { GestaoEraseButton } from "../../../apagar/erase-dialog";
 import { GestaoCrumbTail } from "../../../gestao-crumbs";
 import { GestaoIcon } from "../../../gestao-icon";
 import { setGestaoMedalStatus } from "../actions";
@@ -97,19 +98,25 @@ const GestaoMedalPage = async ({
       <div className="gk-stage-grid">
         <MedalStage
           criterion={medal.criterion}
+          imageUrl={medal.imageUrl}
           threshold={medal.threshold}
           title={medal.title}
         />
         <div className="gk-person-main">
           <section className="gk-card">
-            <h2 className="gk-card-title">Símbolo</h2>
+            <h2 className="gk-card-title">Símbolo e exclusão</h2>
             <p className="gk-hint">
-              O aluno vê a arte padrão do critério “
-              {medalCriterionLabels[medal.criterion]}”. O envio de um símbolo
-              próprio (SVG, PNG ou WebP) ainda não está ligado: depende de um
-              espaço de armazenamento para símbolos e de a área do aluno passar
-              a exibi-lo.
+              O símbolo se escolhe no formulário abaixo e vale em toda a
+              plataforma: Reconhecimento, perfil pessoal e perfil público.
             </p>
+            <GestaoEraseButton
+              consequence={`As ${medal._count.awards} conquistas já registradas dessa medalha somem dos perfis.`}
+              id={medal.id}
+              kind="badge"
+              noun="medalha"
+              redirectTo="/gestao/administracao/medalhas"
+              title={medal.title}
+            />
           </section>
           {archived ? null : (
             <MedalForm
@@ -118,6 +125,7 @@ const GestaoMedalPage = async ({
                 criterion: medal.criterion,
                 description: medal.description,
                 id: medal.id,
+                imageUrl: medal.imageUrl,
                 threshold: medal.threshold,
                 title: medal.title,
               }}

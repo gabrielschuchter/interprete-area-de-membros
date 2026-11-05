@@ -1,7 +1,9 @@
 "use client";
 
 import type { BadgeCriterion } from "@repo/database";
+import Image from "next/image";
 import { useActionState } from "react";
+import { badgeArtworkByCriterion } from "@/lib/badge-artwork";
 import { medalCriterionLabels } from "@/lib/gestao-medals-domain";
 import { GestaoIcon } from "../../gestao-icon";
 import { type MedalFormState, saveGestaoMedal } from "./actions";
@@ -17,6 +19,7 @@ export const MedalForm = ({
     readonly criterion: BadgeCriterion;
     readonly description: string;
     readonly id: string | null;
+    readonly imageUrl: string | null;
     readonly threshold: number;
     readonly title: string;
   };
@@ -52,6 +55,41 @@ export const MedalForm = ({
           )}
         </select>
       </label>
+      <fieldset className="gk-label gk-symbols">
+        <legend>Símbolo</legend>
+        <label className="gk-symbol">
+          <input
+            defaultChecked={!initial.imageUrl}
+            name="imageUrl"
+            type="radio"
+            value=""
+          />
+          <span>Padrão do critério</span>
+        </label>
+        {(Object.keys(medalCriterionLabels) as BadgeCriterion[]).map(
+          (criterion) => (
+            <label className="gk-symbol" key={criterion}>
+              <input
+                defaultChecked={
+                  initial.imageUrl === badgeArtworkByCriterion[criterion]
+                }
+                name="imageUrl"
+                type="radio"
+                value={badgeArtworkByCriterion[criterion]}
+              />
+              <Image
+                alt={medalCriterionLabels[criterion]}
+                height={48}
+                src={badgeArtworkByCriterion[criterion]}
+                width={48}
+              />
+            </label>
+          )
+        )}
+        <small className="gk-hint">
+          A troca vale na hora em toda a plataforma.
+        </small>
+      </fieldset>
       <label className="gk-label">
         <span>Quantidade necessária</span>
         <input
@@ -64,8 +102,9 @@ export const MedalForm = ({
           type="number"
         />
         <small className="gk-hint">
-          A regra é avaliada no servidor. Cada membro recebe a medalha uma única
-          vez.
+          A regra é avaliada no servidor e, ao salvar uma mudança de critério ou
+          quantidade, todos os membros são reavaliados na hora. Cada membro
+          recebe a medalha uma única vez.
         </small>
       </label>
       <label className="gk-label">

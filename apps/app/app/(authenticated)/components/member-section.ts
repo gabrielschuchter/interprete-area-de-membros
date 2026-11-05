@@ -1,6 +1,6 @@
 export const personalContentNavigation = [
   {
-    href: "/comunidade/encontros/gravacoes",
+    href: "/gravacoes",
     icon: "recordings",
     label: "Minhas gravações",
   },
@@ -45,7 +45,10 @@ export const memberSectionForPathname = (pathname: string) => {
   if (pathname.startsWith("/biblioteca")) {
     return "Biblioteca";
   }
-  if (pathname.startsWith("/encontros/gravacoes")) {
+  if (
+    pathname.startsWith("/gravacoes") ||
+    pathname.startsWith("/encontros/gravacoes")
+  ) {
     return "Minhas gravações";
   }
   if (pathname.startsWith("/encontros")) {
@@ -67,9 +70,9 @@ export const memberSectionForPathname = (pathname: string) => {
 };
 
 const communityBreadcrumbAreas = [
-  ["/comunidade/encontros/gravacoes", "Minhas gravações"],
+  ["/gravacoes", "Minhas gravações"],
   ["/comunidade/encontros", "Encontros"],
-  ["/comunidade/grupos", "Grupos"],
+  ["/comunidade/grupos", "Grupos de estudo"],
   ["/comunidade/salvos", "Salvos"],
   ["/comunidade/minhas-publicacoes", "Minhas publicações"],
   ["/comunidade/meus-topicos", "Minhas publicações"],
@@ -82,9 +85,6 @@ const communityBreadcrumbAreas = [
 export const memberBreadcrumbForPathname = (pathname: string) => {
   if (pathname === "/salvos") {
     return "Salvos";
-  }
-  if (pathname === "/estudar") {
-    return "Início › Estudar";
   }
   if (pathname.startsWith("/cursos")) {
     return "Estudar · Cursos";
@@ -105,8 +105,11 @@ export const memberBreadcrumbForPathname = (pathname: string) => {
   if (pathname.startsWith("/biblioteca")) {
     return "Estudar · Biblioteca";
   }
-  if (pathname.startsWith("/encontros/gravacoes")) {
-    return "Comunidade · Minhas gravações";
+  if (
+    pathname.startsWith("/gravacoes") ||
+    pathname.startsWith("/encontros/gravacoes")
+  ) {
+    return "Minhas gravações";
   }
   if (pathname === "/encontros" || pathname.startsWith("/encontros/")) {
     return "Comunidade · Encontros";
@@ -120,7 +123,7 @@ export const memberBreadcrumbForPathname = (pathname: string) => {
     const area = communityBreadcrumbAreas.find(
       ([prefix]) => pathname === prefix || pathname.startsWith(`${prefix}/`)
     );
-    return `Comunidade · ${area?.[1] ?? "Grupos"}`;
+    return `Comunidade · ${area?.[1] ?? "Grupos de estudo"}`;
   }
   return memberSectionForPathname(pathname);
 };

@@ -14,6 +14,7 @@ import {
 } from "@repo/design-system/components/ui/dropdown-menu";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { GestaoErase } from "../../apagar/erase-dialog";
 import { GestaoIcon } from "../../gestao-icon";
 import { revokeGestaoAssignment } from "./actions";
 
@@ -76,42 +77,55 @@ export const AssignmentRowMenu = ({
   const router = useRouter();
   const [revoking, setRevoking] = useState(false);
   return (
-    <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button
-            aria-label={`Mais ações para ${title}`}
-            className="gk-icon-btn gk-icon-btn--bare"
-            type="button"
-          >
-            <GestaoIcon name="dots" size={18} />
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="gk-menu">
-          <DropdownMenuItem
-            onSelect={() =>
-              router.push(
-                `/gestao/alunos/atribuicoes/nova?de=${encodeURIComponent(batchId)}`
-              )
-            }
-          >
-            Duplicar atribuição
-          </DropdownMenuItem>
-          {canRevoke ? (
-            <DropdownMenuItem onSelect={() => setRevoking(true)}>
-              Revogar atribuição
-            </DropdownMenuItem>
+    <GestaoErase
+      consequence="O registro e o que cada aluno fez dentro da atribuição somem. O conteúdo em si continua."
+      id={batchId}
+      kind="assignment"
+      noun="atribuição"
+      title={title}
+    >
+      {(openErase) => (
+        <>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                aria-label={`Mais ações para ${title}`}
+                className="gk-icon-btn gk-icon-btn--bare"
+                type="button"
+              >
+                <GestaoIcon name="dots" size={18} />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="gk-menu">
+              <DropdownMenuItem
+                onSelect={() =>
+                  router.push(
+                    `/gestao/alunos/atribuicoes/nova?de=${encodeURIComponent(batchId)}`
+                  )
+                }
+              >
+                Duplicar atribuição
+              </DropdownMenuItem>
+              {canRevoke ? (
+                <DropdownMenuItem onSelect={() => setRevoking(true)}>
+                  Revogar atribuição
+                </DropdownMenuItem>
+              ) : null}
+              <DropdownMenuItem className="gk-menu-danger" onSelect={openErase}>
+                Apagar atribuição
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          {revoking ? (
+            <RevokeDialog
+              batchId={batchId}
+              onClose={() => setRevoking(false)}
+              recipients={recipients}
+              title={title}
+            />
           ) : null}
-        </DropdownMenuContent>
-      </DropdownMenu>
-      {revoking ? (
-        <RevokeDialog
-          batchId={batchId}
-          onClose={() => setRevoking(false)}
-          recipients={recipients}
-          title={title}
-        />
-      ) : null}
-    </>
+        </>
+      )}
+    </GestaoErase>
   );
 };

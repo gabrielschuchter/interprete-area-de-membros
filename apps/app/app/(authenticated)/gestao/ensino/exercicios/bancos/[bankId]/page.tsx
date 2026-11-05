@@ -15,6 +15,7 @@ import {
 } from "@/lib/exercise-management";
 import { requireGestaoAction } from "@/lib/gestao-authorization";
 import { createExerciseList } from "../../../../../exercicios/actions";
+import { GestaoEraseButton } from "../../../../apagar/erase-dialog";
 import { GestaoPageHeading } from "../../../../gestao-shell";
 
 const statusValues = ["ALL", "DRAFT", "PUBLISHED", "ARCHIVED"] as const;
@@ -121,6 +122,14 @@ const BankExerciseListsPage = async ({
         <Button asChild variant="outline">
           <Link href="/gestao/ensino/exercicios">Voltar aos bancos</Link>
         </Button>
+        <GestaoEraseButton
+          consequence="Listas, questões, categorias e as resoluções dos alunos neste banco somem junto."
+          id={bank.id}
+          kind="bank"
+          noun="banco"
+          redirectTo="/gestao/ensino/exercicios"
+          title={bank.title}
+        />
       </GestaoPageHeading>
 
       {resultMessage ? (

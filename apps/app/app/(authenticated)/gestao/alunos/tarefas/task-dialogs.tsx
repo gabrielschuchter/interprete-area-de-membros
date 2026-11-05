@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@repo/design-system/components/ui/dropdown-menu";
 import { useActionState, useState } from "react";
+import { GestaoErase } from "../../apagar/erase-dialog";
 import { GestaoIcon } from "../../gestao-icon";
 import {
   type AudienceMode,
@@ -410,26 +411,39 @@ export const TaskRowMenu = ({
     return null;
   }
   return (
-    <>
-      <DropdownMenu>
-        <MenuTrigger label={title} />
-        <DropdownMenuContent align="end" className="gk-menu">
-          <DropdownMenuItem onSelect={() => setConfirming(true)}>
-            Arquivar tarefa
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-      {confirming ? (
-        <ConfirmDialog
-          action={archiveGestaoTask}
-          confirmLabel="Arquivar tarefa"
-          description={`“${title}” deixa de aparecer no calendário dos alunos. O histórico de conclusões continua registrado.`}
-          fields={{ taskId }}
-          onClose={() => setConfirming(false)}
-          title="Arquivar esta tarefa?"
-        />
-      ) : null}
-    </>
+    <GestaoErase
+      consequence="O histórico de conclusões dos alunos nessa tarefa some junto."
+      id={taskId}
+      kind="task"
+      noun="tarefa"
+      title={title}
+    >
+      {(openErase) => (
+        <>
+          <DropdownMenu>
+            <MenuTrigger label={title} />
+            <DropdownMenuContent align="end" className="gk-menu">
+              <DropdownMenuItem onSelect={() => setConfirming(true)}>
+                Arquivar tarefa
+              </DropdownMenuItem>
+              <DropdownMenuItem className="gk-menu-danger" onSelect={openErase}>
+                Apagar tarefa
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          {confirming ? (
+            <ConfirmDialog
+              action={archiveGestaoTask}
+              confirmLabel="Arquivar tarefa"
+              description={`“${title}” deixa de aparecer no calendário dos alunos. O histórico de conclusões continua registrado.`}
+              fields={{ taskId }}
+              onClose={() => setConfirming(false)}
+              title="Arquivar esta tarefa?"
+            />
+          ) : null}
+        </>
+      )}
+    </GestaoErase>
   );
 };
 
@@ -446,42 +460,55 @@ export const GoalMenu = ({
 }) => {
   const [archiving, setArchiving] = useState(false);
   return (
-    <>
-      <DropdownMenu>
-        <MenuTrigger label={title} />
-        <DropdownMenuContent align="end" className="gk-menu">
-          <DropdownMenuItem asChild>
-            <form action={changeGestaoCampaign}>
-              <input name="campaignId" type="hidden" value={campaignId} />
-              <input
-                name="operation"
-                type="hidden"
-                value={published && !archived ? "unpublish" : "publish"}
-              />
-              <button className="gk-menu-form-btn" type="submit">
-                {published && !archived
-                  ? "Retirar da publicação"
-                  : "Publicar meta"}
-              </button>
-            </form>
-          </DropdownMenuItem>
-          {archived ? null : (
-            <DropdownMenuItem onSelect={() => setArchiving(true)}>
-              Arquivar meta
-            </DropdownMenuItem>
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
-      {archiving ? (
-        <ConfirmDialog
-          action={changeGestaoCampaign}
-          confirmLabel="Arquivar meta"
-          description={`“${title}” deixa de aparecer para os alunos. Você pode publicá-la de novo depois.`}
-          fields={{ campaignId, operation: "archive" }}
-          onClose={() => setArchiving(false)}
-          title="Arquivar esta meta?"
-        />
-      ) : null}
-    </>
+    <GestaoErase
+      consequence="O histórico dos ciclos anteriores dessa meta some junto."
+      id={campaignId}
+      kind="goal"
+      noun="meta"
+      title={title}
+    >
+      {(openErase) => (
+        <>
+          <DropdownMenu>
+            <MenuTrigger label={title} />
+            <DropdownMenuContent align="end" className="gk-menu">
+              <DropdownMenuItem asChild>
+                <form action={changeGestaoCampaign}>
+                  <input name="campaignId" type="hidden" value={campaignId} />
+                  <input
+                    name="operation"
+                    type="hidden"
+                    value={published && !archived ? "unpublish" : "publish"}
+                  />
+                  <button className="gk-menu-form-btn" type="submit">
+                    {published && !archived
+                      ? "Retirar da publicação"
+                      : "Publicar meta"}
+                  </button>
+                </form>
+              </DropdownMenuItem>
+              {archived ? null : (
+                <DropdownMenuItem onSelect={() => setArchiving(true)}>
+                  Arquivar meta
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem className="gk-menu-danger" onSelect={openErase}>
+                Apagar meta
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          {archiving ? (
+            <ConfirmDialog
+              action={changeGestaoCampaign}
+              confirmLabel="Arquivar meta"
+              description={`“${title}” deixa de aparecer para os alunos. Você pode publicá-la de novo depois.`}
+              fields={{ campaignId, operation: "archive" }}
+              onClose={() => setArchiving(false)}
+              title="Arquivar esta meta?"
+            />
+          ) : null}
+        </>
+      )}
+    </GestaoErase>
   );
 };

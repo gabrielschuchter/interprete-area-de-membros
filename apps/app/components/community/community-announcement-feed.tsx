@@ -4,7 +4,6 @@ import { Button } from "@repo/design-system/components/ui/button";
 import { ArrowUpRightIcon, MegaphoneIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { CommunityAnnouncementDismissButton } from "./community-announcement-dismiss-button";
 
 interface AnnouncementItem {
   readonly body: string;
@@ -185,24 +184,7 @@ export const CommunityAnnouncementFeed = ({
               <p className="mt-3 whitespace-pre-wrap text-sm leading-6 [overflow-wrap:anywhere] sm:text-base sm:leading-7">
                 {announcement.body}
               </p>
-              <div className="mt-4 flex flex-wrap items-center gap-3">
-                <CommunityAnnouncementDismissButton
-                  announcementId={announcement.id}
-                  onDismiss={() => {
-                    announcementsRef.current = announcementsRef.current.filter(
-                      ({ id }) => id !== announcement.id
-                    );
-                    setAnnouncements((current) =>
-                      current.filter(({ id }) => id !== announcement.id)
-                    );
-                    router.refresh();
-                  }}
-                  version={announcement.version}
-                >
-                  Entendi
-                </CommunityAnnouncementDismissButton>
-                <AnnouncementLink href={announcement.href} />
-              </div>
+              <AnnouncementLink href={announcement.href} />
             </div>
           </div>
         </article>

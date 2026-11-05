@@ -1,23 +1,23 @@
-import type { Metadata } from "next";
-import RecordingLibraryPageContent from "@/components/meetings/recording-library-page-content";
+import { permanentRedirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
-interface CommunityRecordingsPageProperties {
-  readonly searchParams: Promise<{
-    readonly asset?: string;
-    readonly cursor?: string;
-    readonly q?: string;
-    readonly year?: string;
-  }>;
-}
-
-const CommunityRecordingsPage = ({
+// Minhas gravações saiu da Comunidade (05/11/2026): é uma seção própria.
+const LegacyCommunityRecordingsPage = async ({
   searchParams,
-}: CommunityRecordingsPageProperties) => (
-  <RecordingLibraryPageContent inCommunity searchParams={searchParams} />
-);
+}: {
+  readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) => {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(await searchParams)) {
+    for (const item of Array.isArray(value) ? value : [value]) {
+      if (item !== undefined) {
+        query.append(key, item);
+      }
+    }
+  }
+  const suffix = query.size > 0 ? `?${query.toString()}` : "";
+  return permanentRedirect(`/gravacoes${suffix}`);
+};
 
-export default CommunityRecordingsPage;
-
-export const metadata: Metadata = { title: "Minhas gravações | Interprete" };
+export default LegacyCommunityRecordingsPage;

@@ -31,11 +31,7 @@ export const RoomPageState = ({
           <div className="room-state__actions">
             <Link
               className="room-button room-button--primary"
-              href={
-                content === "recording"
-                  ? "/comunidade/encontros/gravacoes"
-                  : "/cursos"
-              }
+              href={content === "recording" ? "/gravacoes" : "/cursos"}
             >
               {text(forbidden ? "forbiddenCta" : "notFoundCta")}
             </Link>

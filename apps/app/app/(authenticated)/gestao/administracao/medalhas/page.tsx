@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { badgeArtworkByCriterion } from "@/lib/badge-artwork";
+import { badgeImageFor } from "@/lib/badge-artwork";
 import { requireGestaoAction } from "@/lib/gestao-authorization";
 import { listGestaoMedals } from "@/lib/gestao-medals";
 import {
@@ -121,7 +121,7 @@ const GestaoMedalsPage = async ({
                     <Image
                       alt=""
                       height={124}
-                      src={badgeArtworkByCriterion[medal.criterion]}
+                      src={badgeImageFor(medal)}
                       width={124}
                     />
                     <span aria-hidden="true" className="gk-museum-plinth" />
@@ -171,7 +171,7 @@ const GestaoMedalsPage = async ({
                       <Image
                         alt=""
                         height={36}
-                        src={badgeArtworkByCriterion[medal.criterion]}
+                        src={badgeImageFor(medal)}
                         width={36}
                       />
                       <span className="gk-qtitle">{medal.title}</span>

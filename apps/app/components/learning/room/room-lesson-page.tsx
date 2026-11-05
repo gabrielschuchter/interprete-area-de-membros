@@ -30,7 +30,7 @@ export const RoomLessonPage = async ({
   ]);
   const experience = await getCourseExperience(slug);
   if (experience?.experience === "RECORDING_ARCHIVE") {
-    redirect("/comunidade/encontros/gravacoes");
+    redirect("/gravacoes");
   }
 
   const result = await getRoomLesson({

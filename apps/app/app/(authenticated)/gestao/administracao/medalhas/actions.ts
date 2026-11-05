@@ -3,6 +3,9 @@
 import { BadgeCriterion, ContentStatus, database } from "@repo/database";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
+import { badgeSymbols } from "@/lib/badge-artwork";
+import { reevaluateBadgesForAllMembers } from "@/lib/badge-reevaluation";
 import { recordAuditEvent } from "@/lib/gestao-audit";
 import { requireGestaoAction } from "@/lib/gestao-authorization";
 import { consumeMutationRateLimit } from "@/lib/mutation-reliability";
@@ -44,7 +47,10 @@ const readDefinition = (formData: FormData) => {
   ) {
     return null;
   }
-  return { criterion, description, threshold, title };
+  const chosen = text(formData, "imageUrl");
+  // Só símbolos da biblioteca da plataforma; vazio = o da família do critério.
+  const imageUrl = badgeSymbols.includes(chosen) ? chosen : null;
+  return { criterion, description, imageUrl, threshold, title };
 };
 
 const uniqueSlug = async (title: string) => {
@@ -120,6 +126,7 @@ export const saveGestaoMedal = async (
       select: {
         criterion: true,
         description: true,
+        imageUrl: true,
         threshold: true,
         title: true,
         version: true,
@@ -128,8 +135,12 @@ export const saveGestaoMedal = async (
     if (!current) {
       return "missing" as const;
     }
-    const changed =
+    const rulesChanged =
       current.criterion !== definition.criterion ||
+      current.threshold !== definition.threshold;
+    const changed =
+      rulesChanged ||
+      current.imageUrl !== definition.imageUrl ||
       current.description !== definition.description ||
       current.threshold !== definition.threshold ||
       current.title !== definition.title;
@@ -166,7 +177,7 @@ export const saveGestaoMedal = async (
       },
       transaction
     );
-    return "saved" as const;
+    return rulesChanged ? ("rules" as const) : ("saved" as const);
   });
   if (outcome === "missing") {
     return { error: "Esta medalha não está mais disponível para edição." };
@@ -176,10 +187,19 @@ export const saveGestaoMedal = async (
       error: "Outra pessoa editou esta medalha agora há pouco. Recarregue.",
     };
   }
+  if (outcome === "rules") {
+    // A regra nova passa a valer para todos agora, depois da resposta.
+    after(() =>
+      reevaluateBadgesForAllMembers([definition.criterion]).catch(
+        () => undefined
+      )
+    );
+  }
   revalidatePath(listPath);
-  revalidatePath("/perfil");
+  revalidatePath("/perfil", "layout");
+  revalidatePath("/membros", "layout");
   redirect(
-    `${listPath}/${id}?resultado=${outcome === "saved" ? "salva" : "igual"}`
+    `${listPath}/${id}?resultado=${outcome === "unchanged" ? "igual" : "salva"}`
   );
 };
 
@@ -210,8 +230,21 @@ export const setGestaoMedalStatus = async (formData: FormData) => {
     eventType: "gestao.medal.status_changed",
     payload: { status },
   });
+  if (status === ContentStatus.PUBLISHED) {
+    const published = await database.badgeDefinition.findUnique({
+      where: { id },
+      select: { criterion: true },
+    });
+    if (published) {
+      after(() =>
+        reevaluateBadgesForAllMembers([published.criterion]).catch(
+          () => undefined
+        )
+      );
+    }
+  }
   revalidatePath(listPath);
-  revalidatePath("/perfil");
+  revalidatePath("/perfil", "layout");
   revalidatePath("/membros", "layout");
   redirect(`${listPath}/${id}?resultado=${status.toLowerCase()}`);
 };

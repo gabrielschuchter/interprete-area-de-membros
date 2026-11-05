@@ -32,9 +32,9 @@ const copy: Record<
   { action: string; body: string; title: string }
 > = {
   delete: {
-    action: "Excluir aviso",
-    body: "O aviso sai da lista e deixa de aparecer para os membros. As notificações já enviadas continuam nas caixas de entrada.",
-    title: "Excluir este aviso?",
+    action: "Apagar aviso",
+    body: "O aviso é apagado de vez: sai da Comunidade e da Gestão e não pode ser recuperado. As notificações já enviadas continuam nas caixas de entrada.",
+    title: "Apagar este aviso?",
   },
   end: {
     action: "Encerrar aviso",
@@ -139,8 +139,11 @@ export const NoticeRowMenu = ({
               Reabrir como rascunho
             </DropdownMenuItem>
           ) : null}
-          <DropdownMenuItem onSelect={() => setConfirming("delete")}>
-            Excluir aviso
+          <DropdownMenuItem
+            className="gk-menu-danger"
+            onSelect={() => setConfirming("delete")}
+          >
+            Apagar aviso
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

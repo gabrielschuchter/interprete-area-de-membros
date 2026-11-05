@@ -8,6 +8,7 @@ import {
   getGestaoLearningPathCoverOptions,
   listGestaoLearningPaths,
 } from "@/lib/gestao-courses";
+import { GestaoEraseButton } from "../../../../apagar/erase-dialog";
 import { updateGestaoLearningPath } from "../actions";
 import { LearningPathForm } from "../learning-path-form";
 import { OtherPathsPanel, PathCoursesPanel } from "../path-course-panels";
@@ -81,6 +82,14 @@ const PathDetailsPanel = ({
           </p>
         </div>
         <LearningPathStatusControls page={path.page} path={path} />
+        <GestaoEraseButton
+          consequence="Os cursos do percurso continuam existindo, só ficam soltos."
+          id={path.id}
+          kind="learning-path"
+          noun="percurso"
+          redirectTo="/gestao/ensino/cursos"
+          title={path.title}
+        />
       </div>
     </section>
   </aside>

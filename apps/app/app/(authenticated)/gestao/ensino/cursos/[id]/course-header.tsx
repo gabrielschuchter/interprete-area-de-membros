@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { GestaoEraseButton } from "../../../apagar/erase-dialog";
 import { GestaoCrumbTail } from "../../../gestao-crumbs";
 import { CourseStatusButton } from "./course-status-button";
 
@@ -76,6 +77,14 @@ export const GestaoCourseHeader = ({
             Verificar publicação
           </Link>
           <CourseStatusButton courseId={course.id} status={course.status} />
+          <GestaoEraseButton
+            consequence="Módulos, aulas, matrículas, acessos por turma e o progresso dos alunos somem junto."
+            id={course.id}
+            kind="course"
+            noun="curso"
+            redirectTo="/gestao/ensino/cursos"
+            title={course.title}
+          />
         </div>
       </header>
       <nav aria-label="Seções do curso" className="gt-cohort-tabs">

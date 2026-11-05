@@ -807,6 +807,15 @@
   border-radius: 999px;
 }
 
+/* Encontros: respiro entre a barra de áreas e o título; sem divisor sob o título da página. */
+.community-page .community-meetings-shell {
+  padding-top: 40px;
+}
+@media (max-width: 767px) {
+  .community-page .community-meetings-shell {
+    padding-top: 20px;
+  }
+}
 /* Encontros (board 32): coluna de 880px;
 .community-meetings-shell
   ul

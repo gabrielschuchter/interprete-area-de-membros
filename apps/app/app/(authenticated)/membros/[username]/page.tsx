@@ -191,30 +191,47 @@ const PublicProfilePage = async ({
 
   const viewerId = await requireMemberId();
   const isOwner = viewerId === profile.clerkUserId;
-  const [role, earnedBadges, topics, commonSpaces] = await Promise.all([
-    getMemberRole(profile.clerkUserId),
-    database.badgeAward.findMany({
-      where: {
-        memberId: profile.clerkUserId,
-        badge: { is: { status: { in: ["PUBLISHED", "ARCHIVED"] } } },
-      },
-      orderBy: { awardedAt: "desc" },
-      take: 100,
-      select: {
-        id: true,
-        badgeId: true,
-        awardedAt: true,
-        definitionRevision: {
-          select: { title: true, description: true, criterion: true },
+  const [role, earnedBadges, publishedBadgeDefinitions, topics, commonSpaces] =
+    await Promise.all([
+      getMemberRole(profile.clerkUserId),
+      database.badgeAward.findMany({
+        where: {
+          memberId: profile.clerkUserId,
+          badge: { is: { status: { in: ["PUBLISHED", "ARCHIVED"] } } },
         },
-      },
-    }),
-    getMemberCommunityPublications(viewerId, profile.clerkUserId),
-    isOwner
-      ? Promise.resolve([])
-      : getCommonCommunitySpaces(viewerId, profile.clerkUserId),
-  ]);
-  const badgeCollections = splitProfileBadges(earnedBadges, []);
+        orderBy: { awardedAt: "desc" },
+        take: 100,
+        select: {
+          id: true,
+          badgeId: true,
+          awardedAt: true,
+          badge: { select: { imageUrl: true } },
+          definitionRevision: {
+            select: { title: true, description: true, criterion: true },
+          },
+        },
+      }),
+      database.badgeDefinition.findMany({
+        where: { status: "PUBLISHED" },
+        orderBy: [{ criterion: "asc" }, { threshold: "asc" }],
+        take: 200,
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          criterion: true,
+          imageUrl: true,
+        },
+      }),
+      getMemberCommunityPublications(viewerId, profile.clerkUserId),
+      isOwner
+        ? Promise.resolve([])
+        : getCommonCommunitySpaces(viewerId, profile.clerkUserId),
+    ]);
+  const badgeCollections = splitProfileBadges(
+    earnedBadges,
+    publishedBadgeDefinitions
+  );
 
   const name = profile.displayName ?? profile.username;
   const firstName = name.split(whitespacePattern)[0] ?? name;
@@ -280,7 +297,10 @@ const PublicProfilePage = async ({
 
           <CommonGroups spaces={commonSpaces} />
 
-          <PublicProfileBadges earnedBadges={badgeCollections.earned} />
+          <PublicProfileBadges
+            availableBadges={badgeCollections.available}
+            earnedBadges={badgeCollections.earned}
+          />
 
           <section
             aria-labelledby="member-publications"

@@ -69,7 +69,7 @@ interface MemberAreaSidebarProperties {
 
 const mainNavigation = [
   { href: "/", icon: HouseIcon, label: "Início" },
-  { href: "/estudar", icon: BookOpenIcon, label: "Estudar" },
+  { href: "/cursos", icon: BookOpenIcon, label: "Estudar" },
   { href: "/comunidade", icon: MessageCircleIcon, label: "Comunidade" },
 ] as const;
 
@@ -129,7 +129,7 @@ const isMemberSidebarPathActive = (
   if (href === "/gestao") {
     return activePath === href || activePath.startsWith(`${href}/`);
   }
-  if (href === "/estudar") {
+  if (href === "/cursos") {
     const studyAreas = [
       "/estudar",
       "/cursos",
@@ -200,7 +200,7 @@ const MemberAreaSidebarView = ({
     "/perfil",
     "/configuracoes",
     "/comunidade/minhas-publicacoes",
-    "/comunidade/encontros/gravacoes",
+    "/gravacoes",
   ];
   const isActivePath = (href: string) =>
     isMemberSidebarPathActive(activePath, href, navigationHrefs);
@@ -346,17 +346,15 @@ const MemberAreaSidebarView = ({
                 <SidebarMenuButton
                   asChild
                   className="rounded-sm py-2.5 data-[active=true]:border-sidebar-primary data-[active=true]:border-l-2 data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground group-data-[collapsible=icon]:data-[active=true]:border-l-0 group-data-[collapsible=icon]:data-[active=true]:shadow-[inset_2px_0_0_var(--sidebar-primary)]"
-                  isActive={isActivePath("/comunidade/encontros/gravacoes")}
+                  isActive={isActivePath("/gravacoes")}
                   tooltip="Minhas gravações"
                 >
                   <IntentLink
                     aria-current={
-                      isActivePath("/comunidade/encontros/gravacoes")
-                        ? "page"
-                        : undefined
+                      isActivePath("/gravacoes") ? "page" : undefined
                     }
                     aria-label="Minhas gravações"
-                    href="/comunidade/encontros/gravacoes"
+                    href="/gravacoes"
                     onNavigationStart={handleNavigationStart}
                   >
                     <VideoIcon aria-hidden="true" />

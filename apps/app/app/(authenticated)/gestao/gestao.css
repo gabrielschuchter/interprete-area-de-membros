@@ -2929,9 +2929,14 @@
   border-color: #8c1535;
 }
 .ge-course-select {
-  flex: 0 1 170px;
+  flex: 0 1 210px;
+  min-width: 190px;
 }
 .ge-course-select select {
+  padding-right: 4px;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: nowrap;
   appearance: none;
   cursor: pointer;
 }

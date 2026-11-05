@@ -14,7 +14,7 @@ describe("recording archive navigation", () => {
     });
     const url = new URL(href, "https://interprete.test");
 
-    expect(url.pathname).toBe("/encontros/gravacoes");
+    expect(url.pathname).toBe("/gravacoes");
     expect(url.searchParams.get("asset")).toBe("asset/áudio 1");
     expect(url.searchParams.get("cursor")).toBe("recording-18");
     expect(url.searchParams.get("q")).toBe("epidemiologia");
@@ -22,7 +22,7 @@ describe("recording archive navigation", () => {
   });
 
   test("does not add an empty query string", () => {
-    expect(recordingArchiveHref({})).toBe("/encontros/gravacoes");
+    expect(recordingArchiveHref({})).toBe("/gravacoes");
   });
 
   test("uses the first continuation only when no recording was requested", () => {

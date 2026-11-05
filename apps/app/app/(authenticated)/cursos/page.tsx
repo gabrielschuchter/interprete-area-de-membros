@@ -203,7 +203,7 @@ const LearnPage = async () => {
     },
     coverUrl: recording.thumbnailUrl,
     description: recording.legacyLesson.title,
-    href: `/encontros/gravacoes?asset=${encodeURIComponent(recording.asset.id)}`,
+    href: `/gravacoes?asset=${encodeURIComponent(recording.asset.id)}`,
     label: "Gravação",
     meta: `${recording.group.courseTitle} · ${recording.group.moduleTitle}`,
     progress:

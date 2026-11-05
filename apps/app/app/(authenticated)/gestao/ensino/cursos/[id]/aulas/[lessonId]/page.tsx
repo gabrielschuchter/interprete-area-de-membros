@@ -11,6 +11,7 @@ import { GestaoLessonEditorForm } from "@/components/gestao/gestao-lesson-editor
 import { GestaoLessonPublication } from "@/components/gestao/gestao-lesson-publication";
 import { requireGestaoAction } from "@/lib/gestao-authorization";
 import { gestaoVideoUploadLimit } from "@/lib/gestao-lesson-video-upload";
+import { GestaoEraseButton } from "../../../../../apagar/erase-dialog";
 import { GestaoCrumbTail } from "../../../../../gestao-crumbs";
 import { GestaoIcon } from "../../../../../gestao-icon";
 
@@ -267,6 +268,14 @@ const GestaoLessonEditorPage = async ({
             Pré-visualizar como aluno
           </Link>
           {published ? null : publication("inline")}
+          <GestaoEraseButton
+            consequence="O vídeo, os materiais e o progresso dos alunos nela somem junto."
+            id={lesson.id}
+            kind="lesson"
+            noun="aula"
+            redirectTo={`/gestao/ensino/cursos/${courseId}`}
+            title={lesson.title}
+          />
         </div>
       </header>
 

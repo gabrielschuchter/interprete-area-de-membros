@@ -12,7 +12,6 @@ import {
   communityMediaImageUrl,
   normalizeCommunityCoverUrl,
 } from "@/lib/community-media";
-import { CommunityAnnouncementDismissButton } from "./community-announcement-dismiss-button";
 import type { CommunityAvatarVisual } from "./community-avatars";
 import { CommunityAvatars } from "./community-avatars";
 import { CommunityCoverImage } from "./community-cover-image";
@@ -226,12 +225,6 @@ export const CommunityRightRail = ({
               return (
                 <article className="community-notice-item" key={key}>
                   {body}
-                  <CommunityAnnouncementDismissButton
-                    announcementId={announcement.id}
-                    version={announcement.version}
-                  >
-                    Dispensar aviso
-                  </CommunityAnnouncementDismissButton>
                 </article>
               );
             })}

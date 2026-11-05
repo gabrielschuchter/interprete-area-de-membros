@@ -98,7 +98,7 @@ const LessonPageContent = async ({
   const memberId = await requireMemberId();
   const courseExperience = await getCourseExperience(slug);
   if (courseExperience?.experience === "RECORDING_ARCHIVE") {
-    redirect("/encontros/gravacoes");
+    redirect("/gravacoes");
   }
   const lesson = await getPublishedLesson(slug, lessonSlug, memberId);
 

@@ -311,8 +311,7 @@ export const GestaoGuards = ({ memberId }: { readonly memberId: string }) => {
       ) : null}
       {entered ? (
         <output className="gk-entry-toast">
-          Você entrou na Gestão ·{" "}
-          <a href="/estudar">Voltar à área de membros</a>
+          Você entrou na Gestão · <a href="/cursos">Voltar à área de membros</a>
         </output>
       ) : null}
       {restored ? (

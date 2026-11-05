@@ -28,8 +28,7 @@ export type CommunityAnnouncement = Awaited<
 export const getCommunityAnnouncements = async (
   memberId: string,
   requestedLimit = 50,
-  now = new Date(),
-  options: { readonly includeDismissed?: boolean } = {}
+  now = new Date()
 ) => {
   const limit = Math.max(1, Math.min(requestedLimit, 100));
   const member = await database.member.findUnique({
@@ -91,26 +90,11 @@ export const getCommunityAnnouncements = async (
     return [];
   }
 
-  const dismissals = options.includeDismissed
-    ? []
-    : await database.announcementDismissal.findMany({
-        where: {
-          memberId,
-          announcementId: { in: candidates.map(({ id }) => id) },
-        },
-        select: { announcementId: true, announcementVersion: true },
-      });
-  const dismissedVersionKeys = new Set(
-    dismissals.map(
-      ({ announcementId, announcementVersion }) =>
-        `${announcementId}:${announcementVersion}`
-    )
-  );
-  return candidates
-    .filter(({ id, version }) => !dismissedVersionKeys.has(`${id}:${version}`))
-    .map((announcement) => ({
-      ...announcement,
-      createdAt: announcement.publishedAt ?? announcement.createdAt,
-      groupKey: `announcement:${announcement.id}`,
-    }));
+  // Avisos são fixos (05/11/2026): o membro não dispensa; quem publicou
+  // encerra ou apaga pela Gestão.
+  return candidates.map((announcement) => ({
+    ...announcement,
+    createdAt: announcement.publishedAt ?? announcement.createdAt,
+    groupKey: `announcement:${announcement.id}`,
+  }));
 };

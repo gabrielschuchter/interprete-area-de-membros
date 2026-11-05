@@ -23,6 +23,7 @@ const GestaoNewMedalPage = async () => {
             criterion: "LESSONS_COMPLETED",
             description: "",
             id: null,
+            imageUrl: null,
             threshold: 1,
             title: "",
           }}

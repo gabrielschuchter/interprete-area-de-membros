@@ -153,9 +153,7 @@ const memberNotificationAudienceWhere = async (
       select: { id: true, spaceId: true },
     }),
     announcementAudience ??
-      getCommunityAnnouncements(memberId, 100, new Date(), {
-        includeDismissed: true,
-      }),
+      getCommunityAnnouncements(memberId, 100, new Date()),
   ]);
   const accessibleSpaceIds = groups.map(({ id }) => id);
   const memberIndependentNotificationTypes = [
@@ -227,8 +225,7 @@ const withCurrentNotificationAudience = async <T>(
   const announcementAudience = await getCommunityAnnouncements(
     memberId,
     100,
-    new Date(),
-    { includeDismissed: true }
+    new Date()
   );
   return database.$transaction(
     async (transaction) => {

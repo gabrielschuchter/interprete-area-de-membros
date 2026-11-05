@@ -2,6 +2,7 @@ import { ContentStatus, database, type Prisma } from "@repo/database";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireGestaoAction } from "@/lib/gestao-authorization";
+import { GestaoEraseButton } from "../../../apagar/erase-dialog";
 import { GestaoCrumbTail } from "../../../gestao-crumbs";
 import { GestaoIcon } from "../../../gestao-icon";
 import {
@@ -370,6 +371,14 @@ const GestaoExerciseListPage = async ({ params, searchParams }: Properties) => {
             <GestaoIcon name={statusIcons[list.status]} size={12} />
             {statusNames[list.status]}
           </span>
+          <GestaoEraseButton
+            consequence="As questões continuam no banco; só a lista e as resoluções feitas nela somem."
+            id={list.id}
+            kind="exercise-list"
+            noun="lista"
+            redirectTo={`/gestao/ensino/exercicios/bancos/${list.bank.id}`}
+            title={list.title}
+          />
           <ListMenu
             editHref={`${base}?acao=editar`}
             listId={list.id}

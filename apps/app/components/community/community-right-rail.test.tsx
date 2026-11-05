@@ -3,10 +3,6 @@ import type { ReactNode } from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { CommunityRightRail } from "./community-right-rail";
 
-vi.mock("@/app/(authenticated)/comunidade/announcements-actions", () => ({
-  dismissCommunityAnnouncement: vi.fn(async () => "dismissed"),
-}));
-
 const clinicalSpaceName = /Prática clínica/;
 const announcementName = /Roda de discussão/;
 const onlineStatusPattern = /online|membros ativos|ativo agora/i;
@@ -110,7 +106,9 @@ describe("CommunityRightRail", () => {
 
     expect(screen.queryByText("Nenhum aviso recente.")).toBeNull();
     expect(screen.queryByRole("heading", { name: "Avisos" })).toBeNull();
-    expect(screen.getByText("Você ainda não participa de nenhum grupo.")).toBeTruthy();
+    expect(
+      screen.getByText("Você ainda não participa de nenhum grupo.")
+    ).toBeTruthy();
   });
 
   test("opens approved community guidance by default", () => {
@@ -131,7 +129,9 @@ describe("CommunityRightRail", () => {
     expect(aboutDisclosure.getAttribute("aria-expanded")).toBe("true");
     fireEvent.click(aboutDisclosure);
     expect(aboutDisclosure.getAttribute("aria-expanded")).toBe("false");
-    expect(screen.getByText("Discorde do argumento, nunca da pessoa.")).toBeTruthy();
+    expect(
+      screen.getByText("Discorde do argumento, nunca da pessoa.")
+    ).toBeTruthy();
     expect(screen.getByText("Como participar")).toBeTruthy();
   });
 

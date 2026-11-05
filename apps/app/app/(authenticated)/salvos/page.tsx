@@ -121,7 +121,9 @@ const SavedPage = async ({ searchParams }: SavedPageProperties) => {
   const [libraryItems, favorites, communitySaved] = await Promise.all([
     getPersonalLibraryItems(memberId),
     getMemberExerciseFavorites(memberId, undefined, "after", 20),
-    getSavedCommunityPosts(memberId, { take: 12 }),
+    getSavedCommunityPosts(memberId, {
+      take: savedFilter(query.tipo) === "comunidade" ? 100 : 12,
+    }),
   ]);
   const selected = savedFilter(query.tipo);
   const counts = {
@@ -225,7 +227,7 @@ const SavedPage = async ({ searchParams }: SavedPageProperties) => {
             encontrá-los aqui.
           </p>
           <Button asChild className="mt-5">
-            <Link href="/estudar">Explorar Estudar</Link>
+            <Link href="/cursos">Explorar cursos</Link>
           </Button>
         </div>
       </section>
@@ -319,11 +321,10 @@ const SavedPage = async ({ searchParams }: SavedPageProperties) => {
           emptyState
         )}
 
-        {communitySaved.hasMore &&
-        (selected === "comunidade" || selected === "todos") ? (
+        {communitySaved.hasMore && selected === "todos" ? (
           <div className="mt-5 flex justify-center">
             <Button asChild variant="outline">
-              <Link href="/comunidade/salvos">
+              <Link href="/salvos?tipo=comunidade">
                 Ver todos os salvos da Comunidade
               </Link>
             </Button>

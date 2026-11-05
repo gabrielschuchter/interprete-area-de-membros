@@ -109,6 +109,17 @@ const normalizeSourceKinds = (sourceKinds: readonly string[]) => {
   );
 };
 
+/** Total do período, igual para a Comunidade, o Início e a Gestão. */
+export const readCollectiveGoalSeconds = async (
+  startsAt: Date,
+  endsAt: Date
+) => {
+  const [progress] = await queryPeriodProgress(database, [
+    { startsAt, endsAt },
+  ]);
+  return Number(progress?.totalSeconds ?? 0n);
+};
+
 const queryPeriodProgress = async (
   transaction: Prisma.TransactionClient | typeof database,
   periods: readonly GoalPeriod[]
@@ -208,15 +219,53 @@ const queryPeriodProgress = async (
         range_agg(tsrange("rangeStart", "rangeEnd", '[)')) AS "mergedRanges"
       FROM eligible_intervals
       GROUP BY "periodIndex", "memberId"
-    ), period_totals AS (
+    ), tracked_hours AS (
+      -- Tempo medido por aula, gravação, exercício, leitura e cronômetro,
+      -- com as sobreposições já fundidas, repartido por pessoa e por hora.
       SELECT
-        member_ranges."periodIndex",
+        ranges."periodIndex",
+        ranges."memberId",
+        slot."hourStart",
         SUM(
-          FLOOR(EXTRACT(EPOCH FROM upper(duration_range) - lower(duration_range)))::bigint
-        ) AS "totalSeconds"
-      FROM member_ranges
-      CROSS JOIN LATERAL unnest(member_ranges."mergedRanges") AS merged(duration_range)
-      GROUP BY member_ranges."periodIndex"
+          EXTRACT(EPOCH FROM
+            LEAST(upper(merged.duration_range), slot."hourStart" + INTERVAL '1 hour')
+            - GREATEST(lower(merged.duration_range), slot."hourStart")
+          )
+        )::int AS "seconds"
+      FROM member_ranges AS ranges
+      CROSS JOIN LATERAL unnest(ranges."mergedRanges") AS merged(duration_range)
+      CROSS JOIN LATERAL generate_series(
+        date_trunc('hour', lower(merged.duration_range)),
+        date_trunc('hour', upper(merged.duration_range) - INTERVAL '1 microsecond'),
+        INTERVAL '1 hour'
+      ) AS slot("hourStart")
+      GROUP BY ranges."periodIndex", ranges."memberId", slot."hourStart"
+    ), presence_hours AS (
+      -- Presença na plataforma (sinal em segundo plano), por pessoa e por hora.
+      SELECT
+        period."periodIndex",
+        presence."memberId",
+        (presence."hourStart" AT TIME ZONE 'UTC') AS "hourStart",
+        presence."seconds"
+      FROM requested_periods AS period
+      JOIN "MemberPresenceHour" AS presence
+        ON (presence."hourStart" AT TIME ZONE 'UTC') >= date_trunc('hour', period."periodStartsAt")
+        AND (presence."hourStart" AT TIME ZONE 'UTC') < period."periodEndsAt"
+    ), merged_hours AS (
+      -- Na mesma hora vale o maior dos dois: quem estava numa aula já estava
+      -- presente, e o minuto não conta duas vezes.
+      SELECT
+        COALESCE(tracked."periodIndex", presence."periodIndex") AS "periodIndex",
+        LEAST(3600, GREATEST(COALESCE(tracked."seconds", 0), COALESCE(presence."seconds", 0))) AS "seconds"
+      FROM tracked_hours AS tracked
+      FULL OUTER JOIN presence_hours AS presence
+        ON presence."periodIndex" = tracked."periodIndex"
+        AND presence."memberId" = tracked."memberId"
+        AND presence."hourStart" = tracked."hourStart"
+    ), period_totals AS (
+      SELECT "periodIndex", SUM("seconds")::bigint AS "totalSeconds"
+      FROM merged_hours
+      GROUP BY "periodIndex"
     ), period_sources AS (
       SELECT
         "periodIndex",

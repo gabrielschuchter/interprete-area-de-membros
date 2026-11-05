@@ -26,25 +26,25 @@ describe("Gestão navigation", () => {
   });
 
   it("rejects external, management, and malformed return destinations", () => {
-    expect(safeGestaoReturnPath("https://evil.example/path")).toBe("/estudar");
-    expect(safeGestaoReturnPath("//evil.example/path")).toBe("/estudar");
-    expect(safeGestaoReturnPath("/gestao/alunos")).toBe("/estudar");
-    expect(safeGestaoReturnPath("/admin/acessos")).toBe("/estudar");
-    expect(safeGestaoReturnPath("/estudar?curso=1#retomar")).toBe(
-      "/estudar?curso=1#retomar"
+    expect(safeGestaoReturnPath("https://evil.example/path")).toBe("/cursos");
+    expect(safeGestaoReturnPath("//evil.example/path")).toBe("/cursos");
+    expect(safeGestaoReturnPath("/gestao/alunos")).toBe("/cursos");
+    expect(safeGestaoReturnPath("/admin/acessos")).toBe("/cursos");
+    expect(safeGestaoReturnPath("/cursos?curso=1#retomar")).toBe(
+      "/cursos?curso=1#retomar"
     );
   });
 
   it("keeps the current shell path classification explicit", () => {
     expect(isGestaoShellPath("/gestao/ensino/cursos")).toBe(true);
     expect(isGestaoShellPath("/professor/conteudo")).toBe(true);
-    expect(isGestaoShellPath("/estudar")).toBe(false);
+    expect(isGestaoShellPath("/cursos")).toBe(false);
   });
 
   it("carries only a validated return path between Gestão routes", () => {
     expect(
       withGestaoReturnPath("/gestao/alunos?aba=turmas", "//evil.example")
-    ).toBe("/gestao/alunos?aba=turmas&from=%2Festudar");
+    ).toBe("/gestao/alunos?aba=turmas&from=%2Fcursos");
     expect(
       withGestaoReturnPath(
         "/gestao/alunos#lista",
