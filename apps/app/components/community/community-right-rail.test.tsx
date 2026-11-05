@@ -34,6 +34,30 @@ describe("CommunityRightRail", () => {
     cleanup();
   });
 
+  test("links the Escola Intérprete platforms in a new tab, in order", () => {
+    render(
+      <CommunityRightRail
+        announcements={[]}
+        avatars={[]}
+        goalCard={null}
+        spaces={[]}
+      />
+    );
+    const links = screen
+      .getAllByRole("link")
+      .filter((link) => link.getAttribute("target") === "_blank");
+    expect(links.map((link) => link.getAttribute("href"))).toEqual([
+      "https://chat.whatsapp.com/HQMIrtQ5zxYElvJtjQfnvG",
+      "https://www.instagram.com/escola.interprete/",
+      "https://substack.com/@interprete",
+      "https://linktr.ee/interprete",
+    ]);
+    for (const link of links) {
+      expect(link.getAttribute("rel")).toContain("noopener");
+      expect(link.getAttribute("aria-label")).toBeTruthy();
+    }
+  });
+
   test("keeps the requested blocks in board order and links real spaces", () => {
     render(
       <CommunityRightRail
@@ -74,6 +98,7 @@ describe("CommunityRightRail", () => {
         .map((heading) => heading.textContent)
     ).toEqual([
       "Pessoas da comunidade",
+      "Escola Intérprete",
       "Grupos de estudo",
       "Avisos",
       "Sobre a comunidade",

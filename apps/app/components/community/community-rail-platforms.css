@@ -1,0 +1,44 @@
+.community-rail__platforms {
+  order: 2;
+}
+.community-rail__platform-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+.community-rail__platform {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  color: #40222f;
+  border: 1px solid #40222f;
+  border-radius: 6px;
+  transition: color 0.15s, background-color 0.15s;
+}
+.community-rail__platform:hover {
+  color: #fff;
+  background: #8c1535;
+  border-color: #8c1535;
+}
+.community-rail__platform:focus-visible {
+  outline: 2px solid #8c1535;
+  outline-offset: 2px;
+}
+.community-rail__platform-icon {
+  width: 20px;
+  height: 20px;
+}
+.community-right-rail .community-rail__spaces {
+  order: 3;
+}
+.community-right-rail .community-rail__notices {
+  order: 4;
+}
+.community-right-rail .community-rail__context--about,
+.community-right-rail .community-rail__about {
+  order: 5;
+}
