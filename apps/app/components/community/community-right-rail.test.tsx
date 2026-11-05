@@ -34,7 +34,7 @@ describe("CommunityRightRail", () => {
     cleanup();
   });
 
-  test("links the Escola Intérprete platforms in a new tab, in order", () => {
+  test("links the Escola Interprete platforms in a new tab, in order", () => {
     render(
       <CommunityRightRail
         announcements={[]}
@@ -98,7 +98,6 @@ describe("CommunityRightRail", () => {
         .map((heading) => heading.textContent)
     ).toEqual([
       "Pessoas da comunidade",
-      "Escola Intérprete",
       "Grupos de estudo",
       "Avisos",
       "Sobre a comunidade",
