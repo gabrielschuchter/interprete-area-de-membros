@@ -44,7 +44,7 @@ describe("CommunityAvatars", () => {
     expect(links[0]?.getAttribute("aria-label")).toBe(
       "Abrir perfil de Pessoa A"
     );
-    expect(links[0]?.getAttribute("title")).toBe("Pessoa A");
+    expect(links[0]?.getAttribute("data-person-name")).toBe("Pessoa A");
     expect(
       screen.getByTestId("community-avatars").textContent?.replace(/\s/g, "")
     ).toBe("ABCDEFGHIJ");

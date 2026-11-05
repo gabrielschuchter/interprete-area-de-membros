@@ -11,6 +11,7 @@ import {
   canReadMeetingCohortTarget,
   type MeetingCohortMembership,
 } from "./meeting-cohort-access";
+import { memberActivitiesEnabled } from "./member-features";
 import type { PlannerCalendarFeedItem } from "./planner-calendar-feed";
 import { serializePlannerCalendarFeed } from "./planner-calendar-feed";
 
@@ -275,7 +276,7 @@ const buildFeedItems = async (
       })),
     })),
     ...activities.flatMap((activity) =>
-      activity.dueAt
+      activity.dueAt && memberActivitiesEnabled
         ? [
             {
               id: activity.id,

@@ -28,6 +28,7 @@ import {
   useState,
 } from "react";
 import { cohortCalendarEventDateRange } from "@/lib/cohort-calendar-domain";
+import { memberActivitiesEnabled } from "@/lib/member-features";
 import type { getPlannerDashboard } from "@/lib/planner";
 import type { StudyGoalTopicOverview } from "@/lib/study-goal-topics";
 import {
@@ -39,7 +40,7 @@ import {
   savePlannerEventAction,
   savePlannerGoalAction,
   savePlannerTaskAction,
-} from "./actions";
+} from "./planner-actions";
 
 // Só aparece dentro de uma meta já criada, então fica fora do JS inicial.
 const GoalTopics = dynamic(() =>
@@ -1126,7 +1127,9 @@ function PlannerWorkspaceContent({
     setPending("task");
     try {
       if (typeof input.occurrenceAt === "string") {
-        const { savePlannerTaskOccurrenceAction } = await import("./actions");
+        const { savePlannerTaskOccurrenceAction } = await import(
+          "./planner-actions"
+        );
         await savePlannerTaskOccurrenceAction(input);
       } else {
         await savePlannerTaskAction(input);
@@ -1236,7 +1239,9 @@ function PlannerWorkspaceContent({
             ].slice(0, 3)
           : [];
       if (typeof input.occurrenceStartsAt === "string") {
-        const { savePlannerEventOccurrenceAction } = await import("./actions");
+        const { savePlannerEventOccurrenceAction } = await import(
+          "./planner-actions"
+        );
         const saved = await savePlannerEventOccurrenceAction(input);
         savedEventId = saved.id;
       } else {
@@ -1653,7 +1658,7 @@ function PlannerWorkspaceContent({
         return (
           <a
             className="block w-full truncate rounded-md bg-[#F5EAF0] px-2 py-1.5 text-left text-[#6A1A3A] text-xs hover:bg-[#EEDDE6]"
-            href="/planejamento?view=goals"
+            href="/ferramentas?view=goals"
             key={record.key}
             title={`${record.title} · ${record.goal.targetMinutes} minutos`}
           >
@@ -1868,10 +1873,19 @@ function PlannerWorkspaceContent({
             >
               O que você concluiu
             </h2>
-            <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div
+              className={`mt-5 grid gap-3 sm:grid-cols-2 ${memberActivitiesEnabled ? "lg:grid-cols-4" : "lg:grid-cols-3"}`}
+            >
               {[
-                ["Aulas", currentData.stats.completedLessons],
-                ["Atividades entregues", currentData.stats.submittedActivities],
+                ["Aulas", currentData.stats.completedLessons] as const,
+                ...(memberActivitiesEnabled
+                  ? [
+                      [
+                        "Atividades entregues",
+                        currentData.stats.submittedActivities,
+                      ] as const,
+                    ]
+                  : []),
                 [
                   "Tarefas atribuídas concluídas",
                   currentData.stats.completedAssignedTasks,
@@ -1893,8 +1907,8 @@ function PlannerWorkspaceContent({
               ))}
             </div>
             <p className="mt-4 text-[#7A5A69] text-xs">
-              Os totais vêm de registros persistidos de estudo, aulas,
-              atividades e tarefas.
+              Conta só o que ficou registrado: aulas concluídas e tarefas
+              marcadas como feitas.
             </p>
           </section>
         </div>

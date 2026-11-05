@@ -138,8 +138,7 @@ const EmptyState = () => (
       Ainda não há conteúdo liberado para esta conta.
     </h2>
     <p className="mt-4 max-w-2xl text-muted-foreground leading-7">
-      Quando uma trilha ou curso for liberado ou um professor enviar conteúdo,
-      ele aparecerá aqui automaticamente.
+      Quando um curso for liberado para você, ele aparece aqui.
     </p>
   </section>
 );
@@ -151,7 +150,10 @@ const LearnPage = async () => {
     await tracePerformance("member.route.learn.primary-data", () => {
       const pathsPromise = getPublishedLearningPaths(memberId);
       const standaloneCoursesPromise = getPublishedStandaloneCourses(memberId);
-      const collectionsPromise = getPublishedCollectionsForMember(memberId);
+      // A versão atual de Cursos não mostra coleções; só o catálogo antigo lê.
+      const collectionsPromise = cursosV2Enabled()
+        ? Promise.resolve([] as LearningCollection[])
+        : getPublishedCollectionsForMember(memberId);
       const learningDataPromise = Promise.all([
         pathsPromise,
         collectionsPromise,
@@ -303,43 +305,16 @@ const LearnPage = async () => {
           ] as const
       )
     );
-    const trails = pathRails.map((rail) => ({
-      courseIds: rail.cards.map((card) => card.bookmark.targetId),
-      description: rail.description,
-      id: rail.headingId,
-      title: rail.title,
-    }));
-    const trailByCourse = new Map(
-      trails.flatMap((trail) =>
-        trail.courseIds.map((courseId) => [courseId, trail.id] as const)
-      )
-    );
+    // Cursos mostra só duas coisas: o que o aluno começou (aula e gravações) e
+    // a grade de cursos. Trilhas e coleções continuam no banco e na Gestão.
     const blocks = await blocksPromise;
     const blockFor = (id: "collections" | "recordings" | "resume") =>
       blocks.find((block) => block.id === id);
     const showResume = blockFor("resume")?.enabled !== false;
-    const [firstRecording, ...restRecordings] = resumeCards;
-    const resumeRecording = showResume ? firstRecording : undefined;
-    const recordingCards = showResume ? restRecordings : resumeCards;
-    const recordingsBlock = blockFor("recordings");
-    const railsById = {
-      collections:
-        blockFor("collections")?.enabled === false ? [] : collectionRails,
-      recordings:
-        recordingsBlock?.enabled === false
-          ? []
-          : [
-              {
-                cards: recordingCards,
-                description: recordingsBlock?.subtitle ?? null,
-                headingId: "resume-learning-title",
-                title: recordingsBlock?.title ?? "Continue assistindo",
-              },
-            ],
-    };
-    const orderedRails = blocks.flatMap((block) =>
-      block.id === "resume" ? [] : railsById[block.id]
-    );
+    const showRecordings = blockFor("recordings")?.enabled !== false;
+    // getCursosResume só devolve aula que o aluno já abriu e não terminou.
+    const startedResume = resume && showResume ? resume : null;
+    const courseHasContent = courseCards.length > 0 || resumeCards.length > 0;
     return (
       <div className="flex min-h-svh flex-1 flex-col bg-background">
         <main className="flex flex-1 flex-col">
@@ -353,23 +328,19 @@ const LearnPage = async () => {
                 courseFacts.get(card.bookmark.targetId)?.lessonCount ?? 0,
               moduleCount:
                 courseFacts.get(card.bookmark.targetId)?.moduleCount ?? 0,
-              trailId: trailByCourse.get(card.bookmark.targetId) ?? null,
             }))}
-            hideResume={!showResume}
-            rails={orderedRails}
+            recordings={showRecordings ? resumeCards : []}
             resume={
-              resume && showResume
+              startedResume
                 ? {
-                    ...resume,
-                    courseHref: `/cursos/${encodeURIComponent(resume.courseSlug)}`,
-                    durationSeconds: resume.lessonDurationSeconds,
+                    ...startedResume,
+                    courseHref: `/cursos/${encodeURIComponent(startedResume.courseSlug)}`,
+                    durationSeconds: startedResume.lessonDurationSeconds,
                   }
                 : null
             }
-            resumeRecording={resumeRecording ?? null}
-            trails={trails}
           />
-          {!hasContent && (
+          {courseHasContent ? null : (
             <div className="mx-auto w-full max-w-[1192px] px-10 pb-16">
               <EmptyState />
             </div>

@@ -35,6 +35,7 @@ export const GET = async (request: Request) => {
       : await getNotifications(userId, {
           cursor: searchParams.get("cursor") ?? undefined,
           filter,
+          fresh: searchParams.get("scope") === "fresh",
           limit: Number(searchParams.get("limit") ?? 24),
         });
     return NextResponse.json(notifications, {

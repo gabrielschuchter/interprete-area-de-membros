@@ -119,7 +119,7 @@ describe("recurring planner reminders", () => {
           notifications: [
             expect.objectContaining({
               title: "Lembrete: Sessão especial",
-              href: "/planejamento?view=calendar&event=event_1&occurrence=2027-02-08T13%3A00%3A00.000Z",
+              href: "/ferramentas?view=calendar&event=event_1&occurrence=2027-02-08T13%3A00%3A00.000Z",
             }),
           ],
         }),

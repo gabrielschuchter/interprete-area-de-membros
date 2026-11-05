@@ -3,18 +3,12 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 import CommunityMeetingsError from "./encontros/error";
 import CommunityError from "./error";
 
-vi.mock("@/components/community/community-navigation", () => ({
-  CommunityNavigation: ({ active }: { readonly active: string }) => (
-    <nav aria-label="Navegação da comunidade" data-active={active} />
-  ),
-}));
-
 describe("Community error states", () => {
   afterEach(() => {
     cleanup();
   });
 
-  test("offers a retry without losing the Explore navigation", () => {
+  test("offers a retry on the feed error", () => {
     const reset = vi.fn();
     render(
       <CommunityError error={new Error("feed unavailable")} reset={reset} />
@@ -28,11 +22,6 @@ describe("Community error states", () => {
         "Confira sua conexão e tente de novo. Suas publicações não foram afetadas."
       )
     ).toBeTruthy();
-    expect(
-      screen
-        .getByRole("navigation", { name: "Navegação da comunidade" })
-        .getAttribute("data-active")
-    ).toBe("explore");
 
     fireEvent.click(screen.getByRole("button", { name: "Tentar de novo" }));
     expect(reset).toHaveBeenCalledOnce();
@@ -53,11 +42,6 @@ describe("Community error states", () => {
       })
     ).toBeTruthy();
     expect(screen.getByText("Confira a conexão e tente de novo.")).toBeTruthy();
-    expect(
-      screen
-        .getByRole("navigation", { name: "Navegação da comunidade" })
-        .getAttribute("data-active")
-    ).toBe("meetings");
 
     fireEvent.click(screen.getByRole("button", { name: "Tentar de novo" }));
     expect(reset).toHaveBeenCalledOnce();

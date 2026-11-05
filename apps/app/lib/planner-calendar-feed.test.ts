@@ -199,7 +199,7 @@ describe("planner calendar feed", () => {
       allDay: true,
       timezone: "America/Sao_Paulo",
       description: "Revisão coletiva",
-      url: "https://members.example/planejamento",
+      url: "https://members.example/ferramentas",
     });
     const ics = serializePlannerCalendarFeed(result.items, result.timezone);
     expect(ics).toContain("DTSTART;VALUE=DATE:20261021\r\n");

@@ -32,7 +32,7 @@ const CommunityEditorPage = async ({
   const { postId } = await params;
   const filters = await searchParams;
   const memberId = await requireMemberId();
-  const [post, spaces] = await Promise.all([
+  const [post, allSpaces] = await Promise.all([
     getCommunityEditorPost(postId, memberId),
     getCommunitySpaces(memberId),
   ]);
@@ -40,6 +40,12 @@ const CommunityEditorPage = async ({
   if (!post) {
     notFound();
   }
+  const spaces = allSpaces.filter(
+    (space) =>
+      space.ownerId === memberId ||
+      space.members.length > 0 ||
+      space.id === post.space?.id
+  );
 
   const document = (post.contentJson as JSONContent | null) ?? emptyDocument;
   const contextualReturn = safeCommunityReturnPath(filters.from);

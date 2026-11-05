@@ -39,6 +39,7 @@ import {
   useState,
 } from "react";
 import { BrandWordmark } from "@/components/brand/brand-mark";
+import { memberActivitiesEnabled } from "@/lib/member-features";
 import { IntentLink } from "./intent-link";
 import {
   isSidebarPathActive,
@@ -61,7 +62,9 @@ const baseNavigation = [
   { href: "/", label: "Início", icon: HouseIcon },
   { href: "/tarefas", label: "Metas e tarefas", icon: TargetIcon },
   { href: "/encontros", label: "Encontros", icon: CalendarDaysIcon },
-  { href: "/atividades", label: "Atividades", icon: CheckSquareIcon },
+  ...(memberActivitiesEnabled
+    ? [{ href: "/atividades", label: "Atividades", icon: CheckSquareIcon }]
+    : []),
   { href: "/exercicios", label: "Exercícios", icon: ListChecksIcon },
   {
     href: "/comunidade",

@@ -7,7 +7,6 @@ import {
   type CommunityGroupScope,
 } from "@/components/community/community-group-filters";
 import { CommunityGroupsDirectorySections } from "@/components/community/community-groups-directory-sections";
-import { CommunityNavigation } from "@/components/community/community-navigation";
 import { getCommunitySpaceDirectoryPage } from "@/lib/community";
 import { requireMemberId } from "@/lib/learning";
 
@@ -50,7 +49,6 @@ const StudyGroupsPage = async ({ searchParams }: StudyGroupsPageProperties) => {
   return (
     <div className="community-page min-h-svh bg-background">
       <main className="community-shell community-groups-page mx-auto w-full">
-        <CommunityNavigation active="groups" />
         <header className="community-groups-page__header flex flex-col gap-5 border-border border-b pb-6 sm:flex-row sm:items-end sm:justify-between">
           <div className="community-groups-page__intro min-w-0">
             <h1 className="font-display text-4xl leading-tight sm:text-5xl">

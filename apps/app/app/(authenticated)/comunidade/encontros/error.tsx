@@ -2,7 +2,6 @@
 
 import { Button } from "@repo/design-system/components/ui/button";
 import { CloudAlertIcon } from "lucide-react";
-import { CommunityNavigation } from "@/components/community/community-navigation";
 
 interface CommunityMeetingsErrorProperties {
   readonly error: Error & { digest?: string };
@@ -14,7 +13,6 @@ const CommunityMeetingsError = ({
 }: CommunityMeetingsErrorProperties) => (
   <main className="community-page min-h-svh bg-background">
     <div className="community-shell mx-auto w-full">
-      <CommunityNavigation active="meetings" />
       <section
         aria-live="assertive"
         className="paper-surface mx-auto mt-8 flex w-full max-w-3xl flex-col items-center rounded-md border border-[#E2D6D1] p-8 text-center sm:p-10"

@@ -1,7 +1,6 @@
 import { ChevronLeftIcon } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CommunityNavigation } from "@/components/community/community-navigation";
 import {
   CommunitySpaceAboutView,
   CommunitySpaceHeader,
@@ -101,7 +100,6 @@ const CommunitySpacePage = async ({
   return (
     <div className="community-page min-h-svh bg-background">
       <main className="community-shell community-group-shell mx-auto w-full">
-        <CommunityNavigation active="groups" />
         <Link className="community-back-link" href="/comunidade/grupos">
           <ChevronLeftIcon aria-hidden="true" /> Grupos
         </Link>

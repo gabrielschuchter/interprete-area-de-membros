@@ -30,7 +30,7 @@ const resultMessages: Record<string, string> = {
   "meta-retirada": "Meta retirada de publicação.",
   "tarefa-arquivada": "Tarefa arquivada.",
   "tarefa-criada":
-    "Tarefa enviada. Os alunos recebem o aviso e a veem no Planejamento.",
+    "Tarefa enviada. Os alunos recebem o aviso e a veem no calendário.",
 };
 
 const weekdayFormat = new Intl.DateTimeFormat("pt-BR", {

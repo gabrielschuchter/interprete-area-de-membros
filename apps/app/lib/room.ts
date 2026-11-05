@@ -9,6 +9,7 @@ import {
   ProgressStatus,
   StudyActivityKind,
 } from "@repo/database";
+import { memberActivitiesEnabled } from "@/lib/member-features";
 import { getLearningAccessScope, hasLessonAccess } from "./content-access";
 import { getPublishedLesson } from "./learning";
 import { classifyRoomLessonAccess, roomLessonUnlockDate } from "./room-access";
@@ -288,7 +289,7 @@ const lessonMaterials = (
       title: resource.title,
     };
   }),
-  ...lesson.activities.map(
+  ...(memberActivitiesEnabled ? lesson.activities : []).map(
     (activity): RoomMaterial => ({
       external: false,
       href: `/atividades/${encodeURIComponent(activity.slug)}`,

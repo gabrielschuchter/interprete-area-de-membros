@@ -26,6 +26,7 @@ import { z } from "zod";
 import { resolveCohortCalendarItems } from "./cohort-calendar-domain";
 import { canReadMeetingCohortTarget } from "./meeting-cohort-access";
 import { getMeetingCohortMemberships } from "./meeting-cohort-memberships";
+import { memberActivityHref } from "./member-features";
 import { resolveCalendar } from "./student-calendar";
 
 const DEFAULT_TIMEZONE = "America/Sao_Paulo";
@@ -325,7 +326,7 @@ const syncTaskOccurrenceReminder = async (
     reminderAt: new Date(dueAt.getTime() - task.reminderMinutes * 60_000),
     occurrenceAt,
     timezone,
-    href: `/planejamento?view=calendar&task=${encodeURIComponent(taskId)}&occurrence=${encodeURIComponent(occurrenceAt.toISOString())}`,
+    href: `/ferramentas?view=calendar&task=${encodeURIComponent(taskId)}&occurrence=${encodeURIComponent(occurrenceAt.toISOString())}`,
   });
 };
 
@@ -388,7 +389,7 @@ const syncEventOccurrenceReminder = async (
     reminderAt: new Date(startsAt.getTime() - event.reminderMinutes * 60_000),
     occurrenceAt,
     timezone: event.timezone,
-    href: `/planejamento?view=calendar&event=${encodeURIComponent(eventId)}&occurrence=${encodeURIComponent(occurrenceAt.toISOString())}`,
+    href: `/ferramentas?view=calendar&event=${encodeURIComponent(eventId)}&occurrence=${encodeURIComponent(occurrenceAt.toISOString())}`,
   });
 };
 
@@ -452,7 +453,7 @@ const calendarStudyDestination = (
         : null;
       if (activity) {
         title = activity.title;
-        href = `/atividades/${activity.slug}`;
+        href = memberActivityHref(activity.slug, href);
       }
       break;
     }
@@ -1197,7 +1198,7 @@ const syncTaskReminder = async (
     reminderAt: new Date(dueAt.getTime() - values.reminderMinutes * 60_000),
     occurrenceAt,
     timezone,
-    href: `/planejamento?view=calendar&task=${encodeURIComponent(id)}${values.recurrence !== PlannerRecurrence.NONE ? `&occurrence=${encodeURIComponent(occurrenceAt.toISOString())}` : ""}`,
+    href: `/ferramentas?view=calendar&task=${encodeURIComponent(id)}${values.recurrence !== PlannerRecurrence.NONE ? `&occurrence=${encodeURIComponent(occurrenceAt.toISOString())}` : ""}`,
   });
 };
 
@@ -1708,7 +1709,7 @@ const syncEventReminder = async (
     reminderAt: new Date(startsAt.getTime() - event.reminderMinutes * 60_000),
     occurrenceAt,
     timezone: event.timezone,
-    href: `/planejamento?view=calendar&event=${encodeURIComponent(event.id)}${event.recurrence !== PlannerRecurrence.NONE ? `&occurrence=${encodeURIComponent(occurrenceAt.toISOString())}` : ""}`,
+    href: `/ferramentas?view=calendar&event=${encodeURIComponent(event.id)}${event.recurrence !== PlannerRecurrence.NONE ? `&occurrence=${encodeURIComponent(occurrenceAt.toISOString())}` : ""}`,
   });
 };
 
@@ -2171,7 +2172,7 @@ export const upcomingPlannerNotice = async (memberId: string) => {
       kind: "meeting" as const,
       title: meeting.title,
       startsAt: meeting.startsAt.toISOString(),
-      href: "/planejamento?view=calendar",
+      href: "/ferramentas?view=calendar",
       timezone: meeting.timezone ?? timezone,
     };
   }
@@ -2182,7 +2183,7 @@ export const upcomingPlannerNotice = async (memberId: string) => {
     kind: "task" as const,
     title: task.title,
     startsAt: task.dueAt.toISOString(),
-    href: `/planejamento?view=calendar&task=${encodeURIComponent(task.id)}${task.occurrenceAt ? `&occurrence=${encodeURIComponent(task.occurrenceAt.toISOString())}` : ""}`,
+    href: `/ferramentas?view=calendar&task=${encodeURIComponent(task.id)}${task.occurrenceAt ? `&occurrence=${encodeURIComponent(task.occurrenceAt.toISOString())}` : ""}`,
     timezone,
   };
 };

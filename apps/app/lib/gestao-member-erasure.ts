@@ -27,26 +27,40 @@ export const erasureConfirmation = (preview: {
   readonly id: string;
 }) => (preview.email?.trim() || preview.id).toLowerCase();
 
+/**
+ * Registros da equipe que guardam quem fez a ação com chave obrigatória
+ * (onDelete Restrict). Ao apagar alguém da equipe eles passam para quem está
+ * apagando, para que turmas, convites e eventos continuem de pé.
+ */
+const staffRecordModels = [
+  ["cohort", "createdByMemberId"],
+  ["cohortTeacher", "assignedByMemberId"],
+  ["cohortInvite", "createdByMemberId"],
+  ["cohortCourseAccess", "createdByMemberId"],
+  ["cohortLessonRelease", "updatedByMemberId"],
+  ["cohortEvent", "createdByMemberId"],
+  ["cohortEventOccurrenceException", "updatedByMemberId"],
+  ["meetingOccurrenceException", "updatedByMemberId"],
+  ["importedRecordingGroupAssignment", "changedByMemberId"],
+] as const;
+
+interface StaffRecordDelegate {
+  count: (args: { where: Record<string, string> }) => Promise<number>;
+  updateMany: (args: {
+    data: Record<string, string>;
+    where: Record<string, string>;
+  }) => Promise<unknown>;
+}
+
+const staffDelegate = (client: Client, model: string) =>
+  (client as unknown as Record<string, StaffRecordDelegate>)[model];
+
 const staffRecordCount = (client: Client, memberId: string) =>
-  Promise.all([
-    client.cohort.count({ where: { createdByMemberId: memberId } }),
-    client.cohortTeacher.count({ where: { assignedByMemberId: memberId } }),
-    client.cohortInvite.count({ where: { createdByMemberId: memberId } }),
-    client.cohortCourseAccess.count({ where: { createdByMemberId: memberId } }),
-    client.cohortLessonRelease.count({
-      where: { updatedByMemberId: memberId },
-    }),
-    client.cohortEvent.count({ where: { createdByMemberId: memberId } }),
-    client.cohortEventOccurrenceException.count({
-      where: { updatedByMemberId: memberId },
-    }),
-    client.meetingOccurrenceException.count({
-      where: { updatedByMemberId: memberId },
-    }),
-    client.importedRecordingGroupAssignment.count({
-      where: { changedByMemberId: memberId },
-    }),
-  ]).then((counts) => counts.reduce((sum, value) => sum + value, 0));
+  Promise.all(
+    staffRecordModels.map(([model, field]) =>
+      staffDelegate(client, model).count({ where: { [field]: memberId } })
+    )
+  ).then((counts) => counts.reduce((sum, value) => sum + value, 0));
 
 /** Grupos do membro com outras pessoas dentro: apagar o dono os deixaria sem dono. */
 const sharedSpaceCount = (client: Client, memberId: string) =>
@@ -114,17 +128,8 @@ export const getErasurePreview = async (
   if (member.id === actorId) {
     blockers.push("self");
   }
-  if (member.role !== MemberRole.MEMBER) {
-    blockers.push("not-member-role");
-  }
   if (member.role === MemberRole.ADMIN && otherAdmins === 0) {
     blockers.push("last-admin");
-  }
-  if (staffRecords > 0) {
-    blockers.push("staff-records");
-  }
-  if (sharedSpaces > 0) {
-    blockers.push("owns-shared-space");
   }
   return {
     blockers,
@@ -137,6 +142,8 @@ export const getErasurePreview = async (
       lessonProgress,
       notes,
       posts,
+      sharedSpaces,
+      staffRecords,
       submissions,
       votes: postVotes + commentVotes,
     },
@@ -147,6 +154,53 @@ export const getErasurePreview = async (
 };
 
 /**
+ * Grupos com outras pessoas continuam vivos: a posse passa para quem entrou
+ * primeiro depois do dono, que vira OWNER na lista de membros.
+ */
+const transferSharedSpaces = async (
+  transaction: Prisma.TransactionClient,
+  memberId: string
+) => {
+  const spaces = await transaction.communitySpace.findMany({
+    where: {
+      ownerId: memberId,
+      members: { some: { memberId: { not: memberId } } },
+    },
+    select: {
+      id: true,
+      normalizedTitle: true,
+      members: {
+        where: { memberId: { not: memberId } },
+        orderBy: [{ joinedAt: "asc" }, { id: "asc" }],
+        take: 1,
+        select: { memberId: true },
+      },
+    },
+  });
+  for (const space of spaces) {
+    const heir = space.members[0]?.memberId;
+    // Dois grupos do mesmo dono não podem ter o mesmo título; nesse caso o
+    // grupo fica sem dono, como já acontecia, e a equipe ainda o modera.
+    const clash = heir
+      ? await transaction.communitySpace.count({
+          where: { ownerId: heir, normalizedTitle: space.normalizedTitle },
+        })
+      : 1;
+    if (!heir || clash > 0) {
+      continue;
+    }
+    await transaction.communitySpace.update({
+      where: { id: space.id },
+      data: { ownerId: heir },
+    });
+    await transaction.communitySpaceMember.update({
+      where: { spaceId_memberId: { spaceId: space.id, memberId: heir } },
+      data: { role: "OWNER" },
+    });
+  }
+};
+
+/**
  * Apaga o membro e tudo o que ele produziu. As relações com onDelete Cascade
  * saem junto com a linha de Member; as tabelas que guardam o id sem chave
  * estrangeira (comunidade, matrículas, progresso, envios de upload) são
@@ -154,8 +208,19 @@ export const getErasurePreview = async (
  */
 export const eraseMemberRecords = async (
   transaction: Prisma.TransactionClient,
-  memberId: string
+  memberId: string,
+  actorId: string
 ) => {
+  if (memberId === actorId) {
+    throw new Error("Um administrador não apaga a própria conta.");
+  }
+  for (const [model, field] of staffRecordModels) {
+    await staffDelegate(transaction, model).updateMany({
+      where: { [field]: memberId },
+      data: { [field]: actorId },
+    });
+  }
+  await transferSharedSpaces(transaction, memberId);
   await transaction.communityPost.deleteMany({ where: { authorId: memberId } });
   // Grupos que ele criou e que ficaram vazios (sem outros membros, sem
   // publicações e sem coleção apontando para eles) não têm mais razão de existir.

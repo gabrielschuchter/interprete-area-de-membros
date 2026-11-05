@@ -38,7 +38,7 @@ const routes = [
   "/estudar",
   "/exercicios/favoritas",
   "/ferramentas?view=notes",
-  "/planejamento?view=tasks",
+  "/ferramentas?view=tasks",
   "/salvos",
   "/tarefas",
   "/gestao",

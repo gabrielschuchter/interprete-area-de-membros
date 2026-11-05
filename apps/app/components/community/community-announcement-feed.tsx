@@ -167,22 +167,22 @@ export const CommunityAnnouncementFeed = ({
     >
       {importantAnnouncements.map((announcement) => (
         <article
-          className="community-announcement-important rounded-xl border border-brand-structural/25 bg-brand-structural/5 p-5 sm:p-6"
+          className="community-announcement-important min-w-0 overflow-hidden rounded-xl border border-brand-structural/25 bg-brand-structural/5 p-5 sm:p-6"
           data-announcement-id={announcement.id}
           key={`${announcement.id}:${announcement.version}`}
         >
-          <div className="flex items-start gap-3">
-            <span className="mt-0.5 inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-brand-structural/10 text-brand-structural">
-              <MegaphoneIcon aria-hidden="true" className="size-4" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="brand-eyebrow text-brand-structural">
-                Aviso importante · Professor · {announcementDate(announcement)}
+          <div className="min-w-0">
+            <div className="min-w-0">
+              <p className="brand-eyebrow flex items-center gap-2 text-brand-structural">
+                <span className="inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-brand-structural/10">
+                  <MegaphoneIcon aria-hidden="true" className="size-3.5" />
+                </span>
+                Aviso importante · {announcementDate(announcement)}
               </p>
-              <h2 className="mt-2 font-display text-2xl leading-tight sm:text-3xl">
+              <h2 className="mt-3 font-display text-2xl leading-tight [overflow-wrap:anywhere] sm:text-3xl">
                 {announcement.title}
               </h2>
-              <p className="mt-3 whitespace-pre-wrap text-sm leading-6 sm:text-base sm:leading-7">
+              <p className="mt-3 whitespace-pre-wrap text-sm leading-6 [overflow-wrap:anywhere] sm:text-base sm:leading-7">
                 {announcement.body}
               </p>
               <div className="mt-4 flex flex-wrap items-center gap-3">

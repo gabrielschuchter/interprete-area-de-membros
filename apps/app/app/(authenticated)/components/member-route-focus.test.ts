@@ -14,7 +14,7 @@ describe("member route focus", () => {
     main.tabIndex = -1;
     main.innerHTML = `
       <div class="member-route-page" aria-hidden="true" inert>
-        <h1>Planejamento anterior</h1>
+        <h1>Biblioteca anterior</h1>
       </div>
       <div class="member-route-page">
         <h1>Ferramentas</h1>
@@ -40,11 +40,11 @@ describe("member route focus", () => {
   });
 
   test("announces the section name or the subpage heading", () => {
-    expect(memberRouteAnnouncementLabel("/planejamento", "Meu plano")).toBe(
-      "Planejamento"
+    expect(memberRouteAnnouncementLabel("/ferramentas", "Meu plano")).toBe(
+      "Ferramentas"
     );
     expect(
-      memberRouteAnnouncementLabel("/planejamento/tarefas", "Minhas tarefas")
+      memberRouteAnnouncementLabel("/ferramentas/tarefas", "Minhas tarefas")
     ).toBe("Minhas tarefas");
     expect(memberRouteAnnouncementLabel("/", "Olá, Ana")).toBe("Início");
   });

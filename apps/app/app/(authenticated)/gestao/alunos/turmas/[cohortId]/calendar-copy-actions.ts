@@ -643,7 +643,7 @@ export const copyGestaoCohortCalendarAgenda = async (
     revalidatePath(
       `/gestao/alunos/turmas/${value.destinationCohortId}/calendario`
     );
-    revalidatePath("/planejamento");
+    revalidatePath("/ferramentas");
     return { ok: true, counts };
   } catch (error) {
     if (error instanceof CalendarCopyFailure) {

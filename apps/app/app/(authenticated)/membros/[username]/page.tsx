@@ -9,7 +9,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CommunityCoverImage } from "@/components/community/community-cover-image";
 import { CommunityFeedCard } from "@/components/community/community-feed-card";
-import { CommunityNavigation } from "@/components/community/community-navigation";
 import { ProfileBackLink } from "@/components/community/profile-back-link";
 import { PublicProfileBadges } from "@/components/profile/profile-badges";
 import { getMemberRole } from "@/lib/authorization";
@@ -222,7 +221,6 @@ const PublicProfilePage = async ({
   return (
     <div className="community-page public-profile-page min-h-svh bg-background">
       <main className="community-shell mx-auto w-full">
-        <CommunityNavigation active="explore" />
         <div className="public-profile">
           <ProfileBackLink
             currentPathname={`/membros/${username}`}

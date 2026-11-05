@@ -216,7 +216,7 @@ const projectStudentCohortEvent = (
         recurrence: candidate.recurrence ?? "NONE",
         recurrenceUntil: candidate.recurrenceUntil ?? null,
         exceptions: candidate.occurrenceExceptions ?? [],
-        href: "/planejamento",
+        href: "/ferramentas",
       },
     ],
     range

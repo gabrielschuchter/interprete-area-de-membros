@@ -1781,3 +1781,15 @@
 .cb-cc:active .cb-cc__body {
   background: var(--cb-tint);
 }
+
+.cb-sec__hd--filters {
+  flex-wrap: wrap;
+}
+
+.cb-sec > .cb-res + .cb-rail {
+  margin-top: 20px;
+}
+
+.cb > h1.sr-only + .cb-sec {
+  margin-top: 8px;
+}

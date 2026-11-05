@@ -14,6 +14,7 @@ import { toast } from "@repo/design-system/lib/toast";
 import {
   Clock3Icon,
   DownloadIcon,
+  LockIcon,
   PauseIcon,
   PencilIcon,
   PlayIcon,
@@ -33,6 +34,7 @@ import {
   useState,
 } from "react";
 import {
+  armTimerAudioUnlock,
   playTimerCompletionAlarm,
   playTimerCompletionSound,
   playTimerTick,
@@ -189,6 +191,100 @@ function experienceLabel(experience: TimerExperience) {
     default:
       return "Pomodoro";
   }
+}
+
+/** Por que a troca de modo está travada, em uma frase. Null quando está livre. */
+export function timerSwitchLockReason(
+  active: { mode: TimerMode; pausedAt: string | Date | null } | null,
+  reachedEnd: boolean
+) {
+  if (!active) {
+    return null;
+  }
+  if (reachedEnd) {
+    return "Fechando a sessão que terminou…";
+  }
+  const name = experienceLabel(experienceForMode(active.mode));
+  const phase =
+    active.mode === "SHORT_BREAK" || active.mode === "LONG_BREAK"
+      ? "A pausa do Pomodoro"
+      : name;
+  return active.pausedAt
+    ? `${phase} está pausado. Encerre a sessão para trocar de modo.`
+    : `${phase} está em andamento. Encerre a sessão para trocar de modo.`;
+}
+
+function TimerModeSwitcher({
+  active,
+  experience,
+  pending,
+  reachedEnd,
+  setExperience,
+  tone = "light",
+}: {
+  active: TimerClientState["active"];
+  experience: TimerExperience;
+  pending: boolean;
+  reachedEnd: boolean;
+  setExperience: (experience: TimerExperience) => void;
+  tone?: "dark" | "light";
+}) {
+  const current = active ? experienceForMode(active.mode) : experience;
+  const lockReason = timerSwitchLockReason(active, reachedEnd);
+  const locked = Boolean(lockReason);
+  return (
+    <div className="mx-auto flex flex-col items-center gap-2">
+      <fieldset
+        aria-describedby={locked ? "timer-mode-lock-reason" : undefined}
+        aria-label="Modo do cronômetro"
+        className={`flex min-w-0 flex-wrap justify-center rounded-md border p-0 ${tone === "dark" ? "border-white/20" : "border-[#E2D6D1]"}`}
+        data-locked={locked ? "true" : undefined}
+      >
+        {(["POMODORO", "STOPWATCH", "COUNTDOWN"] as const).map((item) => {
+          const selected = current === item;
+          let palette =
+            "border border-[#E2D6D1] bg-white text-[#6C4857] hover:border-[#BFA9A3]";
+          if (tone === "dark") {
+            palette = selected
+              ? "bg-[#E9C48E] text-[#1E0318]"
+              : "text-white/75 hover:bg-white/10";
+          } else if (selected) {
+            palette = "bg-[#8C1535] text-white";
+          }
+          return (
+            <button
+              aria-disabled={locked && !selected ? true : undefined}
+              aria-pressed={selected}
+              className={`min-h-11 rounded-sm px-4 font-medium text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8C1535] ${palette} ${locked && !selected ? "cursor-not-allowed opacity-45" : ""}`}
+              disabled={pending && !locked}
+              key={item}
+              onClick={() => {
+                if (locked) {
+                  if (!selected && lockReason) {
+                    toast.info(lockReason);
+                  }
+                  return;
+                }
+                setExperience(item);
+              }}
+              type="button"
+            >
+              {experienceLabel(item)}
+            </button>
+          );
+        })}
+      </fieldset>
+      {lockReason ? (
+        <p
+          className={`flex items-center gap-1.5 text-center text-xs ${tone === "dark" ? "text-white/70" : "text-[#7A5A69]"}`}
+          id="timer-mode-lock-reason"
+        >
+          <LockIcon aria-hidden="true" className="size-3.5 shrink-0" />
+          {lockReason}
+        </p>
+      ) : null}
+    </div>
+  );
 }
 
 function timerHeading(
@@ -586,6 +682,13 @@ function FocusTimerWorkspace({
     notifyCompletion(state.completed);
   }, [notifyCompletion, state.completed]);
 
+  // A página pode vir do cache do navegador ou do roteador com uma sessão que
+  // já terminou no servidor; confirma o estado real assim que monta.
+  useEffect(() => {
+    armTimerAudioUnlock();
+    refresh().catch(() => undefined);
+  }, [refresh]);
+
   useEffect(() => {
     if (
       !state.active ||
@@ -635,9 +738,28 @@ function FocusTimerWorkspace({
         : settingsDraft.focusMinutes;
     shownSeconds = minutes * 60;
   }
+  const reachedEnd = Boolean(
+    state.active?.durationSeconds &&
+      state.active.runStartedAt &&
+      elapsed >= state.active.durationSeconds
+  );
   const progress = state.active?.durationSeconds
     ? Math.min(1, elapsed / state.active.durationSeconds)
     : 0;
+  const activeSessionId = state.active?.id ?? null;
+
+  // Quando o tempo chega a zero, o servidor fecha a sessão na próxima leitura.
+  // Sem isso a tela ficava até 15 s mostrando 00:00 com os modos travados.
+  useEffect(() => {
+    if (!(reachedEnd && activeSessionId)) {
+      return;
+    }
+    refresh().catch(() => undefined);
+    const retry = window.setInterval(() => {
+      refresh().catch(() => undefined);
+    }, 3000);
+    return () => window.clearInterval(retry);
+  }, [activeSessionId, reachedEnd, refresh]);
   const todayKey = new Intl.DateTimeFormat("en-CA", {
     timeZone: state.settings.timezone,
     year: "numeric",
@@ -1031,6 +1153,7 @@ function FocusTimerWorkspace({
           pending={pending}
           phasePrompt={phasePrompt}
           progress={progress}
+          reachedEnd={reachedEnd}
           sendAction={sendAction}
           sessionName={sessionName}
           sessionReview={sessionReview}
@@ -1069,13 +1192,18 @@ function FocusTimerWorkspace({
       </section>
       <TimerFocusOverlay
         alarmActive={alarmActive}
+        countdownMinutes={countdownMinutes}
         exitFocusMode={exitFocusMode}
+        experience={experience}
         focusCycleProgress={focusCycleProgress}
         focusMode={focusMode}
         pending={pending}
         phasePrompt={phasePrompt}
         progress={progress}
+        reachedEnd={reachedEnd}
         sendAction={sendAction}
+        setCountdownMinutes={setCountdownMinutes}
+        setExperience={setExperience}
         setFocusMode={setFocusMode}
         setSettingsOpen={setSettingsOpen}
         settingsDraft={settingsDraft}
@@ -1773,7 +1901,161 @@ function TimerSettingsPanel({
   ) : null;
 }
 
+const FocusCycleDots = ({
+  cycles,
+  done,
+  visible,
+}: {
+  readonly cycles: number;
+  readonly done: number;
+  readonly visible: boolean;
+}) =>
+  visible ? (
+    <div
+      aria-label="Ciclos Pomodoro"
+      className="mt-7 flex justify-center gap-2"
+      role="img"
+    >
+      {Array.from({ length: cycles }, (_, cycleIndex) => cycleIndex + 1).map(
+        (cycleNumber) => (
+          <span
+            aria-hidden="true"
+            className={`size-2.5 rounded-full ${cycleNumber <= done ? "bg-[#E9C48E]" : "bg-white/25"}`}
+            key={`pomodoro-cycle-${cycleNumber}`}
+          />
+        )
+      )}
+    </div>
+  ) : null;
+
+const FocusCountdownInput = ({
+  minutes,
+  onChange,
+}: {
+  readonly minutes: number;
+  readonly onChange: (minutes: number) => void;
+}) => (
+  <label
+    className="mx-auto mt-6 grid max-w-48 gap-1.5 text-sm text-white/75"
+    htmlFor="focus-countdown-duration"
+  >
+    Duração em minutos
+    <input
+      className="h-11 rounded-md border border-white/25 bg-white/10 px-3 text-center text-white"
+      id="focus-countdown-duration"
+      max={1440}
+      min={1}
+      onChange={(event) => onChange(Number(event.target.value))}
+      type="number"
+      value={minutes}
+    />
+  </label>
+);
+
+const FocusPhasePrompt = ({
+  focusSeconds,
+  pending,
+  prompt,
+  startPomodoroPhase,
+}: {
+  readonly focusSeconds: number;
+  readonly pending: boolean;
+  readonly prompt: { mode: TimerMode; durationSeconds: number };
+  readonly startPomodoroPhase: (
+    mode: TimerMode,
+    durationSeconds: number
+  ) => void;
+}) => (
+  <div
+    aria-live="assertive"
+    className="mt-6 rounded-xl border border-white/20 bg-white/10 p-4"
+    role="alert"
+  >
+    <p className="font-medium">
+      Foco concluído. Hora da pausa de {Math.round(prompt.durationSeconds / 60)}{" "}
+      minutos.
+    </p>
+    <div className="mt-3 flex flex-wrap justify-center gap-2">
+      <Button
+        disabled={pending}
+        onClick={() => startPomodoroPhase(prompt.mode, prompt.durationSeconds)}
+        type="button"
+      >
+        Começar a pausa
+      </Button>
+      <Button
+        className="border-white/50 bg-transparent text-white hover:bg-white/10"
+        disabled={pending}
+        onClick={() => startPomodoroPhase("FOCUS", focusSeconds)}
+        type="button"
+        variant="outline"
+      >
+        Pular
+      </Button>
+    </div>
+  </div>
+);
+
+const FocusSessionControls = ({
+  active,
+  pending,
+  reachedEnd,
+  sendAction,
+  startTimer,
+}: {
+  readonly active: TimerClientState["active"];
+  readonly pending: boolean;
+  readonly reachedEnd: boolean;
+  readonly sendAction: (payload: FocusTimerAction) => void;
+  readonly startTimer: () => void;
+}) => {
+  if (!active) {
+    return (
+      <Button
+        className="min-w-36 bg-[#8C1535] text-white hover:bg-[#6D102A]"
+        onClick={startTimer}
+        type="button"
+      >
+        <PlayIcon aria-hidden="true" className="mr-2 size-4 fill-current" />
+        Começar
+      </Button>
+    );
+  }
+  const paused = Boolean(active.pausedAt);
+  return (
+    <>
+      <Button
+        className="min-w-36 bg-[#8C1535] text-white hover:bg-[#6D102A]"
+        disabled={pending || reachedEnd}
+        onClick={() => sendAction({ action: paused ? "resume" : "pause" })}
+        type="button"
+      >
+        {paused ? (
+          <PlayIcon aria-hidden="true" className="mr-2 size-4 fill-current" />
+        ) : (
+          <PauseIcon aria-hidden="true" className="mr-2 size-4" />
+        )}
+        {paused ? "Retomar" : "Pausar"}
+      </Button>
+      <Button
+        className="border-white/50 bg-transparent text-white hover:bg-white/10"
+        onClick={() => sendAction({ action: "stop" })}
+        type="button"
+        variant="outline"
+      >
+        <SquareIcon aria-hidden="true" className="mr-2 size-4" />
+        Encerrar
+      </Button>
+    </>
+  );
+};
+
 function TimerFocusOverlay({
+  countdownMinutes,
+  setCountdownMinutes,
+  experience,
+  reachedEnd,
+  setExperience,
   focusMode,
   state,
   progress,
@@ -1807,6 +2089,11 @@ function TimerFocusOverlay({
   exitFocusMode: () => void;
   setSettingsOpen: (open: boolean) => void;
   setFocusMode: (open: boolean) => void;
+  experience: TimerExperience;
+  reachedEnd: boolean;
+  setExperience: (experience: TimerExperience) => void;
+  countdownMinutes: number;
+  setCountdownMinutes: (minutes: number) => void;
 }) {
   return focusMode ? (
     <Dialog
@@ -1837,8 +2124,18 @@ function TimerFocusOverlay({
           </Button>
         </div>
         <div className="w-full max-w-xl text-center">
-          <p className="text-white/60 text-xs uppercase tracking-[.2em]">
-            {state.active ? modeNames[state.active.mode] : "Modo foco"}
+          <TimerModeSwitcher
+            active={state.active}
+            experience={experience}
+            pending={pending}
+            reachedEnd={reachedEnd}
+            setExperience={setExperience}
+            tone="dark"
+          />
+          <p className="mt-5 text-white/60 text-xs uppercase tracking-[.2em]">
+            {state.active
+              ? modeNames[state.active.mode]
+              : experienceLabel(experience)}
           </p>
           <div
             className="relative mx-auto mt-8 grid aspect-square w-full max-w-[360px] place-items-center rounded-full border-[7px] border-white/15"
@@ -1860,58 +2157,22 @@ function TimerFocusOverlay({
               </div>
             </div>
           </div>
-          <div
-            aria-label="Ciclos Pomodoro"
-            className="mt-7 flex justify-center gap-2"
-            role="img"
-          >
-            {Array.from(
-              { length: settingsDraft.longBreakEvery },
-              (_, cycleIndex) => cycleIndex + 1
-            ).map((cycleNumber) => (
-              <span
-                aria-hidden="true"
-                className={`size-2.5 rounded-full ${cycleNumber <= focusCycleProgress ? "bg-[#E9C48E]" : "bg-white/25"}`}
-                key={`pomodoro-cycle-${cycleNumber}`}
-              />
-            ))}
-          </div>
+          <FocusCycleDots
+            cycles={settingsDraft.longBreakEvery}
+            done={focusCycleProgress}
+            visible={
+              (state.active
+                ? experienceForMode(state.active.mode)
+                : experience) === "POMODORO"
+            }
+          />
           {phasePrompt ? (
-            <div
-              aria-live="assertive"
-              className="mt-6 rounded-xl border border-white/20 bg-white/10 p-4"
-              role="alert"
-            >
-              <p className="font-medium">
-                Foco concluído. Hora da pausa de{" "}
-                {Math.round(phasePrompt.durationSeconds / 60)} minutos.
-              </p>
-              <div className="mt-3 flex flex-wrap justify-center gap-2">
-                <Button
-                  disabled={pending}
-                  onClick={() =>
-                    startPomodoroPhase(
-                      phasePrompt.mode,
-                      phasePrompt.durationSeconds
-                    )
-                  }
-                  type="button"
-                >
-                  Começar a pausa
-                </Button>
-                <Button
-                  className="border-white/50 bg-transparent text-white hover:bg-white/10"
-                  disabled={pending}
-                  onClick={() =>
-                    startPomodoroPhase("FOCUS", settingsDraft.focusMinutes * 60)
-                  }
-                  type="button"
-                  variant="outline"
-                >
-                  Pular
-                </Button>
-              </div>
-            </div>
+            <FocusPhasePrompt
+              focusSeconds={settingsDraft.focusMinutes * 60}
+              pending={pending}
+              prompt={phasePrompt}
+              startPomodoroPhase={startPomodoroPhase}
+            />
           ) : null}
           {alarmActive ? (
             <Button
@@ -1923,51 +2184,20 @@ function TimerFocusOverlay({
               Parar alarme
             </Button>
           ) : null}
+          {experience === "COUNTDOWN" && !state.active ? (
+            <FocusCountdownInput
+              minutes={countdownMinutes}
+              onChange={setCountdownMinutes}
+            />
+          ) : null}
           <div className="mt-7 flex flex-wrap justify-center gap-3">
-            {state.active ? (
-              <>
-                <Button
-                  className="min-w-36 bg-[#8C1535] text-white hover:bg-[#6D102A]"
-                  onClick={() =>
-                    sendAction({
-                      action: state.active?.pausedAt ? "resume" : "pause",
-                    })
-                  }
-                  type="button"
-                >
-                  {state.active.pausedAt ? (
-                    <PlayIcon
-                      aria-hidden="true"
-                      className="mr-2 size-4 fill-current"
-                    />
-                  ) : (
-                    <PauseIcon aria-hidden="true" className="mr-2 size-4" />
-                  )}
-                  {state.active.pausedAt ? "Retomar" : "Pausar"}
-                </Button>
-                <Button
-                  className="border-white/50 bg-transparent text-white hover:bg-white/10"
-                  onClick={() => sendAction({ action: "stop" })}
-                  type="button"
-                  variant="outline"
-                >
-                  <SquareIcon aria-hidden="true" className="mr-2 size-4" />
-                  Encerrar
-                </Button>
-              </>
-            ) : (
-              <Button
-                className="min-w-36 bg-[#8C1535] text-white hover:bg-[#6D102A]"
-                onClick={startTimer}
-                type="button"
-              >
-                <PlayIcon
-                  aria-hidden="true"
-                  className="mr-2 size-4 fill-current"
-                />
-                Começar
-              </Button>
-            )}
+            <FocusSessionControls
+              active={state.active}
+              pending={pending}
+              reachedEnd={reachedEnd}
+              sendAction={sendAction}
+              startTimer={startTimer}
+            />
           </div>
           <button
             className="mt-6 text-[#E9C48E] text-sm underline-offset-4 hover:underline"
@@ -2332,6 +2562,7 @@ function TimerDialogs({
 function TimerMainCard({
   state,
   experience,
+  reachedEnd,
   setExperience,
   settingsDraft,
   applyPreset,
@@ -2396,6 +2627,7 @@ function TimerMainCard({
   startTimer: () => void;
   setFocusMode: Dispatch<SetStateAction<boolean>>;
   settingsPanel: ReactNode;
+  reachedEnd: boolean;
   announcement: string;
 }) {
   return (
@@ -2418,33 +2650,13 @@ function TimerMainCard({
         </button>
       </div>
 
-      <fieldset
-        aria-label="Modo do cronômetro"
-        className="mx-auto flex min-w-0 flex-wrap justify-center rounded-md border border-[#E2D6D1] p-0"
-      >
-        {(["POMODORO", "STOPWATCH", "COUNTDOWN"] as const).map((item) => (
-          <button
-            aria-pressed={
-              (state.active
-                ? experienceForMode(state.active.mode)
-                : experience) === item
-            }
-            className={`min-h-11 rounded-sm px-4 font-medium text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8C1535] ${
-              (
-                state.active ? experienceForMode(state.active.mode) : experience
-              ) === item
-                ? "bg-[#8C1535] text-white"
-                : "border border-[#E2D6D1] bg-white text-[#6C4857] hover:border-[#BFA9A3]"
-            }`}
-            disabled={Boolean(state.active) || pending}
-            key={item}
-            onClick={() => setExperience(item)}
-            type="button"
-          >
-            {experienceLabel(item)}
-          </button>
-        ))}
-      </fieldset>
+      <TimerModeSwitcher
+        active={state.active}
+        experience={experience}
+        pending={pending}
+        reachedEnd={reachedEnd}
+        setExperience={setExperience}
+      />
 
       {experience === "POMODORO" && !state.active ? (
         <fieldset

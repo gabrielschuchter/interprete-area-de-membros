@@ -142,6 +142,7 @@ const valuesFromSearch = (search: string): LibraryFilterValues => {
 };
 
 const FilterField = ({
+  active,
   className,
   compact = false,
   id,
@@ -150,6 +151,7 @@ const FilterField = ({
   options,
   value,
 }: {
+  readonly active?: boolean;
   readonly className?: string;
   readonly compact?: boolean;
   readonly id: string;
@@ -174,7 +176,8 @@ const FilterField = ({
           "min-w-0 rounded-md border bg-white px-3 text-[#40222F] text-sm outline-none transition-colors focus-visible:border-[#8C1535] focus-visible:ring-2 focus-visible:ring-[#8C1535]/30",
           compact ? "h-11" : "h-12"
         ),
-        value && "border-2 border-[#8C1535] bg-[#FBF3F4] font-medium"
+        (active ?? Boolean(value)) &&
+          "border-2 border-[#8C1535] bg-[#FBF3F4] font-medium"
       )}
       id={id}
       onChange={(event) => onChange(event.currentTarget.value)}
@@ -661,6 +664,11 @@ export const LibraryExperience = ({
     ];
     return fields.map((field) => (
       <FilterField
+        active={
+          field.name === "sort"
+            ? draft.sort === "relevant"
+            : Boolean(draft[field.name])
+        }
         className={compact ? "min-w-0" : undefined}
         compact={compact}
         id={`${id}-${suffix}-${field.name}`}
@@ -818,7 +826,7 @@ export const LibraryExperience = ({
             className="mt-3 border-0 bg-transparent p-0 md:mt-8 md:rounded-lg md:border md:border-[#E2D6D1] md:bg-white md:p-5"
             ref={filterPanelRef}
           >
-            <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-end gap-2 md:gap-3">
+            <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-end gap-2 md:grid-cols-1 md:gap-3">
               <LibrarySearch
                 filters={draft}
                 hideSubmitOnMobile

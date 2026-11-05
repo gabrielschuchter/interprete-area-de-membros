@@ -2,7 +2,7 @@ import type { JSONContent } from "@tiptap/core";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { CommunityComposer } from "@/components/community/community-composer";
-import { getCommunitySpaces } from "@/lib/community";
+import { getCommunityComposerSpaces } from "@/lib/community";
 import { communityCoverAltEnabled } from "@/lib/community-cover-alt";
 import { safeCommunityReturnPath } from "@/lib/community-return-path";
 import { requireMemberId } from "@/lib/learning";
@@ -32,7 +32,7 @@ const NewCommunityContentPage = async ({
   if (!idempotencyKey) {
     redirect("/comunidade");
   }
-  const spaces = await getCommunitySpaces(memberId);
+  const spaces = await getCommunityComposerSpaces(memberId);
   const space = spaces.find(({ id }) => id === filters.spaceId) ?? null;
   const returnTo = safeCommunityReturnPath(filters.returnTo);
 

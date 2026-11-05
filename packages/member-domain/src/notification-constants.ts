@@ -47,5 +47,5 @@ export const notificationTitleForType = {
   GROUP_INVITATION: "Convite para grupo de estudo",
   GROUP_POST: "Nova publicação em um grupo de estudo",
   LEARNING_CONTENT_ASSIGNED: "Novo conteúdo para você",
-  PLANNER_REMINDER: "Lembrete de planejamento",
+  PLANNER_REMINDER: "Lembrete do calendário",
 } as const;

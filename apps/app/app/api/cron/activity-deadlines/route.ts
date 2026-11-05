@@ -8,6 +8,7 @@ import {
 import { isAuthorizedCronRequest } from "@repo/security/cron-auth";
 import { NextResponse } from "next/server";
 import { env } from "@/env";
+import { memberActivitiesEnabled } from "@/lib/member-features";
 import { notifyActivityDeadline } from "@/lib/notifications";
 
 export const GET = async (request: Request) => {
@@ -20,6 +21,10 @@ export const GET = async (request: Request) => {
 
   if (!isAuthorizedCronRequest(request, env.CRON_SECRET)) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  }
+
+  if (!memberActivitiesEnabled) {
+    return NextResponse.json({ skipped: "member-activities-disabled" });
   }
 
   const now = new Date();

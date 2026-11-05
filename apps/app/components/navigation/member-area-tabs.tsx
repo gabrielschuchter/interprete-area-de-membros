@@ -1,16 +1,13 @@
 "use client";
 
 import { Button } from "@repo/design-system/components/ui/button";
-import {
-  ChevronDownIcon,
-  ChevronRightIcon,
-  LayoutGridIcon,
-} from "lucide-react";
+import { ChevronRightIcon, LayoutGridIcon } from "lucide-react";
 import dynamic from "next/dynamic";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useCallback, useState } from "react";
 import { IntentLink } from "@/app/(authenticated)/components/intent-link";
 import { useMemberNavigation } from "@/app/(authenticated)/components/member-navigation-context";
+import { memberActivitiesEnabled } from "@/lib/member-features";
 
 const loadAreaPickerSheet = () =>
   import("./member-area-picker-sheet").then(
@@ -26,9 +23,10 @@ const studyAreas = [
   { href: "/estudar", label: "Visão geral" },
   { href: "/cursos", label: "Cursos" },
   { href: "/exercicios", label: "Exercícios" },
-  { href: "/atividades", label: "Atividades" },
+  ...(memberActivitiesEnabled
+    ? [{ href: "/atividades", label: "Atividades" } as const]
+    : []),
   { href: "/biblioteca", label: "Biblioteca" },
-  { href: "/planejamento", label: "Planejamento" },
   { href: "/ferramentas", label: "Ferramentas" },
 ] as const;
 
@@ -40,12 +38,39 @@ const communityAreas = [
   { href: "/comunidade/minhas-publicacoes", label: "Minhas publicações" },
 ] as const;
 
-const communityLocalNavigationPaths = [
-  "/comunidade/grupos",
-  "/comunidade/encontros",
-  "/comunidade/salvos",
-  "/comunidade/minhas-publicacoes",
+// Telas da Comunidade que ocupam a tela inteira ou têm cabeçalho próprio.
+const communityPathsWithoutTabs = [
+  "/comunidade/novo",
+  "/comunidade/editor",
+  "/comunidade/meus-topicos",
 ] as const;
+
+const communityAreaHrefs: readonly string[] = communityAreas.map(
+  (area) => area.href
+);
+
+/** Área da Comunidade de cada rota; páginas de grupo contam como Grupos. */
+const communityActiveArea = (pathname: string) => {
+  if (pathname.startsWith("/encontros")) {
+    return communityAreas[2];
+  }
+  const direct = communityAreas
+    .filter((area) => matchesPath(pathname, area.href))
+    .sort((left, right) => right.href.length - left.href.length)[0];
+  if (direct && direct.href !== "/comunidade") {
+    return direct;
+  }
+  const [, , segment] = pathname.split("/");
+  if (
+    segment &&
+    segment !== "publicacoes" &&
+    segment !== "meta" &&
+    !communityAreaHrefs.includes(`/comunidade/${segment}`)
+  ) {
+    return communityAreas[1];
+  }
+  return communityAreas[0];
+};
 
 const matchesPath = (pathname: string, href: string) =>
   href === "/estudar"
@@ -83,18 +108,15 @@ export const MemberAreaTabs = () => {
   const isStudyPath = studyAreas.some((area) =>
     matchesPath(pathname, area.href)
   );
-  const hasCommunityLocalNavigation =
-    communityLocalNavigationPaths.some(
-      (path) => pathname === path || pathname.startsWith(`${path}/`)
-    ) || pathname === "/comunidade";
   const isCommunityPath =
     (pathname === "/comunidade" ||
       pathname.startsWith("/comunidade/") ||
       pathname === "/encontros" ||
-      pathname.startsWith("/encontros/")) &&
-    !hasCommunityLocalNavigation &&
-    pathname !== "/comunidade/meus-topicos" &&
-    !pathname.startsWith("/encontros/gravacoes");
+      pathname.startsWith("/encontros/") ||
+      pathname.startsWith("/membros/")) &&
+    !communityPathsWithoutTabs.some(
+      (path) => pathname === path || pathname.startsWith(`${path}/`)
+    );
   const areas = navigationAreasForPath(isStudyPath, isCommunityPath);
   const sectionLabel = isStudyPath ? "Estudar" : "Comunidade";
   const [areaPickerOpen, setAreaPickerOpen] = useState(false);
@@ -111,12 +133,13 @@ export const MemberAreaTabs = () => {
     return null;
   }
 
-  const activeArea = pathname.startsWith("/encontros/")
-    ? communityAreas[2]
-    : (areas
+  const activeArea = isStudyPath
+    ? (areas
         .filter((area) => matchesPath(pathname, area.href))
         .sort((left, right) => right.href.length - left.href.length)[0] ??
-      areas[0]);
+      areas[0])
+    : communityActiveArea(pathname);
+  const sectionHref = isStudyPath ? "/estudar" : "/comunidade";
 
   return (
     <div
@@ -124,61 +147,40 @@ export const MemberAreaTabs = () => {
       data-area={isStudyPath ? "study" : "community"}
       data-hide-mobile-for-note={String(noteEditorOpen)}
     >
-      {!noteEditorOpen &&
-        (isStudyPath ? (
-          <div className="member-area-tabs-mobile member-area-tabs-mobile--study md:hidden">
-            <IntentLink
-              className="flex min-h-10 min-w-0 items-center gap-2 text-sm"
-              href="/estudar"
+      {noteEditorOpen ? null : (
+        <div className="member-area-tabs-mobile member-area-tabs-mobile--study md:hidden">
+          <IntentLink
+            className="flex min-h-10 min-w-0 items-center gap-2 text-sm"
+            href={sectionHref}
+          >
+            <span className="text-[#7A5A69]">{sectionLabel}</span>
+            <ChevronRightIcon
+              aria-hidden="true"
+              className="size-3.5 shrink-0 text-[#947A83]"
+            />
+            <span
+              aria-current="page"
+              className="truncate font-semibold text-[#40222F]"
             >
-              <span className="text-[#7A5A69]">Estudar</span>
-              <ChevronRightIcon
-                aria-hidden="true"
-                className="size-3.5 shrink-0 text-[#947A83]"
-              />
-              <span
-                aria-current="page"
-                className="truncate font-semibold text-[#40222F]"
-              >
-                {activeArea.label}
-              </span>
-            </IntentLink>
-            <Button
-              aria-busy={areaPickerOpen && !areaPickerReady}
-              aria-label="Trocar área"
-              className="h-10 shrink-0 gap-2 px-0 font-semibold text-[#8C1535]"
-              onClick={openAreaPicker}
-              onFocus={preloadAreaPicker}
-              onPointerEnter={preloadAreaPicker}
-              variant="ghost"
-            >
-              <LayoutGridIcon aria-hidden="true" className="size-4" />
-              {areaPickerOpen && !areaPickerReady
-                ? "Abrindo áreas…"
-                : "Trocar área"}
-            </Button>
-          </div>
-        ) : (
-          <div className="member-area-tabs-mobile md:hidden">
-            <Button
-              aria-busy={areaPickerOpen && !areaPickerReady}
-              aria-label={`Trocar ${sectionLabel.toLowerCase()}`}
-              className="h-11 w-full justify-between rounded-sm border-border bg-background px-3"
-              onClick={openAreaPicker}
-              onFocus={preloadAreaPicker}
-              onPointerEnter={preloadAreaPicker}
-              variant="outline"
-            >
-              <span className="min-w-0 truncate">
-                <span className="text-muted-foreground">{sectionLabel} · </span>
-                <span className="font-medium text-foreground">
-                  {activeArea.label}
-                </span>
-              </span>
-              <ChevronDownIcon aria-hidden="true" className="size-4 shrink-0" />
-            </Button>
-          </div>
-        ))}
+              {activeArea.label}
+            </span>
+          </IntentLink>
+          <Button
+            aria-busy={areaPickerOpen && !areaPickerReady}
+            aria-label="Trocar área"
+            className="h-10 shrink-0 gap-2 px-0 font-semibold text-[#8C1535]"
+            onClick={openAreaPicker}
+            onFocus={preloadAreaPicker}
+            onPointerEnter={preloadAreaPicker}
+            variant="ghost"
+          >
+            <LayoutGridIcon aria-hidden="true" className="size-4" />
+            {areaPickerOpen && !areaPickerReady
+              ? "Abrindo áreas…"
+              : "Trocar área"}
+          </Button>
+        </div>
+      )}
       <nav
         aria-label={`${sectionLabel} · áreas`}
         className="member-area-tabs-desktop"

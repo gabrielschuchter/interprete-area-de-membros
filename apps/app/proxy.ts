@@ -76,7 +76,6 @@ const protectedRoutePrefixes = [
   "/membros",
   "/notificacoes",
   "/perfil",
-  "/planejamento",
   "/salvos",
   "/tarefas",
   "/search",

@@ -1,12 +1,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { AnchorHTMLAttributes, ReactNode } from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
-import {
-  CommunityFeedNavigation,
-  CommunityNavigation,
-} from "./community-navigation";
-import CommunityViewPicker from "./community-view-picker";
-import { communityViews } from "./community-views";
+import { CommunityFeedNavigation } from "./community-navigation";
 
 const { routerPush } = vi.hoisted(() => ({ routerPush: vi.fn() }));
 
@@ -37,7 +32,7 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: routerPush }),
 }));
 
-describe("CommunityNavigation", () => {
+describe("CommunityFeedNavigation", () => {
   afterEach(() => {
     cleanup();
   });
@@ -78,59 +73,5 @@ describe("CommunityNavigation", () => {
     expect(routerPush).toHaveBeenLastCalledWith(
       "/comunidade?q=m%C3%A9todo&sort=unanswered&space=pratica-clinica"
     );
-  });
-
-  test("marks the primary community destination without duplicating actions", () => {
-    render(<CommunityNavigation active="saved" />);
-
-    expect(
-      screen.getByRole("link", { name: "Salvos" }).getAttribute("aria-current")
-    ).toBe("page");
-    expect(
-      screen
-        .getByRole("link", { name: "Minhas publicações" })
-        .getAttribute("href")
-    ).toBe("/comunidade/minhas-publicacoes");
-    expect(
-      screen.getByRole("link", { name: "Encontros" }).getAttribute("href")
-    ).toBe("/comunidade/encontros");
-    expect(
-      screen.getByRole("link", { name: "Grupos" }).getAttribute("href")
-    ).toBe("/comunidade/grupos");
-  });
-
-  test("opens the mobile sheet with all five destinations", () => {
-    Object.defineProperty(window, "matchMedia", {
-      configurable: true,
-      value: vi.fn().mockImplementation((media: string) => ({
-        addEventListener: vi.fn(),
-        addListener: vi.fn(),
-        dispatchEvent: vi.fn(),
-        matches: false,
-        media,
-        onchange: null,
-        removeEventListener: vi.fn(),
-        removeListener: vi.fn(),
-      })),
-    });
-
-    render(<CommunityViewPicker activeView={communityViews[0]} />);
-
-    fireEvent.click(
-      screen.getByRole("button", {
-        name: "Visão da comunidade: Explorar",
-      })
-    );
-
-    expect(screen.getByRole("heading", { name: "Comunidade" })).toBeTruthy();
-    expect(screen.getAllByRole("link").length).toBe(5);
-    expect(screen.getByText("Feed da comunidade")).toBeTruthy();
-    expect(screen.getByText("Meus grupos e descoberta")).toBeTruthy();
-    expect(screen.getByText("Próximos e gravações")).toBeTruthy();
-    expect(screen.getByText("Só da Comunidade")).toBeTruthy();
-    expect(screen.getByText("Publicadas, rascunhos e arquivadas")).toBeTruthy();
-    expect(
-      screen.getByRole("button", { name: "Fechar visões da comunidade" })
-    ).toBeTruthy();
   });
 });

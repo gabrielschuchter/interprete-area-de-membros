@@ -10,10 +10,7 @@ import { CommunityComposerPrompt } from "@/components/community/community-compos
 import { CommunityEmptyState } from "@/components/community/community-empty-state";
 import { CommunityFeedCard } from "@/components/community/community-feed-card";
 import { CommunityHero } from "@/components/community/community-hero";
-import {
-  CommunityFeedNavigation,
-  CommunityNavigation,
-} from "@/components/community/community-navigation";
+import { CommunityFeedNavigation } from "@/components/community/community-navigation";
 import { CommunityRightRail } from "@/components/community/community-right-rail";
 import { Stagger } from "@/components/motion/motion";
 import { getMemberRole } from "@/lib/authorization";
@@ -21,6 +18,7 @@ import {
   getCommunityAvatarVisuals,
   getCommunityFeed,
   getCommunitySpaces,
+  isOwnCommunitySpace,
 } from "@/lib/community";
 import { getCommunityAnnouncements } from "@/lib/community-announcements";
 import { getCommunityGoalSummary } from "@/lib/community-goal";
@@ -66,12 +64,7 @@ const CommunityRightRailData = async ({
       }
       // Staff can moderate private groups, but the rail lists what the viewer
       // takes part in: public groups plus the private ones they belong to.
-      spaces={spaces.filter(
-        (space) =>
-          space.visibility === "PUBLIC" ||
-          space.ownerId === memberId ||
-          space.members.length > 0
-      )}
+      spaces={spaces.filter((space) => isOwnCommunitySpace(space, memberId))}
     />
   );
 };
@@ -126,7 +119,9 @@ const CommunityFeedNavigationData = async ({
       query={query}
       sort={sort}
       spaceSlug={spaceSlug}
-      spaces={spaces.map(({ slug, title }) => ({ slug, title }))}
+      spaces={spaces
+        .filter((space) => isOwnCommunitySpace(space, memberId))
+        .map(({ slug, title }) => ({ slug, title }))}
     />
   );
 };
@@ -300,7 +295,6 @@ const CommunityPage = async ({ searchParams }: CommunityPageProperties) => {
         className="community-shell mx-auto w-full"
         data-route-structure-ready="community"
       >
-        <CommunityNavigation active="explore" />
         <div className="community-content-grid community-content-grid--explore">
           <CommunityHero />
           <Suspense

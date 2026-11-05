@@ -113,6 +113,25 @@ const ConfirmErase = ({
                   <GestaoIcon name="x" size={16} /> {n} {n === 1 ? one : many}
                 </li>
               ))}
+              {erasure.counts.staffRecords > 0 ? (
+                <li data-gain="true">
+                  <GestaoIcon name="check" size={16} />{" "}
+                  {erasure.counts.staffRecords}{" "}
+                  {erasure.counts.staffRecords === 1
+                    ? "registro da equipe (turma, convite, acesso ou evento) passa"
+                    : "registros da equipe (turmas, convites, acessos e eventos) passam"}{" "}
+                  para o seu nome e continuam valendo.
+                </li>
+              ) : null}
+              {erasure.counts.sharedSpaces > 0 ? (
+                <li data-gain="true">
+                  <GestaoIcon name="check" size={16} />{" "}
+                  {erasure.counts.sharedSpaces === 1
+                    ? "O grupo de estudo que ele criou continua, com"
+                    : `Os ${erasure.counts.sharedSpaces} grupos de estudo que ele criou continuam, cada um com`}{" "}
+                  o participante mais antigo como novo dono.
+                </li>
+              ) : null}
               <li data-gain="true">
                 <GestaoIcon name="check" size={16} /> O registro desta ação fica
                 na auditoria.
@@ -397,7 +416,8 @@ export const MemberDrawer = ({
                   <>
                     <small className="gk-hint">
                       Remove a pessoa e tudo o que ela produziu, por exemplo
-                      perfis criados em testes. Pede confirmação digitada.
+                      contas criadas em testes. Vale para membro, professor e
+                      administrador. Pede confirmação digitada.
                     </small>
                     <button
                       className="gk-btn gk-btn--wide"

@@ -9,7 +9,6 @@ const routeNames: Readonly<Record<string, string>> = {
   ferramentas: "Ferramentas",
   notificacoes: "Notificações",
   perfil: "Perfil",
-  planejamento: "Planejamento",
   salvos: "Salvos",
   estudar: "Estudar",
   tarefas: "Tarefas",

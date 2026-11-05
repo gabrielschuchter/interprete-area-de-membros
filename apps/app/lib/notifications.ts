@@ -8,6 +8,7 @@ import {
 } from "@repo/member-domain";
 import { tracePerformance } from "@repo/observability/performance";
 import { env } from "@/env";
+import { hiddenMemberNotificationTypes } from "@/lib/member-features";
 import { getCommunityAnnouncements } from "./community-announcements";
 import {
   mergeNotificationRecipients,
@@ -236,7 +237,13 @@ const withCurrentNotificationAudience = async <T>(
         transaction,
         announcementAudience
       );
-      return operation(transaction, audienceWhere);
+      const hiddenTypes = hiddenMemberNotificationTypes();
+      return operation(
+        transaction,
+        hiddenTypes.length > 0
+          ? { AND: [audienceWhere, { type: { notIn: [...hiddenTypes] } }] }
+          : audienceWhere
+      );
     },
     { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead }
   );
@@ -481,15 +488,37 @@ const notificationSelect = {
   },
 } as const;
 
+/** Quanto tempo uma notificação vista, mas não aberta, continua no sino. */
+export const freshNotificationWindowMs = 60 * 60 * 1000;
+
+export const freshNotificationWhere = (
+  now: Date
+): Prisma.NotificationWhereInput => ({
+  readAt: null,
+  OR: [
+    { seenAt: null },
+    { seenAt: { gte: new Date(now.getTime() - freshNotificationWindowMs) } },
+  ],
+});
+
 export const getNotifications = (
   memberId: string,
   options: {
     readonly cursor?: string;
     readonly limit?: number;
     readonly filter?: NotificationFilter;
+    /**
+     * Só o que é novo: não lidas que ainda não foram vistas ou que foram
+     * vistas há menos de `freshNotificationWindowMs`. É o que o sino mostra.
+     */
+    readonly fresh?: boolean;
+    readonly now?: Date;
   } = {}
 ) => {
   const limit = Math.min(Math.max(options.limit ?? 24, 1), 50);
+  const freshWhere: Prisma.NotificationWhereInput | null = options.fresh
+    ? freshNotificationWhere(options.now ?? new Date())
+    : null;
   const types = options.filter
     ? getNotificationFilterTypes(options.filter)
     : undefined;
@@ -497,7 +526,9 @@ export const getNotifications = (
     memberId,
     async (transaction, audienceWhere) => {
       const baseWhere = { memberId, ...(types ? { type: types } : {}) };
-      const visibleBaseWhere = { AND: [baseWhere, audienceWhere] };
+      const visibleBaseWhere = {
+        AND: [baseWhere, audienceWhere, ...(freshWhere ? [freshWhere] : [])],
+      };
       const cursor = decodeNotificationCursor(options.cursor);
       const where = cursor
         ? {

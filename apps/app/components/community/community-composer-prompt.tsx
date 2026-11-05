@@ -47,7 +47,7 @@ export const CommunityComposerPrompt = async ({
           </AvatarFallback>
         </Avatar>
         <span className="min-w-0 flex-1 truncate text-muted-foreground text-sm group-hover:text-foreground">
-          Escreva uma publicação…
+          Qual artigo, dúvida ou caso você quer discutir?
         </span>
         <PencilLineIcon
           aria-hidden="true"

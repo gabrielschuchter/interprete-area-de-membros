@@ -61,11 +61,19 @@ import {
   markNotificationsSeen,
 } from "./notifications";
 
+// Com Atividades desligada, o filtro de audiência vem embrulhado num AND que
+// também esconde os tipos de notificação de atividade; devolve só a audiência.
+const unwrapAudience = (value: unknown) => {
+  let current = value as { AND?: unknown[] };
+  while (current.AND) {
+    current = current.AND[0] as { AND?: unknown[] };
+  }
+  return current as { OR: Record<string, unknown>[] };
+};
+
 const audienceFrom = (where: unknown) => {
-  const root = where as {
-    AND: Array<{ OR: Record<string, unknown>[] }>;
-  };
-  return root.AND[1];
+  const root = where as { AND: unknown[] };
+  return unwrapAudience(root.AND[1]);
 };
 
 beforeEach(() => {
@@ -114,8 +122,9 @@ test("a removed member cannot read or count a stale private comment notification
   });
 
   for (const call of databaseMock.notification.count.mock.calls) {
-    const countAudience = (call[0]?.where as { AND: Array<{ AND: unknown[] }> })
-      .AND[0].AND[1];
+    const countAudience = unwrapAudience(
+      (call[0]?.where as { AND: Array<{ AND: unknown[] }> }).AND[0].AND[1]
+    );
     expect(countAudience).toEqual(audience);
   }
 
@@ -128,7 +137,7 @@ test("a removed member cannot read or count a stale private comment notification
       AND: unknown[];
     }
   ).AND[1];
-  expect(updateAudience).toEqual(audience);
+  expect(unwrapAudience(updateAudience)).toEqual(audience);
 });
 
 test("current group access and a live invitation are narrow audience grants", async () => {
@@ -198,7 +207,11 @@ test("summary counts share one current-audience repeatable-read snapshot", async
     where: {
       AND: [
         { memberId: "member-current", readAt: null },
-        audienceFrom(databaseMock.notification.count.mock.calls[0]?.[0]?.where),
+        (
+          databaseMock.notification.count.mock.calls[0]?.[0]?.where as {
+            AND: unknown[];
+          }
+        ).AND[1],
       ],
     },
   });
@@ -206,7 +219,11 @@ test("summary counts share one current-audience repeatable-read snapshot", async
     where: {
       AND: [
         { memberId: "member-current", seenAt: null },
-        audienceFrom(databaseMock.notification.count.mock.calls[1]?.[0]?.where),
+        (
+          databaseMock.notification.count.mock.calls[1]?.[0]?.where as {
+            AND: unknown[];
+          }
+        ).AND[1],
       ],
     },
   });

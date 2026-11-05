@@ -549,7 +549,7 @@ export const setGestaoCohortCalendarOccurrence = async (
     );
     revalidatePath(`/gestao/alunos/turmas/${cohortId}`);
     revalidatePath(`/gestao/alunos/turmas/${cohortId}/calendario`);
-    revalidatePath("/planejamento");
+    revalidatePath("/ferramentas");
     if (sourceType === "meeting") {
       revalidatePath(`/encontros/${sourceId}`);
     }

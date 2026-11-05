@@ -4,10 +4,11 @@ import { IntentLink } from "@/app/(authenticated)/components/intent-link";
 import { getPublishedActivities } from "@/lib/activities";
 import { requireOnboardedMemberId } from "@/lib/authorization";
 import { getHomeLearningSummary } from "@/lib/learning";
+import { memberActivitiesEnabled } from "@/lib/member-features";
 import { getMemberContinueWatching } from "@/lib/recordings";
 
-const areas = [
-  ["Cursos", "Aulas, trilhas e gravações", "/cursos"],
+const allAreas = [
+  ["Cursos", "Aulas e gravações", "/cursos"],
   ["Exercícios", "Listas de questões com gabarito e explicação", "/exercicios"],
   ["Atividades", "Atividades atribuídas e enviadas", "/atividades"],
   [
@@ -15,15 +16,19 @@ const areas = [
     "Materiais selecionados para complementar os estudos",
     "/biblioteca",
   ],
-  ["Planejamento", "Organize seus próximos passos", "/planejamento"],
-  ["Ferramentas", "Cronômetro, Pomodoro e suas notas", "/ferramentas"],
+  ["Ferramentas", "Metas, calendário e cronômetro", "/ferramentas"],
 ] as const;
+const areas = allAreas.filter(
+  ([, , href]) => memberActivitiesEnabled || href !== "/atividades"
+);
 
 const StudyOverview = async () => {
   const memberId = await requireOnboardedMemberId();
   const [courses, activities, recordings] = await Promise.all([
     getHomeLearningSummary(memberId),
-    getPublishedActivities(memberId),
+    memberActivitiesEnabled
+      ? getPublishedActivities(memberId)
+      : Promise.resolve([]),
     getMemberContinueWatching(memberId),
   ]);
   const course =

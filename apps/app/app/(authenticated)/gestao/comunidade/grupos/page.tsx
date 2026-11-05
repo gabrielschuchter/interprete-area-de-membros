@@ -8,6 +8,7 @@ import {
 } from "@/lib/gestao-groups";
 import { GestaoIcon } from "../../gestao-icon";
 import { setGestaoGroupState } from "./actions";
+import { DeleteGroupButton } from "./delete-group-button";
 import { ManageGroupButton, NewGroupButton } from "./group-dialogs";
 
 const base = "/gestao/comunidade/grupos";
@@ -105,7 +106,13 @@ const GroupCard = ({
             operation="publish"
           />
         )}
-        {group.status === "ARCHIVED" ? null : (
+        {group.status === "ARCHIVED" ? (
+          <DeleteGroupButton
+            id={group.id}
+            posts={group.posts}
+            title={group.title}
+          />
+        ) : (
           <StateButton
             className="gk-link-btn gk-link-btn--muted"
             id={group.id}

@@ -242,7 +242,7 @@ const TasksPage = async ({ searchParams }: TasksPageProperties) => {
         aria-labelledby="create-task-heading"
         className="mt-12 rounded-xl border bg-card p-5 sm:p-7"
       >
-        <p className="brand-eyebrow">Planejamento pessoal</p>
+        <p className="brand-eyebrow">Ferramentas · tarefas</p>
         <h2 className="mt-2 font-display text-2xl" id="create-task-heading">
           Criar uma tarefa
         </h2>

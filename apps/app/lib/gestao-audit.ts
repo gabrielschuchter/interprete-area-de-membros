@@ -84,6 +84,7 @@ export const gestaoAuditLabels: Readonly<Record<string, string>> = {
   "gestao.group.created": "Grupo criado",
   "gestao.group.updated": "Grupo editado",
   "gestao.group.status_changed": "Situação do grupo alterada",
+  "gestao.group.deleted": "Grupo apagado",
   "gestao.assignment.created": "Atribuição criada",
   "gestao.assignment.revoked": "Atribuição revogada",
   "gestao.recording.assigned": "Gravações históricas vinculadas",

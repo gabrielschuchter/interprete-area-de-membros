@@ -1,10 +1,8 @@
 "use client";
 
 import { ChevronDownIcon, SearchIcon } from "lucide-react";
-import dynamic from "next/dynamic";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
-import { IntentLink } from "@/app/(authenticated)/components/intent-link";
 import {
   COMMUNITY_KIND_OPTIONS,
   COMMUNITY_SORT_OPTIONS,
@@ -14,69 +12,6 @@ import {
   parseCommunityKind,
   parseCommunitySort,
 } from "@/lib/community-query";
-
-import { type CommunityView, communityViews } from "./community-views";
-
-const CommunityViewPickerFallback = () => {
-  const pathname = usePathname();
-  const activeView =
-    communityViews.find(
-      (view) =>
-        pathname === view.href ||
-        (view.href !== "/comunidade" && pathname.startsWith(`${view.href}/`))
-    ) ?? communityViews[0];
-
-  return (
-    <div className="community-view-picker">
-      <button
-        aria-label={`Visão da comunidade: ${activeView.label}`}
-        className="community-view-trigger"
-        disabled
-        type="button"
-      >
-        <span>{activeView.label}</span>
-        <ChevronDownIcon aria-hidden="true" className="size-4" />
-      </button>
-    </div>
-  );
-};
-const CommunityViewPicker = dynamic(() => import("./community-view-picker"), {
-  loading: CommunityViewPickerFallback,
-});
-
-interface CommunityNavigationProperties {
-  readonly active: CommunityView;
-}
-
-export const CommunityNavigation = ({
-  active,
-}: CommunityNavigationProperties) => {
-  const activeView =
-    communityViews.find((view) => view.value === active) ?? communityViews[0];
-
-  return (
-    <nav aria-label="Navegação da comunidade" className="community-section-nav">
-      <span className="community-section-nav__label">Comunidade</span>
-      <div className="community-section-nav__links community-section-nav__links--desktop">
-        {communityViews.map((view) => (
-          <IntentLink
-            aria-current={view.value === active ? "page" : undefined}
-            className={
-              view.value === active
-                ? "community-section-nav__link community-section-nav__link--active"
-                : "community-section-nav__link"
-            }
-            href={view.href}
-            key={view.value}
-          >
-            {view.label}
-          </IntentLink>
-        ))}
-      </div>
-      <CommunityViewPicker activeView={activeView} />
-    </nav>
-  );
-};
 
 interface CommunityFeedNavigationProperties {
   readonly kind?: CommunityKind;

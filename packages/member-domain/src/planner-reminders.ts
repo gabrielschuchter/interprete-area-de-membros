@@ -246,7 +246,7 @@ const scheduleNextTaskReminder = async (
     entityId: current.entityId,
     ...next,
     timezone,
-    href: `/planejamento?view=calendar&task=${encodeURIComponent(current.entityId)}&occurrence=${encodeURIComponent(next.occurrenceAt.toISOString())}`,
+    href: `/ferramentas?view=calendar&task=${encodeURIComponent(current.entityId)}&occurrence=${encodeURIComponent(next.occurrenceAt.toISOString())}`,
   });
 };
 
@@ -350,7 +350,7 @@ const scheduleNextEventReminder = async (
     entityId: current.entityId,
     ...next,
     timezone: event.timezone,
-    href: `/planejamento?view=calendar&event=${encodeURIComponent(current.entityId)}&occurrence=${encodeURIComponent(next.occurrenceAt.toISOString())}`,
+    href: `/ferramentas?view=calendar&event=${encodeURIComponent(current.entityId)}&occurrence=${encodeURIComponent(next.occurrenceAt.toISOString())}`,
   });
 };
 

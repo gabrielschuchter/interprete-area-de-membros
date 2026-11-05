@@ -3,6 +3,7 @@
 import { Button } from "@repo/design-system/components/ui/button";
 import { ChevronLeftIcon, ChevronRightIcon, XIcon } from "lucide-react";
 import { useMemo, useState } from "react";
+import { memberActivitiesEnabled } from "@/lib/member-features";
 
 export interface CalendarMeeting {
   readonly course: { readonly title: string; readonly slug: string } | null;
@@ -79,6 +80,17 @@ const meetingStateClass = (isSelected: boolean, isPast: boolean) => {
   }
   return "border-brand-structural/40 bg-accent/70 hover:bg-accent";
 };
+
+const RelatedActivityLink = ({
+  activity,
+}: {
+  readonly activity: { readonly slug: string } | null | undefined;
+}) =>
+  memberActivitiesEnabled && activity ? (
+    <Button asChild size="sm" variant="ghost">
+      <a href={`/atividades/${activity.slug}`}>Atividade relacionada</a>
+    </Button>
+  ) : null;
 
 export const MeetingsCalendar = ({
   meetings,
@@ -356,13 +368,7 @@ export const MeetingsCalendar = ({
                 </a>
               </Button>
             ))}
-            {selected.relatedActivity ? (
-              <Button asChild size="sm" variant="ghost">
-                <a href={`/atividades/${selected.relatedActivity.slug}`}>
-                  Atividade relacionada
-                </a>
-              </Button>
-            ) : null}
+            <RelatedActivityLink activity={selected.relatedActivity} />
             {selected.relatedLibraryItem ? (
               <span className="self-center text-muted-foreground text-sm">
                 Leitura: {selected.relatedLibraryItem.title}

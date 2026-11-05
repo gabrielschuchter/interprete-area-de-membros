@@ -24,9 +24,6 @@ const mobileTitleForPath = (pathname: string) => {
   if (pathname === "/estudar") {
     return "Estudar";
   }
-  if (pathname === "/planejamento") {
-    return "Planejamento";
-  }
   if (pathname === "/ferramentas") {
     return "Ferramentas";
   }

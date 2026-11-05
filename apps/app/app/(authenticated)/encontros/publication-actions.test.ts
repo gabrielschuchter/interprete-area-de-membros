@@ -61,7 +61,7 @@ describe("meeting first publication", () => {
       where: { id: "meeting-qa", publishedAt: null },
       data: { publishedAt: expect.any(Date) },
     });
-    expect(revalidatePath).toHaveBeenCalledWith("/planejamento");
+    expect(revalidatePath).toHaveBeenCalledWith("/ferramentas");
   });
 
   it("does not clear the first publication when returning to draft", async () => {

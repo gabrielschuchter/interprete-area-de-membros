@@ -136,7 +136,6 @@ const isMemberSidebarPathActive = (
       "/exercicios",
       "/atividades",
       "/biblioteca",
-      "/planejamento",
       "/ferramentas",
       "/tarefas",
     ];
@@ -431,7 +430,13 @@ const MemberAreaSidebarView = ({
                 </span>
               </SidebarMenuButton>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-64" side="top">
+            <DropdownMenuContent
+              align="start"
+              // No portal (Início) a barra lateral flutua em z-75; o menu da
+              // conta precisa ficar acima dela, e não atrás.
+              className="z-[90] w-64"
+              side="top"
+            >
               <DropdownMenuLabel className="font-normal">
                 <span className="block truncate font-medium">
                   {displayName}

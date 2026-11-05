@@ -58,7 +58,6 @@ export const skeletonForPath = (pathname: string) => {
   if (
     startsWithSegment(pathname, "/cursos") ||
     startsWithSegment(pathname, "/exercicios") ||
-    startsWithSegment(pathname, "/planejamento") ||
     startsWithSegment(pathname, "/ferramentas") ||
     startsWithSegment(pathname, "/salvos")
   ) {

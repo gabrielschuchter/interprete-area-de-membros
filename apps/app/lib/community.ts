@@ -123,6 +123,37 @@ export const getCommunitySpaces = async (memberId: string) => {
   );
 };
 
+type CommunitySpaceRow = Awaited<ReturnType<typeof getCommunitySpaces>>[number];
+
+/**
+ * Grupos que fazem parte da vida do membro: públicos e privados de que ele
+ * participa. Staff enxerga todos os privados para moderar, mas isso não pode
+ * vazar para listas pessoais (filtros, lateral), onde um grupo privado alheio
+ * aparecia como "grupo fantasma".
+ */
+export const isOwnCommunitySpace = (
+  space: CommunitySpaceRow,
+  memberId: string
+) =>
+  space.visibility === "PUBLIC" ||
+  space.ownerId === memberId ||
+  space.members.length > 0;
+
+/**
+ * Onde o membro pode publicar: só grupos de que participa. `keepSpaceId`
+ * preserva o grupo atual de um rascunho já salvo.
+ */
+export const getCommunityComposerSpaces = async (
+  memberId: string,
+  keepSpaceId?: string | null
+) =>
+  (await getCommunitySpaces(memberId)).filter(
+    (space) =>
+      space.ownerId === memberId ||
+      space.members.length > 0 ||
+      space.id === keepSpaceId
+  );
+
 export const getCommunitySpaceDirectoryPage = async (
   memberId: string,
   {

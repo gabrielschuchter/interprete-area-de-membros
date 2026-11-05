@@ -9,7 +9,7 @@ import type {
   StudyGoalTopicOverview,
   StudyGoalTopicPeriod,
 } from "@/lib/study-goal-topics";
-import { saveStudyGoalTopicsAction } from "./actions";
+import { saveStudyGoalTopicsAction } from "./planner-actions";
 
 interface DraftRow {
   readonly sharePercent: number;

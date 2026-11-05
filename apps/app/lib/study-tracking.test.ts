@@ -89,3 +89,21 @@ test("ignores empty or reversed intervals", () => {
 
   expect(totals).toEqual([]);
 });
+
+test("credits the heartbeat gap only while the session is open", async () => {
+  const { creditedHeartbeatSeconds } = await import("./study-tracking");
+  const now = new Date("2026-11-04T12:00:20.000Z");
+  const lastHeartbeatAt = new Date("2026-11-04T12:00:00.000Z");
+  expect(
+    creditedHeartbeatSeconds({ endedAt: null, lastHeartbeatAt }, now)
+  ).toBe(20);
+  expect(
+    creditedHeartbeatSeconds(
+      { endedAt: null, lastHeartbeatAt: new Date("2026-11-04T11:00:00.000Z") },
+      now
+    )
+  ).toBe(30);
+  expect(
+    creditedHeartbeatSeconds({ endedAt: lastHeartbeatAt, lastHeartbeatAt }, now)
+  ).toBe(0);
+});

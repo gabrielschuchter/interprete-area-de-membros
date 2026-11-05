@@ -16,6 +16,7 @@ import {
   LibraryPagination,
 } from "@/components/library/library-experience";
 import { getLibraryItems } from "@/lib/library";
+import { libraryCategoryGroup } from "@/lib/library-categories";
 import {
   libraryAccessLabel,
   libraryDifficultyLabel,
@@ -71,7 +72,7 @@ const LibraryMaterialCard = ({
             </Badge>
             {item.category && (
               <span className="min-w-0 break-words font-data text-[#7A5A69] text-[10px] uppercase leading-[1.5] tracking-[.08em]">
-                {item.category}
+                {libraryCategoryGroup(item.category)}
               </span>
             )}
           </div>
@@ -208,8 +209,9 @@ export const LibraryResults = async ({
         </p>
       </header>
       <p className="mt-3 max-w-4xl text-[#7A5A69] text-[13px] leading-[1.6] md:text-sm">
-        Relevância combina leitores únicos, aberturas repetidas e itens salvos;
-        a busca desempata por correspondência textual.
+        {filters.sort === "relevant"
+          ? "Primeiro o que mais gente da turma abriu e salvou."
+          : "Os materiais mais recentes da curadoria aparecem primeiro."}
       </p>
       {result.items.length === 0 ? (
         <EmptyLibraryResults />

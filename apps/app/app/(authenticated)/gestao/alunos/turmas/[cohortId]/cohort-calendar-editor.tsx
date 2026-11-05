@@ -785,7 +785,7 @@ const CalendarEditorSidebar = ({
           aparecem para eles.
         </p>
         <CalendarFeedControls archived={archived} cohortId={cohortId} />
-        <Link href="/planejamento">Ver o Planejamento do aluno</Link>
+        <Link href="/ferramentas?view=calendar">Ver o calendário do aluno</Link>
       </section>
       <CalendarConflictPanel conflicts={conflicts} limited={conflictsLimited} />
       <CalendarCopyControls

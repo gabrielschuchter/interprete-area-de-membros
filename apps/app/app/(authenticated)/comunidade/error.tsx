@@ -2,7 +2,6 @@
 
 import { Button } from "@repo/design-system/components/ui/button";
 import { CloudAlertIcon } from "lucide-react";
-import { CommunityNavigation } from "@/components/community/community-navigation";
 
 interface CommunityErrorProperties {
   readonly error: Error & { digest?: string };
@@ -12,7 +11,6 @@ interface CommunityErrorProperties {
 const CommunityError = ({ reset }: CommunityErrorProperties) => (
   <main className="community-page min-h-svh bg-background">
     <div className="community-shell mx-auto w-full">
-      <CommunityNavigation active="explore" />
       <section
         aria-live="assertive"
         className="paper-surface mx-auto mt-8 flex w-full flex-col items-center rounded-md border px-6 py-10 text-center sm:px-8 sm:py-12"

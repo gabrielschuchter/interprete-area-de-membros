@@ -47,7 +47,7 @@ describe("CommunityEmptyState", () => {
     ).toBeTruthy();
     expect(
       screen.getByText(
-        "Tente outras palavras, ou limpe os filtros para voltar a ver todo o feed."
+        "Tente um termo mais curto, o nome do desenho de estudo ou do desfecho, ou limpe os filtros."
       )
     ).toBeTruthy();
     expect(
@@ -60,7 +60,7 @@ describe("CommunityEmptyState", () => {
     render(<CommunityEmptyState hasFilters={false} sort="recent" />);
 
     expect(
-      screen.getByRole("heading", { name: "Ainda não há publicações por aqui" })
+      screen.getByRole("heading", { name: "Ninguém abriu a primeira discussão ainda" })
     ).toBeTruthy();
     expect(
       screen.getByRole("button", { name: "Nova publicação" })
@@ -76,7 +76,7 @@ describe("CommunityEmptyState", () => {
     );
 
     expect(
-      screen.getByRole("heading", { name: "Nenhuma publicação sem resposta." })
+      screen.getByRole("heading", { name: "Toda pergunta já recebeu resposta." })
     ).toBeTruthy();
     expect(
       screen.queryByRole("heading", { name: NO_RESULTS_HEADING })
