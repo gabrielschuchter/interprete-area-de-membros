@@ -34,10 +34,10 @@ vi.mock("@/app/(authenticated)/comunidade/actions", () => actions);
 vi.mock("next/navigation", () => ({ useRouter: () => actions.router }));
 // jsdom não decodifica imagens nem desenha em canvas: o recorte confirma o
 // arquivo escolhido como está, e o teste segue para o envio.
-vi.mock("@/components/image-crop-dialog", async () => {
+vi.mock("@/components/image-crop-dialog-lazy", async () => {
   const { useEffect } = await import("react");
   return {
-    ImageCropDialog: ({
+    LazyImageCropDialog: ({
       file,
       onConfirm,
     }: {

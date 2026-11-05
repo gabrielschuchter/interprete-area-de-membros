@@ -13,7 +13,7 @@ import {
   useState,
 } from "react";
 
-interface ImageCropDialogProperties {
+export interface ImageCropDialogProperties {
   /** Largura ÷ altura do recorte (1 para foto de perfil, 16/9 para capa). */
   readonly aspect: number;
   readonly file: File | null;

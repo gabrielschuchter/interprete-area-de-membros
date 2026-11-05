@@ -2,7 +2,7 @@
 
 import { CameraIcon, XIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { ImageCropDialog } from "@/components/image-crop-dialog";
+import { LazyImageCropDialog } from "@/components/image-crop-dialog-lazy";
 
 interface AvatarUploaderProperties {
   readonly initials: string;
@@ -20,6 +20,41 @@ const AvatarRemoveIcon = ({
   variant === "profile-editor" ? null : (
     <XIcon aria-hidden="true" className="size-3" />
   );
+
+const croppableTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
+
+/** Valida a foto escolhida antes do recorte; vazio quando está tudo certo. */
+const chosenImageProblem = (file: File) => {
+  if (!croppableTypes.has(file.type)) {
+    return "Envie uma imagem JPG, PNG ou WebP.";
+  }
+  if (file.size <= 0 || file.size > 25 * 1024 * 1024) {
+    return "A imagem deve ter até 25 MB.";
+  }
+  return "";
+};
+
+/** O recorte (e o código dele) só existe enquanto há uma foto escolhida. */
+const AvatarCrop = ({
+  file,
+  onCancel,
+  onConfirm,
+}: {
+  readonly file: File | null;
+  readonly onCancel: () => void;
+  readonly onConfirm: (file: File) => void;
+}) =>
+  file ? (
+    <LazyImageCropDialog
+      aspect={1}
+      file={file}
+      onCancel={onCancel}
+      onConfirm={onConfirm}
+      outputWidth={512}
+      shape="round"
+      title="Ajustar foto de perfil"
+    />
+  ) : null;
 
 export const AvatarUploader = ({
   initialUrl,
@@ -39,16 +74,11 @@ export const AvatarUploader = ({
 
   // A foto escolhida passa primeiro pelo recorte; só o recorte é enviado.
   const choose = (file: File) => {
-    if (!new Set(["image/jpeg", "image/png", "image/webp"]).has(file.type)) {
-      setError("Envie uma imagem JPG, PNG ou WebP.");
-      return;
+    const problem = chosenImageProblem(file);
+    setError(problem);
+    if (!problem) {
+      setPendingFile(file);
     }
-    if (file.size <= 0 || file.size > 25 * 1024 * 1024) {
-      setError("A imagem deve ter até 25 MB.");
-      return;
-    }
-    setError("");
-    setPendingFile(file);
   };
 
   useEffect(() => {
@@ -211,17 +241,13 @@ export const AvatarUploader = ({
         </p>
         {error ? <p className="text-destructive text-xs">{error}</p> : null}
       </div>
-      <ImageCropDialog
-        aspect={1}
+      <AvatarCrop
         file={pendingFile}
         onCancel={() => setPendingFile(null)}
         onConfirm={(cropped) => {
           setPendingFile(null);
           upload(cropped).catch(() => undefined);
         }}
-        outputWidth={512}
-        shape="round"
-        title="Ajustar foto de perfil"
       />
     </div>
   );

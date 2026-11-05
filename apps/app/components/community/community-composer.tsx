@@ -36,7 +36,7 @@ import {
   updateDraft,
   updatePost,
 } from "@/app/(authenticated)/comunidade/actions";
-import { ImageCropDialog } from "@/components/image-crop-dialog";
+import { LazyImageCropDialog } from "@/components/image-crop-dialog-lazy";
 import { CommunityEditorField } from "./community-editor-field";
 import { TopicEditor } from "./topic-editor";
 
@@ -1003,17 +1003,19 @@ export function CommunityComposer({
               tabIndex={-1}
               type="file"
             />
-            <ImageCropDialog
-              aspect={16 / 9}
-              file={pendingCoverFile}
-              onCancel={() => setPendingCoverFile(null)}
-              onConfirm={(cropped) => {
-                setPendingCoverFile(null);
-                uploadCover(cropped).catch(() => undefined);
-              }}
-              outputWidth={1920}
-              title="Ajustar capa"
-            />
+            {pendingCoverFile ? (
+              <LazyImageCropDialog
+                aspect={16 / 9}
+                file={pendingCoverFile}
+                onCancel={() => setPendingCoverFile(null)}
+                onConfirm={(cropped) => {
+                  setPendingCoverFile(null);
+                  uploadCover(cropped).catch(() => undefined);
+                }}
+                outputWidth={1920}
+                title="Ajustar capa"
+              />
+            ) : null}
             {isUploadingCover ? (
               <div
                 aria-label={`Enviando capa: ${coverUploadPercent}%`}
