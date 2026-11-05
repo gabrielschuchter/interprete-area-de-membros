@@ -207,13 +207,16 @@ export const getCommunityMentionCandidates = async (input: {
   const discussionItems = contextProfiles
     .map((profile) => toCandidate(profile, "DISCUSSION"))
     .slice(0, 8);
-  const communityItems =
-    input.scope === "community"
-      ? directoryProfiles
-          .filter((profile) => !contextIds.has(profile.clerkUserId))
-          .map((profile) => toCandidate(profile, "COMMUNITY"))
-          .slice(0, 8)
-      : [];
+  // A comunidade entra sempre: exigir um segundo clique para achar alguém
+  // fora da discussão fazia a menção parecer quebrada.
+  const communityItems = directoryProfiles
+    .filter(
+      (profile) =>
+        !contextIds.has(profile.clerkUserId) &&
+        profile.clerkUserId !== input.actorId
+    )
+    .map((profile) => toCandidate(profile, "COMMUNITY"))
+    .slice(0, 8);
 
   const groups: CommunityMentionCandidate[] = [];
   if (
