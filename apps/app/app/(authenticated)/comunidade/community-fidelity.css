@@ -468,6 +468,9 @@
 }
 .community-group-header__cover {
   position: relative;
+  /* Sem largura explícita, aspect-ratio + min-height derivava a largura da
+     altura (640px a 320px de tela) e a capa saía cortada à direita. */
+  width: 100%;
   min-height: 128px;
   aspect-ratio: 5 / 1;
   overflow: hidden;
@@ -557,7 +560,9 @@
   margin-top: 28px;
   border-bottom: 1px solid #e2d6d1;
 }
-.community-group-shell nav[aria-label="Seções do grupo"] a {
+.community-group-shell
+  nav[aria-label="Seções do grupo"]:not(.community-group-mobile-sections)
+  a {
   padding: 14px 0;
   margin-right: 28px;
   font-size: 14px;
@@ -850,5 +855,35 @@
   .community-page .community-feed-nav__search,
   .community-page .community-feed-nav__select-wrap--group {
     grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 639px) {
+  .community-group-header__cover--empty {
+    min-height: 96px;
+  }
+  .community-group-header__title {
+    font-size: clamp(28px, 8.5vw, 40px);
+  }
+}
+
+/* Tablet e paisagem: a proporção 2.8:1 do board fazia o banner ocupar
+   335px (44% da tela) a 1024x768. Limita a altura sem mudar o celular. */
+@media (min-width: 640px) and (max-width: 1080px) {
+  .community-page .community-hero {
+    width: 100%;
+    max-height: 240px;
+  }
+  .community-page .community-hero__title {
+    font-size: clamp(2.75rem, 7.5cqw, 4.5rem);
+  }
+}
+@media (orientation: landscape) and (max-height: 520px) {
+  .community-page .community-hero {
+    min-height: 140px;
+    max-height: 160px;
+  }
+  .community-page .community-hero__title {
+    font-size: clamp(2.25rem, 5.5cqw, 3.25rem);
   }
 }

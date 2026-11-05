@@ -149,7 +149,7 @@ export const MemberAreaTabs = () => {
             className="flex min-h-10 min-w-0 items-center gap-2 text-sm"
             href={sectionHref}
           >
-            <span className="text-[#7A5A69]">{sectionLabel}</span>
+            <span className="shrink-0 text-[#7A5A69]">{sectionLabel}</span>
             <ChevronRightIcon
               aria-hidden="true"
               className="size-3.5 shrink-0 text-[#947A83]"
@@ -164,16 +164,18 @@ export const MemberAreaTabs = () => {
           <Button
             aria-busy={areaPickerOpen && !areaPickerReady}
             aria-label="Trocar área"
-            className="h-10 shrink-0 gap-2 px-0 font-semibold text-[#8C1535]"
+            className="h-10 shrink-0 gap-2 px-0 font-semibold text-[#8C1535] max-[359px]:w-10"
             onClick={openAreaPicker}
             onFocus={preloadAreaPicker}
             onPointerEnter={preloadAreaPicker}
             variant="ghost"
           >
             <LayoutGridIcon aria-hidden="true" className="size-4" />
-            {areaPickerOpen && !areaPickerReady
-              ? "Abrindo áreas…"
-              : "Trocar área"}
+            <span className="max-[359px]:sr-only">
+              {areaPickerOpen && !areaPickerReady
+                ? "Abrindo áreas…"
+                : "Trocar área"}
+            </span>
           </Button>
         </div>
       )}

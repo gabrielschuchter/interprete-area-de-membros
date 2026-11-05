@@ -115,7 +115,7 @@ export const MemberHeader = ({
         </div>
       )}
       <div
-        className={`${mobileExerciseHeader || mobileShellHeaderHidden || mobileNoteEditorHeader ? "hidden md:flex" : "flex"} min-w-0 flex-1 items-center gap-3`}
+        className={`${mobileExerciseHeader || mobileShellHeaderHidden || mobileNoteEditorHeader ? "hidden md:flex" : "flex"} min-w-0 flex-1 items-center gap-2 sm:gap-3`}
       >
         <MemberSidebarControl
           className="-ml-2 min-[1250px]:hidden"
@@ -123,7 +123,7 @@ export const MemberHeader = ({
           mode="drawer"
         />
         {mobileShellTitle ? (
-          <p className="truncate font-display font-semibold text-lg md:hidden">
+          <p className="truncate font-display font-semibold text-lg max-[359px]:text-base md:hidden">
             {mobileShellTitle}
           </p>
         ) : (

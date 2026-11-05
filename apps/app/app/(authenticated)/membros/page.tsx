@@ -46,7 +46,7 @@ const MembersPage = async ({ searchParams }: MembersPageProperties) => {
         <header className="max-w-3xl">
           <p className="brand-eyebrow">Escola · pessoas</p>
           <span aria-hidden="true" className="brand-rule mt-4" />
-          <h1 className="mt-6 font-display text-5xl leading-[0.98] tracking-tight sm:text-7xl">
+          <h1 className="mt-6 font-display text-4xl leading-[0.98] tracking-tight sm:text-6xl lg:text-7xl min-[400px]:text-5xl">
             Quem está pensando junto?
           </h1>
           <p className="mt-6 max-w-2xl text-base text-muted-foreground leading-7 sm:text-lg">

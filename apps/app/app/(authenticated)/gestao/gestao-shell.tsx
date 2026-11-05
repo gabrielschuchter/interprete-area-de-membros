@@ -794,6 +794,7 @@ const GestaoShellFrame = ({
           <div className="gestao-topbar-actions">
             <GestaoSearch memberId={memberId} />
             <Link
+              aria-label="Ver como aluno"
               className="gestao-preview-button"
               href={withGestaoReturnPath("/gestao/previa", returnTo)}
             >

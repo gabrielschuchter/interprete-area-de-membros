@@ -215,3 +215,9 @@
     display: none;
   }
 }
+
+@media (max-width: 399px) {
+  .public-profile__name {
+    font-size: 24px;
+  }
+}
