@@ -208,6 +208,7 @@ export const MentionTextarea = ({
   );
   const [searchResult, setSearchResult] = useState<MentionSearchResponse>({});
   const [searchPending, setSearchPending] = useState(false);
+  const [searchFailed, setSearchFailed] = useState(false);
   const [popoverPosition, setPopoverPosition] = useState<CSSProperties>();
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [mentions, setMentions] = useState<MentionToken[]>(() =>
@@ -229,6 +230,7 @@ export const MentionTextarea = ({
       setSearchResult({});
       setSearchScope("discussion");
       setSearchPending(false);
+      setSearchFailed(false);
       return;
     }
     const controller = new AbortController();
@@ -240,6 +242,7 @@ export const MentionTextarea = ({
       params.set("scope", searchScope);
     }
     setSearchPending(true);
+    setSearchFailed(false);
     const searchTimer = window.setTimeout(() => {
       fetch(`/api/members/search?${params.toString()}`, {
         signal: controller.signal,
@@ -247,18 +250,25 @@ export const MentionTextarea = ({
       })
         .then(async (response) => {
           if (!response.ok) {
-            return {};
+            throw new Error(`mention-search-${response.status}`);
           }
           return (await response.json()) as MentionSearchResponse;
         })
         .then((payload: MentionSearchResponse) => {
+          if (controller.signal.aborted) {
+            return;
+          }
           setSearchResult(payload);
           setSelectedIndex(0);
+          setSearchPending(false);
         })
         .catch(() => {
-          if (!controller.signal.aborted) {
-            setSearchResult({});
+          if (controller.signal.aborted) {
+            return;
           }
+          setSearchResult({});
+          setSearchFailed(true);
+          setSearchPending(false);
         });
     }, 120);
     const updatePopoverPosition = () => {
@@ -358,7 +368,7 @@ export const MentionTextarea = ({
     });
   };
 
-  const showSuggestions = Boolean(range && (candidates.length > 0 || postId));
+  const showSuggestions = Boolean(range);
 
   const chooseSuggestion = (index: number) => {
     const candidate = candidates[index];
@@ -390,6 +400,11 @@ export const MentionTextarea = ({
         }
         onKeyDown={(event) => {
           if (!showSuggestions) {
+            props.onKeyDown?.(event);
+            return;
+          }
+          const hasCandidates = candidates.length > 0;
+          if (!(hasCandidates || event.key === "Escape")) {
             props.onKeyDown?.(event);
             return;
           }
@@ -496,33 +511,16 @@ export const MentionTextarea = ({
           {searchPending && candidates.length === 0 && (
             <p className="px-3 py-2 text-muted-foreground text-xs">Buscando…</p>
           )}
-          {postId &&
-            searchScope === "discussion" &&
-            value.slice((range?.start ?? 0) + 1, range?.end).trim() &&
-            candidates.length === 0 &&
-            !searchPending && (
-              <div className="grid gap-1 px-3 py-2">
-                <p className="text-muted-foreground text-xs">
-                  Ninguém com esse nome nesta discussão.
-                </p>
-                <button
-                  className="w-fit text-brand-structural text-xs underline underline-offset-2"
-                  onClick={() => setSearchScope("community")}
-                  onMouseDown={(event) => event.preventDefault()}
-                  type="button"
-                >
-                  Procurar em toda a comunidade
-                </button>
-              </div>
-            )}
-          {postId &&
-            searchScope === "community" &&
-            candidates.length === 0 &&
-            !searchPending && (
-              <p className="px-3 py-2 text-muted-foreground text-xs">
-                Ninguém com esse nome na comunidade.
-              </p>
-            )}
+          {searchFailed && !searchPending && candidates.length === 0 && (
+            <p className="px-3 py-2 text-muted-foreground text-xs">
+              Não foi possível buscar agora. Tente digitar de novo.
+            </p>
+          )}
+          {!(searchPending || searchFailed) && candidates.length === 0 && (
+            <p className="px-3 py-2 text-muted-foreground text-xs">
+              Ninguém encontrado para essa busca.
+            </p>
+          )}
         </div>
       )}
       {hasGroupMention && (
