@@ -5,6 +5,7 @@ import { ImagePlusIcon, XIcon } from "lucide-react";
 import Image from "next/image";
 import type { ReactNode } from "react";
 import { useId, useRef, useState } from "react";
+import { LazyImageCropDialog } from "@/components/image-crop-dialog-lazy";
 
 interface GroupCoverUploadProperties {
   readonly compact?: boolean;
@@ -20,6 +21,7 @@ export const GroupCoverUpload = ({
   const [url, setUrl] = useState(initialUrl ?? "");
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
   let uploadLabel = "Enviar imagem";
   if (uploading) {
     uploadLabel = "Enviando capa…";
@@ -27,13 +29,23 @@ export const GroupCoverUpload = ({
     uploadLabel = "Trocar capa";
   }
 
-  const upload = async (file: File) => {
+  // A imagem escolhida passa primeiro pelo recorte; só o recorte é enviado.
+  const choose = (file: File) => {
     if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
       setError("Envie uma imagem JPG, PNG ou WebP.");
       return;
     }
+    if (file.size <= 0 || file.size > 25 * 1024 * 1024) {
+      setError("A imagem deve ter até 25 MB.");
+      return;
+    }
+    setError("");
+    setPendingFile(file);
+  };
+
+  const upload = async (file: File) => {
     if (file.size <= 0 || file.size > 5 * 1024 * 1024) {
-      setError("A imagem deve ter até 5 MB.");
+      setError("A imagem recortada deve ter até 5 MB.");
       return;
     }
     setUploading(true);
@@ -93,11 +105,11 @@ export const GroupCoverUpload = ({
         disabled={uploading}
         onClick={chooseFile}
         onDragOver={(event) => event.preventDefault()}
-        onDrop={async (event) => {
+        onDrop={(event) => {
           event.preventDefault();
           const file = event.dataTransfer.files[0];
           if (file) {
-            await upload(file);
+            choose(file);
           }
         }}
         type="button"
@@ -111,7 +123,7 @@ export const GroupCoverUpload = ({
             Arraste uma imagem ou envie do computador
           </span>
           <span className="mt-1 block text-muted-foreground text-xs leading-5">
-            Proporção 4:1 · JPG, PNG ou WebP · até 5 MB.
+            Proporção 8:3 · JPG, PNG ou WebP · até 5 MB.
           </span>
         </span>
         <span className="inline-flex h-10 shrink-0 items-center justify-center gap-2 border border-input bg-background px-4 font-medium text-sm">
@@ -140,7 +152,7 @@ export const GroupCoverUpload = ({
         onChange={(event) => {
           const file = event.currentTarget.files?.[0];
           if (file) {
-            upload(file);
+            choose(file);
           }
         }}
         ref={inputRef}
@@ -153,6 +165,24 @@ export const GroupCoverUpload = ({
         value={uploading ? "true" : "false"}
       />
       {coverContent}
+      {pendingFile ? (
+        <LazyImageCropDialog
+          aspect={16 / 6}
+          file={pendingFile}
+          onCancel={() => {
+            setPendingFile(null);
+            if (inputRef.current) {
+              inputRef.current.value = "";
+            }
+          }}
+          onConfirm={(cropped) => {
+            setPendingFile(null);
+            upload(cropped).catch(() => undefined);
+          }}
+          outputWidth={1920}
+          title="Ajustar capa do grupo"
+        />
+      ) : null}
       {compact && !url ? null : (
         <div className="mt-3 flex flex-wrap gap-2">
           <Button

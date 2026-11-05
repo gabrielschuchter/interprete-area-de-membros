@@ -115,7 +115,6 @@ const SpaceThumb = ({ coverUrl }: { readonly coverUrl?: string | null }) => {
   );
 };
 
-
 const PLATFORMS = [
   {
     description: "Grupo de estudos e cursos gratuitos",
@@ -154,10 +153,10 @@ const CommunityPlatforms = () => (
           <a
             aria-label={`${platform.label}: ${platform.description} (abre em nova aba)`}
             className="community-rail__platform"
+            data-tooltip={`${platform.label} · ${platform.description}`}
             href={platform.href}
             rel="noopener noreferrer"
             target="_blank"
-            title={platform.description}
           >
             <svg
               aria-hidden="true"
@@ -167,6 +166,7 @@ const CommunityPlatforms = () => (
             >
               <path d={platform.path} fill="currentColor" />
             </svg>
+            <span className="sr-only">{platform.label}</span>
           </a>
         </li>
       ))}
@@ -190,8 +190,6 @@ export const CommunityRightRail = ({
       <RailHead id="community-avatars-heading">Pessoas da comunidade</RailHead>
       <CommunityAvatars avatars={avatars} />
     </section>
-
-    <CommunityPlatforms />
 
     <section
       aria-labelledby="community-spaces-heading"
@@ -245,6 +243,8 @@ export const CommunityRightRail = ({
       </IntentLink>
     </section>
 
+    <CommunityPlatforms />
+
     {announcements.length > 0 ? (
       <CommunityDisclosure
         className="community-rail__context--notices"
@@ -294,50 +294,5 @@ export const CommunityRightRail = ({
         </section>
       </CommunityDisclosure>
     ) : null}
-
-    <CommunityDisclosure
-      className="community-rail__context--about"
-      defaultExpanded
-      label="Sobre a comunidade"
-    >
-      <section
-        aria-labelledby="community-about-heading"
-        className="community-rail__block community-rail__about"
-      >
-        <RailHead id="community-about-heading">Sobre a comunidade</RailHead>
-        <p className="community-rail__about-lead">
-          Aqui a conversa começa pelo estudo. Traga a pergunta que a aula
-          deixou, o artigo que você leu desconfiado ou a análise que não fechou,
-          e alguém da turma lê junto com você.
-        </p>
-        <div className="community-rail__guides">
-          <div>
-            <h3>Regras</h3>
-            <ul>
-              <li>Discorde do argumento, nunca da pessoa.</li>
-              <li>
-                Afirmou algo sobre evidência? Mostre a fonte: DOI, link ou
-                referência.
-              </li>
-              <li>Caso clínico só sem dados que identifiquem o paciente.</li>
-            </ul>
-          </div>
-          <div>
-            <h3>Como participar</h3>
-            <ul>
-              <li>
-                Monte a pergunta com população, exposição e desfecho; ela rende
-                respostas melhores.
-              </li>
-              <li>
-                Responda com o que você leu, mesmo que seja para dizer que a
-                evidência é fraca.
-              </li>
-              <li>Estude um tema com mais calma num grupo de estudo.</li>
-            </ul>
-          </div>
-        </div>
-      </section>
-    </CommunityDisclosure>
   </aside>
 );

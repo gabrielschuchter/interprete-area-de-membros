@@ -1,4 +1,4 @@
-import { TargetIcon } from "lucide-react";
+import { PencilIcon, TargetIcon } from "lucide-react";
 import { IntentLink } from "@/app/(authenticated)/components/intent-link";
 import type { CommunityGoalSummary } from "@/lib/community-goal";
 
@@ -145,8 +145,13 @@ export const CommunityCollectiveGoalCard = ({
           {label}
         </h2>
         {canManage && goal ? (
-          <IntentLink className="community-goal__edit" href="/comunidade/meta">
-            Editar meta
+          <IntentLink
+            aria-label="Editar meta"
+            className="community-goal__edit"
+            data-tooltip="Editar meta"
+            href="/comunidade/meta"
+          >
+            <PencilIcon aria-hidden="true" className="size-3.5" />
           </IntentLink>
         ) : null}
       </div>

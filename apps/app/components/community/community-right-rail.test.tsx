@@ -1,7 +1,10 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { CommunityRightRail } from "./community-right-rail";
+
+const whatsappName = /^WhatsApp/;
+const newTabName = /nova aba/;
 
 const clinicalSpaceName = /Prática clínica/;
 const announcementName = /Roda de discussão/;
@@ -96,12 +99,7 @@ describe("CommunityRightRail", () => {
       screen
         .getAllByRole("heading", { level: 2 })
         .map((heading) => heading.textContent)
-    ).toEqual([
-      "Pessoas da comunidade",
-      "Grupos de estudo",
-      "Avisos",
-      "Sobre a comunidade",
-    ]);
+    ).toEqual(["Pessoas da comunidade", "Grupos de estudo", "Avisos"]);
     expect(screen.getByTestId("goal-summary")).toBeTruthy();
     expect(
       screen
@@ -135,7 +133,7 @@ describe("CommunityRightRail", () => {
     ).toBeTruthy();
   });
 
-  test("opens approved community guidance by default", () => {
+  test("lists the platform links as labelled boxes without a native title", () => {
     render(
       <CommunityRightRail
         announcements={[]}
@@ -145,18 +143,11 @@ describe("CommunityRightRail", () => {
       />
     );
 
-    const aboutDisclosure = screen.getByRole("button", {
-      name: "Sobre a comunidade",
-    });
-
-    expect(screen.queryByRole("button", { name: "Avisos" })).toBeNull();
-    expect(aboutDisclosure.getAttribute("aria-expanded")).toBe("true");
-    fireEvent.click(aboutDisclosure);
-    expect(aboutDisclosure.getAttribute("aria-expanded")).toBe("false");
-    expect(
-      screen.getByText("Discorde do argumento, nunca da pessoa.")
-    ).toBeTruthy();
-    expect(screen.getByText("Como participar")).toBeTruthy();
+    expect(screen.queryByText("Sobre a comunidade")).toBeNull();
+    const whatsapp = screen.getByRole("link", { name: whatsappName });
+    expect(whatsapp.getAttribute("title")).toBeNull();
+    expect(whatsapp.getAttribute("data-tooltip")).toContain("WhatsApp");
+    expect(screen.getAllByRole("link", { name: newTabName })).toHaveLength(4);
   });
 
   test("does not turn an unsafe notice URL into a navigable link", () => {
