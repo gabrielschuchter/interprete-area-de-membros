@@ -31,7 +31,7 @@ export const MemberAreaPickerSheet = ({
     <SheetContent className="w-[min(88vw,360px)] bg-background" side="left">
       <SheetHeader className="border-b px-5 py-5 text-left">
         <SheetTitle className="font-display text-2xl">
-          Trocar {label.toLowerCase()}
+          {label}
         </SheetTitle>
         <SheetDescription>Escolha uma área para continuar.</SheetDescription>
       </SheetHeader>

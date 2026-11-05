@@ -4450,8 +4450,8 @@ button.gca-text-action {
 /* Chegada à Gestão: aviso curto (visível no celular, lido por leitor de tela no desktop) */
 .gk-entry-toast {
   position: fixed;
-  top: 12px;
   right: 16px;
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
   left: 16px;
   z-index: 60;
   padding: 10px 14px;
@@ -5022,4 +5022,41 @@ button.gca-text-action {
 }
 .gk-guide-section p:last-child {
   margin-bottom: 0;
+}
+
+/* Celular: indicadores em uma coluna (três colunas a 320px deixavam uma
+   palavra por linha) e títulos de página menores. */
+@media (max-width: 40rem) {
+  .gk-stats,
+  .gk-stats--three {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+  .gk-stats article {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 12px;
+    align-items: baseline;
+    padding: 12px 14px;
+  }
+  .gk-stats article > span {
+    grid-column: 1;
+  }
+  .gk-stats strong {
+    grid-row: 1 / span 2;
+    grid-column: 2;
+    align-self: center;
+    font-size: 22px;
+  }
+  .gk-stats small {
+    grid-column: 1;
+  }
+}
+@media (max-width: 30rem) {
+  .gk-head h1,
+  .go-heading h1,
+  .gt-detail-title h1,
+  .gestao-page-heading h1 {
+    font-size: 26px;
+  }
 }

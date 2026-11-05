@@ -112,7 +112,7 @@ const ProfileShell = ({
                 </AvatarFallback>
               </Avatar>
               <div className="min-w-0">
-                <h1 className="truncate font-display text-3xl leading-tight">
+                <h1 className="line-clamp-2 break-words font-display text-[26px] leading-tight min-[400px]:text-3xl">
                   {name}
                 </h1>
                 <p className="truncate text-muted-foreground text-sm">

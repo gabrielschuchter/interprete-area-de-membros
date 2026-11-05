@@ -8,6 +8,17 @@
   dialog:modal {
     margin: auto;
   }
+
+  /* Telas estreitas: links e palavras longas (URLs, DOIs, e-mails) quebram
+     dentro da coluna em vez de vazar para a direita ou serem cortados. */
+  :where(p, li, dd, dt, blockquote, figcaption, td, th, h1, h2, h3, h4, h5) {
+    overflow-wrap: break-word;
+  }
+
+  :where(.lesson-document, .community-post-body, .community-comment)
+    :where(a, code) {
+    overflow-wrap: anywhere;
+  }
 }
 @source "../**/*.{ts,tsx}";
 
@@ -3106,7 +3117,7 @@
 
     .community-post-title {
       margin-top: 18px;
-      font-size: 30px;
+      font-size: clamp(24px, 7.5vw, 30px);
       line-height: 1.12;
     }
 
@@ -3513,13 +3524,17 @@ html[data-shell-fallback][data-shell-arrival="return"] .member-route-page {
   }
 
   .community-meeting-row__actions {
+    flex-wrap: nowrap;
+    grid-column: 1 / -1;
     justify-content: flex-start;
   }
 
   .community-meeting-row__actions > :last-child {
     flex: 1;
     width: 100%;
-    min-height: 3.5rem;
+    min-width: 0;
+    min-height: 3rem;
+    white-space: normal;
   }
 
   .community-meetings-archive-link--heading {

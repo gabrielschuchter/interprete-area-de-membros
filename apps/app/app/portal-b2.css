@@ -751,10 +751,12 @@
     left: calc(50% - var(--portal-stage-w) / 2 + var(--portal-stage-w) * 0.037);
     z-index: 5;
     display: grid;
-    grid-template-columns: 45% 45%;
-    gap: 0;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0 8%;
     justify-content: space-between;
-    width: var(--portal-stage-w);
+    /* Recuo igual nos dois lados da arte: com a largura cheia e o recuo só
+       à esquerda, os atalhos da Comunidade passavam da borda a 768px. */
+    width: calc(var(--portal-stage-w) * 0.926);
   }
 
   .portal-shortcut-group__list {
@@ -788,7 +790,7 @@
 
 @media (min-width: 700px) and (max-width: 920px) {
   .portal-shortcut-groups {
-    gap: 10px;
+    gap: 10px 6%;
   }
 
   .portal-shortcut-group__list {

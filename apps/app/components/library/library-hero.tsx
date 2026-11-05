@@ -19,7 +19,7 @@ export const LibraryHero = () => (
         </span>
       </p>
       <h1
-        className="mt-4 max-w-full font-display font-semibold text-[#F1EBE8] text-[36px] leading-[1.05] tracking-[-.02em] max-md:mt-0 md:text-[54px] md:leading-[1.04] min-[1250px]:whitespace-nowrap min-[1250px]:text-5xl!"
+        className="mt-4 max-w-full font-display font-semibold text-[#F1EBE8] text-[36px] leading-[1.05] tracking-[-.02em] max-md:mt-0 max-[359px]:text-[30px] md:text-[54px] md:leading-[1.04] min-[1250px]:whitespace-nowrap min-[1250px]:text-5xl!"
         id="library-hero-title"
       >
         Biblioteca Interprete.
@@ -56,7 +56,7 @@ export const LibraryHero = () => (
     </div>
     <div
       aria-hidden="true"
-      className="pointer-events-none relative mt-2 h-[120px] w-full overflow-hidden md:hidden"
+      className="pointer-events-none relative mt-2 h-[120px] w-full overflow-hidden max-[359px]:h-[80px] md:hidden"
     >
       {/* The approved mobile shelf is static so repeated loads stay identical. */}
       {/* biome-ignore lint/performance/noImgElement: local SVG keeps its handoff viewBox and does not need the image optimizer. */}

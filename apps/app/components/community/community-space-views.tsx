@@ -217,7 +217,10 @@ export const CommunitySpaceTabs = ({
         </Link>
       ))}
     </nav>
-    <nav aria-label="Seções do grupo" className="mt-5 grid gap-3 sm:hidden">
+    <nav
+      aria-label="Seções do grupo"
+      className="community-group-mobile-sections mt-5 grid gap-3 sm:hidden"
+    >
       <MobileGroupLink
         href={viewHref(spaceSlug, "members")}
         icon={
@@ -251,7 +254,7 @@ const MobileGroupLink = ({
   readonly icon?: ReactNode;
 }) => (
   <Link
-    className="flex min-h-14 items-center justify-between border bg-background px-4 font-medium"
+    className="flex min-h-14 items-center justify-between rounded-md border bg-background px-4 font-medium"
     href={href}
   >
     <span className="inline-flex items-center gap-3">

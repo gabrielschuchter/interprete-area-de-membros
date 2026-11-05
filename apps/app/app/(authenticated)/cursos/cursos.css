@@ -471,6 +471,12 @@
   backdrop-filter: blur(8px);
 }
 
+/* O botão de salvar fica no canto inferior direito da capa: o título da capa
+   reserva essa faixa em vez de passar por baixo do botão. */
+.cb-ccw:has(.cb-bm) .cb-cv__t {
+  right: 56px;
+}
+
 /* Seção e rail */
 .cb-sec {
   margin: 0 0 40px;
