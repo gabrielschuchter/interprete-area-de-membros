@@ -1701,32 +1701,3 @@
     display: none;
   }
 }
-
-@media (prefers-reduced-motion: reduce) {
-  .ob-panel {
-    animation: ob-fade 120ms linear;
-  }
-
-  .ob-stamp {
-    animation: none;
-  }
-
-  .ob-dot,
-  .ob-chip,
-  .ob-toggle span {
-    transition: none;
-  }
-
-  .ob-spinner {
-    animation-duration: 1.6s;
-  }
-}
-
-@keyframes ob-fade {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}

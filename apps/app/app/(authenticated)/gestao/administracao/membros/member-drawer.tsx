@@ -139,11 +139,11 @@ const ConfirmErase = ({
             </ul>
             <label className="gk-switch-row" htmlFor="erase-clerk">
               <span>
-                Apagar também a conta de login (Clerk)
+                Apagar também a conta de login
                 <small>
                   {erasure.canUseClerk
                     ? "Sem isso, a pessoa ainda consegue entrar e uma conta nova é criada no primeiro acesso."
-                    : "Esta conta não tem login no Clerk."}
+                    : "Esta conta não tem login próprio."}
                 </small>
               </span>
               <input

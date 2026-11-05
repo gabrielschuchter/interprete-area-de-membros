@@ -17,6 +17,7 @@ import {
   communityPostHref,
   type getCommunityPostBySlug,
 } from "@/lib/community";
+import { communityMediaImageSrcSet } from "@/lib/community-media";
 import { RichDocument } from "../learning/rich-document";
 import {
   SingleFlightForm,
@@ -397,8 +398,10 @@ export function CommunityPostView({
               alt={post.coverAltText || `Capa: ${post.title}`}
               className="community-post-cover"
               height={630}
-              loading="lazy"
+              loading="eager"
+              sizes="(max-width: 900px) calc(100vw - 32px), 760px"
               src={post.coverUrl}
+              srcSet={communityMediaImageSrcSet(post.coverUrl)}
               width={1200}
             />
           )}
@@ -429,8 +432,7 @@ export function CommunityPostView({
               initialBookmarked={post.bookmarks.length > 0}
               initialVoted={post.votes.length > 0}
               postId={post.id}
-              shareDescription={post.subtitle || post.excerpt || undefined}
-              shareTitle={post.title}
+              sharePath={communityPostHref(post)}
               spaceSlug={post.space?.slug ?? ""}
               voteCount={post._count.votes}
             />

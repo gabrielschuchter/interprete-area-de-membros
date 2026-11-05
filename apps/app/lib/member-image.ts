@@ -26,6 +26,14 @@ const limits: Record<
   library: { width: 2000, height: 2000 },
 };
 
+const qualities: Record<MemberImageKind, number> = {
+  avatar: 86,
+  cover: 84,
+  inline: 84,
+  submission: 82,
+  library: 82,
+};
+
 export class MemberImageError extends Error {
   constructor(message = "Não foi possível processar esta imagem.") {
     super(message);
@@ -68,7 +76,10 @@ export const normalizeMemberImage = async (
         fit: "inside",
         withoutEnlargement: true,
       })
-      .webp({ quality: 82, effort: 4 })
+      // smartSubsample preserva as bordas coloridas (texto, vermelhos da
+      // marca) que a subamostragem padrão de croma borra; qualidade um pouco
+      // maior para fotos de pessoas e capas, que são o que mais se vê.
+      .webp({ quality: qualities[kind], effort: 5, smartSubsample: true })
       .toBuffer();
   } catch {
     throw new MemberImageError("Não foi possível otimizar esta imagem.");

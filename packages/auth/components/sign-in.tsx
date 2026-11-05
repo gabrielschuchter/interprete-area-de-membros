@@ -529,7 +529,7 @@ export const SignIn = () => {
             value={password}
           />
           <p className="interprete-login__field-hint">
-            Os requisitos da senha são verificados com segurança pelo Clerk.
+            Os requisitos da senha são verificados com segurança.
           </p>
         </div>
       ) : null}

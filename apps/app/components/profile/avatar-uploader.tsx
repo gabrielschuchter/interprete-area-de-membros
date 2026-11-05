@@ -2,6 +2,7 @@
 
 import { CameraIcon, XIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { LazyImageCropDialog } from "@/components/image-crop-dialog-lazy";
 
 interface AvatarUploaderProperties {
   readonly initials: string;
@@ -20,6 +21,41 @@ const AvatarRemoveIcon = ({
     <XIcon aria-hidden="true" className="size-3" />
   );
 
+const croppableTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
+
+/** Valida a foto escolhida antes do recorte; vazio quando está tudo certo. */
+const chosenImageProblem = (file: File) => {
+  if (!croppableTypes.has(file.type)) {
+    return "Envie uma imagem JPG, PNG ou WebP.";
+  }
+  if (file.size <= 0 || file.size > 25 * 1024 * 1024) {
+    return "A imagem deve ter até 25 MB.";
+  }
+  return "";
+};
+
+/** O recorte (e o código dele) só existe enquanto há uma foto escolhida. */
+const AvatarCrop = ({
+  file,
+  onCancel,
+  onConfirm,
+}: {
+  readonly file: File | null;
+  readonly onCancel: () => void;
+  readonly onConfirm: (file: File) => void;
+}) =>
+  file ? (
+    <LazyImageCropDialog
+      aspect={1}
+      file={file}
+      onCancel={onCancel}
+      onConfirm={onConfirm}
+      outputWidth={512}
+      shape="round"
+      title="Ajustar foto de perfil"
+    />
+  ) : null;
+
 export const AvatarUploader = ({
   initialUrl,
   initials,
@@ -34,6 +70,16 @@ export const AvatarUploader = ({
   const [error, setError] = useState("");
   const uploadedUrlRef = useRef<string | null>(null);
   const uploadInFlight = useRef(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+
+  // A foto escolhida passa primeiro pelo recorte; só o recorte é enviado.
+  const choose = (file: File) => {
+    const problem = chosenImageProblem(file);
+    setError(problem);
+    if (!problem) {
+      setPendingFile(file);
+    }
+  };
 
   useEffect(() => {
     return () => {
@@ -163,7 +209,7 @@ export const AvatarUploader = ({
             onChange={(event) => {
               const file = event.target.files?.[0];
               if (file) {
-                upload(file).catch(() => undefined);
+                choose(file);
               }
               event.currentTarget.value = "";
             }}
@@ -190,10 +236,19 @@ export const AvatarUploader = ({
         <p
           className={`basis-full text-muted-foreground ${isProfileEditor ? "text-[13px] leading-[1.4]" : "text-xs"}`}
         >
-          JPG, PNG ou WebP · até 5 MB{isProfileEditor ? "" : "."}
+          JPG, PNG ou WebP · você ajusta o enquadramento antes de salvar
+          {isProfileEditor ? "" : "."}
         </p>
         {error ? <p className="text-destructive text-xs">{error}</p> : null}
       </div>
+      <AvatarCrop
+        file={pendingFile}
+        onCancel={() => setPendingFile(null)}
+        onConfirm={(cropped) => {
+          setPendingFile(null);
+          upload(cropped).catch(() => undefined);
+        }}
+      />
     </div>
   );
 };

@@ -2,13 +2,12 @@
 
 import { Button } from "@repo/design-system/components/ui/button";
 import { BookmarkIcon, ThumbsUpIcon } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   toggleBookmark,
   togglePostVote,
 } from "@/app/(authenticated)/comunidade/actions";
-import { CommunityPostShareDialog } from "./community-post-share-dialog";
+import { CommunityPostShareButton } from "./community-post-share-button";
 
 type PostAction = "bookmark" | "vote";
 
@@ -18,16 +17,9 @@ interface CommunityPostActionsProperties {
   readonly initialBookmarked: boolean;
   readonly initialVoted: boolean;
   readonly postId: string;
-  readonly shareDescription?: string;
-  readonly shareTitle?: string;
+  readonly sharePath: string;
   readonly spaceSlug: string;
   readonly voteCount?: number;
-}
-
-interface PostActionState {
-  readonly bookmarked: boolean;
-  readonly voteCount: number;
-  readonly voted: boolean;
 }
 
 const actionError =
@@ -45,106 +37,115 @@ const ensureActionSucceeded = (result: unknown) => {
   }
 };
 
+/**
+ * Apoiar e salvar são independentes: cada botão tem o próprio envio em curso,
+ * e um não desabilita, não pisca e não desfaz o outro. Um segundo toque no
+ * mesmo botão durante o envio é ignorado.
+ */
 export const CommunityPostActions = ({
   className = "inline-flex flex-wrap items-center gap-2",
   detailed = false,
   initialBookmarked,
   initialVoted,
   postId,
-  shareDescription = "",
-  shareTitle = "Publicação da Comunidade",
+  sharePath,
   spaceSlug,
   voteCount = 0,
 }: CommunityPostActionsProperties) => {
-  const router = useRouter();
-  const [state, setState] = useState<PostActionState>({
-    bookmarked: initialBookmarked,
-    voted: initialVoted,
-    voteCount,
+  const [voted, setVoted] = useState(initialVoted);
+  const [votes, setVotes] = useState(voteCount);
+  const [bookmarked, setBookmarked] = useState(initialBookmarked);
+  const [pending, setPending] = useState<Record<PostAction, boolean>>({
+    bookmark: false,
+    vote: false,
   });
-  const [pendingAction, setPendingAction] = useState<PostAction | null>(null);
   const [error, setError] = useState("");
-  const [isPending, startTransition] = useTransition();
-  const inFlightRef = useRef(false);
+  const inFlightRef = useRef<Record<PostAction, boolean>>({
+    bookmark: false,
+    vote: false,
+  });
 
+  // Dados novos do servidor só substituem o que não está sendo enviado agora.
   useEffect(() => {
-    setState({
-      bookmarked: initialBookmarked,
-      voted: initialVoted,
-      voteCount,
-    });
-  }, [initialBookmarked, initialVoted, voteCount]);
-
-  const toggle = (action: PostAction) => {
-    if (inFlightRef.current) {
-      return;
+    if (!inFlightRef.current.vote) {
+      setVoted(initialVoted);
+      setVotes(voteCount);
     }
+  }, [initialVoted, voteCount]);
+  useEffect(() => {
+    if (!inFlightRef.current.bookmark) {
+      setBookmarked(initialBookmarked);
+    }
+  }, [initialBookmarked]);
 
-    inFlightRef.current = true;
-    setPendingAction(action);
-    setError("");
-    const previousState = state;
-    const nextValue = action === "vote" ? !state.voted : !state.bookmarked;
-
-    setState((current) => ({
-      bookmarked: action === "bookmark" ? nextValue : current.bookmarked,
-      voted: action === "vote" ? nextValue : current.voted,
-      voteCount:
-        action === "vote"
-          ? Math.max(0, current.voteCount + (nextValue ? 1 : -1))
-          : current.voteCount,
-    }));
-
+  const run = async (action: PostAction, nextValue: boolean) => {
     const formData = new FormData();
     formData.set("postId", postId);
     formData.set("spaceSlug", spaceSlug);
     formData.set("desired", nextValue ? "on" : "off");
+    ensureActionSucceeded(
+      action === "vote"
+        ? await togglePostVote(formData)
+        : await toggleBookmark(formData)
+    );
+  };
 
-    startTransition(async () => {
-      try {
-        if (action === "vote") {
-          ensureActionSucceeded(await togglePostVote(formData));
-        } else {
-          ensureActionSucceeded(await toggleBookmark(formData));
-        }
-        router.refresh();
-      } catch {
-        setState(previousState);
-        setError(actionError);
-      } finally {
-        inFlightRef.current = false;
-        setPendingAction(null);
+  const toggle = async (action: PostAction) => {
+    if (inFlightRef.current[action]) {
+      return;
+    }
+    inFlightRef.current[action] = true;
+    setPending((current) => ({ ...current, [action]: true }));
+    setError("");
+
+    const previousVoted = voted;
+    const previousVotes = votes;
+    const previousBookmarked = bookmarked;
+    const nextValue = action === "vote" ? !voted : !bookmarked;
+    if (action === "vote") {
+      setVoted(nextValue);
+      setVotes(Math.max(0, votes + (nextValue ? 1 : -1)));
+    } else {
+      setBookmarked(nextValue);
+    }
+
+    try {
+      await run(action, nextValue);
+    } catch {
+      if (action === "vote") {
+        setVoted(previousVoted);
+        setVotes(previousVotes);
+      } else {
+        setBookmarked(previousBookmarked);
       }
-    });
+      setError(actionError);
+    } finally {
+      inFlightRef.current[action] = false;
+      setPending((current) => ({ ...current, [action]: false }));
+    }
   };
 
   return (
     <div className={className}>
       <Button
-        aria-label={state.voted ? "Remover apoio" : "Apoiar conteúdo"}
-        aria-pressed={state.voted}
+        aria-busy={pending.vote || undefined}
+        aria-label={voted ? "Remover apoio" : "Apoiar conteúdo"}
+        aria-pressed={voted}
         className="min-h-11"
-        disabled={isPending || pendingAction !== null}
         onClick={() => toggle("vote")}
         size="sm"
         type="button"
-        variant={state.voted ? "secondary" : "ghost"}
+        variant={voted ? "secondary" : "ghost"}
       >
         <ThumbsUpIcon aria-hidden="true" className="size-4" />
-        {detailed ? (
-          <span>{`Apoiar · ${state.voteCount}`}</span>
-        ) : (
-          <span>{state.voteCount}</span>
-        )}
+        {detailed ? <span>{`Apoiar · ${votes}`}</span> : <span>{votes}</span>}
         <span className="sr-only">apoios</span>
       </Button>
       <Button
-        aria-label={
-          state.bookmarked ? "Remover dos salvos" : "Salvar publicação"
-        }
-        aria-pressed={state.bookmarked}
+        aria-busy={pending.bookmark || undefined}
+        aria-label={bookmarked ? "Remover dos salvos" : "Salvar publicação"}
+        aria-pressed={bookmarked}
         className="min-h-11 gap-1.5 text-sm"
-        disabled={isPending || pendingAction !== null}
         onClick={() => toggle("bookmark")}
         size="sm"
         type="button"
@@ -153,15 +154,11 @@ export const CommunityPostActions = ({
         <BookmarkIcon
           aria-hidden="true"
           className="size-4"
-          fill={state.bookmarked ? "currentColor" : "none"}
+          fill={bookmarked ? "currentColor" : "none"}
         />
-        <span>{state.bookmarked ? "Salvo" : "Salvar"}</span>
+        <span>{bookmarked ? "Salvo" : "Salvar"}</span>
       </Button>
-      <CommunityPostShareDialog
-        description={shareDescription}
-        postId={postId}
-        title={shareTitle}
-      />
+      <CommunityPostShareButton path={sharePath} />
       {error ? (
         <span className="basis-full text-destructive text-xs" role="alert">
           {error}

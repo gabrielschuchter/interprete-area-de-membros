@@ -44,7 +44,7 @@ const messages: Record<string, string> = {
   "erased-with-clerk":
     "Dados do membro e conta de login apagados. Registrado na auditoria.",
   "clerk-failed":
-    "Dados do membro apagados, mas a conta de login não pôde ser removida. Remova-a no painel do Clerk.",
+    "Dados do membro apagados, mas a conta de login não pôde ser removida. Peça ao suporte técnico para removê-la.",
   missing: "Esse membro não existe mais.",
 };
 

@@ -4487,23 +4487,9 @@ button.gca-text-action {
     transform: none;
   }
 }
-@keyframes gk-enter-reduced {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
 .gestao-main-column {
   animation: gk-enter 240ms cubic-bezier(0.45, 0, 0.2, 1) both;
 }
-@media (prefers-reduced-motion: reduce) {
-  .gestao-main-column {
-    animation: gk-enter-reduced 120ms linear both;
-  }
-}
-
 /* Avisos da turma */
 .gk-notice-form {
   display: grid;

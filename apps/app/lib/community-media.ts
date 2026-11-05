@@ -108,7 +108,8 @@ export const normalizeCommunityCoverUrl = (value: unknown) => {
 
 export const communityMediaImageUrl = (
   value: string,
-  variant: "thumb" | "full" = "full"
+  variant: "thumb" | "full" = "full",
+  width?: 480 | 960 | 1280 | 1600
 ) => {
   if (variant !== "thumb" || !value.startsWith("/api/member-assets?path=")) {
     return value;
@@ -127,6 +128,9 @@ export const communityMediaImageUrl = (
       return value;
     }
     url.searchParams.set("variant", "thumb");
+    if (width) {
+      url.searchParams.set("w", String(width));
+    }
     return `${url.pathname}?${url.searchParams.toString()}`;
   } catch {
     return value;
@@ -454,4 +458,18 @@ export const directVideoUrl = (value: unknown) => {
     return null;
   }
   return url;
+};
+
+/** srcset de variantes para imagens privadas da Comunidade (vazio para externas). */
+export const communityMediaImageSrcSet = (value: string) => {
+  const widths = [480, 960, 1600] as const;
+  const first = communityMediaImageUrl(value, "thumb", widths[0]);
+  if (first === value) {
+    return undefined;
+  }
+  return widths
+    .map(
+      (width) => `${communityMediaImageUrl(value, "thumb", width)} ${width}w`
+    )
+    .join(", ");
 };

@@ -4,6 +4,7 @@ import { IntentLink } from "@/app/(authenticated)/components/intent-link";
 import { communityPostHref } from "@/lib/community";
 import {
   type CommunityMediaItem,
+  communityMediaImageSrcSet,
   communityMediaImageUrl,
   normalizeCommunityCoverUrl,
 } from "@/lib/community-media";
@@ -79,7 +80,9 @@ export function CommunityFeedCard({
       className="community-post-card__media relative z-10"
       height={900}
       loading="lazy"
-      src={communityMediaImageUrl(coverUrl, "thumb")}
+      sizes="(max-width: 767px) calc(100vw - 32px), 600px"
+      src={communityMediaImageUrl(coverUrl, "thumb", 960)}
+      srcSet={communityMediaImageSrcSet(coverUrl)}
       width={1600}
     />
   ) : null;
@@ -181,8 +184,7 @@ export function CommunityFeedCard({
           initialBookmarked={isSaved}
           initialVoted={isVoted}
           postId={post.id}
-          shareDescription={summary}
-          shareTitle={post.title}
+          sharePath={communityPostHref(post)}
           spaceSlug={actionSpaceSlug}
           voteCount={post._count.votes}
         />

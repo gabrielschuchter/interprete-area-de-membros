@@ -11,37 +11,37 @@ const actionHarness = vi.hoisted(() => ({
   bookmark: vi.fn(() => Promise.resolve()),
   vote: vi.fn(() => Promise.resolve()),
 }));
-const routerHarness = vi.hoisted(() => ({ refresh: vi.fn() }));
 
 vi.mock("@/app/(authenticated)/comunidade/actions", () => ({
   toggleBookmark: actionHarness.bookmark,
   togglePostVote: actionHarness.vote,
 }));
 
-vi.mock("next/navigation", () => ({
-  useRouter: () => routerHarness,
-}));
-
 import { CommunityPostActions } from "./community-post-actions";
+
+const renderActions = (voteCount = 2) =>
+  render(
+    <CommunityPostActions
+      initialBookmarked={false}
+      initialVoted={false}
+      postId="post-1"
+      sharePath="/comunidade/publicacoes/post-1"
+      spaceSlug="space-1"
+      voteCount={voteCount}
+    />
+  );
 
 describe("CommunityPostActions", () => {
   afterEach(() => {
     cleanup();
-    actionHarness.bookmark.mockClear();
-    actionHarness.vote.mockClear();
-    routerHarness.refresh.mockClear();
+    actionHarness.bookmark.mockReset();
+    actionHarness.bookmark.mockImplementation(() => Promise.resolve());
+    actionHarness.vote.mockReset();
+    actionHarness.vote.mockImplementation(() => Promise.resolve());
   });
 
   test("updates a vote immediately and ignores a second click while pending", async () => {
-    render(
-      <CommunityPostActions
-        initialBookmarked={false}
-        initialVoted={false}
-        postId="post-1"
-        spaceSlug="space-1"
-        voteCount={2}
-      />
-    );
+    renderActions();
 
     const vote = screen.getByRole("button", { name: "Apoiar conteúdo" });
     fireEvent.click(vote);
@@ -50,22 +50,44 @@ describe("CommunityPostActions", () => {
     expect(vote.getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByText("3")).toBeTruthy();
     expect(actionHarness.vote).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(vote.getAttribute("aria-busy")).toBeNull());
+  });
 
-    await waitFor(() => expect(routerHarness.refresh).toHaveBeenCalledTimes(1));
+  test("saving does not disable or change the vote button", async () => {
+    let finishBookmark: () => void = () => undefined;
+    actionHarness.bookmark.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finishBookmark = resolve;
+        })
+    );
+    renderActions();
+
+    fireEvent.click(screen.getByRole("button", { name: "Salvar publicação" }));
+    const vote = screen.getByRole("button", { name: "Apoiar conteúdo" });
+    expect(vote.hasAttribute("disabled")).toBe(false);
+    expect(vote.getAttribute("aria-busy")).toBeNull();
+
+    fireEvent.click(vote);
+    expect(actionHarness.vote).toHaveBeenCalledTimes(1);
+    finishBookmark();
+    await waitFor(() =>
+      expect(
+        screen
+          .getByRole("button", { name: "Remover dos salvos" })
+          .getAttribute("aria-pressed")
+      ).toBe("true")
+    );
+    expect(
+      screen
+        .getByRole("button", { name: "Remover apoio" })
+        .getAttribute("aria-pressed")
+    ).toBe("true");
   });
 
   test("rolls back the optimistic state when the server action fails", async () => {
     actionHarness.vote.mockRejectedValueOnce(new Error("temporary failure"));
-
-    render(
-      <CommunityPostActions
-        initialBookmarked={false}
-        initialVoted={false}
-        postId="post-1"
-        spaceSlug="space-1"
-        voteCount={0}
-      />
-    );
+    renderActions(0);
 
     const vote = screen.getByRole("button", { name: "Apoiar conteúdo" });
     fireEvent.click(vote);
@@ -74,6 +96,19 @@ describe("CommunityPostActions", () => {
       expect(screen.getByRole("alert")).toBeTruthy();
       expect(vote.getAttribute("aria-pressed")).toBe("false");
     });
-    expect(routerHarness.refresh).not.toHaveBeenCalled();
+  });
+
+  test("share copies the direct link and confirms it", async () => {
+    const writeText = vi.fn(() => Promise.resolve());
+    Object.assign(navigator, { clipboard: { writeText } });
+    renderActions();
+
+    fireEvent.click(screen.getByRole("button", { name: "Compartilhar" }));
+    await waitFor(() =>
+      expect(writeText).toHaveBeenCalledWith(
+        `${window.location.origin}/comunidade/publicacoes/post-1`
+      )
+    );
+    expect(await screen.findAllByText("Link copiado")).not.toHaveLength(0);
   });
 });

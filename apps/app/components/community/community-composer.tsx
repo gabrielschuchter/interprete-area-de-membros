@@ -36,6 +36,7 @@ import {
   updateDraft,
   updatePost,
 } from "@/app/(authenticated)/comunidade/actions";
+import { LazyImageCropDialog } from "@/components/image-crop-dialog-lazy";
 import { CommunityEditorField } from "./community-editor-field";
 import { TopicEditor } from "./topic-editor";
 
@@ -193,6 +194,7 @@ export function CommunityComposer({
   const bodyRef = useRef<HTMLDivElement>(null);
   const uploadedCoverUrlRef = useRef<string | null>(null);
   const coverUploadInFlight = useRef(false);
+  const [pendingCoverFile, setPendingCoverFile] = useState<File | null>(null);
   const publishingRef = useRef(false);
   const groupMentionConfirmedRef = useRef(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -381,6 +383,21 @@ export function CommunityComposer({
       setSaveState("idle");
     }
     scheduleSave();
+  };
+
+  // A capa escolhida passa pelo recorte (16:9, o formato do feed e da
+  // publicação); só o recorte é enviado.
+  const chooseCover = (file: File) => {
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      setErrorMessage("Envie uma imagem JPG, PNG ou WebP.");
+      return;
+    }
+    if (file.size <= 0 || file.size > 25 * 1024 * 1024) {
+      setErrorMessage("A imagem deve ter até 25 MB.");
+      return;
+    }
+    setErrorMessage("");
+    setPendingCoverFile(file);
   };
 
   const uploadCover = async (file: File) => {
@@ -965,7 +982,6 @@ export function CommunityComposer({
               <button
                 className="community-editor-cover-add"
                 onClick={() => coverInputRef.current?.click()}
-                title="JPG, PNG ou WebP, até 5 MB"
                 type="button"
               >
                 <ImageIcon aria-hidden="true" />
@@ -979,7 +995,7 @@ export function CommunityComposer({
               onChange={(event) => {
                 const file = event.target.files?.[0];
                 if (file) {
-                  uploadCover(file).catch(() => undefined);
+                  chooseCover(file);
                 }
                 event.currentTarget.value = "";
               }}
@@ -987,6 +1003,19 @@ export function CommunityComposer({
               tabIndex={-1}
               type="file"
             />
+            {pendingCoverFile ? (
+              <LazyImageCropDialog
+                aspect={16 / 9}
+                file={pendingCoverFile}
+                onCancel={() => setPendingCoverFile(null)}
+                onConfirm={(cropped) => {
+                  setPendingCoverFile(null);
+                  uploadCover(cropped).catch(() => undefined);
+                }}
+                outputWidth={1920}
+                title="Ajustar capa"
+              />
+            ) : null}
             {isUploadingCover ? (
               <div
                 aria-label={`Enviando capa: ${coverUploadPercent}%`}

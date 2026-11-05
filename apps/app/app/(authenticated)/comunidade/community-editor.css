@@ -501,7 +501,7 @@
 .community-editor-cover-preview {
   display: block;
   width: 100%;
-  aspect-ratio: 4 / 1;
+  aspect-ratio: 16 / 9;
   object-fit: cover;
 }
 
@@ -1240,15 +1240,5 @@
   to {
     opacity: 1;
     transform: none;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .community-editor-toolbar.is-mobile-rail {
-    animation: none;
-  }
-
-  .community-editor-sheet .prose-editor {
-    transition: none;
   }
 }

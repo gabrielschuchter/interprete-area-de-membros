@@ -35,7 +35,7 @@ export const GET = async () => {
   if (!token) {
     return NextResponse.json(
       {
-        error: "A integração nativa Clerk/Supabase ainda não está configurada.",
+        error: "As notificações em tempo real ainda não estão disponíveis.",
       },
       { status: 503 }
     );
@@ -60,7 +60,7 @@ export const GET = async () => {
     );
   } catch {
     return NextResponse.json(
-      { error: "O token de integração Clerk/Supabase é inválido." },
+      { error: "Não foi possível ativar as notificações em tempo real." },
       { status: 503 }
     );
   }

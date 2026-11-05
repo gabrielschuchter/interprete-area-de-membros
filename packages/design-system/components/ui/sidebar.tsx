@@ -96,7 +96,17 @@ function SidebarProvider({
   // Adds a keyboard shortcut to toggle the sidebar.
   React.useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      // Ctrl/Cmd+B dentro de um campo de texto ou editor é negrito, não a
+      // barra lateral.
+      const target = event.target as HTMLElement | null
+      const isTyping =
+        target?.tagName === "INPUT" ||
+        target?.tagName === "TEXTAREA" ||
+        target?.tagName === "SELECT" ||
+        target?.isContentEditable === true
       if (
+        !event.defaultPrevented &&
+        !isTyping &&
         event.key === SIDEBAR_KEYBOARD_SHORTCUT &&
         (event.metaKey || event.ctrlKey)
       ) {
