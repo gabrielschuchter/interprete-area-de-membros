@@ -51,8 +51,8 @@ const SettingsPage = async () => {
               Conta e acesso
             </h2>
             <p className="mt-3 text-muted-foreground text-sm leading-6">
-              O Clerk cuida do seu login, segurança e sessões. O e-mail abaixo é
-              o endereço principal da conta.
+              Seu login e suas sessões ficam protegidos. O e-mail abaixo é o
+              endereço principal da conta.
             </p>
 
             <div className="mt-7 flex items-start gap-3 border-border border-t pt-5">

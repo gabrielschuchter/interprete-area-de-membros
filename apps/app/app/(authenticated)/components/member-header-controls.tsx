@@ -240,7 +240,6 @@ export const MemberHeaderControls = ({
           asChild
           className={`${noteEditorMode ? "size-11" : "size-10"} rounded-full text-muted-foreground hover:bg-accent hover:text-foreground ${pathname === "/salvos" ? "bg-accent text-brand-action-text" : ""}`}
           size="icon-sm"
-          title="Salvos"
           variant="ghost"
         >
           <IntentLink
@@ -260,7 +259,6 @@ export const MemberHeaderControls = ({
           className={`${noteEditorMode ? "size-11" : "size-10"} rounded-full text-muted-foreground hover:bg-accent hover:text-foreground`}
           onClick={() => setActiveOverlay("search")}
           size="icon-sm"
-          title="Buscar"
           type="button"
           variant="ghost"
         >

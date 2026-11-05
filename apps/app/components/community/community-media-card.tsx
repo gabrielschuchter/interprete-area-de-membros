@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import {
   type CommunityMediaItem,
+  communityMediaImageSrcSet,
   communityMediaImageUrl,
   communityMediaTypeLabel,
   directVideoUrl,
@@ -43,7 +44,9 @@ function CommunityMediaCard({
           height={item.height ?? 675}
           loading="lazy"
           referrerPolicy="no-referrer"
+          sizes="(max-width: 767px) calc(100vw - 32px), 720px"
           src={communityMediaImageUrl(item.src, thumbnail ? "thumb" : "full")}
+          srcSet={communityMediaImageSrcSet(item.src)}
           style={aspectRatio ? { aspectRatio } : undefined}
           width={item.width ?? 1200}
         />

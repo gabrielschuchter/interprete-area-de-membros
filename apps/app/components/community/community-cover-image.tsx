@@ -8,7 +8,9 @@ interface CommunityCoverImageProperties {
   readonly className: string;
   readonly height: number;
   readonly loading?: "eager" | "lazy";
+  readonly sizes?: string;
   readonly src: string;
+  readonly srcSet?: string;
   readonly width: number;
 }
 
@@ -17,7 +19,9 @@ export function CommunityCoverImage({
   className,
   height,
   loading = "lazy",
+  sizes,
   src,
+  srcSet,
   width,
 }: CommunityCoverImageProperties) {
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
@@ -46,7 +50,9 @@ export function CommunityCoverImage({
       loading={loading}
       onError={() => setFailedSrc(src)}
       referrerPolicy="no-referrer"
+      sizes={srcSet ? sizes : undefined}
       src={src}
+      srcSet={srcSet}
       width={width}
     />
   );

@@ -250,6 +250,8 @@ const applyTimerSnapshot = (
   });
 };
 
+let lastGlobalTimerSync = 0;
+
 const shouldSkipGlobalTimerSync = (pathname: string, onTimerPage: boolean) =>
   pathname === "/" || pathname.startsWith("/ferramentas/") || onTimerPage;
 
@@ -260,14 +262,28 @@ const useGlobalTimerSync = (
 ) => {
   useEffect(() => {
     if (shouldSkipGlobalTimerSync(pathname, onTimerPage)) {
+      // Nas páginas do próprio cronômetro o estado pode mudar; ao sair delas
+      // a pílula relê na hora.
+      lastGlobalTimerSync = 0;
       return;
     }
     let mounted = true;
-    const synchronizeQuietly = () => synchronize().catch(() => undefined);
+    // Em conexão ruim cada pedido conta: não repete a leitura a cada troca de
+    // página (só se a última tiver mais de 15 s) e não lê com a aba oculta.
+    const synchronizeQuietly = (force = false) => {
+      const now = Date.now();
+      if (!force && now - lastGlobalTimerSync < 15_000) {
+        return;
+      }
+      lastGlobalTimerSync = now;
+      synchronize().catch(() => {
+        lastGlobalTimerSync = 0;
+      });
+    };
     synchronizeQuietly();
     const interval = window.setInterval(() => {
-      if (mounted) {
-        synchronizeQuietly();
+      if (mounted && document.visibilityState === "visible") {
+        synchronizeQuietly(true);
       }
     }, 20_000);
     const onVisible = () => {

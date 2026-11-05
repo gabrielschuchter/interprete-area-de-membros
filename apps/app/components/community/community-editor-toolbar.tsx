@@ -33,7 +33,13 @@ import {
   Undo2Icon,
   VideoIcon,
 } from "lucide-react";
-import { type FocusEvent, type ReactNode, type RefObject, useRef } from "react";
+import {
+  type FocusEvent,
+  type ReactNode,
+  type RefObject,
+  useRef,
+  useSyncExternalStore,
+} from "react";
 
 interface FieldState {
   readonly onApply: () => void;
@@ -118,6 +124,32 @@ const closeOnFocusLeave = (
   onClose();
 };
 
+const noopSubscribe = () => () => undefined;
+const applePlatformPattern = /Mac|iPhone|iPad|iPod/u;
+const isApplePlatform = () => applePlatformPattern.test(navigator.userAgent);
+
+/** "⌘" no Mac e no iPad, "Ctrl" no resto (e no servidor). */
+const useModifierLabel = () =>
+  useSyncExternalStore(
+    noopSubscribe,
+    () => (isApplePlatform() ? "⌘" : "Ctrl"),
+    () => "Ctrl"
+  );
+
+/** Atalhos que o editor (TipTap) já entende; o texto aparece na dica. */
+const shortcutKeys = {
+  blockquote: ["Shift", "B"],
+  bold: ["B"],
+  bulletList: ["Shift", "8"],
+  code: ["E"],
+  italic: ["I"],
+  orderedList: ["Shift", "7"],
+  redo: ["Shift", "Z"],
+  strike: ["Shift", "S"],
+  undo: ["Z"],
+} as const;
+type ShortcutName = keyof typeof shortcutKeys;
+
 function ToolButton({
   children,
   disabled,
@@ -125,6 +157,7 @@ function ToolButton({
   label,
   onClick,
   pressed,
+  shortcut,
   title,
 }: {
   readonly children: ReactNode;
@@ -133,18 +166,25 @@ function ToolButton({
   readonly label: string;
   readonly onClick: () => void;
   readonly pressed?: boolean;
+  readonly shortcut?: ShortcutName;
   readonly title?: string;
 }) {
+  const modifier = useModifierLabel();
+  const keys = shortcut ? [modifier, ...shortcutKeys[shortcut]].join("+") : "";
+  const tip = title ?? label;
   return (
     <button
       aria-expanded={expanded}
+      aria-keyshortcuts={
+        shortcut ? ["Control", ...shortcutKeys[shortcut]].join("+") : undefined
+      }
       aria-label={label}
       aria-pressed={pressed}
       className="community-toolbar-button"
+      data-tooltip={keys ? `${tip} · ${keys}` : tip}
       disabled={disabled}
       onClick={onClick}
       onMouseDown={keepEditorFocus}
-      title={title ?? label}
       type="button"
     >
       {children}
@@ -237,6 +277,7 @@ export function CommunityEditorToolbar({
         disabled={!state.canUndo}
         label="Desfazer"
         onClick={() => run(() => editor.chain().undo().run())}
+        shortcut="undo"
       >
         <Undo2Icon aria-hidden="true" />
       </ToolButton>
@@ -244,6 +285,7 @@ export function CommunityEditorToolbar({
         disabled={!state.canRedo}
         label="Refazer"
         onClick={() => run(() => editor.chain().redo().run())}
+        shortcut="redo"
       >
         <Redo2Icon aria-hidden="true" />
       </ToolButton>
@@ -259,6 +301,7 @@ export function CommunityEditorToolbar({
       label={label}
       onClick={() => toggleMark(mark)}
       pressed={state[mark]}
+      shortcut={mark}
     >
       <Icon aria-hidden="true" />
     </ToolButton>
@@ -358,8 +401,8 @@ export function CommunityEditorToolbar({
         <button
           aria-label="Estilo do bloco"
           className="community-toolbar-button"
+          data-tooltip="Estilo do bloco"
           onMouseDown={keepEditorFocus}
-          title="Estilo do bloco"
           type="button"
         >
           <span
@@ -433,8 +476,8 @@ export function CommunityEditorToolbar({
         <button
           aria-label="Inserir"
           className="community-toolbar-button"
+          data-tooltip="Inserir"
           onMouseDown={keepEditorFocus}
-          title="Inserir"
           type="button"
         >
           <PlusIcon aria-hidden="true" />
@@ -476,8 +519,8 @@ export function CommunityEditorToolbar({
           aria-label="Mais"
           aria-pressed={compact && (state.strike || state.code)}
           className="community-toolbar-button"
+          data-tooltip="Mais opções"
           onMouseDown={keepEditorFocus}
-          title="Mais"
           type="button"
         >
           <MoreHorizontalIcon aria-hidden="true" />
@@ -679,6 +722,7 @@ export function CommunityEditorToolbar({
               label="Citação"
               onClick={() => run(() => editor.chain().toggleBlockquote().run())}
               pressed={state.blockquote}
+              shortcut="blockquote"
             >
               <QuoteIcon aria-hidden="true" />
             </ToolButton>
@@ -687,6 +731,7 @@ export function CommunityEditorToolbar({
               label="Lista"
               onClick={() => run(() => editor.chain().toggleBulletList().run())}
               pressed={state.bulletList}
+              shortcut="bulletList"
             >
               <ListIcon aria-hidden="true" />
             </ToolButton>
@@ -696,6 +741,7 @@ export function CommunityEditorToolbar({
                 run(() => editor.chain().toggleOrderedList().run())
               }
               pressed={state.orderedList}
+              shortcut="orderedList"
             >
               <ListOrderedIcon aria-hidden="true" />
             </ToolButton>

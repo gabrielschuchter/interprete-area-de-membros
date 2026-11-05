@@ -202,10 +202,12 @@
 .community-page .community-rail__head h2 {
   padding-bottom: 8px;
   margin: 0 0 12px;
-  font-family: var(--font-mono-family);
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
+  font-family: var(--font-display-family);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: #40222f;
+  letter-spacing: 0;
   border-bottom: 1px solid #40222f;
 }
 .community-rail__head {
@@ -283,11 +285,12 @@
   display: flex;
   gap: 6px;
   align-items: center;
-  font-family: var(--font-mono-family);
-  font-size: 11px;
+  font-family: var(--font-display-family);
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.25;
   color: #8c1535;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0;
 }
 .community-page .community-notice__label svg {
   flex: none;
@@ -371,10 +374,11 @@
 .community-goal__label {
   flex: 1;
   margin: 0;
-  font-family: var(--font-mono-family);
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
+  font-family: var(--font-display-family);
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: 0;
 }
 .community-goal__edit,
 .community-goal__cta {
@@ -605,12 +609,12 @@
 }
 .community-group-card__title {
   margin: 0;
-  font-family: var(--font-mono-family);
-  font-size: 11px;
-  font-weight: 400;
-  color: #5c4a52;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
+  font-family: var(--font-display-family);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: #40222f;
+  letter-spacing: 0;
 }
 .community-group-card__text {
   display: -webkit-box;
@@ -885,5 +889,343 @@
   }
   .community-page .community-hero__title {
     font-size: clamp(2.25rem, 5.5cqw, 3.25rem);
+  }
+}
+
+/* 05/11: um só respiro entre a barra de áreas da Comunidade e o primeiro
+   título, igual em todas as abas (Explorar, Grupos, Encontros, Minhas
+   publicações, grupo, perfil). */
+.community-page {
+  --community-top-gap: 44px;
+}
+@media (max-width: 767px) {
+  .community-page {
+    --community-top-gap: 28px;
+  }
+}
+.community-page .community-shell,
+.community-page .community-shell.community-meetings-shell,
+.community-page .community-shell.community-my-publications-shell {
+  padding-top: var(--community-top-gap);
+}
+.community-page .community-content-grid.community-content-grid--explore {
+  margin-top: 0;
+}
+
+/* Rótulos de seção da Comunidade em serifa (Source Serif 4), não em mono. */
+.community-page .brand-eyebrow {
+  font-family: var(--font-display-family);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.3;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* Compartilhar: copia o link e confirma ali mesmo. */
+.community-post-share {
+  position: relative;
+  display: inline-flex;
+}
+.community-post-share__toast {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  z-index: 30;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: #fff;
+  white-space: nowrap;
+  pointer-events: none;
+  background: #40222f;
+  border-radius: 6px;
+  box-shadow: 0 6px 18px rgb(64 34 47 / 22%);
+  transform: translateX(-50%);
+  animation: community-post-share-toast 160ms ease-out;
+}
+.community-post-share__toast[data-tone="failed"] {
+  background: #8c1535;
+}
+@keyframes community-post-share-toast {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 4px);
+  }
+}
+
+/* Encontros (05/11): um destaque para o próximo, listas sem divisores
+   empilhados, a linha inteira como link. */
+.cm-page {
+  max-width: 880px;
+}
+.cm-intro p {
+  margin: 8px 0 0;
+  line-height: 1.6;
+  color: #6d5962;
+}
+.cm-section {
+  margin-top: 40px;
+}
+.cm-section__head {
+  display: flex;
+  gap: 16px;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.cm-section__title {
+  margin: 0 0 14px;
+  font-family: var(--font-display-family);
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: #40222f;
+}
+.cm-section__link {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  min-height: 44px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #8c1535;
+  text-decoration: none;
+}
+/* biome-ignore lint/style/noDescendingSpecificity: classes próprias de Encontros, sem relação com os ícones da Comunidade acima. */
+.cm-section__link svg {
+  width: 16px;
+  height: 16px;
+}
+.cm-date {
+  display: inline-flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 60px;
+  line-height: 1;
+  color: #8c1535;
+  background: #f6eeeb;
+  border-radius: 8px;
+}
+.cm-date__day {
+  font-family: var(--font-display-family);
+  font-size: 24px;
+  font-weight: 600;
+}
+.cm-date__month {
+  margin-top: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.cm-next {
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+  padding: 22px;
+  background: #fff;
+  border: 1px solid #e2d6d1;
+  border-left: 4px solid #8c1535;
+  border-radius: 10px;
+}
+.cm-next .cm-date {
+  color: #fff;
+  background: #8c1535;
+}
+.cm-next__body {
+  min-width: 0;
+}
+.cm-next__kicker {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #8c1535;
+}
+.cm-next__title {
+  margin: 4px 0 0;
+  font-family: var(--font-display-family);
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: #40222f;
+}
+.cm-next__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 4px;
+  align-items: center;
+  margin: 8px 0 0;
+  font-size: 14px;
+  color: #6d5962;
+}
+/* biome-ignore lint/style/noDescendingSpecificity: classes próprias de Encontros, sem relação com os ícones da Comunidade acima. */
+.cm-next__meta svg {
+  width: 15px;
+  height: 15px;
+  margin-right: 2px;
+}
+.cm-next__description {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  margin: 10px 0 0;
+  overflow: hidden;
+  -webkit-line-clamp: 3;
+  line-height: 1.6;
+  color: #5c4a52;
+}
+.cm-next__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+.cm-next__actions a {
+  min-height: 44px;
+}
+.cm-list {
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+  list-style: none;
+  background: #fff;
+  border: 1px solid #e2d6d1;
+  border-radius: 10px;
+}
+.cm-next + .cm-list {
+  margin-top: 12px;
+}
+/* biome-ignore lint/style/noDescendingSpecificity: classes próprias de Encontros, sem relação com os ícones da Comunidade acima. */
+.cm-list > li + li {
+  border-top: 1px solid #efe6e2;
+}
+.cm-row {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  min-height: 76px;
+  padding: 10px 14px;
+  color: inherit;
+  text-decoration: none;
+  transition: background-color 140ms ease;
+}
+.cm-row:hover {
+  background: #fbf7f5;
+}
+.cm-row:focus-visible {
+  outline: 2px solid #8c1535;
+  outline-offset: -2px;
+}
+.cm-row .cm-date {
+  width: 48px;
+  height: 52px;
+}
+.cm-row .cm-date__day {
+  font-size: 20px;
+}
+.cm-row__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.cm-row__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--font-display-family);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: #40222f;
+}
+.cm-row__meta {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  font-size: 13px;
+  color: #7a5a69;
+}
+.cm-row__meta[data-recording] {
+  font-weight: 600;
+  color: #8c1535;
+}
+/* biome-ignore lint/style/noDescendingSpecificity: classes próprias de Encontros, sem relação com os ícones da Comunidade acima. */
+.cm-row__meta svg {
+  width: 14px;
+  height: 14px;
+}
+.cm-row__thumb {
+  position: relative;
+  flex: none;
+  width: 96px;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: #2b1720;
+  border-radius: 6px;
+}
+.cm-row__chevron {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  color: #a8949c;
+}
+.cm-empty {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 20px;
+  line-height: 1.55;
+  color: #6d5962;
+  background: #f6f0ed;
+  border-radius: 10px;
+}
+/* biome-ignore lint/style/noDescendingSpecificity: classes próprias de Encontros, sem relação com os ícones da Comunidade acima. */
+.cm-empty > svg {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin-top: 2px;
+  color: #8c1535;
+}
+.cm-empty p {
+  margin: 0;
+  font-size: 14px;
+}
+.cm-empty .cm-empty__title {
+  margin-bottom: 2px;
+  font-family: var(--font-display-family);
+  font-size: 18px;
+  font-weight: 600;
+  color: #40222f;
+}
+@media (max-width: 767px) {
+  .cm-section {
+    margin-top: 32px;
+  }
+  .cm-section__title {
+    font-size: 21px;
+  }
+  .cm-next {
+    padding: 18px 16px;
+  }
+  /* No celular a data completa já está na linha de horário. */
+  .cm-next > .cm-date {
+    display: none;
+  }
+  .cm-next__title {
+    font-size: 21px;
+  }
+  .cm-next__actions a {
+    flex: 1;
+  }
+  .cm-row {
+    gap: 12px;
+    padding: 10px 12px;
+  }
+  .cm-row__thumb {
+    display: none;
   }
 }

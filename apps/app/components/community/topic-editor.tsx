@@ -1334,11 +1334,11 @@ function TopicEditorCore({
                 <>
                   <Button
                     aria-label="Adicionar linha abaixo"
+                    data-tooltip="Adicionar linha abaixo"
                     onClick={() =>
                       action(() => editor.chain().addRowAfter().run())
                     }
                     size="icon"
-                    title="Adicionar linha abaixo"
                     type="button"
                     variant="ghost"
                   >
@@ -1346,11 +1346,11 @@ function TopicEditorCore({
                   </Button>
                   <Button
                     aria-label="Adicionar coluna à direita"
+                    data-tooltip="Adicionar coluna à direita"
                     onClick={() =>
                       action(() => editor.chain().addColumnAfter().run())
                     }
                     size="icon"
-                    title="Adicionar coluna à direita"
                     type="button"
                     variant="ghost"
                   >
@@ -1358,11 +1358,11 @@ function TopicEditorCore({
                   </Button>
                   <Button
                     aria-label="Excluir tabela"
+                    data-tooltip="Excluir tabela"
                     onClick={() =>
                       action(() => editor.chain().deleteTable().run())
                     }
                     size="icon"
-                    title="Excluir tabela"
                     type="button"
                     variant="ghost"
                   >

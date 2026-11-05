@@ -3,6 +3,7 @@ import { Button } from "@repo/design-system/components/ui/button";
 import {
   ArrowRightIcon,
   CalendarDaysIcon,
+  ChevronRightIcon,
   ClockIcon,
   ExternalLinkIcon,
   VideoIcon,
@@ -82,7 +83,15 @@ type CommunityPastMeeting = Awaited<
   ReturnType<typeof getMeetings>
 >["past"][number];
 
-const MeetingDateBlock = ({
+const meetingDayLine = (date: Date, timezone: string) =>
+  new Intl.DateTimeFormat("pt-BR", {
+    day: "numeric",
+    month: "long",
+    weekday: "long",
+    timeZone: timezone,
+  }).format(date);
+
+const MeetingDate = ({
   date,
   timezone,
 }: {
@@ -90,153 +99,142 @@ const MeetingDateBlock = ({
   readonly timezone: string;
 }) => {
   const dateParts = meetingDateParts(date, timezone);
-
   return (
-    <time className="community-meeting-row__date" dateTime={date.toISOString()}>
+    <time className="cm-date" dateTime={date.toISOString()}>
       <span className="sr-only">{formatDate(date, timezone)}</span>
-      <span className="community-meeting-row__weekday">
-        {dateParts.weekday}
+      <span aria-hidden="true" className="cm-date__day">
+        {dateParts.day}
       </span>
-      <span className="community-meeting-row__month">{dateParts.month}</span>
-      <span className="community-meeting-row__day">{dateParts.day}</span>
+      <span aria-hidden="true" className="cm-date__month">
+        {dateParts.month}
+      </span>
     </time>
   );
 };
 
-const CommunityUpcomingMeetingRow = ({
+/** Próximo encontro: o único destaque da página. */
+const CommunityNextMeeting = ({
   meeting,
 }: {
   readonly meeting: CommunityUpcomingMeeting;
 }) => {
   const isRegistered = meeting.participants.length > 0;
   const canJoin = Date.now() >= meeting.startsAt.getTime() - 15 * 60 * 1000;
-  let action = (
-    <Button disabled size="sm">
-      Entrar no encontro
-    </Button>
-  );
-
-  if (isRegistered) {
-    action = (
-      <Button asChild size="sm" variant="outline">
-        <Link href={`/encontros/${meeting.id}`}>Ver detalhes</Link>
-      </Button>
-    );
-  } else if (canJoin) {
-    action = (
-      <Button asChild size="sm">
-        <a href={meeting.joinUrl} rel="noreferrer" target="_blank">
-          Entrar no encontro
-        </a>
-      </Button>
-    );
-  }
-
   return (
-    <li>
-      <article className="community-meeting-row community-meeting-row--upcoming">
-        <MeetingDateBlock date={meeting.startsAt} timezone={meeting.timezone} />
-        <div className="community-meeting-row__body">
-          <p className="brand-eyebrow">{meetingKindLabel(meeting.kind)}</p>
-          <h3 className="mt-1 font-display text-xl sm:text-2xl">
-            {meeting.title}
-          </h3>
-          <p className="community-meeting-row__meta">
-            <ClockIcon aria-hidden="true" />
-            {meetingTimeShort(meeting.startsAt, meeting.timezone)} · online
-          </p>
-          {meeting.description ? (
-            <p className="mt-2 line-clamp-2 text-muted-foreground text-sm leading-6">
-              {meeting.description}
-            </p>
+    <article className="cm-next">
+      <MeetingDate date={meeting.startsAt} timezone={meeting.timezone} />
+      <div className="cm-next__body">
+        <p className="cm-next__kicker">
+          {meetingKindLabel(meeting.kind)} ·{" "}
+          {isRegistered
+            ? "Você está inscrito"
+            : meetingCountdown(meeting.startsAt)}
+        </p>
+        <h3 className="cm-next__title">{meeting.title}</h3>
+        <p className="cm-next__meta">
+          <ClockIcon aria-hidden="true" />
+          <span className="first-letter:uppercase">
+            {meetingDayLine(meeting.startsAt, meeting.timezone)}
+          </span>
+          {" · "}
+          {meetingTimeShort(meeting.startsAt, meeting.timezone)} · online
+        </p>
+        {meeting.description ? (
+          <p className="cm-next__description">{meeting.description}</p>
+        ) : null}
+        <div className="cm-next__actions">
+          {canJoin ? (
+            <Button asChild>
+              <a href={meeting.joinUrl} rel="noreferrer" target="_blank">
+                Entrar no encontro <ExternalLinkIcon aria-hidden="true" />
+              </a>
+            </Button>
           ) : null}
+          <Button asChild variant={canJoin ? "ghost" : "outline"}>
+            <Link href={`/encontros/${meeting.id}`}>Ver detalhes</Link>
+          </Button>
         </div>
-        <div className="community-meeting-row__actions">
-          {isRegistered ? (
-            <Badge variant="outline">Inscrito</Badge>
-          ) : (
-            <Badge variant="outline">
-              {meetingCountdown(meeting.startsAt)}
-            </Badge>
-          )}
-          {action}
-        </div>
-      </article>
-    </li>
+      </div>
+    </article>
   );
 };
 
-const CommunityPastMeetingRow = ({
-  meeting,
-}: {
-  readonly meeting: CommunityPastMeeting;
-}) => {
-  const recording = meeting.recordings[0];
-  const recordingHref = recording
-    ? `/gravacoes?asset=${encodeURIComponent(recording.asset.id)}`
-    : meeting.recordingUrl;
-  const hasRecording = Boolean(recording || meeting.recordingUrl);
-  let action = (
-    <div className="community-meeting-row__actions">
-      <Badge variant="outline">Sem gravação</Badge>
-      <Button asChild size="sm" variant="outline">
-        <Link href={`/encontros/${meeting.id}`}>Ver detalhes</Link>
-      </Button>
-    </div>
-  );
+type MeetingRowMeeting = CommunityPastMeeting | CommunityUpcomingMeeting;
 
-  if (recordingHref) {
-    const recordingLink = recording ? (
-      <Link href={recordingHref}>
-        Ver gravação <ArrowRightIcon aria-hidden="true" />
-      </Link>
-    ) : (
-      <a href={recordingHref} rel="noreferrer" target="_blank">
-        Ver gravação <ArrowRightIcon aria-hidden="true" />
-      </a>
-    );
-    action = (
-      <div className="community-meeting-row__actions">
-        <Badge variant="outline">
-          <VideoIcon aria-hidden="true" /> Gravado
-        </Badge>
-        <Button asChild size="sm" variant="outline">
-          {recordingLink}
-        </Button>
-      </div>
+/** Linha de lista: a linha inteira é o link; sem botões nem divisores extras. */
+const CommunityMeetingRow = ({
+  meeting,
+  past,
+}: {
+  readonly meeting: MeetingRowMeeting;
+  readonly past: boolean;
+}) => {
+  const recording =
+    past && "recordings" in meeting ? meeting.recordings[0] : undefined;
+  const externalRecording =
+    past && !recording && "recordingUrl" in meeting
+      ? meeting.recordingUrl
+      : null;
+  const hasRecording = Boolean(recording || externalRecording);
+  let status = `${meetingTimeShort(meeting.startsAt, meeting.timezone)} · online`;
+  if (past) {
+    status = hasRecording ? "Gravação disponível" : "Sem gravação";
+  }
+  const content = (
+    <>
+      <MeetingDate date={meeting.startsAt} timezone={meeting.timezone} />
+      <span className="cm-row__body">
+        <span className="cm-row__title">{meeting.title}</span>
+        <span
+          className="cm-row__meta"
+          data-recording={hasRecording || undefined}
+        >
+          {hasRecording ? <VideoIcon aria-hidden="true" /> : null}
+          {status}
+        </span>
+      </span>
+      {recording?.thumbnailUrl ? (
+        <span aria-hidden="true" className="cm-row__thumb">
+          <Image
+            alt=""
+            className="object-cover"
+            fill
+            loading="lazy"
+            sizes="96px"
+            src={recording.thumbnailUrl}
+            unoptimized
+          />
+        </span>
+      ) : null}
+      <ChevronRightIcon aria-hidden="true" className="cm-row__chevron" />
+    </>
+  );
+  if (externalRecording) {
+    return (
+      <li>
+        <a
+          className="cm-row"
+          href={externalRecording}
+          rel="noreferrer"
+          target="_blank"
+        >
+          {content}
+        </a>
+      </li>
     );
   }
-
   return (
     <li>
-      <article className="community-meeting-row community-meeting-row--past">
-        <MeetingDateBlock date={meeting.startsAt} timezone={meeting.timezone} />
-        {recording?.thumbnailUrl ? (
-          <div className="community-meeting-row__thumbnail">
-            <Image
-              alt=""
-              className="object-cover"
-              fill
-              loading="lazy"
-              sizes="(max-width: 767px) 100vw, 132px"
-              src={recording.thumbnailUrl}
-              unoptimized
-            />
-            <span aria-hidden="true" className="community-meeting-row__play">
-              <VideoIcon />
-            </span>
-          </div>
-        ) : null}
-        <div className="community-meeting-row__body">
-          <p className="brand-eyebrow">
-            {hasRecording ? "Gravação disponível" : "Encontro anterior"}
-          </p>
-          <h3 className="mt-1 font-display text-xl sm:text-2xl">
-            {meeting.title}
-          </h3>
-        </div>
-        {action}
-      </article>
+      <Link
+        className="cm-row"
+        href={
+          recording
+            ? `/gravacoes?asset=${encodeURIComponent(recording.asset.id)}`
+            : `/encontros/${meeting.id}`
+        }
+      >
+        {content}
+      </Link>
     </li>
   );
 };
@@ -255,83 +253,84 @@ const MeetingsPage = async ({
   const nextMeeting = upcoming[0];
 
   if (inCommunity) {
+    const [featured, ...laterUpcoming] = upcoming;
     return (
       <div className="community-page min-h-svh bg-background">
-        <main className="community-shell community-meetings-shell mx-auto w-full">
-          <header className="community-meetings-page__intro flex flex-col gap-4 pb-2 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <h1 className="font-display text-4xl leading-tight sm:text-5xl">
-                Encontros
-              </h1>
-              <p className="mt-2 text-muted-foreground leading-7">
-                Encontros ao vivo e as gravações dos anteriores.
-              </p>
-            </div>
+        <main className="community-shell community-meetings-shell cm-page mx-auto w-full">
+          <header className="cm-intro">
+            <h1 className="font-display text-4xl leading-tight sm:text-5xl">
+              Encontros
+            </h1>
+            <p>Encontros ao vivo e as gravações dos anteriores.</p>
           </header>
 
           <section
             aria-labelledby="community-upcoming-heading"
-            className="community-meetings-section mt-8"
+            className="cm-section"
           >
-            <h2
-              className="community-meetings-section__title border-border border-b pb-3 font-display text-3xl"
-              id="community-upcoming-heading"
-            >
+            <h2 className="cm-section__title" id="community-upcoming-heading">
               Próximos
             </h2>
-            {upcoming.length === 0 ? (
-              <p className="mt-5 border-b py-5 text-muted-foreground">
-                Nenhum encontro futuro foi publicado.
-              </p>
+            {featured ? (
+              <>
+                <CommunityNextMeeting meeting={featured} />
+                {laterUpcoming.length > 0 ? (
+                  <ul className="cm-list">
+                    {laterUpcoming.map((meeting) => (
+                      <CommunityMeetingRow
+                        key={meeting.id}
+                        meeting={meeting}
+                        past={false}
+                      />
+                    ))}
+                  </ul>
+                ) : null}
+              </>
             ) : (
-              <ul className="mt-4 grid gap-3">
-                {upcoming.map((meeting) => (
-                  <CommunityUpcomingMeetingRow
-                    key={meeting.id}
-                    meeting={meeting}
-                  />
-                ))}
-              </ul>
+              <div className="cm-empty">
+                <CalendarDaysIcon aria-hidden="true" />
+                <div>
+                  <p className="cm-empty__title">Nenhum encontro marcado</p>
+                  <p>
+                    Quando a escola marcar o próximo, ele aparece aqui com dia,
+                    horário e link para entrar.
+                  </p>
+                </div>
+              </div>
             )}
           </section>
 
           <section
             aria-labelledby="community-past-heading"
-            className="community-meetings-section community-meetings-section--past mt-12"
+            className="cm-section"
           >
-            <div className="flex items-end justify-between border-border border-b pb-3">
-              <h2
-                className="community-meetings-section__title font-display text-3xl"
-                id="community-past-heading"
-              >
+            <div className="cm-section__head">
+              <h2 className="cm-section__title" id="community-past-heading">
                 Anteriores
               </h2>
-              <Link
-                className="community-meetings-archive-link community-meetings-archive-link--heading inline-flex items-center gap-2 font-medium text-brand-structural text-sm"
-                href="/gravacoes"
-              >
+              <Link className="cm-section__link" href="/gravacoes">
                 Minhas gravações <ArrowRightIcon aria-hidden="true" />
               </Link>
             </div>
             {past.length === 0 ? (
-              <p className="mt-5 border-b py-5 text-muted-foreground">
-                As gravações aparecerão aqui depois dos encontros.
-              </p>
+              <div className="cm-empty">
+                <VideoIcon aria-hidden="true" />
+                <div>
+                  <p className="cm-empty__title">Nada por aqui ainda</p>
+                  <p>As gravações aparecem aqui depois dos encontros.</p>
+                </div>
+              </div>
             ) : (
-              <ul className="mt-4 grid gap-3">
+              <ul className="cm-list">
                 {past.map((meeting) => (
-                  <CommunityPastMeetingRow key={meeting.id} meeting={meeting} />
+                  <CommunityMeetingRow
+                    key={meeting.id}
+                    meeting={meeting}
+                    past
+                  />
                 ))}
               </ul>
             )}
-            <Link
-              className="community-meetings-archive-link community-meetings-archive-link--footer"
-              href="/gravacoes"
-            >
-              <VideoIcon aria-hidden="true" />
-              Minhas gravações
-              <ArrowRightIcon aria-hidden="true" />
-            </Link>
           </section>
         </main>
       </div>

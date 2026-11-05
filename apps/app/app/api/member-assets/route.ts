@@ -65,6 +65,14 @@ const hasLibrarySignature = async (file: File) => {
   return file.type === "text/plain";
 };
 
+const thumbWidths = [480, 960, 1280, 1600] as const;
+
+/** Larguras permitidas para variantes; qualquer outro valor vira 1280. */
+const memberAssetThumbWidth = (value: string | null) => {
+  const requested = Number(value);
+  return thumbWidths.find((width) => width === requested) ?? (1280 as number);
+};
+
 const unauthorized = () =>
   NextResponse.json({ error: "Não autenticado." }, { status: 401 });
 
@@ -119,10 +127,12 @@ export async function GET(request: Request) {
   }
 
   const headers = new Headers({
-    // Authorization is evaluated with the current Clerk session for every
-    // request. Do not let a CDN or a browser reuse an authorized response
-    // across a different session.
-    "Cache-Control": "private, no-store",
+    // Cada caminho termina num UUID e nunca é regravado: o conteúdo de um
+    // endereço não muda. O navegador pode guardar a resposta (private: nunca
+    // uma CDN ou cache compartilhado), o que evita refazer autenticação,
+    // assinatura e download a cada visita, decisivo em conexão ruim. A
+    // autorização continua sendo checada em toda requisição que chega aqui.
+    "Cache-Control": "private, max-age=31536000, immutable",
     "Content-Disposition": "inline",
     "X-Content-Type-Options": "nosniff",
     Vary: "Cookie",
@@ -138,29 +148,37 @@ export async function GET(request: Request) {
     headers.set("Content-Length", contentLength);
   }
 
+  const searchParams = new URL(request.url).searchParams;
   if (
-    new URL(request.url).searchParams.get("variant") === "thumb" &&
+    searchParams.get("variant") === "thumb" &&
     contentType?.startsWith("image/")
   ) {
-    const source = await assetResponse.arrayBuffer();
+    const width = memberAssetThumbWidth(searchParams.get("w"));
+    const source = Buffer.from(await assetResponse.arrayBuffer());
+    responseBody = source;
     try {
       const { default: sharp } = await import("sharp");
-      const thumbnail = await sharp(Buffer.from(source))
-        .resize({
-          height: 1280,
-          width: 1280,
-          fit: "inside",
-          withoutEnlargement: true,
-        })
-        .webp({ quality: 78, effort: 3 })
-        .toBuffer();
-      responseBody = thumbnail;
-      headers.set("Content-Type", "image/webp");
-      headers.set("Content-Length", String(thumbnail.byteLength));
+      const metadata = await sharp(source).metadata();
+      // Já é WebP e não é mais larga que o pedido: devolve o arquivo original
+      // em vez de recomprimir (cada nova compressão perde nitidez).
+      if (!(metadata.format === "webp" && (metadata.width ?? 0) <= width)) {
+        const thumbnail = await sharp(source)
+          .resize({
+            height: width,
+            width,
+            fit: "inside",
+            withoutEnlargement: true,
+          })
+          .webp({ quality: 82, effort: 4, smartSubsample: true })
+          .toBuffer();
+        responseBody = new Uint8Array(thumbnail);
+        headers.set("Content-Type", "image/webp");
+        headers.set("Content-Length", String(thumbnail.byteLength));
+      }
     } catch {
       // A thumbnail is an optimization only. The authorized original remains
       // the safe fallback if the optional transform cannot run.
-      responseBody = source;
+      headers.set("Content-Length", String(source.byteLength));
     }
   }
 

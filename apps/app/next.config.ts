@@ -23,6 +23,10 @@ nextConfig = {
   experimental: {
     ...nextConfig.experimental,
     authInterrupts: true,
+    // Voltar a uma página aberta há pouco usa a cópia que o navegador já tem,
+    // sem nova ida ao servidor (decisivo longe de São Paulo ou em rede ruim).
+    // Ações do servidor que chamam revalidatePath invalidam essa cópia.
+    staleTimes: { dynamic: 30, static: 300 },
     // Windows QA shares memory with dev servers and Chrome. Vercel keeps
     // its Linux defaults rather than one prerender worker per local CPU.
     ...(process.platform === "win32" ? { cpus: 2 } : {}),

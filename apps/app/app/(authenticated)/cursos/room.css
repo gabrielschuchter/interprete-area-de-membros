@@ -1031,16 +1031,6 @@
     display: none;
   }
 }
-
-@media (prefers-reduced-motion: reduce) {
-  .room *,
-  .room *::before,
-  .room *::after {
-    transition: none !important;
-    animation: none !important;
-  }
-}
-
 /* Panels share the header with an optional link before the close button. */
 .room-panel__header-actions {
   display: flex;

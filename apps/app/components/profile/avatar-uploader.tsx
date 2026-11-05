@@ -2,6 +2,7 @@
 
 import { CameraIcon, XIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { ImageCropDialog } from "@/components/image-crop-dialog";
 
 interface AvatarUploaderProperties {
   readonly initials: string;
@@ -34,6 +35,21 @@ export const AvatarUploader = ({
   const [error, setError] = useState("");
   const uploadedUrlRef = useRef<string | null>(null);
   const uploadInFlight = useRef(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+
+  // A foto escolhida passa primeiro pelo recorte; só o recorte é enviado.
+  const choose = (file: File) => {
+    if (!new Set(["image/jpeg", "image/png", "image/webp"]).has(file.type)) {
+      setError("Envie uma imagem JPG, PNG ou WebP.");
+      return;
+    }
+    if (file.size <= 0 || file.size > 25 * 1024 * 1024) {
+      setError("A imagem deve ter até 25 MB.");
+      return;
+    }
+    setError("");
+    setPendingFile(file);
+  };
 
   useEffect(() => {
     return () => {
@@ -163,7 +179,7 @@ export const AvatarUploader = ({
             onChange={(event) => {
               const file = event.target.files?.[0];
               if (file) {
-                upload(file).catch(() => undefined);
+                choose(file);
               }
               event.currentTarget.value = "";
             }}
@@ -190,10 +206,23 @@ export const AvatarUploader = ({
         <p
           className={`basis-full text-muted-foreground ${isProfileEditor ? "text-[13px] leading-[1.4]" : "text-xs"}`}
         >
-          JPG, PNG ou WebP · até 5 MB{isProfileEditor ? "" : "."}
+          JPG, PNG ou WebP · você ajusta o enquadramento antes de salvar
+          {isProfileEditor ? "" : "."}
         </p>
         {error ? <p className="text-destructive text-xs">{error}</p> : null}
       </div>
+      <ImageCropDialog
+        aspect={1}
+        file={pendingFile}
+        onCancel={() => setPendingFile(null)}
+        onConfirm={(cropped) => {
+          setPendingFile(null);
+          upload(cropped).catch(() => undefined);
+        }}
+        outputWidth={512}
+        shape="round"
+        title="Ajustar foto de perfil"
+      />
     </div>
   );
 };

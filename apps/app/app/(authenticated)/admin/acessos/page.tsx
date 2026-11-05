@@ -95,7 +95,7 @@ const AccessAdminPage = async () => {
         {members.length === 0 || resources.length === 0 ? (
           <p className="mt-5 text-muted-foreground text-sm">
             {members.length === 0
-              ? "Nenhum membro sincronizado ainda. A pessoa precisa entrar uma vez para o Clerk criar o perfil interno."
+              ? "Nenhum membro sincronizado ainda. A pessoa precisa entrar uma vez na plataforma para o perfil ser criado."
               : "Nenhum conteúdo importado ou publicado está disponível para concessão."}
           </p>
         ) : (
