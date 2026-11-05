@@ -48,7 +48,7 @@ interface MentionSearchResponse {
   readonly items?: MentionCandidate[];
 }
 
-const mentionPattern = /(?:^|\s)@([a-z0-9-]{0,30})$/i;
+const mentionPattern = /(?:^|\s)@([\p{L}\p{N}_.-]{0,30})$/iu;
 const mentionTokenPattern = /(^|\s)@([a-z0-9](?:[a-z0-9-]{0,28}[a-z0-9])?)/gi;
 
 interface MentionToken {

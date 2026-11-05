@@ -18,6 +18,8 @@ interface InviteCandidate {
   readonly username: string;
 }
 
+const leadingAt = /^@+/u;
+
 const stateLabel = {
   member: "Já está no grupo",
   pending: "Convite pendente",
@@ -53,7 +55,11 @@ export const GroupMemberInvitePicker = ({
   const [candidates, setCandidates] = useState<InviteCandidate[]>([]);
   const [selected, setSelected] = useState<InviteCandidate[]>([]);
   const [loading, setLoading] = useState(false);
+  const [focused, setFocused] = useState(false);
   const [searchError, setSearchError] = useState("");
+  // "@gabriel" e "gabriel" são a mesma busca.
+  const term = query.trim().replace(leadingAt, "").trim();
+  const listOpen = focused || term.length > 0;
   const selectedRef = useRef<InviteCandidate[]>([]);
   selectedRef.current = selected;
 
@@ -64,8 +70,7 @@ export const GroupMemberInvitePicker = ({
   }, [clearSignal]);
 
   useEffect(() => {
-    const normalizedQuery = query.trim();
-    if (normalizedQuery.length < 2) {
+    if (!listOpen) {
       setCandidates([]);
       setSearchError("");
       setLoading(false);
@@ -76,7 +81,7 @@ export const GroupMemberInvitePicker = ({
     const timeout = window.setTimeout(() => {
       setLoading(true);
       setSearchError("");
-      fetch(`${searchEndpoint}?q=${encodeURIComponent(normalizedQuery)}`, {
+      fetch(`${searchEndpoint}?q=${encodeURIComponent(term)}`, {
         signal: controller.signal,
         headers: { Accept: "application/json" },
       })
@@ -117,13 +122,13 @@ export const GroupMemberInvitePicker = ({
             setLoading(false);
           }
         });
-    }, 300);
+    }, 200);
 
     return () => {
       window.clearTimeout(timeout);
       controller.abort();
     };
-  }, [currentMemberId, query, searchEndpoint, studentsOnly]);
+  }, [currentMemberId, listOpen, searchEndpoint, studentsOnly, term]);
 
   const addCandidate = (candidate: InviteCandidate) => {
     if (
@@ -150,7 +155,14 @@ export const GroupMemberInvitePicker = ({
   }, [onSelectionChange, selected]);
 
   return (
-    <div>
+    // biome-ignore lint/a11y/noStaticElementInteractions lint/a11y/noNoninteractiveElementInteractions: o contêiner só observa a saída do foco para fechar a lista; os controles interativos são o campo e os botões.
+    <div
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) {
+          setFocused(false);
+        }
+      }}
+    >
       <label className="block" htmlFor={searchId}>
         <span className="font-medium text-sm">{label}</span>
         <Input
@@ -158,6 +170,7 @@ export const GroupMemberInvitePicker = ({
           className="mt-2"
           id={searchId}
           onChange={(event) => setQuery(event.target.value)}
+          onFocus={() => setFocused(true)}
           placeholder="Busque pelo nome ou @username"
           value={query}
         />
@@ -204,7 +217,7 @@ export const GroupMemberInvitePicker = ({
           ))}
         </ul>
       )}
-      {query.trim().length >= 2 && (
+      {listOpen && (
         <div aria-live="polite" className="mt-2">
           {loading && (
             <p className="text-muted-foreground text-sm">Buscando pessoas…</p>
@@ -254,7 +267,9 @@ export const GroupMemberInvitePicker = ({
           )}
           {!(loading || searchError) && candidates.length === 0 && (
             <p className="text-muted-foreground text-sm">
-              Nenhuma pessoa disponível para convidar.
+              {term
+                ? "Ninguém encontrado com esse nome ou @username."
+                : "Nenhuma pessoa disponível para convidar."}
             </p>
           )}
         </div>

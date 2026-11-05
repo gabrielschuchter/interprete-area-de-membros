@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { getMemberRole } from "@/lib/authorization";
 import { getCommunityMentionCandidates } from "@/lib/community-mentions";
+import { foldForSearch, memberSearchTerm } from "@/lib/member-search";
 import {
   consumeMutationRateLimit,
   isMutationRateLimitError,
@@ -76,7 +77,7 @@ export const GET = async (request: Request) => {
       getMemberDirectory(query),
       getMemberRole(userId),
     ]);
-    const normalizedQuery = query.trim().toLowerCase();
+    const normalizedQuery = foldForSearch(memberSearchTerm(query));
     const groups: {
       readonly displayName: string;
       readonly id: string;
@@ -130,7 +131,7 @@ export const GET = async (request: Request) => {
       ? groups.filter(
           (group) =>
             group.username.includes(normalizedQuery) ||
-            group.displayName.toLowerCase().includes(normalizedQuery)
+            foldForSearch(group.displayName).includes(normalizedQuery)
         )
       : groups;
     return NextResponse.json({

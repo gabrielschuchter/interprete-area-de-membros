@@ -3,6 +3,11 @@ import "server-only";
 import { ContentStatus, database, MemberRole } from "@repo/database";
 import { communityPostMutationAudienceWhere } from "@/lib/community-space-rules";
 import {
+  foldForSearch,
+  memberSearchTerm,
+  rankMemberMatches,
+} from "@/lib/member-search";
+import {
   filterPrivateCommunityRecipients,
   resolveMentionedMemberIds,
 } from "@/lib/notifications";
@@ -35,43 +40,16 @@ const mentionDocument = {
   ],
 };
 
-const normalizedSearch = (query: string) => query.trim().slice(0, 80);
-
-const profileSearchWhere = (query: string) => {
-  const normalized = normalizedSearch(query);
-  return {
-    showInDirectory: true,
-    member: { is: { deactivatedAt: null } },
-    ...(normalized
-      ? {
-          OR: [
-            {
-              username: {
-                contains: normalized.toLowerCase(),
-                mode: "insensitive" as const,
-              },
-            },
-            {
-              displayName: {
-                contains: normalized,
-                mode: "insensitive" as const,
-              },
-            },
-            {
-              headline: {
-                contains: normalized,
-                mode: "insensitive" as const,
-              },
-            },
-            { interests: { has: normalized.toLowerCase() } },
-          ],
-        }
-      : {}),
-  };
+// Diretório visível da comunidade; o filtro por texto roda em memória para
+// ignorar acentos e o "@" inicial (ver `rankMemberMatches`).
+const directoryProfilesWhere = {
+  showInDirectory: true,
+  member: { is: { deactivatedAt: null } },
 };
+const directoryScanLimit = 600;
 
 const matchingGroup = (query: string) => {
-  const normalized = normalizedSearch(query).toLowerCase();
+  const normalized = foldForSearch(memberSearchTerm(query));
   return (
     !normalized ||
     "todos".includes(normalized) ||
@@ -113,7 +91,7 @@ export const getCommunityMentionCandidates = async (input: {
     return null;
   }
 
-  const [recentComments, recentFollows, directoryProfiles] = await Promise.all([
+  const [recentComments, recentFollows, directoryScan] = await Promise.all([
     database.communityComment.findMany({
       where: { postId: post.id, deletedAt: null },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
@@ -131,19 +109,25 @@ export const getCommunityMentionCandidates = async (input: {
       select: { userId: true },
     }),
     database.profile.findMany({
-      where: profileSearchWhere(input.query),
+      where: directoryProfilesWhere,
       orderBy: [{ displayName: "asc" }, { username: "asc" }],
-      take: 48,
+      take: directoryScanLimit,
       select: {
         clerkUserId: true,
         username: true,
         displayName: true,
         avatarUrl: true,
+        headline: true,
+        interests: true,
         member: { select: { role: true } },
       },
     }),
   ]);
 
+  const directoryProfiles = rankMemberMatches(directoryScan, input.query).slice(
+    0,
+    48
+  );
   const contextIds = new Set([
     post.authorId,
     ...recentComments.map(({ authorId }) => authorId),
@@ -151,12 +135,12 @@ export const getCommunityMentionCandidates = async (input: {
   ]);
   contextIds.delete(input.actorId);
 
-  const [contextProfiles, privateGroupMembers] = await Promise.all([
+  const [contextScan, privateGroupMembers] = await Promise.all([
     contextIds.size === 0
       ? Promise.resolve([])
       : database.profile.findMany({
           where: {
-            ...profileSearchWhere(input.query),
+            ...directoryProfilesWhere,
             clerkUserId: { in: [...contextIds] },
           },
           orderBy: [{ displayName: "asc" }, { username: "asc" }],
@@ -166,6 +150,8 @@ export const getCommunityMentionCandidates = async (input: {
             username: true,
             displayName: true,
             avatarUrl: true,
+            headline: true,
+            interests: true,
             member: { select: { role: true } },
           },
         }),
@@ -186,6 +172,7 @@ export const getCommunityMentionCandidates = async (input: {
       : Promise.resolve([]),
   ]);
 
+  const contextProfiles = rankMemberMatches(contextScan, input.query);
   const privateMemberIds = new Set(
     privateGroupMembers.map(({ memberId }) => memberId)
   );

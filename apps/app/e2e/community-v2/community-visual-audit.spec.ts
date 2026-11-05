@@ -144,8 +144,8 @@ test("captura rotas visuais restantes e verifica os oito breakpoints reais", asy
       top(".community-rail__goal"),
       top(".community-rail__avatars"),
       top(".community-rail__spaces"),
+      top(".community-rail__platforms"),
       top(".community-rail__notices"),
-      top(".community-rail__about"),
     ];
   });
   expect(desktopRailOrder).toEqual([...desktopRailOrder].sort((a, b) => a - b));

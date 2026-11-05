@@ -8,6 +8,7 @@ import {
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { canManageStudyGroupParticipants } from "@/lib/community-group-permissions";
+import { rankMemberMatches } from "@/lib/member-search";
 import {
   consumeMutationRateLimit,
   isMutationRateLimitError,
@@ -30,9 +31,6 @@ export const GET = async (
     .trim()
     .replace(leadingAt, "")
     .slice(0, 80);
-  if (query.length < 2) {
-    return NextResponse.json({ items: [] }, { headers: noStore });
-  }
 
   try {
     await consumeMutationRateLimit({
@@ -91,33 +89,45 @@ export const GET = async (
   }
 
   const exactUsername = query.toLowerCase();
-  // Perfis ocultos da listagem só aparecem quando o @username é exato.
-  const profiles = await database.profile.findMany({
-    where: {
-      clerkUserId: { not: userId },
-      member: { is: { deactivatedAt: null } },
-      OR: [
-        {
-          showInDirectory: true,
-          username: { contains: exactUsername, mode: "insensitive" },
-        },
-        {
-          showInDirectory: true,
-          displayName: { contains: query, mode: "insensitive" },
-        },
-        { username: { equals: exactUsername, mode: "insensitive" } },
-      ],
-    },
-    orderBy: [{ displayName: "asc" }, { username: "asc" }],
-    take: 12,
-    select: {
-      clerkUserId: true,
-      username: true,
-      displayName: true,
-      avatarUrl: true,
-      member: { select: { role: true } },
-    },
-  });
+  const select = {
+    clerkUserId: true,
+    username: true,
+    displayName: true,
+    avatarUrl: true,
+    headline: true,
+    interests: true,
+    member: { select: { role: true } },
+  } as const;
+  const eligible = {
+    clerkUserId: { not: userId },
+    member: { is: { deactivatedAt: null } },
+  };
+  // A busca ignora acentos e o "@"; perfis ocultos da listagem só aparecem
+  // quando o @username é exato.
+  const [scan, exact] = await Promise.all([
+    database.profile.findMany({
+      where: { ...eligible, showInDirectory: true },
+      orderBy: [{ displayName: "asc" }, { username: "asc" }],
+      take: 600,
+      select,
+    }),
+    query
+      ? database.profile.findFirst({
+          where: {
+            ...eligible,
+            username: { equals: exactUsername, mode: "insensitive" },
+          },
+          select,
+        })
+      : Promise.resolve(null),
+  ]);
+  const ranked = rankMemberMatches(scan, query);
+  const profiles = (
+    exact &&
+    !ranked.some((profile) => profile.clerkUserId === exact.clerkUserId)
+      ? [exact, ...ranked]
+      : ranked
+  ).slice(0, 12);
   const ids = profiles.map((profile) => profile.clerkUserId);
   const [members, pending] = await Promise.all([
     database.communitySpaceMember.findMany({

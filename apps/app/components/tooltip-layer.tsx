@@ -61,6 +61,35 @@ const tooltipText = (element: HTMLElement) => {
   );
 };
 
+const titleExcluded = new Set(["IFRAME", "OBJECT", "EMBED", "SVG", "TITLE"]);
+
+/**
+ * O atributo `title` abre a dica nativa do navegador, que aparece em outro
+ * lugar e com outro visual. Antes que ela abra, o texto passa para
+ * `data-tooltip` (e para `aria-label`, se o elemento não tiver nome) e o
+ * atributo sai, então só existe a dica da plataforma.
+ */
+const adoptNativeTitle = (node: EventTarget | null) => {
+  if (!(node instanceof Element)) {
+    return;
+  }
+  const element = node.closest<HTMLElement>("[title]");
+  if (!element || titleExcluded.has(element.tagName.toUpperCase())) {
+    return;
+  }
+  const text = element.getAttribute("title")?.trim() ?? "";
+  element.removeAttribute("title");
+  if (!text) {
+    return;
+  }
+  if (element.dataset.tooltip === undefined) {
+    element.dataset.tooltip = text;
+  }
+  if (!(element.getAttribute("aria-label") || hasVisibleText(element))) {
+    element.setAttribute("aria-label", text);
+  }
+};
+
 const tooltipTarget = (node: EventTarget | null) => {
   if (!(node instanceof Element)) {
     return null;
@@ -120,6 +149,7 @@ export const TooltipLayer = () => {
     };
 
     const onPointerOver = (event: PointerEvent) => {
+      adoptNativeTitle(event.target);
       if (event.pointerType === "touch") {
         return;
       }
@@ -136,6 +166,7 @@ export const TooltipLayer = () => {
       }
     };
     const onPointerDown = (event: PointerEvent) => {
+      adoptNativeTitle(event.target);
       const element = tooltipTarget(event.target);
       hide();
       if (event.pointerType !== "touch" || !element) {
@@ -160,6 +191,7 @@ export const TooltipLayer = () => {
       hide();
     };
     const onFocusIn = (event: FocusEvent) => {
+      adoptNativeTitle(event.target);
       const element = tooltipTarget(event.target);
       if (element?.matches(":focus-visible")) {
         showLater(element, hoverDelay);
@@ -171,7 +203,10 @@ export const TooltipLayer = () => {
       }
     };
 
-    document.addEventListener("pointerover", onPointerOver, { passive: true });
+    document.addEventListener("pointerover", onPointerOver, {
+      capture: true,
+      passive: true,
+    });
     document.addEventListener("pointerdown", onPointerDown, { passive: true });
     document.addEventListener("pointerup", onPointerUp, { passive: true });
     document.addEventListener("pointercancel", hide, { passive: true });
@@ -182,7 +217,9 @@ export const TooltipLayer = () => {
     window.addEventListener("blur", hide);
     return () => {
       clearTimer();
-      document.removeEventListener("pointerover", onPointerOver);
+      document.removeEventListener("pointerover", onPointerOver, {
+        capture: true,
+      });
       document.removeEventListener("pointerdown", onPointerDown);
       document.removeEventListener("pointerup", onPointerUp);
       document.removeEventListener("pointercancel", hide);

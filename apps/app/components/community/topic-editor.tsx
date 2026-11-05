@@ -26,7 +26,7 @@ import {
   Trash2Icon,
   Undo2Icon,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { type CSSProperties, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   articleUrlFrom,
@@ -42,6 +42,49 @@ import {
   CommunityVideoNode,
 } from "./community-media-nodes";
 import { MentionNode } from "./mention-extension";
+
+// Folga da lista de menções em relação às barras fixas do editor (cabeçalho e
+// ferramentas), à borda inferior e ao cursor.
+const mentionTopInset = 96;
+const mentionCompactInset = 56;
+const mentionEdge = 8;
+const mentionGap = 6;
+const mentionPreferredHeight = 256;
+
+interface MentionPlacementInput {
+  readonly bottom: number;
+  readonly caret: {
+    readonly bottom: number;
+    readonly left: number;
+    readonly top: number;
+  };
+  readonly innerHeight: number;
+  readonly innerWidth: number;
+  readonly top: number;
+}
+
+/** Posição `fixed` da lista: abaixo do cursor se couber, acima se não. */
+const mentionPlacement = ({
+  bottom,
+  caret,
+  innerHeight,
+  innerWidth,
+  top,
+}: MentionPlacementInput): CSSProperties | null => {
+  if (caret.bottom < top || caret.top > bottom) {
+    return null;
+  }
+  const width = Math.min(352, innerWidth - 16);
+  const left = Math.max(8, Math.min(caret.left, innerWidth - width - 8));
+  const below = bottom - caret.bottom - mentionGap;
+  const above = caret.top - top - mentionGap;
+  const openAbove = below < mentionPreferredHeight && above > below;
+  const room = openAbove ? above : below;
+  const maxHeight = Math.max(120, Math.min(mentionPreferredHeight, room));
+  return openAbove
+    ? { bottom: innerHeight - caret.top + mentionGap, left, maxHeight }
+    : { left, maxHeight, top: caret.bottom + mentionGap };
+};
 
 const mentionQueryPattern = /(?:^|\s)@([\p{L}\p{N}_.-]{0,30})$/iu;
 const noteSlashQueryPattern = /(?:^|\s)\/([\p{L}\p{N} ]{0,28})$/u;
@@ -290,10 +333,9 @@ function TopicEditorCore({
   const [mentionStatus, setMentionStatus] = useState<
     "idle" | "loading" | "ready" | "error"
   >("idle");
-  const [mentionPosition, setMentionPosition] = useState<{
-    readonly left: number;
-    readonly top: number;
-  } | null>(null);
+  const [mentionPosition, setMentionPosition] = useState<CSSProperties | null>(
+    null
+  );
   const [internalGroupMentionConfirmed, setInternalGroupMentionConfirmed] =
     useState(false);
   const groupMentionConfirmed =
@@ -577,17 +619,45 @@ function TopicEditorCore({
       setMentionPosition(null);
       return;
     }
-    try {
-      const coords = editor.view.coordsAtPos(mentionState.from);
-      const width = Math.min(352, window.innerWidth - 16);
-      setMentionPosition({
-        left: Math.max(8, Math.min(coords.left, window.innerWidth - width - 8)),
-        top: coords.bottom + 6,
-      });
-    } catch {
-      setMentionPosition(null);
-    }
-  }, [editor, mentionState]);
+    // A lista é `fixed`: acompanha rolagem e redimensionamento, abre abaixo do
+    // cursor se couber e acima se não, e some se o cursor sair da tela (por
+    // exemplo, escondido atrás das barras fixas do editor).
+    const place = () => {
+      try {
+        const viewport = window.visualViewport;
+        const offset = viewport?.offsetTop ?? 0;
+        let inset = mentionTopInset;
+        if (noteMode) {
+          inset = mentionEdge;
+        } else if (compact) {
+          inset = mentionCompactInset;
+        }
+        setMentionPosition(
+          mentionPlacement({
+            bottom:
+              offset + (viewport?.height ?? window.innerHeight) - mentionEdge,
+            caret: editor.view.coordsAtPos(mentionState.from),
+            innerHeight: window.innerHeight,
+            innerWidth: window.innerWidth,
+            top: offset + inset,
+          })
+        );
+      } catch {
+        setMentionPosition(null);
+      }
+    };
+    place();
+    window.addEventListener("scroll", place, { capture: true, passive: true });
+    window.addEventListener("resize", place);
+    window.visualViewport?.addEventListener("resize", place);
+    window.visualViewport?.addEventListener("scroll", place);
+    return () => {
+      window.removeEventListener("scroll", place, { capture: true });
+      window.removeEventListener("resize", place);
+      window.visualViewport?.removeEventListener("resize", place);
+      window.visualViewport?.removeEventListener("scroll", place);
+    };
+  }, [compact, editor, mentionState, noteMode]);
 
   const editorReady = editor !== null;
   useEffect(() => {

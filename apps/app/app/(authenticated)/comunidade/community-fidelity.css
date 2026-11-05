@@ -255,6 +255,7 @@
 }
 .community-rail__create {
   display: flex;
+  gap: 6px;
   align-items: center;
   justify-content: center;
   height: 44px;
@@ -322,43 +323,6 @@
   margin: 0 18px 16px;
 }
 
-/* Sobre a comunidade (board 10): parágrafo, subtítulos em sans e marcadores. */
-.community-right-rail .community-rail__about-lead {
-  margin: 0;
-  font-size: 14px;
-  line-height: 1.55;
-  color: #5c4a52;
-}
-.community-right-rail .community-rail__guides {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  margin-top: 18px;
-}
-.community-right-rail .community-rail__guides h3 {
-  margin: 0 0 8px;
-  font-family: var(--font-sans-family);
-  font-size: 14px;
-  font-weight: 600;
-  color: #40222f;
-}
-.community-right-rail .community-rail__guides ul {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding-left: 18px;
-  margin: 0;
-  list-style: disc;
-}
-.community-right-rail .community-rail__guides li {
-  font-size: 13.5px;
-  line-height: 1.5;
-  color: #5c4a52;
-}
-.community-right-rail .community-rail__guides li::marker {
-  color: #d62839;
-}
-
 /* Meta coletiva */
 .community-goal {
   padding: 18px 20px;
@@ -373,18 +337,38 @@
 }
 .community-goal__label {
   flex: 1;
+  min-width: 0;
   margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-family: var(--font-display-family);
   font-size: 17px;
   font-weight: 600;
   line-height: 1.25;
   letter-spacing: 0;
+  white-space: nowrap;
 }
-.community-goal__edit,
 .community-goal__cta {
   font-size: 12px;
   font-weight: 600;
   color: #8c1535;
+}
+.community-goal__edit {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  margin-right: -6px;
+  color: #8c1535;
+  border-radius: 6px;
+  transition: background-color 0.15s;
+}
+.community-goal__edit:hover {
+  background: #f4e6ea;
+}
+.community-goal__edit:focus-visible {
+  outline: 2px solid #8c1535;
 }
 .community-goal__value {
   margin-top: 10px;
@@ -760,11 +744,10 @@
   .community-right-rail .community-rail__spaces {
     order: 2;
   }
-  .community-right-rail .community-rail__notices {
+  .community-right-rail .community-rail__platforms {
     order: 3;
   }
-  .community-right-rail .community-rail__context--about,
-  .community-right-rail .community-rail__about {
+  .community-right-rail .community-rail__notices {
     order: 4;
   }
 }
@@ -1097,7 +1080,6 @@
 .cm-next + .cm-list {
   margin-top: 12px;
 }
-/* biome-ignore lint/style/noDescendingSpecificity: classes próprias de Encontros, sem relação com os ícones da Comunidade acima. */
 .cm-list > li + li {
   border-top: 1px solid #efe6e2;
 }

@@ -1,7 +1,13 @@
 "use client";
 
 import { Button } from "@repo/design-system/components/ui/button";
-import { MinusIcon, MoveIcon, PlusIcon } from "lucide-react";
+import {
+  MinusIcon,
+  MoveIcon,
+  PlusIcon,
+  RotateCcwIcon,
+  XIcon,
+} from "lucide-react";
 import {
   type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
@@ -39,9 +45,10 @@ interface View {
 }
 
 const maxZoom = 4;
+// A imagem sempre cobre a moldura: sem faixas vazias no recorte.
+const minZoom = 1;
 const extensionPattern = /\.[^.]+$/u;
 const zoomStep = 0.1;
-const fillColor = "#f1ebe8";
 
 const loadImage = (file: File) =>
   new Promise<Source>((resolve, reject) => {
@@ -91,6 +98,7 @@ export const ImageCropDialog = ({
   const [frame, setFrame] = useState({ height: 0, width: 0 });
   const [view, setView] = useState<View>({ x: 0, y: 0, zoom: 1 });
   const [isSaving, setIsSaving] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const pointersRef = useRef(new Map<number, { x: number; y: number }>());
   const gestureRef = useRef<{
     distance: number;
@@ -159,17 +167,11 @@ export const ImageCropDialog = ({
     return () => observer.disconnect();
   }, [file]);
 
-  // Escala em que a imagem cobre a moldura (zoom 1) e a menor escala
-  // permitida, em que ela inteira cabe na moldura.
+  // Escala em que a imagem cobre a moldura (zoom 1).
   const coverScale =
     source && frame.width
       ? Math.max(frame.width / source.width, frame.height / source.height)
       : 1;
-  const containScale =
-    source && frame.width
-      ? Math.min(frame.width / source.width, frame.height / source.height)
-      : 1;
-  const minZoom = Math.min(1, containScale / coverScale);
 
   const constrain = useCallback(
     (next: View): View => {
@@ -187,7 +189,7 @@ export const ImageCropDialog = ({
         zoom,
       };
     },
-    [coverScale, frame.height, frame.width, minZoom, source]
+    [coverScale, frame.height, frame.width, source]
   );
 
   const zoomTo = (zoom: number) =>
@@ -230,8 +232,6 @@ export const ImageCropDialog = ({
       setError("Este navegador não conseguiu recortar a imagem.");
       return;
     }
-    context.fillStyle = fillColor;
-    context.fillRect(0, 0, width, height);
     context.imageSmoothingEnabled = true;
     context.imageSmoothingQuality = "high";
     const drawWidth = source.width * scale * ratio;
@@ -261,6 +261,7 @@ export const ImageCropDialog = ({
 
   const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     event.currentTarget.setPointerCapture(event.pointerId);
+    setIsDragging(true);
     pointersRef.current.set(event.pointerId, {
       x: event.clientX,
       y: event.clientY,
@@ -313,6 +314,7 @@ export const ImageCropDialog = ({
   const onPointerEnd = (event: ReactPointerEvent<HTMLDivElement>) => {
     pointersRef.current.delete(event.pointerId);
     const points = [...pointersRef.current.values()];
+    setIsDragging(points.length > 0);
     gestureRef.current = points.length
       ? {
           distance: 0,
@@ -345,7 +347,7 @@ export const ImageCropDialog = ({
     };
     element.addEventListener("wheel", onWheel, { passive: false });
     return () => element.removeEventListener("wheel", onWheel);
-  }, [constrain, minZoom]);
+  }, [constrain]);
 
   // Ao trocar de imagem ou de tamanho, o enquadramento volta a ser válido.
   useEffect(() => {
@@ -395,21 +397,31 @@ export const ImageCropDialog = ({
       ref={dialogRef}
     >
       <div className="image-crop-dialog__panel">
+        <span aria-hidden="true" className="image-crop-dialog__handle" />
         <header className="image-crop-dialog__header">
-          {/* O foco inicial fica no título, não na moldura, para não abrir o
-              pop-up já com o contorno de foco do teclado. */}
-          {/* biome-ignore lint/a11y/noAutofocus: foco inicial do pop-up modal. */}
-          <h2 autoFocus id={titleId} tabIndex={-1}>
-            {title}
-          </h2>
-          <p>
-            Arraste para enquadrar e use o controle para aproximar ou afastar.
-          </p>
+          <div>
+            {/* O foco inicial fica no título, não na moldura, para não abrir o
+                pop-up já com o contorno de foco do teclado. */}
+            <h2 autoFocus id={titleId} tabIndex={-1}>
+              {title}
+            </h2>
+            <p>Arraste a imagem para enquadrar e use o zoom para ajustar.</p>
+          </div>
+          <button
+            aria-label="Fechar"
+            className="image-crop-dialog__close"
+            disabled={isSaving}
+            onClick={close}
+            type="button"
+          >
+            <XIcon aria-hidden="true" className="size-4" />
+          </button>
         </header>
         {/* biome-ignore lint/a11y/noNoninteractiveElementInteractions: a moldura é um controle de arrastar e pinçar; o teclado move e aproxima pela mesma área. */}
         <div
           aria-label="Área de recorte. Use as setas para mover e + ou − para o zoom."
           className="image-crop-dialog__frame"
+          data-dragging={isDragging ? "true" : undefined}
           data-shape={shape}
           onKeyDown={onKeyDown}
           onPointerCancel={onPointerEnd}
@@ -442,9 +454,12 @@ export const ImageCropDialog = ({
             </span>
           )}
           {source ? (
-            <span aria-hidden="true" className="image-crop-dialog__hint">
-              <MoveIcon className="size-3.5" /> Arraste
-            </span>
+            <>
+              <span aria-hidden="true" className="image-crop-dialog__grid" />
+              <span aria-hidden="true" className="image-crop-dialog__hint">
+                <MoveIcon className="size-3.5" /> Arraste para mover
+              </span>
+            </>
           ) : null}
         </div>
         <div className="image-crop-dialog__zoom">
@@ -474,6 +489,15 @@ export const ImageCropDialog = ({
             type="button"
           >
             <PlusIcon aria-hidden="true" className="size-4" />
+          </button>
+          <output className="image-crop-dialog__percent">{percent}%</output>
+          <button
+            aria-label="Centralizar e voltar ao zoom inicial"
+            disabled={!source || (view.zoom === 1 && !view.x && !view.y)}
+            onClick={() => setView({ x: 0, y: 0, zoom: 1 })}
+            type="button"
+          >
+            <RotateCcwIcon aria-hidden="true" className="size-4" />
           </button>
         </div>
         {error && source ? (

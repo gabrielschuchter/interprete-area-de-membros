@@ -6,6 +6,7 @@ import { tracePerformance } from "@repo/observability/performance";
 import { cache } from "react";
 import { env } from "@/env";
 import { getCurrentUser, getMemberIdentitySnapshot } from "./auth";
+import { rankMemberMatches } from "./member-search";
 import { normalizeUsername, USERNAME_MAX_LENGTH } from "./username-rules";
 
 export { isValidUsername, normalizeUsername } from "./username-rules";
@@ -329,38 +330,16 @@ export const getProfileSummaryStats = cache(async (memberId: string) => {
   return { completedLessons, enrollments, topicCount };
 });
 
-export const getMemberDirectory = (query = "") => {
-  const normalizedQuery = query.trim().slice(0, 80);
+// A comunidade cabe em algumas centenas de perfis: o banco entrega o diretório
+// (limitado) e o filtro por nome ignora acentos e o "@" inicial, o que o
+// `contains` do banco não faz.
+const directoryScanLimit = 600;
 
-  return database.profile.findMany({
-    where: normalizedQuery
-      ? {
-          showInDirectory: true,
-          OR: [
-            {
-              username: {
-                contains: normalizedQuery.toLowerCase(),
-                mode: "insensitive",
-              },
-            },
-            {
-              displayName: {
-                contains: normalizedQuery,
-                mode: "insensitive",
-              },
-            },
-            {
-              headline: {
-                contains: normalizedQuery,
-                mode: "insensitive",
-              },
-            },
-            { interests: { has: normalizedQuery.toLowerCase() } },
-          ],
-        }
-      : { showInDirectory: true },
+export const getMemberDirectory = async (query = "") => {
+  const profiles = await database.profile.findMany({
+    where: { showInDirectory: true, member: { is: { deactivatedAt: null } } },
     orderBy: [{ displayName: "asc" }, { username: "asc" }],
-    take: 48,
+    take: directoryScanLimit,
     select: {
       clerkUserId: true,
       username: true,
@@ -372,6 +351,7 @@ export const getMemberDirectory = (query = "") => {
       member: { select: { role: true } },
     },
   });
+  return rankMemberMatches(profiles, query).slice(0, 48);
 };
 
 export const getStaffMembers = () =>
