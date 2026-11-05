@@ -391,7 +391,6 @@ export const CommunityPresence = ({
               className="community-presence__avatar"
               href={"/membros/".concat(encodeURIComponent(member.username))}
               key={member.username}
-              title={member.displayName}
             >
               <Avatar className="community-presence__avatar-image border-2 border-background">
                 {member.avatarUrl ? (
@@ -409,7 +408,9 @@ export const CommunityPresence = ({
           {remainingCount > 0 ? (
             <span
               className="community-presence__more"
-              title={[String(remainingCount), "outros membros"].join(" ")}
+              data-person-name={[String(remainingCount), "outros membros"].join(
+                " "
+              )}
             >
               +{remainingCount}
             </span>

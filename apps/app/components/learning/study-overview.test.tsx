@@ -11,6 +11,7 @@ vi.mock("@/lib/authorization", () => ({
   requireOnboardedMemberId: mocks.auth,
 }));
 vi.mock("@/lib/learning", () => ({ getHomeLearningSummary: mocks.courses }));
+vi.mock("@/lib/member-features", () => ({ memberActivitiesEnabled: true }));
 vi.mock("@/lib/activities", () => ({
   getPublishedActivities: mocks.activities,
 }));
@@ -42,7 +43,6 @@ test("offers a truthful first step and all study areas without a metrics dashboa
     "/atividades",
     "/biblioteca",
     "/exercicios",
-    "/planejamento",
     "/ferramentas",
   ]) {
     expect(html).toContain(`href="${href}"`);

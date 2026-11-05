@@ -22,20 +22,20 @@ export const CommunityEmptyState = ({
 }: CommunityEmptyStateProperties) => {
   const normalizedQuery = query?.trim();
   const isNoResults = hasFilters && sort !== "unanswered";
-  let title = "Ainda não há publicações por aqui";
+  let title = "Ninguém abriu a primeira discussão ainda";
   let description =
-    "Comece uma conversa: faça uma pergunta ou compartilhe um artigo que valha a leitura.";
+    "Pode ser você. Uma dúvida que ficou da aula ou um artigo com resultado bom demais para ser verdade já servem de começo.";
 
   if (sort === "unanswered") {
-    title = "Nenhuma publicação sem resposta.";
+    title = "Toda pergunta já recebeu resposta.";
     description =
-      "Quando uma nova pergunta aparecer, ela ficará disponível aqui até receber uma resposta.";
+      "Quando alguém postar uma dúvida e ninguém responder, ela aparece aqui. É o melhor lugar para começar a ajudar.";
   } else if (hasFilters) {
     title = normalizedQuery
       ? `Nada encontrado para “${normalizedQuery}”`
       : "Nada encontrado para este recorte.";
     description =
-      "Tente outras palavras, ou limpe os filtros para voltar a ver todo o feed.";
+      "Tente um termo mais curto, o nome do desenho de estudo ou do desfecho, ou limpe os filtros.";
   }
 
   return (

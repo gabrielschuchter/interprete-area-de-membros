@@ -415,5 +415,5 @@ export const setMeetingStatus = async (formData: FormData) => {
   });
   revalidatePath("/admin/meetings");
   revalidatePath("/encontros");
-  revalidatePath("/planejamento");
+  revalidatePath("/ferramentas");
 };

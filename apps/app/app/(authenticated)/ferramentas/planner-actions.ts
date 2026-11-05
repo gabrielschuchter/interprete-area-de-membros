@@ -27,7 +27,7 @@ export const loadPlannerAction = async (range?: {
 }) => getPlannerDashboard(await requireMemberId(), range);
 
 const refreshPlannerViews = () => {
-  revalidatePath("/planejamento");
+  revalidatePath("/ferramentas");
   revalidatePath("/");
   revalidatePath("/ferramentas");
 };
@@ -37,7 +37,7 @@ export const saveStudyGoalTopicsAction = async (input: {
   topics: { topic: string; sharePercent: number }[];
 }) => {
   const result = await saveStudyGoalTopics(await requireMemberId(), input);
-  revalidatePath("/planejamento");
+  revalidatePath("/ferramentas");
   return result;
 };
 

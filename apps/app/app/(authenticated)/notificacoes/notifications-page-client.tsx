@@ -12,6 +12,8 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
+import { NotificationActorAvatar } from "@/components/notifications/notification-actor-avatar";
+import { memberActivitiesEnabled } from "@/lib/member-features";
 import { NotificationInvitationActions } from "../components/notification-invitation-actions";
 
 type Filter =
@@ -60,7 +62,9 @@ const filters: readonly { label: string; value: Filter }[] = [
   { label: "Todas", value: "ALL" },
   { label: "Menções", value: "MENTIONS" },
   { label: "Comunidade", value: "COMMUNITY" },
-  { label: "Atividades", value: "ACTIVITIES" },
+  ...(memberActivitiesEnabled
+    ? [{ label: "Atividades", value: "ACTIVITIES" as const }]
+    : []),
   { label: "Cursos", value: "LEARNING" },
   { label: "Conquistas", value: "BADGES" },
 ];
@@ -347,20 +351,15 @@ export const NotificationsPageClient = ({ initial }: Properties) => {
                     )}
                     key={item.id}
                   >
-                    {item.actor?.profile?.avatarUrl ? (
-                      // biome-ignore lint/performance/noImgElement: authenticated member asset route.
-                      <img
-                        alt=""
-                        className="size-9 shrink-0 rounded-full object-cover object-center"
-                        height={36}
-                        src={item.actor.profile.avatarUrl}
-                        width={36}
-                      />
-                    ) : (
-                      <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted font-medium text-xs">
-                        {actorName(item).slice(0, 1).toUpperCase()}
-                      </span>
-                    )}
+                    <NotificationActorAvatar
+                      className="size-9"
+                      name={actorName(item)}
+                      src={
+                        item.actor?.profile?.avatarUrl ??
+                        item.actor?.avatarUrl ??
+                        null
+                      }
+                    />
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-start justify-between gap-2">
                         <div>

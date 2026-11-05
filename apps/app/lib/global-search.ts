@@ -20,6 +20,7 @@ import {
   hasModuleAccess,
 } from "@/lib/content-access";
 import { buildLibraryItemAccessWhere } from "@/lib/library";
+import { memberActivitiesEnabled } from "@/lib/member-features";
 
 export type GlobalSearchResultType =
   | "path"
@@ -38,11 +39,7 @@ export type GlobalSearchResultType =
   | "planner-goal"
   | "note";
 
-export type GlobalSearchArea =
-  | "Estudar"
-  | "Comunidade"
-  | "Planejamento"
-  | "Ferramentas";
+export type GlobalSearchArea = "Estudar" | "Comunidade" | "Ferramentas";
 
 export interface GlobalSearchResult {
   readonly area?: GlobalSearchArea;
@@ -96,9 +93,9 @@ const resultArea: Record<
   "community-space": { area: "Comunidade", section: "Grupos de estudo" },
   library: { area: "Estudar", section: "Biblioteca" },
   profile: { area: "Comunidade", section: "Pessoas" },
-  "planner-task": { area: "Planejamento", section: "Tarefas" },
-  "planner-event": { area: "Planejamento", section: "Calendário" },
-  "planner-goal": { area: "Planejamento", section: "Metas" },
+  "planner-task": { area: "Ferramentas", section: "Calendário" },
+  "planner-event": { area: "Ferramentas", section: "Calendário" },
+  "planner-goal": { area: "Ferramentas", section: "Metas" },
   note: { area: "Ferramentas", section: "Notas" },
 };
 
@@ -549,6 +546,7 @@ export const searchGlobal = async (memberId: string, rawQuery: string) => {
       }
       return !activity.courseId || hasCourseAccess(scope, activity.courseId);
     })
+    .filter(() => memberActivitiesEnabled)
     .map((activity) =>
       result(
         activity.id,
@@ -630,7 +628,7 @@ export const searchGlobal = async (memberId: string, rawQuery: string) => {
       task.dueAt
         ? `Prazo ${task.dueAt.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })} · ${preview(task.description) ?? "Tarefa pessoal"}`
         : preview(task.description),
-      `/planejamento?view=calendar&task=${encodeURIComponent(task.id)}`
+      `/ferramentas?view=calendar&task=${encodeURIComponent(task.id)}`
     )
   );
   const plannerEventResults = plannerEvents.map((event) =>
@@ -640,7 +638,7 @@ export const searchGlobal = async (memberId: string, rawQuery: string) => {
       "planner-event",
       "Evento",
       `${event.startsAt.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })} · ${preview(event.description) ?? "Evento pessoal"}`,
-      `/planejamento?view=calendar&event=${encodeURIComponent(event.id)}`
+      `/ferramentas?view=calendar&event=${encodeURIComponent(event.id)}`
     )
   );
   const plannerGoalResults = query.toLocaleLowerCase("pt-BR").includes("meta")
@@ -651,7 +649,7 @@ export const searchGlobal = async (memberId: string, rawQuery: string) => {
           "planner-goal",
           "Meta",
           `${goal.targetMinutes} minutos de estudo`,
-          "/planejamento?view=goals"
+          "/ferramentas?view=goals"
         )
       )
     : [];
@@ -672,15 +670,14 @@ export const searchGlobal = async (memberId: string, rawQuery: string) => {
       ...communitySpaceResults,
       ...profileResults,
     ].slice(0, 6),
-    Planejamento: [
+    Ferramentas: [
       ...plannerGoalResults,
       ...plannerTaskResults,
       ...plannerEventResults,
     ].slice(0, 4),
   };
-  return [
-    ...byArea.Estudar,
-    ...byArea.Comunidade,
-    ...byArea.Planejamento,
-  ].slice(0, MAX_RESULTS);
+  return [...byArea.Estudar, ...byArea.Comunidade, ...byArea.Ferramentas].slice(
+    0,
+    MAX_RESULTS
+  );
 };

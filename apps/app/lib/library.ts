@@ -17,6 +17,10 @@ import {
   hasModuleAccess,
 } from "./content-access";
 import { markLearningAssignmentStarted } from "./learning-assignments";
+import {
+  libraryCategoryFilterValues,
+  libraryCategoryGroupsFor,
+} from "./library-categories";
 import { LIBRARY_PAGE_SIZE, pageLibraryRows } from "./library-pagination";
 import { libraryPopularityScore, librarySearchScore } from "./library-ranking";
 
@@ -67,7 +71,9 @@ const buildLibraryWhere = ({
       ? { language: { contains: validLanguage, mode: "insensitive" as const } }
       : {}),
     ...(validDifficulty ? { difficulty: validDifficulty } : {}),
-    ...(category ? { category } : {}),
+    ...(category
+      ? { category: { in: libraryCategoryFilterValues(category) } }
+      : {}),
     ...(normalizedQuery
       ? {
           OR: [
@@ -342,7 +348,9 @@ export const getLibraryCategories = async () => {
       select: { category: true },
     })
   );
-  return rows.flatMap((row) => (row.category ? [row.category] : []));
+  return libraryCategoryGroupsFor(
+    rows.flatMap((row) => (row.category ? [row.category] : []))
+  );
 };
 
 export const getPublishedLibraryItem = async (id: string, memberId: string) => {

@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("server-only", () => ({}));
+vi.mock("./member-features", () => ({ memberActivitiesEnabled: true }));
 vi.mock("@repo/database", () => ({
   ContentStatus: { PUBLISHED: "PUBLISHED" },
   LearningAssignmentStatus: { REVOKED: "REVOKED" },

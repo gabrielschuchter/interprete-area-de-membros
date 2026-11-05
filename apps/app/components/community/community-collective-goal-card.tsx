@@ -160,8 +160,8 @@ export const CommunityCollectiveGoalCard = ({
           <CommunityGoalStatus goal={goal} now={now} />
           <p className="community-goal__note">
             {goal.state === "empty"
-              ? "O mês está começando: cada hora de estudo registrada pelos alunos soma aqui."
-              : "Horas de estudo registradas pelos alunos da comunidade neste mês."}
+              ? "Nenhum minuto ainda neste ciclo. A primeira aula assistida já entra na conta."
+              : "Soma de toda a turma neste ciclo: aulas, gravações, exercícios, leituras e o cronômetro."}
           </p>
           {canManage && goal.sourceKinds.length > 0 ? (
             <p className="community-goal__sources">

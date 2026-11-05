@@ -1155,67 +1155,6 @@
     align-items: start;
   }
 
-  .community-section-nav__heading {
-    display: grid;
-    gap: 0.25rem;
-    min-width: max-content;
-  }
-
-  .community-section-nav__heading::after {
-    font-size: 0.72rem;
-    color: var(--muted-foreground);
-    content: "Seu espaço de troca";
-  }
-
-  .community-section-nav {
-    display: flex;
-    gap: 1.5rem;
-    align-items: center;
-    justify-content: space-between;
-    padding: 1.5rem 0 0.8rem;
-    border-bottom: 1px solid var(--line-soft);
-  }
-
-  .community-section-nav__links {
-    display: flex;
-    gap: 1.25rem;
-    align-items: center;
-    min-width: 0;
-    overflow-x: auto;
-    overflow-y: hidden;
-  }
-
-  .community-section-nav__link {
-    position: relative;
-    display: inline-flex;
-    align-items: center;
-    min-height: 2.55rem;
-    padding: 0.45rem 0.9rem;
-    font-size: 0.86rem;
-    color: var(--muted-foreground);
-    white-space: nowrap;
-  }
-
-  .community-section-nav__link::after {
-    position: absolute;
-    right: 0;
-    bottom: -0.75rem;
-    left: 0;
-    height: 2px;
-    content: "";
-    background: transparent;
-  }
-
-  .community-section-nav__link:hover,
-  .community-section-nav__link:focus-visible,
-  .community-section-nav__link--active {
-    color: var(--foreground);
-  }
-
-  .community-section-nav__link--active::after {
-    background: var(--brand-structural);
-  }
-
   .community-feed-nav {
     padding: 0.9rem;
     margin-top: 1.25rem;
@@ -1404,16 +1343,6 @@
       max-width: none;
     }
 
-    .community-section-nav {
-      flex-direction: column;
-      gap: 0.65rem;
-      align-items: flex-start;
-    }
-
-    .community-section-nav__link::after {
-      bottom: -0.65rem;
-    }
-
     .community-hero {
       min-height: 16rem;
     }
@@ -1523,49 +1452,7 @@
     min-width: 0;
   }
 
-  .community-section-nav {
-    position: sticky;
-    top: 56px;
-    z-index: 40;
-    min-width: 0;
-    min-height: 3rem;
-    padding: 0.25rem 0;
-    background: var(--background);
-    border-bottom: 1px solid var(--line-soft);
-  }
-
-  .community-section-nav__heading {
-    display: none;
-  }
-
-  .community-section-nav__links--desktop {
-    gap: 1.25rem;
-    overflow: visible;
-  }
-
-  .community-section-nav__link {
-    min-height: 44px;
-    padding: 0.4rem 0;
-    font-weight: 500;
-  }
-
-  .community-section-nav__link::after {
-    bottom: 0;
-  }
-
-  .community-section-nav__link--active {
-    color: var(--brand-dark-amaranth);
-  }
-
-  .community-section-nav__link--active::after {
-    background: var(--brand-dark-amaranth);
-  }
-
   .community-view-select {
-    display: none;
-  }
-
-  .community-view-picker {
     display: none;
   }
 
@@ -2263,39 +2150,6 @@
 
     .community-discovery-toolbar {
       display: contents;
-    }
-
-    .community-section-nav {
-      display: block;
-      grid-area: views;
-      width: 100%;
-      padding: 0;
-    }
-
-    .community-section-nav__links--desktop {
-      display: none;
-    }
-
-    .community-view-picker {
-      display: block;
-      width: 100%;
-    }
-
-    .community-view-picker > div {
-      width: 100%;
-    }
-
-    .community-view-trigger {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      width: 100%;
-      height: 48px;
-      padding: 0 0.9rem;
-      color: var(--foreground);
-      background: var(--surface-paper);
-      border: 1px solid var(--line-soft);
-      border-radius: 4px;
     }
 
     .community-view-sheet {
@@ -3570,10 +3424,6 @@ html[data-shell-fallback][data-shell-arrival="return"] .member-route-page {
     flex-direction: column;
   }
 
-  .community-groups-page > .community-section-nav {
-    order: 0;
-  }
-
   .community-groups-page__header {
     display: contents;
   }
@@ -4066,14 +3916,6 @@ html[data-shell-fallback][data-shell-arrival="return"] .member-route-page {
     width: 100%;
     height: 76px;
     padding: 0 18px;
-    font-size: 18px;
-    font-weight: 600;
-    border-radius: 8px;
-  }
-
-  .community-my-publications-nav .community-view-trigger {
-    height: 76px;
-    padding-inline: 18px;
     font-size: 18px;
     font-weight: 600;
     border-radius: 8px;
@@ -5574,4 +5416,32 @@ html[data-shell-fallback][data-shell-arrival="return"] .member-route-page {
     var(--brand-dark-amaranth, #8c1535) 14%,
     transparent
   );
+}
+
+/* Nome da pessoa sobre o avatar (Comunidade). Aparece na hora, sem o atraso do title nativo. */
+.community-person-tooltip {
+  position: fixed;
+  z-index: 70;
+  max-width: 16rem;
+  padding: 0.3rem 0.55rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.2;
+  color: #fbf8f5;
+  white-space: nowrap;
+  pointer-events: none;
+  background: #40222f;
+  border-radius: 6px;
+  box-shadow: 0 6px 18px rgb(64 34 47 / 22%);
+  transform: translate(-50%, calc(-100% - 8px));
+  animation: community-person-tooltip-in 90ms ease-out both;
+}
+
+@keyframes community-person-tooltip-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-100% - 4px));
+  }
 }

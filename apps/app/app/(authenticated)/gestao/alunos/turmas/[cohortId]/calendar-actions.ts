@@ -435,7 +435,7 @@ const bumpCohortVersion = async (
 const revalidateCalendar = (cohortId: string) => {
   revalidatePath(`/gestao/alunos/turmas/${cohortId}`);
   revalidatePath(`/gestao/alunos/turmas/${cohortId}/calendario`);
-  revalidatePath("/planejamento");
+  revalidatePath("/ferramentas");
 };
 
 export const getGestaoCohortMeetingForEdit = async (

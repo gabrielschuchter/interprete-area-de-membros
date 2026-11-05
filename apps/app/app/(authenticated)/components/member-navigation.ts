@@ -21,7 +21,6 @@ export const portalShortcutPaths: Readonly<Record<string, PortalSide>> = {
   "/exercicios": "estudar",
   "/atividades": "estudar",
   "/biblioteca": "estudar",
-  "/planejamento": "estudar",
   "/ferramentas": "estudar",
   "/comunidade": "comunidade",
   "/encontros": "comunidade",

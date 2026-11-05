@@ -76,7 +76,7 @@ const TaskForm = ({
     <form action={formAction} id="gk-task-form">
       <ModalHead
         onClose={onClose}
-        subtitle="Uma ação com prazo ou frequência. Aparece no Planejamento do aluno."
+        subtitle="Uma ação com prazo ou frequência. Aparece no calendário do aluno, em Ferramentas."
         title="Nova tarefa"
       />
       <div className="gk-modal-body">
@@ -423,7 +423,7 @@ export const TaskRowMenu = ({
         <ConfirmDialog
           action={archiveGestaoTask}
           confirmLabel="Arquivar tarefa"
-          description={`“${title}” deixa de aparecer no Planejamento dos alunos. O histórico de conclusões continua registrado.`}
+          description={`“${title}” deixa de aparecer no calendário dos alunos. O histórico de conclusões continua registrado.`}
           fields={{ taskId }}
           onClose={() => setConfirming(false)}
           title="Arquivar esta tarefa?"

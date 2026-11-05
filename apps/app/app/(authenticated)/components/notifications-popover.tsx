@@ -22,9 +22,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import "./notification-bell.css";
+import { NotificationActorAvatar } from "@/components/notifications/notification-actor-avatar";
 import { NotificationInvitationActions } from "./notification-invitation-actions";
-
-type NotificationFilter = "ALL" | "MENTIONS" | "ACTIVITIES";
 
 interface NotificationActor {
   readonly avatarUrl: string | null;
@@ -120,16 +119,6 @@ const displayTitle = (item: NotificationItem) => {
   return item.title;
 };
 
-const filterLabel = (value: NotificationFilter) => {
-  if (value === "ALL") {
-    return "Todas";
-  }
-  if (value === "MENTIONS") {
-    return "Menções";
-  }
-  return "Atividades";
-};
-
 const groupNotifications = (items: readonly NotificationItem[]) => {
   const grouped = new Map<string, NotificationItem[]>();
   for (const item of items) {
@@ -186,7 +175,7 @@ const calloutIcons = {
 const loadCalloutChips = async (total: number): Promise<CalloutChip[]> => {
   const fallback: CalloutChip[] = [{ kind: "other", count: total }];
   try {
-    const response = await fetch("/api/notifications?limit=20", {
+    const response = await fetch("/api/notifications?scope=fresh&limit=20", {
       headers: { Accept: "application/json" },
     });
     if (!response.ok) {
@@ -209,6 +198,128 @@ const loadCalloutChips = async (total: number): Promise<CalloutChip[]> => {
   }
 };
 
+const popoverSubtitle = (
+  state: LoadingState,
+  newCount: number,
+  recentCount: number
+) => {
+  if (state !== "ready") {
+    return "O que chegou desde a sua última visita.";
+  }
+  if (newCount > 0) {
+    return newCount === 1
+      ? "1 nova desde a última visita."
+      : `${newCount} novas desde a última visita.`;
+  }
+  if (recentCount > 0) {
+    return "Nada novo desde a última visita.";
+  }
+  return "Você está em dia.";
+};
+
+const relativeTime = (value: string) => {
+  const date = new Date(value);
+  const diff = Date.now() - date.valueOf();
+  if (Number.isNaN(diff)) {
+    return "";
+  }
+  const minutes = Math.round(diff / 60_000);
+  if (minutes < 1) {
+    return "agora";
+  }
+  if (minutes < 60) {
+    return `há ${minutes} min`;
+  }
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) {
+    return `há ${hours} h`;
+  }
+  return formatDate(value);
+};
+
+const NotificationGroup = ({
+  heading,
+  isNew,
+  items,
+  onInvitationResponded,
+  onOpen,
+}: {
+  readonly heading: string;
+  readonly isNew: boolean;
+  readonly items: readonly NotificationItem[];
+  readonly onInvitationResponded: (item: NotificationItem) => void;
+  readonly onOpen: (item: NotificationItem) => Promise<void>;
+}) => (
+  <section aria-label={heading}>
+    <p className="px-3 pt-1 pb-1.5 font-medium text-[0.68rem] text-muted-foreground uppercase tracking-[0.14em]">
+      {heading}
+    </p>
+    <ul className="space-y-1">
+      {items.map((item) => (
+        <li
+          className={cn(
+            "relative rounded-lg px-3 py-3 transition-colors hover:bg-accent",
+            isNew && !item.readAt && "bg-[#FBF3F4]"
+          )}
+          data-notification-new={isNew ? "true" : undefined}
+          key={item.id}
+        >
+          {isNew && !item.readAt ? (
+            <span
+              aria-hidden="true"
+              className="absolute top-3 bottom-3 left-0 w-[3px] rounded-full bg-brand-classic-crimson"
+            />
+          ) : null}
+          <button
+            className="block w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+            onClick={() => onOpen(item).catch(() => undefined)}
+            type="button"
+          >
+            <span className="flex items-start gap-3">
+              <NotificationActorAvatar
+                className="mt-0.5 size-8"
+                name={actorName(item.actor)}
+                src={actorAvatar(item.actor)}
+              />
+              <span className="min-w-0 flex-1">
+                <span
+                  className={cn(
+                    "block text-sm",
+                    item.readAt ? "text-muted-foreground" : "font-medium"
+                  )}
+                >
+                  {displayTitle(item)}
+                </span>
+                {item.body && (
+                  <span className="mt-1 line-clamp-2 block text-muted-foreground text-xs">
+                    {item.body}
+                  </span>
+                )}
+                <span className="mt-1.5 flex items-center gap-2 text-[0.68rem] text-muted-foreground">
+                  {isNew && !item.readAt ? (
+                    <span className="font-semibold text-brand-classic-crimson uppercase tracking-[0.08em]">
+                      Nova
+                    </span>
+                  ) : null}
+                  <span>{relativeTime(item.createdAt)}</span>
+                </span>
+              </span>
+            </span>
+          </button>
+          {item.type === "GROUP_INVITATION" && item.entityId ? (
+            <div className="pl-11">
+              <NotificationInvitationActions
+                invitationId={item.entityId}
+                onResponded={() => onInvitationResponded(item)}
+              />
+            </div>
+          ) : null}
+        </li>
+      ))}
+    </ul>
+  </section>
+);
+
 const calloutDurationMs = 7000;
 
 export const NotificationsPopover = ({
@@ -226,7 +337,9 @@ export const NotificationsPopover = ({
   const [unseenCount, setUnseenCount] = useState(0);
   const [state, setState] = useState<LoadingState>("idle");
   const [errorMessage, setErrorMessage] = useState("");
-  const [filter, setFilter] = useState<NotificationFilter>("ALL");
+  // Ids que ainda não tinham sido vistos quando o sino abriu: ficam marcados
+  // como "Nova" até o sino fechar, mesmo depois de registrados como vistos.
+  const [newIds, setNewIds] = useState<ReadonlySet<string>>(() => new Set());
   const [callout, setCallout] = useState<{
     readonly chips: readonly CalloutChip[];
     readonly leaving: boolean;
@@ -320,7 +433,7 @@ export const NotificationsPopover = ({
     setState("loading");
     setErrorMessage("");
     try {
-      const response = await fetch(`/api/notifications?filter=${filter}`, {
+      const response = await fetch("/api/notifications?scope=fresh&limit=30", {
         headers: { Accept: "application/json" },
       });
       const payload = (await response.json()) as NotificationsResponse;
@@ -334,6 +447,7 @@ export const NotificationsPopover = ({
       const ids = nextItems
         .filter((item) => !item.seenAt)
         .map((item) => item.id);
+      setNewIds((current) => new Set([...current, ...ids]));
       if (ids.length > 0) {
         await fetch("/api/notifications/seen", {
           body: JSON.stringify({ ids }),
@@ -364,7 +478,7 @@ export const NotificationsPopover = ({
           : "Não foi possível carregar as notificações agora."
       );
     }
-  }, [filter, updateCounts]);
+  }, [updateCounts]);
 
   const loadSummary = useCallback(async () => {
     try {
@@ -391,6 +505,12 @@ export const NotificationsPopover = ({
       loadNotifications().catch(() => undefined);
     }
   }, [open, loadNotifications, refreshSignal]);
+
+  useEffect(() => {
+    if (!open) {
+      setNewIds(new Set());
+    }
+  }, [open]);
 
   useEffect(() => {
     if (realtimeConnected) {
@@ -503,8 +623,33 @@ export const NotificationsPopover = ({
     }
   };
 
+  const markInvitationResponded = (item: NotificationItem) => {
+    setItems((current) =>
+      current.map((notification) =>
+        notification.id === item.id
+          ? {
+              ...notification,
+              readAt: notification.readAt ?? new Date().toISOString(),
+            }
+          : notification
+      )
+    );
+    fetch(`/api/notifications/${item.id}`, {
+      body: JSON.stringify({ read: true }),
+      headers: { "Content-Type": "application/json" },
+      method: "PATCH",
+    })
+      .then(() => loadSummary())
+      .catch(() => undefined);
+  };
+
   const displayItems = useMemo(() => groupNotifications(items), [items]);
-  const badgeLabel = unreadCount > 9 ? "9+" : String(unreadCount);
+  const badgeLabel = unseenCount > 9 ? "9+" : String(unseenCount);
+  const newItems = displayItems.filter((item) => newIds.has(item.id));
+  const recentItems = displayItems.filter((item) => !newIds.has(item.id));
+  const historyHref = pathname.startsWith("/gestao")
+    ? "/gestao/notificacoes"
+    : "/notificacoes";
 
   const fresh = unseenCount > 0;
   return (
@@ -523,8 +668,8 @@ export const NotificationsPopover = ({
             aria-expanded={open}
             aria-haspopup="dialog"
             aria-label={
-              unreadCount > 0
-                ? `Notificações, ${unreadCount} não lidas`
+              unseenCount > 0
+                ? `Notificações, ${unseenCount} ${unseenCount === 1 ? "nova" : "novas"}`
                 : "Notificações"
             }
             className={`bell-trigger relative ${noteEditorMode ? "size-11" : "size-10"} rounded-full ${fresh ? "text-brand-classic-crimson" : "text-muted-foreground"} hover:bg-accent hover:text-foreground`}
@@ -534,7 +679,7 @@ export const NotificationsPopover = ({
             variant="ghost"
           >
             <BellIcon aria-hidden="true" />
-            {unreadCount > 0 && (
+            {unseenCount > 0 && (
               <span className="bell-badge" data-fresh={fresh}>
                 {badgeLabel}
               </span>
@@ -547,11 +692,11 @@ export const NotificationsPopover = ({
           onOpenAutoFocus={(event) => event.preventDefault()}
           sideOffset={10}
         >
-          <div className="flex items-start justify-between border-border/70 border-b px-4 py-4">
+          <div className="flex items-start justify-between gap-3 border-border/70 border-b px-4 py-4">
             <div>
               <p className="font-display text-lg">Notificações</p>
               <p className="mt-0.5 text-muted-foreground text-xs">
-                O que merece sua atenção agora.
+                {popoverSubtitle(state, newItems.length, recentItems.length)}
               </p>
             </div>
             {items.some((item) => !item.readAt) && (
@@ -565,25 +710,8 @@ export const NotificationsPopover = ({
               </Button>
             )}
           </div>
-          <div className="flex gap-1 border-border/70 border-b px-3 py-2">
-            {(["ALL", "MENTIONS", "ACTIVITIES"] as const).map((value) => (
-              <button
-                className={cn(
-                  "rounded-full px-3 py-1.5 text-xs transition-colors",
-                  filter === value
-                    ? "bg-foreground text-background"
-                    : "text-muted-foreground hover:bg-accent"
-                )}
-                key={value}
-                onClick={() => setFilter(value)}
-                type="button"
-              >
-                {filterLabel(value)}
-              </button>
-            ))}
-          </div>
           <div className="max-h-[min(62vh,30rem)] overflow-y-auto p-2">
-            {state === "loading" && (
+            {state === "loading" && items.length === 0 && (
               <div
                 aria-live="polite"
                 className="flex items-center justify-center gap-2 px-4 py-12 text-muted-foreground text-sm"
@@ -610,118 +738,55 @@ export const NotificationsPopover = ({
               </div>
             )}
             {state === "ready" && displayItems.length === 0 && (
-              <div className="px-4 py-12 text-center">
+              <div className="px-4 py-10 text-center">
                 <InboxIcon
                   aria-hidden="true"
                   className="mx-auto size-8 text-brand-dark-amaranth/60"
                 />
                 <p className="mt-3 font-display text-base">
-                  Nenhuma notificação por aqui.
+                  Nada novo por aqui.
                 </p>
-                <p className="mt-1 text-muted-foreground text-xs">
-                  Quando houver uma resposta, menção ou novidade importante, ela
-                  aparecerá aqui.
+                <p className="mx-auto mt-1 max-w-64 text-muted-foreground text-xs">
+                  Respostas, menções, convites e avisos aparecem aqui assim que
+                  chegam. O que você já abriu fica no histórico.
                 </p>
               </div>
             )}
-            {state === "ready" && displayItems.length > 0 && (
-              <div className="motion-stagger space-y-1">
-                {displayItems.map((item) => (
-                  <div
-                    className={cn(
-                      "rounded-lg px-3 py-3 transition-colors hover:bg-accent",
-                      !item.readAt && "bg-accent/45"
-                    )}
-                    key={item.id}
-                  >
-                    <button
-                      className="block w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-                      onClick={() =>
-                        markReadAndOpen(item).catch(() => undefined)
-                      }
-                      type="button"
-                    >
-                      <span className="flex items-start gap-3">
-                        {actorAvatar(item.actor) ? (
-                          // biome-ignore lint/performance/noImgElement: member assets resolve through an authenticated route.
-                          <img
-                            alt=""
-                            className="mt-0.5 size-8 shrink-0 rounded-full object-cover object-center"
-                            height={32}
-                            src={actorAvatar(item.actor) ?? undefined}
-                            width={32}
-                          />
-                        ) : (
-                          <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-muted font-medium text-xs">
-                            {actorName(item.actor).slice(0, 1).toUpperCase()}
-                          </span>
-                        )}
-                        <span className="min-w-0">
-                          <span className="block font-medium text-sm">
-                            {displayTitle(item)}
-                          </span>
-                          {item.body && (
-                            <span className="mt-1 line-clamp-2 block text-muted-foreground text-xs">
-                              {item.body}
-                            </span>
-                          )}
-                          <span className="mt-2 block text-[0.68rem] text-muted-foreground">
-                            {formatDate(item.createdAt)}
-                          </span>
-                        </span>
-                        {!item.readAt && (
-                          <span
-                            className="mt-2 size-2 shrink-0 rounded-full bg-brand-classic-crimson"
-                            title="Não lida"
-                          />
-                        )}
-                      </span>
-                    </button>
-                    {item.type === "GROUP_INVITATION" && item.entityId ? (
-                      <div className="pl-11">
-                        <NotificationInvitationActions
-                          invitationId={item.entityId}
-                          onResponded={() => {
-                            setItems((current) =>
-                              current.map((notification) =>
-                                notification.id === item.id
-                                  ? {
-                                      ...notification,
-                                      readAt:
-                                        notification.readAt ??
-                                        new Date().toISOString(),
-                                    }
-                                  : notification
-                              )
-                            );
-                            fetch(`/api/notifications/${item.id}`, {
-                              body: JSON.stringify({ read: true }),
-                              headers: { "Content-Type": "application/json" },
-                              method: "PATCH",
-                            })
-                              .then(() => loadSummary())
-                              .catch(() => undefined);
-                          }}
-                        />
-                      </div>
-                    ) : null}
-                  </div>
-                ))}
-              </div>
-            )}
+            {(state === "ready" || items.length > 0) &&
+              displayItems.length > 0 && (
+                <div className="space-y-3">
+                  {newItems.length > 0 ? (
+                    <NotificationGroup
+                      heading="Novas"
+                      isNew
+                      items={newItems}
+                      onInvitationResponded={markInvitationResponded}
+                      onOpen={markReadAndOpen}
+                    />
+                  ) : null}
+                  {recentItems.length > 0 ? (
+                    <NotificationGroup
+                      heading="Vistas há pouco"
+                      isNew={false}
+                      items={recentItems}
+                      onInvitationResponded={markInvitationResponded}
+                      onOpen={markReadAndOpen}
+                    />
+                  ) : null}
+                </div>
+              )}
           </div>
-          <div className="border-border/70 border-t px-4 py-3">
+          <div className="flex items-center justify-between border-border/70 border-t px-4 py-3">
             <Link
-              className="text-primary text-sm underline underline-offset-4"
-              href={
-                pathname.startsWith("/gestao")
-                  ? "/gestao/notificacoes"
-                  : "/notificacoes"
-              }
+              className="font-medium text-primary text-sm underline-offset-4 hover:underline"
+              href={historyHref}
               onClick={() => onOpenChange(false)}
             >
               Ver todas
             </Link>
+            <span className="text-muted-foreground text-xs">
+              Histórico completo
+            </span>
           </div>
         </PopoverContent>
       </Popover>

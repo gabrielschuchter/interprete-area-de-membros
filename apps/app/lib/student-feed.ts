@@ -8,6 +8,7 @@ import {
   type Prisma,
 } from "@repo/database";
 import { tracePerformance } from "@repo/observability/performance";
+import { memberActivitiesEnabled } from "./member-features";
 import {
   resolveStudentFeedActivities,
   type StudentFeedActivity,
@@ -234,6 +235,8 @@ export const resolveStudentFeed = (
   at = new Date(),
   options: StudentFeedOptions = {}
 ) =>
-  tracePerformance("member.learning.student-feed", () =>
-    getStudentFeedUncached(memberId, at, options)
-  );
+  memberActivitiesEnabled
+    ? tracePerformance("member.learning.student-feed", () =>
+        getStudentFeedUncached(memberId, at, options)
+      )
+    : Promise.resolve([]);

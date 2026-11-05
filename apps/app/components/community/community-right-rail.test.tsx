@@ -110,7 +110,7 @@ describe("CommunityRightRail", () => {
 
     expect(screen.queryByText("Nenhum aviso recente.")).toBeNull();
     expect(screen.queryByRole("heading", { name: "Avisos" })).toBeNull();
-    expect(screen.getByText("Nenhum grupo publicado ainda.")).toBeTruthy();
+    expect(screen.getByText("Você ainda não participa de nenhum grupo.")).toBeTruthy();
   });
 
   test("opens approved community guidance by default", () => {
@@ -131,7 +131,7 @@ describe("CommunityRightRail", () => {
     expect(aboutDisclosure.getAttribute("aria-expanded")).toBe("true");
     fireEvent.click(aboutDisclosure);
     expect(aboutDisclosure.getAttribute("aria-expanded")).toBe("false");
-    expect(screen.getByText("Respeite quem pensa diferente.")).toBeTruthy();
+    expect(screen.getByText("Discorde do argumento, nunca da pessoa.")).toBeTruthy();
     expect(screen.getByText("Como participar")).toBeTruthy();
   });
 

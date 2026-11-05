@@ -37,6 +37,7 @@ import {
   getPublishedLesson,
   requireMemberId,
 } from "@/lib/learning";
+import { memberActivitiesEnabled } from "@/lib/member-features";
 import { getRoomLessonTitles } from "@/lib/room";
 import { roomMetadata } from "@/lib/room-metadata";
 
@@ -339,7 +340,7 @@ const LessonPageContent = async ({
             </section>
           )}
 
-          {lesson.activities.length > 0 && (
+          {memberActivitiesEnabled && lesson.activities.length > 0 && (
             <section className="border-brand-action/50 border-l-2 bg-brand-action/5 px-5 py-6 sm:px-7">
               <div className="flex items-start gap-3">
                 <ClipboardCheckIcon

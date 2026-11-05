@@ -8,7 +8,6 @@ import {
 import type { Metadata } from "next";
 import Link from "next/link";
 import { CommunityFeedCard } from "@/components/community/community-feed-card";
-import { CommunityNavigation } from "@/components/community/community-navigation";
 import { CommunitySavedLabels } from "@/components/community/community-saved-labels";
 import { CommunitySelectSubmitForm } from "@/components/community/community-select-submit-form";
 import {
@@ -203,7 +202,6 @@ const SavedCommunityPage = async ({
   return (
     <div className="community-page min-h-svh bg-background">
       <main className="community-shell community-saved-shell mx-auto w-full">
-        <CommunityNavigation active="saved" />
         <header className="community-saved-header flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div className="max-w-3xl">
             <h1 className="sr-only font-display text-4xl leading-none sm:text-5xl md:not-sr-only">

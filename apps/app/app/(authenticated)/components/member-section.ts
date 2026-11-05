@@ -66,6 +66,19 @@ export const memberSectionForPathname = (pathname: string) => {
   return "Início";
 };
 
+const communityBreadcrumbAreas = [
+  ["/comunidade/encontros/gravacoes", "Minhas gravações"],
+  ["/comunidade/encontros", "Encontros"],
+  ["/comunidade/grupos", "Grupos"],
+  ["/comunidade/salvos", "Salvos"],
+  ["/comunidade/minhas-publicacoes", "Minhas publicações"],
+  ["/comunidade/meus-topicos", "Minhas publicações"],
+  ["/comunidade/publicacoes", "Explorar"],
+  ["/comunidade/meta", "Meta coletiva"],
+  ["/comunidade/novo", "Nova publicação"],
+  ["/comunidade/editor", "Nova publicação"],
+] as const;
+
 export const memberBreadcrumbForPathname = (pathname: string) => {
   if (pathname === "/salvos") {
     return "Salvos";
@@ -77,11 +90,7 @@ export const memberBreadcrumbForPathname = (pathname: string) => {
     return "Estudar · Cursos";
   }
   if (pathname.startsWith("/tarefas")) {
-    return "Planejamento · Tarefas";
-  }
-  if (pathname.startsWith("/planejamento")) {
-    const section = pathname.split("/").filter(Boolean)[1];
-    return section ? `Planejamento · ${section}` : "Estudar · Planejamento";
+    return "Ferramentas · Tarefas";
   }
   if (pathname.startsWith("/ferramentas")) {
     const section = pathname.split("/").filter(Boolean)[1];
@@ -102,9 +111,16 @@ export const memberBreadcrumbForPathname = (pathname: string) => {
   if (pathname === "/encontros" || pathname.startsWith("/encontros/")) {
     return "Comunidade · Encontros";
   }
-  // The Comunidade bar carries the area name; the header does not repeat it.
-  if (pathname === "/comunidade" || pathname.startsWith("/comunidade/")) {
-    return "";
+  // Mesmo padrão do Estudar: "Início › Comunidade" na entrada e
+  // "Comunidade · Área" nas subáreas.
+  if (pathname === "/comunidade") {
+    return "Início › Comunidade";
+  }
+  if (pathname.startsWith("/comunidade/")) {
+    const area = communityBreadcrumbAreas.find(
+      ([prefix]) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+    );
+    return `Comunidade · ${area?.[1] ?? "Grupos"}`;
   }
   return memberSectionForPathname(pathname);
 };

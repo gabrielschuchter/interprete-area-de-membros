@@ -132,7 +132,9 @@ const queryPeriodProgress = async (
         session."memberId",
         session."activityKind",
         session."startedAt",
-        session."endedAt"
+        -- A session whose page never sent the closing heartbeat (crash, lost
+        -- network) still counts, closed at its last heartbeat.
+        COALESCE(session."endedAt", session."lastHeartbeatAt") AS "endedAt"
       FROM "StudyTrackingSession" AS session
       CROSS JOIN LATERAL (
         SELECT COALESCE(SUM(source_interval."seconds"), 0) AS "recordedSeconds"
@@ -140,12 +142,11 @@ const queryPeriodProgress = async (
         WHERE source_interval."sessionId" = session."id"
           AND source_interval."memberId" = session."memberId"
       ) AS source_activity
-      WHERE session."endedAt" IS NOT NULL
-        AND source_activity."recordedSeconds" > 60
+      WHERE source_activity."recordedSeconds" > 60
         AND session."startedAt" < (
           SELECT MAX("periodEndsAt") FROM requested_periods
         )
-        AND session."endedAt" > (
+        AND COALESCE(session."endedAt", session."lastHeartbeatAt") > (
           SELECT MIN("periodStartsAt") FROM requested_periods
         )
         AND (

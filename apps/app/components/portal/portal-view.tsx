@@ -10,7 +10,6 @@ import {
   type LucideIcon,
   MessageCircle,
   Settings,
-  Target,
   UserRound,
   UsersRound,
 } from "lucide-react";
@@ -21,6 +20,7 @@ import { MemberHeaderControls } from "@/app/(authenticated)/components/member-he
 import { useMemberNavigation } from "@/app/(authenticated)/components/member-navigation-context";
 import { MemberSidebarControl } from "@/app/(authenticated)/components/member-sidebar-control";
 import { usePortalViewport } from "@/app/(authenticated)/components/use-portal-viewport";
+import { memberActivitiesEnabled } from "@/lib/member-features";
 
 interface PortalShortcut {
   readonly href: string;
@@ -31,9 +31,10 @@ interface PortalShortcut {
 const studyShortcuts: readonly PortalShortcut[] = [
   { href: "/cursos", icon: BookOpen, label: "Cursos" },
   { href: "/exercicios", icon: ListChecks, label: "Exercícios" },
-  { href: "/atividades", icon: ClipboardCheck, label: "Atividades" },
+  ...(memberActivitiesEnabled
+    ? [{ href: "/atividades", icon: ClipboardCheck, label: "Atividades" }]
+    : []),
   { href: "/biblioteca", icon: LibraryBig, label: "Biblioteca" },
-  { href: "/planejamento", icon: Target, label: "Planejamento" },
   { href: "/ferramentas", icon: Settings, label: "Ferramentas" },
 ];
 

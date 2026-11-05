@@ -6,7 +6,6 @@ import Link from "next/link";
 import { CommunityCoverImage } from "@/components/community/community-cover-image";
 import { CommunityDeleteUndoToast } from "@/components/community/community-delete-undo-toast";
 import { CommunityFeedCard } from "@/components/community/community-feed-card";
-import { CommunityNavigation } from "@/components/community/community-navigation";
 import { CommunityPostMenu } from "@/components/community/community-post-menu";
 import { CommunityPublicationFilters } from "@/components/community/community-publication-filters";
 import { CommunityPublicationViewSelector } from "@/components/community/community-publication-view-selector";
@@ -251,9 +250,7 @@ const MyCommunityPage = async ({ searchParams }: MyCommunityPageProperties) => {
         className="community-shell community-my-publications-shell mx-auto w-full"
         data-route-structure-ready="community"
       >
-        <div className="community-my-publications-nav">
-          <CommunityNavigation active="mine" />
-        </div>
+        <div className="community-my-publications-nav" />
         <header className="community-my-publications-header">
           <div>
             <h1>Minhas publicações</h1>

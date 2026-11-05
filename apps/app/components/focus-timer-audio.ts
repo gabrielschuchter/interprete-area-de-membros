@@ -44,6 +44,28 @@ const contextForTimer = () => {
   return audioContext;
 };
 
+let unlockArmed = false;
+
+/**
+ * O navegador só libera o áudio depois de um gesto na página. Quem volta para
+ * uma sessão em andamento (recarregou, trocou de tela) ainda não fez o gesto
+ * nesta página, e o alarme do fim ficava mudo. Qualquer clique ou tecla
+ * destrava o áudio para o resto da visita.
+ */
+export const armTimerAudioUnlock = () => {
+  if (unlockArmed || typeof window === "undefined") {
+    return;
+  }
+  unlockArmed = true;
+  const unlock = () => {
+    unlockTimerAudio().catch(() => undefined);
+    window.removeEventListener("pointerdown", unlock, true);
+    window.removeEventListener("keydown", unlock, true);
+  };
+  window.addEventListener("pointerdown", unlock, true);
+  window.addEventListener("keydown", unlock, true);
+};
+
 export const unlockTimerAudio = () => {
   const context = contextForTimer();
   if (context?.state === "suspended") {
@@ -68,7 +90,22 @@ const playTone = (
     return;
   }
   const context = contextForTimer();
-  if (!context || context.state !== "running") {
+  if (!context) {
+    return;
+  }
+  if (context.state === "suspended") {
+    // Com ativação prévia na página, resume() funciona sem novo gesto.
+    context
+      .resume()
+      .then(() => {
+        if (context.state === "running") {
+          playTone(settings, options);
+        }
+      })
+      .catch(() => undefined);
+    return;
+  }
+  if (context.state !== "running") {
     return;
   }
   try {

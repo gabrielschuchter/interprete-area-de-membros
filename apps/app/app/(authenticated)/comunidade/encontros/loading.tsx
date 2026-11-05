@@ -1,10 +1,8 @@
 import { Skeleton } from "@repo/design-system/components/ui/skeleton";
-import { CommunityNavigation } from "@/components/community/community-navigation";
 
 const CommunityMeetingsLoading = () => (
   <main className="community-page min-h-svh bg-background">
     <div className="community-shell mx-auto w-full">
-      <CommunityNavigation active="meetings" />
       <section
         aria-busy="true"
         aria-label="Carregando encontros"

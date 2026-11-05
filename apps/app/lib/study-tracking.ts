@@ -169,6 +169,25 @@ const isRetryableTransactionError = (error: unknown) =>
   "code" in error &&
   (error.code === "P2034" || error.code === "P2002");
 
+/**
+ * Seconds credited by one heartbeat. A closed session (the tab went hidden,
+ * the member idled out or left the page) earns nothing for the gap before it
+ * resumes: that time was not study, and crediting up to 30 s per resume
+ * inflated the totals that feed the collective goal.
+ */
+export const creditedHeartbeatSeconds = (
+  existing: { readonly endedAt: Date | null; readonly lastHeartbeatAt: Date },
+  now: Date
+) => {
+  if (existing.endedAt) {
+    return 0;
+  }
+  const elapsedSeconds = Math.floor(
+    (now.getTime() - existing.lastHeartbeatAt.getTime()) / 1000
+  );
+  return Math.min(30, Math.max(0, elapsedSeconds));
+};
+
 export const recordStudyHeartbeat = async (
   memberId: string,
   input: StudyHeartbeatInput
@@ -230,10 +249,7 @@ export const recordStudyHeartbeat = async (
             return { accepted: false, seconds: 0 };
           }
 
-          const elapsedSeconds = Math.floor(
-            (now.getTime() - existing.lastHeartbeatAt.getTime()) / 1000
-          );
-          const seconds = Math.min(30, Math.max(0, elapsedSeconds));
+          const seconds = creditedHeartbeatSeconds(existing, now);
           if (seconds >= 10) {
             await transaction.studyActivityInterval.create({
               data: {

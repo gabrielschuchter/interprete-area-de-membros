@@ -59,7 +59,7 @@ const list = (formData: FormData, key: string) => [
 const revalidateMeetings = (meetingId?: string) => {
   revalidatePath(listPath);
   revalidatePath("/encontros");
-  revalidatePath("/planejamento");
+  revalidatePath("/ferramentas");
   revalidatePath("/gestao/alunos/turmas", "layout");
   if (meetingId) {
     revalidatePath(`/encontros/${meetingId}`);

@@ -14,97 +14,7 @@
   overflow-x: clip;
 }
 
-/* Barra da seção: 60px, sticky sob o cabeçalho de 56px, full-bleed. */
-.community-page .community-section-nav {
-  position: sticky;
-  top: 56px;
-  z-index: 20;
-  display: flex;
-  gap: 28px;
-  align-items: center;
-  justify-content: flex-start;
-  height: 60px;
-  padding: 0;
-  margin: 0 0 32px;
-  background: #f1ebe8;
-  border-bottom: 0;
-  box-shadow: 0 0 0 100vmax #f1ebe8;
-  clip-path: inset(0 -100vmax);
-}
-.community-page .community-section-nav::after {
-  position: absolute;
-  inset: auto 0 0;
-  height: 1px;
-  content: "";
-  background: #e2d6d1;
-  box-shadow: 0 0 0 100vmax #e2d6d1;
-  clip-path: inset(0 -100vmax);
-}
-.community-section-nav__label {
-  padding-right: 28px;
-  font-family: var(--font-display-family);
-  font-size: 18px;
-  font-weight: 600;
-  line-height: 60px;
-  color: #40222f;
-  border-right: 1px solid #e2d6d1;
-}
-.community-page .community-section-nav__links {
-  gap: 4px;
-  align-self: stretch;
-  overflow: visible;
-}
-.community-page .community-section-nav__link {
-  min-height: 60px;
-  padding: 0 14px;
-  font-family: var(--font-sans-family);
-  font-size: 14px;
-  font-weight: 500;
-  color: #5c4a52;
-}
-.community-page .community-section-nav__link::after {
-  bottom: 0;
-  height: 2px;
-}
-.community-page .community-section-nav__link--active {
-  font-weight: 600;
-  color: #8c1535;
-}
-.community-page .community-section-nav__link--active::after {
-  background: #8c1535;
-}
-
-/* Rotas da Comunidade sem a barra própria (publicação, meta, editor) usam a barra do shell, com o mesmo desenho. */
-.member-area-tabs-shell[data-area="community"] {
-  min-height: 60px;
-  background: #f1ebe8;
-}
-.member-area-tabs-shell[data-area="community"] .member-area-tabs-desktop {
-  gap: 28px;
-  min-height: 60px;
-  padding: 0 40px;
-}
-.member-area-tabs-shell[data-area="community"] .member-area-tabs-section {
-  padding-right: 28px;
-  font-family: var(--font-display-family);
-  font-weight: 600;
-}
-.member-area-tabs-shell[data-area="community"] .member-area-tabs-links {
-  gap: 4px;
-}
-.member-area-tabs-shell[data-area="community"] .member-area-tab {
-  min-height: 60px;
-  padding: 0 14px;
-  font-family: var(--font-sans-family);
-  font-size: 14px;
-  font-weight: 500;
-  color: #5c4a52;
-}
-.member-area-tabs-shell[data-area="community"] .member-area-tab--active {
-  font-weight: 600;
-  color: #8c1535;
-  border-bottom-color: #8c1535;
-}
+/* A barra de áreas da Comunidade é a mesma do Estudar (portal.css), sem exceção. */
 
 /* Casca e grade de Explorar: 1280, padding 32/40/96, feed + 48 + lateral 320. */
 .community-page .community-shell {
@@ -370,19 +280,43 @@
   line-height: 1.5;
 }
 .community-notice__label {
-  display: block;
+  display: flex;
+  gap: 6px;
+  align-items: center;
   font-family: var(--font-mono-family);
   font-size: 11px;
   color: #8c1535;
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
+.community-page .community-notice__label svg {
+  flex: none;
+}
 .community-notice__title {
   display: block;
-  margin-top: 6px;
+  margin-top: 8px;
   font-weight: 600;
   line-height: 1.35;
   color: #40222f;
+}
+.community-notice__body {
+  display: block;
+  margin-top: 4px;
+  font-size: 14px;
+  color: #5c4a52;
+}
+/* Avisos escritos sem espaços (links, códigos, testes) quebram dentro da caixa. */
+.community-notice-item {
+  min-width: 0;
+  overflow: hidden;
+}
+.community-notice__title,
+.community-notice__body,
+.community-announcement-area :is(h2, h3, p) {
+  overflow-wrap: anywhere;
+}
+.community-notice-item > :not(.community-notice) {
+  margin: 0 18px 16px;
 }
 
 /* Sobre a comunidade (board 10): parágrafo, subtítulos em sans e marcadores. */
@@ -721,15 +655,6 @@
   color: #40222f;
   border: 1px solid #e2d6d1;
 }
-
-/* Listas pessoais (boards 17 a 19): coluna de 880px centrada sob a barra. */
-.community-my-publications-shell
-> :not(.community-section-nav):not(.community-my-publications-nav),
-.community-saved-shell > :not(.community-section-nav) {
-  max-width: 880px;
-  margin-right: auto;
-  margin-left: auto;
-}
 .community-page .community-my-publications-shell select,
 .community-page .community-saved-shell select {
   padding-right: 36px;
@@ -835,30 +760,6 @@
   }
 }
 @media (max-width: 767px) {
-  .community-page .community-section-nav {
-    position: static;
-    height: auto;
-    margin: 12px 0 16px;
-    background: transparent;
-    box-shadow: none;
-    clip-path: none;
-  }
-  .community-page .community-section-nav::after {
-    display: none;
-  }
-  .community-section-nav__label {
-    display: none;
-  }
-  .community-page .community-view-picker,
-  .community-page .community-view-trigger {
-    width: 100%;
-  }
-  .community-page .community-view-trigger {
-    height: 48px;
-    background: #fff;
-    border: 1px solid #e2d6d1;
-    border-radius: 8px;
-  }
   .community-page .community-shell {
     padding-right: 16px;
     padding-left: 16px;
@@ -906,12 +807,7 @@
   border-radius: 999px;
 }
 
-/* Encontros (board 32): coluna de 880px; o próximo encontro leva a data cheia. */
-.community-meetings-shell > :not(.community-section-nav) {
-  max-width: 880px;
-  margin-right: auto;
-  margin-left: auto;
-}
+/* Encontros (board 32): coluna de 880px;
 .community-meetings-shell
   ul
   > li:first-child

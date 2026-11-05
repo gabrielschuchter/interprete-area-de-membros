@@ -143,7 +143,9 @@ export const CommunityRightRail = ({
         Grupos de estudo
       </RailHead>
       {spaces.length === 0 ? (
-        <p className="community-rail__empty">Nenhum grupo publicado ainda.</p>
+        <p className="community-rail__empty">
+          Você ainda não participa de nenhum grupo.
+        </p>
       ) : (
         <div className="community-rail__space-list">
           {spaces.slice(0, 5).map((space) => (
@@ -249,24 +251,34 @@ export const CommunityRightRail = ({
       >
         <RailHead id="community-about-heading">Sobre a comunidade</RailHead>
         <p className="community-rail__about-lead">
-          Um espaço para trocar perguntas, casos e referências sobre
-          interpretação de evidências.
+          Aqui a conversa começa pelo estudo. Traga a pergunta que a aula
+          deixou, o artigo que você leu desconfiado ou a análise que não fechou,
+          e alguém da turma lê junto com você.
         </p>
         <div className="community-rail__guides">
           <div>
             <h3>Regras</h3>
             <ul>
-              <li>Respeite quem pensa diferente.</li>
-              <li>Cite a fonte ao compartilhar uma evidência.</li>
-              <li>Pergunte com contexto: conte o que você já tentou.</li>
+              <li>Discorde do argumento, nunca da pessoa.</li>
+              <li>
+                Afirmou algo sobre evidência? Mostre a fonte: DOI, link ou
+                referência.
+              </li>
+              <li>Caso clínico só sem dados que identifiquem o paciente.</li>
             </ul>
           </div>
           <div>
             <h3>Como participar</h3>
             <ul>
-              <li>Faça uma pergunta ou compartilhe um artigo.</li>
-              <li>Responda com uma leitura, uma dúvida ou uma referência.</li>
-              <li>Entre em um grupo de estudo.</li>
+              <li>
+                Monte a pergunta com população, exposição e desfecho; ela rende
+                respostas melhores.
+              </li>
+              <li>
+                Responda com o que você leu, mesmo que seja para dizer que a
+                evidência é fraca.
+              </li>
+              <li>Estude um tema com mais calma num grupo de estudo.</li>
             </ul>
           </div>
         </div>

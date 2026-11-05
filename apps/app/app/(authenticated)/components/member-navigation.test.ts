@@ -56,13 +56,13 @@ describe("member navigation transition contract", () => {
     ).toBeNull();
   });
 
-  it("maps the twelve links to eleven real destinations and their section side", () => {
-    expect(Object.keys(portalShortcutPaths)).toHaveLength(11);
+  it("maps the portal links to ten real destinations and their section side", () => {
+    expect(Object.keys(portalShortcutPaths)).toHaveLength(10);
     expect(portalSideForPath("/encontros/gravacoes")).toBe("comunidade");
     expect(portalSideForPath("/comunidade/minhas-publicacoes")).toBe(
       "comunidade"
     );
-    expect(portalSideForPath("/planejamento")).toBe("estudar");
+    expect(portalSideForPath("/ferramentas")).toBe("estudar");
   });
 
   it("uses the approved timings, with the mobile card exit", () => {

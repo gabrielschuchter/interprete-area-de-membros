@@ -206,7 +206,7 @@ const goalDeadlineFeedItems = (
       endsAt: new Date(deadline.getTime() + 30 * 60_000),
       allDay: true,
       description: `Meta de ${goal.targetMinutes} minutos no período.`,
-      url: absoluteUrl("/planejamento?view=goals"),
+      url: absoluteUrl("/ferramentas?view=goals"),
     });
   }
   return items;
@@ -235,7 +235,7 @@ export const getPlannerCalendarFeedItems = async (
       description: event.description,
       location: event.location,
       url: absoluteUrl(
-        `/planejamento?view=calendar&event=${encodeURIComponent(event.id)}&occurrence=${encodeURIComponent(event.occurrenceKey)}`
+        `/ferramentas?view=calendar&event=${encodeURIComponent(event.id)}&occurrence=${encodeURIComponent(event.occurrenceKey)}`
       ),
     });
   }
@@ -286,7 +286,7 @@ export const getPlannerCalendarFeedItems = async (
         ? cohortCalendarTimezone
         : data.preferences.timezone,
       description: cohortEvent.description,
-      url: absoluteUrl("/planejamento"),
+      url: absoluteUrl("/ferramentas"),
     });
   }
   for (const task of data.tasks) {
@@ -300,7 +300,7 @@ export const getPlannerCalendarFeedItems = async (
       endsAt: new Date(task.dueAt.getTime() + 30 * 60_000),
       description: task.description,
       url: absoluteUrl(
-        `/planejamento?view=calendar&task=${encodeURIComponent(task.id)}`
+        `/ferramentas?view=calendar&task=${encodeURIComponent(task.id)}`
       ),
     });
   }
@@ -378,12 +378,12 @@ export const serializePlannerCalendarFeed = (
   items: readonly PlannerCalendarFeedItem[],
   timezone: string,
   generatedAt = new Date(),
-  calendarName = "Interprete · Planejamento"
+  calendarName = "Interprete · Ferramentas"
 ) => {
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//Interprete//Planejamento//PT-BR",
+    "PRODID:-//Interprete//Ferramentas//PT-BR",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     `X-WR-CALNAME:${escapeIcsText(calendarName)}`,

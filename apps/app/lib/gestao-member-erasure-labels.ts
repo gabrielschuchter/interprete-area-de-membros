@@ -1,9 +1,4 @@
-export type ErasureBlocker =
-  | "last-admin"
-  | "not-member-role"
-  | "owns-shared-space"
-  | "self"
-  | "staff-records";
+export type ErasureBlocker = "last-admin" | "self";
 
 export interface ErasureCounts {
   readonly bookmarks: number;
@@ -14,17 +9,16 @@ export interface ErasureCounts {
   readonly lessonProgress: number;
   readonly notes: number;
   readonly posts: number;
+  /** Grupos com outras pessoas dentro; a posse passa para o membro mais antigo. */
+  readonly sharedSpaces: number;
+  /** Turmas, convites, acessos e eventos criados por ele; passam para quem apaga. */
+  readonly staffRecords: number;
   readonly submissions: number;
   readonly votes: number;
 }
 
 export const erasureBlockerLabels: Record<ErasureBlocker, string> = {
-  "last-admin": "É o único administrador ativo.",
-  "not-member-role":
-    "Só dá para apagar quem está com o papel Membro. Mude o papel antes.",
-  "owns-shared-space":
-    "É dono de um grupo de estudo que tem outras pessoas. Passe a posse ou arquive o grupo antes.",
+  "last-admin":
+    "É o único administrador ativo. Promova outra pessoa a administrador antes.",
   self: "Você não apaga a própria conta.",
-  "staff-records":
-    "Criou turmas, convites, acessos ou eventos que dependem dele. Isso é registro da equipe e fica preservado.",
 };

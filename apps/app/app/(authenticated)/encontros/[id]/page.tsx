@@ -9,6 +9,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireMemberId } from "@/lib/learning";
 import { getPublishedMeeting } from "@/lib/meetings";
+import { memberActivitiesEnabled } from "@/lib/member-features";
 
 interface MeetingPageProperties {
   readonly params: Promise<{ id: string }>;
@@ -102,7 +103,7 @@ const MeetingPage = async ({ params }: MeetingPageProperties) => {
               Percurso relacionado: {meeting.course.title}
             </p>
           )}
-          {meeting.relatedActivity ? (
+          {memberActivitiesEnabled && meeting.relatedActivity ? (
             <p className="mt-3 text-muted-foreground text-sm">
               Atividade relacionada:{" "}
               <Link

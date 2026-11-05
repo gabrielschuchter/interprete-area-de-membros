@@ -9,7 +9,6 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { CommunityNavigation } from "@/components/community/community-navigation";
 import { MeetingsCalendar } from "@/components/meetings/meetings-calendar";
 import { Stagger } from "@/components/motion/motion";
 import { requireMemberId } from "@/lib/learning";
@@ -259,7 +258,6 @@ const MeetingsPage = async ({
     return (
       <div className="community-page min-h-svh bg-background">
         <main className="community-shell community-meetings-shell mx-auto w-full">
-          <CommunityNavigation active="meetings" />
           <header className="community-meetings-page__intro flex flex-col gap-4 border-border border-b pb-5 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <h1 className="font-display text-4xl leading-tight sm:text-5xl">
@@ -348,7 +346,6 @@ const MeetingsPage = async ({
           (inCommunity ? "max-w-[1120px]" : "max-w-[1280px] py-10 lg:py-16")
         }
       >
-        {inCommunity ? <CommunityNavigation active="meetings" /> : null}
         <header className="max-w-3xl">
           <p className="brand-eyebrow">
             {inCommunity

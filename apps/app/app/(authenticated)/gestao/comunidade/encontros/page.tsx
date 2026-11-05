@@ -197,7 +197,8 @@ const GestaoMeetingsPage = async ({
           <section className="gk-card">
             <h2>Calendário</h2>
             <p className="gk-hint">
-              Os encontros publicados aparecem no Planejamento de cada aluno.
+              Os encontros publicados aparecem no calendário de cada aluno, em
+              Ferramentas.
             </p>
           </section>
         </aside>

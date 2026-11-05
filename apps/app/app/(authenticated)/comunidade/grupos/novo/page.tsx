@@ -10,7 +10,6 @@ import {
 } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CommunityNavigation } from "@/components/community/community-navigation";
 import { GroupCoverUpload } from "@/components/community/group-cover-upload";
 import { GroupMemberInvitePicker } from "@/components/community/group-member-invite-picker";
 import {
@@ -42,7 +41,6 @@ const NewStudyGroupPage = async ({
   return (
     <div className="community-page min-h-svh bg-background">
       <main className="community-shell mx-auto w-full">
-        <CommunityNavigation active="groups" />
         <Button asChild className="-ml-3" variant="ghost">
           <Link href="/comunidade/grupos">
             <ArrowLeftIcon aria-hidden="true" /> Grupos

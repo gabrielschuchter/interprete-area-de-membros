@@ -113,7 +113,7 @@ export const eraseGestaoMemberData = async (formData: FormData) => {
       outcome = "confirmation";
     } else {
       await database.$transaction(async (transaction) => {
-        await eraseMemberRecords(transaction, memberId);
+        await eraseMemberRecords(transaction, memberId, actor.userId);
         await recordAuditEvent(
           {
             actorId: actor.userId,

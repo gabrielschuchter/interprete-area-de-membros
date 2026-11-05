@@ -149,7 +149,9 @@ describe("CommunityPresence UI", () => {
     await waitFor(() =>
       expect(profileLink.getAttribute("data-prefetch")).toBe("enabled")
     );
-    expect(profileLink.getAttribute("title")).toBe("Ana");
+    expect(profileLink.querySelector("[role=tooltip]")?.textContent).toBe(
+      "Ana"
+    );
     expect(
       screen
         .getByRole("link", { name: "Abrir perfil de Bruna" })

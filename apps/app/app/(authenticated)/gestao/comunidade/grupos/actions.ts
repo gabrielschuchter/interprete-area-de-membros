@@ -288,3 +288,51 @@ export const setGestaoGroupState = async (formData: FormData) => {
   });
   revalidateGroups(space.slug);
 };
+
+/**
+ * Apaga de vez um grupo arquivado: publicações, comentários, membros e
+ * convites saem junto. Só vale para grupo arquivado, para que a exclusão seja
+ * sempre o segundo passo, e não para grupo que uma coleção usa como público.
+ */
+export const deleteGestaoGroup = async (formData: FormData) => {
+  const { actor } = await requireGestaoAction("community.moderate");
+  const id = text(formData, "id");
+  if (!id) {
+    return;
+  }
+  const space = await database.communitySpace.findUnique({
+    where: { id },
+    select: {
+      _count: { select: { contentCollections: true, posts: true } },
+      slug: true,
+      status: true,
+      title: true,
+    },
+  });
+  if (
+    !space ||
+    space.status !== ContentStatus.ARCHIVED ||
+    space._count.contentCollections > 0
+  ) {
+    return;
+  }
+  await consumeMutationRateLimit({
+    action: "community.moderation",
+    memberId: actor.userId,
+  });
+  await database.$transaction(async (transaction) => {
+    await transaction.communityPost.deleteMany({ where: { spaceId: id } });
+    await transaction.communitySpace.delete({ where: { id } });
+    await recordAuditEvent(
+      {
+        actorId: actor.userId,
+        aggregateId: id,
+        aggregateType: "CommunitySpace",
+        eventType: "gestao.group.deleted",
+        payload: { posts: space._count.posts, title: space.title },
+      },
+      transaction
+    );
+  });
+  revalidateGroups(space.slug);
+};

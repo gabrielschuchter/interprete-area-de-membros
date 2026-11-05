@@ -8,6 +8,7 @@ import { LibraryResults } from "@/components/library/library-results";
 import { LibraryResultsSkeleton } from "@/components/library/library-results-skeleton";
 import { requireMemberId } from "@/lib/learning";
 import { getLibraryCategories } from "@/lib/library";
+import { libraryCategoryGroup } from "@/lib/library-categories";
 
 interface LibraryPageProperties {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -19,7 +20,10 @@ const firstValue = (value: string | string[] | undefined) =>
 const readFilters = (
   params: Record<string, string | string[] | undefined>
 ): LibraryFilterValues => ({
-  category: firstValue(params.category) ?? "",
+  category: (() => {
+    const category = firstValue(params.category);
+    return category ? libraryCategoryGroup(category) : "";
+  })(),
   difficulty: firstValue(params.difficulty) ?? "",
   kind: firstValue(params.kind) ?? "",
   language: firstValue(params.language) ?? "",
