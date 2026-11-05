@@ -19,6 +19,7 @@ export const listGestaoMedals = async (input: {
       _count: { select: { awards: true } },
       criterion: true,
       id: true,
+      imageUrl: true,
       status: true,
       threshold: true,
       title: true,
@@ -34,6 +35,7 @@ export const getGestaoMedal = (id: string) =>
       criterion: true,
       description: true,
       id: true,
+      imageUrl: true,
       revisions: {
         orderBy: { version: "desc" },
         take: 12,

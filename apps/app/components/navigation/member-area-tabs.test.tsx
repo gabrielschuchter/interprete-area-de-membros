@@ -14,7 +14,7 @@ import {
 } from "@/app/(authenticated)/components/member-navigation-context";
 import { MemberAreaTabs } from "./member-area-tabs";
 
-const navigationState = vi.hoisted(() => ({ pathname: "/estudar" }));
+const navigationState = vi.hoisted(() => ({ pathname: "/cursos" }));
 
 vi.mock("next/navigation", () => ({
   usePathname: () => navigationState.pathname,
@@ -61,18 +61,18 @@ const activeTab = () =>
   screen
     .getAllByRole("link", { current: "page" })
     .map((link) => link.textContent)
-    .filter((label) => label === "Biblioteca" || label === "Visão geral");
+    .filter((label) => label === "Biblioteca" || label === "Cursos");
 
 afterEach(() => {
   cleanup();
-  navigationState.pathname = "/estudar";
+  navigationState.pathname = "/cursos";
 });
 
 describe("MemberAreaTabs", () => {
   test("keeps the committed tab while no navigation is pending", () => {
     renderTabs(null);
 
-    expect(activeTab()).toEqual(["Visão geral"]);
+    expect(activeTab()).toEqual(["Cursos"]);
   });
 
   test("moves the active tab as soon as the click starts a navigation", () => {

@@ -31,7 +31,10 @@ const startsWithSegment = (pathname: string, prefix: string) =>
  * the swap from this client-side skeleton to the streamed one is not a jump.
  */
 export const skeletonForPath = (pathname: string) => {
-  if (startsWithSegment(pathname, "/encontros/gravacoes")) {
+  if (
+    startsWithSegment(pathname, "/gravacoes") ||
+    startsWithSegment(pathname, "/encontros/gravacoes")
+  ) {
     return <RecordingsLoading />;
   }
   if (

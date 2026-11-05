@@ -15,6 +15,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useState } from "react";
+import { GestaoErase } from "@/app/(authenticated)/gestao/apagar/erase-dialog";
 import { GestaoIcon } from "@/app/(authenticated)/gestao/gestao-icon";
 import type { getGestaoLibraryCatalog } from "@/lib/gestao-library";
 import {
@@ -111,24 +112,39 @@ const ItemStatus = ({ item }: { readonly item: LibraryItem }) => (
 const ItemMenu = ({ item }: { readonly item: LibraryItem }) => {
   const router = useRouter();
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button
-          aria-label={`Mais ações de ${item.title}`}
-          className="gk-icon-btn gk-icon-btn--bare"
-          type="button"
-        >
-          <GestaoIcon name="dots" size={18} />
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="gk-menu">
-        <DropdownMenuItem
-          onSelect={() => router.push(`/gestao/ensino/biblioteca/${item.id}`)}
-        >
-          Editar material
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <GestaoErase
+      consequence="Salvos, visualizações e itens de coleções ligados a ele somem junto, e o arquivo enviado é removido."
+      id={item.id}
+      kind="library-item"
+      noun="material"
+      title={item.title}
+    >
+      {(openErase) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              aria-label={`Mais ações de ${item.title}`}
+              className="gk-icon-btn gk-icon-btn--bare"
+              type="button"
+            >
+              <GestaoIcon name="dots" size={18} />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="gk-menu">
+            <DropdownMenuItem
+              onSelect={() =>
+                router.push(`/gestao/ensino/biblioteca/${item.id}`)
+              }
+            >
+              Editar material
+            </DropdownMenuItem>
+            <DropdownMenuItem className="gk-menu-danger" onSelect={openErase}>
+              Apagar material
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+    </GestaoErase>
   );
 };
 

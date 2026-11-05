@@ -194,6 +194,37 @@ describe.skipIf(!isLocal)("collective goal progress (database)", () => {
     });
   });
 
+  test("counts background presence without double-counting measured study", async () => {
+    const { getCommunityGoalSummary } = await import("./community-goal");
+    const hour = new Date(now);
+    hour.setUTCMinutes(0, 0, 0);
+    const earlier = new Date(hour.getTime() - 3 * 3600 * 1000);
+    const earlierStill = new Date(hour.getTime() - 5 * 3600 * 1000);
+    await database.memberPresenceHour.createMany({
+      data: [
+        // 20 min de presença em hora sem estudo medido: soma.
+        {
+          memberId: memberA,
+          hourStart: earlier,
+          seconds: 1200,
+          lastBeatAt: earlier,
+        },
+        // Hora do estudo medido de A (10 min): vale o maior, 10 min < 40 min.
+        {
+          memberId: memberA,
+          hourStart: earlierStill,
+          seconds: 2400,
+          lastBeatAt: earlierStill,
+        },
+      ],
+    });
+    const before = await getCommunityGoalSummary(now);
+    expect(before?.totalSeconds).toBeGreaterThan(24 * 60);
+    await database.memberPresenceHour.deleteMany({
+      where: { memberId: { in: [memberA, memberB] } },
+    });
+  });
+
   test("adds every member's study once, including unclosed sessions", async () => {
     const { getCommunityGoalSummary } = await import("./community-goal");
     const goal = await getCommunityGoalSummary(now);

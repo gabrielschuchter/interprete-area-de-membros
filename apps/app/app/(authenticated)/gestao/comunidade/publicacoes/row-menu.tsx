@@ -14,6 +14,7 @@ import {
 } from "@repo/design-system/components/ui/dropdown-menu";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { GestaoErase } from "../../apagar/erase-dialog";
 import { GestaoIcon } from "../../gestao-icon";
 import { setGestaoPublicationState } from "./actions";
 
@@ -122,60 +123,69 @@ export const PublicationRowMenu = ({
   };
   const live = status === "PUBLISHED";
   return (
-    <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button
-            aria-label={`Mais ações para ${title}`}
-            className="gk-icon-btn gk-icon-btn--bare"
-            type="button"
-          >
-            <GestaoIcon name="dots" size={18} />
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="gk-menu">
-          <DropdownMenuItem onSelect={() => router.push(href)}>
-            <GestaoIcon name="external" size={16} /> Abrir publicação
-          </DropdownMenuItem>
-          {live ? (
-            <DropdownMenuItem onSelect={() => run(isPinned ? "unpin" : "pin")}>
-              <GestaoIcon name="pin" size={16} />{" "}
-              {isPinned ? "Soltar do feed" : "Fixar no feed"}
-            </DropdownMenuItem>
+    <GestaoErase
+      consequence="Comentários, votos e salvos dessa publicação somem junto."
+      id={id}
+      kind="post"
+      noun="publicação"
+      title={title}
+    >
+      {(openErase) => (
+        <>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                aria-label={`Mais ações para ${title}`}
+                className="gk-icon-btn gk-icon-btn--bare"
+                type="button"
+              >
+                <GestaoIcon name="dots" size={18} />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="gk-menu">
+              <DropdownMenuItem onSelect={() => router.push(href)}>
+                <GestaoIcon name="external" size={16} /> Abrir publicação
+              </DropdownMenuItem>
+              {live ? (
+                <DropdownMenuItem
+                  onSelect={() => run(isPinned ? "unpin" : "pin")}
+                >
+                  <GestaoIcon name="pin" size={16} />{" "}
+                  {isPinned ? "Soltar do feed" : "Fixar no feed"}
+                </DropdownMenuItem>
+              ) : null}
+              {live ? (
+                <DropdownMenuItem
+                  onSelect={() => run(isFeatured ? "unfeature" : "feature")}
+                >
+                  <GestaoIcon name="star" size={16} />{" "}
+                  {isFeatured ? "Retirar destaque" : "Destacar"}
+                </DropdownMenuItem>
+              ) : null}
+              {live ? (
+                <DropdownMenuItem onSelect={() => setConfirming("archive")}>
+                  <GestaoIcon name="archive" size={16} /> Arquivar
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem onSelect={() => run("restore")}>
+                  <GestaoIcon name="refresh" size={16} /> Restaurar
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem className="gk-menu-danger" onSelect={openErase}>
+                <GestaoIcon name="trash" size={16} /> Apagar de vez
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          {confirming ? (
+            <ConfirmDialog
+              id={id}
+              kind={confirming}
+              onClose={() => setConfirming(null)}
+              title={title}
+            />
           ) : null}
-          {live ? (
-            <DropdownMenuItem
-              onSelect={() => run(isFeatured ? "unfeature" : "feature")}
-            >
-              <GestaoIcon name="star" size={16} />{" "}
-              {isFeatured ? "Retirar destaque" : "Destacar"}
-            </DropdownMenuItem>
-          ) : null}
-          {live ? (
-            <DropdownMenuItem onSelect={() => setConfirming("archive")}>
-              <GestaoIcon name="archive" size={16} /> Arquivar
-            </DropdownMenuItem>
-          ) : (
-            <DropdownMenuItem onSelect={() => run("restore")}>
-              <GestaoIcon name="refresh" size={16} /> Restaurar
-            </DropdownMenuItem>
-          )}
-          <DropdownMenuItem
-            className="gk-menu-danger"
-            onSelect={() => setConfirming("remove")}
-          >
-            <GestaoIcon name="trash" size={16} /> Remover…
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-      {confirming ? (
-        <ConfirmDialog
-          id={id}
-          kind={confirming}
-          onClose={() => setConfirming(null)}
-          title={title}
-        />
-      ) : null}
-    </>
+        </>
+      )}
+    </GestaoErase>
   );
 };

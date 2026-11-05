@@ -1,5 +1,6 @@
-import type { Metadata } from "next";
+import { permanentRedirect } from "next/navigation";
 
-export { default } from "@/components/learning/study-overview";
+// A Visão geral do Estudar saiu (05/11/2026): Cursos é a entrada da seção.
+const LegacyStudyOverviewPage = () => permanentRedirect("/cursos");
 
-export const metadata: Metadata = { title: "Estudar | Interprete" };
+export default LegacyStudyOverviewPage;

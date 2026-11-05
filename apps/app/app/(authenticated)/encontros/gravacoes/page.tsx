@@ -16,7 +16,7 @@ const LegacyRecordingsPage = async ({
     }
   }
   const suffix = query.size > 0 ? `?${query.toString()}` : "";
-  return permanentRedirect(`/comunidade/encontros/gravacoes${suffix}`);
+  return permanentRedirect(`/gravacoes${suffix}`);
 };
 
 export default LegacyRecordingsPage;

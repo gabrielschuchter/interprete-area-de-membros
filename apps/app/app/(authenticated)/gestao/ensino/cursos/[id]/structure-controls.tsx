@@ -15,6 +15,7 @@ import {
 } from "@repo/design-system/components/ui/dropdown-menu";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState, useTransition } from "react";
+import { GestaoErase } from "../../../apagar/erase-dialog";
 import { GestaoIcon } from "../../../gestao-icon";
 import {
   addGestaoLesson,
@@ -184,55 +185,74 @@ export const StructureMenu = ({
 
   return (
     <span className="gk-menu-anchor">
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button
-            aria-label={`Mais ações do ${noun} ${title}`}
-            className="gk-icon-btn gk-icon-btn--bare"
-            type="button"
-          >
-            <GestaoIcon name="dots" size={18} />
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="gk-menu">
-          {kind === "module" ? (
-            <DropdownMenuItem onSelect={() => setEditing(true)}>
-              Editar módulo
-            </DropdownMenuItem>
-          ) : (
-            <DropdownMenuItem
-              onSelect={() => editHref && router.push(editHref)}
-            >
-              Abrir editor da aula
-            </DropdownMenuItem>
-          )}
-          <DropdownMenuItem
-            disabled={!canMoveUp}
-            onSelect={() => perform(moveGestaoItem, { direction: "up" })}
-          >
-            Mover para cima
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            disabled={!canMoveDown}
-            onSelect={() => perform(moveGestaoItem, { direction: "down" })}
-          >
-            Mover para baixo
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => perform(duplicateGestaoItem, {})}>
-            Duplicar {noun}
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          {status === "PUBLISHED" ? (
-            <DropdownMenuItem onSelect={() => changeStatus("ARCHIVED")}>
-              Arquivar {noun}
-            </DropdownMenuItem>
-          ) : (
-            <DropdownMenuItem onSelect={() => changeStatus("PUBLISHED")}>
-              Publicar {noun}
-            </DropdownMenuItem>
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <GestaoErase
+        consequence={
+          kind === "module"
+            ? "As aulas do módulo e o progresso dos alunos nelas somem junto."
+            : "O vídeo, os materiais e o progresso dos alunos nela somem junto."
+        }
+        id={id}
+        kind={kind}
+        noun={noun}
+        title={title}
+      >
+        {(openErase) => (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                aria-label={`Mais ações do ${noun} ${title}`}
+                className="gk-icon-btn gk-icon-btn--bare"
+                type="button"
+              >
+                <GestaoIcon name="dots" size={18} />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="gk-menu">
+              {kind === "module" ? (
+                <DropdownMenuItem onSelect={() => setEditing(true)}>
+                  Editar módulo
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem
+                  onSelect={() => editHref && router.push(editHref)}
+                >
+                  Abrir editor da aula
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem
+                disabled={!canMoveUp}
+                onSelect={() => perform(moveGestaoItem, { direction: "up" })}
+              >
+                Mover para cima
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={!canMoveDown}
+                onSelect={() => perform(moveGestaoItem, { direction: "down" })}
+              >
+                Mover para baixo
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() => perform(duplicateGestaoItem, {})}
+              >
+                Duplicar {noun}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              {status === "PUBLISHED" ? (
+                <DropdownMenuItem onSelect={() => changeStatus("ARCHIVED")}>
+                  Arquivar {noun}
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem onSelect={() => changeStatus("PUBLISHED")}>
+                  Publicar {noun}
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem className="gk-menu-danger" onSelect={openErase}>
+                Apagar {noun}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </GestaoErase>
       {note ? (
         <MenuNote message={note} onDismiss={() => setNote(null)} />
       ) : null}

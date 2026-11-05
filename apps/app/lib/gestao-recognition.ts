@@ -49,6 +49,7 @@ export const listGestaoRecognition = async (input: {
       select: {
         id: true,
         title: true,
+        criterion: true,
         description: true,
         imageUrl: true,
         awards: {

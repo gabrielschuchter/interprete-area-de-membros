@@ -466,6 +466,7 @@ model Member {
   exerciseQuestionBookmarks           ExerciseQuestionBookmark[]
   studyTrackingSessions               StudyTrackingSession[]
   studyActivityIntervals              StudyActivityInterval[]
+  presenceHours                       MemberPresenceHour[]
   studyGoals                          StudyGoal[]
   learningTasksCreated                LearningTask[]                     @relation("LearningTaskCreator")
   learningTaskAssignments             LearningTaskRecipient[]
@@ -2177,6 +2178,20 @@ model StudyActivityInterval {
   @@index([memberId, startedAt])
   @@index([startedAt])
   @@index([memberId, isPlayback, startedAt])
+}
+
+/// Tempo de presença na plataforma, agregado por membro e por hora (meta
+/// coletiva). Uma linha por pessoa por hora, atualizada por upsert: o custo
+/// não cresce com o número de sinais.
+model MemberPresenceHour {
+  memberId   String
+  hourStart  DateTime @db.Timestamptz(6)
+  seconds    Int      @default(0)
+  lastBeatAt DateTime @db.Timestamptz(6)
+  member     Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@id([memberId, hourStart])
+  @@index([hourStart])
 }
 
 model StudyGoal {

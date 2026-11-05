@@ -7,6 +7,7 @@ import {
   StudyGoalPeriod,
 } from "@repo/database";
 import { tracePerformance } from "@repo/observability/performance";
+import { readCollectiveGoalSeconds } from "./community-goal";
 import {
   localStudyDayStart,
   shiftStudyLocalDay,
@@ -67,50 +68,6 @@ const readMemberStudyTotals = (
       COALESCE((SELECT SUM(EXTRACT(EPOCH FROM upper(r) - lower(r))) FROM unnest(playback_ranges) AS r), 0)::bigint AS "playbackSeconds"
     FROM grouped
     ORDER BY day ASC
-  `);
-
-export const readCampaignContribution = (startsAt: Date, endsAt: Date) =>
-  database.$queryRaw<Array<{ seconds: number | bigint }>>(Prisma.sql`
-    WITH clipped AS (
-      SELECT
-        interval."memberId",
-        GREATEST(interval."startedAt", ${startsAt}) AS clipped_start,
-        LEAST(interval."endedAt", ${endsAt}) AS clipped_end
-      FROM "StudyActivityInterval" AS interval
-      INNER JOIN "Member" AS member ON member.id = interval."memberId"
-      WHERE member.role = 'MEMBER'::"MemberRole"
-        AND member."deactivatedAt" IS NULL
-        AND interval."endedAt" > ${startsAt}
-        AND interval."startedAt" < ${endsAt}
-    ),
-    day_slices AS (
-      SELECT
-        clipped."memberId",
-        days.day_start AS day,
-        tstzrange(
-          GREATEST(clipped.clipped_start, days.day_start AT TIME ZONE 'America/Sao_Paulo'),
-          LEAST(clipped.clipped_end, (days.day_start + interval '1 day') AT TIME ZONE 'America/Sao_Paulo'),
-          '[)'
-        ) AS slice
-      FROM clipped
-      CROSS JOIN LATERAL generate_series(
-        date_trunc('day', clipped.clipped_start AT TIME ZONE 'America/Sao_Paulo'),
-        date_trunc('day', (clipped.clipped_end - interval '1 microsecond') AT TIME ZONE 'America/Sao_Paulo'),
-        interval '1 day'
-      ) AS days(day_start)
-    ),
-    per_member_day AS (
-      SELECT "memberId", day, range_agg(slice) AS ranges
-      FROM day_slices
-      GROUP BY "memberId", day
-    ),
-    per_member AS (
-      SELECT "memberId", SUM(EXTRACT(EPOCH FROM upper(r) - lower(r))) AS seconds
-      FROM per_member_day
-      CROSS JOIN LATERAL unnest(ranges) AS r
-      GROUP BY "memberId"
-    )
-    SELECT COALESCE(SUM(seconds), 0)::bigint AS seconds FROM per_member
   `);
 
 export const getStudyDashboardData = (memberId: string) =>
@@ -269,17 +226,15 @@ export const getStudyDashboardData = (memberId: string) =>
       title: string;
     } | null = null;
     if (campaign) {
-      const [contribution, memberCount] = await Promise.all([
-        readCampaignContribution(campaign.startsAt, now),
+      const [contributionSeconds, memberCount] = await Promise.all([
+        readCollectiveGoalSeconds(campaign.startsAt, now),
         database.member.count({
           where: { role: "MEMBER", deactivatedAt: null },
         }),
       ]);
       campaignProgress = {
         ...campaign,
-        contributedMinutes: Math.floor(
-          Number(contribution[0]?.seconds ?? 0) / 60
-        ),
+        contributedMinutes: Math.floor(contributionSeconds / 60),
         memberCount,
       };
     }

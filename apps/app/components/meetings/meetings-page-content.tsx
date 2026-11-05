@@ -173,7 +173,7 @@ const CommunityPastMeetingRow = ({
 }) => {
   const recording = meeting.recordings[0];
   const recordingHref = recording
-    ? `/comunidade/encontros/gravacoes?asset=${encodeURIComponent(recording.asset.id)}`
+    ? `/gravacoes?asset=${encodeURIComponent(recording.asset.id)}`
     : meeting.recordingUrl;
   const hasRecording = Boolean(recording || meeting.recordingUrl);
   let action = (
@@ -258,7 +258,7 @@ const MeetingsPage = async ({
     return (
       <div className="community-page min-h-svh bg-background">
         <main className="community-shell community-meetings-shell mx-auto w-full">
-          <header className="community-meetings-page__intro flex flex-col gap-4 border-border border-b pb-5 sm:flex-row sm:items-end sm:justify-between">
+          <header className="community-meetings-page__intro flex flex-col gap-4 pb-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <h1 className="font-display text-4xl leading-tight sm:text-5xl">
                 Encontros
@@ -271,7 +271,7 @@ const MeetingsPage = async ({
 
           <section
             aria-labelledby="community-upcoming-heading"
-            className="community-meetings-section mt-9"
+            className="community-meetings-section mt-8"
           >
             <h2
               className="community-meetings-section__title border-border border-b pb-3 font-display text-3xl"
@@ -308,7 +308,7 @@ const MeetingsPage = async ({
               </h2>
               <Link
                 className="community-meetings-archive-link community-meetings-archive-link--heading inline-flex items-center gap-2 font-medium text-brand-structural text-sm"
-                href="/comunidade/encontros/gravacoes"
+                href="/gravacoes"
               >
                 Minhas gravações <ArrowRightIcon aria-hidden="true" />
               </Link>
@@ -326,7 +326,7 @@ const MeetingsPage = async ({
             )}
             <Link
               className="community-meetings-archive-link community-meetings-archive-link--footer"
-              href="/comunidade/encontros/gravacoes"
+              href="/gravacoes"
             >
               <VideoIcon aria-hidden="true" />
               Minhas gravações
@@ -448,7 +448,7 @@ const MeetingsPage = async ({
               title: recording.originalTitle ?? recording.asset.title,
             })),
           }))}
-          recordingsBasePath={"/comunidade/encontros/gravacoes"}
+          recordingsBasePath={"/gravacoes"}
         />
         <section aria-labelledby="upcoming-heading" className="mt-14">
           <div className="flex items-end justify-between border-border border-b pb-3">
@@ -533,7 +533,7 @@ const MeetingsPage = async ({
                       <Button asChild size="sm" variant="outline">
                         <Link
                           href={
-                            "/comunidade/encontros/gravacoes" +
+                            "/gravacoes" +
                             "?asset=" +
                             encodeURIComponent(internalRecording.asset.id)
                           }

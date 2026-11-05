@@ -159,6 +159,12 @@ const navigation: readonly NavigationItem[] = [
       },
     ],
   },
+  {
+    href: "/gestao/guia",
+    icon: "book",
+    label: "Guia",
+    admin: false,
+  },
 ] as const;
 
 const welcomeDelayMs = 700;

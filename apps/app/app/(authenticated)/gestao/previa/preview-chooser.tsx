@@ -128,7 +128,6 @@ export const PreviewChooser = ({
         <label className="gk-radio" data-checked={kind === "cohort"}>
           <input
             checked={kind === "cohort"}
-            disabled={cohorts.length === 0}
             onChange={() => setKind("cohort")}
             type="radio"
           />
@@ -137,7 +136,13 @@ export const PreviewChooser = ({
             <small>O que a turma recebe (conteúdo, cronograma, avisos).</small>
           </span>
         </label>
-        {kind === "cohort" ? (
+        {kind === "cohort" && cohorts.length === 0 ? (
+          <p className="gk-hint">
+            Nenhuma turma tem aluno ativo ainda. Adicione alunos a uma turma ou
+            escolha “Um aluno específico”.
+          </p>
+        ) : null}
+        {kind === "cohort" && cohorts.length > 0 ? (
           <select className="gk-input" name="cohortId" required>
             <option value="">Escolha a turma</option>
             {cohorts.map((cohort) => (

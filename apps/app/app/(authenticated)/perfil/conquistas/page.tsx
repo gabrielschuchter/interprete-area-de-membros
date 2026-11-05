@@ -75,6 +75,7 @@ const AchievementsPage = async () => {
         title: true,
         description: true,
         criterion: true,
+        imageUrl: true,
         threshold: true,
       },
     }),
@@ -164,6 +165,7 @@ const AchievementsPage = async () => {
                       <ProfileBadgeIcon
                         criterion={badge.criterion}
                         earned={reached}
+                        imageUrl={badge.imageUrl}
                       />
                       <div className="min-w-0 flex-1 sm:flex sm:items-center sm:justify-between sm:gap-5">
                         <div className="min-w-0">

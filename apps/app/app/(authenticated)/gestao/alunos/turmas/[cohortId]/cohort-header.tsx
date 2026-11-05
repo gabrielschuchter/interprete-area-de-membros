@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type { GestaoCohortDetail } from "@/lib/gestao-cohorts";
+import { GestaoEraseButton } from "../../../apagar/erase-dialog";
 import { GestaoCrumbTail } from "../../../gestao-crumbs";
 
 const dateFormat = new Intl.DateTimeFormat("pt-BR", {
@@ -65,6 +66,14 @@ export const GestaoCohortHeader = ({
               Adicionar alunos
             </Link>
           )}
+          <GestaoEraseButton
+            consequence="As matrículas, liberações de aula, eventos e avisos desta turma somem junto. Os alunos continuam na plataforma, mas perdem o que vinha só da turma."
+            id={cohort.id}
+            kind="cohort"
+            noun="turma"
+            redirectTo="/gestao/alunos/turmas"
+            title={cohort.name}
+          />
         </div>
       </header>
       <nav aria-label="Seções da turma" className="gt-cohort-tabs">

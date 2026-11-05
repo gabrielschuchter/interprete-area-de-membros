@@ -1,6 +1,6 @@
 import type { BadgeCriterion } from "@repo/database";
 import Image from "next/image";
-import { badgeArtworkByCriterion } from "@/lib/badge-artwork";
+import { badgeImageFor } from "@/lib/badge-artwork";
 import {
   conquestLabel,
   medalCriterionLabels,
@@ -15,14 +15,16 @@ const sizes = [
 /** Palco escuro: a medalha em grande, nos tamanhos reais e bloqueada. */
 export const MedalStage = ({
   criterion,
+  imageUrl,
   threshold,
   title,
 }: {
   readonly criterion: BadgeCriterion;
+  readonly imageUrl?: string | null;
   readonly threshold: number;
   readonly title: string;
 }) => {
-  const art = badgeArtworkByCriterion[criterion];
+  const art = badgeImageFor({ criterion, imageUrl });
   return (
     <div className="gk-stage">
       <div className="gk-stage-hero">

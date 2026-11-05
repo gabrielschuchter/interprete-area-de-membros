@@ -6,9 +6,9 @@ import {
   gestaoGroupTabs,
   getGestaoGroups,
 } from "@/lib/gestao-groups";
+import { GestaoEraseButton } from "../../apagar/erase-dialog";
 import { GestaoIcon } from "../../gestao-icon";
 import { setGestaoGroupState } from "./actions";
-import { DeleteGroupButton } from "./delete-group-button";
 import { ManageGroupButton, NewGroupButton } from "./group-dialogs";
 
 const base = "/gestao/comunidade/grupos";
@@ -106,13 +106,15 @@ const GroupCard = ({
             operation="publish"
           />
         )}
-        {group.status === "ARCHIVED" ? (
-          <DeleteGroupButton
-            id={group.id}
-            posts={group.posts}
-            title={group.title}
-          />
-        ) : (
+        <GestaoEraseButton
+          consequence={`${group.posts} publicações do grupo, com comentários e votos, membros e convites saem junto.`}
+          id={group.id}
+          kind="group"
+          label="Apagar"
+          noun="grupo"
+          title={group.title}
+        />
+        {group.status === "ARCHIVED" ? null : (
           <StateButton
             className="gk-link-btn gk-link-btn--muted"
             id={group.id}

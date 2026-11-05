@@ -12,6 +12,7 @@ import {
 } from "@/lib/gestao-meetings-domain";
 import { GestaoCrumbTail } from "../../gestao-crumbs";
 import { MeetingEditor, type MeetingEditorValues } from "./meeting-editor";
+import { MeetingRecordingsPanel } from "./meeting-recordings-panel";
 
 type EditorData = Awaited<ReturnType<typeof getGestaoMeetingEditor>>;
 type EditorMeeting = NonNullable<EditorData["meeting"]>;
@@ -105,6 +106,9 @@ export const GestaoMeetingEditorPage = async ({
         people={data.people}
         presetDate={presetDate ?? ""}
       />
+      {data.meeting ? (
+        <MeetingRecordingsPanel meetingId={data.meeting.id} />
+      ) : null}
     </section>
   );
 };

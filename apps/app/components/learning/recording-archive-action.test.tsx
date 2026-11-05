@@ -62,7 +62,7 @@ describe("RecordingArchiveAction", () => {
 
     expect(
       screen.getByRole("link", { name: "Abrir gravação" }).getAttribute("href")
-    ).toBe("/encontros/gravacoes?asset=asset-1#asset-asset-1");
+    ).toBe("/gravacoes?asset=asset-1#asset-asset-1");
   });
 
   test("opens every video in the room when it is on, even without a source", () => {

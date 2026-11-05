@@ -46,7 +46,7 @@ export const GestaoRestrictedState = ({
         </p>
         <div className="gestao-restricted-actions">
           <Button asChild>
-            <Link href={withinGestao ? "/gestao" : "/estudar"} prefetch={false}>
+            <Link href={withinGestao ? "/gestao" : "/cursos"} prefetch={false}>
               {withinGestao
                 ? "Voltar à visão geral"
                 : "Voltar à área de membros"}

@@ -1,12 +1,6 @@
 "use client";
 
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from "@repo/design-system/components/ui/dialog";
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -14,11 +8,8 @@ import {
 } from "@repo/design-system/components/ui/dropdown-menu";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import {
-  deleteGestaoCollection,
-  setGestaoCollectionStatus,
-} from "@/app/(authenticated)/gestao/ensino/colecoes/actions";
+import { GestaoErase } from "@/app/(authenticated)/gestao/apagar/erase-dialog";
+import { setGestaoCollectionStatus } from "@/app/(authenticated)/gestao/ensino/colecoes/actions";
 import { GestaoIcon } from "@/app/(authenticated)/gestao/gestao-icon";
 import { collectionCoverStyle } from "@/lib/collection-covers";
 import type { getGestaoCollectionsCatalog } from "@/lib/gestao-collections";
@@ -85,54 +76,6 @@ const StatusForm = ({
   );
 };
 
-const DeleteDialog = ({
-  collection,
-  idempotencyKey,
-  onClose,
-}: {
-  readonly collection: Collection;
-  readonly idempotencyKey: string;
-  readonly onClose: () => void;
-}) => (
-  <Dialog onOpenChange={(open) => (open ? null : onClose())} open>
-    <DialogContent
-      className="gk-modal gk-modal--narrow"
-      overlayClassName="gk-modal-overlay"
-      showCloseButton={false}
-    >
-      <form action={deleteGestaoCollection}>
-        <input name="id" type="hidden" value={collection.id} />
-        <input
-          name="version"
-          type="hidden"
-          value={collection.updatedAt.toISOString()}
-        />
-        <input name="idempotencyKey" type="hidden" value={idempotencyKey} />
-        <div className="gk-modal-head">
-          <div>
-            <DialogTitle className="gk-modal-title">
-              Excluir rascunho?
-            </DialogTitle>
-            <DialogDescription className="gk-modal-sub">
-              “{collection.title}” será removida. Esta ação não pode ser
-              desfeita.
-            </DialogDescription>
-          </div>
-        </div>
-        <div className="gk-modal-foot">
-          <span className="gk-spacer" />
-          <button className="gk-btn" onClick={onClose} type="button">
-            Cancelar
-          </button>
-          <button className="gk-btn gk-btn--primary" type="submit">
-            Confirmar exclusão
-          </button>
-        </div>
-      </form>
-    </DialogContent>
-  </Dialog>
-);
-
 const CollectionMenu = ({
   collection,
   keys,
@@ -141,53 +84,51 @@ const CollectionMenu = ({
   readonly keys: ActionKeys[string];
 }) => {
   const router = useRouter();
-  const [confirming, setConfirming] = useState(false);
   const statusKey = keys[nextStatus[collection.status].key];
   return (
-    <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button
-            aria-label={`Mais ações para ${collection.title}`}
-            className="gk-icon-btn"
-            type="button"
-          >
-            <GestaoIcon name="dots" size={18} />
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="gk-menu">
-          <DropdownMenuItem
-            onSelect={() =>
-              router.push(`/gestao/ensino/colecoes/${collection.id}`)
-            }
-          >
-            Editar coleção
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onSelect={() =>
-              router.push(`/gestao/ensino/colecoes/${collection.id}/previa`)
-            }
-          >
-            Pré-visualizar como aluno
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <StatusForm collection={collection} idempotencyKey={statusKey} />
-          </DropdownMenuItem>
-          {collection.status === "DRAFT" && collection._count.items === 0 ? (
-            <DropdownMenuItem onSelect={() => setConfirming(true)}>
-              Excluir rascunho
+    <GestaoErase
+      consequence="Os itens continuam existindo; só a coleção some."
+      id={collection.id}
+      kind="collection"
+      noun="coleção"
+      title={collection.title}
+    >
+      {(openErase) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              aria-label={`Mais ações para ${collection.title}`}
+              className="gk-icon-btn"
+              type="button"
+            >
+              <GestaoIcon name="dots" size={18} />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="gk-menu">
+            <DropdownMenuItem
+              onSelect={() =>
+                router.push(`/gestao/ensino/colecoes/${collection.id}`)
+              }
+            >
+              Editar coleção
             </DropdownMenuItem>
-          ) : null}
-        </DropdownMenuContent>
-      </DropdownMenu>
-      {confirming ? (
-        <DeleteDialog
-          collection={collection}
-          idempotencyKey={keys.delete}
-          onClose={() => setConfirming(false)}
-        />
-      ) : null}
-    </>
+            <DropdownMenuItem
+              onSelect={() =>
+                router.push(`/gestao/ensino/colecoes/${collection.id}/previa`)
+              }
+            >
+              Pré-visualizar como aluno
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <StatusForm collection={collection} idempotencyKey={statusKey} />
+            </DropdownMenuItem>
+            <DropdownMenuItem className="gk-menu-danger" onSelect={openErase}>
+              Apagar coleção
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+    </GestaoErase>
   );
 };
 

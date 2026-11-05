@@ -1,6 +1,6 @@
 import { Badge } from "@repo/design-system/components/ui/badge";
 import Image from "next/image";
-import { badgeArtworkByCriterion } from "@/lib/badge-artwork";
+import { badgeImageFor } from "@/lib/badge-artwork";
 import type { ProfileBadgeDefinition } from "@/lib/profile-badge-catalog";
 
 interface EarnedProfileBadge extends ProfileBadgeDefinition {
@@ -14,10 +14,12 @@ type ProfileBadgeCardItem = ProfileBadgeDefinition & {
 const BadgeGrid = ({
   badges,
   emptyMessage,
+  locked = false,
   status,
 }: {
   readonly badges: readonly ProfileBadgeCardItem[];
   readonly emptyMessage: string;
+  readonly locked?: boolean;
   readonly status: "earned" | "available";
 }) => {
   if (badges.length === 0) {
@@ -38,11 +40,11 @@ const BadgeGrid = ({
           >
             <Image
               alt=""
-              className="size-full object-contain"
+              className={`size-full object-contain ${locked ? "opacity-45 grayscale" : ""}`}
               height={56}
               loading="lazy"
               sizes="56px"
-              src={badgeArtworkByCriterion[badge.criterion]}
+              src={badgeImageFor(badge)}
               width={56}
             />
           </span>
@@ -141,11 +143,13 @@ export const ProfileBadges = ({
 );
 
 export const PublicProfileBadges = ({
+  availableBadges = [],
   earnedBadges,
 }: {
+  readonly availableBadges?: readonly ProfileBadgeDefinition[];
   readonly earnedBadges: readonly EarnedProfileBadge[];
 }) => {
-  if (earnedBadges.length === 0) {
+  if (earnedBadges.length === 0 && availableBadges.length === 0) {
     return null;
   }
 
@@ -161,6 +165,19 @@ export const PublicProfileBadges = ({
         Medalhas
       </h2>
       <BadgeGrid badges={earnedBadges} emptyMessage="" status="earned" />
+      {availableBadges.length > 0 ? (
+        <>
+          <p className="mt-6 font-data text-muted-foreground text-xs uppercase tracking-[0.08em]">
+            Ainda por conquistar · {availableBadges.length}
+          </p>
+          <BadgeGrid
+            badges={availableBadges}
+            emptyMessage=""
+            locked
+            status="available"
+          />
+        </>
+      ) : null}
     </section>
   );
 };

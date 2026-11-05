@@ -23,5 +23,5 @@ export const useGestaoReturnPath = (memberId: string, from: string | null) => {
   if (from !== null) {
     return safeGestaoReturnPath(from);
   }
-  return remembered.memberId === memberId ? remembered.path : "/estudar";
+  return remembered.memberId === memberId ? remembered.path : "/cursos";
 };

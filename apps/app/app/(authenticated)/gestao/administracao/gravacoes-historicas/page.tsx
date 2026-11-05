@@ -138,7 +138,7 @@ const GestaoHistoricalRecordingsPage = async ({
         <div className="gk-head-actions">
           <Link
             className="gk-link-btn gk-link-btn--accent"
-            href="/encontros/gravacoes"
+            href="/gravacoes"
             prefetch={false}
           >
             Abrir arquivo

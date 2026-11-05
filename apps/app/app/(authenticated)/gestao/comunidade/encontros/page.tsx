@@ -12,6 +12,7 @@ import {
   gestaoMeetingTabs,
 } from "@/lib/gestao-meetings-domain";
 import { publishDueGestaoMeetings } from "@/lib/gestao-meetings-schedule";
+import { GestaoEraseButton } from "../../apagar/erase-dialog";
 import { GestaoIcon, type GestaoIconName } from "../../gestao-icon";
 import { setGestaoMeetingState } from "./actions";
 
@@ -97,6 +98,14 @@ const Row = ({ row }: { readonly row: GestaoMeetingRow }) => {
       {row.state === "archived" ? (
         <OperationButton id={row.id} label="Reabrir" operation="reopen" />
       ) : null}
+      <GestaoEraseButton
+        consequence="A lista de presença e os vínculos com turmas somem junto. Gravações vinculadas continuam, soltas."
+        id={row.id}
+        kind="meeting"
+        label="Apagar"
+        noun="encontro"
+        title={row.title}
+      />
     </div>
   );
 };

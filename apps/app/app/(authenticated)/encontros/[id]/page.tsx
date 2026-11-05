@@ -134,9 +134,7 @@ const MeetingPage = async ({ params }: MeetingPageProperties) => {
             )}
             {meeting.recordings.map((recording) => (
               <Button asChild key={recording.id} size="lg" variant="outline">
-                <Link
-                  href={`/comunidade/encontros/gravacoes?asset=${recording.asset.id}`}
-                >
+                <Link href={`/gravacoes?asset=${recording.asset.id}`}>
                   {recording.originalTitle ?? recording.asset.title}
                 </Link>
               </Button>

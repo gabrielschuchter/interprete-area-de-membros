@@ -63,7 +63,7 @@ const RecordingsAdminPage = async ({
           </div>
           <Link
             className="text-muted-foreground text-sm underline underline-offset-4"
-            href="/encontros/gravacoes"
+            href="/gravacoes"
           >
             Abrir arquivo
           </Link>

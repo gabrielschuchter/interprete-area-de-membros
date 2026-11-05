@@ -34,7 +34,7 @@ export const useShellNavigation = () => {
     readonly pathname: string;
     readonly direction: "enter" | "return";
   } | null>(null);
-  const returnTo = useRef("/estudar");
+  const returnTo = useRef("/cursos");
   const sequence = useRef(0);
   const [destination, setDestination] = useState<string | null>(null);
   const [failure, setFailure] = useState<string | null>(null);

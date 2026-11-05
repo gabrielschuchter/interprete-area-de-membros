@@ -34,11 +34,13 @@ export interface ProfileBadgeDefinition {
   readonly criterion: BadgeCriterion;
   readonly description: string;
   readonly id: string;
+  readonly imageUrl?: string | null;
   readonly title: string;
 }
 
 export interface ProfileBadgeAward {
   readonly awardedAt: Date;
+  readonly badge?: { readonly imageUrl: string | null } | null;
   readonly badgeId: string;
   readonly definitionRevision: Omit<ProfileBadgeDefinition, "id">;
   readonly id: string;
@@ -51,8 +53,9 @@ export const splitProfileBadges = (
   const awardedDefinitionIds = new Set(awards.map(({ badgeId }) => badgeId));
 
   return {
-    earned: awards.map(({ definitionRevision, ...award }) => ({
+    earned: awards.map(({ badge, definitionRevision, ...award }) => ({
       ...definitionRevision,
+      imageUrl: badge?.imageUrl ?? null,
       id: award.id,
       awardedAt: award.awardedAt,
     })),

@@ -72,6 +72,7 @@ const protectedRoutePrefixes = [
   "/encontros",
   "/estudar",
   "/exercicios",
+  "/gravacoes",
   "/ferramentas",
   "/membros",
   "/notificacoes",

@@ -564,7 +564,13 @@ export const setGestaoNoticeState = async (formData: FormData) => {
     action: "admin.mutation",
     memberId: actor.userId,
   });
-  await database.announcement.update({ where: { id }, data: change });
+  if (operation === "delete") {
+    // Apagar é de verdade: some da Comunidade e da Gestão. As notificações já
+    // entregues ficam, sem o vínculo (onDelete: SetNull).
+    await database.announcement.delete({ where: { id } });
+  } else {
+    await database.announcement.update({ where: { id }, data: change });
+  }
   if (operation === "publish") {
     await dispatchNotice(id, actor.userId);
   }

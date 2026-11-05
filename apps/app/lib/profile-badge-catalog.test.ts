@@ -57,6 +57,7 @@ test("keeps earned definitions out of the available catalog by badge id", () => 
     {
       ...earnedDefinition,
       id: "award-five-hours",
+      imageUrl: null,
       awardedAt,
     },
   ]);

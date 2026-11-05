@@ -1,8 +1,9 @@
+import type { BadgeCriterion } from "@repo/database";
 import Link from "next/link";
 import { forbidden } from "next/navigation";
+import { badgeImageFor } from "@/lib/badge-artwork";
 import { listGestaoRecognition } from "@/lib/gestao-recognition";
 import { GestaoFilterBar } from "../../gestao-filter-bar";
-import { GestaoIcon } from "../../gestao-icon";
 
 const visibleAwardees = 6;
 const whitespace = /\s+/;
@@ -24,24 +25,21 @@ const single = (value: string | string[] | undefined) =>
   typeof value === "string" ? value : undefined;
 
 const Medal = ({
+  criterion,
   imageUrl,
-  title,
 }: {
+  readonly criterion: BadgeCriterion;
   readonly imageUrl: string | null;
-  readonly title: string;
-}) =>
-  imageUrl ? (
-    // biome-ignore lint/performance/noImgElement: símbolo vindo de armazenamento externo, tamanho fixo
-    <img alt="" className="gk-medal" height={60} src={imageUrl} width={60} />
-  ) : (
-    <span
-      aria-hidden="true"
-      className="gk-medal gk-medal--default"
-      title={title}
-    >
-      <GestaoIcon name="star" size={26} />
-    </span>
-  );
+}) => (
+  // biome-ignore lint/performance/noImgElement: símbolo da medalha, tamanho fixo
+  <img
+    alt=""
+    className="gk-medal"
+    height={60}
+    src={badgeImageFor({ criterion, imageUrl })}
+    width={60}
+  />
+);
 
 const GestaoRecognitionPage = async ({
   searchParams,
@@ -125,7 +123,7 @@ const GestaoRecognitionPage = async ({
           {badges.map((badge) => (
             <article className="gk-medalcard" key={badge.id}>
               <header>
-                <Medal imageUrl={badge.imageUrl} title={badge.title} />
+                <Medal criterion={badge.criterion} imageUrl={badge.imageUrl} />
                 <div>
                   <h2>{badge.title}</h2>
                   <p>{badge.description}</p>

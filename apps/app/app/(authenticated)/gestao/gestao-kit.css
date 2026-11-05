@@ -4895,3 +4895,131 @@ button.gca-text-action {
   font: 600 13.5px / 1.2 var(--font-sans-family);
   color: var(--gestao-action);
 }
+
+/* Exclusão real (05/11/2026) */
+.gk-btn--danger-ghost {
+  min-height: 40px;
+  padding: 0 14px;
+  font: 600 14px / 1 var(--font-sans-family);
+  color: #b3121f;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid currentcolor;
+  border-radius: 6px;
+}
+.gk-btn--danger-ghost:hover {
+  background: rgb(179 18 31 / 8%);
+}
+.gk-erase-body {
+  display: grid;
+  gap: 8px;
+  padding: 0 24px 8px;
+}
+.gk-erase-label {
+  font: 500 14px / 1.3 var(--font-sans-family);
+}
+.gk-erase-error {
+  margin: 0;
+  font: 500 13px / 1.4 var(--font-sans-family);
+  color: #b3121f;
+}
+.gk-menu-danger,
+.gk-menu .gk-menu-danger {
+  color: #b3121f;
+}
+
+/* Todos os itens dos menus de três pontos têm o mesmo corpo de texto,
+   venham de um item comum ou de um botão dentro de formulário. */
+.gk-menu [role="menuitem"],
+.gk-menu [role="menuitem"] button,
+.gk-menu .gk-menu-form-btn {
+  font: 500 14px / 1.3 var(--font-sans-family);
+  color: inherit;
+}
+.gk-menu [role="menuitem"].gk-menu-danger,
+.gk-menu [role="menuitem"].gk-menu-danger button {
+  color: #b3121f;
+}
+
+.gk-symbols {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+}
+.gk-symbols legend {
+  width: 100%;
+  margin-bottom: 4px;
+  font: 600 13px / 1.2 var(--font-sans-family);
+}
+.gk-symbol {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  min-height: 56px;
+  padding: 4px 10px;
+  font: 500 13px / 1.2 var(--font-sans-family);
+  cursor: pointer;
+  border: 1px solid var(--gestao-border, #d9cfd2);
+  border-radius: 8px;
+}
+.gk-symbol:has(input:checked) {
+  border-color: #8c1535;
+  box-shadow: 0 0 0 1px #8c1535;
+}
+.gk-symbols .gk-hint {
+  width: 100%;
+}
+
+.gk-recording-link {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 12px;
+}
+.gk-recording-link .gk-input {
+  flex: 1 1 260px;
+}
+
+/* Guia da Gestão */
+.gk-guide-index {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 4px 0 20px;
+}
+.gk-guide-index a {
+  padding: 6px 12px;
+  font:
+    500 13px / 1.3 Inter,
+    sans-serif;
+  color: inherit;
+  text-decoration: none;
+  border: 1px solid #e2d6d1;
+  border-radius: 999px;
+}
+.gk-guide {
+  display: grid;
+  gap: 16px;
+  max-width: 760px;
+}
+.gk-guide-section {
+  padding: 20px 22px;
+  scroll-margin-top: 80px;
+}
+.gk-guide-section h2 {
+  margin: 0 0 10px;
+  font:
+    600 20px / 1.25 "Source Serif 4",
+    serif;
+}
+.gk-guide-section p {
+  margin: 0 0 12px;
+  font-size: 15px;
+  line-height: 1.65;
+}
+.gk-guide-section p:last-child {
+  margin-bottom: 0;
+}

@@ -39,9 +39,9 @@ const studyShortcuts: readonly PortalShortcut[] = [
 ];
 
 const communityShortcuts: readonly PortalShortcut[] = [
-  { href: "/comunidade", icon: MessageCircle, label: "Discussões" },
-  { href: "/comunidade/encontros", icon: CalendarDays, label: "Encontros" },
+  { href: "/comunidade", icon: MessageCircle, label: "Explorar" },
   { href: "/comunidade/grupos", icon: UsersRound, label: "Grupos de estudo" },
+  { href: "/comunidade/encontros", icon: CalendarDays, label: "Encontros" },
   {
     href: "/comunidade/minhas-publicacoes",
     icon: UserRound,
@@ -63,7 +63,7 @@ const PortalArc = ({
   readonly children: ReactNode;
   readonly community?: boolean;
 }) => {
-  const href = community ? "/comunidade" : "/estudar";
+  const href = community ? "/comunidade" : "/cursos";
   const label = community ? "Comunidade" : "Estudar";
 
   return (

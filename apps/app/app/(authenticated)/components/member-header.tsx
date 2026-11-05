@@ -21,9 +21,6 @@ interface MemberHeaderProperties {
 }
 
 const mobileTitleForPath = (pathname: string) => {
-  if (pathname === "/estudar") {
-    return "Estudar";
-  }
   if (pathname === "/ferramentas") {
     return "Ferramentas";
   }
