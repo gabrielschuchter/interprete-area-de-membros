@@ -78,9 +78,20 @@
   flex: none;
   color: #f7f3f1;
 }
-.cp-hero__menu button,
+.cp-hero__menu .community-post-menu__trigger,
 .cp-hero__menu summary {
   color: inherit;
+}
+/* O menu abre sobre fundo branco: os itens nunca herdam o texto claro da faixa. */
+.cp-hero__menu .community-post-menu__item {
+  color: #40222f;
+}
+.cp-hero__menu .community-post-menu__item--danger {
+  color: #8c1535;
+}
+.cp-hero__menu .community-post-menu__item svg {
+  color: currentcolor;
+  opacity: 1;
 }
 
 .cp-title {
@@ -201,7 +212,8 @@ a.cp-author__identity:hover .cp-author__name {
 
 .cp-actions {
   display: flex;
-  gap: 4px;
+  flex-wrap: wrap;
+  gap: 4px 4px;
   align-items: center;
   padding-bottom: 20px;
   margin-top: 24px;
@@ -230,7 +242,25 @@ a.cp-author__identity:hover .cp-author__name {
 .cp-actions .community-follow-button:hover {
   background: var(--cp-hover);
 }
-.cp-actions button[aria-pressed="true"] {
+.cp-actions button,
+.cp-actions .community-follow-button,
+.cp-actions__responses {
+  flex: none;
+  white-space: nowrap;
+}
+.cp-actions button[aria-pressed="true"],
+.cp-actions .community-follow-button.is-following,
+.cp-actions .community-follow-button.is-muted {
+  font-weight: 600;
+  color: var(--cp-band);
+  background: #f0dfe3;
+}
+.cp-actions button[aria-pressed="true"] svg,
+.cp-actions .community-follow-button.is-following svg {
+  fill: currentcolor;
+}
+.cp-actions .community-follow-button.is-muted {
+  color: var(--cp-muted);
   background: var(--cp-hover);
 }
 .cp-actions svg {
@@ -300,6 +330,15 @@ a.cp-author__identity:hover .cp-author__name {
 .cp-body ol {
   padding-left: 22px;
   margin: 0 0 22px;
+}
+.cp-body ul:not([data-type="taskList"]) {
+  list-style: disc outside;
+}
+.cp-body ol {
+  list-style: decimal outside;
+}
+.cp-body li::marker {
+  color: var(--cp-band);
 }
 .cp-body li + li {
   margin-top: 6px;
@@ -715,4 +754,10 @@ a.cp-author__identity:hover .cp-author__name {
 }
 .cp-hero :where(a, button, summary):focus-visible {
   outline-color: #fff;
+}
+
+/* Itens do menu sempre alinhados à esquerda, em qualquer tela. */
+.community-post-menu .community-post-menu__item {
+  justify-content: flex-start;
+  text-align: left;
 }

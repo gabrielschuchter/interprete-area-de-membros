@@ -74,10 +74,7 @@ export const communityPostMutationAudienceWhere = (
       space: {
         is: {
           status: "PUBLISHED",
-          ...communitySpaceMemberAudienceWhere(
-            memberId,
-            canModeratePrivateGroups
-          ),
+          ...communitySpaceAudienceWhere(memberId, canModeratePrivateGroups),
         },
       },
     },

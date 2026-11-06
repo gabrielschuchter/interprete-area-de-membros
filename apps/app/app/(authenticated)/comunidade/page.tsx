@@ -24,7 +24,7 @@ import { getCommunityAnnouncements } from "@/lib/community-announcements";
 import { getCommunityGoalSummary } from "@/lib/community-goal";
 import {
   communityHref,
-  parseCommunityKind,
+  type parseCommunityKind,
   parseCommunitySort,
 } from "@/lib/community-query";
 import { requireMemberId } from "@/lib/learning";
@@ -47,7 +47,7 @@ const CommunityRightRailData = async ({
       Promise.all([
         getPageCommunitySpaces(memberId),
         getPageCommunityAnnouncements(memberId),
-        getCommunityAvatarVisuals(),
+        getCommunityAvatarVisuals(memberId),
       ])
   );
 
@@ -100,13 +100,11 @@ const CommunityGoalCardFallback = () => (
 );
 
 const CommunityFeedNavigationData = async ({
-  kind,
   memberId,
   query,
   sort,
   spaceSlug,
 }: {
-  readonly kind?: ReturnType<typeof parseCommunityKind>;
   readonly memberId: string;
   readonly query?: string;
   readonly sort: ReturnType<typeof parseCommunitySort>;
@@ -115,7 +113,6 @@ const CommunityFeedNavigationData = async ({
   const spaces = await getPageCommunitySpaces(memberId);
   return (
     <CommunityFeedNavigation
-      kind={kind}
       query={query}
       sort={sort}
       spaceSlug={spaceSlug}
@@ -284,7 +281,9 @@ const CommunityPage = async ({ searchParams }: CommunityPageProperties) => {
     requireMemberId(),
   ]);
   const sort = parseCommunitySort(filters.sort);
-  const kind = parseCommunityKind(filters.tipo);
+  // O tipo é definido ao publicar; não existe mais filtro por tipo no feed,
+  // e links antigos com ?tipo= são ignorados.
+  const kind: ReturnType<typeof parseCommunityKind> = undefined;
   const hasDiscoveryFilters = Boolean(
     filters.q || kind || filters.space || sort !== "recent"
   );
@@ -308,7 +307,6 @@ const CommunityPage = async ({ searchParams }: CommunityPageProperties) => {
             }
           >
             <CommunityFeedNavigationData
-              kind={kind}
               memberId={memberId}
               query={filters.q}
               sort={sort}

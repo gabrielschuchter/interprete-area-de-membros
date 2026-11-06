@@ -436,6 +436,56 @@ export const formatCommunityFileSize = (sizeBytes: number | undefined) => {
   return `${(sizeBytes / (1024 * 1024)).toFixed(1).replace(".0", "")} MB`;
 };
 
+const fileTypeByExtension: Record<string, string> = {
+  csv: "Planilha CSV",
+  doc: "Documento Word",
+  docx: "Documento Word",
+  jpg: "Imagem",
+  md: "Texto",
+  pdf: "PDF",
+  png: "Imagem",
+  ppt: "Apresentação",
+  pptx: "Apresentação",
+  txt: "Texto",
+  xls: "Planilha Excel",
+  xlsx: "Planilha Excel",
+  zip: "Arquivo ZIP",
+};
+
+/** Rótulo amigável do tipo de arquivo: nunca expõe o MIME cru ("application/pdf"). */
+export const communityFileTypeLabel = (item: {
+  readonly mimeType?: string;
+  readonly name?: string;
+}) => {
+  const mime = (item.mimeType ?? "").toLowerCase();
+  if (mime === "application/pdf") {
+    return "PDF";
+  }
+  if (mime.includes("wordprocessingml") || mime === "application/msword") {
+    return "Documento Word";
+  }
+  if (mime.includes("spreadsheetml") || mime === "application/vnd.ms-excel") {
+    return "Planilha Excel";
+  }
+  if (
+    mime.includes("presentationml") ||
+    mime === "application/vnd.ms-powerpoint"
+  ) {
+    return "Apresentação";
+  }
+  if (mime === "text/csv") {
+    return "Planilha CSV";
+  }
+  if (mime.startsWith("text/")) {
+    return "Texto";
+  }
+  if (mime === "application/zip") {
+    return "Arquivo ZIP";
+  }
+  const extension = item.name?.split(".").pop()?.toLowerCase() ?? "";
+  return fileTypeByExtension[extension] ?? "Arquivo";
+};
+
 export const communityMediaTypeLabel = (item: CommunityMediaItem) => {
   if (item.kind === "article") {
     return "Artigo científico";
@@ -444,7 +494,7 @@ export const communityMediaTypeLabel = (item: CommunityMediaItem) => {
     return "Vídeo · embed";
   }
   if (item.kind === "file") {
-    return item.mimeType === "application/pdf" ? "PDF" : "Arquivo";
+    return communityFileTypeLabel(item);
   }
   if (item.kind === "image") {
     return "Imagem";

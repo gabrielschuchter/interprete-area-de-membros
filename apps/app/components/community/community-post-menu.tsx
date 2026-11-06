@@ -127,7 +127,11 @@ export function CommunityPostMenu({
   }, [close, open]);
 
   return (
-    <div className="community-post-menu" ref={menuRef}>
+    <div
+      className="community-post-menu"
+      data-open={open ? "true" : undefined}
+      ref={menuRef}
+    >
       <Button
         aria-expanded={open}
         aria-haspopup="menu"

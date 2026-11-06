@@ -37,10 +37,9 @@ describe("CommunityFeedNavigation", () => {
     cleanup();
   });
 
-  test("preserves search, type, group, and sort filters in the URL", () => {
+  test("preserves search, group, and sort filters (no type filter) in the URL", () => {
     render(
       <CommunityFeedNavigation
-        kind="QUESTION"
         query="método"
         sort="unanswered"
         spaceSlug="pratica-clinica"
@@ -57,21 +56,15 @@ describe("CommunityFeedNavigation", () => {
     const sortSelect = screen.getByRole("combobox", {
       name: "Ordenar publicações",
     }) as HTMLSelectElement;
-    const kindSelect = screen.getByRole("combobox", {
-      name: "Filtrar por tipo de publicação",
-    }) as HTMLSelectElement;
     expect(groupSelect.value).toBe("pratica-clinica");
     expect(sortSelect.value).toBe("unanswered");
-    expect(kindSelect.value).toBe("QUESTION");
+    expect(
+      screen.queryByRole("combobox", { name: "Filtrar por tipo de publicação" })
+    ).toBeNull();
 
     fireEvent.change(sortSelect, { target: { value: "popular" } });
     expect(routerPush).toHaveBeenCalledWith(
-      "/comunidade?q=m%C3%A9todo&tipo=QUESTION&sort=popular&space=pratica-clinica"
-    );
-
-    fireEvent.change(kindSelect, { target: { value: "" } });
-    expect(routerPush).toHaveBeenLastCalledWith(
-      "/comunidade?q=m%C3%A9todo&sort=unanswered&space=pratica-clinica"
+      "/comunidade?q=m%C3%A9todo&sort=popular&space=pratica-clinica"
     );
   });
 });

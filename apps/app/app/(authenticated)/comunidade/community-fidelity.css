@@ -388,8 +388,10 @@
   border-radius: 999px;
 }
 .community-goal__bar > * {
+  display: block;
   height: 100%;
   background: #8c1535;
+  border-radius: 999px;
 }
 .community-goal__meta,
 .community-goal__note {

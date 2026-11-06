@@ -43,7 +43,7 @@ describe("CommunityPostActions", () => {
   test("updates a vote immediately and ignores a second click while pending", async () => {
     renderActions();
 
-    const vote = screen.getByRole("button", { name: "Apoiar conteúdo" });
+    const vote = screen.getByRole("button", { name: "Curtir publicação" });
     fireEvent.click(vote);
     fireEvent.click(vote);
 
@@ -64,7 +64,7 @@ describe("CommunityPostActions", () => {
     renderActions();
 
     fireEvent.click(screen.getByRole("button", { name: "Salvar publicação" }));
-    const vote = screen.getByRole("button", { name: "Apoiar conteúdo" });
+    const vote = screen.getByRole("button", { name: "Curtir publicação" });
     expect(vote.hasAttribute("disabled")).toBe(false);
     expect(vote.getAttribute("aria-busy")).toBeNull();
 
@@ -80,7 +80,7 @@ describe("CommunityPostActions", () => {
     );
     expect(
       screen
-        .getByRole("button", { name: "Remover apoio" })
+        .getByRole("button", { name: "Remover curtida" })
         .getAttribute("aria-pressed")
     ).toBe("true");
   });
@@ -89,7 +89,7 @@ describe("CommunityPostActions", () => {
     actionHarness.vote.mockRejectedValueOnce(new Error("temporary failure"));
     renderActions(0);
 
-    const vote = screen.getByRole("button", { name: "Apoiar conteúdo" });
+    const vote = screen.getByRole("button", { name: "Curtir publicação" });
     fireEvent.click(vote);
 
     await waitFor(() => {

@@ -44,6 +44,7 @@ import { createCommunityComment } from "@/lib/community-mutations";
 import { safeCommunityReturnPath } from "@/lib/community-return-path";
 import {
   communityPostMutationAudienceWhere,
+  communitySpaceAudienceWhere,
   communitySpaceMemberAudienceWhere,
   communitySpaceSlugBase,
   normalizeCommunitySpaceTitle,
@@ -284,7 +285,7 @@ const publishedPostWhere = async (
             is: {
               slug: spaceSlug,
               status: ContentStatus.PUBLISHED,
-              ...communitySpaceMemberAudienceWhere(
+              ...communitySpaceAudienceWhere(
                 memberId,
                 canModeratePrivateGroups
               ),
@@ -2004,6 +2005,58 @@ export const softDeletePost = async (formData: FormData) => {
     redirect(`/comunidade/grupos/${post.space.slug}`);
   }
   redirect("/comunidade");
+};
+
+const BULK_POST_LIMIT = 50;
+
+/**
+ * Ação em massa de "Minhas publicações": só atua em publicações da própria
+ * pessoa. Excluir vale para qualquer situação (vai para a lixeira de 30 dias,
+ * como a exclusão individual); arquivar vale só para publicadas.
+ */
+export const bulkUpdateMyPosts = async (input: {
+  readonly action: "archive" | "delete";
+  readonly postIds: readonly string[];
+}) => {
+  const userId = await currentUserId();
+  const postIds = [
+    ...new Set(
+      (Array.isArray(input?.postIds) ? input.postIds : []).filter(
+        (id): id is string => typeof id === "string" && id.length > 0
+      )
+    ),
+  ].slice(0, BULK_POST_LIMIT);
+  if (
+    !userId ||
+    postIds.length === 0 ||
+    !(input.action === "archive" || input.action === "delete")
+  ) {
+    return {
+      ok: false as const,
+      error: "Selecione ao menos uma publicação.",
+    };
+  }
+  await consumeMutationRateLimit({
+    action: "community.mutation",
+    memberId: userId,
+  });
+  const owned = {
+    id: { in: postIds },
+    authorId: userId,
+    deletedAt: null,
+  } as const;
+  const result =
+    input.action === "delete"
+      ? await database.communityPost.updateMany({
+          where: owned,
+          data: { deletedAt: new Date(), isPinned: false },
+        })
+      : await database.communityPost.updateMany({
+          where: { ...owned, status: ContentStatus.PUBLISHED },
+          data: { status: ContentStatus.ARCHIVED, isPinned: false },
+        });
+  revalidateCommunity();
+  return { ok: true as const, count: result.count };
 };
 
 export const undoSoftDeletedPost = async (formData: FormData) => {
