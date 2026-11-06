@@ -13,6 +13,7 @@ import {
   GestaoErasureBlockedError,
 } from "@/lib/gestao-content-erasure";
 import { deleteGestaoVideoStorageObject } from "@/lib/gestao-lesson-video-upload";
+import { deleteMemberAsset, isMemberAssetPath } from "@/lib/member-storage";
 import { consumeMutationRateLimit } from "@/lib/mutation-reliability";
 
 export type GestaoEraseResult =
@@ -57,6 +58,17 @@ const aggregateTypes: Record<GestaoErasableKind, string> = {
   module: "Module",
   post: "CommunityPost",
   task: "LearningTask",
+};
+
+const removeStoredFiles = async (paths: readonly string[]) => {
+  await Promise.all(
+    paths.map((path) =>
+      (isMemberAssetPath(path)
+        ? deleteMemberAsset(path)
+        : deleteGestaoVideoStorageObject(path)
+      ).catch(() => false)
+    )
+  );
 };
 
 const isKind = (value: unknown): value is GestaoErasableKind =>
@@ -115,9 +127,9 @@ export const eraseGestaoRecord = async (input: {
       };
     }
   }
-  let storagePath: string | null = null;
+  let storagePaths: string[] = [];
   try {
-    storagePath = await database.$transaction(
+    storagePaths = await database.$transaction(
       (transaction) => eraseGestaoContent(transaction, kind, id),
       { maxWait: 10_000, timeout: 30_000 }
     );
@@ -143,9 +155,7 @@ export const eraseGestaoRecord = async (input: {
     }
     throw error;
   }
-  if (storagePath) {
-    await deleteGestaoVideoStorageObject(storagePath).catch(() => false);
-  }
+  await removeStoredFiles(storagePaths);
   await recordAuditEvent({
     actorId: actor.userId,
     aggregateId: id,
