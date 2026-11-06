@@ -363,6 +363,25 @@ export const NotificationsPopover = ({
     calloutTimers.current.push(window.setTimeout(() => setCallout(null), 300));
   }, []);
 
+  const measureCallout = useCallback(() => {
+    const rect = anchorRef.current?.getBoundingClientRect();
+    if (!rect || rect.width === 0) {
+      return;
+    }
+    const next = {
+      right: Math.max(
+        8,
+        Math.round(document.documentElement.clientWidth - rect.right - 6)
+      ),
+      top: Math.round(rect.bottom + 10),
+    };
+    setCalloutAnchor((current) =>
+      current && current.right === next.right && current.top === next.top
+        ? current
+        : next
+    );
+  }, []);
+
   const showCallout = useCallback(
     async (total: number) => {
       const chips = await loadCalloutChips(total);
@@ -375,17 +394,27 @@ export const NotificationsPopover = ({
       calloutTimers.current = [
         window.setTimeout(dismissCallout, calloutDurationMs),
       ];
-      const rect = anchorRef.current?.getBoundingClientRect();
-      if (rect) {
-        setCalloutAnchor({
-          right: Math.max(8, window.innerWidth - rect.right - 6),
-          top: rect.bottom + 10,
-        });
-      }
+      measureCallout();
       setCallout({ chips, leaving: false });
     },
-    [dismissCallout]
+    [dismissCallout, measureCallout]
   );
+
+  // O balão acompanha o sino enquanto estiver à vista: a lateral recolhe e
+  // expande, a janela muda de tamanho e a página rola, e a posição medida uma
+  // vez só deixaria o balão longe do ícone.
+  useEffect(() => {
+    if (!callout) {
+      return;
+    }
+    let frame = 0;
+    const loop = () => {
+      measureCallout();
+      frame = window.requestAnimationFrame(loop);
+    };
+    frame = window.requestAnimationFrame(loop);
+    return () => window.cancelAnimationFrame(frame);
+  }, [callout, measureCallout]);
 
   useEffect(
     () => () => {

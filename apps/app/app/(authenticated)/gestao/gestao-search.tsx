@@ -1,8 +1,9 @@
 "use client";
 
+import { Button } from "@repo/design-system/components/ui/button";
+import { SearchIcon } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
-import { GestaoIcon } from "./gestao-icon";
 
 // The dialog (results, recents, server action) loads on first use so the
 // shell keeps a small initial bundle on every Gestão route.
@@ -34,20 +35,21 @@ export const GestaoSearch = ({ memberId }: { readonly memberId: string }) => {
 
   return (
     <>
-      <button
+      <Button
         aria-haspopup="dialog"
-        aria-keyshortcuts="Control+K"
-        className="gestao-search-trigger"
+        aria-keyshortcuts="Control+K Meta+K"
+        aria-label="Buscar em Gestão"
+        className="size-10 rounded-full text-muted-foreground hover:bg-accent hover:text-foreground"
         onClick={show}
         onFocus={() => setLoaded(true)}
         onPointerEnter={() => setLoaded(true)}
         ref={trigger}
+        size="icon-sm"
         type="button"
+        variant="ghost"
       >
-        <GestaoIcon name="search" />
-        <span className="gestao-search-trigger-label">Buscar em Gestão</span>
-        <kbd>Ctrl K</kbd>
-      </button>
+        <SearchIcon aria-hidden="true" />
+      </Button>
       {loaded ? (
         <GestaoSearchDialog
           memberId={memberId}

@@ -1,12 +1,15 @@
 "use client";
 
+import { Button } from "@repo/design-system/components/ui/button";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogTitle,
 } from "@repo/design-system/components/ui/dialog";
-import { SearchIcon } from "lucide-react";
+import { cn } from "@repo/design-system/lib/utils";
+import { SearchIcon, XIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
   type KeyboardEvent,
@@ -184,11 +187,12 @@ const GestaoSearchDialog = ({
   return (
     <Dialog onOpenChange={onOpenChange} open={open}>
       <DialogContent
-        className="gestao-search-dialog"
+        className="top-[11vh] max-h-[min(76vh,42rem)] translate-y-0 overflow-hidden rounded-[1.15rem] border-border/70 bg-background/95 p-0 shadow-[var(--shadow-floating)] backdrop-blur-xl duration-[var(--motion-duration-normal)] sm:max-w-2xl"
         onCloseAutoFocus={(event) => {
           event.preventDefault();
           returnFocusTo.current?.focus();
         }}
+        overlayClassName="bg-foreground/15 backdrop-blur-[3px]"
         showCloseButton={false}
       >
         <DialogTitle className="sr-only">Buscar em Gestão</DialogTitle>
@@ -196,8 +200,11 @@ const GestaoSearchDialog = ({
           Encontre alunos, turmas, atividades, cursos, aulas, materiais, avisos
           e encontros. Use as setas para escolher e Enter para abrir.
         </DialogDescription>
-        <div className="gestao-search-field">
-          <SearchIcon aria-hidden="true" />
+        <div className="flex items-center gap-3 border-border/70 border-b px-4 py-4 sm:px-6 sm:py-5">
+          <SearchIcon
+            aria-hidden="true"
+            className="size-5 shrink-0 text-brand-dark-amaranth"
+          />
           <input
             aria-activedescendant={
               optionCount > 0 ? `gestao-search-option-${active}` : undefined
@@ -207,6 +214,7 @@ const GestaoSearchDialog = ({
             aria-label="Buscar em Gestão"
             autoComplete="off"
             autoFocus
+            className="h-12 min-w-0 flex-1 border-0 bg-transparent px-0 text-base outline-none placeholder:text-muted-foreground sm:text-lg"
             maxLength={120}
             onChange={(event) => setQuery(event.target.value)}
             onKeyDown={onInputKeyDown}
@@ -215,26 +223,43 @@ const GestaoSearchDialog = ({
             type="search"
             value={query}
           />
+          <DialogClose asChild>
+            <Button
+              aria-label="Fechar busca"
+              className="size-9 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
+              size="icon-sm"
+              type="button"
+              variant="ghost"
+            >
+              <XIcon aria-hidden="true" />
+            </Button>
+          </DialogClose>
         </div>
         <div
           aria-busy={pending}
-          className="gestao-search-results"
+          className="max-h-[calc(min(76vh,42rem)-6rem)] overflow-y-auto p-3 sm:p-4"
           id="gestao-search-listbox"
           role="listbox"
         >
           {showingRecent ? (
             <>
-              <p className="gestao-search-heading">Recentes</p>
+              <p className="brand-eyebrow px-3 pt-3 pb-1 text-[0.62rem] text-muted-foreground">
+                Recentes
+              </p>
               {recent.length === 0 ? (
-                <p className="gestao-search-empty">
+                <p className="px-3 py-8 text-center text-muted-foreground text-sm">
                   Digite ao menos {minLength} letras para buscar.
                 </p>
               ) : (
                 recent.map((entry, index) => (
                   <button
                     aria-selected={index === active}
-                    className="gestao-search-option"
-                    data-active={String(index === active)}
+                    className={cn(
+                      "flex w-full items-baseline justify-between gap-3 rounded-lg px-3 py-3 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
+                      index === active
+                        ? "bg-accent text-accent-foreground"
+                        : "hover:bg-accent/65"
+                    )}
                     id={`gestao-search-option-${index}`}
                     key={entry.href}
                     onClick={() => go(entry.href, entry.title)}
@@ -249,7 +274,10 @@ const GestaoSearchDialog = ({
             </>
           ) : null}
           {!showingRecent && failed ? (
-            <p className="gestao-search-empty" role="alert">
+            <p
+              className="px-3 py-8 text-center text-muted-foreground text-sm"
+              role="alert"
+            >
               Não foi possível buscar agora. Tente novamente.
             </p>
           ) : null}
@@ -257,7 +285,7 @@ const GestaoSearchDialog = ({
           flat.length === 0 &&
           searched === query.trim() &&
           !pending ? (
-            <p className="gestao-search-empty">
+            <p className="px-3 py-8 text-center text-muted-foreground text-sm">
               Nada encontrado para “{query.trim()}”.
             </p>
           ) : null}
@@ -265,15 +293,21 @@ const GestaoSearchDialog = ({
             ? null
             : groups.map((group) => (
                 <div key={group.key} role="presentation">
-                  <p className="gestao-search-heading">{group.label}</p>
+                  <p className="brand-eyebrow px-3 pt-3 pb-1 text-[0.62rem] text-muted-foreground">
+                    {group.label}
+                  </p>
                   {group.results.map((result) => {
                     optionIndex += 1;
                     const index = optionIndex;
                     return (
                       <button
                         aria-selected={index === active}
-                        className="gestao-search-option"
-                        data-active={String(index === active)}
+                        className={cn(
+                          "flex w-full items-baseline justify-between gap-3 rounded-lg px-3 py-3 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
+                          index === active
+                            ? "bg-accent text-accent-foreground"
+                            : "hover:bg-accent/65"
+                        )}
                         id={`gestao-search-option-${index}`}
                         key={result.id}
                         onClick={() => go(result.href, result.title)}
@@ -282,7 +316,9 @@ const GestaoSearchDialog = ({
                         type="button"
                       >
                         <span>{result.title}</span>
-                        <small>{result.meta}</small>
+                        <small className="truncate text-muted-foreground text-xs">
+                          {result.meta}
+                        </small>
                       </button>
                     );
                   })}
