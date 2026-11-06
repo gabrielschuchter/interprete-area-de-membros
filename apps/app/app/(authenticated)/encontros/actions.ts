@@ -151,7 +151,6 @@ export const createMeeting = async (formData: FormData) => {
   }
 
   if (await hasMeetingForAttempt(userId, idempotencyKey)) {
-    revalidatePath("/admin/meetings");
     return;
   }
   const parsedDates = parseMeetingDates(startsAt, endsAt);
@@ -201,8 +200,6 @@ export const createMeeting = async (formData: FormData) => {
       throw error;
     }
   }
-
-  revalidatePath("/admin/meetings");
 };
 
 export const updateMeeting = async (formData: FormData) => {
@@ -282,7 +279,6 @@ export const updateMeeting = async (formData: FormData) => {
     }
   });
 
-  revalidatePath("/admin/meetings");
   revalidatePath("/encontros");
   revalidatePath(`/encontros/${id}`);
 };
@@ -382,7 +378,6 @@ export const saveMeetingAttendance = async (formData: FormData) => {
     await dispatchPendingNotifications();
   }
 
-  revalidatePath("/admin/meetings");
   revalidatePath("/encontros");
   revalidatePath("/perfil");
 };
@@ -413,7 +408,6 @@ export const setMeetingStatus = async (formData: FormData) => {
       });
     }
   });
-  revalidatePath("/admin/meetings");
   revalidatePath("/encontros");
   revalidatePath("/ferramentas");
 };

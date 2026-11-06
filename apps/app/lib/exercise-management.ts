@@ -1,8 +1,8 @@
 export const exerciseManagementPath = (
-  gestaoReturn: boolean,
+  _gestaoReturn: boolean,
   listId?: string
 ) => {
-  const root = gestaoReturn ? "/gestao/ensino/exercicios" : "/admin/exercicios";
+  const root = "/gestao/ensino/exercicios";
   return listId ? `${root}/${encodeURIComponent(listId)}` : root;
 };
 
@@ -62,7 +62,7 @@ export interface ExerciseListEditorFilters {
 }
 
 export const exerciseListEditorHref = (input: {
-  readonly basePath: "/admin/exercicios" | "/gestao/ensino/exercicios";
+  readonly basePath: "/gestao/ensino/exercicios";
   readonly filters: ExerciseListEditorFilters;
   readonly listId: string;
   readonly overrides?: Partial<ExerciseListEditorFilters>;

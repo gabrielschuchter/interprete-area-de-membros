@@ -202,7 +202,7 @@ export const createAssignedLearningTask = async (formData: FormData) => {
     dueAt === undefined ||
     !(allMembers || selectedIds.length)
   ) {
-    redirect("/admin/estudo?resultado=invalido");
+    redirect("/gestao/alunos/tarefas?resultado=invalido");
   }
 
   const recipients = await database.member.findMany({
@@ -215,7 +215,7 @@ export const createAssignedLearningTask = async (formData: FormData) => {
     take: 10_000,
   });
   if (!recipients.length) {
-    redirect("/admin/estudo?resultado=sem-destinatarios");
+    redirect("/gestao/alunos/tarefas?resultado=sem-destinatarios");
   }
 
   const createdAt = new Date();
@@ -252,10 +252,9 @@ export const createAssignedLearningTask = async (formData: FormData) => {
     });
   });
   await dispatchPendingNotifications();
-  revalidatePath("/admin/estudo");
   revalidatePath("/tarefas");
   revalidatePath("/");
-  redirect("/admin/estudo?resultado=tarefa-atribuida");
+  redirect("/gestao/alunos/tarefas?resultado=tarefa-atribuida");
 };
 
 export const createStudyCampaign = async (formData: FormData) => {
@@ -289,7 +288,7 @@ export const createStudyCampaign = async (formData: FormData) => {
     targetMinutes > 100_800 ||
     endsAt <= startsAt
   ) {
-    redirect("/admin/estudo?resultado=campanha-invalida");
+    redirect("/gestao/alunos/tarefas?resultado=campanha-invalida");
   }
   try {
     await createStudyCampaignSafely({
@@ -304,18 +303,17 @@ export const createStudyCampaign = async (formData: FormData) => {
     });
   } catch (error) {
     if (error instanceof CommunityGoalConflictError) {
-      redirect("/admin/estudo?resultado=campanha-conflito");
+      redirect("/gestao/alunos/tarefas?resultado=campanha-conflito");
     }
     if (error instanceof CommunityGoalValidationError) {
-      redirect("/admin/estudo?resultado=campanha-invalida");
+      redirect("/gestao/alunos/tarefas?resultado=campanha-invalida");
     }
     throw error;
   }
-  revalidatePath("/admin/estudo");
   revalidatePath("/comunidade");
   revalidatePath("/comunidade/meta");
   revalidatePath("/");
-  redirect("/admin/estudo?resultado=campanha-criada");
+  redirect("/gestao/alunos/tarefas?resultado=campanha-criada");
 };
 
 export const setStudyCampaignPublication = async (formData: FormData) => {
@@ -327,16 +325,15 @@ export const setStudyCampaignPublication = async (formData: FormData) => {
     updated = await setStudyCampaignPublicationSafely(id, published);
   } catch (error) {
     if (error instanceof CommunityGoalConflictError) {
-      redirect("/admin/estudo?resultado=campanha-conflito");
+      redirect("/gestao/alunos/tarefas?resultado=campanha-conflito");
     }
     throw error;
   }
   if (!updated) {
-    redirect("/admin/estudo?resultado=campanha-indisponivel");
+    redirect("/gestao/alunos/tarefas?resultado=campanha-indisponivel");
   }
-  revalidatePath("/admin/estudo");
   revalidatePath("/comunidade");
   revalidatePath("/comunidade/meta");
   revalidatePath("/");
-  redirect("/admin/estudo?resultado=campanha-atualizada");
+  redirect("/gestao/alunos/tarefas?resultado=campanha-atualizada");
 };

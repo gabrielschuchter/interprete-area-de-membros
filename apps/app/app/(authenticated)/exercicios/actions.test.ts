@@ -274,7 +274,7 @@ test("keeps invalid question edits on their list without writing a version", asy
   questionForm.append("correctOption", "B");
 
   await expect(saveExerciseQuestion(questionForm)).rejects.toThrow(
-    "NEXT_REDIRECT:/admin/exercicios/list_1?resultado=invalid"
+    "NEXT_REDIRECT:/gestao/ensino/exercicios/list_1?resultado=invalid"
   );
   expect(mocks.validateExerciseDraft).toHaveBeenCalled();
   expect(mocks.database.$transaction).not.toHaveBeenCalled();
@@ -302,7 +302,7 @@ test("lets a teacher update a question reference in its next immutable version",
   });
 
   await expect(saveExerciseQuestion(questionForm)).rejects.toThrow(
-    "NEXT_REDIRECT:/admin/exercicios/list_1?resultado=questao-salva"
+    "NEXT_REDIRECT:/gestao/ensino/exercicios/list_1?resultado=questao-salva"
   );
 
   expect(mocks.requireStaff).toHaveBeenCalledTimes(1);

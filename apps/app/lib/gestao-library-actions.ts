@@ -45,7 +45,6 @@ const conflictResult = (error: unknown) => {
 
 const revalidateLibrary = () => {
   revalidatePath("/gestao/ensino/biblioteca");
-  revalidatePath("/admin/library");
   revalidatePath("/biblioteca");
   revalidatePath("/cursos");
 };
@@ -181,7 +180,6 @@ export const applyGestaoLibraryBulkAction = async (
     );
     revalidateLibrary();
     revalidatePath("/gestao/ensino/colecoes");
-    revalidatePath("/admin/colecoes");
     return {
       count: added,
       message: `${added} material(is) adicionado(s) à coleção.`,

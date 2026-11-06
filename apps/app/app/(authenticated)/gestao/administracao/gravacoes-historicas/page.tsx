@@ -8,11 +8,11 @@ import {
   recordingActionLabels,
   recordingTabParam,
 } from "@/lib/gestao-recordings-domain";
-import { RecordingThumbnailUploader } from "../../../admin/gravacoes/recording-thumbnail-uploader";
 import { GestaoCrumbTail } from "../../gestao-crumbs";
 import { GestaoIcon } from "../../gestao-icon";
 import { revokeGestaoRecordingGroup } from "./actions";
 import { LinkPanel } from "./link-panel";
+import { RecordingThumbnailUploader } from "./recording-thumbnail-uploader";
 
 const base = "/gestao/administracao/gravacoes-historicas";
 

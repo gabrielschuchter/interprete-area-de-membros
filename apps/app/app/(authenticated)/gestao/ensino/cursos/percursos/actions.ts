@@ -176,7 +176,6 @@ const revalidateLearningPaths = (pathId?: string) => {
   if (pathId) {
     revalidatePath(`/gestao/ensino/cursos/percursos/${pathId}`);
   }
-  revalidatePath("/admin/learning");
   revalidatePath("/cursos");
 };
 

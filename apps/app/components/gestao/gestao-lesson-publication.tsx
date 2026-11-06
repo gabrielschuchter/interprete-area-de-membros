@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { setGestaoLessonStatus } from "@/app/(authenticated)/admin/actions";
+import { setGestaoLessonStatus } from "@/app/(authenticated)/gestao/ensino/cursos/course-actions";
 
 interface GestaoLessonPublicationProperties {
   readonly expectedUpdatedAt: string;

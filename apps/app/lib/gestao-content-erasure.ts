@@ -5,6 +5,7 @@ import {
   LearningAssignmentTargetType,
   type Prisma,
 } from "@repo/database";
+import { memberAssetPathFromUrl } from "@/lib/member-storage";
 
 /**
  * Exclusão real (não arquivamento) do conteúdo da Gestão, pedida em 05/11/2026.
@@ -18,6 +19,45 @@ import {
  */
 
 type Tx = Prisma.TransactionClient;
+
+const communityAssetPrefixes = [
+  "community-assets/inline/",
+  "community-assets/attachments/",
+  "community-assets/covers/",
+] as const;
+
+/** Caminhos do Storage citados num documento TipTap (imagens e anexos). */
+const collectDocumentAssets = (value: unknown, paths: Set<string>) => {
+  if (!value || typeof value !== "object") {
+    return;
+  }
+  if (Array.isArray(value)) {
+    for (const child of value) {
+      collectDocumentAssets(child, paths);
+    }
+    return;
+  }
+  const record = value as Record<string, unknown>;
+  const attrs = record.attrs;
+  if (attrs && typeof attrs === "object") {
+    const path = memberAssetPathFromUrl(
+      (attrs as Record<string, unknown>).src as string | null
+    );
+    if (path && communityAssetPrefixes.some((p) => path.startsWith(p))) {
+      paths.add(path);
+    }
+  }
+  for (const child of Object.values(record)) {
+    collectDocumentAssets(child, paths);
+  }
+};
+
+const collectCoverAsset = (url: string | null, paths: Set<string>) => {
+  const path = memberAssetPathFromUrl(url);
+  if (path && communityAssetPrefixes.some((p) => path.startsWith(p))) {
+    paths.add(path);
+  }
+};
 
 export type GestaoErasableKind =
   | "activity"
@@ -262,26 +302,46 @@ const eraseCohort = async (tx: Tx, cohortId: string) => {
   await tx.cohort.delete({ where: { id: cohortId } });
 };
 
-const erasePost = async (tx: Tx, postId: string) => {
-  const comments = await tx.communityComment.findMany({
-    where: { postId },
-    select: { id: true },
+const erasePost = async (tx: Tx, postId: string, paths: Set<string>) => {
+  const post = await tx.communityPost.findUnique({
+    where: { id: postId },
+    select: {
+      contentJson: true,
+      coverUrl: true,
+      comments: { select: { id: true, contentJson: true } },
+    },
   });
+  if (post) {
+    collectDocumentAssets(post.contentJson, paths);
+    collectCoverAsset(post.coverUrl, paths);
+    for (const comment of post.comments) {
+      collectDocumentAssets(comment.contentJson, paths);
+    }
+  }
   await tx.mention.deleteMany({
-    where: { entityId: { in: [postId, ...comments.map(({ id }) => id)] } },
+    where: {
+      entityId: { in: [postId, ...(post?.comments ?? []).map(({ id }) => id)] },
+    },
   });
   // Comentários, votos, salvos, seguidores e links de compartilhamento em
   // cascata.
   await tx.communityPost.delete({ where: { id: postId } });
 };
 
-const eraseGroup = async (tx: Tx, spaceId: string) => {
+export const eraseCommunityPostRecord = erasePost;
+
+const eraseGroup = async (tx: Tx, spaceId: string, paths: Set<string>) => {
+  const space = await tx.communitySpace.findUnique({
+    where: { id: spaceId },
+    select: { coverUrl: true },
+  });
+  collectCoverAsset(space?.coverUrl ?? null, paths);
   const posts = await tx.communityPost.findMany({
     where: { spaceId },
     select: { id: true },
   });
   for (const { id } of posts) {
-    await erasePost(tx, id);
+    await erasePost(tx, id, paths);
   }
   // Coleções que usavam o grupo como público passam a valer para todos.
   await tx.contentCollection.updateMany({
@@ -316,62 +376,68 @@ export const eraseGestaoContent = async (
   tx: Tx,
   kind: GestaoErasableKind,
   id: string
-): Promise<string | null> => {
+): Promise<string[]> => {
   switch (kind) {
     case "activity":
       await eraseActivity(tx, id);
-      return null;
+      return [];
     case "assignment":
       await eraseAssignmentBatch(tx, id);
-      return null;
+      return [];
     case "badge":
       await eraseBadge(tx, id);
-      return null;
+      return [];
     case "bank":
       await eraseExerciseBank(tx, id);
-      return null;
+      return [];
     case "cohort":
       await eraseCohort(tx, id);
-      return null;
+      return [];
     case "collection":
       await tx.contentCollection.delete({ where: { id } });
-      return null;
+      return [];
     case "course":
       await eraseCourse(tx, id);
-      return null;
+      return [];
     case "exercise-list":
       await eraseExerciseListsById(tx, [id]);
-      return null;
+      return [];
     case "goal":
       await eraseGoal(tx, id);
-      return null;
-    case "group":
-      await eraseGroup(tx, id);
-      return null;
+      return [];
+    case "group": {
+      const paths = new Set<string>();
+      await eraseGroup(tx, id, paths);
+      return [...paths];
+    }
     case "learning-path":
       // Os cursos do percurso continuam, soltos (SetNull).
       await tx.learningPath.delete({ where: { id } });
-      return null;
+      return [];
     case "lesson":
       await eraseLessonsById(tx, [id]);
-      return null;
-    case "library-item":
-      return eraseLibraryItem(tx, id);
+      return [];
+    case "library-item": {
+      const path = await eraseLibraryItem(tx, id);
+      return path ? [path] : [];
+    }
     case "meeting":
       // Participantes, presenças e alvos em cascata; gravações ficam soltas.
       await tx.meeting.delete({ where: { id } });
-      return null;
+      return [];
     case "module":
       await eraseModulesById(tx, [id]);
-      return null;
-    case "post":
-      await erasePost(tx, id);
-      return null;
+      return [];
+    case "post": {
+      const paths = new Set<string>();
+      await erasePost(tx, id, paths);
+      return [...paths];
+    }
     case "task":
       // Destinatários e conclusões em cascata.
       await tx.learningTask.delete({ where: { id } });
-      return null;
+      return [];
     default:
-      return null;
+      return [];
   }
 };

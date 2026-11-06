@@ -1,6 +1,7 @@
 import { isAuthorizedCronRequest } from "@repo/security/cron-auth";
 import { NextResponse } from "next/server";
 import { env } from "@/env";
+import { purgeExpiredCommunityTrash } from "@/lib/community-trash-purge";
 import { cleanupExpiredGestaoLessonVideoUploads } from "@/lib/gestao-lesson-video-upload-actions";
 import { publishDueGestaoMeetings } from "@/lib/gestao-meetings-schedule";
 
@@ -22,8 +23,9 @@ export async function GET(request: Request) {
     const result = await cleanupExpiredGestaoLessonVideoUploads();
     // Rotina diária da Gestão: publica também os encontros agendados.
     const meetingsPublished = await publishDueGestaoMeetings();
+    const trash = await purgeExpiredCommunityTrash().catch(() => null);
     return NextResponse.json(
-      { ...result, meetingsPublished },
+      { ...result, meetingsPublished, trash },
       {
         headers: { "Cache-Control": "private, no-store" },
       }

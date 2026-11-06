@@ -762,7 +762,6 @@ export const saveGestaoActivity = async (formData: FormData) => {
 
   await dispatchPendingNotifications();
   revalidatePath("/gestao/ensino/atividades");
-  revalidatePath("/admin/activities");
   revalidatePath("/atividades");
   revalidatePath("/estudar");
   redirect(

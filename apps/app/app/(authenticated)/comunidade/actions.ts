@@ -1929,7 +1929,6 @@ export const discardCommunityDraft = async (formData: FormData) => {
   }
   revalidateCommunity(post.space?.slug, post.id, post.slug ?? undefined);
   revalidatePath("/comunidade/minhas-publicacoes");
-  revalidatePath("/admin/community");
   return { deletedAt: deletedAt.toISOString(), ok: true as const };
 };
 
@@ -1967,11 +1966,11 @@ export const softDeletePost = async (formData: FormData) => {
   }
   revalidateCommunity(post.space?.slug, postId, post.slug ?? undefined);
   revalidatePath("/comunidade/minhas-publicacoes");
-  revalidatePath("/admin/community");
-  const adminReturn = returnTo === "/admin/community" && canModerate(role);
+  const adminReturn =
+    returnTo === "/gestao/comunidade/publicacoes" && canModerate(role);
   const communityReturn = safeCommunityReturnPath(returnTo);
   if (adminReturn) {
-    redirect("/admin/community");
+    redirect("/gestao/comunidade/publicacoes");
   }
   if (communityReturn?.startsWith("/comunidade/minhas-publicacoes")) {
     const separator = communityReturn.includes("?") ? "&" : "?";
@@ -2027,7 +2026,6 @@ export const undoSoftDeletedPost = async (formData: FormData) => {
   }
   revalidateCommunity(post.space?.slug, post.id, post.slug ?? undefined);
   revalidatePath("/comunidade/minhas-publicacoes");
-  revalidatePath("/admin/community");
   return { ok: true as const };
 };
 
@@ -2078,8 +2076,7 @@ export const restoreCommunityPost = async (formData: FormData) => {
   }
   revalidateCommunity(post.space?.slug, post.id, post.slug ?? undefined);
   revalidatePath("/comunidade/minhas-publicacoes");
-  revalidatePath("/admin/community");
-  redirect("/admin/community");
+  redirect("/gestao/comunidade/publicacoes");
 };
 
 export const softDeleteComment = async (formData: FormData) => {
@@ -2245,7 +2242,6 @@ export const togglePostFeatured = async (formData: FormData) => {
     },
   });
   revalidateCommunity(post.space?.slug, postId, post.slug ?? undefined);
-  revalidatePath("/admin/community");
 };
 
 const groupCreateSchema = z.object({
@@ -2586,7 +2582,6 @@ export const createSpace = async (formData: FormData) => {
       status: ContentStatus.DRAFT,
     },
   });
-  revalidatePath("/admin/community");
 };
 
 export const setSpaceStatus = async (formData: FormData) => {
@@ -2606,7 +2601,6 @@ export const setSpaceStatus = async (formData: FormData) => {
     where: { id: spaceId },
     data: { status: status as ContentStatus },
   });
-  revalidatePath("/admin/community");
   revalidatePath("/comunidade");
 };
 
@@ -2637,7 +2631,6 @@ export const updateSpace = async (formData: FormData) => {
     where: { id: spaceId },
     data: { title, slug, description: description || null },
   });
-  revalidatePath("/admin/community");
   revalidatePath("/comunidade");
   revalidatePath(`/comunidade/grupos/${slug}`);
 };
@@ -2664,6 +2657,5 @@ export const toggleSpaceComments = async (formData: FormData) => {
     where: { id: space.id },
     data: { commentsClosed: desired === "on" },
   });
-  revalidatePath("/admin/community");
   revalidatePath(`/comunidade/grupos/${space.slug}`);
 };

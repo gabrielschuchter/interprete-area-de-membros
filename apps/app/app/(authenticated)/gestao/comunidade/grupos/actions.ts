@@ -10,10 +10,6 @@ import {
 import { revalidatePath } from "next/cache";
 import { isAllowedCollectionCoverUrl } from "@/lib/collection-covers";
 import {
-  collectCommunityAssetPaths,
-  removeUnreferencedCommunityAssets,
-} from "@/lib/community-asset-cleanup";
-import {
   communitySpaceSlugBase,
   normalizeCommunitySpaceTitle,
 } from "@/lib/community-space-rules";
@@ -290,69 +286,5 @@ export const setGestaoGroupState = async (formData: FormData) => {
     eventType: "gestao.group.status_changed",
     payload: { operation, title: space.title },
   });
-  revalidateGroups(space.slug);
-};
-
-/**
- * Apaga de vez um grupo arquivado: publicações, comentários, membros e
- * convites saem junto. Só vale para grupo arquivado, para que a exclusão seja
- * sempre o segundo passo, e não para grupo que uma coleção usa como público.
- */
-export const deleteGestaoGroup = async (formData: FormData) => {
-  const { actor } = await requireGestaoAction("community.moderate");
-  const id = text(formData, "id");
-  if (!id) {
-    return;
-  }
-  const space = await database.communitySpace.findUnique({
-    where: { id },
-    select: {
-      _count: { select: { contentCollections: true, posts: true } },
-      slug: true,
-      status: true,
-      title: true,
-    },
-  });
-  if (
-    !space ||
-    space.status !== ContentStatus.ARCHIVED ||
-    space._count.contentCollections > 0
-  ) {
-    return;
-  }
-  await consumeMutationRateLimit({
-    action: "community.moderation",
-    memberId: actor.userId,
-  });
-  const [spaceCover, groupPosts] = await Promise.all([
-    database.communitySpace.findUnique({
-      where: { id },
-      select: { coverUrl: true },
-    }),
-    database.communityPost.findMany({
-      where: { spaceId: id },
-      select: { content: true, coverUrl: true },
-    }),
-  ]);
-  const assetPaths = collectCommunityAssetPaths([
-    spaceCover?.coverUrl,
-    ...groupPosts.flatMap((post) => [post.content, post.coverUrl]),
-  ]);
-  await database.$transaction(async (transaction) => {
-    await transaction.communityPost.deleteMany({ where: { spaceId: id } });
-    await transaction.communitySpace.delete({ where: { id } });
-    await recordAuditEvent(
-      {
-        actorId: actor.userId,
-        aggregateId: id,
-        aggregateType: "CommunitySpace",
-        eventType: "gestao.group.deleted",
-        payload: { posts: space._count.posts, title: space.title },
-      },
-      transaction
-    );
-  });
-  // Libera o espaço dos arquivos do grupo (capa e imagens das publicações).
-  await removeUnreferencedCommunityAssets(assetPaths);
   revalidateGroups(space.slug);
 };

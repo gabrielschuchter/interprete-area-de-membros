@@ -16,7 +16,7 @@ import {
   setContentStatus,
   setGestaoLessonStatus,
   updateCourse,
-} from "../../../../admin/actions";
+} from "../course-actions";
 
 export type StructureResult =
   | { readonly ok: true; readonly lessonId?: string }
