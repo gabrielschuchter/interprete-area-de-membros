@@ -59,6 +59,7 @@ import {
   extractMentionUsernames,
   notifyCommunityComment,
   notifyCommunityPost,
+  notifyStaffCommunityActivity,
 } from "@/lib/notifications";
 import { getOrCreateProfile } from "@/lib/profile";
 import { inviteStudyGroupMembers as inviteStudyGroupMembersV2 } from "./invitation-actions";
@@ -528,6 +529,13 @@ export const createPost = async (formData: FormData) => {
     document: persistedDocument,
     href: communityHref(post),
   });
+  await notifyStaffCommunityActivity({
+    actorId: userId,
+    entityId: post.id,
+    href: communityHref(post),
+    kind: "community-posts",
+    title: parsed.data.title,
+  }).catch(() => undefined);
   revalidateCommunity(space?.slug, post.id, post.slug ?? undefined);
   redirect(communityHref(post));
 };

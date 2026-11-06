@@ -510,9 +510,7 @@ export const completeOnboarding = async (): Promise<OnboardingResult> =>
         onboardingCompletedAt: completedAt,
       },
     });
-    await notifyStaffMemberJoined({ completedAt, memberId }).catch(
-      () => undefined
-    );
+    await notifyStaffMemberJoined({ memberId }).catch(() => undefined);
     revalidatePath("/", "layout");
     mutationLog({
       action: "onboarding.save",
