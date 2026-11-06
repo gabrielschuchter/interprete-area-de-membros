@@ -9,10 +9,10 @@ import {
 } from "./exercise-management";
 
 describe("exerciseManagementPath", () => {
-  it("keeps legacy actions on the admin route by default", () => {
-    expect(exerciseManagementPath(false)).toBe("/admin/exercicios");
+  it("always returns to the Gestão route", () => {
+    expect(exerciseManagementPath(false)).toBe("/gestao/ensino/exercicios");
     expect(exerciseManagementPath(false, "list/one")).toBe(
-      "/admin/exercicios/list%2Fone"
+      "/gestao/ensino/exercicios/list%2Fone"
     );
   });
 
@@ -83,10 +83,10 @@ describe("exerciseListEditorHref", () => {
     expect(
       exerciseListEditorHref({
         ...base,
-        basePath: "/admin/exercicios",
+        basePath: "/gestao/ensino/exercicios",
         overrides: { reusablePage: 4 },
       })
-    ).toContain("/admin/exercicios/list%2Fone?");
+    ).toContain("/gestao/ensino/exercicios/list%2Fone?");
   });
 });
 

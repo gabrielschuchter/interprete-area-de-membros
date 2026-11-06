@@ -161,10 +161,7 @@ const gestaoBoundaryResponse = async (req: NextRequest, userId: string) => {
 };
 
 const legacyAdminRedirect = (req: NextRequest) => {
-  if (
-    env.GESTAO_V2_ENABLED !== "true" ||
-    !matchesPath(req.nextUrl.pathname, "/admin")
-  ) {
+  if (!matchesPath(req.nextUrl.pathname, "/admin")) {
     return null;
   }
   const destination = gestaoLegacyAdminDestination(req.nextUrl.pathname);

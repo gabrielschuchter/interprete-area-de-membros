@@ -87,13 +87,10 @@ const ManagementSidebarEntry = ({
   const searchParams = useSearchParams();
   const serializedSearch = searchParams.toString();
   const returnPath = [pathname, serializedSearch].filter(Boolean).join("?");
-  const href = enabled ? withGestaoReturnPath("/gestao", returnPath) : "/admin";
+  const href = withGestaoReturnPath("/gestao", returnPath);
   const label = enabled ? "Gestão" : "Professor";
-  const targetPath = enabled ? "/gestao" : "/admin";
-  const active = isMemberSidebarPathActive(activePath, targetPath, [
-    "/gestao",
-    "/admin",
-  ]);
+  const targetPath = "/gestao";
+  const active = isMemberSidebarPathActive(activePath, targetPath, ["/gestao"]);
 
   return (
     <SidebarMenu className="mt-5 border-sidebar-border border-t pt-4">
@@ -196,7 +193,6 @@ const MemberAreaSidebarView = ({
   const navigationHrefs = [
     ...mainNavigation.map((item) => item.href),
     "/gestao",
-    "/admin",
     "/perfil",
     "/configuracoes",
     "/comunidade/minhas-publicacoes",

@@ -43,10 +43,9 @@ const value = (entry: FormDataEntryValue | null) =>
 const staffLibraryPath = (formData: FormData) =>
   value(formData.get("surface")) === "gestao"
     ? "/gestao/ensino/biblioteca"
-    : "/admin/library";
+    : "/gestao/ensino/biblioteca";
 
 const revalidateStaffLibrary = () => {
-  revalidatePath("/admin/library");
   revalidatePath("/gestao/ensino/biblioteca");
   revalidatePath("/biblioteca");
 };

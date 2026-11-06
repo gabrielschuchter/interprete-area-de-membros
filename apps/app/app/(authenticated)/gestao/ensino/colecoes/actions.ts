@@ -109,7 +109,6 @@ const recordCollectionEvent = async (
 
 const revalidateCollections = () => {
   revalidatePath("/gestao/ensino/colecoes");
-  revalidatePath("/admin/colecoes");
   revalidatePath("/gestao");
   revalidatePath("/cursos");
   revalidatePath("/");

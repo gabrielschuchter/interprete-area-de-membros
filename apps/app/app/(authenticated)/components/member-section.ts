@@ -18,9 +18,6 @@ export const memberSectionForPathname = (pathname: string) => {
   if (pathname === "/salvos") {
     return "Salvos";
   }
-  if (pathname.startsWith("/admin")) {
-    return "Professor";
-  }
   if (pathname.startsWith("/cursos")) {
     return "Cursos";
   }

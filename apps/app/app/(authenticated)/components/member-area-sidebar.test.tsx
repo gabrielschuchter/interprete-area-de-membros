@@ -136,11 +136,11 @@ describe("member sidebar drawer entry", () => {
     const link = screen.getByRole("link", { name: "Gestão" });
     expect(link.getAttribute("href")).toBe("/gestao?from=%2F");
   });
-  it("keeps the legacy Professor entry when the flag is disabled", () => {
+  it("points the Professor entry to Gestão even when the flag is disabled", () => {
     setup();
     render(content(false, true, false));
     const link = screen.getByRole("link", { name: "Professor" });
-    expect(link.getAttribute("href")).toBe("/admin");
+    expect(link.getAttribute("href")).toBe("/gestao?from=%2F");
   });
   it("allows a desktop portal menu to stay open, close and reopen", () => {
     setup();

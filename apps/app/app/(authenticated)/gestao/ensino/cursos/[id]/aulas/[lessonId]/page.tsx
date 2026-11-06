@@ -6,7 +6,7 @@ import { notFound } from "next/navigation";
 import {
   createLessonResource,
   removeLessonResource,
-} from "@/app/(authenticated)/admin/actions";
+} from "@/app/(authenticated)/gestao/ensino/cursos/course-actions";
 import { GestaoLessonEditorForm } from "@/components/gestao/gestao-lesson-editor-form";
 import { GestaoLessonPublication } from "@/components/gestao/gestao-lesson-publication";
 import { requireGestaoAction } from "@/lib/gestao-authorization";

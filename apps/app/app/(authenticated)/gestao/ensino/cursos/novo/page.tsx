@@ -4,7 +4,7 @@ import { Input } from "@repo/design-system/components/ui/input";
 import { Textarea } from "@repo/design-system/components/ui/textarea";
 import Link from "next/link";
 import { requireGestaoAction } from "@/lib/gestao-authorization";
-import { createCourse } from "../../../../admin/actions";
+import { createCourse } from "../course-actions";
 
 const GestaoNewCoursePage = async ({
   searchParams,

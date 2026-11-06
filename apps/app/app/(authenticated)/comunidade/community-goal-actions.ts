@@ -55,7 +55,6 @@ const finishAction = (
   if (result === "salva" || result === "renovada") {
     revalidatePath("/comunidade");
     revalidatePath("/comunidade/meta");
-    revalidatePath("/admin/estudo");
   }
   return redirect(`/comunidade/meta?resultado=${result}`);
 };

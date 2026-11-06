@@ -2,29 +2,22 @@
 
 import { randomUUID } from "node:crypto";
 import {
-  AccessPermission,
   AccessResourceType,
-  AnnouncementAudience,
   ContentStatus,
   database,
   EnrollmentStatus,
   LessonAssetMediaProvider,
   LessonKind,
-  MemberRole,
   type Prisma,
   ResourceKind,
 } from "@repo/database";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { queueAnnouncementNotifications } from "@/lib/announcement-notification-outbox";
-import { parseAnnouncementDateTime } from "@/lib/announcement-time";
-import { requireAdmin, requireStaff } from "@/lib/authorization";
-import { sanitizeRichDocument } from "@/lib/community-content";
+import { requireStaff } from "@/lib/authorization";
 import { recordAuditEvent } from "@/lib/gestao-audit";
 import { requireGestaoAction } from "@/lib/gestao-authorization";
 import { readIdempotencyKey } from "@/lib/mutation-contract";
 import { consumeMutationRateLimit } from "@/lib/mutation-reliability";
-import { dispatchPendingNotifications } from "@/lib/notification-outbox-dispatch";
 import {
   notifyLessonAvailable,
   notifyModuleAvailable,
@@ -32,9 +25,7 @@ import {
 import { getYouTubeDataAdapter } from "@/lib/youtube-adapter";
 import { youtubePublicationIssue } from "@/lib/youtube-publication-policy";
 import { verifyYouTubeVideo } from "@/lib/youtube-verification";
-import { getYoutubeVideoId } from "@/lib/youtube-video";
 
-const PARAGRAPH_SPLIT = /\r?\n\r?\n/;
 const LIST_SPLIT = /[\n,]/;
 
 const asText = (value: FormDataEntryValue | null) =>
@@ -68,27 +59,8 @@ const asHttpUrl = (value: string) => {
   }
 };
 
-const revalidateMemberSurfaces = (username?: string) => {
-  revalidatePath("/admin/membros");
-  revalidatePath("/membros");
-  revalidatePath("/comunidade");
-  revalidatePath("/perfil");
-  if (username) {
-    revalidatePath(`/membros/${username}`);
-  }
-};
-
 const requireStaffMutation = async () => {
   const session = await requireStaff();
-  await consumeMutationRateLimit({
-    action: "admin.mutation",
-    memberId: session.userId,
-  });
-  return session;
-};
-
-const requireAdminMutation = async () => {
-  const session = await requireAdmin();
   await consumeMutationRateLimit({
     action: "admin.mutation",
     memberId: session.userId,
@@ -264,258 +236,6 @@ const notifyAvailableMembers = async (
   }
 };
 
-export const setMemberRole = async (formData: FormData) => {
-  const { userId } = await requireAdminMutation();
-  const memberId = asText(formData.get("memberId"));
-  const nextRole = asText(formData.get("role"));
-
-  if (
-    !(memberId && Object.values(MemberRole).includes(nextRole as MemberRole))
-  ) {
-    return;
-  }
-
-  const member = await database.$transaction(async (transaction) => {
-    const current = await transaction.member.findUnique({
-      where: { id: memberId },
-      select: { role: true },
-    });
-    if (!current || current.role === nextRole) {
-      return null;
-    }
-    if (current.role === MemberRole.ADMIN) {
-      const otherAdmins = await transaction.member.count({
-        where: {
-          role: MemberRole.ADMIN,
-          deactivatedAt: null,
-          id: { not: memberId },
-        },
-      });
-      if (otherAdmins === 0) {
-        return null;
-      }
-    }
-    const updated = await transaction.member.update({
-      where: { id: memberId },
-      data: { role: nextRole as MemberRole },
-      select: { profile: { select: { username: true } } },
-    });
-    await recordAuditEvent(
-      {
-        eventType: "gestao.member.role_changed",
-        actorId: userId,
-        aggregateType: "Member",
-        aggregateId: memberId,
-        payload: { memberId, from: current.role, to: nextRole },
-      },
-      transaction
-    );
-    return updated;
-  });
-
-  if (member) {
-    revalidateMemberSurfaces(member.profile?.username);
-  }
-};
-
-const isAccessResourceType = (value: string): value is AccessResourceType =>
-  Object.values(AccessResourceType).includes(value as AccessResourceType);
-
-const resourceExists = async (
-  resourceType: AccessResourceType,
-  resourceId: string
-) => {
-  switch (resourceType) {
-    case AccessResourceType.COURSE:
-      return Boolean(
-        await database.course.findUnique({
-          where: { id: resourceId },
-          select: { id: true },
-        })
-      );
-    case AccessResourceType.MODULE:
-      return Boolean(
-        await database.module.findUnique({
-          where: { id: resourceId },
-          select: { id: true },
-        })
-      );
-    case AccessResourceType.LESSON:
-      return Boolean(
-        await database.lesson.findUnique({
-          where: { id: resourceId },
-          select: { id: true },
-        })
-      );
-    case AccessResourceType.ASSET:
-      return Boolean(
-        await database.lessonAsset.findUnique({
-          where: { id: resourceId },
-          select: { id: true },
-        })
-      );
-    default:
-      return false;
-  }
-};
-
-export const setAccessGrant = async (formData: FormData) => {
-  const { userId } = await requireAdminMutation();
-
-  const memberId = asText(formData.get("memberId"));
-  const resourceTypeValue = asText(formData.get("resourceType"));
-  let resourceId = asText(formData.get("resourceId"));
-  let normalizedResourceType = resourceTypeValue;
-  const expiresAtValue = asText(formData.get("expiresAt"));
-
-  if (!normalizedResourceType && resourceId.includes(":")) {
-    const separator = resourceId.indexOf(":");
-    normalizedResourceType = resourceId.slice(0, separator);
-    resourceId = resourceId.slice(separator + 1);
-  }
-
-  if (
-    !(memberId && resourceId && isAccessResourceType(normalizedResourceType))
-  ) {
-    return;
-  }
-
-  const resourceType = normalizedResourceType as AccessResourceType;
-  const expiresAt = expiresAtValue ? new Date(expiresAtValue) : null;
-  if (expiresAt && Number.isNaN(expiresAt.valueOf())) {
-    return;
-  }
-  const [member, exists] = await Promise.all([
-    database.member.findUnique({
-      where: { id: memberId },
-      select: { id: true },
-    }),
-    resourceExists(resourceType, resourceId),
-  ]);
-
-  if (!(member && exists)) {
-    return;
-  }
-
-  await database.accessGrant.upsert({
-    where: {
-      memberId_resourceType_resourceId: {
-        memberId,
-        resourceType,
-        resourceId,
-      },
-    },
-    update: { permission: AccessPermission.VIEW, expiresAt },
-    create: {
-      memberId,
-      resourceType,
-      resourceId,
-      permission: AccessPermission.VIEW,
-      expiresAt,
-    },
-  });
-  await recordAuditEvent({
-    eventType: "gestao.access.granted",
-    actorId: userId,
-    aggregateType: "Member",
-    aggregateId: memberId,
-    payload: {
-      memberId,
-      resourceType,
-      resourceId,
-      expiresAt: expiresAt?.toISOString() ?? null,
-    },
-  });
-
-  revalidatePath("/admin/acessos");
-  revalidatePath("/cursos");
-};
-
-export const removeAccessGrant = async (formData: FormData) => {
-  const { userId } = await requireAdminMutation();
-  const grantId = asText(formData.get("grantId"));
-
-  if (!grantId) {
-    return;
-  }
-
-  const grant = await database.accessGrant.findUnique({
-    where: { id: grantId },
-    select: { memberId: true, resourceType: true, resourceId: true },
-  });
-  const removed = await database.accessGrant.deleteMany({
-    where: { id: grantId },
-  });
-  if (grant && removed.count > 0) {
-    await recordAuditEvent({
-      eventType: "gestao.access.revoked",
-      actorId: userId,
-      aggregateType: "Member",
-      aggregateId: grant.memberId,
-      payload: { grantId, ...grant },
-    });
-  }
-  revalidatePath("/admin/acessos");
-  revalidatePath("/cursos");
-};
-
-const asContent = (value: string): Prisma.InputJsonValue => {
-  if (value) {
-    try {
-      const parsed: unknown = JSON.parse(value);
-      const sanitized = sanitizeRichDocument(parsed);
-
-      if (sanitized) {
-        return sanitized as Prisma.InputJsonValue;
-      }
-    } catch {
-      // Plain text is deliberately converted to a safe document below.
-    }
-  }
-
-  return {
-    type: "doc",
-    content: value
-      .split(PARAGRAPH_SPLIT)
-      .map((paragraph) => paragraph.trim())
-      .filter(Boolean)
-      .map((paragraph) => ({
-        type: "paragraph",
-        content: [{ type: "text", text: paragraph }],
-      })),
-  };
-};
-
-export const createLearningPath = async (formData: FormData) => {
-  await requireStaffMutation();
-  const title = asText(formData.get("title"));
-  const slug = asText(formData.get("slug")).toLowerCase();
-  const description = asText(formData.get("description"));
-
-  if (!(title && slug)) {
-    return;
-  }
-
-  await database.$transaction(async (transaction) => {
-    const lastPath = await transaction.learningPath.findFirst({
-      orderBy: { position: "desc" },
-      select: { position: true },
-    });
-
-    await transaction.learningPath.create({
-      data: {
-        title,
-        slug,
-        description: description || null,
-        position: (lastPath?.position ?? -1) + 1,
-      },
-    });
-  });
-
-  revalidatePath("/admin/learning");
-  revalidatePath("/cursos");
-};
-
 export const createCourse = async (formData: FormData) => {
   const { userId } = await requireStaffMutation();
   const gestaoReturn = asText(formData.get("gestaoReturn")) === "GESTAO";
@@ -561,13 +281,13 @@ export const createCourse = async (formData: FormData) => {
     });
   });
 
-  revalidatePath("/admin/learning");
+  revalidatePath("/gestao/ensino/cursos");
   revalidatePath("/gestao/ensino/cursos");
   revalidatePath("/cursos");
   redirect(
     gestaoReturn
       ? `/gestao/ensino/cursos/${course.id}`
-      : `/admin/learning/courses/${course.id}`
+      : `/gestao/ensino/cursos/${course.id}`
   );
 };
 
@@ -697,48 +417,13 @@ export const duplicateCourse = async (formData: FormData) => {
     return course;
   });
 
-  revalidatePath("/admin/learning");
+  revalidatePath("/gestao/ensino/cursos");
   revalidatePath("/gestao/ensino/cursos");
   redirect(
     gestaoReturn
       ? `/gestao/ensino/cursos/${copy.id}`
-      : `/admin/learning/courses/${copy.id}`
+      : `/gestao/ensino/cursos/${copy.id}`
   );
-};
-
-export const createModule = async (formData: FormData) => {
-  await requireStaffMutation();
-  const courseId = asText(formData.get("courseId"));
-  const title = asText(formData.get("title"));
-  const slug = asText(formData.get("slug")).toLowerCase();
-  const description = asText(formData.get("description"));
-  const objectives = asList(formData.get("objectives"));
-
-  if (!(courseId && title && slug)) {
-    return;
-  }
-
-  await database.$transaction(async (transaction) => {
-    const lastModule = await transaction.module.findFirst({
-      where: { courseId },
-      orderBy: { position: "desc" },
-      select: { position: true },
-    });
-
-    await transaction.module.create({
-      data: {
-        courseId,
-        title,
-        slug,
-        description: description || null,
-        objectives,
-        position: (lastModule?.position ?? -1) + 1,
-      },
-    });
-  });
-
-  revalidatePath(`/admin/learning/courses/${courseId}`);
-  revalidatePath("/cursos", "page");
 };
 
 export const duplicateModule = async (formData: FormData) => {
@@ -823,59 +508,13 @@ export const duplicateModule = async (formData: FormData) => {
     }
     return createdModule;
   });
-  revalidatePath(`/admin/learning/courses/${source.courseId}`);
+  revalidatePath(`/gestao/ensino/cursos/${source.courseId}`);
   revalidatePath(`/gestao/ensino/cursos/${source.courseId}`);
   redirect(
     gestaoReturn
       ? `/gestao/ensino/cursos/${source.courseId}#module-${copy.id}`
-      : `/admin/learning/courses/${source.courseId}#module-${copy.id}`
+      : `/gestao/ensino/cursos/${source.courseId}#module-${copy.id}`
   );
-};
-
-export const createLesson = async (formData: FormData) => {
-  const { userId } = await requireStaffMutation();
-  const moduleId = asText(formData.get("moduleId"));
-  const title = asText(formData.get("title"));
-  const slug = asText(formData.get("slug")).toLowerCase();
-  const description = asText(formData.get("description"));
-  const objectives = asList(formData.get("objectives"));
-  const content =
-    asText(formData.get("contentJson")) || asText(formData.get("content"));
-  const kind = asText(formData.get("kind"));
-
-  if (!(moduleId && title && slug && content)) {
-    return;
-  }
-
-  const selectedKind = Object.values(LessonKind).includes(kind as LessonKind)
-    ? (kind as LessonKind)
-    : LessonKind.TEXT;
-
-  const lesson = await database.$transaction(async (transaction) => {
-    const lastLesson = await transaction.lesson.findFirst({
-      where: { moduleId },
-      orderBy: { position: "desc" },
-      select: { position: true },
-    });
-
-    return transaction.lesson.create({
-      data: {
-        moduleId,
-        title,
-        slug,
-        description: description || null,
-        objectives,
-        content: asContent(content),
-        kind: selectedKind,
-        position: (lastLesson?.position ?? -1) + 1,
-        createdBy: userId,
-        updatedBy: userId,
-      },
-      select: { module: { select: { courseId: true } } },
-    });
-  });
-
-  revalidatePath(`/admin/learning/courses/${lesson.module.courseId}`);
 };
 
 export const duplicateLesson = async (formData: FormData) => {
@@ -938,120 +577,13 @@ export const duplicateLesson = async (formData: FormData) => {
     });
     return createdLesson;
   });
-  revalidatePath(`/admin/learning/courses/${source.module.courseId}`);
+  revalidatePath(`/gestao/ensino/cursos/${source.module.courseId}`);
   revalidatePath(`/gestao/ensino/cursos/${source.module.courseId}`);
   redirect(
     gestaoReturn
       ? `/gestao/ensino/cursos/${source.module.courseId}#lesson-${copy.id}`
-      : `/admin/learning/courses/${source.module.courseId}#lesson-${copy.id}`
+      : `/gestao/ensino/cursos/${source.module.courseId}#lesson-${copy.id}`
   );
-};
-
-export const updateLesson = async (formData: FormData) => {
-  const { userId } = await requireStaffMutation();
-  const lessonId = asText(formData.get("lessonId"));
-  const title = asText(formData.get("title"));
-  const slug = asText(formData.get("slug")).toLowerCase();
-  const description = asText(formData.get("description"));
-  const objectives = asList(formData.get("objectives"));
-  const content =
-    asText(formData.get("contentJson")) || asText(formData.get("content"));
-  const kindValue = asText(formData.get("kind"));
-
-  if (!(lessonId && title && slug && content)) {
-    return;
-  }
-  const kind = Object.values(LessonKind).includes(kindValue as LessonKind)
-    ? (kindValue as LessonKind)
-    : LessonKind.TEXT;
-
-  const lesson = await database.lesson.update({
-    where: { id: lessonId },
-    data: {
-      title,
-      slug,
-      description: description || null,
-      objectives,
-      content: asContent(content),
-      kind,
-      updatedBy: userId,
-    },
-    select: { module: { select: { courseId: true } } },
-  });
-
-  revalidatePath(`/admin/learning/courses/${lesson.module.courseId}`);
-};
-
-export const updateLessonAssetMedia = async (formData: FormData) => {
-  await requireStaffMutation();
-  const assetId = asText(formData.get("assetId"));
-  const providerValue = asText(formData.get("mediaProvider"));
-  if (
-    !(
-      assetId &&
-      Object.values(LessonAssetMediaProvider).includes(
-        providerValue as LessonAssetMediaProvider
-      )
-    )
-  ) {
-    return;
-  }
-
-  const provider = providerValue as LessonAssetMediaProvider;
-  const current = await database.lessonAsset.findUnique({
-    where: { id: assetId },
-    select: { lesson: { select: { module: { select: { courseId: true } } } } },
-  });
-  if (!current) {
-    return;
-  }
-
-  let mediaExternalId: string | null = null;
-  let externalUrl: string | null | undefined;
-  if (provider === LessonAssetMediaProvider.YOUTUBE) {
-    mediaExternalId = getYoutubeVideoId(asText(formData.get("youtubeUrl")));
-    if (!mediaExternalId) {
-      return;
-    }
-  } else if (provider === LessonAssetMediaProvider.EXTERNAL_URL) {
-    externalUrl = asHttpUrl(asText(formData.get("externalUrl")));
-    if (!externalUrl) {
-      return;
-    }
-  }
-
-  await database.lessonAsset.update({
-    where: { id: assetId },
-    data: {
-      mediaProvider: provider,
-      mediaExternalId,
-      ...(externalUrl !== undefined ? { externalUrl } : {}),
-    },
-  });
-  const courseId = current.lesson.module.courseId;
-  revalidatePath(`/admin/learning/courses/${courseId}`);
-  revalidatePath("/cursos");
-  revalidatePath("/encontros/gravacoes");
-};
-
-export const updateLearningPath = async (formData: FormData) => {
-  await requireStaffMutation();
-  const pathId = asText(formData.get("pathId"));
-  const title = asText(formData.get("title"));
-  const slug = asText(formData.get("slug")).toLowerCase();
-  const description = asText(formData.get("description"));
-
-  if (!(pathId && title && slug)) {
-    return;
-  }
-
-  await database.learningPath.update({
-    where: { id: pathId },
-    data: { title, slug, description: description || null },
-  });
-
-  revalidatePath("/admin/learning");
-  revalidatePath("/cursos");
 };
 
 export const updateCourse = async (formData: FormData) => {
@@ -1087,31 +619,9 @@ export const updateCourse = async (formData: FormData) => {
     },
   });
 
-  revalidatePath(`/admin/learning/courses/${courseId}`);
-  revalidatePath(`/admin/learning/courses/${courseId}/preview`);
-  revalidatePath("/admin/learning");
-  revalidatePath("/cursos");
-};
-
-export const updateModule = async (formData: FormData) => {
-  await requireStaffMutation();
-  const moduleId = asText(formData.get("moduleId"));
-  const title = asText(formData.get("title"));
-  const slug = asText(formData.get("slug")).toLowerCase();
-  const description = asText(formData.get("description"));
-  const objectives = asList(formData.get("objectives"));
-
-  if (!(moduleId && title && slug)) {
-    return;
-  }
-
-  const module = await database.module.update({
-    where: { id: moduleId },
-    data: { title, slug, description: description || null, objectives },
-    select: { courseId: true },
-  });
-
-  revalidatePath(`/admin/learning/courses/${module.courseId}`);
+  revalidatePath(`/gestao/ensino/cursos/${courseId}`);
+  revalidatePath(`/gestao/ensino/cursos/${courseId}/preview`);
+  revalidatePath("/gestao/ensino/cursos");
   revalidatePath("/cursos");
 };
 
@@ -1158,50 +668,9 @@ export const createLessonResource = async (formData: FormData) => {
     },
   });
 
-  revalidatePath(`/admin/learning/courses/${lesson.module.courseId}`);
+  revalidatePath(`/gestao/ensino/cursos/${lesson.module.courseId}`);
   revalidatePath(
     `/gestao/ensino/cursos/${lesson.module.courseId}/aulas/${lessonId}`
-  );
-};
-
-export const updateLessonResource = async (formData: FormData) => {
-  await requireStaffMutation();
-  const resourceId = asText(formData.get("resourceId"));
-  const title = asText(formData.get("title"));
-  const kindValue = asText(formData.get("kind"));
-  const url = asHttpUrl(asText(formData.get("url")));
-
-  if (
-    !(
-      resourceId &&
-      title &&
-      url &&
-      Object.values(ResourceKind).includes(kindValue as ResourceKind)
-    )
-  ) {
-    return;
-  }
-
-  const resource = await database.lessonResource.findUnique({
-    where: { id: resourceId },
-    select: {
-      lesson: {
-        select: { id: true, module: { select: { courseId: true } } },
-      },
-    },
-  });
-  if (!resource) {
-    return;
-  }
-
-  await database.lessonResource.update({
-    where: { id: resourceId },
-    data: { title, kind: kindValue as ResourceKind, url },
-  });
-
-  revalidatePath(`/admin/learning/courses/${resource.lesson.module.courseId}`);
-  revalidatePath(
-    `/gestao/ensino/cursos/${resource.lesson.module.courseId}/aulas/${resource.lesson.id}`
   );
 };
 
@@ -1224,7 +693,7 @@ export const removeLessonResource = async (formData: FormData) => {
   }
 
   await database.lessonResource.delete({ where: { id: resourceId } });
-  revalidatePath(`/admin/learning/courses/${resource.lesson.module.courseId}`);
+  revalidatePath(`/gestao/ensino/cursos/${resource.lesson.module.courseId}`);
   revalidatePath(
     `/gestao/ensino/cursos/${resource.lesson.module.courseId}/aulas/${resource.lesson.id}`
   );
@@ -1272,7 +741,7 @@ export const moveModule = async (formData: FormData) => {
     });
   });
 
-  revalidatePath(`/admin/learning/courses/${module.courseId}`);
+  revalidatePath(`/gestao/ensino/cursos/${module.courseId}`);
   revalidatePath("/cursos");
 };
 
@@ -1322,7 +791,7 @@ export const moveLesson = async (formData: FormData) => {
     });
   });
 
-  revalidatePath(`/admin/learning/courses/${lesson.module.courseId}`);
+  revalidatePath(`/gestao/ensino/cursos/${lesson.module.courseId}`);
   revalidatePath("/cursos");
 };
 
@@ -1353,7 +822,7 @@ export const setContentStatus = async (formData: FormData) => {
       aggregateId: id,
       payload: { pathId: id, status },
     });
-    revalidatePath("/admin/learning");
+    revalidatePath("/gestao/ensino/cursos");
     revalidatePath("/cursos");
     return;
   }
@@ -1370,8 +839,8 @@ export const setContentStatus = async (formData: FormData) => {
       aggregateId: id,
       payload: { courseId: id, status },
     });
-    revalidatePath("/admin/learning");
-    revalidatePath(`/admin/learning/courses/${id}`);
+    revalidatePath("/gestao/ensino/cursos");
+    revalidatePath(`/gestao/ensino/cursos/${id}`);
     revalidatePath(`/gestao/ensino/cursos/${id}`);
     revalidatePath(`/gestao/ensino/cursos/${id}/turmas`);
     revalidatePath("/cursos");
@@ -1387,7 +856,7 @@ export const setContentStatus = async (formData: FormData) => {
     if (status === ContentStatus.PUBLISHED) {
       await notifyAvailableMembers(AccessResourceType.MODULE, id, userId);
     }
-    revalidatePath(`/admin/learning/courses/${module.courseId}`);
+    revalidatePath(`/gestao/ensino/cursos/${module.courseId}`);
     return;
   }
 
@@ -1733,7 +1202,7 @@ const updateLessonStatus = async ({
     return commitFailure;
   }
 
-  revalidatePath(`/admin/learning/courses/${lesson.module.courseId}`);
+  revalidatePath(`/gestao/ensino/cursos/${lesson.module.courseId}`);
   revalidatePath(`/gestao/ensino/cursos/${lesson.module.courseId}`);
   revalidatePath(
     `/gestao/ensino/cursos/${lesson.module.courseId}/aulas/${lessonId}`
@@ -1788,305 +1257,4 @@ export const setGestaoLessonStatus = async (
     ...result,
     idempotencyKey: result.status === "saved" ? randomUUID() : idempotencyKey,
   };
-};
-
-const announcementAudienceValues = Object.values(AnnouncementAudience);
-const isAnnouncementAudience = (value: string): value is AnnouncementAudience =>
-  announcementAudienceValues.includes(value as AnnouncementAudience);
-
-const formList = (formData: FormData, name: string, limit: number) =>
-  [
-    ...new Set(
-      formData
-        .getAll(name)
-        .filter((value): value is string => typeof value === "string")
-        .map((value) => value.trim())
-        .filter(Boolean)
-    ),
-  ].slice(0, limit);
-
-const readAnnouncementInput = (formData: FormData) => {
-  const title = asText(formData.get("title")).slice(0, 180);
-  const body = asText(formData.get("body")).slice(0, 10_000);
-  const audienceValue = asText(formData.get("audience"));
-  const rawHref = asText(formData.get("href"));
-  const href =
-    rawHref.startsWith("/") && !rawHref.startsWith("//")
-      ? rawHref.slice(0, 500)
-      : asHttpUrl(rawHref);
-  const rawStartsAt = asText(formData.get("startsAt"));
-  const rawEndsAt = asText(formData.get("endsAt"));
-  const startsAt = rawStartsAt ? parseAnnouncementDateTime(rawStartsAt) : null;
-  const endsAt = rawEndsAt ? parseAnnouncementDateTime(rawEndsAt) : null;
-  const statusValue = asText(formData.get("status")) || "PUBLISHED";
-  const status = Object.values(ContentStatus).includes(
-    statusValue as ContentStatus
-  )
-    ? (statusValue as ContentStatus)
-    : null;
-  const recipientIds = [
-    ...new Set(
-      formList(formData, "recipientIds", 200)
-        .flatMap((value) => value.split(LIST_SPLIT))
-        .map((value) => value.trim())
-        .filter(Boolean)
-    ),
-  ].slice(0, 200);
-  const cohortIds = formList(formData, "cohortIds", 50);
-  if (
-    !(title && body && isAnnouncementAudience(audienceValue) && status) ||
-    (rawStartsAt && !startsAt) ||
-    (rawEndsAt && !endsAt) ||
-    (startsAt && endsAt && endsAt <= startsAt) ||
-    (audienceValue === AnnouncementAudience.SELECTED &&
-      recipientIds.length === 0) ||
-    (audienceValue === AnnouncementAudience.COHORT && cohortIds.length === 0)
-  ) {
-    return null;
-  }
-  return {
-    title,
-    body,
-    href: href ?? null,
-    audience: audienceValue,
-    recipientIds:
-      audienceValue === AnnouncementAudience.SELECTED ? recipientIds : [],
-    cohortIds: audienceValue === AnnouncementAudience.COHORT ? cohortIds : [],
-    startsAt,
-    endsAt,
-    isPinned: asText(formData.get("isPinned")) === "on",
-    isImportant: asText(formData.get("isImportant")) === "on",
-    status,
-  };
-};
-
-const validateAnnouncementTargets = async (
-  transaction: Prisma.TransactionClient,
-  parsed: NonNullable<ReturnType<typeof readAnnouncementInput>>
-) => {
-  if (parsed.recipientIds.length > 0) {
-    const selectedMembers = await transaction.member.findMany({
-      where: { id: { in: parsed.recipientIds }, deactivatedAt: null },
-      select: { id: true },
-    });
-    if (selectedMembers.length !== parsed.recipientIds.length) {
-      return false;
-    }
-  }
-  if (parsed.cohortIds.length > 0) {
-    const selectedCohorts = await transaction.cohort.findMany({
-      where: { id: { in: parsed.cohortIds }, archivedAt: null },
-      select: { id: true },
-    });
-    if (selectedCohorts.length !== parsed.cohortIds.length) {
-      return false;
-    }
-  }
-  return true;
-};
-
-const revalidateAnnouncementSurfaces = () => {
-  revalidatePath("/admin/avisos");
-  revalidatePath("/comunidade");
-  revalidatePath("/notificacoes");
-};
-
-export const createAnnouncement = async (formData: FormData) => {
-  const { userId } = await requireStaffMutation();
-  const parsed = readAnnouncementInput(formData);
-  if (!parsed) {
-    return;
-  }
-  const now = new Date();
-  const id = randomUUID();
-  const result = await database.$transaction(async (transaction) => {
-    if (!(await validateAnnouncementTargets(transaction, parsed))) {
-      return "invalid" as const;
-    }
-    const { cohortIds, ...data } = parsed;
-    const announcement = await transaction.announcement.create({
-      data: {
-        id,
-        ...data,
-        createdByMemberId: userId,
-        publishedAt: parsed.status === ContentStatus.PUBLISHED ? now : null,
-        archivedAt: parsed.status === ContentStatus.ARCHIVED ? now : null,
-        ...(cohortIds.length > 0
-          ? { cohorts: { create: cohortIds.map((cohortId) => ({ cohortId })) } }
-          : {}),
-      },
-    });
-    await queueAnnouncementNotifications(
-      transaction,
-      announcement,
-      cohortIds,
-      userId
-    );
-    return "saved" as const;
-  });
-  if (result === "invalid") {
-    redirect("/admin/avisos?erro=destino");
-  }
-  if (result === "saved" && (!parsed.startsAt || parsed.startsAt <= now)) {
-    await dispatchPendingNotifications();
-  }
-  revalidateAnnouncementSurfaces();
-};
-
-export const updateAnnouncement = async (formData: FormData) => {
-  const { userId } = await requireStaffMutation();
-  const id = asText(formData.get("id"));
-  const expectedVersion = asPositiveInteger(formData.get("expectedVersion"));
-  const parsed = readAnnouncementInput(formData);
-  if (!(id && expectedVersion && parsed)) {
-    return;
-  }
-  const now = new Date();
-  const result = await database.$transaction(async (transaction) => {
-    const existing = await transaction.announcement.findUnique({
-      where: { id, deletedAt: null },
-      select: { publishedAt: true },
-    });
-    if (
-      !(existing && (await validateAnnouncementTargets(transaction, parsed)))
-    ) {
-      return "invalid" as const;
-    }
-    const { cohortIds, ...data } = parsed;
-    const updated = await transaction.announcement.updateMany({
-      where: { id, version: expectedVersion, deletedAt: null },
-      data: {
-        ...data,
-        version: { increment: 1 },
-        publishedAt:
-          parsed.status === ContentStatus.PUBLISHED
-            ? (existing.publishedAt ?? now)
-            : existing.publishedAt,
-        archivedAt: parsed.status === ContentStatus.ARCHIVED ? now : null,
-      },
-    });
-    if (updated.count !== 1) {
-      return "conflict" as const;
-    }
-    await transaction.announcementCohort.deleteMany({
-      where: { announcementId: id },
-    });
-    if (cohortIds.length > 0) {
-      await transaction.announcementCohort.createMany({
-        data: cohortIds.map((cohortId) => ({ announcementId: id, cohortId })),
-      });
-    }
-    const announcement = await transaction.announcement.findUniqueOrThrow({
-      where: { id },
-    });
-    await queueAnnouncementNotifications(
-      transaction,
-      announcement,
-      cohortIds,
-      userId
-    );
-    return "saved" as const;
-  });
-  if (result === "conflict") {
-    revalidateAnnouncementSurfaces();
-    redirect("/admin/avisos?erro=conflito");
-  }
-  if (result === "invalid") {
-    redirect("/admin/avisos?erro=destino");
-  }
-  if (
-    parsed.status === ContentStatus.PUBLISHED &&
-    (!parsed.startsAt || parsed.startsAt <= now)
-  ) {
-    await dispatchPendingNotifications();
-  }
-  revalidateAnnouncementSurfaces();
-};
-
-export const setAnnouncementStatus = async (formData: FormData) => {
-  const { userId } = await requireStaffMutation();
-  const id = asText(formData.get("id"));
-  const expectedVersion = asPositiveInteger(formData.get("expectedVersion"));
-  const statusValue = asText(formData.get("status"));
-  if (
-    !(
-      id &&
-      expectedVersion &&
-      Object.values(ContentStatus).includes(statusValue as ContentStatus)
-    )
-  ) {
-    return;
-  }
-  const status = statusValue as ContentStatus;
-  const now = new Date();
-  const result = await database.$transaction(async (transaction) => {
-    const existing = await transaction.announcement.findUnique({
-      where: { id, deletedAt: null },
-      select: { publishedAt: true },
-    });
-    if (!existing) {
-      return "invalid" as const;
-    }
-    const updated = await transaction.announcement.updateMany({
-      where: { id, version: expectedVersion, deletedAt: null },
-      data: {
-        status,
-        version: { increment: 1 },
-        publishedAt:
-          status === ContentStatus.PUBLISHED
-            ? (existing.publishedAt ?? now)
-            : existing.publishedAt,
-        archivedAt: status === ContentStatus.ARCHIVED ? now : null,
-      },
-    });
-    if (updated.count !== 1) {
-      return "conflict" as const;
-    }
-    const announcement = await transaction.announcement.findUniqueOrThrow({
-      where: { id },
-      include: { cohorts: { select: { cohortId: true } } },
-    });
-    await queueAnnouncementNotifications(
-      transaction,
-      announcement,
-      announcement.cohorts.map(({ cohortId }) => cohortId),
-      userId
-    );
-    return "saved" as const;
-  });
-  if (result === "conflict") {
-    revalidateAnnouncementSurfaces();
-    redirect("/admin/avisos?erro=conflito");
-  }
-  if (result === "invalid") {
-    return;
-  }
-  if (status === ContentStatus.PUBLISHED) {
-    await dispatchPendingNotifications();
-  }
-  revalidateAnnouncementSurfaces();
-};
-
-export const deleteAnnouncement = async (formData: FormData) => {
-  await requireStaffMutation();
-  const id = asText(formData.get("id"));
-  const expectedVersion = asPositiveInteger(formData.get("expectedVersion"));
-  if (!(id && expectedVersion)) {
-    return;
-  }
-  const now = new Date();
-  const updated = await database.announcement.updateMany({
-    where: { id, version: expectedVersion, deletedAt: null },
-    data: {
-      status: ContentStatus.ARCHIVED,
-      version: { increment: 1 },
-      archivedAt: now,
-      deletedAt: now,
-    },
-  });
-  if (updated.count !== 1) {
-    revalidateAnnouncementSurfaces();
-    redirect("/admin/avisos?erro=conflito");
-  }
-  revalidateAnnouncementSurfaces();
 };

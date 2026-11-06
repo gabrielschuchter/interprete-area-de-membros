@@ -457,7 +457,6 @@ export const saveFeedback = async (formData: FormData) => {
     });
   }
 
-  revalidatePath("/admin/activities");
   revalidatePath(`/atividades/${submission.activity.slug}`);
 };
 
@@ -522,7 +521,6 @@ export const createActivity = async (formData: FormData) => {
       notify: existingActivity.status === ContentStatus.PUBLISHED,
       memberWhere,
     });
-    revalidatePath("/admin/activities");
     return;
   }
 
@@ -578,8 +576,6 @@ export const createActivity = async (formData: FormData) => {
     memberIds: selectedMemberIds,
     memberWhere,
   });
-
-  revalidatePath("/admin/activities");
 };
 
 export const updateActivity = async (formData: FormData) => {
@@ -665,7 +661,6 @@ export const updateActivity = async (formData: FormData) => {
     }
   });
 
-  revalidatePath("/admin/activities");
   revalidatePath("/atividades");
 };
 
@@ -723,6 +718,5 @@ export const setActivityStatus = async (formData: FormData) => {
     }
   });
 
-  revalidatePath("/admin/activities");
   revalidatePath("/atividades");
 };
