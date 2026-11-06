@@ -4,17 +4,13 @@ import { ChevronDownIcon, SearchIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import {
-  COMMUNITY_KIND_OPTIONS,
   COMMUNITY_SORT_OPTIONS,
-  type CommunityKind,
   type CommunitySort,
   communityHref,
-  parseCommunityKind,
   parseCommunitySort,
 } from "@/lib/community-query";
 
 interface CommunityFeedNavigationProperties {
-  readonly kind?: CommunityKind;
   readonly query?: string;
   readonly sort: CommunitySort;
   readonly spaceSlug?: string;
@@ -22,7 +18,6 @@ interface CommunityFeedNavigationProperties {
 }
 
 export const CommunityFeedNavigation = ({
-  kind,
   query,
   sort,
   spaceSlug,
@@ -38,7 +33,6 @@ export const CommunityFeedNavigation = ({
 
   const applyFilters = (
     next: {
-      readonly nextKind?: CommunityKind;
       readonly nextQuery?: string;
       readonly nextSort?: CommunitySort;
       readonly nextSpaceSlug?: string;
@@ -47,7 +41,6 @@ export const CommunityFeedNavigation = ({
     startTransition(() =>
       router.push(
         communityHref({
-          kind: Object.hasOwn(next, "nextKind") ? next.nextKind : kind,
           query: Object.hasOwn(next, "nextQuery") ? next.nextQuery : draftQuery,
           sort: Object.hasOwn(next, "nextSort") ? next.nextSort : sort,
           spaceSlug: Object.hasOwn(next, "nextSpaceSlug")
@@ -100,25 +93,6 @@ export const CommunityFeedNavigation = ({
             {spaces.map((space) => (
               <option key={space.slug} value={space.slug}>
                 {space.title}
-              </option>
-            ))}
-          </select>
-          <ChevronDownIcon aria-hidden="true" />
-        </label>
-        <label className="community-feed-nav__select-wrap">
-          <span className="sr-only">Filtrar por tipo de publicação</span>
-          <select
-            aria-label="Filtrar por tipo de publicação"
-            disabled={isPending}
-            onChange={(event) =>
-              applyFilters({ nextKind: parseCommunityKind(event.target.value) })
-            }
-            value={kind ?? ""}
-          >
-            <option value="">Tudo</option>
-            {COMMUNITY_KIND_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
               </option>
             ))}
           </select>

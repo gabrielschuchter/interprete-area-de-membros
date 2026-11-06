@@ -8,6 +8,10 @@ import { CommunityDeleteUndoToast } from "@/components/community/community-delet
 import { CommunityFeedCard } from "@/components/community/community-feed-card";
 import { CommunityPostMenu } from "@/components/community/community-post-menu";
 import { CommunityPublicationFilters } from "@/components/community/community-publication-filters";
+import {
+  CommunityPublicationSelectBox,
+  CommunityPublicationSelection,
+} from "@/components/community/community-publication-selection";
 import { CommunityPublicationViewSelector } from "@/components/community/community-publication-view-selector";
 import { CommunityPublishDraftButton } from "@/components/community/community-publish-draft-button";
 import { getMemberRole } from "@/lib/authorization";
@@ -128,19 +132,29 @@ const MyCommunityPublicationItem = ({
     />
   );
 
+  const selectBox = (
+    <CommunityPublicationSelectBox postId={post.id} title={post.title} />
+  );
+
   if (post.status === "PUBLISHED") {
     return (
-      <CommunityFeedCard
-        key={post.id}
-        managementActions={postMenu}
-        post={post}
-        returnTo={returnTo}
-      />
+      <div className="community-selectable" key={post.id}>
+        {selectBox}
+        <CommunityFeedCard
+          managementActions={postMenu}
+          post={post}
+          returnTo={returnTo}
+        />
+      </div>
     );
   }
 
   return (
-    <article className="community-my-publication-card" key={post.id}>
+    <article
+      className="community-my-publication-card community-selectable"
+      key={post.id}
+    >
+      {selectBox}
       <header className="community-my-publication-card__meta">
         <Badge variant={post.status === "DRAFT" ? "outline" : "secondary"}>
           {post.status === "DRAFT" ? "Rascunho" : "Arquivada"}
@@ -312,16 +326,22 @@ const MyCommunityPage = async ({ searchParams }: MyCommunityPageProperties) => {
               </p>
             </div>
           ) : (
-            <div className="community-feed-list">
-              {page.posts.map((post) => (
-                <MyCommunityPublicationItem
-                  canModerate={canModerate}
-                  key={post.id}
-                  post={post}
-                  returnTo={returnTo}
-                />
-              ))}
-            </div>
+            <CommunityPublicationSelection
+              canArchive={activeView === "published"}
+              postIds={page.posts.map((post) => post.id)}
+              viewLabel={publicationViewLabels[activeView]}
+            >
+              <div className="community-feed-list">
+                {page.posts.map((post) => (
+                  <MyCommunityPublicationItem
+                    canModerate={canModerate}
+                    key={post.id}
+                    post={post}
+                    returnTo={returnTo}
+                  />
+                ))}
+              </div>
+            </CommunityPublicationSelection>
           )}
           {page.nextCursor ? (
             <div className="community-publications-pagination">

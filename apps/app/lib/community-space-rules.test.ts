@@ -55,7 +55,7 @@ describe("community space rules", () => {
     });
   });
 
-  it("requires membership for group mutations even when a group is public", () => {
+  it("requires membership to publish in a group, but lets any member react to posts of public groups", () => {
     expect(communitySpaceMemberAudienceWhere("member-1")).toEqual({
       OR: [
         { ownerId: "member-1" },
@@ -72,6 +72,7 @@ describe("community space rules", () => {
             is: {
               status: "PUBLISHED",
               OR: [
+                { visibility: "PUBLIC" },
                 { ownerId: "member-1" },
                 { members: { some: { memberId: "member-1" } } },
               ],

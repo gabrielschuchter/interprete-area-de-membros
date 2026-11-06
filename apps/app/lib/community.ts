@@ -1,6 +1,6 @@
 import "server-only";
 
-import { randomInt, randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import {
   type CommunityPostKind,
   ContentStatus,
@@ -249,7 +249,11 @@ const communityNameInitials = (value: string) =>
     .join("")
     .toLocaleUpperCase("pt-BR") || "M";
 
-export const getCommunityAvatarVisuals = () =>
+/**
+ * A ordem varia por pessoa e por dia, mas não a cada renderização: trocar um
+ * filtro do feed não pode embaralhar "Pessoas da comunidade".
+ */
+export const getCommunityAvatarVisuals = (memberId = "") =>
   tracePerformance("member.community.avatar-visuals", async () => {
     const profiles = await database.profile.findMany({
       where: {
@@ -260,14 +264,16 @@ export const getCommunityAvatarVisuals = () =>
       take: 40,
       select: { avatarUrl: true, displayName: true, username: true },
     });
-    const shuffled = [...profiles];
-    for (let index = shuffled.length - 1; index > 0; index -= 1) {
-      const nextIndex = randomInt(index + 1);
-      [shuffled[index], shuffled[nextIndex]] = [
-        shuffled[nextIndex],
-        shuffled[index],
-      ];
-    }
+    const day = new Date().toISOString().slice(0, 10);
+    const shuffled = profiles
+      .map((profile) => ({
+        profile,
+        key: createHash("sha256")
+          .update(`${memberId}:${day}:${profile.username}`)
+          .digest("hex"),
+      }))
+      .sort((left, right) => left.key.localeCompare(right.key))
+      .map(({ profile }) => profile);
     return shuffled.map(({ avatarUrl, displayName, username }) => ({
       avatarUrl:
         avatarUrl && safeCommunityAvatarPattern.test(avatarUrl)

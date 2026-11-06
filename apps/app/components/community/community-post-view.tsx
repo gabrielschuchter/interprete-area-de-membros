@@ -101,7 +101,7 @@ const CommentControls = ({
         />
         <SingleFlightSubmit
           aria-label={
-            comment.votes.length > 0 ? "Remover apoio" : "Apoiar comentário"
+            comment.votes.length > 0 ? "Remover curtida" : "Curtir comentário"
           }
           className="community-comment__vote"
           pendingLabel="Salvando…"
@@ -109,7 +109,7 @@ const CommentControls = ({
           variant={comment.votes.length > 0 ? "default" : "ghost"}
         >
           <ThumbsUpIcon aria-hidden="true" />
-          {comment.votes.length > 0 ? "Apoiado" : "Apoiar"} ·{" "}
+          {comment.votes.length > 0 ? "Curtido" : "Curtir"} ·{" "}
           {comment._count.votes}
         </SingleFlightSubmit>
       </SingleFlightForm>
@@ -247,7 +247,7 @@ const CommentThread = ({
               <span className="text-muted-foreground text-xs">· Editado</span>
             )}
             <span className="text-muted-foreground text-xs">
-              · {comment._count.votes} apoios
+              · {comment._count.votes} curtidas
             </span>
           </>
         )}

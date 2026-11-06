@@ -136,25 +136,23 @@ function CommunityMediaCard({
 
   if (item.kind === "file") {
     const size = formatCommunityFileSize(item.sizeBytes);
+    const typeLabel = communityMediaTypeLabel(item);
     return (
-      <article className="community-media-card community-media-card--file">
-        <FileTextIcon
-          aria-hidden="true"
-          className="size-5 shrink-0 text-brand-action-text"
-        />
-        <div className="min-w-0 flex-1">
-          <p className="brand-eyebrow">{communityMediaTypeLabel(item)}</p>
-          <h4 className="mt-2 break-words font-medium text-sm">
+      <article className="community-file-card">
+        <span aria-hidden="true" className="community-file-card__icon">
+          <FileTextIcon className="size-5" />
+        </span>
+        <div className="community-file-card__text">
+          <h4 className="community-file-card__name">
             {item.name ?? "Arquivo"}
           </h4>
-          {(item.mimeType || size) && (
-            <p className="mt-1 text-muted-foreground text-xs">
-              {[item.mimeType, size].filter(Boolean).join(" · ")}
-            </p>
-          )}
+          <p className="community-file-card__meta">
+            {[typeLabel, size].filter(Boolean).join(" · ")}
+          </p>
         </div>
         <a
-          className="inline-flex min-h-10 shrink-0 items-center gap-2 rounded-sm px-3 text-sm underline underline-offset-4 hover:text-brand-structural focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/35"
+          aria-label={`Abrir ${item.name ?? "arquivo"} em nova aba`}
+          className="community-file-card__open"
           href={item.src}
           {...externalLinkProperties}
         >

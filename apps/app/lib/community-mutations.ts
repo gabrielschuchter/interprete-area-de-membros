@@ -3,7 +3,7 @@ import "server-only";
 import { ContentStatus, database, type Prisma } from "@repo/database";
 import {
   communityPostMutationAudienceWhere,
-  communitySpaceMemberAudienceWhere,
+  communitySpaceAudienceWhere,
 } from "@/lib/community-space-rules";
 import type { MutationAction } from "@/lib/mutation-contract";
 import {
@@ -44,7 +44,7 @@ const publishedPostWhere = async (
             is: {
               slug: spaceSlug,
               status: ContentStatus.PUBLISHED,
-              ...communitySpaceMemberAudienceWhere(memberId, canModerate),
+              ...communitySpaceAudienceWhere(memberId, canModerate),
             },
           },
         }

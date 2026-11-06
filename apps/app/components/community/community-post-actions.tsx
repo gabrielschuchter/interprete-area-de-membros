@@ -38,7 +38,7 @@ const ensureActionSucceeded = (result: unknown) => {
 };
 
 /**
- * Apoiar e salvar são independentes: cada botão tem o próprio envio em curso,
+ * Curtir e salvar são independentes: cada botão tem o próprio envio em curso,
  * e um não desabilita, não pisca e não desfaz o outro. Um segundo toque no
  * mesmo botão durante o envio é ignorado.
  */
@@ -129,7 +129,7 @@ export const CommunityPostActions = ({
     <div className={className}>
       <Button
         aria-busy={pending.vote || undefined}
-        aria-label={voted ? "Remover apoio" : "Apoiar conteúdo"}
+        aria-label={voted ? "Remover curtida" : "Curtir publicação"}
         aria-pressed={voted}
         className="min-h-11"
         onClick={() => toggle("vote")}
@@ -140,13 +140,15 @@ export const CommunityPostActions = ({
         <ThumbsUpIcon aria-hidden="true" className="size-4" />
         {detailed ? (
           <>
-            <span className="cp-action-label">Apoiar</span>
+            <span className="cp-action-label">
+              {voted ? "Curtido" : "Curtir"}
+            </span>
             <span className="cp-action-count">{votes}</span>
           </>
         ) : (
           <span>{votes}</span>
         )}
-        <span className="sr-only">apoios</span>
+        <span className="sr-only">curtidas</span>
       </Button>
       <Button
         aria-busy={pending.bookmark || undefined}
