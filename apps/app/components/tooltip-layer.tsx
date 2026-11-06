@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 interface TipState {
-  readonly left: number;
+  readonly center: number;
   readonly placement: "above" | "below";
   readonly text: string;
   readonly top: number;
@@ -105,10 +105,8 @@ const place = (element: HTMLElement): TipState | null => {
   }
   const rect = element.getBoundingClientRect();
   const placement = rect.top > 48 ? "above" : "below";
-  const center = rect.left + rect.width / 2;
-  const edge = Math.min(120, window.innerWidth / 2);
   return {
-    left: Math.min(Math.max(center, edge), window.innerWidth - edge),
+    center: rect.left + rect.width / 2,
     placement,
     text,
     top: placement === "above" ? rect.top - gap : rect.bottom + gap,
@@ -125,6 +123,26 @@ export const TooltipLayer = () => {
   const [tip, setTip] = useState<TipState | null>(null);
   const timerRef = useRef<number | null>(null);
   const activeRef = useRef<HTMLElement | null>(null);
+  const tipRef = useRef<HTMLDivElement>(null);
+
+  // A dica é centralizada no elemento, mas nunca sai da janela: a posição é
+  // ajustada com a largura real do texto (e não com uma margem fixa), então
+  // um ícone junto à borda direita, como o sino, recebe a dica logo abaixo.
+  useLayoutEffect(() => {
+    const node = tipRef.current;
+    if (!(node && tip)) {
+      return;
+    }
+    const half = node.offsetWidth / 2;
+    const margin = 8;
+    const viewport = document.documentElement.clientWidth;
+    const left = Math.min(
+      Math.max(tip.center, half + margin),
+      viewport - half - margin
+    );
+    node.style.left = `${left}px`;
+    node.style.visibility = "visible";
+  }, [tip]);
 
   useEffect(() => {
     const clearTimer = () => {
@@ -239,7 +257,8 @@ export const TooltipLayer = () => {
       aria-hidden="true"
       className="member-tooltip"
       data-placement={tip.placement}
-      style={{ left: tip.left, top: tip.top }}
+      ref={tipRef}
+      style={{ left: 0, top: tip.top, visibility: "hidden" }}
     >
       {tip.text}
     </div>

@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { requireGestaoActor } from "@/lib/gestao-authorization";
 import { getNotifications } from "@/lib/notifications";
-import { GestaoNotificationsList } from "./notifications-list";
+import { NotificationsPageClient } from "../../notificacoes/notifications-page-client";
 
 const GestaoNotificationsPage = async () => {
   const actor = await requireGestaoActor();
@@ -13,20 +13,16 @@ const GestaoNotificationsPage = async () => {
     redirect("/gestao");
   }
   return (
-    <GestaoNotificationsList
-      initialCursor={initial.nextCursor}
-      initialItems={initial.items.map((item) => ({
-        body: item.body,
-        createdAt: item.createdAt.toISOString(),
-        entityType: item.entityType,
-        href: item.href,
-        id: item.id,
-        readAt: item.readAt?.toISOString() ?? null,
-        seenAt: item.seenAt?.toISOString() ?? null,
-        title: item.title,
-        type: item.type,
-      }))}
-      initialUnread={initial.unreadCount}
+    <NotificationsPageClient
+      initial={{
+        ...initial,
+        items: initial.items.map((item) => ({
+          ...item,
+          createdAt: item.createdAt.toISOString(),
+          readAt: item.readAt?.toISOString() ?? null,
+          seenAt: item.seenAt?.toISOString() ?? null,
+        })),
+      }}
     />
   );
 };

@@ -1,8 +1,8 @@
 import "server-only";
 
 import { database } from "@repo/database";
+import { removeUnreferencedCommunityAssets } from "@/lib/community-asset-cleanup";
 import { eraseCommunityPostRecord } from "@/lib/gestao-content-erasure";
-import { deleteMemberAsset } from "@/lib/member-storage";
 
 /** Prazo de recuperação das publicações apagadas (mesmo de restoreCommunityPost). */
 const retentionMs = 30 * 24 * 60 * 60 * 1000;
@@ -39,12 +39,12 @@ export const purgeExpiredCommunityTrash = async (now = new Date()) => {
   const comments = await database.communityComment.deleteMany({
     where: { deletedAt: { lt: cutoff }, replies: { none: {} } },
   });
-  await Promise.all(
-    [...files].map((path) => deleteMemberAsset(path).catch(() => false))
-  );
+  const filesRemoved = await removeUnreferencedCommunityAssets([
+    ...files,
+  ]).catch(() => 0);
   return {
     commentsPurged: comments.count,
-    filesRemoved: files.size,
+    filesRemoved,
     postsPurged,
   };
 };

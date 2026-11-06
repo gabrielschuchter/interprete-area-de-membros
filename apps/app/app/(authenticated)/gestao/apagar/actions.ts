@@ -2,6 +2,7 @@
 
 import { database, Prisma } from "@repo/database";
 import { revalidatePath } from "next/cache";
+import { removeUnreferencedCommunityAssets } from "@/lib/community-asset-cleanup";
 import { recordAuditEvent } from "@/lib/gestao-audit";
 import {
   requireGestaoAction,
@@ -61,13 +62,19 @@ const aggregateTypes: Record<GestaoErasableKind, string> = {
 };
 
 const removeStoredFiles = async (paths: readonly string[]) => {
+  const community = paths.filter((path) =>
+    path.startsWith("community-assets/")
+  );
+  await removeUnreferencedCommunityAssets(community).catch(() => 0);
   await Promise.all(
-    paths.map((path) =>
-      (isMemberAssetPath(path)
-        ? deleteMemberAsset(path)
-        : deleteGestaoVideoStorageObject(path)
-      ).catch(() => false)
-    )
+    paths
+      .filter((path) => !path.startsWith("community-assets/"))
+      .map((path) =>
+        (isMemberAssetPath(path)
+          ? deleteMemberAsset(path)
+          : deleteGestaoVideoStorageObject(path)
+        ).catch(() => false)
+      )
   );
 };
 
