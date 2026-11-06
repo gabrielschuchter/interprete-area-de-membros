@@ -363,6 +363,18 @@ export const NotificationsPopover = ({
     calloutTimers.current.push(window.setTimeout(() => setCallout(null), 300));
   }, []);
 
+  const measureCalloutAnchor = useCallback(() => {
+    const rect = anchorRef.current?.getBoundingClientRect();
+    if (!rect || (rect.width === 0 && rect.height === 0)) {
+      return;
+    }
+    const viewportWidth = document.documentElement.clientWidth;
+    setCalloutAnchor({
+      right: Math.max(8, viewportWidth - rect.right - 6),
+      top: rect.bottom + 10,
+    });
+  }, []);
+
   const showCallout = useCallback(
     async (total: number) => {
       const chips = await loadCalloutChips(total);
@@ -375,17 +387,37 @@ export const NotificationsPopover = ({
       calloutTimers.current = [
         window.setTimeout(dismissCallout, calloutDurationMs),
       ];
-      const rect = anchorRef.current?.getBoundingClientRect();
-      if (rect) {
-        setCalloutAnchor({
-          right: Math.max(8, window.innerWidth - rect.right - 6),
-          top: rect.bottom + 10,
-        });
-      }
+      measureCalloutAnchor();
       setCallout({ chips, leaving: false });
     },
-    [dismissCallout]
+    [dismissCallout, measureCalloutAnchor]
   );
+
+  // O balão acompanha o sino: a posição é refeita ao redimensionar, rolar ou
+  // quando o cabeçalho muda de largura (fontes, barra lateral, zoom).
+  const calloutVisible = callout !== null;
+  useEffect(() => {
+    if (!calloutVisible) {
+      return;
+    }
+    measureCalloutAnchor();
+    const frame = window.requestAnimationFrame(measureCalloutAnchor);
+    const settle = window.setTimeout(measureCalloutAnchor, 400);
+    window.addEventListener("resize", measureCalloutAnchor);
+    window.addEventListener("scroll", measureCalloutAnchor, true);
+    const observer =
+      typeof ResizeObserver === "undefined"
+        ? null
+        : new ResizeObserver(measureCalloutAnchor);
+    observer?.observe(document.documentElement);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.clearTimeout(settle);
+      window.removeEventListener("resize", measureCalloutAnchor);
+      window.removeEventListener("scroll", measureCalloutAnchor, true);
+      observer?.disconnect();
+    };
+  }, [calloutVisible, measureCalloutAnchor]);
 
   useEffect(
     () => () => {
