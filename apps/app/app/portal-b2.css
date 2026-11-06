@@ -759,11 +759,8 @@
     width: calc(var(--portal-stage-w) * 0.926);
   }
 
+  /* Estudar e Comunidade têm quatro atalhos cada: mesma grade 2x2 nos dois. */
   .portal-shortcut-group__list {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .portal-shortcut-group:last-child .portal-shortcut-group__list {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -793,11 +790,8 @@
     gap: 10px 6%;
   }
 
+  /* Estudar e Comunidade têm quatro atalhos cada: mesma grade 2x2 nos dois. */
   .portal-shortcut-group__list {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .portal-shortcut-group:last-child .portal-shortcut-group__list {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -1048,12 +1042,7 @@
     margin-top: 0;
   }
 
-  .portal-mobile-card:first-child .portal-shortcut-group__list {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
-  }
-
-  .portal-mobile-card:last-child .portal-shortcut-group__list {
+  .portal-mobile-card .portal-shortcut-group__list {
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 6px;
   }
@@ -1156,11 +1145,11 @@
     padding-left: 20px;
   }
 
-  .portal-mobile-card:last-child .portal-shortcut-group__list {
+  .portal-mobile-card .portal-shortcut-group__list {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .portal-mobile-card:last-child .portal-shortcut {
+  .portal-mobile-card .portal-shortcut {
     flex-direction: row;
     min-height: 44px;
     font-size: 11px;
@@ -1286,12 +1275,7 @@
     padding: 0 8px 8px;
   }
 
-  .portal-mobile-card:first-child .portal-shortcut-group__list {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 4px;
-  }
-
-  .portal-mobile-card:last-child .portal-shortcut-group__list {
+  .portal-mobile-card .portal-shortcut-group__list {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 4px;
   }
