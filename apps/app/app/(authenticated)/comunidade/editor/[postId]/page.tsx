@@ -4,6 +4,7 @@ import { ArrowLeftIcon } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CommunityComposer } from "@/components/community/community-composer";
+import { CommunityCoverImage } from "@/components/community/community-cover-image";
 import { MemberIdentity } from "@/components/community/member-identity";
 import { RichDocument } from "@/components/learning/rich-document";
 import {
@@ -11,6 +12,7 @@ import {
   getCommunityEditorPost,
   getCommunitySpaces,
 } from "@/lib/community";
+import { communityCoverFramingFromRecord } from "@/lib/community-cover";
 import { communityCoverAltEnabled } from "@/lib/community-cover-alt";
 import { safeCommunityReturnPath } from "@/lib/community-return-path";
 import { requireMemberId } from "@/lib/learning";
@@ -100,10 +102,10 @@ const CommunityEditorPage = async ({
               />
             </div>
             {post.coverUrl && (
-              // biome-ignore lint/performance/noImgElement: cover URLs are sanitized user content and may come from hosts not configured for next/image.
-              <img
+              <CommunityCoverImage
                 alt={post.coverAltText || `Capa: ${post.title}`}
                 className="community-post-cover"
+                framing={communityCoverFramingFromRecord(post)}
                 height={630}
                 src={post.coverUrl}
                 width={1200}
@@ -128,6 +130,7 @@ const CommunityEditorPage = async ({
           idempotencyKey=""
           initialContent={document}
           initialCoverAltText={post.coverAltText ?? ""}
+          initialCoverFraming={communityCoverFramingFromRecord(post)}
           initialCoverUrl={post.coverUrl}
           initialSpaceId={post.space?.id ?? null}
           initialSpaceSlug={post.space?.slug ?? null}

@@ -32,23 +32,29 @@ const actions = vi.hoisted(() => ({
 }));
 vi.mock("@/app/(authenticated)/comunidade/actions", () => actions);
 vi.mock("next/navigation", () => ({ useRouter: () => actions.router }));
-// jsdom não decodifica imagens nem desenha em canvas: o recorte confirma o
-// arquivo escolhido como está, e o teste segue para o envio.
-vi.mock("@/components/image-crop-dialog-lazy", async () => {
+// jsdom não decodifica imagens: a janela "Ajustar capa" confirma o arquivo
+// escolhido com um enquadramento padrão, e o teste segue para o envio.
+vi.mock("./community-cover-adjust-dialog-lazy", async () => {
   const { useEffect } = await import("react");
   return {
-    LazyImageCropDialog: ({
-      file,
+    LazyCommunityCoverAdjustDialog: ({
       onConfirm,
+      src,
     }: {
-      readonly file: File | null;
-      readonly onConfirm: (file: File) => void;
+      readonly onConfirm: (framing: unknown) => void;
+      readonly src: string | null;
     }) => {
       useEffect(() => {
-        if (file) {
-          onConfirm(file);
+        if (src) {
+          onConfirm({
+            focusX: 0.25,
+            focusY: 0.75,
+            height: 675,
+            width: 1200,
+            zoom: 1.5,
+          });
         }
-      }, [file, onConfirm]);
+      }, [src]);
       return null;
     },
   };
@@ -475,6 +481,9 @@ it("shows cover upload progress and autosaves its URL and alternative text", asy
       files: [new File(["local-image"], "cover.webp", { type: "image/webp" })],
     },
   });
+  await act(async () => {
+    await Promise.resolve();
+  });
   expect(screen.getByRole("progressbar").getAttribute("aria-valuenow")).toBe(
     "50"
   );
@@ -497,6 +506,12 @@ it("shows cover upload progress and autosaves its URL and alternative text", asy
   const submittedForm = actions.updateDraft.mock.calls.at(-1)?.[0] as FormData;
   expect(submittedForm.get("coverUrl")).toBe(coverUrl);
   expect(submittedForm.get("coverAltText")).toBe("Uma capa de estudo");
+  // O enquadramento escolhido viaja com o rascunho; a original não é recortada.
+  expect(submittedForm.get("coverFocusX")).toBe("0.25");
+  expect(submittedForm.get("coverFocusY")).toBe("0.75");
+  expect(submittedForm.get("coverZoom")).toBe("1.5");
+  expect(submittedForm.get("coverWidth")).toBe("1200");
+  expect(submittedForm.get("coverHeight")).toBe("675");
 });
 
 it("reports a cover network failure without saving an empty asset URL", async () => {

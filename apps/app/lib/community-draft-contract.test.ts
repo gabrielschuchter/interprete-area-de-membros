@@ -1,4 +1,5 @@
 import { describe, expect, test } from "vitest";
+import { defaultCommunityCoverFraming } from "./community-cover";
 import {
   type CommunityDraftSnapshot,
   communityDraftSnapshotsEqual,
@@ -10,6 +11,7 @@ const emptySnapshot: CommunityDraftSnapshot = {
   content: "",
   contentJson: { type: "doc", content: [{ type: "paragraph" }] },
   coverAltText: "",
+  coverFraming: defaultCommunityCoverFraming,
   coverUrl: null,
   spaceId: null,
   subtitle: null,
@@ -70,5 +72,19 @@ describe("community draft persistence contract", () => {
     expect(
       nextCommunityPostVersion(expected, expected.getTime() + 20).getTime()
     ).toBe(expected.getTime() + 20);
+  });
+
+  test("treats a different cover framing as an unsaved change", () => {
+    const framed = {
+      ...emptySnapshot,
+      coverFraming: { ...defaultCommunityCoverFraming, focusX: 0.2, zoom: 1.5 },
+    };
+    expect(communityDraftSnapshotsEqual(emptySnapshot, framed)).toBe(false);
+    expect(
+      communityDraftSnapshotsEqual(framed, {
+        ...framed,
+        coverFraming: { ...framed.coverFraming },
+      })
+    ).toBe(true);
   });
 });

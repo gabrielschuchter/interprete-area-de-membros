@@ -120,7 +120,7 @@ export const CommentComposer = ({
   currentProfile,
   onSuccess,
   parentId,
-  placeholder = "Acrescente uma leitura, uma pergunta ou uma referência... Use @nome para mencionar alguém.",
+  placeholder = "Acrescente uma leitura, uma pergunta ou uma referência...",
   postId,
   spaceSlug,
 }: CommentComposerProperties) => {
@@ -133,6 +133,7 @@ export const CommentComposer = ({
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [hasContent, setHasContent] = useState(false);
+  const fieldRef = useRef<HTMLDivElement>(null);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -201,28 +202,46 @@ export const CommentComposer = ({
           </AvatarFallback>
         </Avatar>
         <div className="community-comment-composer__fields">
-          <label className="block" htmlFor={contentId}>
-            <span className="brand-eyebrow">{ariaLabel}</span>
-            <MentionTextarea
-              aria-label={ariaLabel}
-              autoFocus={autoFocus}
-              className="community-comment-textarea"
-              disabled={pending}
-              id={contentId}
-              key={composerVersion}
-              name="content"
-              onChange={(value) => {
-                setHasContent(Boolean(value.trim()));
-                if (error) {
-                  attemptKeyRef.current = newAttemptKey();
-                  setError("");
-                }
-              }}
-              placeholder={placeholder}
-              postId={postId}
-              required
-            />
-          </label>
+          <div
+            className="community-comment-field"
+            data-filled={hasContent ? "true" : "false"}
+            ref={fieldRef}
+          >
+            <label
+              className="community-comment-field__label"
+              htmlFor={contentId}
+            >
+              <span className="brand-eyebrow">{ariaLabel}</span>
+              <MentionTextarea
+                anchorRef={fieldRef}
+                aria-label={ariaLabel}
+                autoFocus={autoFocus}
+                className="community-comment-textarea"
+                disabled={pending}
+                id={contentId}
+                key={composerVersion}
+                name="content"
+                onChange={(value) => {
+                  setHasContent(Boolean(value.trim()));
+                  if (error) {
+                    attemptKeyRef.current = newAttemptKey();
+                    setError("");
+                  }
+                }}
+                placeholder={placeholder}
+                postId={postId}
+                required
+                rows={1}
+              />
+            </label>
+            <Button
+              className="community-comment-field__submit"
+              disabled={pending || !hasContent}
+              type="submit"
+            >
+              {submitLabel(pending, error)}
+            </Button>
+          </div>
           {helperText ? (
             <p className="community-comment-composer__hint">{helperText}</p>
           ) : null}
@@ -230,9 +249,6 @@ export const CommentComposer = ({
             <span aria-live="polite" className="text-muted-foreground text-xs">
               {statusMessage(pending, error, success)}
             </span>
-            <Button disabled={pending || !hasContent} type="submit">
-              {submitLabel(pending, error)}
-            </Button>
           </div>
           {error ? (
             <p className="mt-2 text-destructive text-sm" role="alert">
