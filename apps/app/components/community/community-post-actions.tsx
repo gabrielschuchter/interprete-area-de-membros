@@ -138,7 +138,14 @@ export const CommunityPostActions = ({
         variant={voted ? "secondary" : "ghost"}
       >
         <ThumbsUpIcon aria-hidden="true" className="size-4" />
-        {detailed ? <span>{`Apoiar · ${votes}`}</span> : <span>{votes}</span>}
+        {detailed ? (
+          <>
+            <span className="cp-action-label">Apoiar</span>
+            <span className="cp-action-count">{votes}</span>
+          </>
+        ) : (
+          <span>{votes}</span>
+        )}
         <span className="sr-only">apoios</span>
       </Button>
       <Button
@@ -156,7 +163,9 @@ export const CommunityPostActions = ({
           className="size-4"
           fill={bookmarked ? "currentColor" : "none"}
         />
-        <span>{bookmarked ? "Salvo" : "Salvar"}</span>
+        <span className="cp-action-label">
+          {bookmarked ? "Salvo" : "Salvar"}
+        </span>
       </Button>
       <CommunityPostShareButton path={sharePath} />
       {error ? (

@@ -23,6 +23,13 @@ import {
   sanitizeRichDocument,
 } from "@/lib/community-content";
 import {
+  type CommunityCoverFramingRecord,
+  communityCoverFramingData,
+  communityCoverFramingFromForm,
+  communityCoverFramingFromRecord,
+  communityCoverFramingSelect,
+} from "@/lib/community-cover";
+import {
   communityCoverAltEnabled,
   communityCoverAltSelect,
   communityCoverAltValue,
@@ -570,19 +577,22 @@ const draftSaveConflict = (
   ok: false,
 });
 
-const communityDraftSnapshotFromPost = (post: {
-  content: string;
-  contentJson: unknown;
-  coverAltText?: string | null;
-  coverUrl: string | null;
-  spaceId: string | null;
-  subtitle: string | null;
-  tags: string[];
-  title: string;
-}): CommunityDraftSnapshot => ({
+const communityDraftSnapshotFromPost = (
+  post: CommunityCoverFramingRecord & {
+    content: string;
+    contentJson: unknown;
+    coverAltText?: string | null;
+    coverUrl: string | null;
+    spaceId: string | null;
+    subtitle: string | null;
+    tags: string[];
+    title: string;
+  }
+): CommunityDraftSnapshot => ({
   content: post.content,
   contentJson: post.contentJson,
   coverAltText: post.coverAltText ?? "",
+  coverFraming: communityCoverFramingFromRecord(post),
   coverUrl: post.coverUrl,
   spaceId: post.spaceId,
   subtitle: post.subtitle,
@@ -596,6 +606,7 @@ const communityDraftRecordSelect = {
   content: true,
   contentJson: true,
   ...communityCoverAltSelect,
+  ...communityCoverFramingSelect,
   coverUrl: true,
   deletedAt: true,
   spaceId: true,
@@ -687,6 +698,7 @@ const saveNewCommunityDraft = async ({
           ? { coverAltText: snapshot.coverAltText }
           : {}),
         coverUrl: snapshot.coverUrl,
+        ...communityCoverFramingData(snapshot.coverFraming),
         content: snapshot.content,
         excerpt: excerptFrom(snapshot.content),
         contentJson: snapshot.contentJson as Prisma.InputJsonValue,
@@ -790,6 +802,7 @@ const updateExistingCommunityDraft = async ({
         ? { coverAltText: snapshot.coverAltText }
         : {}),
       coverUrl: snapshot.coverUrl,
+      ...communityCoverFramingData(snapshot.coverFraming),
       spaceId: snapshot.spaceId,
       subtitle: snapshot.subtitle,
       title: snapshot.title,
@@ -855,6 +868,7 @@ const communityDraftSnapshotFromForm = async (
       coverAltText: communityCoverAltValue(
         textValue(formData.get("coverAltText"))
       ),
+      coverFraming: communityCoverFramingFromForm(formData),
       coverUrl: safeImageUrl(textValue(formData.get("coverUrl")), userId),
       spaceId,
       subtitle: textValue(formData.get("subtitle")).slice(0, 1000) || null,
@@ -1047,6 +1061,7 @@ export const publishPost = async (
             }
           : {}),
         coverUrl: safeImageUrl(textValue(formData.get("coverUrl")), userId),
+        ...communityCoverFramingData(communityCoverFramingFromForm(formData)),
         content: parsed.data.content,
         excerpt: excerptFrom(parsed.data.content),
         contentJson: persistedDocument as Prisma.InputJsonValue | undefined,
@@ -1176,6 +1191,7 @@ const persistCommunityPostUpdate = async ({
         ? { coverAltText: snapshot.coverAltText }
         : {}),
       coverUrl: snapshot.coverUrl,
+      ...communityCoverFramingData(snapshot.coverFraming),
       spaceId: snapshot.spaceId,
       subtitle: snapshot.subtitle,
       title: snapshot.title,
@@ -1299,6 +1315,7 @@ export const updatePost = async (
     coverAltText: communityCoverAltValue(
       textValue(formData.get("coverAltText"))
     ),
+    coverFraming: communityCoverFramingFromForm(formData),
     coverUrl: safeImageUrl(textValue(formData.get("coverUrl")), userId),
     spaceId,
     subtitle: textValue(formData.get("subtitle")).slice(0, 1000) || null,

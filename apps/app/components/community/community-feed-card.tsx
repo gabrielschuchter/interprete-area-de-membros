@@ -3,6 +3,10 @@ import type { ReactNode } from "react";
 import { IntentLink } from "@/app/(authenticated)/components/intent-link";
 import { communityPostHref } from "@/lib/community";
 import {
+  type CommunityCoverFramingRecord,
+  communityCoverFramingFromRecord,
+} from "@/lib/community-cover";
+import {
   type CommunityMediaItem,
   communityMediaImageSrcSet,
   communityMediaImageUrl,
@@ -21,7 +25,7 @@ interface CommunityFeedProfile {
   readonly username: string;
 }
 
-export interface CommunityFeedCardPost {
+export interface CommunityFeedCardPost extends CommunityCoverFramingRecord {
   readonly _count: { readonly comments: number; readonly votes: number };
   readonly authorId: string;
   readonly bookmarks: readonly { readonly id: string }[];
@@ -78,6 +82,7 @@ export function CommunityFeedCard({
     <CommunityCoverImage
       alt={post.coverAltText || `Capa: ${post.title}`}
       className="community-post-card__media relative z-10"
+      framing={communityCoverFramingFromRecord(post)}
       height={900}
       loading="lazy"
       sizes="(max-width: 767px) calc(100vw - 32px), 600px"

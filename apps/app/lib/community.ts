@@ -10,6 +10,7 @@ import {
 } from "@repo/database";
 import { tracePerformance } from "@repo/observability/performance";
 import { getMemberRole, requireStaff } from "@/lib/authorization";
+import { communityCoverFramingSelect } from "@/lib/community-cover";
 import { communityCoverAltSelect } from "@/lib/community-cover-alt";
 import { canReadPrivateStudyGroup } from "@/lib/community-group-permissions";
 import {
@@ -317,6 +318,7 @@ const communityFeedSelect = (memberId: string) =>
     contentJson: true,
     tags: true,
     coverUrl: true,
+    ...communityCoverFramingSelect,
     authorId: true,
     status: true,
     isPinned: true,
@@ -683,6 +685,7 @@ export const getCommunitySpace = async (
           contentJson: true,
           tags: true,
           coverUrl: true,
+          ...communityCoverFramingSelect,
           authorId: true,
           isPinned: true,
           publishedAt: true,
@@ -780,6 +783,7 @@ const communityPostSelect = {
   contentJson: true,
   tags: true,
   coverUrl: true,
+  ...communityCoverFramingSelect,
   ...communityCoverAltSelect,
   authorId: true,
   isPinned: true,

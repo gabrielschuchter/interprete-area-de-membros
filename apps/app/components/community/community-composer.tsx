@@ -23,6 +23,7 @@ import {
   EyeIcon,
   FolderInputIcon,
   ImageIcon,
+  MoveIcon,
   SaveIcon,
   Trash2Icon,
 } from "lucide-react";
@@ -36,7 +37,18 @@ import {
   updateDraft,
   updatePost,
 } from "@/app/(authenticated)/comunidade/actions";
-import { LazyImageCropDialog } from "@/components/image-crop-dialog-lazy";
+import {
+  type CommunityCoverFraming,
+  communityCoverImageStyle,
+  defaultCommunityCoverFraming,
+  normalizeCommunityCoverFraming,
+} from "@/lib/community-cover";
+import {
+  coverAcceptedTypes,
+  coverSourceLimitBytes,
+  prepareCoverOriginal,
+} from "@/lib/community-cover-file";
+import { LazyCommunityCoverAdjustDialog } from "./community-cover-adjust-dialog-lazy";
 import { CommunityEditorField } from "./community-editor-field";
 import { TopicEditor } from "./topic-editor";
 
@@ -56,6 +68,7 @@ interface CommunityComposerProperties {
   readonly idempotencyKey: string;
   readonly initialContent: JSONContent;
   readonly initialCoverAltText?: string;
+  readonly initialCoverFraming?: CommunityCoverFraming;
   readonly initialCoverUrl: string | null;
   readonly initialSpaceId: string | null;
   readonly initialSpaceSlug: string | null;
@@ -145,6 +158,7 @@ export function CommunityComposer({
   backHref,
   initialContent,
   initialCoverAltText = "",
+  initialCoverFraming = defaultCommunityCoverFraming,
   initialCoverUrl,
   enableCoverAltText = false,
   initialSpaceId,
@@ -168,6 +182,9 @@ export function CommunityComposer({
   const [subtitle, setSubtitle] = useState(initialSubtitle ?? "");
   const [coverUrl, setCoverUrl] = useState(initialCoverUrl ?? "");
   const [coverAltText, setCoverAltText] = useState(initialCoverAltText);
+  const [coverFraming, setCoverFraming] = useState(() =>
+    normalizeCommunityCoverFraming(initialCoverFraming)
+  );
   const [coverPreviewUrl, setCoverPreviewUrl] = useState<string | null>(null);
   const [coverUploadPercent, setCoverUploadPercent] = useState(0);
   const [spaceId, setSpaceId] = useState(initialSpaceId ?? "");
@@ -194,7 +211,12 @@ export function CommunityComposer({
   const bodyRef = useRef<HTMLDivElement>(null);
   const uploadedCoverUrlRef = useRef<string | null>(null);
   const coverUploadInFlight = useRef(false);
-  const [pendingCoverFile, setPendingCoverFile] = useState<File | null>(null);
+  // Janela "Ajustar capa": `file` é a escolha ainda não enviada; sem arquivo,
+  // ajusta a capa que já está no rascunho.
+  const [adjustCover, setAdjustCover] = useState<{
+    readonly file: File | null;
+    readonly src: string;
+  } | null>(null);
   const publishingRef = useRef(false);
   const groupMentionConfirmedRef = useRef(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -209,6 +231,7 @@ export function CommunityComposer({
     title: initialTitle,
     subtitle: initialSubtitle ?? "",
     coverAltText: initialCoverAltText,
+    coverFraming: normalizeCommunityCoverFraming(initialCoverFraming),
     coverUrl: initialCoverUrl ?? "",
     tags: initialTags.join(", "),
     spaceId: initialSpaceId ?? "",
@@ -233,6 +256,13 @@ export function CommunityComposer({
     formData.set("subtitle", current.subtitle);
     formData.set("coverAltText", current.coverAltText);
     formData.set("coverUrl", current.coverUrl);
+    formData.set("coverFocusX", String(current.coverFraming.focusX));
+    formData.set("coverFocusY", String(current.coverFraming.focusY));
+    formData.set("coverZoom", String(current.coverFraming.zoom));
+    if (current.coverFraming.width && current.coverFraming.height) {
+      formData.set("coverWidth", String(current.coverFraming.width));
+      formData.set("coverHeight", String(current.coverFraming.height));
+    }
     formData.set("tags", current.tags);
     formData.set("spaceId", current.spaceId);
     formData.set("spaceSlug", current.spaceSlug);
@@ -385,40 +415,68 @@ export function CommunityComposer({
     scheduleSave();
   };
 
-  // A capa escolhida passa pelo recorte (16:9, o formato do feed e da
-  // publicação); só o recorte é enviado.
+  // A capa escolhida abre o "Ajustar capa" com a imagem original. Nada é
+  // recortado: o arquivo segue inteiro e o enquadramento vai como foco e zoom.
   const chooseCover = (file: File) => {
-    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+    if (!coverAcceptedTypes.includes(file.type)) {
       setErrorMessage("Envie uma imagem JPG, PNG ou WebP.");
       return;
     }
-    if (file.size <= 0 || file.size > 25 * 1024 * 1024) {
+    if (file.size <= 0 || file.size > coverSourceLimitBytes) {
       setErrorMessage("A imagem deve ter até 25 MB.");
       return;
     }
     setErrorMessage("");
-    setPendingCoverFile(file);
+    setAdjustCover({ file, src: URL.createObjectURL(file) });
   };
 
-  const uploadCover = async (file: File) => {
+  const closeAdjustCover = () => {
+    setAdjustCover((current) => {
+      if (current?.file) {
+        URL.revokeObjectURL(current.src);
+      }
+      return null;
+    });
+  };
+
+  const confirmAdjustCover = (framing: CommunityCoverFraming) => {
+    const current = adjustCover;
+    closeAdjustCover();
+    if (!current) {
+      return;
+    }
+    if (current.file) {
+      uploadCover(current.file, framing).catch(() => undefined);
+      return;
+    }
+    setCoverFraming(framing);
+    updateSnapshot({ coverFraming: framing });
+  };
+
+  const uploadCover = async (
+    original: File,
+    framing: CommunityCoverFraming
+  ) => {
     if (coverUploadInFlight.current) {
       return;
     }
-    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
-      setErrorMessage("Envie uma imagem JPG, PNG ou WebP.");
-      return;
-    }
-    if (file.size <= 0 || file.size > 5 * 1024 * 1024) {
-      setErrorMessage("A imagem deve ter entre 1 byte e 5 MB.");
-      return;
-    }
-
     coverUploadInFlight.current = true;
-    setCoverPreviewUrl(URL.createObjectURL(file));
+    setCoverPreviewUrl(URL.createObjectURL(original));
+    setCoverFraming(framing);
     setIsUploadingCover(true);
     setCoverUploadPercent(0);
     setErrorMessage("");
     try {
+      const prepared = await prepareCoverOriginal(original, {
+        height: framing.height ?? 0,
+        width: framing.width ?? 0,
+      });
+      const file = prepared.file;
+      const uploadedFraming = {
+        ...framing,
+        height: prepared.height,
+        width: prepared.width,
+      };
       const formData = new FormData();
       formData.set("file", file);
       formData.set("assetType", "community-cover");
@@ -456,9 +514,10 @@ export function CommunityComposer({
         throw new Error(payload.error ?? "Não foi possível enviar a capa.");
       }
       setCoverUrl(payload.url);
+      setCoverFraming(uploadedFraming);
       uploadedCoverUrlRef.current = payload.url;
       setCoverPreviewUrl(null);
-      updateSnapshot({ coverUrl: payload.url });
+      updateSnapshot({ coverFraming: uploadedFraming, coverUrl: payload.url });
       setCoverUploadPercent(100);
     } catch (uploadError) {
       setCoverPreviewUrl(null);
@@ -951,6 +1010,7 @@ export function CommunityComposer({
                   className="community-editor-cover-preview"
                   height={224}
                   src={coverPreviewUrl ?? coverUrl}
+                  style={communityCoverImageStyle(coverFraming)}
                   width={900}
                 />
                 <div className="community-editor-cover-controls">
@@ -963,13 +1023,27 @@ export function CommunityComposer({
                     {isUploadingCover ? "Enviando…" : "Trocar capa"}
                   </button>
                   <button
+                    disabled={isUploadingCover || !coverUrl}
+                    onClick={() =>
+                      setAdjustCover({ file: null, src: coverUrl })
+                    }
+                    type="button"
+                  >
+                    <MoveIcon aria-hidden="true" />
+                    Ajustar
+                  </button>
+                  <button
                     aria-label="Remover capa"
                     disabled={isUploadingCover}
                     onClick={() => {
                       removeTemporaryCover().catch(() => undefined);
                       setCoverPreviewUrl(null);
                       setCoverUrl("");
-                      updateSnapshot({ coverUrl: "" });
+                      setCoverFraming(defaultCommunityCoverFraming);
+                      updateSnapshot({
+                        coverFraming: defaultCommunityCoverFraming,
+                        coverUrl: "",
+                      });
                     }}
                     type="button"
                   >
@@ -1003,19 +1077,12 @@ export function CommunityComposer({
               tabIndex={-1}
               type="file"
             />
-            {pendingCoverFile ? (
-              <LazyImageCropDialog
-                aspect={16 / 9}
-                file={pendingCoverFile}
-                onCancel={() => setPendingCoverFile(null)}
-                onConfirm={(cropped) => {
-                  setPendingCoverFile(null);
-                  uploadCover(cropped).catch(() => undefined);
-                }}
-                outputWidth={1920}
-                title="Ajustar capa"
-              />
-            ) : null}
+            <LazyCommunityCoverAdjustDialog
+              initialFraming={coverFraming}
+              onCancel={closeAdjustCover}
+              onConfirm={confirmAdjustCover}
+              src={adjustCover?.src ?? null}
+            />
             {isUploadingCover ? (
               <div
                 aria-label={`Enviando capa: ${coverUploadPercent}%`}

@@ -186,6 +186,22 @@ const renderMention = (
   );
 };
 
+/**
+ * Layout da imagem no corpo da publicação: `wide` (atributo explícito) abre
+ * além da coluna de leitura; imagens estreitas (até 480px) viram cartão
+ * compacto. O resto segue a largura da coluna.
+ */
+const imageLayout = (
+  attrs: Record<string, unknown> | undefined
+): "card" | "wide" | undefined => {
+  if (attrs?.layout === "wide") {
+    return "wide";
+  }
+  return typeof attrs?.width === "number" && attrs.width <= 480
+    ? "card"
+    : undefined;
+};
+
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: the renderer keeps the supported document block types and their safe media fallbacks in one exhaustive switch.
 function renderBlock(
   node: RichNode,
@@ -276,8 +292,10 @@ function renderBlock(
         return null;
       }
 
+      const layout = imageLayout(node.attrs);
+
       return (
-        <figure className="space-y-2" key={key}>
+        <figure className="space-y-2" data-layout={layout} key={key}>
           {/* biome-ignore lint/performance/noImgElement: document images are sanitized external URLs and may come from hosts not configured for next/image. */}
           <img
             alt={typeof node.attrs?.alt === "string" ? node.attrs.alt : ""}

@@ -41,4 +41,51 @@ describe("CommunityCoverImage", () => {
       "IMG"
     );
   });
+
+  test("centers the cover when there is no framing", () => {
+    render(<CommunityCoverImage {...properties} />);
+    expect(
+      screen.getByRole("img", { name: properties.alt }).getAttribute("style")
+    ).toBeNull();
+  });
+
+  test("moves the focus with object-position at zoom 1", () => {
+    render(
+      <CommunityCoverImage
+        {...properties}
+        framing={{
+          focusX: 0.2,
+          focusY: 0.8,
+          height: 1350,
+          width: 2400,
+          zoom: 1,
+        }}
+      />
+    );
+    const image = screen.getByRole("img", { name: properties.alt });
+    expect(image.style.objectPosition).toBe("20% 80%");
+    expect(image.style.transform).toBe("");
+    expect(image.parentElement?.className ?? "").not.toContain(
+      "community-cover-frame"
+    );
+  });
+
+  test("scales from the focus inside a clipping frame when zoomed", () => {
+    render(
+      <CommunityCoverImage
+        {...properties}
+        framing={{
+          focusX: 0.25,
+          focusY: 0.5,
+          height: 1350,
+          width: 2400,
+          zoom: 2,
+        }}
+      />
+    );
+    const image = screen.getByRole("img", { name: properties.alt });
+    expect(image.style.transform).toBe("scale(2)");
+    expect(image.style.transformOrigin).toBe("25% 50%");
+    expect(image.parentElement?.className).toContain("community-cover-frame");
+  });
 });

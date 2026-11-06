@@ -1,8 +1,6 @@
 import { Button } from "@repo/design-system/components/ui/button";
 import {
-  ArrowLeftIcon,
   Edit2Icon,
-  MessageCircleIcon,
   MoreHorizontalIcon,
   ThumbsUpIcon,
   Trash2Icon,
@@ -17,7 +15,7 @@ import {
   communityPostHref,
   type getCommunityPostBySlug,
 } from "@/lib/community";
-import { communityMediaImageSrcSet } from "@/lib/community-media";
+import { communityCoverFramingFromRecord } from "@/lib/community-cover";
 import { RichDocument } from "../learning/rich-document";
 import {
   SingleFlightForm,
@@ -25,9 +23,9 @@ import {
 } from "../mutations/single-flight-form";
 import { CommentComposer } from "./comment-composer";
 import { CommunityCommentDialog } from "./community-comment-dialog";
-import { CommunityCoverImage } from "./community-cover-image";
 import { CommunityDiscussionFollow } from "./community-discussion-follow";
 import { CommunityPostActions } from "./community-post-actions";
+import { CommunityPostHeader } from "./community-post-header";
 import { CommunityPostMenu } from "./community-post-menu";
 import { MemberIdentity } from "./member-identity";
 import { MentionTextarea } from "./mention-textarea";
@@ -321,51 +319,25 @@ export function CommunityPostView({
   }
   const canStaffManage = role === "TEACHER" || role === "ADMIN";
   const edited = Boolean(post.editedAt);
-  const authorRole = post.profile?.member?.role;
-  let authorRoleLabel: string | null = null;
-  if (authorRole === "ADMIN") {
-    authorRoleLabel = "Admin";
-  } else if (authorRole === "TEACHER") {
-    authorRoleLabel = "Professor";
-  }
+  const backTarget =
+    backHref ??
+    (post.space ? `/comunidade/grupos/${post.space.slug}` : "/comunidade");
 
   return (
-    <div className="min-h-svh bg-background">
-      <main className="community-post-shell mx-auto w-full">
-        <Button asChild className="community-post-back" variant="ghost">
-          <Link
-            href={
-              backHref ??
-              (post.space
-                ? `/comunidade/grupos/${post.space.slug}`
-                : "/comunidade")
-            }
-          >
-            <ArrowLeftIcon aria-hidden="true" />{" "}
-            {backLabel ?? post.space?.title ?? "Comunidade"}
-          </Link>
-        </Button>
-        <article className="community-post-article">
-          <div className="community-post-meta-row">
-            <div className="community-post-meta">
-              {post.space && (
-                <Link
-                  className="community-post-group"
-                  href={`/comunidade/grupos/${post.space.slug}`}
-                >
-                  {post.space.title}
-                </Link>
-              )}
-              <time
-                dateTime={(post.publishedAt ?? post.createdAt).toISOString()}
-              >
-                {(post.publishedAt ?? post.createdAt).toLocaleDateString(
-                  "pt-BR"
-                )}
-              </time>
-              {edited && <span>· Editado</span>}
-            </div>
-            {(post.authorId === memberId || canStaffManage) && (
+    <div className="cp-page">
+      <main>
+        <CommunityPostHeader
+          author={post.profile ?? undefined}
+          authorId={post.authorId}
+          backHref={backTarget}
+          backLabel={backLabel ?? post.space?.title ?? "Comunidade"}
+          coverAlt={post.coverAltText || `Capa: ${post.title}`}
+          coverFraming={communityCoverFramingFromRecord(post)}
+          coverUrl={post.coverUrl}
+          date={post.publishedAt ?? post.createdAt}
+          edited={edited}
+          menu={
+            post.authorId === memberId || canStaffManage ? (
               <CommunityPostMenu
                 canModerate={canStaffManage}
                 isFeatured={post.isFeatured}
@@ -373,169 +345,131 @@ export function CommunityPostView({
                 postId={post.id}
                 spaceSlug={post.space?.slug ?? ""}
               />
-            )}
-          </div>
-          <h1 className="community-post-title">{post.title}</h1>
-          {post.subtitle && (
-            <p className="community-post-subtitle">{post.subtitle}</p>
-          )}
-          <div className="community-post-author">
-            <MemberIdentity
-              authorId={post.authorId}
-              compact
-              profile={post.profile ?? undefined}
-              returnTo={href}
-              showHeadline={false}
-            />
-            {authorRoleLabel && (
-              <span className="community-post-author__role">
-                {authorRoleLabel}
-              </span>
-            )}
-          </div>
-          {post.coverUrl && (
-            <CommunityCoverImage
-              alt={post.coverAltText || `Capa: ${post.title}`}
-              className="community-post-cover"
-              height={630}
-              loading="eager"
-              sizes="(max-width: 900px) calc(100vw - 32px), 760px"
-              src={post.coverUrl}
-              srcSet={communityMediaImageSrcSet(post.coverUrl)}
-              width={1200}
-            />
-          )}
-          <div className="lesson-document community-post-body">
-            {post.contentJson ? (
-              <RichDocument
-                currentMemberId={memberId}
-                value={post.contentJson}
+            ) : null
+          }
+          returnTo={href}
+          subtitle={post.subtitle}
+          title={post.title}
+        />
+        <div className="cp-column">
+          <article className="cp-article">
+            <div className="cp-actions">
+              <CommunityPostActions
+                className="cp-actions__buttons"
+                detailed
+                initialBookmarked={post.bookmarks.length > 0}
+                initialVoted={post.votes.length > 0}
+                postId={post.id}
+                sharePath={communityPostHref(post)}
+                spaceSlug={post.space?.slug ?? ""}
+                voteCount={post._count.votes}
               />
-            ) : (
-              <p className="whitespace-pre-wrap">{post.content}</p>
-            )}
-          </div>
-          {post.tags.length > 0 && (
-            <ul
-              aria-label="Etiquetas da publicação"
-              className="community-post-tags"
-            >
-              {post.tags.map((tag) => (
-                <li key={tag}>#{tag}</li>
-              ))}
-            </ul>
-          )}
-          <div className="community-post-actions-bar">
-            <CommunityPostActions
-              className="community-post-action-buttons"
-              detailed
-              initialBookmarked={post.bookmarks.length > 0}
-              initialVoted={post.votes.length > 0}
-              postId={post.id}
-              sharePath={communityPostHref(post)}
-              spaceSlug={post.space?.slug ?? ""}
-              voteCount={post._count.votes}
-            />
-            <CommunityDiscussionFollow
-              isFollowing={post.followers.length > 0}
-              isMuted={Boolean(post.followers[0]?.mutedAt)}
-              postId={post.id}
-              spaceSlug={post.space?.slug ?? ""}
-            />
-            <Link
-              className="community-post-responses-link"
-              href="#comments-heading"
-            >
-              <MessageCircleIcon aria-hidden="true" />
-              <span>
-                {post._count.comments}{" "}
-                {post._count.comments === 1 ? "resposta" : "respostas"}
-              </span>
-            </Link>
-          </div>
-        </article>
-
-        <section
-          aria-labelledby="comments-heading"
-          className="community-discussion"
-        >
-          <div className="community-discussion__heading">
-            <h2 className="font-display" id="comments-heading">
-              Discussão
-            </h2>
-            <span className="community-discussion__count">
-              <MessageCircleIcon aria-hidden="true" /> {post._count.comments}
-            </span>
-          </div>
-          {post.space?.commentsClosed ? (
-            <p className="community-comment-closed">
-              Os comentários deste grupo estão fechados pela equipe.
-            </p>
-          ) : (
-            <div className="community-comment-composer-wrap">
-              <CommentComposer
-                ariaLabel="Comentário"
-                className="community-comment-composer"
-                currentProfile={currentProfile}
-                helperText="Use @nome para mencionar alguém."
-                placeholder="Acrescente uma leitura, uma pergunta ou uma referência…"
+              <CommunityDiscussionFollow
+                isFollowing={post.followers.length > 0}
+                isMuted={Boolean(post.followers[0]?.mutedAt)}
                 postId={post.id}
                 spaceSlug={post.space?.slug ?? ""}
               />
+              <Link className="cp-actions__responses" href="#comments-heading">
+                {post._count.comments}{" "}
+                {post._count.comments === 1 ? "resposta" : "respostas"}
+              </Link>
             </div>
-          )}
-          <div className="community-comment-list">
-            {topLevel.length === 0 ? (
-              <p className="text-muted-foreground">
-                Ainda não há respostas. A conversa pode começar com você.
+            <div className="lesson-document community-post-body cp-body">
+              {post.contentJson ? (
+                <RichDocument
+                  currentMemberId={memberId}
+                  value={post.contentJson}
+                />
+              ) : (
+                <p className="whitespace-pre-wrap">{post.content}</p>
+              )}
+            </div>
+            {post.tags.length > 0 && (
+              <ul aria-label="Etiquetas da publicação" className="cp-tags">
+                {post.tags.map((tag) => (
+                  <li key={tag}>#{tag}</li>
+                ))}
+              </ul>
+            )}
+          </article>
+
+          <section
+            aria-labelledby="comments-heading"
+            className="community-discussion cp-discussion"
+          >
+            <div className="cp-discussion__heading">
+              <h2 id="comments-heading">Discussão</h2>
+              <span className="cp-discussion__count">
+                {post._count.comments}
+              </span>
+            </div>
+            {post.space?.commentsClosed ? (
+              <p className="community-comment-closed">
+                Os comentários deste grupo estão fechados pela equipe.
               </p>
             ) : (
-              topLevel.map((comment) => (
-                <CommentThread
-                  comment={comment}
+              <div className="cp-composer">
+                <CommentComposer
+                  ariaLabel="Comentário"
+                  className="community-comment-composer cp-composer__form"
                   currentProfile={currentProfile}
-                  depth={0}
-                  key={comment.id}
-                  memberId={memberId}
-                  post={post}
-                  repliesByParent={repliesByParent}
-                  role={role}
+                  placeholder="Acrescente uma leitura, uma pergunta ou uma referência…"
+                  postId={post.id}
+                  spaceSlug={post.space?.slug ?? ""}
                 />
-              ))
+              </div>
             )}
-          </div>
-          {(post.commentsPage > 1 || post.hasMoreComments) && (
-            <nav
-              aria-label="Paginação da discussão"
-              className="mt-8 flex justify-between gap-3"
-            >
-              {post.commentsPage > 1 ? (
-                <Button asChild variant="outline">
-                  <Link href={`${href}?commentsPage=${post.commentsPage - 1}`}>
-                    Respostas anteriores
-                  </Link>
-                </Button>
+            <div className="community-comment-list">
+              {topLevel.length === 0 ? (
+                <p className="text-muted-foreground">
+                  Ainda não há respostas. A conversa pode começar com você.
+                </p>
               ) : (
-                <span />
+                topLevel.map((comment) => (
+                  <CommentThread
+                    comment={comment}
+                    currentProfile={currentProfile}
+                    depth={0}
+                    key={comment.id}
+                    memberId={memberId}
+                    post={post}
+                    repliesByParent={repliesByParent}
+                    role={role}
+                  />
+                ))
               )}
-              {post.hasMoreComments && (
-                <Button asChild variant="outline">
-                  <Link href={`${href}?commentsPage=${post.commentsPage + 1}`}>
-                    Mais respostas
-                  </Link>
-                </Button>
-              )}
-            </nav>
-          )}
-        </section>
+            </div>
+            {(post.commentsPage > 1 || post.hasMoreComments) && (
+              <nav
+                aria-label="Paginação da discussão"
+                className="mt-8 flex justify-between gap-3"
+              >
+                {post.commentsPage > 1 ? (
+                  <Button asChild variant="outline">
+                    <Link
+                      href={`${href}?commentsPage=${post.commentsPage - 1}`}
+                    >
+                      Respostas anteriores
+                    </Link>
+                  </Button>
+                ) : (
+                  <span />
+                )}
+                {post.hasMoreComments && (
+                  <Button asChild variant="outline">
+                    <Link
+                      href={`${href}?commentsPage=${post.commentsPage + 1}`}
+                    >
+                      Mais respostas
+                    </Link>
+                  </Button>
+                )}
+              </nav>
+            )}
+          </section>
+        </div>
       </main>
-      {!post.space?.commentsClosed && (
-        <CommunityCommentDialog
-          currentProfile={currentProfile}
-          postId={post.id}
-          spaceSlug={post.space?.slug ?? ""}
-        />
-      )}
     </div>
   );
 }

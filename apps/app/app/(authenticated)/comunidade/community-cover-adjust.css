@@ -1,0 +1,281 @@
+/*
+ * "Ajustar capa" (handoff, quadro do modal). Janela 16:9 de 660 x 371 no
+ * computador, três previews ao lado. Sem sombra, sem gradiente. Fora de @layer
+ * para vencer as regras antigas.
+ */
+.cp-adjust {
+  --cp-ink: #410230;
+  --cp-line: #e2d6d1;
+  --cp-muted: #7a5a69;
+  --cp-hover: #e7dedc;
+  --cp-sans: var(--font-sans-family), Inter, system-ui, sans-serif;
+  --cp-serif: var(--font-display-family), "Source Serif 4", Georgia, serif;
+  --cp-mono: var(--font-mono-family), "IBM Plex Mono", ui-monospace, monospace;
+
+  width: min(1200px, calc(100vw - 48px));
+  max-width: none;
+  max-height: min(780px, calc(100dvh - 48px));
+  padding: 0;
+  margin: auto;
+  overflow: auto;
+  font-family: var(--cp-sans);
+  color: var(--cp-ink);
+  background: #f7f3f1;
+  border: 1px solid var(--cp-line);
+  border-radius: 8px;
+  box-shadow: none;
+}
+.cp-adjust::backdrop {
+  background: rgb(65 2 48 / 55%);
+}
+.cp-adjust__panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.cp-adjust__header {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 24px 32px 0;
+}
+.cp-adjust__header h2 {
+  margin: 0;
+  font-family: var(--cp-serif);
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.25;
+  outline: none;
+}
+.cp-adjust__header p {
+  margin: 6px 0 0;
+  font-size: 14px;
+  color: var(--cp-muted);
+}
+.cp-adjust__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 40px;
+  padding: 24px 32px;
+}
+.cp-adjust__stage {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+  min-width: 0;
+}
+
+.cp-adjust__frame {
+  position: relative;
+  width: min(660px, 100%);
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+  background: #d9cbc6;
+  border-radius: 8px;
+}
+.cp-adjust__frame[data-dragging="true"] {
+  cursor: grabbing;
+}
+.cp-adjust__frame:focus-visible {
+  outline: 3px solid rgb(65 2 48 / 55%);
+  outline-offset: 2px;
+}
+.cp-adjust__frame-inner {
+  position: absolute;
+  inset: 0;
+}
+.cp-adjust__loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  color: var(--cp-muted);
+}
+
+.cp-adjust__zoom {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  width: min(660px, 100%);
+}
+.cp-adjust__range {
+  flex: 1 1 auto;
+  min-width: 0;
+  accent-color: var(--cp-ink);
+}
+.cp-adjust__percent {
+  min-width: 44px;
+  font-family: var(--cp-mono);
+  font-size: 12px;
+  text-align: right;
+}
+.cp-adjust__meta {
+  margin: 0;
+  font-family: var(--cp-mono);
+  font-size: 12px;
+  color: var(--cp-muted);
+}
+.cp-adjust__warning {
+  width: min(660px, 100%);
+  padding: 10px 12px;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--cp-ink);
+  background: #ebd3d7;
+  border-radius: 8px;
+}
+
+.cp-adjust__previews {
+  display: grid;
+  gap: 20px;
+  align-content: start;
+}
+.cp-adjust__preview {
+  margin: 0;
+}
+.cp-adjust__preview figcaption {
+  margin-top: 6px;
+  font-family: var(--cp-mono);
+  font-size: 11px;
+  color: var(--cp-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.cp-adjust__preview-frame {
+  display: block;
+  aspect-ratio: 16 / 9;
+  background: #d9cbc6;
+  border-radius: 6px;
+}
+.cp-adjust__preview[data-kind="feed"] .cp-adjust__preview-frame {
+  width: 200px;
+}
+.cp-adjust__preview[data-kind="desktop"] .cp-adjust__preview-frame {
+  width: 280px;
+}
+.cp-adjust__preview[data-kind="mobile"] .cp-adjust__preview-frame {
+  width: 140px;
+}
+
+.cp-adjust__actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding: 16px 32px 24px;
+  border-top: 1px solid var(--cp-line);
+}
+
+.cp-adjust button {
+  font-family: var(--cp-sans);
+  cursor: pointer;
+}
+.cp-adjust button:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+.cp-adjust__icon-button,
+.cp-adjust__restore {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  min-height: 40px;
+  padding: 0 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--cp-ink);
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+}
+.cp-adjust__icon-button:hover:not(:disabled),
+.cp-adjust__restore:hover:not(:disabled) {
+  background: var(--cp-hover);
+}
+.cp-adjust__icon-button svg,
+.cp-adjust__restore svg {
+  width: 18px;
+  height: 18px;
+}
+.cp-adjust__primary,
+.cp-adjust__secondary {
+  min-height: 40px;
+  padding: 0 18px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 8px;
+}
+.cp-adjust__primary {
+  color: #fff;
+  background: var(--cp-ink);
+  border: 0;
+}
+.cp-adjust__primary:hover:not(:disabled) {
+  background: #2c0121;
+}
+.cp-adjust__secondary {
+  color: var(--cp-ink);
+  background: transparent;
+  border: 1px solid var(--cp-line);
+}
+.cp-adjust__secondary:hover {
+  background: var(--cp-hover);
+}
+.cp-adjust :where(button, input[type="range"], [tabindex]):focus-visible {
+  outline: 3px solid rgb(65 2 48 / 55%);
+  outline-offset: 2px;
+}
+
+/* Tablet e celular: a janela vira folha e os previews descem em linha. */
+@media (max-width: 1023px) {
+  .cp-adjust__body {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+  }
+  .cp-adjust__previews {
+    grid-auto-columns: max-content;
+    grid-auto-flow: column;
+    gap: 16px;
+    overflow-x: auto;
+  }
+  .cp-adjust__preview[data-kind="feed"] .cp-adjust__preview-frame {
+    width: 160px;
+  }
+  .cp-adjust__preview[data-kind="desktop"] .cp-adjust__preview-frame {
+    width: 200px;
+  }
+  .cp-adjust__preview[data-kind="mobile"] .cp-adjust__preview-frame {
+    width: 120px;
+  }
+}
+@media (max-width: 767px) {
+  .cp-adjust {
+    width: 100vw;
+    height: 100dvh;
+    max-height: 100dvh;
+    border: 0;
+    border-radius: 0;
+  }
+  .cp-adjust__header {
+    padding: 16px 16px 0;
+  }
+  .cp-adjust__body {
+    padding: 16px;
+  }
+  .cp-adjust__actions {
+    padding: 12px 16px calc(16px + env(safe-area-inset-bottom));
+  }
+  .cp-adjust__actions > button {
+    flex: 1 1 0;
+  }
+  .cp-adjust__restore {
+    margin-left: auto;
+  }
+}

@@ -1,15 +1,19 @@
 "use client";
 
 import { cn } from "@repo/design-system/lib/utils";
-import { AtSignIcon } from "lucide-react";
 import {
   type CSSProperties,
   Fragment,
+  type RefObject,
   useEffect,
   useId,
   useRef,
   useState,
 } from "react";
+import {
+  detectMentionTrigger,
+  isDismissedMention,
+} from "@/lib/community-mention-trigger";
 
 interface MentionCandidate {
   readonly avatarUrl: string | null;
@@ -31,6 +35,8 @@ interface MentionRange {
 
 interface MentionTextareaProperties
   extends Omit<React.TextareaHTMLAttributes<HTMLTextAreaElement>, "onChange"> {
+  /** Caixa do campo; a lista abre logo abaixo dela (ou acima, sem espaço). */
+  readonly anchorRef?: RefObject<HTMLElement | null>;
   readonly defaultDocument?: unknown;
   readonly documentName?: string;
   readonly onChange?: (value: string) => void;
@@ -48,7 +54,6 @@ interface MentionSearchResponse {
   readonly items?: MentionCandidate[];
 }
 
-const mentionPattern = /(?:^|\s)@([\p{L}\p{N}_.-]{0,30})$/iu;
 const mentionTokenPattern = /(^|\s)@([a-z0-9](?:[a-z0-9-]{0,28}[a-z0-9])?)/gi;
 
 interface MentionToken {
@@ -179,17 +184,48 @@ const MentionAvatar = ({ candidate }: { candidate: MentionCandidate }) => (
   </span>
 );
 
-const candidateMeta = (candidate: MentionCandidate) => {
+/** Etiqueta à direita da linha: tamanho do grupo ou papel na equipe. */
+const candidateTag = (candidate: MentionCandidate) => {
   if (candidate.kind === "GROUP") {
-    return ` · ${candidate.recipientCount ?? 0} membros`;
+    return `${candidate.recipientCount ?? 0} membros`;
   }
   if (candidate.role !== "MEMBER") {
-    return ` · ${candidate.role === "ADMIN" ? "Admin" : "Professor"}`;
+    return candidate.role === "ADMIN" ? "Admin" : "Professor";
   }
   return "";
 };
 
+const listGap = 6;
+const listEdge = 8;
+const listMaxHeight = 224;
+const listMinHeight = 112;
+
+/** Lista logo abaixo do campo; sem espaço abaixo, logo acima. Nunca cobre a linha digitada. */
+const listPlacement = (anchor: DOMRect): CSSProperties => {
+  const viewport = window.visualViewport;
+  const top = viewport?.offsetTop ?? 0;
+  const bottom = top + (viewport?.height ?? window.innerHeight);
+  const below = bottom - anchor.bottom - listGap - listEdge;
+  const above = anchor.top - top - listGap - listEdge;
+  const openAbove = below < Math.min(listMaxHeight, 160) && above > below;
+  const room = openAbove ? above : below;
+  const maxHeight = Math.max(listMinHeight, Math.min(listMaxHeight, room));
+  const horizontal = {
+    left: anchor.left,
+    position: "fixed" as const,
+    width: anchor.width,
+  };
+  return openAbove
+    ? {
+        ...horizontal,
+        bottom: window.innerHeight - anchor.top + listGap,
+        maxHeight,
+      }
+    : { ...horizontal, maxHeight, top: anchor.bottom + listGap };
+};
+
 export const MentionTextarea = ({
+  anchorRef,
   className,
   defaultDocument,
   defaultValue,
@@ -210,6 +246,8 @@ export const MentionTextarea = ({
   const [searchPending, setSearchPending] = useState(false);
   const [searchFailed, setSearchFailed] = useState(false);
   const [popoverPosition, setPopoverPosition] = useState<CSSProperties>();
+  // Início do último "@" fechado com Esc: aquele "@" fica fechado, o próximo abre.
+  const dismissedStartRef = useRef<number | null>(null);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [mentions, setMentions] = useState<MentionToken[]>(() =>
     mentionsFromDocument(defaultDocument)
@@ -272,32 +310,28 @@ export const MentionTextarea = ({
         });
     }, 120);
     const updatePopoverPosition = () => {
-      const textarea = textareaRef.current;
-      if (!(textarea && window.matchMedia("(max-width: 767px)").matches)) {
+      const anchor = anchorRef?.current ?? textareaRef.current;
+      if (!anchor) {
         setPopoverPosition(undefined);
         return;
       }
-      const rect = textarea.getBoundingClientRect();
-      const viewport = window.visualViewport;
-      const visibleBottom =
-        (viewport?.offsetTop ?? 0) + (viewport?.height ?? window.innerHeight);
-      const availableHeight = viewport?.height ?? window.innerHeight;
-      setPopoverPosition({
-        position: "fixed",
-        left: rect.left,
-        right: Math.max(8, window.innerWidth - rect.right),
-        bottom: Math.max(8, window.innerHeight - visibleBottom + 8),
-        maxHeight: `min(14rem, ${Math.max(112, Math.floor(availableHeight * 0.55))}px)`,
-      });
+      setPopoverPosition(listPlacement(anchor.getBoundingClientRect()));
     };
     updatePopoverPosition();
     window.addEventListener("resize", updatePopoverPosition);
+    window.addEventListener("scroll", updatePopoverPosition, {
+      capture: true,
+      passive: true,
+    });
     window.visualViewport?.addEventListener("resize", updatePopoverPosition);
     window.visualViewport?.addEventListener("scroll", updatePopoverPosition);
     return () => {
       window.clearTimeout(searchTimer);
       controller.abort();
       window.removeEventListener("resize", updatePopoverPosition);
+      window.removeEventListener("scroll", updatePopoverPosition, {
+        capture: true,
+      });
       window.visualViewport?.removeEventListener(
         "resize",
         updatePopoverPosition
@@ -307,7 +341,7 @@ export const MentionTextarea = ({
         updatePopoverPosition
       );
     };
-  }, [postId, range, searchScope, value]);
+  }, [anchorRef, postId, range, searchScope, value]);
 
   const updateValue = (nextValue: string, cursor: number) => {
     setValue(nextValue);
@@ -318,12 +352,17 @@ export const MentionTextarea = ({
     );
     onChange?.(nextValue);
     const beforeCursor = nextValue.slice(0, cursor);
-    const match = beforeCursor.match(mentionPattern);
-    if (!match) {
+    const trigger = detectMentionTrigger(beforeCursor);
+    if (!trigger) {
+      dismissedStartRef.current = null;
       setRange(null);
       return;
     }
-    setRange({ end: cursor, start: cursor - match[1].length - 1 });
+    if (isDismissedMention(trigger.start, dismissedStartRef.current)) {
+      setRange(null);
+      return;
+    }
+    setRange({ end: cursor, start: trigger.start });
   };
 
   const chooseCandidate = (candidate: MentionCandidate) => {
@@ -349,22 +388,6 @@ export const MentionTextarea = ({
     requestAnimationFrame(() => {
       textareaRef.current?.focus();
       textareaRef.current?.setSelectionRange(nextCursor, nextCursor);
-    });
-  };
-
-  const insertMentionTrigger = () => {
-    const textarea = textareaRef.current;
-    if (!textarea) {
-      return;
-    }
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const nextValue = `${value.slice(0, start)}@${value.slice(end)}`;
-    const nextCursor = start + 1;
-    updateValue(nextValue, nextCursor);
-    requestAnimationFrame(() => {
-      textarea.focus();
-      textarea.setSelectionRange(nextCursor, nextCursor);
     });
   };
 
@@ -421,6 +444,7 @@ export const MentionTextarea = ({
             chooseSuggestion(selectedIndex);
           } else if (event.key === "Escape") {
             event.preventDefault();
+            dismissedStartRef.current = range?.start ?? null;
             setRange(null);
           } else {
             props.onKeyDown?.(event);
@@ -429,20 +453,10 @@ export const MentionTextarea = ({
         ref={textareaRef}
         value={value}
       />
-      <div className="community-mention-toolbar">
-        <button
-          aria-label="Mencionar alguém"
-          className="community-mention-toolbar__button"
-          onClick={insertMentionTrigger}
-          type="button"
-        >
-          <AtSignIcon aria-hidden="true" />
-        </button>
-      </div>
       {showSuggestions && (
         <div
           aria-label="Membros para mencionar"
-          className="community-mention-list motion-layer absolute right-2 bottom-2 left-2 z-40 max-h-56 overflow-y-auto rounded-sm border bg-background p-1 shadow-[var(--shadow-floating)]"
+          className="community-mention-list z-50 overflow-y-auto rounded-sm border bg-background p-1"
           id={listboxId}
           role="listbox"
           style={popoverPosition}
@@ -482,7 +496,7 @@ export const MentionTextarea = ({
                 type="button"
               >
                 <MentionAvatar candidate={candidate} />
-                <span className="min-w-0">
+                <span className="min-w-0 flex-1">
                   {candidate.kind === "GROUP" && (
                     <span className="mb-0.5 block text-[11px] text-muted-foreground">
                       {candidate.recipientCount ?? 0}{" "}
@@ -495,9 +509,8 @@ export const MentionTextarea = ({
                   <span className="block truncate font-medium">
                     {candidate.displayName ?? candidate.username}
                   </span>
-                  <span className="block truncate text-muted-foreground text-xs">
+                  <span className="community-mention-list__handle block truncate">
                     @{candidate.username}
-                    {candidateMeta(candidate)}
                   </span>
                   {candidate.notificationNote && (
                     <span className="block truncate text-muted-foreground text-xs">
@@ -505,6 +518,11 @@ export const MentionTextarea = ({
                     </span>
                   )}
                 </span>
+                {candidateTag(candidate) ? (
+                  <span className="community-mention-list__tag">
+                    {candidateTag(candidate)}
+                  </span>
+                ) : null}
               </button>
             </Fragment>
           ))}

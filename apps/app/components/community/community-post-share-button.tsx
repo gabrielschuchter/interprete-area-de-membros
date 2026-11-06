@@ -81,7 +81,7 @@ export const CommunityPostShareButton = ({
         ) : (
           <Link2Icon aria-hidden="true" className="size-4" />
         )}
-        <span>Compartilhar</span>
+        <span className="cp-action-label">Compartilhar</span>
       </Button>
       <output aria-live="polite" className="sr-only">
         {status ? message : ""}

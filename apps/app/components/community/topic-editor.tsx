@@ -35,6 +35,11 @@ import {
   isScientificArticleReference,
   videoEmbedFromUrl,
 } from "@/lib/community-media";
+import {
+  detectMentionTrigger,
+  isDismissedMention,
+  mentionAtomPlaceholder,
+} from "@/lib/community-mention-trigger";
 import { CommunityEditorToolbar } from "./community-editor-toolbar";
 import {
   CommunityArticleNode,
@@ -86,7 +91,6 @@ const mentionPlacement = ({
     : { left, maxHeight, top: caret.bottom + mentionGap };
 };
 
-const mentionQueryPattern = /(?:^|\s)@([\p{L}\p{N}_.-]{0,30})$/iu;
 const noteSlashQueryPattern = /(?:^|\s)\/([\p{L}\p{N} ]{0,28})$/u;
 
 const emptyDocument: JSONContent = {
@@ -358,6 +362,8 @@ function TopicEditorCore({
   );
   const editorRootRef = useRef<HTMLDivElement>(null);
   const mentionStateRef = useRef<MentionState | null>(null);
+  // Posição do último "@" fechado com Esc: aquele "@" fica fechado, o próximo abre.
+  const dismissedMentionFromRef = useRef<number | null>(null);
   const slashStateRef = useRef<NoteSlashState | null>(null);
   const mentionCandidatesRef = useRef<MentionCandidate[]>([]);
   const groupMentionConfirmedRef = useRef(false);
@@ -444,6 +450,7 @@ function TopicEditorCore({
     }
     if (event.key === "Escape") {
       event.preventDefault();
+      dismissedMentionFromRef.current = currentState.from;
       mentionStateRef.current = null;
       setMentionState(null);
       return true;
@@ -472,6 +479,32 @@ function TopicEditorCore({
     mentionStateRef.current = null;
     setMentionState(null);
     return true;
+  };
+  /** Gatilho de menção no cursor, ou nulo (também quando o "@" foi fechado com Esc). */
+  const mentionStateAt = (currentEditor: Editor): MentionState | null => {
+    const { from: cursor, empty } = currentEditor.state.selection;
+    if (!empty) {
+      dismissedMentionFromRef.current = null;
+      return null;
+    }
+    const textBefore = currentEditor.state.doc.textBetween(
+      Math.max(0, cursor - 80),
+      cursor,
+      "\n",
+      mentionAtomPlaceholder
+    );
+    const trigger = detectMentionTrigger(textBefore);
+    if (!trigger) {
+      dismissedMentionFromRef.current = null;
+      return null;
+    }
+    // Posição do "@" no documento, contada a partir do cursor (as quebras de
+    // bloco não têm o mesmo tamanho no texto e no documento).
+    const from = cursor - trigger.query.length - 1;
+    if (isDismissedMention(from, dismissedMentionFromRef.current)) {
+      return null;
+    }
+    return { from, query: trigger.query, to: cursor };
   };
   const editor = useEditor({
     immediatelyRender: false,
@@ -526,17 +559,11 @@ function TopicEditorCore({
         Math.max(0, cursor - 80),
         cursor,
         "\n",
-        ""
+        mentionAtomPlaceholder
       );
-      const match = textBefore.match(mentionQueryPattern);
-      const nextMentionState =
-        enableMentions && match
-          ? {
-              from: cursor - match[1].length - 1,
-              query: match[1],
-              to: cursor,
-            }
-          : null;
+      const nextMentionState = enableMentions
+        ? mentionStateAt(currentEditor)
+        : null;
       mentionStateRef.current = nextMentionState;
       setMentionState(nextMentionState);
       const slashMatch = noteMode
@@ -563,6 +590,24 @@ function TopicEditorCore({
       if (pendingUploads.current === 0) {
         onDocumentChange?.(document);
       }
+    },
+    // Mover o cursor (setas, clique) para fora do "@" fecha a lista; sem isto
+    // ela ficava presa ao "@" antigo até a próxima digitação.
+    onSelectionUpdate: ({ editor: currentEditor }) => {
+      if (!enableMentions) {
+        return;
+      }
+      const next = mentionStateAt(currentEditor);
+      const current = mentionStateRef.current;
+      if (
+        next?.from === current?.from &&
+        next?.query === current?.query &&
+        next?.to === current?.to
+      ) {
+        return;
+      }
+      mentionStateRef.current = next;
+      setMentionState(next);
     },
     onDestroy: () => {
       for (const previewUrl of pendingPreviewUrls.current) {

@@ -1510,6 +1510,11 @@ model CommunityPost {
   tags           String[]            @default([])
   coverUrl       String?
   coverAltText   String?             @db.Text
+  coverWidth     Int?
+  coverHeight    Int?
+  coverFocusX    Float               @default(0.5)
+  coverFocusY    Float               @default(0.5)
+  coverZoom      Float               @default(1)
   status         ContentStatus       @default(PUBLISHED)
   isPinned       Boolean             @default(false)
   isFeatured     Boolean             @default(false)

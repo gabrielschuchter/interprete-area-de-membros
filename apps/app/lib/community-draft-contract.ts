@@ -1,7 +1,13 @@
+import {
+  type CommunityCoverFraming,
+  communityCoverFramingEqual,
+} from "./community-cover";
+
 export interface CommunityDraftSnapshot {
   readonly content: string;
   readonly contentJson: unknown;
   readonly coverAltText: string;
+  readonly coverFraming: CommunityCoverFraming;
   readonly coverUrl: string | null;
   readonly spaceId: string | null;
   readonly subtitle: string | null;
@@ -42,6 +48,7 @@ export const communityDraftSnapshotsEqual = (
   left.content === right.content &&
   stableJson(left.contentJson) === stableJson(right.contentJson) &&
   left.coverAltText === right.coverAltText &&
+  communityCoverFramingEqual(left.coverFraming, right.coverFraming) &&
   left.coverUrl === right.coverUrl &&
   left.spaceId === right.spaceId &&
   left.subtitle === right.subtitle &&
