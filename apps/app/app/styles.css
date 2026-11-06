@@ -451,10 +451,10 @@
 
   .interprete-login__auth {
     display: flex;
-    align-items: flex-start;
-    justify-content: flex-start;
+    align-items: center;
+    justify-content: center;
     min-width: 0;
-    padding: clamp(4rem, 12.7vh, 7.5rem) clamp(2rem, 7.2vw, 7.5rem) 2.75rem;
+    padding: clamp(1.5rem, 4vh, 3rem) clamp(2rem, 7.2vw, 7.5rem);
     background: var(--login-paper);
   }
 
@@ -471,8 +471,8 @@
   }
 
   .interprete-login__card {
-    padding: clamp(2.75rem, 6.4vw, 4.35rem) clamp(2rem, 4.2vw, 4.35rem)
-      clamp(2rem, 4vw, 2.8rem);
+    padding: clamp(1.75rem, 5vh, 3.25rem) clamp(1.75rem, 4.2vw, 3.5rem)
+      clamp(1.5rem, 3.5vh, 2.25rem);
     background: rgb(255 255 255 / 62%);
     border: 1px solid rgb(255 255 255 / 86%);
     border-radius: 1.65rem;
@@ -482,7 +482,7 @@
   .interprete-login__card-header h2 {
     margin: 0;
     font-family: var(--font-display-family);
-    font-size: clamp(2.6rem, 3.3vw, 3.2rem);
+    font-size: clamp(2.2rem, 3.3vw, 3rem);
     font-weight: 600;
     line-height: 1;
     color: var(--login-ink);
@@ -490,7 +490,7 @@
   }
 
   .interprete-login__card-header p {
-    margin: 1.35rem 0 0;
+    margin: clamp(0.75rem, 2vh, 1.25rem) 0 0;
     font-size: 1rem;
     line-height: 1.5;
     color: #7c5d6d;
@@ -501,9 +501,11 @@
     gap: 1.25rem;
     align-items: center;
     justify-content: space-between;
-    margin-top: 4.9rem;
-    font-size: 0.78rem;
+    padding-top: 1.25rem;
+    margin-top: clamp(1.5rem, 3.5vh, 2.5rem);
+    font-size: 0.82rem;
     color: #846b78;
+    border-top: 1px solid rgb(86 16 59 / 10%);
   }
 
   .interprete-login__account-switch {
@@ -570,12 +572,16 @@
     gap: 1.25rem;
     align-items: center;
     justify-content: center;
-    padding-top: 3.5rem;
+    padding-top: clamp(1.25rem, 3vh, 2rem);
     font-size: 0.85rem;
     color: #8c7380;
   }
 
   .interprete-login__footer a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.25rem;
+    padding: 0 0.25rem;
     color: inherit;
     text-decoration: none;
   }
@@ -656,7 +662,7 @@
   .interprete-login__form {
     display: grid;
     gap: 1rem;
-    margin-top: 2.55rem;
+    margin-top: clamp(1.25rem, 3.5vh, 2rem);
   }
 
   .interprete-login__field {
@@ -684,7 +690,7 @@
 
   .interprete-login__input {
     width: 100%;
-    min-height: 3.55rem;
+    min-height: 3.3rem;
     padding: 0 1.15rem;
     font: inherit;
     font-size: 0.95rem;
@@ -761,7 +767,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    min-height: 3.55rem;
+    min-height: 3.3rem;
     padding: 0 1.25rem;
     margin-top: 0.35rem;
     font-family: var(--font-display-family);
@@ -874,14 +880,59 @@
   }
 
   .legal-page {
-    display: grid;
-    gap: 1.25rem;
-    align-content: center;
-    max-width: 44rem;
+    display: flex;
+    flex-direction: column;
     min-height: 100dvh;
-    padding: 3rem 1.5rem;
-    margin: 0 auto;
     color: var(--text-primary);
+    background: #f7f3f0;
+  }
+
+  .legal-page__bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: min(100% - 2.5rem, 46rem);
+    padding: 1.25rem 0;
+    margin: 0 auto;
+  }
+
+  .legal-page__back {
+    display: inline-flex;
+    gap: 0.5rem;
+    align-items: center;
+    min-height: 2.75rem;
+    padding: 0 1rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #56103b;
+    text-decoration: none;
+    background: rgb(255 255 255 / 70%);
+    border: 1px solid rgb(86 16 59 / 16%);
+    border-radius: 999px;
+    transition: background-color 160ms ease-out;
+  }
+
+  .legal-page__back:hover {
+    background: #fff;
+  }
+
+  .legal-page__mark {
+    font-family: var(--font-display-family);
+    font-size: 1.75rem;
+    font-weight: 600;
+    line-height: 1;
+    color: #56103b;
+    letter-spacing: -0.04em;
+  }
+
+  .legal-page__main {
+    display: grid;
+    flex: 1;
+    gap: 1.1rem;
+    align-content: start;
+    width: min(100% - 2.5rem, 46rem);
+    padding: clamp(1rem, 4vh, 2.5rem) 0 3rem;
+    margin: 0 auto;
   }
 
   .legal-page__eyebrow {
@@ -896,25 +947,142 @@
   .legal-page h1 {
     margin: 0;
     font-family: var(--font-display-family);
-    font-size: clamp(2.75rem, 7vw, 5rem);
-    line-height: 0.98;
+    font-size: clamp(2.4rem, 7vw, 3.75rem);
+    line-height: 1;
     color: var(--brand-crimson-violet);
+    letter-spacing: -0.03em;
+    overflow-wrap: anywhere;
   }
 
-  .legal-page p:not(.legal-page__eyebrow) {
-    max-width: 62ch;
+  .legal-page__lead {
+    max-width: 60ch;
     margin: 0;
-    font-size: 1.05rem;
+    font-size: 1.1rem;
+    line-height: 1.6;
+    color: var(--text-secondary);
+  }
+
+  .legal-page__updated {
+    margin: 0;
+    font-size: 0.82rem;
+    color: #8c7380;
+  }
+
+  .legal-page__toc {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 1rem 0;
+    border-block: 1px solid rgb(86 16 59 / 14%);
+  }
+
+  .legal-page__toc a {
+    padding: 0.35rem 0.8rem;
+    font-size: 0.82rem;
+    color: #56103b;
+    text-decoration: none;
+    background: rgb(255 255 255 / 70%);
+    border: 1px solid rgb(86 16 59 / 14%);
+    border-radius: 999px;
+  }
+
+  .legal-page__toc a:hover {
+    background: #fff;
+  }
+
+  .legal-page__section {
+    display: grid;
+    gap: 0.75rem;
+    padding-top: 1.25rem;
+    scroll-margin-top: 1rem;
+  }
+
+  .legal-page__section h2 {
+    margin: 0;
+    font-family: var(--font-display-family);
+    font-size: 1.45rem;
+    line-height: 1.2;
+    color: #56103b;
+  }
+
+  .legal-page__section p,
+  .legal-page__section li {
+    max-width: 66ch;
+    margin: 0;
+    font-size: 1rem;
     line-height: 1.7;
     color: var(--text-secondary);
   }
 
-  .legal-page a {
-    width: fit-content;
+  .legal-page__section ul {
+    display: grid;
+    gap: 0.5rem;
+    padding-left: 1.25rem;
+    margin: 0;
+  }
+
+  .legal-page__section a {
     font-weight: 600;
     color: var(--brand-dark-amaranth);
+    overflow-wrap: anywhere;
     text-decoration: underline;
     text-underline-offset: 0.2rem;
+  }
+
+  .legal-page__section a.legal-page__action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: fit-content;
+    min-height: 3rem;
+    padding: 0 1.5rem;
+    color: #f7f3f0;
+    text-decoration: none;
+    background: #56103b;
+    border-radius: 0.8rem;
+  }
+
+  .legal-page__section a.legal-page__action:hover {
+    background: #43082c;
+  }
+
+  .legal-page a:focus-visible {
+    outline: 2px solid #8c1535;
+    outline-offset: 3px;
+  }
+
+  .legal-page__footer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem 1.5rem;
+    align-items: center;
+    justify-content: space-between;
+    width: min(100% - 2.5rem, 46rem);
+    padding: 1.25rem 0 1.75rem;
+    margin: 0 auto;
+    font-size: 0.85rem;
+    border-top: 1px solid rgb(86 16 59 / 14%);
+  }
+
+  .legal-page__footer nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.25rem;
+  }
+
+  .legal-page__footer a {
+    color: #8c7380;
+    text-decoration: none;
+  }
+
+  .legal-page__footer a:hover {
+    color: #56103b;
+    text-decoration: underline;
+  }
+
+  .legal-page__footer-back {
+    font-weight: 600;
+    color: #56103b !important;
   }
 
   @media (max-width: 1023px) {
@@ -975,7 +1143,7 @@
 
   @media (max-width: 480px) {
     .interprete-login__brand {
-      min-height: 23rem;
+      min-height: 19.5rem;
     }
 
     .interprete-login__architecture,
@@ -984,18 +1152,28 @@
     }
 
     .interprete-login__copy {
-      top: 6.25rem;
+      top: 4.75rem;
       width: calc(100% - 3rem);
     }
 
     .interprete-login__copy h1 {
       max-width: 20rem;
-      font-size: clamp(2.35rem, 11vw, 3.1rem);
+      margin-top: 0.9rem;
+      font-size: clamp(2rem, 9.5vw, 2.6rem);
     }
 
     .interprete-login__copy > p:last-child {
       max-width: 18rem;
-      font-size: 0.9rem;
+      margin-top: 0.75rem;
+      font-size: 0.85rem;
+    }
+
+    .interprete-login__auth {
+      padding: 1rem 1rem 1.5rem;
+    }
+
+    .interprete-login__card {
+      padding: 1.75rem 1.25rem 1.25rem;
     }
 
     .interprete-login__architecture {
@@ -1018,6 +1196,49 @@
       gap: 0.75rem;
       padding-top: 2rem;
       font-size: 0.76rem;
+    }
+  }
+
+  @media (min-width: 1024px) and (max-height: 780px) {
+    .interprete-login__auth {
+      padding-block: 1rem;
+    }
+
+    .interprete-login__card {
+      padding: 1.5rem 2rem 1.25rem;
+    }
+
+    .interprete-login__card-header h2 {
+      font-size: 2rem;
+    }
+
+    .interprete-login__card-header p {
+      margin-top: 0.5rem;
+      font-size: 0.9rem;
+      line-height: 1.4;
+    }
+
+    .interprete-login__form {
+      gap: 0.7rem;
+      margin-top: 1rem;
+    }
+
+    .interprete-login__input,
+    .interprete-login__submit {
+      min-height: 2.9rem;
+    }
+
+    .interprete-login__account-switch {
+      margin-top: 0.9rem;
+    }
+
+    .interprete-login__help {
+      padding-top: 0.9rem;
+      margin-top: 1rem;
+    }
+
+    .interprete-login__footer {
+      padding-top: 0.75rem;
     }
   }
 

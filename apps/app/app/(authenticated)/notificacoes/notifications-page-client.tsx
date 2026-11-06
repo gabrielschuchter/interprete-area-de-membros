@@ -55,7 +55,6 @@ interface InitialData {
 }
 
 interface Properties {
-  readonly embedded?: boolean;
   readonly initial: InitialData;
 }
 
@@ -148,10 +147,7 @@ const topicIdFromItem = (item: Item) => {
     : null;
 };
 
-export const NotificationsPageClient = ({
-  embedded = false,
-  initial,
-}: Properties) => {
+export const NotificationsPageClient = ({ initial }: Properties) => {
   const router = useRouter();
   const [filter, setFilter] = useState<Filter>("ALL");
   const [items, setItems] = useState(initial.items);
@@ -256,13 +252,8 @@ export const NotificationsPageClient = ({
   };
 
   return (
-    <main className={embedded ? "bg-background" : "min-h-svh bg-background"}>
-      <div
-        className={cn(
-          "mx-auto w-full max-w-[960px]",
-          embedded ? "px-0 py-2" : "px-5 py-10 sm:px-8 lg:px-12 lg:py-16"
-        )}
-      >
+    <main className="min-h-svh bg-background">
+      <div className="mx-auto w-full max-w-[960px] px-5 py-10 sm:px-8 lg:px-12 lg:py-16">
         <header className="max-w-2xl">
           <p className="brand-eyebrow text-muted-foreground">
             Interprete · Central

@@ -10,6 +10,10 @@ import {
 import { revalidatePath } from "next/cache";
 import { isAllowedCollectionCoverUrl } from "@/lib/collection-covers";
 import {
+  collectCommunityAssetPaths,
+  removeUnreferencedCommunityAssets,
+} from "@/lib/community-asset-cleanup";
+import {
   communitySpaceSlugBase,
   normalizeCommunitySpaceTitle,
 } from "@/lib/community-space-rules";
@@ -320,6 +324,20 @@ export const deleteGestaoGroup = async (formData: FormData) => {
     action: "community.moderation",
     memberId: actor.userId,
   });
+  const [spaceCover, groupPosts] = await Promise.all([
+    database.communitySpace.findUnique({
+      where: { id },
+      select: { coverUrl: true },
+    }),
+    database.communityPost.findMany({
+      where: { spaceId: id },
+      select: { content: true, coverUrl: true },
+    }),
+  ]);
+  const assetPaths = collectCommunityAssetPaths([
+    spaceCover?.coverUrl,
+    ...groupPosts.flatMap((post) => [post.content, post.coverUrl]),
+  ]);
   await database.$transaction(async (transaction) => {
     await transaction.communityPost.deleteMany({ where: { spaceId: id } });
     await transaction.communitySpace.delete({ where: { id } });
@@ -334,5 +352,7 @@ export const deleteGestaoGroup = async (formData: FormData) => {
       transaction
     );
   });
+  // Libera o espaço dos arquivos do grupo (capa e imagens das publicações).
+  await removeUnreferencedCommunityAssets(assetPaths);
   revalidateGroups(space.slug);
 };

@@ -548,8 +548,11 @@
   letter-spacing: 0.08em;
 }
 
-.gestao-topbar-actions .member-header-controls {
-  margin-left: 0;
+.gestao-topbar-actions [aria-label*="otifica"] {
+  width: 44px;
+  height: 44px;
+  color: var(--gestao-muted);
+  border-radius: 6px;
 }
 
 .gestao-page-scroll {

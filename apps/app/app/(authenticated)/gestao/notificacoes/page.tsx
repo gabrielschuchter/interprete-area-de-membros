@@ -1,17 +1,19 @@
+import { redirect } from "next/navigation";
 import { requireGestaoActor } from "@/lib/gestao-authorization";
 import { getNotifications } from "@/lib/notifications";
 import { NotificationsPageClient } from "../../notificacoes/notifications-page-client";
 
-// A Gestão usa a mesma central de notificações da plataforma.
 const GestaoNotificationsPage = async () => {
   const actor = await requireGestaoActor();
   const initial = await getNotifications(actor.userId, {
     filter: "ALL",
     limit: 30,
   });
+  if (!initial) {
+    redirect("/gestao");
+  }
   return (
     <NotificationsPageClient
-      embedded
       initial={{
         ...initial,
         items: initial.items.map((item) => ({
