@@ -71,7 +71,8 @@ export type NotificationEntityType =
   | "ANNOUNCEMENT"
   | "COMMUNITY_INVITATION"
   | "BADGE"
-  | "LEARNING_TASK";
+  | "LEARNING_TASK"
+  | "MEMBER";
 
 export type NotificationFilter =
   | "ALL"
@@ -186,6 +187,15 @@ const memberNotificationAudienceWhere = async (
       {
         type: notificationTypes.groupPost,
         communitySpaceId: { in: accessibleSpaceIds },
+      },
+      // Avisos da equipe (entregas, novos alunos, atividade da Comunidade) são
+      // gravados só para administradores e professores, sem comunicado.
+      {
+        type: notificationTypes.announcement,
+        OR: [
+          { groupKey: { startsWith: "staff:" } },
+          { announcementId: null, entityType: "SUBMISSION" },
+        ],
       },
       ...pendingInvitations.map(({ id, spaceId }) => ({
         type: notificationTypes.groupInvitation,
@@ -1148,21 +1158,200 @@ export const notifySubmissionReceived = async (input: {
     }),
   ]);
   const name = student?.displayName ?? "Um aluno";
+  const recipientIds =
+    teachers.length > 0
+      ? teachers.map(({ memberId }) => memberId)
+      : await activeStaffIds([MemberRole.ADMIN]);
+  await notifyStaffGrouped({
+    actorId: input.studentId,
+    body: `${name} enviou “${input.activityTitle}”.`,
+    entityId: input.activityId,
+    entityType: "SUBMISSION",
+    href: "/gestao/alunos/correcoes",
+    kind: "submissions",
+    recipientIds,
+  });
+};
+
+/** Equipe que acompanha a plataforma em tempo real: administradores e professores. */
+const activeStaffIds = async (roles: readonly MemberRole[]) =>
+  (
+    await database.member.findMany({
+      where: { deactivatedAt: null, role: { in: [...roles] } },
+      select: { id: true },
+      take: 100,
+    })
+  ).map((row) => row.id);
+
+/**
+ * Avisos da equipe que se agrupam: enquanto a pessoa não abre o aviso, novos
+ * eventos do mesmo tipo atualizam a mesma notificação ("3 novas publicações")
+ * em vez de empilhar uma por evento. O gatilho do banco já avisa o sino em
+ * tempo real tanto no INSERT quanto no UPDATE.
+ */
+const staffGroups = {
+  "community-comments": {
+    plural: (count: number) => `${count} novos comentários na Comunidade`,
+    singular: "Novo comentário na Comunidade",
+  },
+  "community-posts": {
+    plural: (count: number) => `${count} novas publicações na Comunidade`,
+    singular: "Nova publicação na Comunidade",
+  },
+  "member-joined": {
+    plural: (count: number) => `${count} novos alunos na plataforma`,
+    singular: "Novo aluno na plataforma",
+  },
+  submissions: {
+    plural: (count: number) => `${count} novas entregas recebidas`,
+    singular: "Entrega recebida",
+  },
+} as const;
+
+export type StaffGroupKind = keyof typeof staffGroups;
+
+const metadataCount = (metadata: Prisma.JsonValue | null) =>
+  metadata &&
+  typeof metadata === "object" &&
+  !Array.isArray(metadata) &&
+  typeof metadata.count === "number"
+    ? metadata.count
+    : 1;
+
+const upsertStaffGroupedNotification = async (input: {
+  readonly actorId: string;
+  readonly body: string;
+  readonly entityId: string;
+  readonly entityType: NotificationEntityType;
+  readonly href: string;
+  readonly kind: StaffGroupKind;
+  readonly recipientId: string;
+}) => {
+  if (input.recipientId === input.actorId) {
+    return;
+  }
+  if (
+    !(await preferenceEnabled(
+      input.recipientId,
+      notificationTypes.announcement
+    ))
+  ) {
+    return;
+  }
+  const groupKey = `staff:${input.kind}`;
+  const group = staffGroups[input.kind];
+  const open = await database.notification.findFirst({
+    where: { groupKey, memberId: input.recipientId, readAt: null },
+    orderBy: { createdAt: "desc" },
+    select: { id: true, metadata: true },
+  });
+  if (open) {
+    const count = metadataCount(open.metadata) + 1;
+    await database.notification.update({
+      where: { id: open.id },
+      data: {
+        actorId: input.actorId,
+        body: input.body,
+        createdAt: new Date(),
+        entityId: input.entityId,
+        entityType: input.entityType,
+        href: input.href,
+        metadata: { count },
+        seenAt: null,
+        title: group.plural(count),
+      },
+    });
+    return;
+  }
+  await database.notification.create({
+    data: {
+      actorId: input.actorId,
+      body: input.body,
+      communitySpaceId: communitySpaceIdForInput(
+        notificationTypes.announcement,
+        null
+      ),
+      entityId: input.entityId,
+      entityType: input.entityType,
+      groupKey,
+      href: input.href,
+      memberId: input.recipientId,
+      metadata: { count: 1 },
+      priority: priorityForType[notificationTypes.announcement],
+      title: group.singular,
+      type: notificationTypes.announcement,
+    },
+  });
+};
+
+const notifyStaffGrouped = async (
+  input: Omit<
+    Parameters<typeof upsertStaffGroupedNotification>[0],
+    "recipientId"
+  > & {
+    readonly recipientIds: readonly string[];
+  }
+) => {
+  const { recipientIds, ...rest } = input;
   await Promise.all(
-    teachers.map(({ memberId }) =>
-      createNotification({
-        actorId: input.studentId,
-        body: `${name} enviou “${input.activityTitle}”.`,
-        dedupeKey: `submission-received:${memberId}:${input.activityId}:${input.studentId}:${input.submittedAt.getTime()}`,
-        entityId: input.activityId,
-        entityType: "SUBMISSION",
-        href: "/gestao/alunos/correcoes",
-        recipientId: memberId,
-        title: "Entrega recebida",
-        type: notificationTypes.announcement,
-      })
+    [...new Set(recipientIds)].map((recipientId) =>
+      upsertStaffGroupedNotification({ ...rest, recipientId })
     )
   );
+};
+
+/** Avisa a equipe quando um aluno conclui a matrícula e entra na plataforma. */
+export const notifyStaffMemberJoined = async (input: {
+  readonly memberId: string;
+}) => {
+  const [member, adminIds] = await Promise.all([
+    database.member.findUnique({
+      where: { id: input.memberId },
+      select: { displayName: true, role: true },
+    }),
+    activeStaffIds([MemberRole.ADMIN]),
+  ]);
+  if (!member || member.role !== MemberRole.MEMBER) {
+    return;
+  }
+  const name = member.displayName?.trim() || "Um novo aluno";
+  await notifyStaffGrouped({
+    actorId: input.memberId,
+    body: `${name} concluiu a matrícula e já pode ser colocado em uma turma.`,
+    entityId: input.memberId,
+    entityType: "MEMBER",
+    href: `/gestao/alunos/perfil/${input.memberId}`,
+    kind: "member-joined",
+    recipientIds: adminIds,
+  });
+};
+
+/** Nova publicação ou comentário da Comunidade, para administradores e professores. */
+export const notifyStaffCommunityActivity = async (input: {
+  readonly actorId: string;
+  readonly entityId: string;
+  readonly href: string;
+  readonly kind: "community-comments" | "community-posts";
+  readonly title: string;
+}) => {
+  const [author, staffIds] = await Promise.all([
+    database.member.findUnique({
+      where: { id: input.actorId },
+      select: { displayName: true, role: true },
+    }),
+    activeStaffIds([MemberRole.ADMIN, MemberRole.TEACHER]),
+  ]);
+  const name = author?.displayName?.trim() || "Um aluno";
+  const verb = input.kind === "community-posts" ? "publicou" : "comentou em";
+  await notifyStaffGrouped({
+    actorId: input.actorId,
+    body: `${name} ${verb} “${input.title}”.`,
+    entityId: input.entityId,
+    entityType: input.kind === "community-posts" ? "TOPIC" : "COMMENT",
+    href: input.href,
+    kind: input.kind,
+    recipientIds: staffIds,
+  });
 };
 
 export const notificationTitle = (type: string) =>

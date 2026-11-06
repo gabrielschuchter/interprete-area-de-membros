@@ -162,6 +162,7 @@ vi.mock("@repo/database", () => ({
 vi.mock("./notifications", () => ({
   documentHasGroupMention: () => false,
   notifyCommunityComment: notifyMock,
+  notifyStaffCommunityActivity: vi.fn(() => Promise.resolve()),
 }));
 
 vi.mock("./profile", () => ({

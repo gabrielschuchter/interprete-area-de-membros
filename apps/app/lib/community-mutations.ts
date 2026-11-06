@@ -16,6 +16,7 @@ import { dispatchPendingNotifications } from "@/lib/notification-outbox-dispatch
 import {
   documentHasGroupMention,
   notifyCommunityComment,
+  notifyStaffCommunityActivity,
 } from "@/lib/notifications";
 import { getOrCreateProfile } from "@/lib/profile";
 
@@ -282,6 +283,14 @@ const reconcileExistingComment = async (
   } satisfies CreateCommunityCommentResult;
 };
 
+const postTitleFor = async (postId: string) =>
+  (
+    await database.communityPost.findUnique({
+      where: { id: postId },
+      select: { title: true },
+    })
+  )?.title ?? "uma publicação";
+
 export const createCommunityComment = async (
   input: CreateCommunityCommentInput
 ): Promise<CreateCommunityCommentResult> => {
@@ -418,6 +427,20 @@ export const createCommunityComment = async (
   }
 
   await dispatchPendingNotifications();
+  if (!result.duplicate) {
+    // O aviso da equipe nunca pode desfazer um comentário já gravado.
+    try {
+      await notifyStaffCommunityActivity({
+        actorId: input.actorId,
+        entityId: result.postId,
+        href: result.postHref,
+        kind: "community-comments",
+        title: await postTitleFor(result.postId),
+      });
+    } catch {
+      // Sem o aviso, o comentário continua visível na Comunidade.
+    }
+  }
 
   mutationLog({
     action,
