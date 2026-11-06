@@ -71,7 +71,8 @@ export type NotificationEntityType =
   | "ANNOUNCEMENT"
   | "COMMUNITY_INVITATION"
   | "BADGE"
-  | "LEARNING_TASK";
+  | "LEARNING_TASK"
+  | "MEMBER";
 
 export type NotificationFilter =
   | "ALL"
@@ -1148,8 +1149,12 @@ export const notifySubmissionReceived = async (input: {
     }),
   ]);
   const name = student?.displayName ?? "Um aluno";
+  const recipients =
+    teachers.length > 0
+      ? teachers
+      : (await activeAdminIds()).map((memberId) => ({ memberId }));
   await Promise.all(
-    teachers.map(({ memberId }) =>
+    recipients.map(({ memberId }) =>
       createNotification({
         actorId: input.studentId,
         body: `${name} enviou “${input.activityTitle}”.`,
@@ -1159,6 +1164,49 @@ export const notifySubmissionReceived = async (input: {
         href: "/gestao/alunos/correcoes",
         recipientId: memberId,
         title: "Entrega recebida",
+        type: notificationTypes.announcement,
+      })
+    )
+  );
+};
+
+/** Administradores ativos, que acompanham a plataforma inteira em tempo real. */
+const activeAdminIds = async () =>
+  (
+    await database.member.findMany({
+      where: { deactivatedAt: null, role: MemberRole.ADMIN },
+      select: { id: true },
+      take: 50,
+    })
+  ).map((row) => row.id);
+
+/** Avisa a equipe quando um aluno conclui a matrícula e entra na plataforma. */
+export const notifyStaffMemberJoined = async (input: {
+  readonly memberId: string;
+  readonly completedAt: Date;
+}) => {
+  const [member, adminIds] = await Promise.all([
+    database.member.findUnique({
+      where: { id: input.memberId },
+      select: { displayName: true, role: true },
+    }),
+    activeAdminIds(),
+  ]);
+  if (!member || member.role !== MemberRole.MEMBER) {
+    return;
+  }
+  const name = member.displayName?.trim() || "Um novo aluno";
+  await Promise.all(
+    adminIds.map((recipientId) =>
+      createNotification({
+        actorId: input.memberId,
+        body: `${name} concluiu a matrícula e já pode ser colocado em uma turma.`,
+        dedupeKey: `staff-member-joined:${recipientId}:${input.memberId}`,
+        entityId: input.memberId,
+        entityType: "MEMBER",
+        href: `/gestao/alunos/perfil/${input.memberId}`,
+        recipientId,
+        title: "Novo aluno na plataforma",
         type: notificationTypes.announcement,
       })
     )

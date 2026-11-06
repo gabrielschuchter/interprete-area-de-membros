@@ -24,6 +24,7 @@ import {
   mutationLog,
 } from "@/lib/mutation-reliability";
 import { notificationPreferenceKeys } from "@/lib/notification-preference-groups";
+import { notifyStaffMemberJoined } from "@/lib/notifications";
 import {
   DISPLAY_NAME_MAX,
   isGenericUsername,
@@ -499,15 +500,19 @@ export const completeOnboarding = async (): Promise<OnboardingResult> =>
     ) {
       return fail("INCOMPLETE_REQUIRED");
     }
+    const completedAt = new Date();
     await database.member.update({
       where: { id: memberId },
       data: {
         onboardingStatus: OnboardingStatus.COMPLETED,
         onboardingStep: LAST_STEP_INDEX,
         onboardingVersion: ONBOARDING_FLOW_VERSION,
-        onboardingCompletedAt: new Date(),
+        onboardingCompletedAt: completedAt,
       },
     });
+    await notifyStaffMemberJoined({ completedAt, memberId }).catch(
+      () => undefined
+    );
     revalidatePath("/", "layout");
     mutationLog({
       action: "onboarding.save",
