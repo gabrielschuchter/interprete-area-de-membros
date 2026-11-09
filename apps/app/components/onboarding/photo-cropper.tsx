@@ -7,13 +7,33 @@ const OUTPUT = 512;
 
 interface PhotoCropperProps {
   readonly onChange: (blob: Blob | null) => void;
+  /** The browser could not decode the chosen file (e.g. HEIC outside Safari). */
+  readonly onError?: () => void;
   readonly size: number;
   readonly source: string;
 }
 
 // Square crop drawn on a canvas. Drag to position, slider to zoom (100% to
-// 300%). The result is a 512 x 512 WebP without metadata.
-export const PhotoCropper = ({ onChange, size, source }: PhotoCropperProps) => {
+// 300%). The result is a 512 x 512 WebP without metadata, or JPEG where the
+// browser cannot encode WebP (Safari falls back to PNG silently, which the
+// upload route would reject as a type mismatch).
+const encode = (target: HTMLCanvasElement, type: string, quality: number) =>
+  new Promise<Blob | null>((resolve) => target.toBlob(resolve, type, quality));
+
+const encodeAvatar = async (target: HTMLCanvasElement) => {
+  const webp = await encode(target, "image/webp", 0.85);
+  if (webp && webp.type === "image/webp") {
+    return webp;
+  }
+  return encode(target, "image/jpeg", 0.88);
+};
+
+export const PhotoCropper = ({
+  onChange,
+  onError,
+  size,
+  source,
+}: PhotoCropperProps) => {
   const image = useRef<HTMLImageElement | null>(null);
   const [ready, setReady] = useState(false);
   const [zoom, setZoom] = useState(1);
@@ -32,8 +52,12 @@ export const PhotoCropper = ({ onChange, size, source }: PhotoCropperProps) => {
       setOffset({ x: 0, y: 0 });
       setReady(true);
     };
+    element.onerror = () => {
+      setReady(false);
+      onError?.();
+    };
     element.src = source;
-  }, [source]);
+  }, [onError, source]);
 
   const draw = useCallback(
     (target: HTMLCanvasElement, side: number) => {
@@ -73,7 +97,9 @@ export const PhotoCropper = ({ onChange, size, source }: PhotoCropperProps) => {
       output.width = OUTPUT;
       output.height = OUTPUT;
       draw(output, OUTPUT);
-      output.toBlob((blob) => onChange(blob), "image/webp", 0.85);
+      encodeAvatar(output)
+        .then(onChange)
+        .catch(() => onChange(null));
     }, 250);
     return () => window.clearTimeout(handle);
   }, [draw, onChange, ready, size]);

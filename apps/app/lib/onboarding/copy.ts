@@ -71,16 +71,22 @@ export const onboardingCopy = {
     remover: "Remover",
     conta: "Usar a foto da minha conta",
     enquadramento: "Ajustar enquadramento",
-    dica: "JPG, PNG ou WebP · até 5 MB",
+    dica: "JPG, PNG, WebP ou HEIC · até 25 MB",
     semFoto:
       "Sem foto, a gente usa a sua inicial. Você troca quando quiser, no Perfil ;)",
     arrastando: "Solta aqui :)",
     enviando: "Subindo sua foto…",
     enviandoBotao: "Enviando…",
     erroTamanho: (mb: string) =>
-      `Essa foto tem ${mb} MB. Tenta uma de até 5 MB?`,
-    erroFormato: "Esse formato a gente não lê. Tenta JPG, PNG ou WebP?",
+      `Essa foto tem ${mb} MB. Tenta uma de até 25 MB?`,
+    erroFormato: "Esse formato a gente não lê. Tenta JPG, PNG, WebP ou HEIC?",
+    erroLeitura:
+      "Seu navegador não conseguiu abrir essa foto. Tenta uma em JPG ou PNG?",
     erroUpload: "A foto não subiu. Tenta de novo?",
+    erroRede: "Sem conexão agora. Confere a internet e tenta de novo?",
+    erroMuitos: "Foram muitas tentativas seguidas. Espera alguns segundos?",
+    erroPausado:
+      "Os envios estão pausados por manutenção. Tenta daqui a pouco?",
     erroConta: "Não encontramos uma foto na sua conta. Que tal escolher uma?",
     removida: "Foto removida. Você aparece com a sua inicial.",
     desfazer: "Desfazer",
