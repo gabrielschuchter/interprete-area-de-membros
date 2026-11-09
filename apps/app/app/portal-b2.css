@@ -12,10 +12,19 @@
   --portal-stage-w: min(
     940px,
     calc(100vw - 48px),
-    calc((100dvh - 156px) * 1.535)
+    calc((100dvh - 156px) * 1.535),
+    calc((50dvh - 104px - var(--portal-shortcuts-h)) / 0.202)
   );
+  /* Altura dos atalhos 2x2 abaixo da arte (faixa 700-1359px). */
+  --portal-shortcuts-h: 100px;
   --portal-art-study: clamp(104px, calc(100dvh - 680px), 164px);
   --portal-art-community: clamp(140px, calc(100dvh - 616px), 228px);
+}
+
+@media (min-width: 700px) and (max-width: 920px) {
+  :root {
+    --portal-shortcuts-h: 124px;
+  }
 }
 
 @media (min-width: 1360px) {
@@ -747,7 +756,8 @@
 
   .portal-shortcut-groups {
     position: fixed;
-    top: calc(50% + 34px + var(--portal-stage-w) * 0.2565);
+    /* Abaixo do título do arco: base da arte (0.202 da largura) + título. */
+    top: calc(50% + 34px + var(--portal-stage-w) * 0.202 + 62px);
     left: calc(50% - var(--portal-stage-w) / 2 + var(--portal-stage-w) * 0.037);
     z-index: 5;
     display: grid;
@@ -1163,7 +1173,8 @@
   }
 }
 
-@media (max-height: 520px) and (min-width: 700px) {
+@media (max-height: 520px) and (min-width: 700px),
+  (max-height: 659px) and (min-width: 700px) and (max-width: 1359px) {
   .portal {
     background:
       radial-gradient(
