@@ -198,7 +198,7 @@
   .community-right-rail .community-rail__block {
     padding: 24px 0;
   }
-  .community-right-rail .community-rail__block:first-child {
+  .community-right-rail > .community-rail__block:first-child {
     padding-top: 0;
   }
 }
