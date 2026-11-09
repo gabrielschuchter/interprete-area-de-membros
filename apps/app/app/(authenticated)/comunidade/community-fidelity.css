@@ -1213,3 +1213,485 @@
     display: none;
   }
 }
+
+/* Encontros (09/11): alternância Lista | Calendário e o calendário do mês.
+   Cores das categorias iguais às camadas do calendário de Ferramentas. */
+.cm-views {
+  display: inline-flex;
+  margin-top: 18px;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid #e2d6d1;
+  border-radius: 8px;
+}
+.cm-views a {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 16px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #40222f;
+  text-decoration: none;
+}
+.cm-views a + a {
+  border-left: 1px solid #e2d6d1;
+}
+/* biome-ignore lint/style/noDescendingSpecificity: classes próprias do calendário de Encontros, sem relação com os seletores da Comunidade acima. */
+.cm-views a[aria-current="page"] {
+  font-weight: 600;
+  color: #fff;
+  background: #8c1535;
+}
+.cm-views a:focus-visible {
+  outline: 2px solid #8c1535;
+  outline-offset: -2px;
+}
+/* biome-ignore lint/style/noDescendingSpecificity: ícones próprios da alternância de Encontros. */
+.cm-views svg {
+  width: 16px;
+  height: 16px;
+}
+.cm-page.cm-page--calendar {
+  max-width: 1080px;
+}
+.cmc,
+.cmc-popover {
+  --cmc-line: #e2d6d1;
+  --cmc-soft: #f6f0ed;
+}
+.cmc {
+  margin-top: 28px;
+}
+:is(.cmc, .cmc-popover) [data-category="meeting"] {
+  --cmc-color: #8c1535;
+}
+:is(.cmc, .cmc-popover) [data-category="lesson"] {
+  --cmc-color: #410230;
+}
+:is(.cmc, .cmc-popover) [data-category="workshop"] {
+  --cmc-color: #b0785a;
+}
+:is(.cmc, .cmc-popover) [data-category="cohort"] {
+  --cmc-color: #6b5b64;
+}
+.cmc-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  align-items: center;
+  justify-content: space-between;
+}
+.cmc-nav {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.cmc-month {
+  min-width: 190px;
+  margin: 0;
+  font-family: var(--font-display-family);
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: #40222f;
+  text-align: center;
+}
+.cmc-icon-button,
+.cmc-button {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #8c1535;
+  text-decoration: none;
+  background: #fff;
+  border: 1px solid var(--cmc-line);
+  border-radius: 8px;
+}
+.cmc-icon-button {
+  width: 40px;
+}
+.cmc-button {
+  padding: 0 14px;
+}
+.cmc-button--primary {
+  color: #fff;
+  background: #8c1535;
+  border-color: #8c1535;
+}
+.cmc-icon-button:hover,
+.cmc-button:hover {
+  border-color: #8c1535;
+}
+.cmc-button--primary:hover {
+  background: #6d102a;
+}
+.cmc-icon-button:focus-visible,
+.cmc-button:focus-visible,
+.cmc-legend__item:focus-visible,
+.cmc-chip:focus-visible,
+.cmc-more:focus-visible,
+.cmc-day__number:focus-visible {
+  outline: 2px solid #8c1535;
+  outline-offset: 2px;
+}
+/* biome-ignore lint/style/noDescendingSpecificity: ícones próprios do calendário de Encontros. */
+.cmc-icon-button svg,
+/* biome-ignore lint/style/noDescendingSpecificity: classes próprias do calendário de Encontros, sem relação com os seletores da Comunidade acima. */
+.cmc-button svg {
+  width: 16px;
+  height: 16px;
+}
+.cmc-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0;
+  margin: 0;
+  border: 0;
+}
+.cmc-legend__item {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 12px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: #40222f;
+  cursor: pointer;
+  background: #fff;
+  border: 1px solid var(--cmc-line);
+  border-radius: 999px;
+}
+.cmc-legend__item[aria-pressed="false"] {
+  color: #9c8790;
+  background: transparent;
+  border-style: dashed;
+}
+.cmc-legend__item[aria-pressed="false"] .cmc-dot {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--cmc-color);
+}
+.cmc-legend__count {
+  min-width: 18px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: #7a5a69;
+}
+/* biome-ignore lint/style/noDescendingSpecificity: classes próprias do calendário de Encontros, sem relação com os seletores da Comunidade acima. */
+.cmc-dot {
+  display: inline-block;
+  flex: none;
+  width: 9px;
+  height: 9px;
+  background: var(--cmc-color, #8c1535);
+  border-radius: 50%;
+}
+.cmc-grid {
+  margin-top: 16px;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid var(--cmc-line);
+  border-radius: 10px;
+}
+.cmc-weekdays,
+.cmc-days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+.cmc-weekdays {
+  background: #fbf7f5;
+  border-bottom: 1px solid var(--cmc-line);
+}
+/* biome-ignore lint/style/noDescendingSpecificity: classes próprias do calendário de Encontros, sem relação com os seletores da Comunidade acima. */
+.cmc-weekdays span {
+  padding: 9px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #7a5a69;
+}
+.cmc-days {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+.cmc-day {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  min-height: 112px;
+  padding: 6px;
+  color: #a8949c;
+  background: #fcfaf9;
+  border-right: 1px solid #efe6e2;
+  border-bottom: 1px solid #efe6e2;
+}
+.cmc-day:nth-child(7n) {
+  border-right: 0;
+}
+.cmc-day:nth-last-child(-n + 7) {
+  border-bottom: 0;
+}
+.cmc-day[data-in-month] {
+  color: #40222f;
+  background: #fff;
+}
+.cmc-day[data-selected] {
+  background: #fcf5f6;
+  box-shadow: inset 0 0 0 2px rgb(140 21 53 / 35%);
+}
+.cmc-day__number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: inherit;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+}
+.cmc-day__number:hover {
+  background: var(--cmc-soft);
+}
+.cmc-day[data-today] .cmc-day__number {
+  font-weight: 700;
+  color: #fff;
+  background: #8c1535;
+}
+.cmc-day__dots {
+  display: none;
+}
+.cmc-day__chips {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.cmc-chip {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  min-height: 24px;
+  padding: 2px 6px;
+  font: inherit;
+  font-size: 12px;
+  color: #40222f;
+  text-align: left;
+  cursor: pointer;
+  background: color-mix(in srgb, var(--cmc-color) 10%, white);
+  border: 0;
+  border-left: 3px solid var(--cmc-color);
+  border-radius: 4px;
+}
+.cmc-chip:hover {
+  background: color-mix(in srgb, var(--cmc-color) 18%, white);
+}
+.cmc-chip__time {
+  flex: none;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--cmc-color);
+}
+.cmc-chip__title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cmc-chip__check {
+  flex: none;
+  width: 13px;
+  height: 13px;
+  margin-left: auto;
+  color: var(--cmc-color);
+}
+.cmc-more {
+  justify-self: start;
+  padding: 0 4px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: #8c1535;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+}
+.cmc-popover {
+  width: min(340px, calc(100vw - 32px));
+  padding: 16px;
+  border-color: var(--cmc-line);
+}
+.cmc-detail {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+.cmc-detail__kind {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  align-items: center;
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--cmc-color);
+}
+.cmc-registered {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  padding: 2px 8px;
+  font-size: 11px;
+  color: #286b55;
+  background: #e8f2ed;
+  border-radius: 999px;
+}
+/* biome-ignore lint/style/noDescendingSpecificity: classes próprias do calendário de Encontros, sem relação com os seletores da Comunidade acima. */
+.cmc-registered svg {
+  width: 12px;
+  height: 12px;
+}
+.cmc-detail__title {
+  margin: 0;
+  font-family: var(--font-display-family);
+  font-size: 19px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: #40222f;
+}
+.cmc-detail__when {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 4px;
+  align-items: center;
+  margin: 0;
+  font-size: 13px;
+  color: #6d5962;
+}
+/* biome-ignore lint/style/noDescendingSpecificity: ícone próprio do detalhe do calendário. */
+.cmc-detail__when svg {
+  width: 14px;
+  height: 14px;
+  margin-right: 2px;
+}
+.cmc-detail__meta {
+  margin: 0;
+  font-size: 13px;
+  color: #6d5962;
+}
+.cmc-detail__description {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  margin: 0;
+  overflow: hidden;
+  -webkit-line-clamp: 4;
+  font-size: 14px;
+  line-height: 1.55;
+  color: #5c4a52;
+}
+.cmc-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+.cmc-agenda {
+  margin-top: 20px;
+}
+.cmc-agenda__title {
+  margin: 0 0 10px;
+  font-family: var(--font-display-family);
+  font-size: 20px;
+  font-weight: 600;
+  color: #40222f;
+}
+.cmc-agenda__empty {
+  padding: 16px 18px;
+  margin: 0;
+  font-size: 14px;
+  color: #6d5962;
+  background: var(--cmc-soft);
+  border-radius: 10px;
+}
+.cmc-agenda__list {
+  display: grid;
+  gap: 10px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+/* biome-ignore lint/style/noDescendingSpecificity: classes próprias do calendário de Encontros, sem relação com os seletores da Comunidade acima. */
+.cmc-agenda__list > li {
+  padding: 16px 18px;
+  background: #fff;
+  border: 1px solid var(--cmc-line);
+  border-left: 4px solid var(--cmc-color, #8c1535);
+  border-radius: 10px;
+}
+.cmc-agenda__list > li:has([data-category="lesson"]) {
+  border-left-color: #410230;
+}
+.cmc-agenda__list > li:has([data-category="workshop"]) {
+  border-left-color: #b0785a;
+}
+.cmc-agenda__list > li:has([data-category="cohort"]) {
+  border-left-color: #6b5b64;
+}
+@media (max-width: 767px) {
+  .cmc-month {
+    min-width: 0;
+    font-size: 20px;
+  }
+  .cmc-toolbar {
+    align-items: stretch;
+  }
+  .cmc-nav {
+    justify-content: space-between;
+    width: 100%;
+  }
+  .cmc-day {
+    align-items: center;
+    min-height: 56px;
+    padding: 4px 2px;
+  }
+  /* biome-ignore lint/style/noDescendingSpecificity: classes próprias do calendário de Encontros, sem relação com os seletores da Comunidade acima. */
+  .cmc-weekdays span {
+    padding: 8px 2px;
+    text-align: center;
+  }
+  .cmc-day__chips {
+    display: none;
+  }
+  .cmc-day__dots {
+    display: flex;
+    gap: 3px;
+    justify-content: center;
+  }
+  /* biome-ignore lint/style/noDescendingSpecificity: classes próprias do calendário de Encontros, sem relação com os seletores da Comunidade acima. */
+  .cmc-day__dots .cmc-dot {
+    width: 6px;
+    height: 6px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cmc-chip,
+  .cmc-day__number {
+    transition: none;
+  }
+}
