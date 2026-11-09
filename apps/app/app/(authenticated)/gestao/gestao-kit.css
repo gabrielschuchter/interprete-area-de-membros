@@ -3122,8 +3122,12 @@ button.gca-text-action {
 }
 .gk-toolbar-group--stack {
   flex-direction: column;
+  flex-wrap: nowrap;
   align-items: stretch;
-  padding: 0 12px 12px;
+  padding: 10px 12px 12px;
+}
+.gc-queue-panel .gk-toolbar-group--stack {
+  border-bottom: 1px solid var(--gestao-line);
 }
 .gk-toolbar-group--stack .gk-field {
   width: 100%;
