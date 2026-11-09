@@ -4,6 +4,7 @@ import {
   LibraryExperience,
   type LibraryFilterValues,
 } from "@/components/library/library-experience";
+import { LibraryMostAccessed } from "@/components/library/library-most-accessed";
 import { LibraryResults } from "@/components/library/library-results";
 import { LibraryResultsSkeleton } from "@/components/library/library-results-skeleton";
 import { requireMemberId } from "@/lib/learning";
@@ -44,9 +45,29 @@ const LibraryPage = async ({ searchParams }: LibraryPageProperties) => {
       ? Math.min(rawPage, 10_000)
       : 1;
 
+  const showingDefaultShelf =
+    currentPage === 1 &&
+    !(
+      filters.q ||
+      filters.category ||
+      filters.kind ||
+      filters.language ||
+      filters.difficulty
+    );
+
   return (
     <div className="min-h-full bg-[#F1EBE8]">
-      <LibraryExperience categories={categories} initialFilters={filters}>
+      <LibraryExperience
+        categories={categories}
+        highlights={
+          showingDefaultShelf ? (
+            <Suspense fallback={null}>
+              <LibraryMostAccessed memberId={memberId} />
+            </Suspense>
+          ) : null
+        }
+        initialFilters={filters}
+      >
         <Suspense fallback={<LibraryResultsSkeleton />}>
           <LibraryResults
             currentPage={currentPage}
