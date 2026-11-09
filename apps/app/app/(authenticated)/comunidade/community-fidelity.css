@@ -183,14 +183,24 @@
   letter-spacing: 0.08em;
 }
 
-/* Lateral: 320, gap 28 entre seções. */
+/* Lateral: 320. Sem gap entre seções: cada bloco já traz o próprio divisor
+   e o mesmo respiro de 24px acima e abaixo do conteúdo (com gap de 28px o
+   espaço depois do divisor ficava ~50px contra ~21px antes do seguinte). */
 .community-content-grid.community-content-grid--explore
 > .community-right-rail {
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  gap: 0;
   width: 320px;
   max-width: 100%;
+}
+@media (min-width: 1081px) {
+  .community-right-rail .community-rail__block {
+    padding: 24px 0;
+  }
+  .community-right-rail > .community-rail__block:first-child {
+    padding-top: 0;
+  }
 }
 @media (max-width: 1080px) {
   .community-content-grid.community-content-grid--explore
