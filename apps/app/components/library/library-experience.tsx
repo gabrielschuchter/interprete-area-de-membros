@@ -47,6 +47,8 @@ type FilterName = keyof Omit<LibraryFilterValues, "q" | "sort">;
 interface LibraryExperienceProperties {
   readonly categories: readonly string[];
   readonly children: ReactNode;
+  /** Destaques entre os filtros e os resultados (só na visão sem filtros). */
+  readonly highlights?: ReactNode;
   readonly initialFilters: LibraryFilterValues;
 }
 
@@ -519,6 +521,7 @@ export const LibraryExperience = ({
   categories,
   initialFilters,
   children,
+  highlights,
 }: LibraryExperienceProperties) => {
   const { isMobile, state: sidebarState } = useSidebar();
   const fixedBarLeft = sidebarState === "collapsed" ? 48 : 256;
@@ -852,6 +855,8 @@ export const LibraryExperience = ({
             onClear={clearAppliedFilters}
             onRemove={removeFilter}
           />
+
+          {highlights}
 
           <section
             aria-label="Resultados da Biblioteca"

@@ -205,6 +205,16 @@ const getCohortCalendarProjection = async (
   return { lessonReleases, cohortEvents };
 };
 
+/** Só os eventos de turma do aluno, sem prazos nem liberações de aula. */
+export const resolveStudentCohortEvents = async (
+  memberId: string,
+  range: StudentCalendarRange,
+  at = new Date()
+) => {
+  const memberships = await getCalendarMemberships(memberId, at);
+  return getCohortEvents(memberships, range, at);
+};
+
 const isWithinRange = (date: Date, range: StudentCalendarRange) =>
   date >= range.start && date <= range.end;
 

@@ -5687,3 +5687,113 @@ article.community-selectable:has(.community-select-box) {
 article.community-selectable .community-select-box {
   left: 4px;
 }
+
+/* Biblioteca (09/11): esteira contínua de materiais mais acessados.
+   Duas faixas iguais em sequência; a animação desloca exatamente uma faixa,
+   então o laço não tem salto. Pausa no hover e no foco; sem animação para
+   quem pede menos movimento (vira rolagem horizontal). */
+@keyframes library-marquee-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+.library-marquee__viewport {
+  margin-top: 16px;
+  overflow: hidden;
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 40px,
+    #000 calc(100% - 40px),
+    transparent
+  );
+}
+.library-marquee__track {
+  display: flex;
+  width: max-content;
+  animation: library-marquee-scroll calc(var(--marquee-items, 8) * 5s) linear
+    infinite;
+}
+.library-marquee__viewport:hover .library-marquee__track,
+.library-marquee__viewport:focus-within .library-marquee__track {
+  animation-play-state: paused;
+}
+.library-marquee__lane {
+  display: flex;
+  flex: none;
+  gap: 20px;
+  padding: 4px 20px 4px 0;
+  margin: 0;
+  list-style: none;
+}
+.library-marquee__item {
+  flex: none;
+  width: 156px;
+}
+.library-marquee__link {
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+  padding: 14px 12px 12px;
+  color: #40222f;
+  text-align: center;
+  text-decoration: none;
+  background: #fff;
+  border: 1px solid #e2d6d1;
+  border-radius: 8px;
+  transition:
+    border-color 160ms ease,
+    transform 160ms ease;
+}
+.library-marquee__link:hover {
+  border-color: #8c1535;
+  transform: translateY(-2px);
+}
+.library-marquee__link:focus-visible {
+  outline: 2px solid #8c1535;
+  outline-offset: 2px;
+}
+.library-marquee__cover.library-marquee__cover {
+  width: 96px;
+  height: 128px;
+  border-radius: 3px;
+  box-shadow: 0 6px 14px rgb(64 34 47 / 14%);
+}
+.library-marquee__title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  min-height: 2.7em;
+  overflow: hidden;
+  -webkit-line-clamp: 2;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+@media (max-width: 767px) {
+  .library-marquee__item {
+    width: 132px;
+  }
+  .library-marquee__cover.library-marquee__cover {
+    width: 80px;
+    height: 107px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .library-marquee__viewport {
+    overflow-x: auto;
+    mask-image: none;
+  }
+  .library-marquee__track {
+    animation: none;
+  }
+  .library-marquee__lane[aria-hidden="true"],
+  .library-marquee__item[aria-hidden="true"] {
+    display: none;
+  }
+  .library-marquee__link {
+    transition: none;
+  }
+}

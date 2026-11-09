@@ -1,5 +1,6 @@
 "use client";
 
+import { cn } from "@repo/design-system/lib/utils";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { GestaoIcon } from "./gestao-icon";
@@ -66,7 +67,7 @@ export const GestaoFilterBar = ({
   return (
     <div
       aria-busy={pending}
-      className={`gk-toolbar-group${compact ? "gk-toolbar-group--stack" : ""}`}
+      className={cn("gk-toolbar-group", compact && "gk-toolbar-group--stack")}
       data-pending={String(pending)}
     >
       <span className="gk-field" style={compact ? undefined : { width: 300 }}>

@@ -6,12 +6,22 @@ import {
   ChevronRightIcon,
   ClockIcon,
   ExternalLinkIcon,
+  ListIcon,
   VideoIcon,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { CommunityMeetingsCalendar } from "@/components/meetings/community-meetings-calendar";
 import { MeetingsCalendar } from "@/components/meetings/meetings-calendar";
 import { Stagger } from "@/components/motion/motion";
+import { getCommunityMeetingsCalendar } from "@/lib/community-meetings-calendar";
+import {
+  type CalendarMonth,
+  calendarMonthParam,
+  communityCalendarCategories,
+  resolveCalendarMonth,
+  shiftCalendarMonth,
+} from "@/lib/community-meetings-calendar-domain";
 import { requireMemberId } from "@/lib/learning";
 import { getMeetings } from "@/lib/meetings";
 
@@ -240,13 +250,89 @@ const CommunityMeetingRow = ({
 };
 
 interface MeetingsPageContentProperties {
+  /** `AAAA-MM` do calendário; sem valor, o mês corrente. */
+  readonly calendarMonth?: string;
   readonly inCommunity?: boolean;
+  readonly view?: "calendar" | "list";
 }
 
+const calendarHref = (month?: CalendarMonth) =>
+  `/comunidade/encontros?ver=calendario${month ? `&mes=${calendarMonthParam(month)}` : ""}`;
+
+const MeetingsViewSwitch = ({
+  view,
+}: {
+  readonly view: "calendar" | "list";
+}) => (
+  <nav aria-label="Como ver os encontros" className="cm-views">
+    <Link
+      aria-current={view === "list" ? "page" : undefined}
+      href="/comunidade/encontros"
+      prefetch={false}
+      scroll={false}
+    >
+      <ListIcon aria-hidden="true" /> Lista
+    </Link>
+    <Link
+      aria-current={view === "calendar" ? "page" : undefined}
+      href={calendarHref()}
+      prefetch={false}
+      scroll={false}
+    >
+      <CalendarDaysIcon aria-hidden="true" /> Calendário
+    </Link>
+  </nav>
+);
+
+const CommunityMeetingsCalendarSection = async ({
+  memberId,
+  month,
+}: {
+  readonly memberId: string;
+  readonly month?: string;
+}) => {
+  const selected = resolveCalendarMonth(month);
+  const calendar = await getCommunityMeetingsCalendar(memberId, selected);
+  return (
+    <CommunityMeetingsCalendar
+      categories={communityCalendarCategories}
+      days={calendar.days}
+      entries={calendar.entries}
+      key={calendarMonthParam(selected)}
+      monthLabel={calendar.monthLabel}
+      nextHref={calendarHref(shiftCalendarMonth(selected, 1))}
+      previousHref={calendarHref(shiftCalendarMonth(selected, -1))}
+      timezone={calendar.timezone}
+      todayHref={calendarHref()}
+    />
+  );
+};
+
 const MeetingsPage = async ({
+  calendarMonth,
   inCommunity = false,
+  view = "list",
 }: MeetingsPageContentProperties) => {
   const memberId = await requireMemberId();
+  if (inCommunity && view === "calendar") {
+    return (
+      <div className="community-page min-h-svh bg-background">
+        <main className="community-shell community-meetings-shell cm-page cm-page--calendar mx-auto w-full">
+          <header className="cm-intro">
+            <h1 className="font-display text-4xl leading-tight sm:text-5xl">
+              Encontros
+            </h1>
+            <p>Encontros, aulas, workshops e eventos da sua turma no mês.</p>
+            <MeetingsViewSwitch view="calendar" />
+          </header>
+          <CommunityMeetingsCalendarSection
+            memberId={memberId}
+            month={calendarMonth}
+          />
+        </main>
+      </div>
+    );
+  }
   const { upcoming, past, calendar } = await getMeetings(memberId, undefined, {
     includeCalendar: !inCommunity,
   });
@@ -262,6 +348,7 @@ const MeetingsPage = async ({
               Encontros
             </h1>
             <p>Encontros ao vivo e as gravações dos anteriores.</p>
+            <MeetingsViewSwitch view="list" />
           </header>
 
           <section

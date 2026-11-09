@@ -40,6 +40,7 @@ vi.mock("./learning-assignments", () => ({ markLearningAssignmentStarted }));
 
 import {
   getLibraryItems,
+  getMostAccessedLibraryItems,
   getPublishedLibraryItem,
   getStaffLibraryItems,
 } from "./library";
@@ -273,5 +274,63 @@ describe("library lesson access", () => {
       getPublishedLibraryItem(sibling.id, "member-1")
     ).resolves.toBeNull();
     expect(markLearningAssignmentStarted).not.toHaveBeenCalled();
+  });
+});
+
+describe("materiais mais acessados", () => {
+  const studentScope = {
+    assetIds: new Set(),
+    courseIds: new Set(),
+    fullAccess: false,
+    fullCourseIds: new Set(),
+    libraryItemIds: new Set(),
+    lessonIds: new Set(["lesson-a"]),
+    moduleIds: new Set(),
+    recordingIds: new Set(),
+  };
+  const ranking = (ids: readonly string[]) =>
+    ids.map((itemId, index) => ({
+      itemId,
+      _sum: { openCount: 10 - index },
+      _count: { memberId: 1 },
+    }));
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getLearningAccessScope.mockResolvedValue(studentScope);
+  });
+
+  test("soma cliques só entre materiais publicados que o membro pode ver", async () => {
+    database.libraryItemView.groupBy.mockResolvedValue(
+      ranking(["b", "a", "c", "d"])
+    );
+    database.libraryItem.findMany.mockResolvedValue(
+      ["a", "b", "c", "d"].map((id) => ({
+        id,
+        title: `Material ${id}`,
+        coverUrl: null,
+        category: null,
+        kind: "ARTICLE",
+      }))
+    );
+
+    const items = await getMostAccessedLibraryItems("member-1");
+
+    expect(items.map(({ id }) => id)).toEqual(["b", "a", "c", "d"]);
+    const query = database.libraryItemView.groupBy.mock.calls[0]?.[0];
+    expect(query.by).toEqual(["itemId"]);
+    expect(query.orderBy[0]).toEqual({ _sum: { openCount: "desc" } });
+    expect(query.where.item.is.status).toBe("PUBLISHED");
+    expect(JSON.stringify(query.where.item.is.AND)).toContain("lesson-a");
+    expect(JSON.stringify(query)).not.toContain("member-1");
+  });
+
+  test("com menos de quatro materiais clicados a esteira não aparece", async () => {
+    database.libraryItemView.groupBy.mockResolvedValue(
+      ranking(["a", "b", "c"])
+    );
+
+    await expect(getMostAccessedLibraryItems("member-1")).resolves.toEqual([]);
+    expect(database.libraryItem.findMany).not.toHaveBeenCalled();
   });
 });

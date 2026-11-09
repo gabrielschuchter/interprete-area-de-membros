@@ -467,6 +467,7 @@ model Member {
   studyTrackingSessions               StudyTrackingSession[]
   studyActivityIntervals              StudyActivityInterval[]
   presenceHours                       MemberPresenceHour[]
+  evidenceAssessments                 EvidenceAssessment[]
   studyGoals                          StudyGoal[]
   learningTasksCreated                LearningTask[]                     @relation("LearningTaskCreator")
   learningTaskAssignments             LearningTaskRecipient[]
@@ -2672,4 +2673,31 @@ model BadgeEvaluationState {
   lastEvaluatedAt DateTime?
   updatedAt       DateTime  @updatedAt
   member          Member    @relation(fields: [memberId], references: [id], onDelete: Cascade)
+}
+
+/// Ferramentas de avaliação da evidência (RoB 2 por estudo, GRADE por
+/// desfecho). Privadas de cada membro; respostas validadas no servidor.
+enum EvidenceToolKind {
+  ROB2
+  GRADE
+}
+
+model EvidenceAssessment {
+  id        String           @id @default(cuid())
+  memberId  String
+  tool      EvidenceToolKind
+  /// Estudo avaliado (RoB 2) ou desfecho (GRADE).
+  title     String
+  /// Desfecho/comparação (RoB 2) ou pergunta PICO (GRADE).
+  context   String?
+  data      Json
+  /// Julgamento geral (RoB 2) ou certeza da evidência (GRADE).
+  result    String?
+  version   Int              @default(1)
+  deletedAt DateTime?        @db.Timestamptz(6)
+  createdAt DateTime         @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime         @updatedAt @db.Timestamptz(6)
+  member    Member           @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([memberId, tool, updatedAt])
 }

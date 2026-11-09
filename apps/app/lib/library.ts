@@ -339,6 +339,56 @@ export const getLibraryItems = async ({
   };
 };
 
+/** Mínimo de materiais para a esteira de mais acessados aparecer. */
+export const MOST_ACCESSED_MIN_ITEMS = 4;
+
+/**
+ * Materiais mais abertos pela comunidade, só entre os que este membro pode
+ * ver. Soma os cliques registrados em /biblioteca/abrir; devolve apenas o
+ * total agregado, nunca quem abriu.
+ */
+export const getMostAccessedLibraryItems = (memberId: string, limit = 12) =>
+  tracePerformance("member.library.most-accessed", async () => {
+    const scope = await getLearningAccessScope(memberId);
+    const ranking = await database.libraryItemView.groupBy({
+      by: ["itemId"],
+      where: {
+        item: {
+          is: {
+            status: ContentStatus.PUBLISHED,
+            AND: [buildLibraryItemAccessWhere(scope)],
+          },
+        },
+      },
+      _sum: { openCount: true },
+      _count: { memberId: true },
+      orderBy: [
+        { _sum: { openCount: "desc" } },
+        { _count: { memberId: "desc" } },
+        { itemId: "asc" },
+      ],
+      take: limit,
+    });
+    if (ranking.length < MOST_ACCESSED_MIN_ITEMS) {
+      return [];
+    }
+    const items = await database.libraryItem.findMany({
+      where: { id: { in: ranking.map(({ itemId }) => itemId) } },
+      select: {
+        id: true,
+        title: true,
+        coverUrl: true,
+        category: true,
+        kind: true,
+      },
+    });
+    const byId = new Map(items.map((item) => [item.id, item]));
+    return ranking.flatMap(({ itemId }) => {
+      const item = byId.get(itemId);
+      return item ? [item] : [];
+    });
+  });
+
 export const getLibraryCategories = async () => {
   const rows = await tracePerformance("member.library.categories", () =>
     database.libraryItem.findMany({
