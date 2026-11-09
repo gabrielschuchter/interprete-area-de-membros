@@ -2583,6 +2583,7 @@
         "composer"
         "feed"
         "spaces"
+        "platforms"
         "about"
         "notices";
     }
@@ -2671,6 +2672,7 @@
         "composer"
         "feed"
         "spaces"
+        "platforms"
         "about"
         "notices";
     }
@@ -3892,7 +3894,9 @@ html[data-shell-fallback][data-shell-arrival="return"] .member-route-page {
       "composer composer"
       "feed feed"
       "spaces notices"
-      "spaces about";
+      "spaces about"
+      "platforms platforms";
+
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     column-gap: 1rem;
   }

@@ -47,3 +47,20 @@
 .community-right-rail .community-rail__context--notices {
   order: 4;
 }
+
+/* Abaixo de 1081px a lateral vira linhas da grade da página, que já separa as
+   linhas por row-gap. O bloco das plataformas tinha área própria ausente (caía
+   numa linha implícita no fim) e somava esse vão ao padding-top de 1.25rem,
+   deixando o espaço acima dos ícones maior que o de baixo. */
+@media (max-width: 1080px) {
+  .community-right-rail .community-rail__platforms {
+    grid-area: platforms;
+    padding-top: 0.25rem;
+  }
+}
+
+@media (max-width: 767px) {
+  .community-right-rail .community-rail__platforms {
+    padding-top: 0.5rem;
+  }
+}
