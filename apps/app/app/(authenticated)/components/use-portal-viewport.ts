@@ -10,7 +10,7 @@ export const usePortalViewport = () => {
   useEffect(() => {
     const mobile = window.matchMedia("(max-width: 699px)");
     const landscape = window.matchMedia(
-      "(max-height: 520px) and (min-width: 700px)"
+      "(max-height: 520px) and (min-width: 700px), (max-height: 659px) and (min-width: 700px) and (max-width: 1359px)"
     );
     const desktop = window.matchMedia("(min-width: 1360px)");
     const update = () => {

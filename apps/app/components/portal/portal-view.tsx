@@ -157,7 +157,7 @@ const MobilePortalCard = ({
             onError={onImageError}
             onLoad={() => onImageReady(image.id)}
             priority
-            sizes="(max-width: 699px) calc(100vw - 40px), (max-height: 520px) calc((100vw - 60px) / 2)"
+            sizes="(max-width: 699px) calc(100vw - 40px), (max-height: 659px) calc((100vw - 60px) / 2)"
             src={image.src}
             unoptimized
             width={image.width}

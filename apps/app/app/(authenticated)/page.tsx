@@ -12,7 +12,7 @@ const PortalPage = async () => {
         as="image"
         fetchPriority="high"
         href="/portal/art-1250-e5b2e48dfe.webp"
-        media="(min-width: 700px) and (min-height: 521px)"
+        media="(min-width: 700px) and (min-height: 660px), (min-width: 1360px) and (min-height: 521px)"
         rel="preload"
         type="image/webp"
       />
@@ -20,7 +20,7 @@ const PortalPage = async () => {
         as="image"
         fetchPriority="high"
         href="/portal/mobile-estudar-3979b5ac.webp"
-        media="(max-width: 699px), (max-height: 520px) and (min-width: 700px)"
+        media="(max-width: 699px), (max-height: 520px) and (min-width: 700px), (max-height: 659px) and (min-width: 700px) and (max-width: 1359px)"
         rel="preload"
         type="image/webp"
       />
@@ -28,7 +28,7 @@ const PortalPage = async () => {
         as="image"
         fetchPriority="high"
         href="/portal/mobile-comunidade-fc58e6afaa.webp"
-        media="(max-width: 699px), (max-height: 520px) and (min-width: 700px)"
+        media="(max-width: 699px), (max-height: 520px) and (min-width: 700px), (max-height: 659px) and (min-width: 700px) and (max-width: 1359px)"
         rel="preload"
         type="image/webp"
       />
