@@ -1,13 +1,25 @@
+import { EvidenceToolKind } from "@repo/database";
 import type { Metadata } from "next";
 import { MemberViewSwitcher } from "@/components/navigation/member-view-switcher";
 import { requireOnboardedMemberId as requireMemberId } from "@/lib/authorization";
+import {
+  getEvidenceAssessment,
+  listEvidenceAssessments,
+} from "@/lib/evidence-assessments";
 import {
   getFocusTimerLinkResources,
   getFocusTimerState,
 } from "@/lib/focus-timer";
 import { getPlannerDashboard } from "@/lib/planner";
 import { getStudyGoalTopicOverview } from "@/lib/study-goal-topics";
-import { PlannerView, TimerView } from "./tools-view-loader";
+import type { GradeSelected } from "./grade-workspace";
+import type { Rob2Selected } from "./rob2-workspace";
+import {
+  GradeView,
+  PlannerView,
+  Rob2View,
+  TimerView,
+} from "./tools-view-loader";
 
 export const metadata: Metadata = { title: "Ferramentas | Interprete" };
 
@@ -15,6 +27,8 @@ const views = [
   { id: "goals", label: "Metas" },
   { id: "calendar", label: "Calendário" },
   { id: "timer", label: "Cronômetro" },
+  { id: "rob2", label: "RoB 2" },
+  { id: "grade", label: "GRADE" },
 ] as const;
 
 type ToolsView = (typeof views)[number]["id"];
@@ -23,6 +37,45 @@ const subtitles: Record<ToolsView, string> = {
   calendar: "Encontros, prazos e o que você marcou para estudar.",
   goals: "Quanto você quer estudar e quanto já estudou.",
   timer: "Pomodoro, cronômetro livre e contagem regressiva.",
+  rob2: "Risco de viés de ensaios randomizados, domínio a domínio.",
+  grade: "Certeza da evidência por desfecho, a partir dos seus RoB 2.",
+};
+
+const serializeList = (
+  rows: Awaited<ReturnType<typeof listEvidenceAssessments>>
+) => rows.map((row) => ({ ...row, updatedAt: row.updatedAt.toISOString() }));
+
+const loadEvidenceView = async (
+  memberId: string,
+  view: "grade" | "rob2",
+  requested: string | null
+) => {
+  const tool = view === "rob2" ? EvidenceToolKind.ROB2 : EvidenceToolKind.GRADE;
+  const creating = requested === "nova";
+  const [items, selected, rob2Items] = await Promise.all([
+    listEvidenceAssessments(memberId, tool),
+    requested && !creating
+      ? getEvidenceAssessment(memberId, tool, requested)
+      : Promise.resolve(null),
+    view === "grade"
+      ? listEvidenceAssessments(memberId, EvidenceToolKind.ROB2)
+      : Promise.resolve([]),
+  ]);
+  const selection = selected
+    ? {
+        id: selected.id,
+        title: selected.title,
+        context: selected.context,
+        version: selected.version,
+        data: (selected.data ?? {}) as object,
+      }
+    : null;
+  return {
+    creating,
+    items: serializeList(items),
+    rob2Items: serializeList(rob2Items),
+    selection,
+  };
 };
 
 const resolveView = (
@@ -55,7 +108,26 @@ export default async function ToolsPage({
   const view = resolveView(params);
 
   let content: React.ReactNode;
-  if (view === "timer") {
+  if (view === "rob2" || view === "grade") {
+    const requested =
+      typeof params.avaliacao === "string" ? params.avaliacao : null;
+    const evidence = await loadEvidenceView(memberId, view, requested);
+    content =
+      view === "rob2" ? (
+        <Rob2View
+          creating={evidence.creating}
+          items={evidence.items}
+          selected={evidence.selection as Rob2Selected | null}
+        />
+      ) : (
+        <GradeView
+          creating={evidence.creating}
+          items={evidence.items}
+          rob2Items={evidence.rob2Items}
+          selected={evidence.selection as GradeSelected | null}
+        />
+      );
+  } else if (view === "timer") {
     const [timer, timerResources] = await Promise.all([
       getFocusTimerState(memberId),
       getFocusTimerLinkResources(memberId),
