@@ -1,26 +1,52 @@
 # Gestão V2 — estado operacional
 
+## Entrega de 09/11/2026
+
+Ajustes e novidades da área de membros, validados pelo proprietário a partir
+da prévia local: fila de Correções alinhada (Gestão), calendário do mês em
+Comunidade › Encontros, esteira de materiais mais acessados na Biblioteca e
+ferramentas RoB 2 e GRADE em Estudar › Ferramentas. Backup da `main` anterior:
+branch `backup/main-2026-11-09` (`f16f8b6`).
+
+- **Banco Production:** migration aditiva
+  `20261109120000_evidence_assessments` aplicada antes do deploy e registrada
+  no ledger do Prisma com o checksum do arquivo. Cria só a tabela
+  `EvidenceAssessment` (avaliações privadas de cada membro) com RLS ligado, sem
+  policies e sem privilégio de `anon`/`authenticated`; nenhum dado existente foi
+  tocado.
+- **Gates locais sobre a versão candidata:** 1061 testes do app, TypeScript,
+  Biome nos arquivos alterados, `turbo boundaries` e build de produção
+  aprovados. JS inicial dentro de 225 KiB (Ferramentas 207,6; Biblioteca 213,7;
+  Encontros 213,1; Correções 216,5 KiB). Jornadas no navegador com banco de QA
+  local em loopback, TLS verificado e seeds explícitas: criação e recarga de
+  RoB 2 e GRADE, calendário com recorrência/inscrição, ranking da esteira e
+  medição da fila de Correções; 390 px sem rolagem horizontal.
+- **Deploy do app:** pendente na Vercel, feito pelo proprietário (conexão Git
+  automática desligada; esta sessão não alcança a Vercel). Depois do deploy,
+  registrar SHA, deployment `READY` e aliases, e repetir o smoke das quatro
+  telas no host canônico.
+
 ## Conferência de 09/11/2026
 
-Conferência somente leitura pelos conectores Supabase e Clerk, com `main` em
-`f16f8b6` (#54). Nenhum dado, schema, usuário, papel ou configuração foi
-alterado. Backup da `main` anterior a esta edição: branch
-`backup/main-2026-11-09` (`f16f8b6`). As seções seguintes registram o release
-de 14/10 e não foram reescritas; quando divergem desta tabela, vale esta tabela.
+Conferência pelos conectores Supabase e Clerk, com `main` em `f16f8b6` (#54),
+atualizada depois da migration da entrega acima. Fora essa migration, nenhum
+dado, schema, usuário, papel ou configuração foi alterado. As seções seguintes
+registram o release de 14/10 e não foram reescritas; quando divergem desta
+tabela, vale esta tabela.
 
 | Item | Observado em 09/11 | Registro de 14/10 |
 |---|---|---|
-| Migrations Prisma (Production) | 84/84 aplicadas, nenhuma incompleta ou revertida; última `20261106210000_community_post_cover_framing`, igual à `main`. As 19 posteriores ao release são aditivas | 65/65 |
-| Tabelas públicas | 112, todas com RLS | 104 |
-| Advisor de segurança | 111 avisos INFO "RLS sem policy", esperados porque o acesso é feito pelo Prisma no servidor; 1 WARN `pg_net` no schema `public`, preexistente e não alterado | — |
+| Migrations Prisma (Production) | 85/85 aplicadas, nenhuma incompleta ou revertida; última `20261109120000_evidence_assessments`. As 20 posteriores ao release são aditivas | 65/65 |
+| Tabelas públicas | 113, todas com RLS | 104 |
+| Advisor de segurança | 112 avisos INFO "RLS sem policy", esperados porque o acesso é feito pelo Prisma no servidor; 1 WARN `pg_net` no schema `public`, preexistente e não alterado | — |
 | Clerk Production | App `Interprete`; domínio `membros.escolainterprete.com.br` com DNS 4/4, SSL e e-mail `complete`; proxy `/__clerk` não configurado (Frontend API por CNAME direto desde 31/10, ver [`vercel.md`](../deployment/vercel.md)) | Proxy `/__clerk` |
 | Área de equipe | Na `main`, o #46 removeu o `/admin` antigo; `/admin/*` redireciona para o equivalente na Gestão | Comunidade redirecionava para `/admin/community` |
 
 Não verificado nesta conferência: o deployment Production atual. A rede da
 sessão não alcança a Vercel nem o host canônico, e a conexão Git automática da
 Vercel está desabilitada, então a `main` não implica Production. **Próximo
-passo:** registrar SHA, deployment `READY` e aliases do Production atual contra
-`f16f8b6` antes de declarar a `main` publicada.
+passo:** registrar SHA, deployment `READY` e aliases do Production depois do
+deploy da entrega acima, antes de declarar a `main` publicada.
 
 > **Atualização de domínio — 31/10/2026:** o app Production foi promovido para
 > `https://membros.escolainterprete.com.br` no deployment
