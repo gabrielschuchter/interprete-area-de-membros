@@ -59,8 +59,32 @@ const PhotoCropper = dynamic(
 );
 
 const BIO_MAX = 240;
-const AVATAR_MAX_BYTES = 5 * 1024 * 1024;
-const AVATAR_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+// The original never leaves the device: the cropper decodes it in the browser
+// and only a 512 x 512 recompressed copy (tens of KB) is uploaded. This cap only
+// protects the phone's memory while decoding.
+const AVATAR_MAX_BYTES = 25 * 1024 * 1024;
+const AVATAR_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/heic",
+  "image/heif",
+]);
+const heicNamePattern = /\.(heic|heif)$/i;
+const isAvatarCandidate = (file: File) =>
+  AVATAR_TYPES.has(file.type) ||
+  // Some systems hand HEIC over without a MIME type.
+  (file.type === "" && heicNamePattern.test(file.name));
+
+const uploadFailureMessage = (status: number, serverMessage?: string) => {
+  if (status === 429) {
+    return copy.foto.erroMuitos;
+  }
+  if (status === 503) {
+    return copy.foto.erroPausado;
+  }
+  return serverMessage && status === 400 ? serverMessage : copy.foto.erroUpload;
+};
 const SEEN_KEY = "interprete.onboarding.seen";
 
 type SaveState = "idle" | "saving" | "saved";
@@ -356,13 +380,21 @@ export const OnboardingFlow = ({
     setCropPreview(blob ? URL.createObjectURL(blob) : null);
   }, []);
 
+  // The browser could not open the file (HEIC outside Safari, a corrupt file).
+  const onCropError = useCallback(() => {
+    setCropSource(null);
+    setCropBlob(null);
+    setCropPreview(null);
+    setPhotoError(copy.foto.erroLeitura);
+  }, []);
+
   const pickFile = (file: File | undefined) => {
     setSheet(false);
     setDragging(false);
     if (!file) {
       return;
     }
-    if (!AVATAR_TYPES.has(file.type)) {
+    if (!isAvatarCandidate(file)) {
       setPhotoError(copy.foto.erroFormato);
       return;
     }
@@ -414,24 +446,33 @@ export const OnboardingFlow = ({
       return avatarUrl || null;
     }
     const form = new FormData();
+    // The blob carries its real type: WebP where the browser encodes it,
+    // JPEG otherwise (Safari). Labelling it is what the server checks.
+    const extension = cropBlob.type === "image/jpeg" ? "jpg" : "webp";
     form.set(
       "file",
-      new File([cropBlob], "avatar.webp", { type: "image/webp" })
+      new File([cropBlob], `avatar.${extension}`, { type: cropBlob.type })
     );
     form.set("assetType", "avatar");
-    const response = await fetch("/api/member-assets", {
-      body: form,
-      method: "POST",
-    });
+    let response: Response;
+    try {
+      response = await fetch("/api/member-assets", {
+        body: form,
+        method: "POST",
+      });
+    } catch {
+      throw new Error(copy.foto.erroRede);
+    }
     if (response.status === 401) {
       setSessionExpired(true);
       return null;
     }
     const payload = (await response.json().catch(() => ({}))) as {
+      error?: string;
       url?: string;
     };
     if (!(response.ok && payload.url)) {
-      throw new Error("upload");
+      throw new Error(uploadFailureMessage(response.status, payload.error));
     }
     return payload.url;
   };
@@ -442,9 +483,13 @@ export const OnboardingFlow = ({
     let url: string | null;
     try {
       url = await uploadCropped();
-    } catch {
+    } catch (uploadError) {
       setBusy(false);
-      setPhotoError(copy.foto.erroUpload);
+      setPhotoError(
+        uploadError instanceof Error && uploadError.message !== ""
+          ? uploadError.message
+          : copy.foto.erroUpload
+      );
       return;
     }
     setBusy(false);
@@ -974,7 +1019,7 @@ export const OnboardingFlow = ({
             {heading1(copy.foto.titulo)}
             <p className="ob-lead">{copy.foto.texto}</p>
             <input
-              accept="image/jpeg,image/png,image/webp"
+              accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
               className="ob-hidden-input"
               onChange={(event) => {
                 pickFile(event.target.files?.[0]);
@@ -1022,6 +1067,7 @@ export const OnboardingFlow = ({
                     {cropSource ? (
                       <PhotoCropper
                         onChange={onCrop}
+                        onError={onCropError}
                         size={size}
                         source={cropSource}
                       />
