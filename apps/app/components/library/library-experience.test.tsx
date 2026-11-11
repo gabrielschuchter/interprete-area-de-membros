@@ -22,9 +22,12 @@ vi.mock("@repo/design-system/components/ui/sidebar", () => ({
   useSidebar: () => ({ isMobile: false, state: "expanded" }),
 }));
 
-import { LibraryExperience } from "./library-experience";
+import {
+  LibraryExperience,
+  type LibraryFilterValues,
+} from "./library-experience";
 
-const FILTERS = {
+const FILTERS: LibraryFilterValues = {
   category: "",
   difficulty: "",
   kind: "",
@@ -32,7 +35,7 @@ const FILTERS = {
   q: "",
   sort: "recent",
   titulos: "",
-} as const;
+};
 
 const renderLibrary = (initial = FILTERS) =>
   render(
