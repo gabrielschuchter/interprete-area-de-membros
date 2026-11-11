@@ -94,7 +94,7 @@ const LibraryItemPage = async ({ params }: LibraryItemPageProperties) => {
             // biome-ignore lint/performance/noImgElement: editorial cover may be hosted outside configured image domains.
             <img
               alt={`Capa: ${item.title}`}
-              className="mt-7 max-h-[32rem] w-full rounded-sm border object-cover"
+              className="mx-auto mt-7 block h-auto max-h-[32rem] w-auto max-w-full rounded-sm border object-contain"
               decoding="async"
               height={640}
               loading="lazy"
