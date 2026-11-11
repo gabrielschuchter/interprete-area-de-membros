@@ -89,20 +89,6 @@ const LibraryItemPage = async ({ params }: LibraryItemPageProperties) => {
               {item.description}
             </p>
           )}
-          {item.coverUrl && (
-            // Cover URLs are staff-provided HTTPS assets and may use approved external hosts.
-            // biome-ignore lint/performance/noImgElement: editorial cover may be hosted outside configured image domains.
-            <img
-              alt={`Capa: ${item.title}`}
-              className="mt-7 max-h-[32rem] w-full rounded-sm border object-cover"
-              decoding="async"
-              height={640}
-              loading="lazy"
-              referrerPolicy="no-referrer"
-              src={item.coverUrl}
-              width={1200}
-            />
-          )}
           <div className="mt-4 flex flex-wrap items-center gap-4 text-muted-foreground text-sm">
             {item.year ? <span>{item.year}</span> : null}
             {item.authors ? <span>{item.authors}</span> : null}
