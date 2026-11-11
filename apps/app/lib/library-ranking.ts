@@ -9,6 +9,7 @@ export interface LibrarySearchFields {
   readonly description: string | null;
   readonly tags: readonly string[];
   readonly title: string;
+  readonly titlePt?: string | null;
 }
 
 export const libraryPopularityScore = ({
@@ -26,9 +27,11 @@ export const librarySearchScore = (
   if (!normalized) {
     return 0;
   }
-  let score = fields.title.toLocaleLowerCase("pt-BR").includes(normalized)
-    ? 6
-    : 0;
+  let score =
+    fields.title.toLocaleLowerCase("pt-BR").includes(normalized) ||
+    fields.titlePt?.toLocaleLowerCase("pt-BR").includes(normalized)
+      ? 6
+      : 0;
   if (fields.authors?.toLocaleLowerCase("pt-BR").includes(normalized)) {
     score += 3;
   }

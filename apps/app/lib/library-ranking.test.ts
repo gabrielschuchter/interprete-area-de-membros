@@ -22,4 +22,19 @@ describe("library relevance signals", () => {
       )
     ).toBe(6);
   });
+
+  test("matches the Portuguese title as well as the original", () => {
+    const fields = {
+      authors: null,
+      description: null,
+      tags: [],
+      title: "Clinical practice guideline",
+      titlePt: "Diretriz de prática clínica",
+    };
+    expect(librarySearchScore(fields, "diretriz")).toBe(6);
+    expect(librarySearchScore(fields, "guideline")).toBe(6);
+    expect(librarySearchScore({ ...fields, titlePt: null }, "diretriz")).toBe(
+      0
+    );
+  });
 });

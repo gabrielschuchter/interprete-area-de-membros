@@ -30,6 +30,7 @@ const readFilters = (
   language: firstValue(params.language) ?? "",
   q: firstValue(params.q) ?? "",
   sort: firstValue(params.sort) === "relevant" ? "relevant" : "recent",
+  titulos: firstValue(params.titulos) === "pt" ? "pt" : "",
 });
 
 const LibraryPage = async ({ searchParams }: LibraryPageProperties) => {

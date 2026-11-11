@@ -89,6 +89,12 @@ const buildLibraryWhere = ({
               },
             },
             {
+              titlePt: {
+                contains: normalizedQuery,
+                mode: "insensitive" as const,
+              },
+            },
+            {
               authors: {
                 contains: normalizedQuery,
                 mode: "insensitive" as const,
@@ -237,6 +243,7 @@ export const getLibraryItems = async ({
         select: {
           id: true,
           title: true,
+          titlePt: true,
           description: true,
           coverUrl: true,
           kind: true,

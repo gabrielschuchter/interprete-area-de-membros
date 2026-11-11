@@ -14,6 +14,7 @@ import {
   ClearLibrarySearch,
   type LibraryFilterValues,
   LibraryPagination,
+  LibraryTitleTranslationToggle,
 } from "@/components/library/library-experience";
 import { getLibraryItems } from "@/lib/library";
 import { libraryCategoryGroup } from "@/lib/library-categories";
@@ -49,9 +50,13 @@ const formatCount = (count: number) => {
 
 const LibraryMaterialCard = ({
   item,
+  translateTitles,
 }: {
   readonly item: Awaited<ReturnType<typeof getLibraryItems>>["items"][number];
+  readonly translateTitles: boolean;
 }) => {
+  const translatedTitle = translateTitles ? item.titlePt?.trim() : undefined;
+  const displayTitle = translatedTitle || item.title;
   const presentation = KIND_PRESENTATION[item.kind];
   const Icon = presentation.icon;
   const source = [item.year, item.authors].filter(Boolean).join(" · ");
@@ -61,7 +66,7 @@ const LibraryMaterialCard = ({
       <LibraryCover
         category={item.category}
         coverUrl={item.coverUrl}
-        title={item.title}
+        title={displayTitle}
       />
       <div className="flex min-h-[146px] min-w-0 flex-1 flex-col">
         <div>
@@ -81,13 +86,16 @@ const LibraryMaterialCard = ({
               {source}
             </p>
           )}
-          <h3 className="mt-1.5 break-words font-display font-semibold text-[#40222F] text-[18px] leading-[1.25] md:text-[19px]">
+          <h3
+            className="mt-1.5 break-words font-display font-semibold text-[#40222F] text-[18px] leading-[1.25] md:text-[19px]"
+            lang={translatedTitle ? "pt-BR" : undefined}
+          >
             <Link
               className="transition-colors hover:text-[#8C1535] focus-visible:outline-2 focus-visible:outline-[#8C1535] focus-visible:outline-offset-2"
               href={`/biblioteca/${item.id}`}
               prefetch={false}
             >
-              {item.title}
+              {displayTitle}
             </Link>
           </h3>
           {item.description && (
@@ -120,7 +128,7 @@ const LibraryMaterialCard = ({
         </div>
         <div className="mt-auto flex flex-wrap items-center justify-between gap-x-3 gap-y-1 pt-1.5">
           <a
-            aria-label={`Abrir material: ${item.title}, em nova aba`}
+            aria-label={`Abrir material: ${displayTitle}, em nova aba`}
             className="inline-flex h-11 items-center justify-center gap-2 rounded-md border-2 border-[#8C1535] bg-[#8C1535] px-4 font-semibold text-sm text-white transition-colors hover:bg-[#6f102b] focus-visible:outline-2 focus-visible:outline-[#8C1535] focus-visible:outline-offset-2"
             href={`/biblioteca/abrir/${item.id}`}
             rel="noopener noreferrer"
@@ -208,17 +216,27 @@ export const LibraryResults = async ({
           {formatCount(result.totalCount)}
         </p>
       </header>
-      <p className="mt-3 max-w-4xl text-[#7A5A69] text-[13px] leading-[1.6] md:text-sm">
-        {filters.sort === "relevant"
-          ? "Primeiro o que mais gente da turma abriu e salvou."
-          : "Os materiais mais recentes da curadoria aparecem primeiro."}
-      </p>
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+        <p className="max-w-4xl text-[#7A5A69] text-[13px] leading-[1.6] md:text-sm">
+          {filters.sort === "relevant"
+            ? "Primeiro o que mais gente da turma abriu e salvou."
+            : "Os materiais mais recentes da curadoria aparecem primeiro."}
+        </p>
+        <LibraryTitleTranslationToggle
+          currentPage={result.page}
+          filters={filters}
+        />
+      </div>
       {result.items.length === 0 ? (
         <EmptyLibraryResults />
       ) : (
         <div className="mt-5 grid grid-cols-[repeat(auto-fit,minmax(min(100%,440px),1fr))] gap-4">
           {result.items.map((item) => (
-            <LibraryMaterialCard item={item} key={item.id} />
+            <LibraryMaterialCard
+              item={item}
+              key={item.id}
+              translateTitles={filters.titulos === "pt"}
+            />
           ))}
         </div>
       )}

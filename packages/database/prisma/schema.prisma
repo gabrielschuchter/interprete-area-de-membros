@@ -1740,6 +1740,7 @@ model LibraryItem {
   catalogKey      String?                 @unique
   idempotencyKey  String?
   title           String
+  titlePt         String?
   description     String?                 @db.Text
   coverUrl        String?                 @db.Text
   kind            LibraryItemKind

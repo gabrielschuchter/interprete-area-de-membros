@@ -119,6 +119,19 @@ describe("library lesson access", () => {
     });
   });
 
+  test("selects and searches the Portuguese title alongside the original", async () => {
+    await getLibraryItems({ memberId: "staff-member", query: "diretriz" });
+
+    const query = database.libraryItem.findMany.mock.calls[0]?.[0];
+    expect(query.select.titlePt).toBe(true);
+    expect(query.where.AND[0].OR).toEqual(
+      expect.arrayContaining([
+        { title: { contains: "diretriz", mode: "insensitive" } },
+        { titlePt: { contains: "diretriz", mode: "insensitive" } },
+      ])
+    );
+  });
+
   test("paginates the staff catalog without gaps between pages", async () => {
     const firstPageRows = Array.from({ length: 25 }, (_, index) => ({
       id: `item-${index + 1}`,

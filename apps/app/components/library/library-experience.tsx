@@ -14,6 +14,7 @@ import {
   ArrowLeftIcon,
   ArrowRightIcon,
   ArrowUpIcon,
+  LanguagesIcon,
   SearchIcon,
   SlidersHorizontalIcon,
   XIcon,
@@ -39,10 +40,12 @@ export interface LibraryFilterValues {
   readonly language: string;
   readonly q: string;
   readonly sort: "recent" | "relevant";
+  /** "pt" mostra os títulos traduzidos quando houver tradução cadastrada. */
+  readonly titulos: "" | "pt";
 }
 
 type FocusTarget = "chips" | "results";
-type FilterName = keyof Omit<LibraryFilterValues, "q" | "sort">;
+type FilterName = keyof Omit<LibraryFilterValues, "q" | "sort" | "titulos">;
 
 interface LibraryExperienceProperties {
   readonly categories: readonly string[];
@@ -59,6 +62,7 @@ const DEFAULT_FILTERS: LibraryFilterValues = {
   language: "",
   q: "",
   sort: "recent",
+  titulos: "",
 };
 const SCROLLABLE_OVERFLOW_PATTERN = /(auto|scroll)/;
 
@@ -127,6 +131,9 @@ const makeHref = (filters: LibraryFilterValues) => {
   if (filters.sort !== "recent") {
     params.set("sort", filters.sort);
   }
+  if (filters.titulos === "pt") {
+    params.set("titulos", "pt");
+  }
   const query = params.toString();
   return query ? `/biblioteca?${query}` : "/biblioteca";
 };
@@ -140,6 +147,7 @@ const valuesFromSearch = (search: string): LibraryFilterValues => {
     language: params.get("language") ?? "",
     q: params.get("q") ?? "",
     sort: params.get("sort") === "relevant" ? "relevant" : "recent",
+    titulos: params.get("titulos") === "pt" ? "pt" : "",
   };
 };
 
@@ -965,6 +973,44 @@ export const LibraryPagination = ({
         </Button>
       )}
     </nav>
+  );
+};
+
+export const LibraryTitleTranslationToggle = ({
+  currentPage,
+  filters,
+}: {
+  readonly currentPage: number;
+  readonly filters: LibraryFilterValues;
+}) => {
+  const navigate = useLibraryNavigation();
+  const active = filters.titulos === "pt";
+  const hrefForToggle = () => {
+    const params = new URLSearchParams(
+      makeHref({ ...filters, titulos: active ? "" : "pt" }).split("?")[1] ?? ""
+    );
+    if (currentPage > 1) {
+      params.set("page", String(currentPage));
+    }
+    const query = params.toString();
+    return query ? `/biblioteca?${query}` : "/biblioteca";
+  };
+  return (
+    <Button
+      aria-pressed={active}
+      className={cn(
+        "h-9 shrink-0 gap-2 border-2 border-[#8C1535] px-3 font-semibold text-sm",
+        active
+          ? "bg-[#8C1535] text-white hover:bg-[#6f102b] hover:text-white"
+          : "bg-transparent text-[#8C1535]"
+      )}
+      onClick={() => navigate(hrefForToggle())}
+      type="button"
+      variant="outline"
+    >
+      <LanguagesIcon aria-hidden="true" className="size-4" />
+      Títulos em português
+    </Button>
   );
 };
 
