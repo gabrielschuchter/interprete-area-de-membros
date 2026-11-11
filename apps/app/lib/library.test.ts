@@ -44,6 +44,7 @@ import {
   getPublishedLibraryItem,
   getStaffLibraryItems,
 } from "./library";
+import { libraryLaunchPickUrls } from "./library-launch-picks";
 
 describe("library lesson access", () => {
   beforeEach(() => {
@@ -288,11 +289,19 @@ describe("materiais mais acessados", () => {
     moduleIds: new Set(),
     recordingIds: new Set(),
   };
+  const material = (id: string, url = `https://example.test/${id}`) => ({
+    id,
+    title: `Material ${id}`,
+    coverUrl: null,
+    category: null,
+    kind: "ARTICLE",
+    url,
+  });
   const ranking = (ids: readonly string[]) =>
     ids.map((itemId, index) => ({
       itemId,
-      _sum: { openCount: 10 - index },
-      _count: { memberId: 1 },
+      _sum: { openCount: 30 - index },
+      _count: { memberId: 3 },
     }));
 
   beforeEach(() => {
@@ -300,37 +309,63 @@ describe("materiais mais acessados", () => {
     getLearningAccessScope.mockResolvedValue(studentScope);
   });
 
-  test("soma cliques só entre materiais publicados que o membro pode ver", async () => {
-    database.libraryItemView.groupBy.mockResolvedValue(
-      ranking(["b", "a", "c", "d"])
-    );
+  test("na implantação mostra a seleção inicial, na ordem definida e só entre os visíveis", async () => {
+    database.libraryItemView.groupBy.mockResolvedValue(ranking(["a", "b"]));
+    const [first, second, third, fourth] = libraryLaunchPickUrls;
+    database.libraryItem.findMany.mockResolvedValue([
+      material("quarto", fourth),
+      material("primeiro", first),
+      material("terceiro", third),
+      material("segundo", second),
+    ]);
+
+    const result = await getMostAccessedLibraryItems("member-1");
+
+    expect(result.source).toBe("picks");
+    expect(result.items.map(({ id }) => id)).toEqual([
+      "primeiro",
+      "segundo",
+      "terceiro",
+      "quarto",
+    ]);
+    expect(result.items[0]).not.toHaveProperty("url");
+    const query = database.libraryItem.findMany.mock.calls[0]?.[0];
+    expect(JSON.stringify(query?.where)).toContain("lesson-a");
+    expect(query?.where.AND[0].status).toBe("PUBLISHED");
+    expect(query?.where.AND[1].url.in).toEqual([...libraryLaunchPickUrls]);
+  });
+
+  test("passa a seguir os cliques quando há materiais suficientes abertos por várias pessoas", async () => {
+    const ids = ["h", "g", "f", "e", "d", "c", "b", "a"];
+    database.libraryItemView.groupBy.mockResolvedValue(ranking(ids));
     database.libraryItem.findMany.mockResolvedValue(
-      ["a", "b", "c", "d"].map((id) => ({
-        id,
-        title: `Material ${id}`,
-        coverUrl: null,
-        category: null,
-        kind: "ARTICLE",
-      }))
+      [...ids].reverse().map((id) => material(id))
     );
 
-    const items = await getMostAccessedLibraryItems("member-1");
+    const result = await getMostAccessedLibraryItems("member-1");
 
-    expect(items.map(({ id }) => id)).toEqual(["b", "a", "c", "d"]);
+    expect(result.source).toBe("clicks");
+    expect(result.items.map(({ id }) => id)).toEqual(ids);
     const query = database.libraryItemView.groupBy.mock.calls[0]?.[0];
-    expect(query.by).toEqual(["itemId"]);
-    expect(query.orderBy[0]).toEqual({ _sum: { openCount: "desc" } });
-    expect(query.where.item.is.status).toBe("PUBLISHED");
-    expect(JSON.stringify(query.where.item.is.AND)).toContain("lesson-a");
+    expect(query?.having).toEqual({ memberId: { _count: { gte: 3 } } });
+    expect(query?.orderBy[0]).toEqual({ _sum: { openCount: "desc" } });
     expect(JSON.stringify(query)).not.toContain("member-1");
   });
 
-  test("com menos de quatro materiais clicados a esteira não aparece", async () => {
-    database.libraryItemView.groupBy.mockResolvedValue(
-      ranking(["a", "b", "c"])
-    );
+  test("sem ao menos quatro materiais da seleção visíveis, a esteira não aparece", async () => {
+    database.libraryItemView.groupBy.mockResolvedValue([]);
+    database.libraryItem.findMany.mockResolvedValue([
+      material("x", libraryLaunchPickUrls[0]),
+    ]);
 
-    await expect(getMostAccessedLibraryItems("member-1")).resolves.toEqual([]);
-    expect(database.libraryItem.findMany).not.toHaveBeenCalled();
+    await expect(getMostAccessedLibraryItems("member-1")).resolves.toEqual({
+      source: "picks",
+      items: [],
+    });
+  });
+
+  test("a seleção inicial tem dez URLs distintas", () => {
+    expect(libraryLaunchPickUrls).toHaveLength(10);
+    expect(new Set(libraryLaunchPickUrls).size).toBe(10);
   });
 });

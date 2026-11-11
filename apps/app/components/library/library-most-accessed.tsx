@@ -8,7 +8,12 @@ const minLaneSlots = 10;
 
 type MostAccessedItem = Awaited<
   ReturnType<typeof getMostAccessedLibraryItems>
->[number];
+>["items"][number];
+
+const sourceCaption = {
+  clicks: "Pelos cliques da comunidade",
+  picks: "Seleção inicial da curadoria",
+} as const;
 
 const Card = ({
   hidden = false,
@@ -44,7 +49,7 @@ export const LibraryMostAccessed = async ({
 }: {
   readonly memberId: string;
 }) => {
-  const items = await getMostAccessedLibraryItems(memberId);
+  const { items, source } = await getMostAccessedLibraryItems(memberId);
   if (items.length === 0) {
     return null;
   }
@@ -70,7 +75,7 @@ export const LibraryMostAccessed = async ({
           Materiais mais acessados
         </h2>
         <p className="hidden text-[#7A5A69] text-xs md:block">
-          Pelos cliques da comunidade
+          {sourceCaption[source]}
         </p>
       </div>
       <div className="library-marquee__viewport">

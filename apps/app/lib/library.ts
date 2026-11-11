@@ -21,6 +21,11 @@ import {
   libraryCategoryFilterValues,
   libraryCategoryGroupsFor,
 } from "./library-categories";
+import {
+  CLICK_RANKING_MIN_ITEMS,
+  CLICK_RANKING_MIN_READERS,
+  libraryLaunchPickUrls,
+} from "./library-launch-picks";
 import { LIBRARY_PAGE_SIZE, pageLibraryRows } from "./library-pagination";
 import { libraryPopularityScore, librarySearchScore } from "./library-ranking";
 
@@ -342,24 +347,32 @@ export const getLibraryItems = async ({
 /** Mínimo de materiais para a esteira de mais acessados aparecer. */
 export const MOST_ACCESSED_MIN_ITEMS = 4;
 
+const mostAccessedSelect = {
+  id: true,
+  title: true,
+  coverUrl: true,
+  category: true,
+  kind: true,
+} as const;
+
 /**
- * Materiais mais abertos pela comunidade, só entre os que este membro pode
- * ver. Soma os cliques registrados em /biblioteca/abrir; devolve apenas o
- * total agregado, nunca quem abriu.
+ * Esteira "Materiais mais acessados", só entre materiais publicados que este
+ * membro pode ver. Enquanto os cliques forem poucos, mostra a seleção inicial
+ * (library-launch-picks); quando houver materiais suficientes abertos por
+ * pessoas diferentes, segue os cliques registrados em /biblioteca/abrir.
+ * Nunca expõe quem abriu, só o resultado agregado.
  */
 export const getMostAccessedLibraryItems = (memberId: string, limit = 12) =>
   tracePerformance("member.library.most-accessed", async () => {
     const scope = await getLearningAccessScope(memberId);
+    const visible: Prisma.LibraryItemWhereInput = {
+      status: ContentStatus.PUBLISHED,
+      AND: [buildLibraryItemAccessWhere(scope)],
+    };
     const ranking = await database.libraryItemView.groupBy({
       by: ["itemId"],
-      where: {
-        item: {
-          is: {
-            status: ContentStatus.PUBLISHED,
-            AND: [buildLibraryItemAccessWhere(scope)],
-          },
-        },
-      },
+      where: { item: { is: visible } },
+      having: { memberId: { _count: { gte: CLICK_RANKING_MIN_READERS } } },
       _sum: { openCount: true },
       _count: { memberId: true },
       orderBy: [
@@ -369,24 +382,41 @@ export const getMostAccessedLibraryItems = (memberId: string, limit = 12) =>
       ],
       take: limit,
     });
-    if (ranking.length < MOST_ACCESSED_MIN_ITEMS) {
-      return [];
+
+    if (ranking.length >= CLICK_RANKING_MIN_ITEMS) {
+      const items = await database.libraryItem.findMany({
+        where: { id: { in: ranking.map(({ itemId }) => itemId) } },
+        select: mostAccessedSelect,
+      });
+      const byId = new Map(items.map((item) => [item.id, item]));
+      return {
+        source: "clicks" as const,
+        items: ranking.flatMap(({ itemId }) => {
+          const item = byId.get(itemId);
+          return item ? [item] : [];
+        }),
+      };
     }
-    const items = await database.libraryItem.findMany({
-      where: { id: { in: ranking.map(({ itemId }) => itemId) } },
-      select: {
-        id: true,
-        title: true,
-        coverUrl: true,
-        category: true,
-        kind: true,
-      },
+
+    const picks = await database.libraryItem.findMany({
+      where: { AND: [visible, { url: { in: [...libraryLaunchPickUrls] } }] },
+      select: { ...mostAccessedSelect, url: true },
     });
-    const byId = new Map(items.map((item) => [item.id, item]));
-    return ranking.flatMap(({ itemId }) => {
-      const item = byId.get(itemId);
-      return item ? [item] : [];
-    });
+    const order = new Map(
+      libraryLaunchPickUrls.map((url, index) => [url, index])
+    );
+    const items = picks
+      .sort(
+        (left, right) =>
+          (order.get(left.url) ?? Number.MAX_SAFE_INTEGER) -
+          (order.get(right.url) ?? Number.MAX_SAFE_INTEGER)
+      )
+      .slice(0, limit)
+      .map(({ url: _url, ...item }) => item);
+    return {
+      source: "picks" as const,
+      items: items.length >= MOST_ACCESSED_MIN_ITEMS ? items : [],
+    };
   });
 
 export const getLibraryCategories = async () => {
