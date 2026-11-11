@@ -23,6 +23,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import type { FormEvent, ReactNode } from "react";
 import {
   createContext,
+  startTransition,
   useCallback,
   useContext,
   useEffect,
@@ -32,6 +33,10 @@ import {
   useState,
 } from "react";
 import { LibraryHero } from "@/components/library/library-hero";
+import {
+  LIBRARY_AUTO_SEARCH_DELAY_MS,
+  libraryAutoSearchTarget,
+} from "@/lib/library-auto-search";
 
 export interface LibraryFilterValues {
   readonly category: string;
@@ -545,6 +550,11 @@ export const LibraryExperience = ({
     ...DEFAULT_FILTERS,
     ...initialFilters,
   }));
+  const appliedRef = useRef(applied);
+  appliedRef.current = applied;
+  /** Último texto digitado e ainda não confirmado pela URL (null = campo em dia). */
+  const typedQuery = useRef<string | null>(null);
+  const autoSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [fixedBarVisible, setFixedBarVisible] = useState(false);
   const pendingFocus = useRef<FocusTarget | null>(null);
@@ -563,6 +573,11 @@ export const LibraryExperience = ({
 
   const navigateToResults = useCallback(
     (href: string, focusTarget: FocusTarget = "results") => {
+      if (autoSearchTimer.current) {
+        clearTimeout(autoSearchTimer.current);
+        autoSearchTimer.current = null;
+      }
+      typedQuery.current = null;
       pendingFocus.current = focusTarget;
       router.push(href, { scroll: false });
     },
@@ -571,7 +586,14 @@ export const LibraryExperience = ({
 
   useEffect(() => {
     const next = valuesFromSearch(signature);
-    setDraft(next);
+    const typed = typedQuery.current;
+    if (typed !== null && typed.trim() !== next.q.trim()) {
+      // A busca automática ainda está atrás do que a pessoa digitou: mantém o texto.
+      setDraft({ ...next, q: typed });
+    } else {
+      typedQuery.current = null;
+      setDraft(next);
+    }
     const focusTarget = pendingFocus.current;
     pendingFocus.current = null;
     if (!focusTarget) {
@@ -605,6 +627,36 @@ export const LibraryExperience = ({
     return () => observer.disconnect();
   }, []);
 
+  useEffect(
+    () => () => {
+      if (autoSearchTimer.current) {
+        clearTimeout(autoSearchTimer.current);
+      }
+    },
+    []
+  );
+
+  const scheduleAutoSearch = (value: string) => {
+    typedQuery.current = value;
+    if (autoSearchTimer.current) {
+      clearTimeout(autoSearchTimer.current);
+    }
+    autoSearchTimer.current = setTimeout(() => {
+      autoSearchTimer.current = null;
+      const target = libraryAutoSearchTarget(value, appliedRef.current.q);
+      if (target === null) {
+        return;
+      }
+      // Troca a URL (sem empilhar histórico nem mover o foco) mantendo os
+      // resultados anteriores na tela até os novos chegarem.
+      startTransition(() => {
+        router.replace(makeHref({ ...appliedRef.current, q: target }), {
+          scroll: false,
+        });
+      });
+    }, LIBRARY_AUTO_SEARCH_DELAY_MS);
+  };
+
   const applyFilters = (
     next: LibraryFilterValues,
     focusTarget: FocusTarget
@@ -625,6 +677,9 @@ export const LibraryExperience = ({
       ...current,
       [name]: normalizedValue,
     }));
+    if (name === "q") {
+      scheduleAutoSearch(value);
+    }
   };
 
   const removeFilter = (name: FilterName) => {
