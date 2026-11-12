@@ -12,7 +12,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@repo/design-system/components/ui/sheet";
-import { ArrowLeftIcon, CheckIcon, CircleIcon, XIcon } from "lucide-react";
+import { ArrowLeftIcon, CheckIcon, InfoIcon, XIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
@@ -32,25 +32,131 @@ const hrefForQuestion = (
     ? `/exercicios/sessoes/${sessionId}/revisao/${question.position + 1}`
     : `/exercicios/sessoes/${sessionId}?questao=${encodeURIComponent(question.id)}`;
 
-const QuestionStatusIcon = ({
-  answer,
-  current,
-}: {
-  readonly answer: ExerciseNavigationQuestion["answer"];
-  readonly current: boolean;
-}) => {
-  if (answer?.isCorrect) {
-    return <CheckIcon aria-hidden="true" className="size-3.5" />;
+type QuestionState = "correct" | "current" | "incorrect" | "pending";
+
+const stateOf = (
+  question: ExerciseNavigationQuestion,
+  isCurrent: boolean
+): QuestionState => {
+  if (question.answer) {
+    return question.answer.isCorrect ? "correct" : "incorrect";
   }
-  if (answer && !answer.isCorrect) {
-    return <XIcon aria-hidden="true" className="size-3.5" />;
-  }
-  if (current) {
+  return isCurrent ? "current" : "pending";
+};
+
+const STATE_LABEL: Readonly<Record<QuestionState, string>> = {
+  correct: "correta",
+  current: "atual",
+  incorrect: "incorreta",
+  pending: "pendente",
+};
+
+const CELL_CLASS: Readonly<Record<QuestionState, string>> = {
+  correct: "border-success bg-success/10 text-success",
+  current: "border-2 border-primary bg-card text-primary",
+  incorrect: "border-destructive bg-destructive/10 text-destructive",
+  pending:
+    "border-dashed border-muted-foreground/40 bg-transparent font-normal text-muted-foreground hover:text-primary",
+};
+
+const SEGMENT_CLASS: Readonly<Record<QuestionState, string>> = {
+  correct: "bg-success",
+  current: "bg-primary",
+  incorrect: "bg-destructive",
+  pending: "bg-border",
+};
+
+const plural = (count: number, singular: string, pluralForm: string) =>
+  `${count} ${count === 1 ? singular : pluralForm}`;
+
+const QuestionStatusBadge = ({ state }: { readonly state: QuestionState }) => {
+  if (state === "correct") {
     return (
-      <span aria-hidden="true" className="size-2 rounded-full bg-primary" />
+      <span
+        aria-hidden="true"
+        className="absolute -top-1.5 -right-1.5 flex size-[18px] items-center justify-center rounded-full bg-success text-white"
+      >
+        <CheckIcon className="size-3" />
+      </span>
     );
   }
-  return <CircleIcon aria-hidden="true" className="size-3.5" />;
+  if (state === "incorrect") {
+    return (
+      <span
+        aria-hidden="true"
+        className="absolute -top-1.5 -right-1.5 flex size-[18px] items-center justify-center rounded-full bg-destructive text-white"
+      >
+        <XIcon className="size-3" />
+      </span>
+    );
+  }
+  return null;
+};
+
+const QuestionNavigationSummary = ({
+  currentQuestionId,
+  questions,
+}: {
+  readonly currentQuestionId: string;
+  readonly questions: readonly ExerciseNavigationQuestion[];
+}) => {
+  const states = questions.map((question) =>
+    stateOf(question, question.id === currentQuestionId)
+  );
+  const count = (state: QuestionState) =>
+    states.filter((value) => value === state).length;
+  const answered = count("correct") + count("incorrect");
+  const currentIndex = questions.findIndex(
+    (question) => question.id === currentQuestionId
+  );
+
+  return (
+    <div className="mt-4">
+      <div className="flex items-baseline justify-between gap-3 text-sm">
+        <p className="text-muted-foreground">
+          Questão{" "}
+          <span className="font-medium text-foreground">
+            {Math.max(currentIndex, 0) + 1}
+          </span>{" "}
+          de {questions.length}
+        </p>
+        <p className="text-muted-foreground text-xs">
+          {plural(answered, "respondida", "respondidas")}
+        </p>
+      </div>
+      <div aria-hidden="true" className="mt-2 flex gap-[3px]">
+        {states.map((state, index) => (
+          <span
+            className={`h-1 flex-1 rounded-full ${SEGMENT_CLASS[state]}`}
+            key={questions[index]?.id}
+          />
+        ))}
+      </div>
+      <ul
+        aria-label="Resumo das questões"
+        className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-muted-foreground text-xs"
+      >
+        <li className="inline-flex items-center gap-1.5">
+          <span aria-hidden="true" className="size-2 rounded-full bg-success" />
+          {plural(count("correct"), "correta", "corretas")}
+        </li>
+        <li className="inline-flex items-center gap-1.5">
+          <span
+            aria-hidden="true"
+            className="size-2 rounded-full bg-destructive"
+          />
+          {plural(count("incorrect"), "incorreta", "incorretas")}
+        </li>
+        <li className="inline-flex items-center gap-1.5">
+          <span
+            aria-hidden="true"
+            className="size-2 rounded-full bg-muted-foreground/50"
+          />
+          {plural(count("pending"), "pendente", "pendentes")}
+        </li>
+      </ul>
+    </div>
+  );
 };
 
 const QuestionNavigationGrid = ({
@@ -65,66 +171,33 @@ const QuestionNavigationGrid = ({
   readonly sessionId: string;
 }) => (
   <>
-    <ul
-      aria-label="Legenda de status"
-      className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-muted-foreground text-xs"
-    >
-      <li className="inline-flex items-center gap-1.5">
-        <CheckIcon aria-hidden="true" className="size-3.5 text-success" />
-        Correta
-      </li>
-      <li className="inline-flex items-center gap-1.5">
-        <XIcon aria-hidden="true" className="size-3.5 text-destructive" />
-        Incorreta
-      </li>
-      <li className="inline-flex items-center gap-1.5">
-        <span aria-hidden="true" className="size-3 border border-primary" />
-        Atual
-      </li>
-      <li className="inline-flex items-center gap-1.5">
-        <span
-          aria-hidden="true"
-          className="size-3 rounded-sm border bg-muted"
-        />
-        Pendente
-      </li>
-    </ul>
-    <ol className="mt-4 grid grid-cols-5 gap-2 md:grid-cols-5">
+    <QuestionNavigationSummary
+      currentQuestionId={currentQuestionId}
+      questions={questions}
+    />
+    <ol className="mt-5 grid grid-cols-5 gap-x-2.5 gap-y-3">
       {questions.map((question) => {
         const isCurrent = question.id === currentQuestionId;
-        let className = "border-border bg-muted/70 text-muted-foreground";
-        let status = "pendente";
-        if (question.answer) {
-          className = question.answer.isCorrect
-            ? "border-success bg-success/5 text-success"
-            : "border-destructive bg-destructive/5 text-destructive";
-          status = question.answer.isCorrect ? "correta" : "incorreta";
-        } else if (isCurrent) {
-          className = "border-2 border-primary bg-card text-primary";
-          status = "atual";
-        }
+        const state = stateOf(question, isCurrent);
         return (
           <li key={question.id}>
             <Link
               aria-current={isCurrent ? "step" : undefined}
-              aria-label={`Questão ${question.position + 1}, ${status}`}
-              className={`relative flex size-11 items-center justify-center rounded-md border font-mono font-semibold text-sm transition-colors hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${className}`}
+              aria-label={`Questão ${question.position + 1}, ${STATE_LABEL[state]}`}
+              className={`relative flex h-11 w-full items-center justify-center rounded-[10px] border font-mono font-semibold text-sm transition-colors hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${CELL_CLASS[state]}${isCurrent && question.answer ? "border-2" : ""}`}
               href={hrefForQuestion(sessionId, question)}
               onClick={onChoose}
             >
               {question.position + 1}
-              <QuestionStatusIcon
-                answer={question.answer}
-                current={isCurrent}
-              />
+              <QuestionStatusBadge state={state} />
             </Link>
           </li>
         );
       })}
     </ol>
-    <p className="mt-4 text-muted-foreground text-sm leading-6">
-      As questões pendentes seguem a ordem da lista. Toque numa questão
-      respondida para rever o gabarito.
+    <p className="mt-5 flex items-start gap-2 border-t pt-3.5 text-muted-foreground text-sm leading-5">
+      <InfoIcon aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+      Toque numa questão para abri-la. As respondidas mostram o gabarito.
     </p>
   </>
 );

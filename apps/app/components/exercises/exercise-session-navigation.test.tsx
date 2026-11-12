@@ -83,3 +83,24 @@ test("opens the mobile question navigator as a sheet", async () => {
     ).toBe("/exercicios/sessoes/session-1?questao=question-4")
   );
 });
+
+test("summarizes progress with counts instead of a symbol legend", async () => {
+  render(
+    <ExerciseQuestionNavigator
+      currentQuestionId="question-3"
+      questions={questions}
+      sessionId="session-1"
+    />
+  );
+
+  const [desktopTrigger] = screen.getAllByRole("button", { name: "Questões" });
+  fireEvent.click(desktopTrigger as HTMLButtonElement);
+
+  expect(await screen.findByText("de 4", { exact: false })).toBeDefined();
+  expect(screen.getByText("2 respondidas")).toBeDefined();
+  const summary = screen.getByRole("list", { name: "Resumo das questões" });
+  expect(summary.textContent).toContain("1 correta");
+  expect(summary.textContent).toContain("1 incorreta");
+  expect(summary.textContent).toContain("1 pendente");
+  expect(screen.queryByRole("list", { name: "Legenda de status" })).toBeNull();
+});
