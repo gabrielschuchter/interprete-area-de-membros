@@ -5,6 +5,7 @@ const { database } = vi.hoisted(() => ({
     exerciseSession: { findMany: vi.fn() },
     exerciseQuestionBookmark: { findMany: vi.fn(), count: vi.fn() },
     exerciseList: { findMany: vi.fn() },
+    exerciseCategory: { findMany: vi.fn(), findFirst: vi.fn() },
   },
 }));
 
@@ -24,6 +25,7 @@ import {
   getMemberExerciseHistory,
   getMemberExerciseHistoryPage,
   getMemberInProgressExerciseSessions,
+  getPublishedExerciseCategories,
   getPublishedExerciseLists,
 } from "./exercises";
 
@@ -36,41 +38,104 @@ describe("member exercise session queries", () => {
     database.exerciseList.findMany.mockResolvedValue([]);
   });
 
-  test("searches published question categories and topic tags", async () => {
-    await getPublishedExerciseLists(" Bioestatística ");
+  const baseList = {
+    id: "list-1",
+    title: "Lista de fundamentos",
+    slug: "fundamentos",
+    description: null,
+    coverUrl: null,
+    bank: { title: "Banco geral" },
+    _count: { items: 10 },
+  };
+
+  test("searches categories and tags ignoring accents and case", async () => {
+    database.exerciseList.findMany
+      .mockResolvedValueOnce([baseList])
+      .mockResolvedValueOnce([
+        {
+          id: "list-1",
+          items: [
+            {
+              question: {
+                category: { title: "Bioestatística" },
+                tags: ["intervalo de confiança"],
+              },
+            },
+          ],
+        },
+      ]);
+
+    const found = await getPublishedExerciseLists(" bioestatistica CONFIANCA ");
+
+    expect(found.map(({ id }) => id)).toEqual(["list-1"]);
+    expect(database.exerciseList.findMany).toHaveBeenLastCalledWith(
+      expect.objectContaining({ where: { id: { in: ["list-1"] } } })
+    );
+  });
+
+  test("drops lists where a search word appears nowhere", async () => {
+    database.exerciseList.findMany
+      .mockResolvedValueOnce([baseList])
+      .mockResolvedValueOnce([{ id: "list-1", items: [] }]);
+
+    expect(await getPublishedExerciseLists("coorte")).toEqual([]);
+  });
+
+  test("without a search it does not load questions", async () => {
+    database.exerciseList.findMany.mockResolvedValueOnce([baseList]);
+
+    expect(await getPublishedExerciseLists()).toEqual([baseList]);
+    expect(database.exerciseList.findMany).toHaveBeenCalledTimes(1);
+  });
+
+  test("filters by category name so duplicated categories group together", async () => {
+    database.exerciseCategory.findFirst.mockResolvedValue({
+      title: "Bioestatística",
+    });
+
+    await getPublishedExerciseLists(undefined, "bioestatistica-7627c60f");
 
     expect(database.exerciseList.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
-          OR: expect.arrayContaining([
-            {
-              items: {
-                some: {
-                  question: {
+          items: {
+            some: {
+              question: {
+                is: {
+                  status: "PUBLISHED",
+                  category: {
                     is: {
-                      status: "PUBLISHED",
-                      OR: [
-                        {
-                          category: {
-                            is: {
-                              title: {
-                                contains: "Bioestatística",
-                                mode: "insensitive",
-                              },
-                            },
-                          },
-                        },
-                        { tags: { has: "bioestatística" } },
-                      ],
+                      title: { equals: "Bioestatística", mode: "insensitive" },
                     },
                   },
                 },
               },
             },
-          ]),
+          },
         }),
       })
     );
+  });
+
+  test("an unknown category returns nothing without querying lists", async () => {
+    database.exerciseCategory.findFirst.mockResolvedValue(null);
+
+    expect(await getPublishedExerciseLists(undefined, "nao-existe")).toEqual(
+      []
+    );
+    expect(database.exerciseList.findMany).not.toHaveBeenCalled();
+  });
+
+  test("lists each category name once", async () => {
+    database.exerciseCategory.findMany.mockResolvedValue([
+      { id: "1", title: "Bioestatística", slug: "bioestatistica" },
+      { id: "2", title: "Bioestatística", slug: "bioestatistica-7627c60f" },
+      { id: "3", title: "Epidemiologia", slug: "epidemiologia" },
+    ]);
+
+    const categories = await getPublishedExerciseCategories();
+
+    expect(categories.map(({ id }) => id)).toEqual(["1", "3"]);
   });
 
   test("loads every in-progress session owned by the member for published lists", async () => {
