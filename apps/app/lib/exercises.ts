@@ -14,88 +14,60 @@ import {
   decodeExerciseHistoryCursor,
   encodeExerciseHistoryCursor,
 } from "./exercise-history-cursor";
+import {
+  dedupeExerciseCategories,
+  exerciseListSearchScore,
+  exerciseSearchTerms,
+} from "./exercise-search";
 
 const publishedListWhere = {
   status: ContentStatus.PUBLISHED,
   bank: { is: { status: ContentStatus.PUBLISHED } },
 } as const;
 
-export const getPublishedExerciseLists = (
+export const getPublishedExerciseLists = async (
   query?: string,
   categorySlug?: string
 ) => {
-  const normalizedQuery = query?.trim();
-  return database.exerciseList.findMany({
+  const terms = exerciseSearchTerms(query);
+  let categoryTitle: string | null = null;
+  if (categorySlug) {
+    // A mesma categoria pode existir em mais de um banco (ou duplicada no
+    // mesmo): filtra pelo nome, não por um slug específico.
+    const category = await database.exerciseCategory.findFirst({
+      where: {
+        slug: categorySlug,
+        bank: { is: { status: ContentStatus.PUBLISHED } },
+      },
+      select: { title: true },
+    });
+    if (!category) {
+      return [];
+    }
+    categoryTitle = category.title;
+  }
+  const lists = await database.exerciseList.findMany({
     where: {
       ...publishedListWhere,
-      ...(categorySlug
+      ...(categoryTitle
         ? {
             items: {
               some: {
                 question: {
                   is: {
                     status: ContentStatus.PUBLISHED,
-                    category: { is: { slug: categorySlug } },
-                  },
-                },
-              },
-            },
-          }
-        : {}),
-      ...(normalizedQuery
-        ? {
-            OR: [
-              {
-                title: {
-                  contains: normalizedQuery,
-                  mode: "insensitive" as const,
-                },
-              },
-              {
-                description: {
-                  contains: normalizedQuery,
-                  mode: "insensitive" as const,
-                },
-              },
-              {
-                bank: {
-                  is: {
-                    title: {
-                      contains: normalizedQuery,
-                      mode: "insensitive" as const,
-                    },
-                  },
-                },
-              },
-              {
-                items: {
-                  some: {
-                    question: {
+                    category: {
                       is: {
-                        status: ContentStatus.PUBLISHED,
-                        OR: [
-                          {
-                            category: {
-                              is: {
-                                title: {
-                                  contains: normalizedQuery,
-                                  mode: "insensitive" as const,
-                                },
-                              },
-                            },
-                          },
-                          {
-                            tags: {
-                              has: normalizedQuery.toLocaleLowerCase("pt-BR"),
-                            },
-                          },
-                        ],
+                        title: {
+                          equals: categoryTitle,
+                          mode: "insensitive" as const,
+                        },
                       },
                     },
                   },
                 },
               },
-            ],
+            },
           }
         : {}),
     },
@@ -117,23 +89,69 @@ export const getPublishedExerciseLists = (
       },
     },
   });
-};
+  if (terms.length === 0 || lists.length === 0) {
+    return lists;
+  }
 
-export const getPublishedExerciseCategories = async () =>
-  database.exerciseCategory.findMany({
-    where: {
-      bank: { is: { status: ContentStatus.PUBLISHED } },
-      questions: {
-        some: {
-          status: ContentStatus.PUBLISHED,
-          listItems: { some: { list: { is: publishedListWhere } } },
+  // O banco não ignora acentos (e não há extensão para isso), então a busca
+  // por texto é feita aqui, sobre as poucas listas já filtradas.
+  const withQuestions = await database.exerciseList.findMany({
+    where: { id: { in: lists.map(({ id }) => id) } },
+    select: {
+      id: true,
+      items: {
+        where: { question: { is: { status: ContentStatus.PUBLISHED } } },
+        select: {
+          question: {
+            select: { tags: true, category: { select: { title: true } } },
+          },
         },
       },
     },
-    orderBy: [{ position: "asc" }, { title: "asc" }],
-    take: 80,
-    select: { id: true, title: true, slug: true },
   });
+  const extrasByList = new Map(
+    withQuestions.map(({ id, items }) => [
+      id,
+      items.flatMap(({ question }) => [
+        ...(question.category ? [question.category.title] : []),
+        ...question.tags,
+      ]),
+    ])
+  );
+  return lists
+    .flatMap((list) => {
+      const score = exerciseListSearchScore(
+        {
+          bankTitle: list.bank.title,
+          description: list.description,
+          extras: extrasByList.get(list.id) ?? [],
+          title: list.title,
+        },
+        terms
+      );
+      return score === null ? [] : [{ list, score }];
+    })
+    .sort((left, right) => right.score - left.score)
+    .map(({ list }) => list);
+};
+
+export const getPublishedExerciseCategories = async () =>
+  dedupeExerciseCategories(
+    await database.exerciseCategory.findMany({
+      where: {
+        bank: { is: { status: ContentStatus.PUBLISHED } },
+        questions: {
+          some: {
+            status: ContentStatus.PUBLISHED,
+            listItems: { some: { list: { is: publishedListWhere } } },
+          },
+        },
+      },
+      orderBy: [{ position: "asc" }, { title: "asc" }],
+      take: 80,
+      select: { id: true, title: true, slug: true },
+    })
+  );
 
 export const getPublishedExerciseList = async (slug: string) =>
   database.exerciseList.findFirst({

@@ -1310,7 +1310,7 @@ export const createExercisePack = async (formData: FormData) => {
           data: {
             bankId: bank.id,
             title: categoryTitle,
-            slug: uniqueSlug(categoryTitle),
+            slug: slugBase(categoryTitle),
           },
           select: { id: true },
         })
