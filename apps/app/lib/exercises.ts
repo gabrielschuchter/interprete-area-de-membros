@@ -302,6 +302,38 @@ export const getMemberInProgressExerciseSessionForList = (
     },
   });
 
+/** Sessões de lista (em andamento ou concluídas) da pessoa nas listas dadas. */
+export const getMemberExerciseListSessions = (
+  memberId: string,
+  listIds: readonly string[]
+) =>
+  listIds.length === 0
+    ? Promise.resolve([])
+    : database.exerciseSession.findMany({
+        where: {
+          memberId,
+          kind: ExerciseSessionKind.LIST,
+          listId: { in: [...listIds] },
+          status: {
+            in: [
+              ExerciseSessionStatus.IN_PROGRESS,
+              ExerciseSessionStatus.COMPLETED,
+            ],
+          },
+        },
+        orderBy: { updatedAt: "desc" },
+        select: {
+          listId: true,
+          status: true,
+          questions: { select: { answer: { select: { id: true } } } },
+        },
+      });
+
+export const countMemberExerciseFavorites = (memberId: string) =>
+  database.exerciseQuestionBookmark.count({
+    where: { memberId, ...publishedExerciseFavoriteWhere },
+  });
+
 export const getMemberExerciseHistory = async (memberId: string) =>
   database.exerciseSession.findMany({
     where: {

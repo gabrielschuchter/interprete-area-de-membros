@@ -1,17 +1,24 @@
-import { Badge } from "@repo/design-system/components/ui/badge";
 import { Button } from "@repo/design-system/components/ui/button";
-import { Input } from "@repo/design-system/components/ui/input";
-import { ChevronDownIcon, SearchIcon } from "lucide-react";
+import {
+  BookmarkIcon,
+  ChevronRightIcon,
+  HistoryIcon,
+  PlayIcon,
+} from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { IntentLink } from "@/app/(authenticated)/components/intent-link";
 import { ExerciseEmptyIllustration } from "@/components/exercises/exercise-empty-illustration";
 import { ExerciseEyebrow } from "@/components/exercises/exercise-eyebrow";
-import { ExerciseListCover } from "@/components/exercises/exercise-list-cover";
+import { ExerciseListCard } from "@/components/exercises/exercise-list-card";
 import { ExerciseProgress } from "@/components/exercises/exercise-progress";
+import { ExerciseSearchControls } from "@/components/exercises/exercise-search-controls";
 import { scoreExerciseSession } from "@/lib/exercise-engine";
+import { summarizeExerciseListStates } from "@/lib/exercise-list-state";
 import {
+  countMemberExerciseFavorites,
   getMemberExerciseHistory,
+  getMemberExerciseListSessions,
   getMemberInProgressExerciseSessions,
   getPublishedExerciseCategories,
   getPublishedExerciseLists,
@@ -30,96 +37,74 @@ const historyDateFormatter = new Intl.DateTimeFormat("pt-BR", {
   day: "2-digit",
   month: "short",
   timeZone: "America/Sao_Paulo",
-  year: "numeric",
 });
+
+const scoreToneClass = (answered: number, percentage: number) => {
+  if (answered === 0) {
+    return "bg-muted text-muted-foreground";
+  }
+  if (percentage >= 70) {
+    return "bg-success/10 text-success";
+  }
+  if (percentage >= 50) {
+    return "bg-warning/10 text-warning";
+  }
+  return "bg-destructive/10 text-destructive";
+};
+
+const shortcutClass =
+  "inline-flex h-9 items-center gap-2 rounded-full border bg-card px-3.5 text-foreground text-sm transition-colors hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 const ExercisesPage = async ({ searchParams }: ExercisesPageProperties) => {
   const [memberId, filters] = await Promise.all([
     requireMemberId(),
     searchParams,
   ]);
-  const [lists, categories, inProgressSessions, history] = await Promise.all([
-    getPublishedExerciseLists(filters.q, filters.categoria),
-    getPublishedExerciseCategories(),
-    getMemberInProgressExerciseSessions(memberId),
-    getMemberExerciseHistory(memberId),
-  ]);
-  const recentSessions = history;
-  const selectedCategory = categories.find(
-    ({ slug }) => slug === filters.categoria
+  const [lists, categories, inProgressSessions, history, favoritesCount] =
+    await Promise.all([
+      getPublishedExerciseLists(filters.q, filters.categoria),
+      getPublishedExerciseCategories(),
+      getMemberInProgressExerciseSessions(memberId),
+      getMemberExerciseHistory(memberId),
+      countMemberExerciseFavorites(memberId),
+    ]);
+  const listStates = summarizeExerciseListStates(
+    await getMemberExerciseListSessions(
+      memberId,
+      lists.map(({ id }) => id)
+    )
   );
-  const isFiltering = Boolean(filters.q?.trim() || filters.categoria);
-  const categoryChipHref = filters.q?.trim()
-    ? `/exercicios?q=${encodeURIComponent(filters.q.trim())}`
-    : "/exercicios";
+  const query = filters.q?.trim() ?? "";
+  const isFiltering = Boolean(query || filters.categoria);
 
   return (
     <main className="mx-auto w-full max-w-[1080px] px-5 pt-5 pb-14 md:px-8 md:pt-8 md:pb-20 lg:px-12 lg:pt-12 lg:pb-[120px]">
-      <header className="flex max-w-[560px] flex-col gap-3 md:gap-3.5">
-        <ExerciseEyebrow>Prática · Revisão</ExerciseEyebrow>
-        <h1 className="m-0 font-display text-[40px] leading-[1.05] tracking-[-0.02em] md:text-5xl min-[1250px]:text-[3.5rem]">
-          Exercícios
-        </h1>
-        <p className="m-0 text-[15px] text-muted-foreground leading-[1.6] md:text-base">
-          Resolva questões em listas, acompanhe suas tentativas e retome seu
-          estudo entre dispositivos.
-        </p>
+      <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
+        <div className="flex flex-col gap-3">
+          <ExerciseEyebrow>Prática e revisão</ExerciseEyebrow>
+          <h1 className="m-0 font-display text-[40px] leading-[1.05] tracking-[-0.02em] md:text-5xl">
+            Exercícios
+          </h1>
+        </div>
+        <nav
+          aria-label="Atalhos de exercícios"
+          className="flex flex-wrap gap-2"
+        >
+          <Link className={shortcutClass} href="/exercicios/historico">
+            <HistoryIcon aria-hidden="true" className="size-4" />
+            Histórico
+          </Link>
+          <Link className={shortcutClass} href="/exercicios/favoritas">
+            <BookmarkIcon aria-hidden="true" className="size-4" />
+            Questões salvas
+            {favoritesCount > 0 && (
+              <span className="text-muted-foreground text-xs">
+                {favoritesCount}
+              </span>
+            )}
+          </Link>
+        </nav>
       </header>
-
-      <section aria-labelledby="exercise-search-title" className="mt-5 md:mt-8">
-        <h2 className="sr-only" id="exercise-search-title">
-          Buscar e filtrar exercícios
-        </h2>
-        <search className="block">
-          <form className="grid gap-2 md:grid-cols-[minmax(0,1fr)_220px_100px] md:gap-3">
-            <label className="relative" htmlFor="exercise-search-query">
-              <span className="sr-only">Buscar listas e temas</span>
-              <SearchIcon
-                aria-hidden="true"
-                className="absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground"
-              />
-              <Input
-                className="h-12 pl-10"
-                defaultValue={filters.q}
-                id="exercise-search-query"
-                name="q"
-                placeholder="Buscar listas, temas ou categorias"
-              />
-            </label>
-            <div className="flex gap-2 md:contents">
-              <label
-                className="relative flex-[1_1_auto]"
-                htmlFor="exercise-search-category"
-              >
-                <span className="sr-only">Categoria</span>
-                <select
-                  className={`h-12 w-full appearance-none rounded-md border bg-background py-0 pr-10 pl-3 text-sm ${filters.categoria ? "border-2 border-primary bg-primary/5" : "border-input"}`}
-                  defaultValue={filters.categoria ?? ""}
-                  id="exercise-search-category"
-                  name="categoria"
-                >
-                  <option value="">Todas as categorias</option>
-                  {categories.map((category) => (
-                    <option key={category.id} value={category.slug}>
-                      {category.title}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDownIcon
-                  aria-hidden="true"
-                  className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-muted-foreground"
-                />
-              </label>
-              <Button
-                className="h-12 flex-[1_1_auto] md:flex-none"
-                type="submit"
-              >
-                Buscar
-              </Button>
-            </div>
-          </form>
-        </search>
-      </section>
 
       {filters.estado === "lista-indisponivel" && (
         <p className="mt-5 rounded-md border border-destructive/40 bg-destructive/5 p-4 text-sm">
@@ -130,170 +115,91 @@ const ExercisesPage = async ({ searchParams }: ExercisesPageProperties) => {
       {inProgressSessions.length > 0 && (
         <section
           aria-labelledby="exercise-resume-title"
-          className="mt-10 md:mt-14"
+          className="mt-6 flex flex-col gap-3 md:mt-8"
         >
-          <ExerciseEyebrow>Seu percurso</ExerciseEyebrow>
-          <h2
-            className="mt-2 font-display text-2xl leading-[1.25] tracking-[-0.005em] md:mt-[10px] md:text-[28px]"
-            id="exercise-resume-title"
-          >
+          <h2 className="sr-only" id="exercise-resume-title">
             Continue de onde parou
           </h2>
-          <div className="mt-5 flex flex-col gap-4">
-            {inProgressSessions.map((session) => {
-              const href = `/exercicios/sessoes/${session.id}`;
+          {inProgressSessions.map((session) => {
+            const answered = session.questions.filter(
+              ({ answer }) => answer !== null
+            ).length;
 
-              return (
-                <article
-                  className="flex w-full max-w-none flex-col gap-3.5 rounded-lg border bg-card p-5 md:max-w-[610px] md:p-6"
-                  key={session.id}
-                >
+            return (
+              <article
+                className="flex flex-wrap items-center gap-x-6 gap-y-4 rounded-lg border border-l-[3px] border-l-primary bg-card p-4 md:px-5"
+                key={session.id}
+              >
+                <div className="flex min-w-0 flex-[1_1_260px] flex-col gap-2">
                   <p className="m-0 font-data font-medium text-[10.5px] text-primary uppercase leading-[1.3] tracking-[.1em]">
-                    Sessão em andamento
+                    Continue de onde parou
                   </p>
-                  <h3 className="font-display text-xl leading-[1.25] md:text-2xl">
+                  <h3 className="font-display text-xl leading-[1.25]">
                     {session.list.title}
                   </h3>
                   <ExerciseProgress
-                    captionPlacement="below"
                     className="mt-0"
                     questions={session.questions}
                     showAnswerStatus={false}
                   />
-                  <div>
-                    <Button
-                      asChild
-                      className="h-12 w-full md:w-auto"
-                      size="default"
-                    >
-                      <IntentLink href={href}>Retomar tentativa</IntentLink>
-                    </Button>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
+                  <p className="m-0 text-[12.5px] text-muted-foreground">
+                    {answered} de {session.questions.length} respondidas
+                  </p>
+                </div>
+                <Button asChild className="h-11 w-full md:w-auto">
+                  <IntentLink href={`/exercicios/sessoes/${session.id}`}>
+                    <PlayIcon aria-hidden="true" className="size-4" />
+                    Retomar
+                  </IntentLink>
+                </Button>
+              </article>
+            );
+          })}
         </section>
       )}
 
-      <section
-        aria-labelledby="exercise-lists-title"
-        className="mt-10 md:mt-12 min-[1250px]:mt-14"
-      >
-        <div className="flex flex-wrap items-end justify-between gap-x-5 gap-y-2">
-          <div className="flex flex-col gap-2 md:gap-[10px]">
-            <ExerciseEyebrow>Acervo ativo</ExerciseEyebrow>
-            <h2
-              className="font-display text-2xl leading-[1.25] tracking-[-0.005em] md:text-[28px]"
-              id="exercise-lists-title"
-            >
-              Listas para praticar
-            </h2>
-          </div>
-          <nav
-            aria-label="Atalhos de exercícios"
-            className="flex flex-wrap gap-x-6 gap-y-4 font-semibold text-brand-action-text text-sm md:gap-y-2"
+      <section aria-labelledby="exercise-lists-title" className="mt-8 md:mt-10">
+        <ExerciseSearchControls
+          categories={categories}
+          categorySlug={filters.categoria}
+          query={query}
+        />
+
+        <div className="mt-6 flex flex-wrap items-baseline justify-between gap-x-5 gap-y-1">
+          <h2
+            className="font-display text-2xl leading-[1.25] tracking-[-0.005em] md:text-[28px]"
+            id="exercise-lists-title"
           >
-            <Link
-              className="inline-flex min-h-11 items-center hover:underline"
-              href="/exercicios/historico"
-            >
-              Ver histórico recente
-            </Link>
-            <Link
-              className="inline-flex min-h-11 items-center hover:underline"
-              href="/exercicios/favoritas"
-            >
-              Questões salvas
-            </Link>
-          </nav>
-        </div>
-        {isFiltering && (
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            {selectedCategory && (
-              <span className="inline-flex min-h-9 items-center gap-2 rounded-md border border-primary bg-primary/5 px-3 text-primary text-sm">
-                Categoria: {selectedCategory.title}
-                <Link
-                  aria-label={`Remover filtro ${selectedCategory.title}`}
-                  className="grid size-7 place-items-center rounded-sm font-semibold hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  href={categoryChipHref}
-                >
-                  ×
-                </Link>
-              </span>
+            {isFiltering ? "Resultados" : "Listas para praticar"}
+          </h2>
+          <p className="m-0 flex items-baseline gap-4 text-muted-foreground text-xs">
+            {isFiltering && (
+              <Link
+                className="font-semibold text-brand-action-text text-sm hover:underline"
+                href="/exercicios"
+              >
+                Limpar filtros
+              </Link>
             )}
-            {filters.q?.trim() && (
-              <span className="inline-flex min-h-9 items-center gap-2 rounded-md border border-border bg-card px-3 text-sm">
-                Busca: {filters.q.trim()}
-              </span>
-            )}
-            <Link
-              className="px-2 font-semibold text-brand-action-text text-sm underline underline-offset-4"
-              href="/exercicios"
-            >
-              Limpar filtros
-            </Link>
-          </div>
-        )}
-        {(filters.q?.trim() || filters.categoria) && lists.length > 0 && (
-          <p className="mt-6 flex items-center justify-between border-b pb-3 text-sm">
-            <span className="font-display font-semibold text-2xl">
-              Resultados da busca
-            </span>
-            <span className="font-mono text-muted-foreground text-xs uppercase tracking-widest">
+            <span className="font-mono uppercase tracking-widest">
               {lists.length} {lists.length === 1 ? "lista" : "listas"}
             </span>
           </p>
-        )}
+        </div>
+
         {lists.length > 0 && (
-          <div className="mt-3 flex flex-col gap-4 md:mt-6 md:grid md:grid-cols-[repeat(auto-fill,minmax(260px,1fr))] md:gap-5">
+          <div className="mt-4 grid gap-3 md:grid-cols-[repeat(auto-fill,minmax(260px,1fr))] md:gap-4">
             {lists.map((list) => (
-              <article
-                className="flex flex-col overflow-hidden rounded-lg border bg-card"
+              <ExerciseListCard
                 key={list.id}
-              >
-                <ExerciseListCover
-                  bankTitle={list.bank.title}
-                  className="h-[104px] sm:h-28"
-                  coverUrl={list.coverUrl}
-                  listSlug={list.slug}
-                  title={list.title}
-                />
-                <div className="flex flex-1 flex-col gap-2.5 p-5">
-                  <p className="m-0 font-data font-medium text-[10.5px] text-muted-foreground uppercase leading-[1.4] tracking-[.08em]">
-                    {list.bank.title}
-                  </p>
-                  <h3 className="font-display text-xl leading-tight">
-                    <IntentLink
-                      className="text-foreground hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      href={`/exercicios/listas/${list.slug}`}
-                    >
-                      {list.title}
-                    </IntentLink>
-                  </h3>
-                  {list.description && (
-                    <p className="line-clamp-3 text-muted-foreground text-sm leading-[1.55]">
-                      {list.description}
-                    </p>
-                  )}
-                  <div className="mt-auto flex flex-wrap items-center justify-between gap-3 pt-2.5">
-                    <Badge variant="outline">
-                      {list._count.items}{" "}
-                      {list._count.items === 1 ? "questão" : "questões"}
-                    </Badge>
-                    <Button asChild className="h-11" size="default">
-                      <IntentLink href={`/exercicios/listas/${list.slug}`}>
-                        Abrir lista
-                      </IntentLink>
-                    </Button>
-                  </div>
-                </div>
-              </article>
+                list={list}
+                state={listStates.get(list.id)}
+              />
             ))}
           </div>
         )}
         {!lists.length && isFiltering && (
-          <div className="mt-7 flex max-w-[760px] flex-col items-center gap-5 rounded-lg border bg-card p-6 text-center md:flex-row md:p-8 md:text-left">
+          <div className="mt-6 flex max-w-[760px] flex-col items-center gap-5 rounded-lg border bg-card p-6 text-center md:flex-row md:p-8 md:text-left">
             <ExerciseEmptyIllustration />
             <div>
               <p className="brand-eyebrow">Nada encontrado</p>
@@ -312,9 +218,7 @@ const ExercisesPage = async ({ searchParams }: ExercisesPageProperties) => {
         )}
         {!(lists.length || isFiltering) && (
           <div className="mt-6 rounded-lg border border-dashed p-8 text-center">
-            <p className="font-medium">
-              Nenhuma lista publicada para este filtro.
-            </p>
+            <p className="font-medium">Nenhuma lista publicada ainda.</p>
             <p className="mt-2 text-muted-foreground text-sm">
               Aguarde novas listas do professor.
             </p>
@@ -324,19 +228,16 @@ const ExercisesPage = async ({ searchParams }: ExercisesPageProperties) => {
 
       <section
         aria-labelledby="history-title"
-        className="mt-10 md:mt-12 min-[1250px]:mt-14"
+        className="mt-10 md:mt-12"
         id="historico"
       >
-        <div className="flex flex-wrap items-end justify-between gap-x-5 gap-y-2">
-          <div className="flex flex-col gap-2 md:gap-[10px]">
-            <ExerciseEyebrow>Seu percurso</ExerciseEyebrow>
-            <h2
-              className="font-display text-2xl leading-[1.25] tracking-[-0.005em] md:text-[28px]"
-              id="history-title"
-            >
-              Histórico recente
-            </h2>
-          </div>
+        <div className="flex flex-wrap items-baseline justify-between gap-x-5 gap-y-1">
+          <h2
+            className="font-display text-2xl leading-[1.25] tracking-[-0.005em] md:text-[28px]"
+            id="history-title"
+          >
+            Últimas sessões
+          </h2>
           <Link
             className="inline-flex min-h-11 items-center font-semibold text-brand-action-text text-sm hover:underline"
             href="/exercicios/historico"
@@ -344,9 +245,9 @@ const ExercisesPage = async ({ searchParams }: ExercisesPageProperties) => {
             Ver tudo
           </Link>
         </div>
-        {recentSessions.length ? (
-          <div className="mt-3 border-foreground border-t">
-            {recentSessions.map((session) => {
+        {history.length ? (
+          <ul className="m-0 mt-1 list-none border-foreground border-t p-0">
+            {history.map((session) => {
               const score = scoreExerciseSession(
                 session.questions.flatMap(({ answer }) =>
                   answer ? [answer] : []
@@ -361,48 +262,43 @@ const ExercisesPage = async ({ searchParams }: ExercisesPageProperties) => {
                 isFavorite && question
                   ? `/exercicios/favoritas/${encodeURIComponent(question.questionVersion.question.id)}?sessao=${encodeURIComponent(session.id)}`
                   : `/exercicios/sessoes/${session.id}/resultado`;
+
               return (
-                <div
-                  className="flex flex-wrap items-center gap-x-6 gap-y-3 border-b py-5"
-                  key={session.id}
-                >
-                  <div className="flex min-w-0 flex-[1_1_240px] flex-col gap-1.5">
-                    <p className="m-0 font-data font-medium text-[10.5px] text-muted-foreground uppercase leading-[1.3] tracking-[.1em]">
+                <li className="border-b" key={session.id}>
+                  <Link
+                    className="flex items-center gap-3 px-1 py-3.5 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:gap-4"
+                    href={href}
+                  >
+                    <span className="w-14 shrink-0 font-mono text-muted-foreground text-xs uppercase">
                       {historyDateFormatter.format(
                         session.completedAt ?? session.startedAt
                       )}
-                    </p>
-                    <Link
-                      className="font-display font-semibold text-[19px] text-foreground leading-[1.3] hover:underline"
-                      href={href}
-                    >
-                      {title}
-                    </Link>
-                    {isFavorite && (
-                      <span className="font-data text-[10.5px] text-muted-foreground uppercase leading-[1.3] tracking-[.1em]">
-                        Questão salva · prática avulsa
+                    </span>
+                    <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                      <span className="line-clamp-1 text-[15px] text-foreground">
+                        {title}
                       </span>
-                    )}
-                    <p className="m-0 text-[13.5px] text-muted-foreground leading-[1.4]">
-                      {score.correct} de {score.answered} corretas (
-                      {score.percentage}%)
-                    </p>
-                  </div>
-                  <div className="w-[180px] max-w-full shrink-0">
-                    <ExerciseProgress
-                      className="mt-0"
-                      questions={session.questions}
+                      {isFavorite && (
+                        <span className="text-muted-foreground text-xs">
+                          Questão salva · prática avulsa
+                        </span>
+                      )}
+                    </span>
+                    <span
+                      className={`min-w-[52px] shrink-0 rounded-full px-2 py-1 text-center font-mono text-xs ${scoreToneClass(score.answered, score.percentage)}`}
+                      title={`${score.correct} de ${score.answered} corretas`}
+                    >
+                      {score.answered === 0 ? "—" : `${score.percentage}%`}
+                    </span>
+                    <ChevronRightIcon
+                      aria-hidden="true"
+                      className="size-4 shrink-0 text-muted-foreground"
                     />
-                  </div>
-                  <Button asChild className="h-11 px-[22px]" variant="outline">
-                    <Link href={href}>
-                      {isFavorite ? "Rever resposta" : "Ver resultado"}
-                    </Link>
-                  </Button>
-                </div>
+                  </Link>
+                </li>
               );
             })}
-          </div>
+          </ul>
         ) : (
           <p className="mt-3 text-[15px] text-muted-foreground leading-[1.6] md:mt-5">
             Suas sessões concluídas aparecerão aqui.
