@@ -24,6 +24,7 @@ import {
 import {
   CLICK_RANKING_MIN_ITEMS,
   CLICK_RANKING_MIN_READERS,
+  libraryLaunchPickIndex,
   libraryLaunchPickUrls,
 } from "./library-launch-picks";
 import { LIBRARY_PAGE_SIZE, pageLibraryRows } from "./library-pagination";
@@ -409,17 +410,19 @@ export const getMostAccessedLibraryItems = (memberId: string, limit = 12) =>
       where: { AND: [visible, { url: { in: [...libraryLaunchPickUrls] } }] },
       select: { ...mostAccessedSelect, url: true },
     });
-    const order = new Map(
-      libraryLaunchPickUrls.map((url, index) => [url, index])
-    );
-    const items = picks
-      .sort(
-        (left, right) =>
-          (order.get(left.url) ?? Number.MAX_SAFE_INTEGER) -
-          (order.get(right.url) ?? Number.MAX_SAFE_INTEGER)
-      )
+    // Um material por escolha, na ordem da seleção, mesmo que dois links
+    // conhecidos da mesma escolha existam ao mesmo tempo.
+    const byPick = new Map<number, (typeof picks)[number]>();
+    for (const pick of picks) {
+      const index = libraryLaunchPickIndex(pick.url);
+      if (index >= 0 && !byPick.has(index)) {
+        byPick.set(index, pick);
+      }
+    }
+    const items = [...byPick.entries()]
+      .sort(([left], [right]) => left - right)
       .slice(0, limit)
-      .map(({ url: _url, ...item }) => item);
+      .map(([, { url: _url, ...item }]) => item);
     return {
       source: "picks" as const,
       items: items.length >= MOST_ACCESSED_MIN_ITEMS ? items : [],
