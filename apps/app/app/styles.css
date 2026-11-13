@@ -5718,8 +5718,47 @@ article.community-selectable .community-select-box {
     infinite;
 }
 .library-marquee__viewport:hover .library-marquee__track,
-.library-marquee__viewport:focus-within .library-marquee__track {
+.library-marquee__viewport:focus-within .library-marquee__track,
+.library-marquee__viewport[data-state="paused"] .library-marquee__track {
   animation-play-state: paused;
+}
+.library-marquee__head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+  justify-content: space-between;
+}
+.library-marquee__controls {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.library-marquee__toggle {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 12px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: #8c1535;
+  cursor: pointer;
+  background: #fff;
+  border: 1px solid #e2d6d1;
+  border-radius: 999px;
+}
+.library-marquee__toggle:hover {
+  border-color: #8c1535;
+}
+.library-marquee__toggle:focus-visible {
+  outline: 2px solid #8c1535;
+  outline-offset: 2px;
+}
+.library-marquee__toggle svg {
+  width: 14px;
+  height: 14px;
 }
 .library-marquee__lane {
   display: flex;
@@ -5781,16 +5820,21 @@ article.community-selectable .community-select-box {
     height: 107px;
   }
 }
+/* Com "reduzir movimento", a esteira começa parada como uma faixa rolável;
+   o botão "Movimentar esteira" (data-state="playing") liga o laço mesmo assim. */
 @media (prefers-reduced-motion: reduce) {
-  .library-marquee__viewport {
+  .library-marquee__viewport:not([data-state="playing"]) {
     overflow-x: auto;
     mask-image: none;
   }
-  .library-marquee__track {
+  .library-marquee__viewport:not([data-state="playing"])
+    .library-marquee__track {
     animation: none;
   }
-  .library-marquee__lane[aria-hidden="true"],
-  .library-marquee__item[aria-hidden="true"] {
+  .library-marquee__viewport:not([data-state="playing"])
+    .library-marquee__lane[aria-hidden="true"],
+  .library-marquee__viewport:not([data-state="playing"])
+    .library-marquee__item[aria-hidden="true"] {
     display: none;
   }
   .library-marquee__link {
