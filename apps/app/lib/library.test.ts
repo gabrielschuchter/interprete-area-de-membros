@@ -44,7 +44,10 @@ import {
   getPublishedLibraryItem,
   getStaffLibraryItems,
 } from "./library";
-import { libraryLaunchPickUrls } from "./library-launch-picks";
+import {
+  libraryLaunchPicks,
+  libraryLaunchPickUrls,
+} from "./library-launch-picks";
 
 describe("library lesson access", () => {
   beforeEach(() => {
@@ -324,7 +327,9 @@ describe("materiais mais acessados", () => {
 
   test("na implantação mostra a seleção inicial, na ordem definida e só entre os visíveis", async () => {
     database.libraryItemView.groupBy.mockResolvedValue(ranking(["a", "b"]));
-    const [first, second, third, fourth] = libraryLaunchPickUrls;
+    const [first, second, third, fourth] = libraryLaunchPicks.map(
+      ({ urls }) => urls[0]
+    );
     database.libraryItem.findMany.mockResolvedValue([
       material("quarto", fourth),
       material("primeiro", first),
@@ -377,8 +382,31 @@ describe("materiais mais acessados", () => {
     });
   });
 
-  test("a seleção inicial tem dez URLs distintas", () => {
-    expect(libraryLaunchPickUrls).toHaveLength(10);
-    expect(new Set(libraryLaunchPickUrls).size).toBe(10);
+  test("dois links do mesmo material contam uma vez só", async () => {
+    database.libraryItemView.groupBy.mockResolvedValue([]);
+    const sackett = libraryLaunchPicks[0]?.urls ?? [];
+    database.libraryItem.findMany.mockResolvedValue([
+      material("sackett-pmc", sackett[1]),
+      material("sackett-bmj", sackett[0]),
+      ...libraryLaunchPicks
+        .slice(1, 4)
+        .map(({ urls }, index) => material(`outro-${index}`, urls[0])),
+    ]);
+
+    const result = await getMostAccessedLibraryItems("member-1");
+
+    expect(result.items.map(({ id }) => id)).toEqual([
+      "sackett-pmc",
+      "outro-0",
+      "outro-1",
+      "outro-2",
+    ]);
+  });
+
+  test("a seleção inicial tem dez escolhas, sem link repetido", () => {
+    expect(libraryLaunchPicks).toHaveLength(10);
+    expect(new Set(libraryLaunchPickUrls).size).toBe(
+      libraryLaunchPickUrls.length
+    );
   });
 });

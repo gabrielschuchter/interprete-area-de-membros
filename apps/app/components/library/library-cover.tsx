@@ -24,6 +24,8 @@ interface LibraryCoverProperties {
   readonly className?: string;
   readonly compact?: boolean;
   readonly coverUrl?: string | null;
+  /** "eager" para capas que entram em cena em movimento (esteira). */
+  readonly loading?: "eager" | "lazy";
   readonly title?: string;
 }
 
@@ -51,6 +53,7 @@ export const LibraryCover = ({
   className,
   compact = false,
   coverUrl,
+  loading = "lazy",
   title,
 }: LibraryCoverProperties) => (
   // These SVGs are local static artwork extracted from the approved handoff.
@@ -67,7 +70,7 @@ export const LibraryCover = ({
     )}
     decoding="async"
     height={compact ? 59 : 124}
-    loading="lazy"
+    loading={loading}
     referrerPolicy={coverUrl ? "no-referrer" : undefined}
     src={coverUrl || libraryCoverSource(category)}
     width={compact ? 44 : 92}

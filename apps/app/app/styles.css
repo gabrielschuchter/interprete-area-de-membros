@@ -5717,8 +5717,47 @@ article.community-selectable .community-select-box {
     infinite;
 }
 .library-marquee__viewport:hover .library-marquee__track,
-.library-marquee__viewport:focus-within .library-marquee__track {
+.library-marquee__viewport:focus-within .library-marquee__track,
+.library-marquee__viewport[data-state="paused"] .library-marquee__track {
   animation-play-state: paused;
+}
+.library-marquee__head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+  justify-content: space-between;
+}
+.library-marquee__controls {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.library-marquee__toggle {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 12px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: #8c1535;
+  cursor: pointer;
+  background: #fff;
+  border: 1px solid #e2d6d1;
+  border-radius: 999px;
+}
+.library-marquee__toggle:hover {
+  border-color: #8c1535;
+}
+.library-marquee__toggle:focus-visible {
+  outline: 2px solid #8c1535;
+  outline-offset: 2px;
+}
+.library-marquee__toggle svg {
+  width: 14px;
+  height: 14px;
 }
 .library-marquee__lane {
   display: flex;
