@@ -1,8 +1,7 @@
 import { TrendingUpIcon } from "lucide-react";
 import Link from "next/link";
-import type { CSSProperties } from "react";
 import { LibraryCover } from "@/components/library/library-cover";
-import { LibraryMarqueeFrame } from "@/components/library/library-marquee-frame";
+import { LibraryRail } from "@/components/library/library-rail";
 import { getMostAccessedLibraryItems } from "@/lib/library";
 
 const minLaneSlots = 10;
@@ -23,21 +22,21 @@ const Card = ({
   readonly hidden?: boolean;
   readonly item: MostAccessedItem;
 }) => (
-  <li aria-hidden={hidden || undefined} className="library-marquee__item">
+  <li aria-hidden={hidden || undefined} className="library-rail__item">
     <Link
-      className="library-marquee__link"
+      className="library-rail__link"
       href={`/biblioteca/${item.id}`}
       prefetch={false}
       tabIndex={hidden ? -1 : undefined}
     >
       <LibraryCover
         category={item.category}
-        className="library-marquee__cover"
+        className="library-rail__cover"
         compact
         coverUrl={item.coverUrl}
         loading="eager"
       />
-      <span className="library-marquee__title">{item.title}</span>
+      <span className="library-rail__title">{item.title}</span>
     </Link>
   </li>
 );
@@ -63,9 +62,9 @@ export const LibraryMostAccessed = async ({
   return (
     <section
       aria-labelledby="library-most-accessed-heading"
-      className="library-marquee mt-10 md:mt-12"
+      className="mt-10 md:mt-12"
     >
-      <LibraryMarqueeFrame
+      <LibraryRail
         caption={sourceCaption[source]}
         heading={
           <h2
@@ -80,26 +79,17 @@ export const LibraryMostAccessed = async ({
           </h2>
         }
       >
-        <div
-          className="library-marquee__track"
-          style={{ "--marquee-items": lane.length } as CSSProperties}
-        >
-          <ol className="library-marquee__lane">
-            {lane.map(({ item, round }) => (
-              <Card
-                hidden={round > 0}
-                item={item}
-                key={`${item.id}:${round}`}
-              />
-            ))}
-          </ol>
-          <ol aria-hidden="true" className="library-marquee__lane">
-            {lane.map(({ item, round }) => (
-              <Card hidden item={item} key={`${item.id}:${round}`} />
-            ))}
-          </ol>
-        </div>
-      </LibraryMarqueeFrame>
+        <ol className="library-rail__lane">
+          {lane.map(({ item, round }) => (
+            <Card hidden={round > 0} item={item} key={`${item.id}:${round}`} />
+          ))}
+        </ol>
+        <ol aria-hidden="true" className="library-rail__lane">
+          {lane.map(({ item, round }) => (
+            <Card hidden item={item} key={`${item.id}:${round}`} />
+          ))}
+        </ol>
+      </LibraryRail>
     </section>
   );
 };
