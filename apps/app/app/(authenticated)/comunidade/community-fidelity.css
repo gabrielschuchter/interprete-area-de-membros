@@ -1699,9 +1699,3 @@
     height: 6px;
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .cmc-chip,
-  .cmc-day__number {
-    transition: none;
-  }
-}

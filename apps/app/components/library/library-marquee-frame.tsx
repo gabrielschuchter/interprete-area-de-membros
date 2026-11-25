@@ -1,14 +1,11 @@
 "use client";
 
 import { PauseIcon, PlayIcon } from "lucide-react";
-import { type ReactNode, useEffect, useState } from "react";
-
-const reducedMotionQuery = "(prefers-reduced-motion: reduce)";
+import { type ReactNode, useState } from "react";
 
 /**
- * Controle da esteira. Por padrão ela anda; em aparelhos com "reduzir
- * movimento" começa parada, e o botão liga o movimento mesmo assim. Atende ao
- * critério de pausar conteúdo que se move sozinho (WCAG 2.2.2).
+ * Controle da esteira. Ela sempre começa andando, e o botão pausa e retoma o
+ * movimento (WCAG 2.2.2).
  */
 export const LibraryMarqueeFrame = ({
   caption,
@@ -19,18 +16,8 @@ export const LibraryMarqueeFrame = ({
   readonly children: ReactNode;
   readonly heading: ReactNode;
 }) => {
-  const [playing, setPlaying] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    setPlaying(
-      (current) => current ?? !window.matchMedia(reducedMotionQuery).matches
-    );
-  }, []);
-
-  let state: "paused" | "playing" | undefined;
-  if (playing !== null) {
-    state = playing ? "playing" : "paused";
-  }
+  const [playing, setPlaying] = useState(true);
+  const state = playing ? "playing" : "paused";
 
   return (
     <>
@@ -39,18 +26,18 @@ export const LibraryMarqueeFrame = ({
         <div className="library-marquee__controls">
           <p className="hidden text-[#7A5A69] text-xs md:block">{caption}</p>
           <button
-            aria-pressed={playing === false}
+            aria-pressed={!playing}
             className="library-marquee__toggle"
-            onClick={() => setPlaying((current) => !(current ?? true))}
+            onClick={() => setPlaying((current) => !current)}
             type="button"
           >
-            {playing === false ? (
+            {playing ? (
               <>
-                <PlayIcon aria-hidden="true" /> Movimentar esteira
+                <PauseIcon aria-hidden="true" /> Pausar esteira
               </>
             ) : (
               <>
-                <PauseIcon aria-hidden="true" /> Pausar esteira
+                <PlayIcon aria-hidden="true" /> Movimentar esteira
               </>
             )}
           </button>

@@ -5690,8 +5690,7 @@ article.community-selectable .community-select-box {
 
 /* Biblioteca (09/11): esteira contínua de materiais mais acessados.
    Duas faixas iguais em sequência; a animação desloca exatamente uma faixa,
-   então o laço não tem salto. Pausa no hover e no foco; sem animação para
-   quem pede menos movimento (vira rolagem horizontal). */
+   então o laço não tem salto. Pausa no hover e no foco. */
 @keyframes library-marquee-scroll {
   from {
     transform: translateX(0);
@@ -5818,26 +5817,5 @@ article.community-selectable .community-select-box {
   .library-marquee__cover.library-marquee__cover {
     width: 80px;
     height: 107px;
-  }
-}
-/* Com "reduzir movimento", a esteira começa parada como uma faixa rolável;
-   o botão "Movimentar esteira" (data-state="playing") liga o laço mesmo assim. */
-@media (prefers-reduced-motion: reduce) {
-  .library-marquee__viewport:not([data-state="playing"]) {
-    overflow-x: auto;
-    mask-image: none;
-  }
-  .library-marquee__viewport:not([data-state="playing"])
-    .library-marquee__track {
-    animation: none;
-  }
-  .library-marquee__viewport:not([data-state="playing"])
-    .library-marquee__lane[aria-hidden="true"],
-  .library-marquee__viewport:not([data-state="playing"])
-    .library-marquee__item[aria-hidden="true"] {
-    display: none;
-  }
-  .library-marquee__link {
-    transition: none;
   }
 }
