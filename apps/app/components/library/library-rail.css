@@ -1,0 +1,171 @@
+/* Biblioteca: esteira "Materiais mais acessados" (25/11).
+   O movimento é feito em JS (library-rail.tsx): a faixa anda sozinha,
+   freia sob o mouse e as setas passam ou voltam com aceleração e freada. */
+.library-rail__head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.library-rail__caption {
+  margin: 0;
+  font-size: 12px;
+  color: #7a5a69;
+}
+.library-rail {
+  position: relative;
+  margin-top: 16px;
+}
+.library-rail__viewport {
+  margin-bottom: -18px;
+  overflow: hidden;
+  touch-action: pan-y;
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 56px,
+    #000 calc(100% - 56px),
+    transparent
+  );
+}
+.library-rail__track {
+  display: flex;
+  width: max-content;
+  will-change: transform;
+}
+.library-rail__lane {
+  display: flex;
+  flex: none;
+  gap: 20px;
+  padding: 8px 20px 26px 0;
+  margin: 0;
+  list-style: none;
+}
+.library-rail__item {
+  flex: none;
+  width: 156px;
+}
+.library-rail__link {
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+  padding: 14px 12px 12px;
+  color: #40222f;
+  text-align: center;
+  text-decoration: none;
+  background: #fff;
+  border: 1px solid #e2d6d1;
+  border-radius: 10px;
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
+}
+.library-rail__link:hover {
+  border-color: #c9a9b4;
+  box-shadow: 0 10px 22px rgb(64 34 47 / 10%);
+  transform: translateY(-3px);
+}
+.library-rail__link:focus-visible {
+  outline: 2px solid #8c1535;
+  outline-offset: 2px;
+}
+.library-rail__cover.library-rail__cover {
+  width: 96px;
+  height: 128px;
+  border-radius: 3px;
+  box-shadow: 0 6px 14px rgb(64 34 47 / 14%);
+}
+.library-rail__title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  min-height: 2.7em;
+  overflow: hidden;
+  -webkit-line-clamp: 2;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+/* Setas: aparecem com fade ao passar o mouse na esteira; no toque ficam
+   sempre visíveis. */
+.library-rail__arrow {
+  position: absolute;
+  top: calc(50% - 9px);
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  color: #40222f;
+  cursor: pointer;
+  background: rgb(255 255 255 / 92%);
+  border: 1px solid #e2d6d1;
+  border-radius: 999px;
+  box-shadow: 0 8px 20px rgb(64 34 47 / 14%);
+  opacity: 0;
+  backdrop-filter: blur(6px);
+  transition:
+    opacity 260ms ease,
+    transform 260ms cubic-bezier(0.22, 0.8, 0.26, 1),
+    background-color 160ms ease,
+    color 160ms ease,
+    border-color 160ms ease;
+}
+.library-rail__arrow--prev {
+  left: 8px;
+  transform: translate(-6px, -50%);
+}
+.library-rail__arrow--next {
+  right: 8px;
+  transform: translate(6px, -50%);
+}
+.library-rail:hover .library-rail__arrow,
+.library-rail:focus-within .library-rail__arrow {
+  opacity: 1;
+  transform: translate(0, -50%);
+}
+.library-rail__arrow:hover {
+  color: #fff;
+  background: #8c1535;
+  border-color: #8c1535;
+}
+.library-rail__arrow:active {
+  transform: translate(0, -50%) scale(0.94);
+}
+.library-rail__arrow:focus-visible {
+  outline: 2px solid #8c1535;
+  outline-offset: 2px;
+  opacity: 1;
+}
+.library-rail__arrow svg {
+  width: 22px;
+  height: 22px;
+}
+@media (hover: none) {
+  .library-rail__arrow {
+    opacity: 1;
+    transform: translate(0, -50%);
+  }
+}
+@media (max-width: 767px) {
+  .library-rail__item {
+    width: 132px;
+  }
+  .library-rail__cover.library-rail__cover {
+    width: 80px;
+    height: 107px;
+  }
+  .library-rail__arrow {
+    width: 40px;
+    height: 40px;
+  }
+  .library-rail__arrow--prev {
+    left: 4px;
+  }
+  .library-rail__arrow--next {
+    right: 4px;
+  }
+}
