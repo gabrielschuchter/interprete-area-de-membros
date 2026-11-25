@@ -17,7 +17,7 @@ import {
   LibraryTitleTranslationToggle,
 } from "@/components/library/library-experience";
 import { getLibraryItems } from "@/lib/library";
-import { libraryCategoryGroup } from "@/lib/library-categories";
+import { libraryCategoryGroups } from "@/lib/library-categories";
 import {
   libraryAccessLabel,
   libraryDifficultyLabel,
@@ -77,7 +77,7 @@ const LibraryMaterialCard = ({
             </Badge>
             {item.category && (
               <span className="min-w-0 break-words font-data text-[#7A5A69] text-[10px] uppercase leading-[1.5] tracking-[.08em]">
-                {libraryCategoryGroup(item.category)}
+                {libraryCategoryGroups(item.category).join(" · ")}
               </span>
             )}
           </div>

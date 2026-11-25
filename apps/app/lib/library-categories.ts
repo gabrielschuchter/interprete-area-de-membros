@@ -1,9 +1,9 @@
 /**
- * Grandes grupos de categoria da Biblioteca. O banco guarda a categoria que a
- * equipe digitou em cada material; o aluno filtra por estes grupos, que juntam
- * sinônimos e duplicatas ("Evidence-Based Nutrition" e "Nutrição baseada em
- * evidências", "GRADE" e "Certeza da evidência e GRADE"). Categoria nova que
- * não esteja aqui aparece como grupo próprio até ser mapeada.
+ * Grupos de categoria da Biblioteca, na ordem em que aparecem para o aluno. O
+ * banco guarda a categoria que a equipe digitou em cada material; o aluno
+ * filtra por estes grupos, que juntam sinônimos antigos ("Evidence-Based
+ * Nutrition" e "Nutrição baseada em evidências"). Categoria nova que não
+ * esteja aqui aparece como grupo próprio até ser mapeada.
  */
 export const LIBRARY_CATEGORY_GROUPS = [
   {
@@ -12,6 +12,40 @@ export const LIBRARY_CATEGORY_GROUPS = [
       "Fundamentos da PBE",
       "Fundamentos de EBM",
       "Fundamentos e perguntas clínicas",
+    ],
+  },
+  {
+    label: "Busca da evidência",
+    aliases: ["Busca da evidência", "Busca bibliográfica"],
+  },
+  {
+    label: "Registros de protocolo",
+    aliases: ["Registros de protocolo", "Protocolos e registro"],
+  },
+  {
+    label: "Revisões sistemáticas",
+    aliases: ["Revisões sistemáticas", "Revisões sistemáticas e meta-análises"],
+  },
+  {
+    label: "Leitura crítica e certeza da evidência",
+    aliases: [
+      "Leitura crítica e certeza da evidência",
+      "Leitura crítica e risco de viés",
+      "Certeza da evidência e GRADE",
+      "GRADE",
+    ],
+  },
+  {
+    label: "Risco de viés",
+    aliases: ["Risco de viés"],
+  },
+  {
+    label: "Relato e ciência aberta",
+    aliases: [
+      "Relato e ciência aberta",
+      "Relato científico",
+      "Reporting guidelines",
+      "Ciência aberta e reprodutibilidade",
     ],
   },
   {
@@ -24,45 +58,55 @@ export const LIBRARY_CATEGORY_GROUPS = [
     ],
   },
   {
-    label: "Bioestatística e interpretação",
-    aliases: ["Bioestatística e interpretação", "Bioestatística"],
-  },
-  {
-    label: "Leitura crítica e certeza da evidência",
-    aliases: [
-      "Leitura crítica e certeza da evidência",
-      "Leitura crítica e risco de viés",
-      "Risco de viés",
-      "Certeza da evidência e GRADE",
-      "GRADE",
-    ],
-  },
-  {
-    label: "Revisões sistemáticas e busca",
-    aliases: [
-      "Revisões sistemáticas e busca",
-      "Revisões sistemáticas",
-      "Revisões sistemáticas e meta-análises",
-      "Busca bibliográfica",
-      "Protocolos e registro",
-    ],
-  },
-  {
-    label: "Relato e ciência aberta",
-    aliases: [
-      "Relato e ciência aberta",
-      "Relato científico",
-      "Reporting guidelines",
-      "Ciência aberta e reprodutibilidade",
-    ],
-  },
-  {
     label: "Diretrizes e decisão clínica",
     aliases: ["Diretrizes e decisão clínica"],
   },
   {
     label: "Nutrição baseada em evidências",
     aliases: ["Nutrição baseada em evidências", "Evidence-Based Nutrition"],
+  },
+  {
+    label: "Bioestatística e interpretação",
+    aliases: ["Bioestatística e interpretação", "Bioestatística"],
+  },
+] as const;
+
+/**
+ * Categorias gravadas que valem para mais de um grupo: o material aparece no
+ * filtro de cada grupo listado, na ordem dada (o primeiro é o principal).
+ */
+export const LIBRARY_COMBINED_CATEGORIES = [
+  {
+    label: "Revisões sistemáticas e busca",
+    members: ["Revisões sistemáticas", "Busca da evidência"],
+  },
+  {
+    label: "Fundamentos da PBE e busca",
+    members: ["Fundamentos da PBE", "Busca da evidência"],
+  },
+  {
+    label: "Leitura crítica e certeza da evidência e risco de viés",
+    members: ["Leitura crítica e certeza da evidência", "Risco de viés"],
+  },
+  {
+    label: "Leitura crítica e certeza da evidência e revisão sistemática",
+    members: [
+      "Leitura crítica e certeza da evidência",
+      "Revisões sistemáticas",
+    ],
+  },
+  {
+    label:
+      "Leitura crítica e certeza da evidência e risco de viés e revisão sistemática",
+    members: [
+      "Leitura crítica e certeza da evidência",
+      "Risco de viés",
+      "Revisões sistemáticas",
+    ],
+  },
+  {
+    label: "Revisões sistemáticas e risco de viés",
+    members: ["Revisões sistemáticas", "Risco de viés"],
   },
 ] as const;
 
@@ -79,16 +123,28 @@ const groupByAlias = new Map<string, string>(
   )
 );
 
-/** O grupo de uma categoria gravada; sem mapeamento, a própria categoria. */
+const membersByCombined = new Map<string, readonly string[]>(
+  LIBRARY_COMBINED_CATEGORIES.map(
+    ({ label, members }) => [normalize(label), members] as const
+  )
+);
+
+/** Todos os grupos de uma categoria gravada (vários, se for combinada). */
+export const libraryCategoryGroups = (category: string): readonly string[] =>
+  membersByCombined.get(normalize(category)) ?? [
+    groupByAlias.get(normalize(category)) ?? category.trim(),
+  ];
+
+/** O grupo principal de uma categoria gravada; sem mapeamento, ela mesma. */
 export const libraryCategoryGroup = (category: string) =>
-  groupByAlias.get(normalize(category)) ?? category.trim();
+  libraryCategoryGroups(category)[0] ?? category.trim();
 
 /**
  * Grupos presentes entre as categorias publicadas, na ordem editorial e sem
  * repetição. Grupos não mapeados vêm depois, em ordem alfabética.
  */
 export const libraryCategoryGroupsFor = (categories: readonly string[]) => {
-  const present = new Set(categories.map(libraryCategoryGroup));
+  const present = new Set(categories.flatMap(libraryCategoryGroups));
   const known = LIBRARY_CATEGORY_GROUPS.map(({ label }) => label).filter(
     (label) => present.has(label)
   );
@@ -105,17 +161,24 @@ export const libraryCategoriesInGroup = (
   categories: readonly string[]
 ) => {
   const target = libraryCategoryGroup(group);
-  return categories.filter(
-    (category) => libraryCategoryGroup(category) === target
+  return categories.filter((category) =>
+    libraryCategoryGroups(category).includes(target)
   );
 };
 
 /**
  * Valores para filtrar `category in (...)` sem consultar o banco antes: os
- * apelidos do grupo, ou a própria categoria quando ela não tem grupo.
+ * apelidos do grupo e as categorias combinadas que o incluem, ou a própria
+ * categoria quando ela não tem grupo.
  */
 export const libraryCategoryFilterValues = (selected: string) => {
   const group = libraryCategoryGroup(selected);
   const known = LIBRARY_CATEGORY_GROUPS.find(({ label }) => label === group);
-  return known ? [...known.aliases] : [selected.trim()];
+  if (!known) {
+    return [selected.trim()];
+  }
+  const combined = LIBRARY_COMBINED_CATEGORIES.filter(({ members }) =>
+    (members as readonly string[]).includes(group)
+  ).map(({ label }) => label);
+  return [...known.aliases, ...combined];
 };

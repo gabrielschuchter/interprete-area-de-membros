@@ -1,22 +1,28 @@
 import { cn } from "@repo/design-system/lib/utils";
+import { libraryCategoryGroup } from "@/lib/library-categories";
 
-const COVER_BY_CATEGORY: Readonly<Record<string, string>> = {
+const COVER_BY_GROUP: Readonly<Record<string, string>> = {
   "Bioestatística e interpretação": "/library/illustrations/biostatistics.svg",
-  "Busca bibliográfica": "/library/illustrations/literature-search.svg",
-  "Certeza da evidência e GRADE": "/library/illustrations/grade.svg",
+  "Busca da evidência": "/library/illustrations/literature-search.svg",
   "Diretrizes e decisão clínica":
     "/library/illustrations/clinical-guidelines.svg",
   "Epidemiologia e desenhos de estudo":
     "/library/illustrations/epidemiology.svg",
-  "Fundamentos e perguntas clínicas":
-    "/library/illustrations/pico-foundations.svg",
-  "Leitura crítica e risco de viés": "/library/illustrations/risk-of-bias.svg",
+  "Fundamentos da PBE": "/library/illustrations/pico-foundations.svg",
+  "Leitura crítica e certeza da evidência":
+    "/library/illustrations/risk-of-bias.svg",
   "Nutrição baseada em evidências":
     "/library/illustrations/nutrition-evidence.svg",
-  "Protocolos e registro": "/library/illustrations/protocols.svg",
-  "Relato científico": "/library/illustrations/scientific-report.svg",
-  "Revisões sistemáticas e meta-análises":
-    "/library/illustrations/systematic-reviews.svg",
+  "Registros de protocolo": "/library/illustrations/protocols.svg",
+  "Relato e ciência aberta": "/library/illustrations/scientific-report.svg",
+  "Revisões sistemáticas": "/library/illustrations/systematic-reviews.svg",
+  "Risco de viés": "/library/illustrations/risk-of-bias.svg",
+};
+
+/** Categorias antigas que tinham ilustração própria (GRADE). */
+const COVER_BY_LEGACY_CATEGORY: Readonly<Record<string, string>> = {
+  "Certeza da evidência e GRADE": "/library/illustrations/grade.svg",
+  GRADE: "/library/illustrations/grade.svg",
 };
 
 interface LibraryCoverProperties {
@@ -30,7 +36,9 @@ interface LibraryCoverProperties {
 }
 
 export const libraryCoverSource = (category: string | null) =>
-  (category && COVER_BY_CATEGORY[category]) ||
+  (category &&
+    (COVER_BY_LEGACY_CATEGORY[category] ??
+      COVER_BY_GROUP[libraryCategoryGroup(category)])) ||
   "/library/illustrations/open-book.svg";
 
 const libraryCoverAlt = (
