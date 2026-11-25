@@ -48,15 +48,14 @@ const LibraryLoading = () => (
       <header className="flex items-end justify-between gap-4">
         <div>
           <h2 className="font-display font-semibold text-2xl text-[#40222F] leading-tight md:text-[30px]">
-            Materiais para a mesa
+            Estantes da biblioteca
           </h2>
           <span aria-hidden="true" className="brand-rule mt-2" />
         </div>
         <Skeleton className="mb-1 h-3 w-16 bg-[#E2D6D1]" />
       </header>
       <p className="mt-3 max-w-4xl text-[#7A5A69] text-[13px] leading-[1.6] md:text-sm">
-        Relevância combina leitores únicos, aberturas repetidas e itens salvos;
-        a busca desempata por correspondência textual.
+        Em cada estante, os materiais mais recentes aparecem primeiro.
       </p>
       <LibraryResultsSkeleton />
     </section>

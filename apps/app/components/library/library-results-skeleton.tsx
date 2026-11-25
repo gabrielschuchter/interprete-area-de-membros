@@ -1,30 +1,33 @@
 import { Skeleton } from "@repo/design-system/components/ui/skeleton";
 
-const LibraryResultSkeletonCard = () => (
-  <article
+const BOOKS = [0, 1, 2, 3, 4, 5];
+
+const LibraryShelfSkeleton = () => (
+  <div
     aria-hidden="true"
-    className="flex min-h-[186px] min-w-0 gap-[14px] rounded-lg border border-[#E2D6D1] bg-white p-4 md:gap-5 md:p-5"
+    className="rounded-lg bg-[linear-gradient(100deg,#410230_0%,#5a0c2f_55%,#8C1535_100%)] pt-5"
   >
-    <Skeleton className="h-[98px] w-[72px] shrink-0 rounded-sm bg-[#E2D6D1] md:h-[146px] md:w-[108px] lg:h-[124px] lg:w-[92px]" />
-    <div className="flex min-w-0 flex-1 flex-col gap-3">
-      <Skeleton className="h-5 w-1/3 rounded-sm bg-[#E2D6D1]" />
-      <Skeleton className="h-4 w-2/3 rounded-sm bg-[#E2D6D1]" />
-      <Skeleton className="h-6 w-full rounded-sm bg-[#E2D6D1]" />
-      <Skeleton className="h-4 w-4/5 rounded-sm bg-[#E2D6D1]" />
-      <Skeleton className="mt-auto h-11 w-36 rounded-md bg-[#E2D6D1]" />
+    <Skeleton className="mx-4 h-6 w-56 rounded-sm bg-[#F1EBE8]/20 md:mx-6" />
+    <div className="relative mt-4 flex gap-5 overflow-hidden px-4 pb-4 md:px-6">
+      {BOOKS.map((index) => (
+        <Skeleton
+          className="h-[190px] w-[124px] shrink-0 rounded-[2px_6px_6px_2px] bg-[#F1EBE8]/15 md:h-[218px] md:w-[148px]"
+          key={index}
+        />
+      ))}
+      <span className="absolute inset-x-0 bottom-0 h-2 border-[#b98a6e] border-t-2 bg-[#3a0526]" />
     </div>
-  </article>
+  </div>
 );
 
 export const LibraryResultsSkeleton = () => (
   <output
     aria-busy="true"
     aria-label="Carregando materiais"
-    className="mt-5 grid grid-cols-[repeat(auto-fit,minmax(min(100%,440px),1fr))] gap-4"
+    className="mt-5 grid gap-5"
   >
     <span className="sr-only">Carregando materiais</span>
-    {[0, 1, 2, 3].map((index) => (
-      <LibraryResultSkeletonCard key={index} />
-    ))}
+    <LibraryShelfSkeleton />
+    <LibraryShelfSkeleton />
   </output>
 );

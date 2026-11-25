@@ -352,6 +352,85 @@ export const getLibraryItems = async ({
   };
 };
 
+/** Teto de materiais por consulta de estantes (o acervo cabe com folga). */
+const MAX_SHELF_ITEMS = 400;
+
+/**
+ * Todos os materiais que batem com a busca e os filtros, sem paginação, para
+ * a Biblioteca em estantes. Respeita o mesmo escopo de acesso da lista.
+ */
+export const getLibraryShelfItems = async ({
+  query,
+  kind,
+  category,
+  language,
+  difficulty,
+  sort = "recent",
+  memberId,
+}: Omit<LibraryFilters, "page">) => {
+  const { where } = buildLibraryWhere({
+    category,
+    difficulty,
+    kind,
+    language,
+    query,
+  });
+  const scope = await getLearningAccessScope(memberId);
+  const rows = await tracePerformance("member.library.shelf-items", () =>
+    database.libraryItem.findMany({
+      where: { AND: [where, buildLibraryItemAccessWhere(scope)] },
+      orderBy:
+        sort === "relevant"
+          ? [
+              { views: { _count: "desc" } },
+              { bookmarks: { _count: "desc" } },
+              { createdAt: "desc" },
+            ]
+          : [{ createdAt: "desc" }, { id: "desc" }],
+      take: MAX_SHELF_ITEMS,
+      select: {
+        id: true,
+        title: true,
+        titlePt: true,
+        description: true,
+        coverUrl: true,
+        kind: true,
+        category: true,
+        tags: true,
+        authors: true,
+        year: true,
+        language: true,
+        difficulty: true,
+        accessType: true,
+        version: true,
+        lesson: {
+          select: {
+            id: true,
+            status: true,
+            moduleId: true,
+            module: {
+              select: {
+                status: true,
+                courseId: true,
+                course: { select: { status: true } },
+              },
+            },
+          },
+        },
+        bookmarks: { where: { memberId }, select: { id: true } },
+      },
+    })
+  );
+  return rows
+    .filter(
+      (row) => !row.lesson || hasLinkedLessonAccess(row.id, row.lesson, scope)
+    )
+    .map(({ bookmarks, lesson: _lesson, ...row }) => ({
+      ...row,
+      isBookmarked: bookmarks.length > 0,
+    }));
+};
+
 /** Mínimo de materiais para a esteira de mais acessados aparecer. */
 export const MOST_ACCESSED_MIN_ITEMS = 4;
 

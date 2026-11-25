@@ -11,8 +11,6 @@ import { Input } from "@repo/design-system/components/ui/input";
 import { useSidebar } from "@repo/design-system/components/ui/sidebar";
 import { cn } from "@repo/design-system/lib/utils";
 import {
-  ArrowLeftIcon,
-  ArrowRightIcon,
   ArrowUpIcon,
   LanguagesIcon,
   SearchIcon,
@@ -986,70 +984,15 @@ const BackToTop = ({ visible }: { readonly visible: boolean }) => {
   );
 };
 
-export const LibraryPagination = ({
-  currentPage,
-  hasMore,
-  filters,
-}: {
-  readonly currentPage: number;
-  readonly hasMore: boolean;
-  readonly filters: LibraryFilterValues;
-}) => {
-  const navigate = useLibraryNavigation();
-  if (currentPage <= 1 && !hasMore) {
-    return null;
-  }
-  const hrefForPage = (page: number) => {
-    const params = new URLSearchParams(makeHref(filters).split("?")[1] ?? "");
-    params.set("page", String(page));
-    return `/biblioteca?${params.toString()}`;
-  };
-  return (
-    <nav
-      aria-label="Paginação da biblioteca"
-      className="mt-8 flex flex-wrap items-center justify-between gap-3"
-    >
-      {currentPage > 1 ? (
-        <Button
-          className="h-11 border-2 border-[#8C1535] bg-transparent text-[#8C1535]"
-          onClick={() => navigate(hrefForPage(currentPage - 1))}
-          variant="outline"
-        >
-          <ArrowLeftIcon aria-hidden="true" /> Página anterior
-        </Button>
-      ) : null}
-      {hasMore && (
-        <Button
-          className="ml-auto h-11 border-2 border-[#8C1535] bg-transparent text-[#8C1535] max-md:w-full"
-          onClick={() => navigate(hrefForPage(currentPage + 1))}
-          variant="outline"
-        >
-          <ArrowRightIcon aria-hidden="true" /> Próxima página
-        </Button>
-      )}
-    </nav>
-  );
-};
-
 export const LibraryTitleTranslationToggle = ({
-  currentPage,
   filters,
 }: {
-  readonly currentPage: number;
   readonly filters: LibraryFilterValues;
 }) => {
   const navigate = useLibraryNavigation();
   const active = filters.titulos === "pt";
-  const hrefForToggle = () => {
-    const params = new URLSearchParams(
-      makeHref({ ...filters, titulos: active ? "" : "pt" }).split("?")[1] ?? ""
-    );
-    if (currentPage > 1) {
-      params.set("page", String(currentPage));
-    }
-    const query = params.toString();
-    return query ? `/biblioteca?${query}` : "/biblioteca";
-  };
+  const hrefForToggle = () =>
+    makeHref({ ...filters, titulos: active ? "" : "pt" });
   return (
     <Button
       aria-pressed={active}

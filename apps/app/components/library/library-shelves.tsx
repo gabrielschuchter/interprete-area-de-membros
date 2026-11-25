@@ -1,0 +1,521 @@
+"use client";
+
+import { Badge } from "@repo/design-system/components/ui/badge";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@repo/design-system/components/ui/dialog";
+import { cn } from "@repo/design-system/lib/utils";
+import {
+  ArrowUpRightIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  XIcon,
+} from "lucide-react";
+import Link from "next/link";
+import { useRef, useState } from "react";
+import { LibraryBookmarkButton } from "@/components/library/library-bookmark-button";
+import { libraryCategoryGroups } from "@/lib/library-categories";
+import {
+  libraryAccessLabel,
+  libraryDifficultyLabel,
+  libraryLanguageLabel,
+} from "@/lib/library-presentation";
+import {
+  type LibraryShelf,
+  type LibraryShelfItem,
+  libraryCoverPalette,
+  libraryCoverTitleSize,
+  libraryDisplayTitle,
+  libraryShortAuthors,
+} from "@/lib/library-shelves";
+
+const KIND_LABEL = {
+  ARTICLE: "Artigo",
+  GUIDE: "Guia",
+  LINK: "Link",
+  PDF: "PDF",
+  VIDEO: "Vídeo",
+} as const;
+
+const SCROLL_SHARE = 0.8;
+const MAX_SAME_SHELF = 4;
+
+const kicker = (item: LibraryShelfItem) =>
+  [KIND_LABEL[item.kind], item.year].filter(Boolean).join(" · ");
+
+/**
+ * Capa do livro. O título vem impresso nela; capas ilustradas cadastradas
+ * (coverUrl) mantêm a ilustração e ganham uma faixa com o título.
+ */
+const BookCover = ({
+  className,
+  item,
+  large = false,
+  mini = false,
+  title,
+}: {
+  readonly className?: string;
+  readonly item: LibraryShelfItem;
+  readonly large?: boolean;
+  readonly mini?: boolean;
+  readonly title: string;
+}) => {
+  const palette = libraryCoverPalette(item.id);
+  const size = libraryCoverTitleSize(title, large);
+  const short = libraryShortAuthors(item.authors);
+
+  if (mini && !item.coverUrl) {
+    return (
+      <span
+        className={cn(
+          "relative block overflow-hidden rounded-[2px_4px_4px_2px]",
+          className
+        )}
+        style={{ background: palette.background, color: palette.foreground }}
+      >
+        <span
+          aria-hidden="true"
+          className="absolute inset-y-0 left-0 w-[5px]"
+          style={{ background: palette.spine }}
+        />
+        <span className="absolute inset-y-2 right-1.5 left-2.5 flex items-center text-left font-display font-semibold text-[10px] leading-[1.12]">
+          <span className="line-clamp-6">{title}</span>
+        </span>
+      </span>
+    );
+  }
+
+  if (item.coverUrl) {
+    return (
+      <span
+        className={cn(
+          "relative block overflow-hidden rounded-[2px_6px_6px_2px] bg-[#410230]",
+          className
+        )}
+      >
+        {/* biome-ignore lint/performance/noImgElement: capa cadastrada pela equipe, de origem variada. */}
+        <img
+          alt=""
+          className="size-full object-cover"
+          decoding="async"
+          height={720}
+          loading="lazy"
+          referrerPolicy="no-referrer"
+          src={item.coverUrl}
+          width={540}
+        />
+        <span
+          className="absolute inset-x-0 bottom-0 bg-[#410230]/90 px-3 pt-2 pb-3 text-left font-display font-semibold text-[#F1EBE8] leading-[1.15]"
+          style={{ fontSize: Math.min(size, 15) }}
+        >
+          <span className="line-clamp-3">{title}</span>
+        </span>
+      </span>
+    );
+  }
+
+  return (
+    <span
+      className={cn(
+        "relative block overflow-hidden rounded-[2px_6px_6px_2px]",
+        className
+      )}
+      style={{
+        background: palette.background,
+        color: palette.foreground,
+      }}
+    >
+      <span
+        aria-hidden="true"
+        className={cn(
+          "absolute inset-y-0 left-0",
+          large ? "w-3.5" : "w-2.5 max-md:w-2"
+        )}
+        style={{ background: palette.spine }}
+      />
+      <span
+        className={cn(
+          "absolute font-data uppercase opacity-85",
+          large
+            ? "top-5 right-4 left-7 text-[10px] tracking-[.16em]"
+            : "top-3.5 right-3 left-5 text-[9px] tracking-[.14em] max-md:top-3 max-md:left-4 max-md:text-[8.5px]"
+        )}
+      >
+        {kicker(item)}
+      </span>
+      <span
+        className={cn(
+          "absolute flex items-center text-left font-display font-semibold leading-[1.12] tracking-[-.01em]",
+          large
+            ? "top-[52px] right-4 bottom-14 left-7"
+            : "top-10 right-3 bottom-11 left-5 max-md:top-9 max-md:left-4"
+        )}
+        style={{ fontSize: size }}
+      >
+        <span className={large ? "line-clamp-8" : "line-clamp-6"}>{title}</span>
+      </span>
+      <span
+        className={cn(
+          "absolute flex items-center gap-1.5",
+          large
+            ? "right-4 bottom-5 left-7"
+            : "right-3 bottom-3.5 left-5 max-md:left-4"
+        )}
+      >
+        <span
+          aria-hidden="true"
+          className="size-1.5 shrink-0 rotate-45"
+          style={{ background: palette.ornament }}
+        />
+        <span
+          className={cn(
+            "min-w-0 truncate font-data tracking-[.06em]",
+            large ? "text-[10px]" : "text-[9px]"
+          )}
+        >
+          {short}
+        </span>
+      </span>
+    </span>
+  );
+};
+
+const SavedRibbon = () => (
+  <span
+    aria-hidden="true"
+    className="absolute top-0 right-2.5 z-10 h-[22px] w-3 bg-[#D62839] [clip-path:polygon(0_0,100%_0,100%_100%,50%_74%,0_100%)]"
+  />
+);
+
+const Shelf = ({
+  isSaved,
+  onOpen,
+  shelf,
+  translateTitles,
+}: {
+  readonly isSaved: (item: LibraryShelfItem) => boolean;
+  readonly onOpen: (shelfId: string, itemId: string) => void;
+  readonly shelf: LibraryShelf;
+  readonly translateTitles: boolean;
+}) => {
+  const [expanded, setExpanded] = useState(false);
+  const railRef = useRef<HTMLUListElement>(null);
+  const headingId = `${shelf.id}-titulo`;
+  const count = shelf.items.length;
+
+  const scroll = (direction: 1 | -1) => {
+    const rail = railRef.current;
+    if (rail) {
+      rail.scrollBy({
+        behavior: "smooth",
+        left: direction * rail.clientWidth * SCROLL_SHARE,
+      });
+    }
+  };
+
+  return (
+    <section
+      aria-labelledby={headingId}
+      className="relative mt-5 scroll-mt-24 overflow-hidden rounded-lg bg-[linear-gradient(100deg,#410230_0%,#5a0c2f_55%,#8C1535_100%)] text-[#F1EBE8] md:min-h-[270px]"
+      id={shelf.id}
+    >
+      {/* Arte decorativa da estante: imagem estática local, carregada sob demanda. */}
+      {/* biome-ignore lint/performance/noImgElement: arte estática local, sem otimizador. */}
+      <img
+        alt=""
+        aria-hidden="true"
+        className="pointer-events-none absolute top-0 right-2 h-[84px] w-auto opacity-90 md:top-auto md:right-3 md:bottom-0 md:h-full md:max-h-[300px]"
+        decoding="async"
+        height={896}
+        loading="lazy"
+        src={shelf.art}
+        width={600}
+      />
+      <div className="relative min-w-0 pt-5 md:pr-[230px]">
+        <div className="flex flex-wrap items-baseline gap-x-3.5 gap-y-0 px-4 max-md:pr-[120px] md:px-6">
+          <h2
+            className="font-display font-semibold text-[19px] leading-[1.15] tracking-[-.01em] md:text-2xl"
+            id={headingId}
+          >
+            {shelf.label}
+          </h2>
+          <span className="font-data text-[#dcd0cf] text-[11px] md:text-xs">
+            {count === 1 ? "1 item" : `${count} itens`}
+          </span>
+          {count > 4 && (
+            <button
+              aria-expanded={expanded}
+              className="min-h-11 font-data text-[#F1EBE8] text-[11px] underline underline-offset-[3px] focus-visible:outline-2 focus-visible:outline-[#F1EBE8] focus-visible:outline-offset-2 md:text-xs"
+              onClick={() => setExpanded((open) => !open)}
+              type="button"
+            >
+              {expanded ? "recolher ↑" : "ver todos →"}
+            </button>
+          )}
+        </div>
+        <div className="group/rail relative mt-1.5">
+          {!expanded && (
+            <>
+              <button
+                aria-label={`Voltar em ${shelf.label}`}
+                className="absolute top-24 left-2.5 z-10 hidden size-11 items-center justify-center rounded-full bg-[#F1EBE8] text-[#410230] opacity-0 transition-opacity hover:bg-[#EBD3D7] focus-visible:opacity-100 group-hover/rail:opacity-100 md:flex"
+                onClick={() => scroll(-1)}
+                type="button"
+              >
+                <ChevronLeftIcon aria-hidden="true" className="size-5" />
+              </button>
+              <button
+                aria-label={`Avançar em ${shelf.label}`}
+                className="absolute top-24 right-2.5 z-10 hidden size-11 items-center justify-center rounded-full bg-[#F1EBE8] text-[#410230] opacity-0 transition-opacity hover:bg-[#EBD3D7] focus-visible:opacity-100 group-hover/rail:opacity-100 md:flex"
+                onClick={() => scroll(1)}
+                type="button"
+              >
+                <ChevronRightIcon aria-hidden="true" className="size-5" />
+              </button>
+            </>
+          )}
+          <ul
+            className={cn(
+              "flex px-2 pt-1.5 md:px-3.5",
+              expanded
+                ? "flex-wrap"
+                : "snap-x snap-proximity overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            )}
+            ref={railRef}
+          >
+            {shelf.items.map((item) => {
+              const title = libraryDisplayTitle(item, translateTitles);
+              return (
+                <li className="snap-start" key={item.id}>
+                  <button
+                    aria-label={`${title}, ${KIND_LABEL[item.kind]}${item.year ? `, ${item.year}` : ""}`}
+                    className="group/tile relative flex h-[212px] w-[140px] flex-col justify-end px-2 pb-2 after:absolute after:inset-x-0 after:bottom-0 after:h-2 after:border-[#b98a6e] after:border-t-2 after:bg-[#3a0526] after:content-[''] focus-visible:outline-2 focus-visible:outline-[#F1EBE8] focus-visible:-outline-offset-2 md:h-[244px] md:w-[168px] md:px-2.5 md:pb-2.5 md:after:h-2.5"
+                    onClick={() => onOpen(shelf.id, item.id)}
+                    type="button"
+                  >
+                    <BookCover
+                      className="h-[190px] w-full transition-transform duration-[120ms] ease-[cubic-bezier(.2,0,0,1)] group-hover/tile:-translate-y-3 group-hover/tile:-rotate-[1.5deg] group-focus-visible/tile:-translate-y-3 group-focus-visible/tile:-rotate-[1.5deg] motion-reduce:transition-none md:h-[218px]"
+                      item={item}
+                      title={title}
+                    />
+                    {isSaved(item) && <SavedRibbon />}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      </div>
+    </section>
+  );
+};
+
+const ItemDetails = ({
+  item,
+  onSavedChange,
+  onSelect,
+  siblings,
+  translateTitles,
+}: {
+  readonly item: LibraryShelfItem;
+  readonly onSavedChange: (saved: boolean) => void;
+  readonly onSelect: (itemId: string) => void;
+  readonly siblings: readonly LibraryShelfItem[];
+  readonly translateTitles: boolean;
+}) => {
+  const title = libraryDisplayTitle(item, translateTitles);
+  const translated = title !== item.title;
+  const source = [item.year, item.authors].filter(Boolean).join(" · ");
+
+  return (
+    <>
+      <div className="flex flex-col gap-5 md:flex-row md:gap-8">
+        <BookCover
+          className="h-[156px] w-[112px] shrink-0 md:h-[308px] md:w-[220px]"
+          item={item}
+          large
+          title={title}
+        />
+        <div className="flex min-w-0 flex-1 flex-col gap-3 md:pr-6">
+          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
+            <Badge className="h-6 rounded border border-[#E2D6D1] bg-white px-2 font-semibold text-[#8C1535] text-xs">
+              {KIND_LABEL[item.kind]}
+            </Badge>
+            {item.category && (
+              <span className="font-data text-[#7A5A69] text-[10px] uppercase leading-[1.5] tracking-[.14em]">
+                {libraryCategoryGroups(item.category).join(" · ")}
+              </span>
+            )}
+          </div>
+          {source && <p className="text-[#7A5A69] text-xs">{source}</p>}
+          <DialogTitle
+            className="font-display font-semibold text-[#410230] text-[22px] leading-[1.15] tracking-[-.01em] md:text-[28px]"
+            lang={translated ? "pt-BR" : undefined}
+          >
+            {title}
+          </DialogTitle>
+          <DialogDescription className="text-[#643151] text-sm leading-[1.55] md:text-base">
+            {item.description || "Material da curadoria do Interprete."}
+          </DialogDescription>
+          <p className="font-data text-[#40222F] text-xs">
+            {libraryLanguageLabel(item.language)} ·{" "}
+            {libraryDifficultyLabel(item.difficulty)}
+            {item.accessType ? ` · ${libraryAccessLabel(item.accessType)}` : ""}
+          </p>
+          {item.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {item.tags.map((tag) => (
+                <span
+                  className="rounded-sm bg-[#e7dedc] px-2 py-1 font-data text-[#40222F] text-xs"
+                  key={tag}
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
+          <div className="mt-auto flex flex-wrap items-center gap-x-5 gap-y-2 pt-2">
+            <a
+              aria-label={`Abrir material: ${title}, em nova aba`}
+              className="inline-flex h-12 items-center justify-center gap-2 rounded-md border-2 border-[#8C1535] bg-[#8C1535] px-5 font-semibold text-sm text-white transition-colors hover:bg-[#6f102b] focus-visible:outline-2 focus-visible:outline-[#8C1535] focus-visible:outline-offset-2 max-md:flex-1"
+              href={`/biblioteca/abrir/${item.id}`}
+              rel="noopener noreferrer"
+              target="_blank"
+              title="Abre em nova aba"
+            >
+              Abrir material
+              <ArrowUpRightIcon aria-hidden="true" className="size-4" />
+            </a>
+            <LibraryBookmarkButton
+              initialSaved={item.isBookmarked}
+              key={item.id}
+              onSavedChange={onSavedChange}
+              targetId={item.id}
+              targetType="LIBRARY_ITEM"
+            />
+            <Link
+              className="min-h-11 content-center font-semibold text-[#8C1535] text-sm underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-[#8C1535] focus-visible:outline-offset-2"
+              href={`/biblioteca/${item.id}`}
+              prefetch={false}
+            >
+              Ver página do material
+            </Link>
+          </div>
+        </div>
+      </div>
+      {siblings.length > 0 && (
+        <div className="mt-6 flex flex-wrap items-end gap-4 border-[#E2D6D1] border-t pt-5">
+          <span className="self-center font-data text-[#7A5A69] text-[11px] uppercase tracking-[.2em]">
+            Na mesma estante
+          </span>
+          {siblings.map((sibling) => {
+            const siblingTitle = libraryDisplayTitle(sibling, translateTitles);
+            return (
+              <button
+                aria-label={siblingTitle}
+                className="rounded-sm transition-transform duration-[120ms] hover:-translate-y-1 focus-visible:outline-2 focus-visible:outline-[#8C1535] focus-visible:outline-offset-2 motion-reduce:transition-none"
+                key={sibling.id}
+                onClick={() => onSelect(sibling.id)}
+                type="button"
+              >
+                <BookCover
+                  className="h-[104px] w-[76px]"
+                  item={sibling}
+                  mini
+                  title={siblingTitle}
+                />
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </>
+  );
+};
+
+export const LibraryShelves = ({
+  shelves,
+  translateTitles,
+}: {
+  readonly shelves: readonly LibraryShelf[];
+  readonly translateTitles: boolean;
+}) => {
+  const [selection, setSelection] = useState<{
+    readonly itemId: string;
+    readonly shelfId: string;
+  } | null>(null);
+  const [savedOverrides, setSavedOverrides] = useState<
+    Readonly<Record<string, boolean>>
+  >({});
+
+  const isSaved = (item: LibraryShelfItem) =>
+    savedOverrides[item.id] ?? item.isBookmarked;
+  const shelf = selection
+    ? shelves.find(({ id }) => id === selection.shelfId)
+    : undefined;
+  const item = shelf?.items.find(({ id }) => id === selection?.itemId);
+  const siblings =
+    shelf && item
+      ? shelf.items.filter(({ id }) => id !== item.id).slice(0, MAX_SAME_SHELF)
+      : [];
+
+  return (
+    <>
+      {shelves.map((entry) => (
+        <Shelf
+          isSaved={isSaved}
+          key={entry.id}
+          onOpen={(shelfId, itemId) => setSelection({ itemId, shelfId })}
+          shelf={entry}
+          translateTitles={translateTitles}
+        />
+      ))}
+      <Dialog
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelection(null);
+          }
+        }}
+        open={Boolean(item)}
+      >
+        <DialogContent
+          className="top-auto bottom-0 left-0 max-h-[92svh] w-full max-w-none translate-x-0 translate-y-0 gap-0 overflow-y-auto rounded-t-xl rounded-b-none border-[#E2D6D1] bg-[#F7F3F1] p-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:max-w-none md:top-1/2 md:bottom-auto md:left-1/2 md:max-w-[min(880px,calc(100%-3rem))] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-lg md:p-9"
+          overlayClassName="bg-[#120910]/60"
+          showCloseButton={false}
+        >
+          {item && (
+            <ItemDetails
+              item={item}
+              onSavedChange={(saved) =>
+                setSavedOverrides((current) => ({
+                  ...current,
+                  [item.id]: saved,
+                }))
+              }
+              onSelect={(itemId) =>
+                setSelection((current) =>
+                  current ? { ...current, itemId } : current
+                )
+              }
+              siblings={siblings}
+              translateTitles={translateTitles}
+            />
+          )}
+          <DialogClose asChild>
+            <button
+              aria-label="Fechar"
+              className="absolute top-2 right-2 flex size-11 items-center justify-center text-[#40222F] focus-visible:outline-2 focus-visible:outline-[#8C1535] focus-visible:outline-offset-2"
+              type="button"
+            >
+              <XIcon aria-hidden="true" className="size-5" />
+            </button>
+          </DialogClose>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+};

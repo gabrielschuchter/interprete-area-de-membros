@@ -40,21 +40,13 @@ const LibraryPage = async ({ searchParams }: LibraryPageProperties) => {
     getLibraryCategories(),
   ]);
   const filters = readFilters(params);
-  const rawPage = Number.parseInt(firstValue(params.page) ?? "1", 10);
-  const currentPage =
-    Number.isSafeInteger(rawPage) && rawPage > 0
-      ? Math.min(rawPage, 10_000)
-      : 1;
-
-  const showingDefaultShelf =
-    currentPage === 1 &&
-    !(
-      filters.q ||
-      filters.category ||
-      filters.kind ||
-      filters.language ||
-      filters.difficulty
-    );
+  const showingDefaultShelf = !(
+    filters.q ||
+    filters.category ||
+    filters.kind ||
+    filters.language ||
+    filters.difficulty
+  );
 
   return (
     <div className="min-h-full bg-[#F1EBE8]">
@@ -70,11 +62,7 @@ const LibraryPage = async ({ searchParams }: LibraryPageProperties) => {
         initialFilters={filters}
       >
         <Suspense fallback={<LibraryResultsSkeleton />}>
-          <LibraryResults
-            currentPage={currentPage}
-            filters={filters}
-            memberId={memberId}
-          />
+          <LibraryResults filters={filters} memberId={memberId} />
         </Suspense>
       </LibraryExperience>
     </div>
