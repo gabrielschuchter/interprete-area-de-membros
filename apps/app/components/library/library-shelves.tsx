@@ -46,6 +46,9 @@ const EDGE_ZONE_MAX = 180;
 const EDGE_ZONE_SHARE = 0.22;
 const EDGE_SCROLL_SPEED = 11;
 
+/** Largura (px) da capa grande no desktop; o título escala a partir dela. */
+const LARGE_COVER_WIDTH = 220;
+
 const kicker = (item: LibraryShelfItem) =>
   [KIND_LABEL[item.kind], item.year].filter(Boolean).join(" · ");
 
@@ -79,6 +82,7 @@ const BookCover = ({
       style={{
         background: palette.background,
         color: palette.foreground,
+        ...(large ? { containerType: "inline-size" as const } : {}),
       }}
     >
       <span
@@ -93,7 +97,7 @@ const BookCover = ({
         className={cn(
           "absolute font-data uppercase opacity-85",
           large
-            ? "top-5 right-4 left-7 text-[10px] tracking-[.16em]"
+            ? "top-5 right-[7.3cqw] left-[12.7cqw] text-[10px] tracking-[.16em]"
             : "top-3.5 right-3 left-5 text-[9px] tracking-[.14em] max-md:top-3 max-md:left-4 max-md:text-[8.5px]"
         )}
       >
@@ -103,10 +107,12 @@ const BookCover = ({
         className={cn(
           "absolute flex items-center text-left font-display font-semibold leading-[1.12] tracking-[-.01em]",
           large
-            ? "top-[52px] right-4 bottom-14 left-7"
+            ? "top-[23.6cqw] right-[7.3cqw] bottom-[25.5cqw] left-[12.7cqw]"
             : "top-10 right-3 bottom-11 left-5 max-md:top-9 max-md:left-4"
         )}
-        style={{ fontSize: size }}
+        style={{
+          fontSize: large ? `${(size / LARGE_COVER_WIDTH) * 100}cqw` : size,
+        }}
       >
         <span
           className={cn(
@@ -121,7 +127,7 @@ const BookCover = ({
         className={cn(
           "absolute flex items-center gap-1.5",
           large
-            ? "right-4 bottom-5 left-7"
+            ? "right-[7.3cqw] bottom-5 left-[12.7cqw]"
             : "right-3 bottom-3.5 left-5 max-md:left-4"
         )}
       >
@@ -364,7 +370,7 @@ const ItemDetails = ({
   return (
     <div className="flex flex-col gap-5 md:flex-row md:gap-8">
       <BookCover
-        className="h-[156px] w-[112px] shrink-0 md:h-[308px] md:w-[220px]"
+        className="h-[200px] w-[144px] shrink-0 md:h-[308px] md:w-[220px]"
         item={item}
         large
         saved={saved}
