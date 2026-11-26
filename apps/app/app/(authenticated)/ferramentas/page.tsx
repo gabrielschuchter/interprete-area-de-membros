@@ -14,6 +14,7 @@ import { getPlannerDashboard } from "@/lib/planner";
 import { getStudyGoalTopicOverview } from "@/lib/study-goal-topics";
 import type { GradeSelected } from "./grade-workspace";
 import type { Rob2Selected } from "./rob2-workspace";
+import { ToolsHero } from "./tools-hero";
 import {
   GradeView,
   PlannerView,
@@ -178,15 +179,8 @@ export default async function ToolsPage({
       data-tools-page
       data-tools-view={view}
     >
-      <header className="flex flex-col gap-2" data-tools-page-heading>
-        <h1 className="font-display text-[#40222F] text-[32px] leading-[1.2] tracking-tight sm:text-5xl">
-          Ferramentas
-        </h1>
-        <p className="max-w-[640px] text-[#7A5A69] text-sm leading-relaxed sm:text-base">
-          {subtitles[view]}
-        </p>
-      </header>
-      <div className="mt-7 flex flex-wrap items-center justify-between gap-4">
+      <ToolsHero subtitle={subtitles[view]} />
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
         <MemberViewSwitcher
           activeView={view}
           label="Ferramenta"
