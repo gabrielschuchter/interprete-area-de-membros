@@ -48,6 +48,7 @@ import {
   type TimerSettings,
 } from "@/lib/focus-timer-settings";
 import { formatStudyTimestamp as textDate } from "@/lib/study-date";
+import { ArchHourglass, timerHourglass } from "./arch-hourglass";
 
 type TimerServerState = Awaited<ReturnType<typeof getFocusTimerState>>;
 interface TimerLinkResource {
@@ -746,6 +747,12 @@ function FocusTimerWorkspace({
   const progress = state.active?.durationSeconds
     ? Math.min(1, elapsed / state.active.durationSeconds)
     : 0;
+  const hourglass = timerHourglass({
+    active: state.active,
+    elapsed,
+    progress,
+    stopwatch: experience === "STOPWATCH",
+  });
   const activeSessionId = state.active?.id ?? null;
 
   // Quando o tempo chega a zero, o servidor fecha a sessão na próxima leitura.
@@ -1148,6 +1155,7 @@ function FocusTimerWorkspace({
           currentTimerStatus={currentTimerStatus}
           experience={experience}
           focusMode={focusMode}
+          hourglass={hourglass}
           linkedResourceId={linkedResourceId}
           linkResources={linkResources}
           pending={pending}
@@ -2571,6 +2579,7 @@ function TimerMainCard({
   currentTimerStatus,
   shownSeconds,
   progress,
+  hourglass,
   currentProgressStatus,
   todayStudyHistory,
   focusMode,
@@ -2605,6 +2614,7 @@ function TimerMainCard({
   currentTimerStatus: string;
   shownSeconds: number;
   progress: number;
+  hourglass: { flowing: boolean; remaining: number };
   currentProgressStatus: string;
   todayStudyHistory: TimerHistoryItem[];
   focusMode: boolean;
@@ -2697,35 +2707,16 @@ function TimerMainCard({
       <div className="mx-auto mt-8 grid w-full max-w-[300px] place-items-center">
         <div
           aria-label={`Tempo ${formatDuration(shownSeconds)}`}
-          className="relative grid aspect-square w-full place-items-center rounded-full"
+          className="flex w-full flex-col items-center gap-4"
           role="timer"
         >
-          <svg
-            aria-hidden="true"
-            className="absolute inset-0 size-full -rotate-90"
-            viewBox="0 0 240 240"
-          >
-            <circle
-              cx="120"
-              cy="120"
-              fill="none"
-              r="108"
-              stroke="#E9DEDA"
-              strokeWidth="8"
-            />
-            <circle
-              cx="120"
-              cy="120"
-              fill="none"
-              r="108"
-              stroke="#8C1535"
-              strokeDasharray={`${Math.PI * 216}`}
-              strokeDashoffset={`${Math.PI * 216 * progress}`}
-              strokeLinecap="round"
-              strokeWidth="8"
-              style={{ transition: "stroke-dashoffset 400ms linear" }}
-            />
-          </svg>
+          <ArchHourglass
+            className="h-[246px] w-[180px]"
+            flowing={hourglass.flowing}
+            glow={0.2 + 0.5 * progress}
+            label="Ampulheta do cronômetro"
+            remaining={hourglass.remaining}
+          />
           <div className="text-center">
             <p className="font-display text-5xl text-[#40222F] tabular-nums tracking-tight sm:text-6xl">
               {experience === "STOPWATCH"

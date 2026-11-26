@@ -1,6 +1,5 @@
 import { EvidenceToolKind } from "@repo/database";
 import type { Metadata } from "next";
-import { MemberViewSwitcher } from "@/components/navigation/member-view-switcher";
 import { requireOnboardedMemberId as requireMemberId } from "@/lib/authorization";
 import {
   getEvidenceAssessment,
@@ -12,15 +11,18 @@ import {
 } from "@/lib/focus-timer";
 import { getPlannerDashboard } from "@/lib/planner";
 import { getStudyGoalTopicOverview } from "@/lib/study-goal-topics";
+import { getStudyWeekShelf } from "@/lib/study-week-shelf";
 import type { GradeSelected } from "./grade-workspace";
 import type { Rob2Selected } from "./rob2-workspace";
 import { ToolsHero } from "./tools-hero";
+import { ToolsPicker } from "./tools-picker";
 import {
   GradeView,
   PlannerView,
   Rob2View,
   TimerView,
 } from "./tools-view-loader";
+import { WeekShelf } from "./week-shelf";
 
 export const metadata: Metadata = { title: "Ferramentas | Interprete" };
 
@@ -33,6 +35,40 @@ const views = [
 ] as const;
 
 type ToolsView = (typeof views)[number]["id"];
+
+const pickerItems = [
+  {
+    id: "goals",
+    label: "Metas",
+    description: "Estante da semana e ampulheta da meta.",
+    iconPath: "M12 3a9 9 0 1 0 9 9M12 7a5 5 0 1 0 5 5M12 12l8-8M17 4h3v3",
+  },
+  {
+    id: "calendar",
+    label: "Calendário",
+    description: "Encontros, prazos e o que você marcou.",
+    iconPath: "M4 6h16v14H4zM4 10h16M9 3v5M15 3v5",
+  },
+  {
+    id: "timer",
+    label: "Cronômetro",
+    description: "Pomodoro, cronômetro livre e contagem.",
+    iconPath:
+      "M7 3h10M7 21h10M8 3c0 6 8 6 8 9s-8 3-8 9M16 3c0 6-8 6-8 9s8 3 8 9",
+  },
+  {
+    id: "rob2",
+    label: "RoB 2",
+    description: "Risco de viés, domínio a domínio.",
+    iconPath: "M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6zM9 12l2 2 4-4",
+  },
+  {
+    id: "grade",
+    label: "GRADE",
+    description: "Certeza da evidência por desfecho.",
+    iconPath: "M4 8l8-4 8 4-8 4zM4 12l8 4 8-4M4 16l8 4 8-4",
+  },
+] as const;
 
 const subtitles: Record<ToolsView, string> = {
   calendar: "Encontros, prazos e o que você marcou para estudar.",
@@ -79,6 +115,20 @@ const loadEvidenceView = async (
   };
 };
 
+const loadWeekShelf = async (
+  memberId: string,
+  data: Awaited<ReturnType<typeof getPlannerDashboard>>
+) => {
+  const shelf = await getStudyWeekShelf(
+    memberId,
+    data.goalWindows,
+    data.preferences.timezone
+  );
+  const weeklyTarget =
+    data.goals.find((goal) => goal.period === "WEEKLY")?.targetMinutes ?? null;
+  return { ...shelf, weeklyTarget };
+};
+
 const resolveView = (
   params: Record<string, string | string[] | undefined>
 ): ToolsView => {
@@ -95,6 +145,50 @@ const resolveView = (
     return "timer";
   }
   return "goals";
+};
+
+const loadPlannerContent = async (
+  memberId: string,
+  view: "calendar" | "goals",
+  params: Record<string, string | string[] | undefined>
+) => {
+  const calendarRange =
+    view === "calendar"
+      ? {
+          start: new Date(Date.now() - 31 * 86_400_000).toISOString(),
+          end: new Date(Date.now() + 62 * 86_400_000).toISOString(),
+        }
+      : undefined;
+  const data = await getPlannerDashboard(memberId, calendarRange);
+  const goalTopics =
+    view === "goals"
+      ? await getStudyGoalTopicOverview(memberId, data.goals, data.goalWindows)
+      : null;
+  const shelf = view === "goals" ? await loadWeekShelf(memberId, data) : null;
+  const occurrence =
+    typeof params.occurrence === "string" ? params.occurrence : null;
+  return (
+    <>
+      {shelf ? (
+        <WeekShelf
+          days={shelf.days}
+          manualEntries={shelf.manualEntries}
+          studiedMinutes={data.stats.weeklyMinutes}
+          targetMinutes={shelf.weeklyTarget}
+          weekStartKey={shelf.weekNumberKey}
+        />
+      ) : null}
+      <PlannerView
+        data={data}
+        goalTopics={goalTopics}
+        selectedEventId={typeof params.event === "string" ? params.event : null}
+        selectedEventOccurrence={occurrence}
+        selectedTaskId={typeof params.task === "string" ? params.task : null}
+        selectedTaskOccurrence={occurrence}
+        view={view}
+      />
+    </>
+  );
 };
 
 export default async function ToolsPage({
@@ -142,35 +236,7 @@ export default async function ToolsPage({
       />
     );
   } else {
-    const calendarRange =
-      view === "calendar"
-        ? {
-            start: new Date(Date.now() - 31 * 86_400_000).toISOString(),
-            end: new Date(Date.now() + 62 * 86_400_000).toISOString(),
-          }
-        : undefined;
-    const data = await getPlannerDashboard(memberId, calendarRange);
-    const goalTopics =
-      view === "goals"
-        ? await getStudyGoalTopicOverview(
-            memberId,
-            data.goals,
-            data.goalWindows
-          )
-        : null;
-    const occurrence =
-      typeof params.occurrence === "string" ? params.occurrence : null;
-    content = (
-      <PlannerView
-        data={data}
-        goalTopics={goalTopics}
-        selectedEventId={typeof params.event === "string" ? params.event : null}
-        selectedEventOccurrence={occurrence}
-        selectedTaskId={typeof params.task === "string" ? params.task : null}
-        selectedTaskOccurrence={occurrence}
-        view={view}
-      />
-    );
+    content = await loadPlannerContent(memberId, view, params);
   }
 
   return (
@@ -180,13 +246,7 @@ export default async function ToolsPage({
       data-tools-view={view}
     >
       <ToolsHero subtitle={subtitles[view]} />
-      <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
-        <MemberViewSwitcher
-          activeView={view}
-          label="Ferramenta"
-          views={views}
-        />
-      </div>
+      <ToolsPicker activeView={view} items={pickerItems} />
       {content}
     </main>
   );

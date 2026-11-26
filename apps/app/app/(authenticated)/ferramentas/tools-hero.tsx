@@ -1,9 +1,33 @@
+import "./tools-bancada.css";
+
+const dust = [
+  { left: "58%", bottom: 30, size: 4, delay: "0s" },
+  { left: "66%", bottom: 64, size: 3, delay: "-1.4s" },
+  { left: "72%", bottom: 20, size: 5, delay: "-2.6s" },
+  { left: "80%", bottom: 52, size: 3, delay: "-3.8s" },
+  { left: "86%", bottom: 30, size: 4, delay: "-5s" },
+] as const;
+
 export const ToolsHero = ({ subtitle }: { readonly subtitle: string }) => (
   <section
     aria-labelledby="tools-hero-title"
     className="relative isolate overflow-hidden rounded-lg bg-[linear-gradient(120deg,#410230_0%,#560A2A_55%,#7A1230_100%)] text-[#F1EBE8] max-md:bg-[linear-gradient(150deg,#410230_0%,#5E0E2B_60%,#7A1230_100%)] md:min-h-[300px]"
     data-tools-page-heading
   >
+    {dust.map((grain) => (
+      <span
+        aria-hidden="true"
+        className="bancada-hero-dust max-md:hidden"
+        key={grain.left}
+        style={{
+          animationDelay: grain.delay,
+          bottom: grain.bottom,
+          height: grain.size,
+          left: grain.left,
+          width: grain.size,
+        }}
+      />
+    ))}
     <div className="relative z-10 max-w-[62%] px-8 pt-12 pb-8 max-md:flex max-md:max-w-none max-md:flex-col max-md:gap-3 max-md:px-[22px] max-md:pt-6 max-md:pb-2 md:px-14 md:pt-14 md:pb-10">
       <p className="flex flex-wrap items-center gap-x-3 gap-y-1 font-data text-[#F1EBE8]/80 text-[10px] uppercase tracking-[.14em] max-md:tracking-[.1em] md:text-[11px]">
         Gabinete · Instrumentos de estudo
