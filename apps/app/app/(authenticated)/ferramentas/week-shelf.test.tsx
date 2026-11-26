@@ -10,8 +10,8 @@ import { buildShelfDays } from "@/lib/study-week-shelf-model";
 
 const CUMPRIDA = /cumprida/;
 const LANCAR_30 = /Lançar 30 min/;
-const DESFAZER = /Desfazer/;
-const FORA = /Estudou fora/;
+const FORA = /Estudou fora da plataforma/;
+const TIPO_ESTUDO = /Tipo de estudo/;
 const RESUMO = /Esta semana: 1 aula · 10 questões/;
 const TIPO = /Tipo de meta/;
 
@@ -95,15 +95,20 @@ test("lança o tempo manual escolhido e desfaz o último lançamento", () => {
       ]}
     />
   );
+  expect(screen.queryByRole("button", { name: LANCAR_30 })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: FORA }));
   fireEvent.click(
-    within(screen.getByRole("group", { name: FORA })).getByRole("button", {
-      name: "Exercícios",
-    })
+    within(screen.getByRole("group", { name: TIPO_ESTUDO })).getByRole(
+      "button",
+      { name: "Exercícios" }
+    )
   );
   fireEvent.click(screen.getByRole("button", { name: "30 min" }));
   fireEvent.click(screen.getByRole("button", { name: LANCAR_30 }));
   expect(addAction).toHaveBeenCalledWith({ group: "exercise", minutes: 30 });
-  fireEvent.click(screen.getByRole("button", { name: DESFAZER }));
+  fireEvent.click(
+    screen.getByRole("button", { name: "Remover lançamento de 15 minutos" })
+  );
   expect(deleteAction).toHaveBeenCalledWith("s1");
 });
 

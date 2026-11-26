@@ -1,11 +1,9 @@
 "use client";
 
-import { Button } from "@repo/design-system/components/ui/button";
 import { toast } from "@repo/design-system/lib/toast";
 import { cn } from "@repo/design-system/lib/utils";
-import { Undo2Icon, XIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useTransition } from "react";
 import {
   type CountGoalKind,
   type CountGoalsOverview,
@@ -27,10 +25,7 @@ import {
   shelfGroups,
 } from "@/lib/study-week-shelf-model";
 import { GoalHourglassCard } from "./goal-hourglass-card";
-import {
-  addManualStudyEntryAction,
-  deleteManualStudyEntryAction,
-} from "./study-manual-actions";
+import { ManualEntry } from "./manual-entry";
 
 const MONO = "font-data";
 
@@ -77,8 +72,6 @@ const DayCounts = ({ counts }: { readonly counts: KindCounts | undefined }) => {
   );
 };
 
-const QUICK_MINUTES = [5, 15, 30, 60] as const;
-
 const showError = (error: unknown) =>
   toast.error(
     error instanceof Error ? error.message : "Não foi possível salvar agora."
@@ -113,15 +106,6 @@ const weekRangeLabel = (days: readonly ShelfDay[]) => {
   return `${format(first)} A ${format(last)}`;
 };
 
-const entryTimeLabel = (iso: string) =>
-  new Intl.DateTimeFormat("pt-BR", {
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    month: "2-digit",
-    timeZone: "America/Sao_Paulo",
-  }).format(new Date(iso));
-
 export const WeekShelf = ({
   activity,
   countGoals,
@@ -133,13 +117,10 @@ export const WeekShelf = ({
 }: WeekShelfProps) => {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [group, setGroup] = useState<ShelfGroup>("reading");
-  const [minutes, setMinutes] = useState<number>(15);
 
   const daysLeft = days.filter((day) => day.today || day.future).length;
   const target = targetMinutes ?? 0;
   const reached = target > 0 && studiedMinutes >= target;
-  const lastManual = manualEntries[0] ?? null;
 
   const run = (task: () => Promise<unknown>, success?: string) => {
     startTransition(() => {
@@ -181,8 +162,7 @@ export const WeekShelf = ({
               </span>
             </div>
             <span className="text-[#E9C3C4] text-[13px]">
-              Esta semana: {weekActivitySummary(activity.week)}. Os livros
-              mostram o tempo; os números sob cada dia, a quantidade.
+              Esta semana: {weekActivitySummary(activity.week)}
             </span>
           </div>
 
@@ -258,76 +238,11 @@ export const WeekShelf = ({
                   {shelfGroupLabels[item]}
                 </span>
               ))}
+              <span className="text-[#CDB9B2] text-xs">
+                Números sob o dia = quantidade
+              </span>
             </div>
-            <fieldset className="m-0 flex min-w-0 flex-wrap items-center gap-2 border-0 p-0">
-              <legend className="mb-2 text-[#E9C3C4] text-[13px]">
-                Estudou fora da plataforma? Lance o tempo de hoje.
-              </legend>
-              {shelfGroups.map((item) => (
-                <button
-                  aria-pressed={group === item}
-                  className={cn(
-                    "min-h-11 rounded border px-3 text-[13px] transition-colors",
-                    group === item
-                      ? "border-[#F1EBE8] bg-[#F1EBE8] font-semibold text-[#410230]"
-                      : "border-[#7A2446] text-[#E9C3C4] hover:bg-white/10"
-                  )}
-                  key={item}
-                  onClick={() => setGroup(item)}
-                  type="button"
-                >
-                  {shelfGroupLabels[item]}
-                </button>
-              ))}
-              <span aria-hidden="true" className="mx-1 h-6 w-px bg-[#5A2233]" />
-              {QUICK_MINUTES.map((value) => (
-                <button
-                  aria-pressed={minutes === value}
-                  className={cn(
-                    "min-h-11 rounded border px-3 text-[13px] transition-colors",
-                    MONO,
-                    minutes === value
-                      ? "border-[#D9A86B] bg-[#D9A86B]/20 text-[#F1EBE8]"
-                      : "border-[#7A2446] text-[#E9C3C4] hover:bg-white/10"
-                  )}
-                  key={value}
-                  onClick={() => setMinutes(value)}
-                  type="button"
-                >
-                  {value} min
-                </button>
-              ))}
-              <Button
-                className="h-11 rounded bg-[#F1EBE8] px-5 font-semibold text-[#410230] hover:bg-white"
-                disabled={pending}
-                onClick={() =>
-                  run(
-                    () => addManualStudyEntryAction({ group, minutes }),
-                    "Tempo lançado na estante."
-                  )
-                }
-                type="button"
-              >
-                + Lançar {minutes} min
-              </Button>
-              <Button
-                className="h-11 gap-1.5 rounded border border-[#7A2446] bg-transparent px-4 text-[#E9C3C4] hover:bg-white/10 hover:text-white"
-                disabled={pending || !lastManual}
-                onClick={() =>
-                  lastManual
-                    ? run(
-                        () => deleteManualStudyEntryAction(lastManual.id),
-                        "Último lançamento desfeito."
-                      )
-                    : undefined
-                }
-                type="button"
-                variant="outline"
-              >
-                <Undo2Icon aria-hidden="true" className="size-4" />
-                Desfazer
-              </Button>
-            </fieldset>
+            <ManualEntry entries={manualEntries} pending={pending} run={run} />
           </div>
 
           {reached ? (
@@ -356,57 +271,6 @@ export const WeekShelf = ({
           targetMinutes={targetMinutes}
         />
       </div>
-
-      {manualEntries.length > 0 ? (
-        <div className="flex flex-col gap-3 rounded-lg border border-[#E2D6D1] bg-[#F7F3F1] p-5 sm:p-6">
-          <span
-            className={cn(
-              MONO,
-              "text-[#7D5A6C] text-[11px] uppercase tracking-[.2em]"
-            )}
-          >
-            Lançamentos manuais da semana
-          </span>
-          <ul className="m-0 flex list-none flex-col gap-2 p-0">
-            {manualEntries.map((entry) => (
-              <li
-                className="flex flex-wrap items-center gap-3 rounded-md border border-[#E2D6D1] bg-[#FBF8F5] px-4 py-2.5"
-                key={entry.id}
-              >
-                <i
-                  className="h-8 w-1.5 shrink-0 rounded-[1px]"
-                  style={{ background: shelfGroupColors[entry.group] }}
-                />
-                <span className="min-w-0 flex-1 font-medium text-[#40222F] text-sm">
-                  {shelfGroupLabels[entry.group]}
-                  <span className="ml-2 font-normal text-[#7D5A6C] text-xs">
-                    {entryTimeLabel(entry.at)}
-                  </span>
-                </span>
-                <span className={cn(MONO, "text-[#4A3340] text-[13px]")}>
-                  {entry.minutes} min
-                </span>
-                <Button
-                  aria-label={`Remover lançamento de ${entry.minutes} minutos`}
-                  className="size-11 text-[#7A5A69] hover:bg-[#F1EBE8]"
-                  disabled={pending}
-                  onClick={() =>
-                    run(
-                      () => deleteManualStudyEntryAction(entry.id),
-                      "Lançamento removido."
-                    )
-                  }
-                  size="icon"
-                  type="button"
-                  variant="ghost"
-                >
-                  <XIcon aria-hidden="true" className="size-4" />
-                </Button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
     </section>
   );
 };
