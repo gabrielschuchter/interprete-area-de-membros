@@ -32,6 +32,7 @@ const item = (
 ): LibraryShelfItem => ({
   accessType: "FREE_TO_READ",
   authors: "Sterne JAC; Savović J",
+  categories: ["Risco de viés"],
   category: "Risco de viés",
   description: "Ferramenta para avaliar risco de viés.",
   difficulty: "ADVANCED",
@@ -50,7 +51,10 @@ const item = (
 const shelves = groupLibraryShelves([
   item("um"),
   item("dois"),
-  item("tres", { category: "Fundamentos da PBE" }),
+  item("tres", {
+    categories: ["Fundamentos da PBE"],
+    category: "Fundamentos da PBE",
+  }),
 ]);
 
 describe("LibraryShelves", () => {

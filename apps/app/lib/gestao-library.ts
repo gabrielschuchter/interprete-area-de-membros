@@ -9,6 +9,7 @@ import {
 } from "@repo/database";
 import { requireGestaoAction } from "./gestao-authorization";
 import { normalizeGestaoLibraryFilters } from "./gestao-library-domain";
+import { LIBRARY_CATEGORY_LABELS } from "./library-categories";
 
 const pageSize = 24;
 
@@ -25,7 +26,18 @@ const libraryWhere = (input: {
   Object.values(LibraryItemKind).includes(input.kind as LibraryItemKind)
     ? { kind: input.kind as LibraryItemKind }
     : {}),
-  ...(input.category ? { category: input.category } : {}),
+  ...(input.category
+    ? {
+        AND: [
+          {
+            OR: [
+              { category: input.category },
+              { categories: { has: input.category } },
+            ],
+          },
+        ],
+      }
+    : {}),
   ...(input.language ? { language: { contains: input.language } } : {}),
   ...(input.difficulty &&
   Object.values(LibraryItemDifficulty).includes(
@@ -90,6 +102,7 @@ export const getGestaoLibraryCatalog = async (input: {
         coverUrl: true,
         kind: true,
         category: true,
+        categories: true,
         status: true,
         authors: true,
         language: true,
@@ -118,9 +131,13 @@ export const getGestaoLibraryCatalog = async (input: {
   ]);
 
   return {
-    categories: categoryRows.flatMap(({ category }) =>
-      category ? [category] : []
-    ),
+    // Todas as estantes editoriais, mais qualquer categoria fora da lista.
+    categories: [
+      ...new Set([
+        ...LIBRARY_CATEGORY_LABELS,
+        ...categoryRows.flatMap(({ category }) => (category ? [category] : [])),
+      ]),
+    ],
     collections,
     counts: {
       all: [...counts.values()].reduce((sum, count) => sum + count, 0),
@@ -149,6 +166,7 @@ export const getGestaoLibraryItemForEdit = async (id: string) => {
       coverUrl: true,
       kind: true,
       category: true,
+      categories: true,
       tags: true,
       url: true,
       status: true,

@@ -152,3 +152,33 @@ describe("Gestao library save mode and DOI source", () => {
     });
   });
 });
+
+describe("Gestao library categories", () => {
+  it("grava todas as categorias marcadas e usa a primeira como principal", () => {
+    const form = validForm();
+    form.append("categories", "Busca da evidência");
+    form.append("categories", "Registros de protocolo");
+    form.append("categories", "Busca da evidência");
+    const result = parse(form);
+
+    expect(result.ok && result.input.categories).toEqual([
+      "Busca da evidência",
+      "Registros de protocolo",
+    ]);
+    expect(result.ok && result.input.category).toBe("Busca da evidência");
+  });
+
+  it("sem marcações, aceita o campo antigo e, sem ele, deixa sem categoria", () => {
+    const legacy = validForm();
+    legacy.set("category", "Revisões sistemáticas e busca");
+    const legacyResult = parse(legacy);
+    expect(legacyResult.ok && legacyResult.input.categories).toEqual([
+      "Revisões sistemáticas",
+      "Busca da evidência",
+    ]);
+
+    const none = parse(validForm());
+    expect(none.ok && none.input.categories).toEqual([]);
+    expect(none.ok && none.input.category).toBeNull();
+  });
+});

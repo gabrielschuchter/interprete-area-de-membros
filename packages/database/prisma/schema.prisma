@@ -1745,6 +1745,7 @@ model LibraryItem {
   coverUrl        String?                 @db.Text
   kind            LibraryItemKind
   category        String?
+  categories      String[]                @default([])
   tags            String[]
   url             String                  @db.Text
   authors         String?                 @db.Text

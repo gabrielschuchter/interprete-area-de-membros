@@ -1,12 +1,13 @@
 import {
-  libraryCategoryGroups,
   libraryCategoryGroupsFor,
+  libraryItemGroups,
 } from "./library-categories";
 
 /** Material da Biblioteca já reduzido ao que as estantes e o card precisam. */
 export interface LibraryShelfItem {
   readonly accessType: string | null;
   readonly authors: string | null;
+  readonly categories: readonly string[];
   readonly category: string | null;
   readonly description: string | null;
   readonly difficulty: string | null;
@@ -63,21 +64,16 @@ export const groupLibraryShelves = (
   /** Com um grupo escolhido no filtro, mostra só a estante dele. */
   onlyGroup?: string
 ): LibraryShelf[] => {
-  const categories = items.flatMap(({ category }) =>
-    category?.trim() ? [category] : []
-  );
+  const categories = items.flatMap(libraryItemGroups);
   const shelves: LibraryShelf[] = libraryCategoryGroupsFor(categories)
     .filter((label) => !onlyGroup || label === onlyGroup)
     .map((label) => ({
       art: SHELF_ART_BY_GROUP[label] ?? FALLBACK_SHELF_ART,
       id: `estante-${slugify(label)}`,
-      items: items.filter(
-        ({ category }) =>
-          category?.trim() && libraryCategoryGroups(category).includes(label)
-      ),
+      items: items.filter((item) => libraryItemGroups(item).includes(label)),
       label,
     }));
-  const loose = items.filter(({ category }) => !category?.trim());
+  const loose = items.filter((item) => libraryItemGroups(item).length === 0);
   if (loose.length > 0 && !onlyGroup) {
     shelves.push({
       art: FALLBACK_SHELF_ART,

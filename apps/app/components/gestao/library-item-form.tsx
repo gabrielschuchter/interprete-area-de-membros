@@ -16,6 +16,7 @@ import {
 import { FormDirtyIndicator } from "@/app/(authenticated)/gestao/form-dirty-indicator";
 import { GestaoCrumbTail } from "@/app/(authenticated)/gestao/gestao-crumbs";
 import { GestaoIcon } from "@/app/(authenticated)/gestao/gestao-icon";
+import { LibraryCategoryPicker } from "@/components/gestao/library-category-picker";
 import type { getCourseOptions } from "@/lib/admin-learning";
 import type { getGestaoLibraryItemForEdit } from "@/lib/gestao-library";
 import {
@@ -27,6 +28,7 @@ import {
   type GestaoLibraryItemKind,
   gestaoLibraryItemKinds,
 } from "@/lib/gestao-library-form-options";
+import { libraryItemGroups } from "@/lib/library-categories";
 
 type LibraryItem = NonNullable<
   Awaited<ReturnType<typeof getGestaoLibraryItemForEdit>>
@@ -600,17 +602,13 @@ const AdvancedCard = ({
               </SelectShell>
             </Field>
           </div>
+          <LibraryCategoryPicker
+            idPrefix="library-category"
+            selected={libraryItemGroups(
+              item ?? { categories: [], category: null }
+            )}
+          />
           <div className="gk-form-grid">
-            <Field htmlFor="library-category" label="Categoria">
-              <input
-                className="gk-input"
-                defaultValue={item?.category ?? ""}
-                id="library-category"
-                maxLength={80}
-                name="category"
-                placeholder="Ex.: Revisões sistemáticas"
-              />
-            </Field>
             <Field htmlFor="library-tags" label="Etiquetas">
               <input
                 className="gk-input"

@@ -182,3 +182,35 @@ export const libraryCategoryFilterValues = (selected: string) => {
   ).map(({ label }) => label);
   return [...known.aliases, ...combined];
 };
+
+/** Rótulos dos grupos editoriais, na ordem em que aparecem para o aluno. */
+export const LIBRARY_CATEGORY_LABELS: readonly string[] =
+  LIBRARY_CATEGORY_GROUPS.map(({ label }) => label);
+
+/**
+ * Todos os grupos (estantes) de um material: a lista `categories` quando
+ * existe; nos materiais antigos sem ela, a categoria principal, que pode ser
+ * uma das combinadas.
+ */
+export const libraryItemGroups = (item: {
+  readonly categories?: readonly string[] | null;
+  readonly category: string | null;
+}): readonly string[] => {
+  const source = item.categories?.length
+    ? item.categories
+    : [item.category ?? ""].filter((value) => value.trim());
+  return [...new Set(source.flatMap(libraryCategoryGroups))];
+};
+
+/**
+ * Lista escolhida no cadastro, pronta para gravar: grupos canônicos, sem
+ * repetição, na ordem escolhida (a primeira é a categoria principal).
+ */
+export const normalizeLibraryCategories = (values: readonly string[]) => [
+  ...new Set(
+    values
+      .map((value) => value.trim().slice(0, 80))
+      .filter(Boolean)
+      .flatMap(libraryCategoryGroups)
+  ),
+];

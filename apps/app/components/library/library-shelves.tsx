@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { type PointerEvent, useEffect, useRef, useState } from "react";
 import { LibraryBookmarkButton } from "@/components/library/library-bookmark-button";
-import { libraryCategoryGroups } from "@/lib/library-categories";
+import { libraryItemGroups } from "@/lib/library-categories";
 import {
   libraryAccessLabel,
   libraryDifficultyLabel,
@@ -382,9 +382,9 @@ const ItemDetails = ({
           <Badge className="h-6 rounded border border-[#E2D6D1] bg-white px-2 font-semibold text-[#8C1535] text-xs">
             {KIND_LABEL[item.kind]}
           </Badge>
-          {item.category && (
+          {libraryItemGroups(item).length > 0 && (
             <span className="font-data text-[#7A5A69] text-[10px] uppercase leading-[1.5] tracking-[.14em]">
-              {libraryCategoryGroups(item.category).join(" · ")}
+              {libraryItemGroups(item).join(" · ")}
             </span>
           )}
         </div>

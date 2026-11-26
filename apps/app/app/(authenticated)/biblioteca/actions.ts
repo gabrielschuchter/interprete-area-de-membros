@@ -26,6 +26,7 @@ import {
   parseLibraryItemInput,
 } from "@/lib/gestao-library-form-domain";
 import { requireMemberId } from "@/lib/learning";
+import { normalizeLibraryCategories } from "@/lib/library-categories";
 import {
   createMemberAssetPath,
   deleteMemberAsset,
@@ -495,7 +496,6 @@ export const importCuratedLibraryCatalog = async (formData: FormData) => {
           title: row.title,
           description: row.description,
           kind: row.kind,
-          category: row.category,
           tags: row.tags,
           url: row.url,
           authors: row.authors,
@@ -515,13 +515,18 @@ export const importCuratedLibraryCatalog = async (formData: FormData) => {
 
     if (missing.length > 0) {
       await transaction.libraryItem.createMany({
-        data: missing.map((row) => ({
-          ...row,
-          status: ContentStatus.PUBLISHED,
-          position: 0,
-          createdBy: userId,
-          updatedBy: userId,
-        })),
+        data: missing.map((row) => {
+          const categories = normalizeLibraryCategories([row.category]);
+          return {
+            ...row,
+            categories,
+            category: categories[0] ?? row.category,
+            status: ContentStatus.PUBLISHED,
+            position: 0,
+            createdBy: userId,
+            updatedBy: userId,
+          };
+        }),
         skipDuplicates: true,
       });
     }

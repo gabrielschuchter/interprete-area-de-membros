@@ -5,6 +5,8 @@ import {
   libraryCategoryGroup,
   libraryCategoryGroups,
   libraryCategoryGroupsFor,
+  libraryItemGroups,
+  normalizeLibraryCategories,
 } from "./library-categories";
 
 const published = [
@@ -116,4 +118,32 @@ test("builds the filter values for a group without a database round trip", () =>
     "Revisões sistemáticas e busca",
     "Fundamentos da PBE e busca",
   ]);
+});
+
+test("os grupos de um material vêm da lista; sem lista, da categoria principal", () => {
+  expect(
+    libraryItemGroups({
+      categories: ["Busca da evidência", "Registros de protocolo"],
+      category: "Busca da evidência",
+    })
+  ).toEqual(["Busca da evidência", "Registros de protocolo"]);
+  expect(
+    libraryItemGroups({
+      categories: [],
+      category: "Revisões sistemáticas e busca",
+    })
+  ).toEqual(["Revisões sistemáticas", "Busca da evidência"]);
+  expect(libraryItemGroups({ categories: [], category: null })).toEqual([]);
+});
+
+test("a lista escolhida no cadastro vira grupos canônicos, sem repetição", () => {
+  expect(
+    normalizeLibraryCategories([
+      " Busca bibliográfica ",
+      "Registros de protocolo",
+      "Busca da evidência",
+      "",
+    ])
+  ).toEqual(["Busca da evidência", "Registros de protocolo"]);
+  expect(normalizeLibraryCategories([])).toEqual([]);
 });

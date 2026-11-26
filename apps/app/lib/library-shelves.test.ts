@@ -15,6 +15,7 @@ const item = (
 ): LibraryShelfItem => ({
   accessType: null,
   authors: null,
+  categories: [],
   category,
   description: null,
   difficulty: null,
@@ -100,6 +101,23 @@ describe("groupLibraryShelves", () => {
       "/library/shelves/registros.webp"
     );
     expect(art("Risco de viés")).toBe("/library/shelves/risco-de-vies.webp");
+  });
+
+  it("usa a lista de categorias: um livro aparece em todas as estantes marcadas", () => {
+    const shelves = groupLibraryShelves([
+      item("a", "Busca da evidência", {
+        categories: ["Busca da evidência", "Registros de protocolo"],
+      }),
+      item("b", "Registros de protocolo", {
+        categories: ["Registros de protocolo"],
+      }),
+    ]);
+    const byLabel = Object.fromEntries(
+      shelves.map(({ items, label }) => [label, items.map(({ id }) => id)])
+    );
+
+    expect(byLabel["Busca da evidência"]).toEqual(["a"]);
+    expect(byLabel["Registros de protocolo"]).toEqual(["a", "b"]);
   });
 
   it("não cria estante vazia", () => {

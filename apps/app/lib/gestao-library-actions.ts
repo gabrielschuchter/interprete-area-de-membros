@@ -8,6 +8,7 @@ import {
 } from "@repo/database";
 import { revalidatePath } from "next/cache";
 import { requireGestaoAction } from "@/lib/gestao-authorization";
+import { parseLibraryCategories } from "@/lib/gestao-library-form-domain";
 import { consumeMutationRateLimit } from "@/lib/mutation-reliability";
 
 export interface GestaoLibraryBulkState {
@@ -47,6 +48,35 @@ const revalidateLibrary = () => {
   revalidatePath("/gestao/ensino/biblioteca");
   revalidatePath("/biblioteca");
   revalidatePath("/cursos");
+};
+
+const applyLibraryCategories = async (
+  ids: string[],
+  formData: FormData,
+  userId: string
+): Promise<GestaoLibraryBulkState> => {
+  const categories = parseLibraryCategories(formData);
+  if (categories.length === 0) {
+    return {
+      status: "error",
+      message:
+        "Escolha ao menos uma categoria para aplicar aos materiais selecionados.",
+    };
+  }
+  const updated = await database.libraryItem.updateMany({
+    where: { id: { in: ids } },
+    data: {
+      categories,
+      category: categories[0] ?? null,
+      updatedBy: userId,
+    },
+  });
+  revalidateLibrary();
+  return {
+    count: updated.count,
+    message: `Categorias atualizadas em ${updated.count} material(is).`,
+    status: "success",
+  };
 };
 
 export const applyGestaoLibraryBulkAction = async (
@@ -98,23 +128,7 @@ export const applyGestaoLibraryBulkAction = async (
   }
 
   if (intent === "category") {
-    const category = text(formData, "category").slice(0, 80);
-    if (!category) {
-      return {
-        status: "error",
-        message: "Informe a categoria para aplicar aos materiais selecionados.",
-      };
-    }
-    const updated = await database.libraryItem.updateMany({
-      where: { id: { in: ids } },
-      data: { category, updatedBy: actor.userId },
-    });
-    revalidateLibrary();
-    return {
-      count: updated.count,
-      message: `Categoria atualizada em ${updated.count} material(is).`,
-      status: "success",
-    };
+    return applyLibraryCategories(ids, formData, actor.userId);
   }
 
   const collectionId = text(formData, "collectionId");

@@ -13,6 +13,7 @@ import { StudyHeartbeat } from "@/components/learning/study-heartbeat";
 import { LibraryBookmarkButton } from "@/components/library/library-bookmark-button";
 import { requireMemberId } from "@/lib/learning";
 import { getPublishedLibraryItem } from "@/lib/library";
+import { libraryItemGroups } from "@/lib/library-categories";
 import {
   libraryAccessLabel,
   libraryDifficultyLabel,
@@ -74,8 +75,10 @@ const LibraryItemPage = async ({ params }: LibraryItemPageProperties) => {
             <Badge variant="outline">
               <Icon aria-hidden="true" /> {labelFor(item.kind)}
             </Badge>
-            {item.category && (
-              <span className="brand-eyebrow">{item.category}</span>
+            {libraryItemGroups(item).length > 0 && (
+              <span className="brand-eyebrow">
+                {libraryItemGroups(item).join(" · ")}
+              </span>
             )}
             <Badge variant="secondary">
               {libraryAccessLabel(item.accessType)}

@@ -19,7 +19,9 @@ import {
 import { markLearningAssignmentStarted } from "./learning-assignments";
 import {
   libraryCategoryFilterValues,
+  libraryCategoryGroup,
   libraryCategoryGroupsFor,
+  libraryItemGroups,
 } from "./library-categories";
 import {
   CLICK_RANKING_MIN_ITEMS,
@@ -44,6 +46,25 @@ interface LibraryFilters {
 const PAGE_SIZE = LIBRARY_PAGE_SIZE;
 const MAX_RELEVANCE_CANDIDATES = 500;
 type LibraryAccessScope = Awaited<ReturnType<typeof getLearningAccessScope>>;
+
+/**
+ * Materiais de uma estante: os que listam o grupo em `categories` e, enquanto
+ * houver material antigo sem a lista, os pela categoria principal.
+ */
+const libraryCategoryWhere = (
+  selected: string
+): Prisma.LibraryItemWhereInput => {
+  const group = libraryCategoryGroup(selected);
+  return {
+    OR: [
+      { categories: { has: group } },
+      {
+        categories: { isEmpty: true },
+        category: { in: libraryCategoryFilterValues(selected) },
+      },
+    ],
+  };
+};
 
 const buildLibraryWhere = ({
   category,
@@ -77,9 +98,7 @@ const buildLibraryWhere = ({
       ? { language: { contains: validLanguage, mode: "insensitive" as const } }
       : {}),
     ...(validDifficulty ? { difficulty: validDifficulty } : {}),
-    ...(category
-      ? { category: { in: libraryCategoryFilterValues(category) } }
-      : {}),
+    ...(category ? { AND: [libraryCategoryWhere(category)] } : {}),
     ...(normalizedQuery
       ? {
           OR: [
@@ -361,6 +380,7 @@ const shelfItemSelect = (memberId: string) =>
     description: true,
     kind: true,
     category: true,
+    categories: true,
     tags: true,
     authors: true,
     year: true,
@@ -562,15 +582,11 @@ export const getMostAccessedLibraryItems = (memberId: string, limit = 12) =>
 export const getLibraryCategories = async () => {
   const rows = await tracePerformance("member.library.categories", () =>
     database.libraryItem.findMany({
-      where: { status: ContentStatus.PUBLISHED, category: { not: null } },
-      distinct: ["category"],
-      orderBy: { category: "asc" },
-      select: { category: true },
+      where: { status: ContentStatus.PUBLISHED },
+      select: { category: true, categories: true },
     })
   );
-  return libraryCategoryGroupsFor(
-    rows.flatMap((row) => (row.category ? [row.category] : []))
-  );
+  return libraryCategoryGroupsFor(rows.flatMap(libraryItemGroups));
 };
 
 export const getPublishedLibraryItem = async (id: string, memberId: string) => {
@@ -583,6 +599,7 @@ export const getPublishedLibraryItem = async (id: string, memberId: string) => {
       coverUrl: true,
       kind: true,
       category: true,
+      categories: true,
       tags: true,
       url: true,
       authors: true,

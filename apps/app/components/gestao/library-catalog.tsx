@@ -17,11 +17,13 @@ import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useState } from "react";
 import { GestaoErase } from "@/app/(authenticated)/gestao/apagar/erase-dialog";
 import { GestaoIcon } from "@/app/(authenticated)/gestao/gestao-icon";
+import { LibraryCategoryPicker } from "@/components/gestao/library-category-picker";
 import type { getGestaoLibraryCatalog } from "@/lib/gestao-library";
 import {
   applyGestaoLibraryBulkAction,
   type GestaoLibraryBulkState,
 } from "@/lib/gestao-library-actions";
+import { libraryItemGroups } from "@/lib/library-categories";
 
 type Catalog = Awaited<ReturnType<typeof getGestaoLibraryCatalog>>;
 type LibraryItem = Catalog["items"][number];
@@ -57,7 +59,7 @@ const difficultyLabels: Record<string, string> = {
 
 const itemDetail = (item: LibraryItem) =>
   [
-    item.category,
+    libraryItemGroups(item).join(" + "),
     item.language,
     item.difficulty ? difficultyLabels[item.difficulty] : null,
   ]
@@ -442,7 +444,7 @@ export const GestaoLibraryCatalog = ({ data }: { readonly data: Catalog }) => {
             <GestaoIcon name="archive" size={14} /> Arquivar
           </button>
           <button onClick={() => setDialog("category")} type="button">
-            <GestaoIcon name="sliders" size={14} /> Editar categoria
+            <GestaoIcon name="sliders" size={14} /> Editar categorias
           </button>
           <button onClick={() => setDialog("collection")} type="button">
             <GestaoIcon name="star" size={14} /> Adicionar a uma coleção
@@ -472,30 +474,18 @@ export const GestaoLibraryCatalog = ({ data }: { readonly data: Catalog }) => {
       {catalogContent}
       {dialog === "category" ? (
         <BulkDialog
-          description="A categoria nova substitui a atual dos materiais selecionados."
+          description="As categorias marcadas substituem as atuais dos materiais selecionados."
           intent="category"
-          label="Aplicar categoria"
+          label="Aplicar categorias"
           onClose={() => setDialog(null)}
-          title="Editar categoria"
+          title="Editar categorias"
         >
-          <div className="gk-label">
-            <label htmlFor="bulk-category">Categoria</label>
-            <input
-              autoFocus
-              className="gk-input"
-              form={formId}
-              id="bulk-category"
-              list="bulk-category-options"
-              maxLength={80}
-              name="category"
-              placeholder="Ex.: Revisões sistemáticas"
-            />
-            <datalist id="bulk-category-options">
-              {data.categories.map((category) => (
-                <option key={category} value={category} />
-              ))}
-            </datalist>
-          </div>
+          <LibraryCategoryPicker
+            autoFocus
+            form={formId}
+            idPrefix="bulk-category"
+            selected={[]}
+          />
         </BulkDialog>
       ) : null}
       {dialog === "collection" ? (

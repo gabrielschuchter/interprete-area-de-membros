@@ -3,6 +3,7 @@ import {
   LibraryItemDifficulty,
   LibraryItemKind,
 } from "@repo/database";
+import { normalizeLibraryCategories } from "@/lib/library-categories";
 import { readIdempotencyKey } from "@/lib/mutation-contract";
 
 const languageSeparatorPattern = /[,/]/;
@@ -38,12 +39,26 @@ export interface LibraryItemFormState {
   readonly status: "idle" | "error" | "success";
 }
 
+/**
+ * Categorias escolhidas no cadastro (várias marcações em "categories"). Sem
+ * nenhuma marcação, vale o campo antigo "category", se vier preenchido.
+ */
+export const parseLibraryCategories = (formData: FormData) => {
+  const chosen = normalizeLibraryCategories(
+    formData.getAll("categories").map((entry) => value(entry))
+  );
+  return chosen.length > 0
+    ? chosen
+    : normalizeLibraryCategories([value(formData.get("category"))]);
+};
+
 export type LibrarySaveMode = "draft" | "publish";
 
 interface ParsedLibraryItemInput {
   readonly accessNote: string | null;
   readonly accessType: LibraryItemAccessType | null;
   readonly authors: string | null;
+  readonly categories: string[];
   readonly category: string | null;
   readonly coverUrl: string | null;
   readonly description: string | null;
@@ -290,6 +305,7 @@ export const parseLibraryItemInput = (
     return { ok: false, state: validationError };
   }
 
+  const categories = parseLibraryCategories(formData);
   const tags = value(formData.get("tags"))
     .split(",")
     .map((tag) => tag.trim().toLowerCase())
@@ -305,7 +321,8 @@ export const parseLibraryItemInput = (
         ? (accessTypeInput as LibraryItemAccessType)
         : null,
       authors: value(formData.get("authors")) || null,
-      category: value(formData.get("category")).slice(0, 80) || null,
+      categories,
+      category: categories[0] ?? null,
       coverUrl,
       description: value(formData.get("description")).slice(0, 5000) || null,
       difficulty: Object.values(LibraryItemDifficulty).includes(
