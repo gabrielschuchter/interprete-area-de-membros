@@ -80,7 +80,6 @@ describe("LibraryShelves", () => {
     expect(
       within(dialog).getByRole("heading", { name: "Material um" })
     ).toBeTruthy();
-    expect(within(dialog).getByText("ecr")).toBeTruthy();
     const open = within(dialog).getByRole("link", {
       name: "Abrir material: Material um, em nova aba",
     });
@@ -88,23 +87,17 @@ describe("LibraryShelves", () => {
     expect(open.getAttribute("target")).toBe("_blank");
   });
 
-  test("troca de livro pela mesma estante dentro do card", () => {
+  test("card do livro não mostra etiquetas nem outros livros da estante", () => {
     render(<LibraryShelves shelves={shelves} translateTitles={false} />);
 
     fireEvent.click(
       screen.getByRole("button", { name: "Material um, Guia, 2019" })
     );
-    fireEvent.click(
-      within(screen.getByRole("dialog")).getByRole("button", {
-        name: "Material dois",
-      })
-    );
+    const dialog = within(screen.getByRole("dialog"));
 
-    expect(
-      within(screen.getByRole("dialog")).getByRole("heading", {
-        name: "Material dois",
-      })
-    ).toBeTruthy();
+    expect(dialog.queryByText("Na mesma estante")).toBeNull();
+    expect(dialog.queryByText("ecr")).toBeNull();
+    expect(dialog.queryByRole("button", { name: "Material dois" })).toBeNull();
   });
 
   test("usa o título em português quando pedido", () => {
