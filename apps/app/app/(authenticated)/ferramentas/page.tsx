@@ -46,32 +46,26 @@ const pickerItems = [
     id: "goals",
     label: "Metas",
     description: "Estante da semana e ampulheta da meta.",
-    iconPath: "M12 3a9 9 0 1 0 9 9M12 7a5 5 0 1 0 5 5M12 12l8-8M17 4h3v3",
   },
   {
     id: "calendar",
     label: "Calendário",
     description: "Encontros, prazos e o que você marcou.",
-    iconPath: "M4 6h16v14H4zM4 10h16M9 3v5M15 3v5",
   },
   {
     id: "timer",
     label: "Cronômetro",
     description: "Pomodoro, cronômetro livre e contagem.",
-    iconPath:
-      "M7 3h10M7 21h10M8 3c0 6 8 6 8 9s-8 3-8 9M16 3c0 6-8 6-8 9s8 3 8 9",
   },
   {
     id: "rob2",
     label: "RoB 2",
     description: "Risco de viés, domínio a domínio.",
-    iconPath: "M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6zM9 12l2 2 4-4",
   },
   {
     id: "grade",
     label: "GRADE",
     description: "Certeza da evidência por desfecho.",
-    iconPath: "M4 8l8-4 8 4-8 4zM4 12l8 4 8-4M4 16l8 4 8-4",
   },
 ] as const;
 
