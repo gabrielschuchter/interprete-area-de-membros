@@ -44,7 +44,7 @@ export interface LibraryFilterValues {
   readonly titulos: "" | "pt";
 }
 
-type FocusTarget = "chips" | "results";
+type FocusTarget = "chips" | "results" | "scroll";
 type FilterName = keyof Omit<LibraryFilterValues, "q" | "titulos">;
 
 interface LibraryExperienceProperties {
@@ -522,6 +522,14 @@ export const LibraryExperience = ({
       return;
     }
     requestAnimationFrame(() => {
+      if (focusTarget === "scroll") {
+        // Escolha num seletor: leva às estantes sem tirar o foco do campo.
+        document.getElementById("library-results-heading")?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+        return;
+      }
       const target =
         focusTarget === "chips"
           ? document.querySelector<HTMLElement>("[data-active-chips]")
@@ -626,6 +634,13 @@ export const LibraryExperience = ({
     );
   };
 
+  /** Categoria e nível valem assim que são escolhidos: a estante já aparece. */
+  const selectFilter = (name: FilterName, value: string) => {
+    const next = { ...draft, [name]: value };
+    setDraft(next);
+    navigateToResults(makeHref(next), "scroll");
+  };
+
   const renderFields = (suffix: string, compact = false) => {
     const fields = [
       {
@@ -647,7 +662,7 @@ export const LibraryExperience = ({
         id={`${id}-${suffix}-${field.name}`}
         key={field.name}
         label={field.label}
-        onChange={(value) => updateDraft(field.name, value)}
+        onChange={(value) => selectFilter(field.name, value)}
         options={field.options}
         value={draft[field.name]}
       />
@@ -711,20 +726,11 @@ export const LibraryExperience = ({
                       value={draft.q}
                     />
                   </span>
-                  <div className="w-[150px]">
+                  <div className="w-[190px]">
                     {renderFields("fixed-wide", true)[0]}
                   </div>
-                  <div className="w-[100px]">
-                    {renderFields("fixed-wide", true)[1]}
-                  </div>
-                  <div className="w-[110px]">
-                    {renderFields("fixed-wide", true)[2]}
-                  </div>
-                  <div className="w-[100px]">
-                    {renderFields("fixed-wide", true)[3]}
-                  </div>
                   <div className="w-[140px]">
-                    {renderFields("fixed-wide", true)[4]}
+                    {renderFields("fixed-wide", true)[1]}
                   </div>
                   <Button className="h-11 px-5" type="submit">
                     Filtrar
@@ -767,9 +773,6 @@ export const LibraryExperience = ({
                       activeCount={activeFilterCount}
                       onOpen={openFilters}
                     />
-                  </div>
-                  <div className="hidden w-[140px] md:block min-[1250px]:hidden">
-                    {renderFields("fixed-compact", true)[4]}
                   </div>
                   <Button
                     className="hidden h-11 px-5 md:inline-flex"
@@ -815,7 +818,7 @@ export const LibraryExperience = ({
                 />
               </div>
             </div>
-            <div className="mt-3 hidden gap-3 md:grid md:grid-cols-[repeat(auto-fit,minmax(145px,1fr))] min-[1250px]:grid-cols-[1.25fr_repeat(4,minmax(0,1fr))]">
+            <div className="mt-3 hidden gap-3 md:grid md:grid-cols-2">
               {renderFields("panel")}
             </div>
           </div>

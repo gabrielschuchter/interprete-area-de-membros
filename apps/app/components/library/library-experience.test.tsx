@@ -108,6 +108,27 @@ describe("busca automática da Biblioteca", () => {
     expect(mocks.replace).not.toHaveBeenCalled();
   });
 
+  test("escolher a categoria abre a estante na hora, sem apertar Filtrar", () => {
+    render(
+      <LibraryExperience
+        categories={["Busca da evidência", "Risco de viés"]}
+        initialFilters={FILTERS}
+      >
+        <p>resultados</p>
+      </LibraryExperience>
+    );
+
+    fireEvent.change(screen.getAllByLabelText("Categoria")[0], {
+      target: { value: "Busca da evidência" },
+    });
+
+    expect(mocks.push).toHaveBeenCalledTimes(1);
+    expect(mocks.push).toHaveBeenCalledWith(
+      "/biblioteca?category=Busca+da+evid%C3%AAncia",
+      { scroll: false }
+    );
+  });
+
   test("mantém filtros aplicados e o botão de títulos em português", () => {
     mocks.search.current = "difficulty=ADVANCED&titulos=pt";
     renderLibrary({ ...FILTERS, difficulty: "ADVANCED", titulos: "pt" });
