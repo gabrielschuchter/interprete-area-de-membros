@@ -11,7 +11,6 @@ import {
 } from "@/lib/focus-timer";
 import { getPlannerDashboard } from "@/lib/planner";
 import { getCountGoalsOverview } from "@/lib/study-count-goals";
-import { getStudyGoalTopicOverview } from "@/lib/study-goal-topics";
 import { getStudyWeekShelf } from "@/lib/study-week-shelf";
 import type { GradeSelected } from "./grade-workspace";
 import type { Rob2Selected } from "./rob2-workspace";
@@ -162,10 +161,6 @@ const loadPlannerContent = async (
         }
       : undefined;
   const data = await getPlannerDashboard(memberId, calendarRange);
-  const goalTopics =
-    view === "goals"
-      ? await getStudyGoalTopicOverview(memberId, data.goals, data.goalWindows)
-      : null;
   const shelf = view === "goals" ? await loadWeekShelf(memberId, data) : null;
   const occurrence =
     typeof params.occurrence === "string" ? params.occurrence : null;
@@ -183,7 +178,6 @@ const loadPlannerContent = async (
       ) : null}
       <PlannerView
         data={data}
-        goalTopics={goalTopics}
         selectedEventId={typeof params.event === "string" ? params.event : null}
         selectedEventOccurrence={occurrence}
         selectedTaskId={typeof params.task === "string" ? params.task : null}

@@ -17,7 +17,6 @@ import {
   CopyIcon,
   PlusIcon,
 } from "lucide-react";
-import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import {
   type CSSProperties,
@@ -30,7 +29,6 @@ import {
 import { cohortCalendarEventDateRange } from "@/lib/cohort-calendar-domain";
 import { memberActivitiesEnabled } from "@/lib/member-features";
 import type { getPlannerDashboard } from "@/lib/planner";
-import type { StudyGoalTopicOverview } from "@/lib/study-goal-topics";
 import {
   deletePlannerEventAction,
   deletePlannerTaskAction,
@@ -38,14 +36,8 @@ import {
   loadPlannerAction,
   restorePlannerTaskAction,
   savePlannerEventAction,
-  savePlannerGoalAction,
   savePlannerTaskAction,
 } from "./planner-actions";
-
-// Só aparece dentro de uma meta já criada, então fica fora do JS inicial.
-const GoalTopics = dynamic(() =>
-  import("./goal-topics").then((module) => module.GoalTopics)
-);
 
 type PlannerData = Awaited<ReturnType<typeof getPlannerDashboard>>;
 type PlannerTask = PlannerData["tasks"][number];
@@ -930,7 +922,6 @@ function EventEditorDialog({
 
 function PlannerWorkspaceContent({
   data,
-  goalTopics,
   selectedEventId,
   selectedEventOccurrence,
   selectedTaskId,
@@ -938,7 +929,6 @@ function PlannerWorkspaceContent({
   view,
 }: {
   readonly data: PlannerData;
-  readonly goalTopics: StudyGoalTopicOverview | null;
   readonly selectedEventId: string | null;
   readonly selectedEventOccurrence: string | null;
   readonly selectedTaskId: string | null;
@@ -1763,105 +1753,10 @@ function PlannerWorkspaceContent({
       event.occurrenceKey === editingEvent?.occurrenceKey
   );
 
-  const renderGoalCard = (period: "WEEKLY" | "MONTHLY") => {
-    const goal = currentData.goals.find((item) => item.period === period);
-    const minutes =
-      period === "WEEKLY"
-        ? currentData.stats.weeklyMinutes
-        : currentData.stats.monthlyMinutes;
-    const target = goal?.targetMinutes ?? 0;
-    const percent =
-      target > 0 ? Math.min(100, Math.round((minutes / target) * 100)) : 0;
-    return (
-      <article
-        className="rounded-xl border border-[#E2D6D1] bg-white p-5 sm:p-6"
-        key={period}
-      >
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="brand-eyebrow text-[#8C1535]">
-              Meta {period === "WEEKLY" ? "semanal" : "mensal"}
-            </p>
-            <h2 className="mt-2 font-display text-2xl text-[#40222F]">
-              {minutes.toLocaleString("pt-BR")} min estudados
-            </h2>
-          </div>
-          <span className="font-mono text-[#7A5A69] text-sm">
-            {target > 0 ? `${percent}%` : "—"}
-          </span>
-        </div>
-        <div
-          aria-label={`${percent}% da meta alcançada`}
-          aria-valuemax={100}
-          aria-valuemin={0}
-          aria-valuenow={percent}
-          className="mt-5 h-2 overflow-hidden rounded-full bg-[#F1EBE8]"
-          role="progressbar"
-        >
-          <span
-            className="block h-full rounded-full bg-[#8C1535] transition-[width] duration-300"
-            style={{ width: `${percent}%` }}
-          />
-        </div>
-        <form
-          className="mt-5 flex flex-wrap items-end gap-3"
-          onSubmit={(event) => {
-            event.preventDefault();
-            const formData = new FormData(event.currentTarget);
-            const targetMinutes = Number(formData.get("targetMinutes"));
-            savePlannerGoalAction({ period, targetMinutes })
-              .then(() => {
-                toast.success("Meta salva.");
-                router.refresh();
-              })
-              .catch(showError);
-          }}
-        >
-          <label
-            className="grid gap-1 text-[#7A5A69] text-xs"
-            htmlFor={`${period}-goal-minutes`}
-          >
-            Meta em minutos
-            <Input
-              className="w-36"
-              defaultValue={goal?.targetMinutes ?? ""}
-              id={`${period}-goal-minutes`}
-              max={10_080}
-              min={1}
-              name="targetMinutes"
-              placeholder="Definir"
-              required
-              type="number"
-            />
-          </label>
-          <Button type="submit">
-            {goal ? "Atualizar meta" : "Criar meta"}
-          </Button>
-        </form>
-        {goal ? null : (
-          <p className="mt-3 text-[#7A5A69] text-xs">
-            A meta começa a contar apenas os minutos de estudo realmente salvos.
-          </p>
-        )}
-        {goal && goalTopics ? (
-          <GoalTopics
-            overview={goalTopics}
-            period={period}
-            studied={goalTopics.periods[period]}
-            targetMinutes={goal.targetMinutes}
-          />
-        ) : null}
-      </article>
-    );
-  };
-
   const renderGoalsPanel = () => (
     <>
       {view === "goals" ? (
         <div>
-          <div className="grid gap-4 lg:grid-cols-2">
-            {(["WEEKLY", "MONTHLY"] as const).map(renderGoalCard)}
-          </div>
           <section
             aria-labelledby="planner-progress-heading"
             className="mt-6 rounded-xl border border-[#E2D6D1] bg-[#F8F4F1] p-5 sm:p-6"
@@ -2704,7 +2599,6 @@ function PlannerWorkspaceContent({
 
 export const PlannerWorkspace = (props: {
   readonly data: PlannerData;
-  readonly goalTopics: StudyGoalTopicOverview | null;
   readonly selectedEventId: string | null;
   readonly selectedEventOccurrence: string | null;
   readonly selectedTaskId: string | null;
@@ -2713,7 +2607,6 @@ export const PlannerWorkspace = (props: {
 }) => (
   <PlannerWorkspaceContent
     data={props.data}
-    goalTopics={props.goalTopics}
     selectedEventId={props.selectedEventId}
     selectedEventOccurrence={props.selectedEventOccurrence}
     selectedTaskId={props.selectedTaskId}
