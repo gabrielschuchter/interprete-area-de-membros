@@ -14,6 +14,9 @@ const DESFAZER = /Desfazer/;
 const FORA = /Estudou fora/;
 const TIPO = /Tipo de meta/;
 
+// O build da Vercel roda a suíte inteira em máquina lenta: dá folga ao render.
+vi.setConfig({ testTimeout: 30_000 });
+
 const refresh = vi.fn();
 const addAction = vi.fn(() => Promise.resolve({ id: "x" }));
 const deleteAction = vi.fn(() => Promise.resolve({ id: "x" }));
