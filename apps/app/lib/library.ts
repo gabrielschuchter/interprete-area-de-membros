@@ -393,7 +393,6 @@ export const getLibraryShelfItems = async ({
         title: true,
         titlePt: true,
         description: true,
-        coverUrl: true,
         kind: true,
         category: true,
         tags: true,

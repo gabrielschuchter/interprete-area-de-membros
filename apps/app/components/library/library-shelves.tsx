@@ -50,8 +50,8 @@ const kicker = (item: LibraryShelfItem) =>
   [KIND_LABEL[item.kind], item.year].filter(Boolean).join(" · ");
 
 /**
- * Capa do livro. O título vem impresso nela; capas ilustradas cadastradas
- * (coverUrl) mantêm a ilustração e ganham uma faixa com o título.
+ * Capa do livro. O título vem impresso nela, sempre no mesmo padrão
+ * tipográfico, mesmo para itens que tenham imagem de capa cadastrada.
  */
 const BookCover = ({
   className,
@@ -69,36 +69,6 @@ const BookCover = ({
   const palette = libraryCoverPalette(item.id);
   const size = libraryCoverTitleSize(title, large);
   const short = libraryShortAuthors(item.authors);
-
-  if (item.coverUrl) {
-    return (
-      <span
-        className={cn(
-          "relative block overflow-hidden rounded-[2px_6px_6px_2px] bg-[#410230]",
-          className
-        )}
-      >
-        {/* biome-ignore lint/performance/noImgElement: capa cadastrada pela equipe, de origem variada. */}
-        <img
-          alt=""
-          className="size-full object-cover"
-          decoding="async"
-          height={720}
-          loading="lazy"
-          referrerPolicy="no-referrer"
-          src={item.coverUrl}
-          width={540}
-        />
-        <span
-          className="absolute inset-x-0 bottom-0 bg-[#410230]/90 px-3 pt-2 pb-3 text-left font-display font-semibold text-[#F1EBE8] leading-[1.15]"
-          style={{ fontSize: Math.min(size, 15) }}
-        >
-          <span className="line-clamp-3">{title}</span>
-        </span>
-        {saved && <SavedRibbon large={large} />}
-      </span>
-    );
-  }
 
   return (
     <span

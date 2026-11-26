@@ -39,16 +39,13 @@ import {
 export interface LibraryFilterValues {
   readonly category: string;
   readonly difficulty: string;
-  readonly kind: string;
-  readonly language: string;
   readonly q: string;
-  readonly sort: "recent" | "relevant";
   /** "pt" mostra os títulos traduzidos quando houver tradução cadastrada. */
   readonly titulos: "" | "pt";
 }
 
 type FocusTarget = "chips" | "results";
-type FilterName = keyof Omit<LibraryFilterValues, "q" | "sort" | "titulos">;
+type FilterName = keyof Omit<LibraryFilterValues, "q" | "titulos">;
 
 interface LibraryExperienceProperties {
   readonly categories: readonly string[];
@@ -61,10 +58,7 @@ interface LibraryExperienceProperties {
 const DEFAULT_FILTERS: LibraryFilterValues = {
   category: "",
   difficulty: "",
-  kind: "",
-  language: "",
   q: "",
-  sort: "recent",
   titulos: "",
 };
 const SCROLLABLE_OVERFLOW_PATTERN = /(auto|scroll)/;
@@ -74,32 +68,11 @@ const CATEGORY_OPTIONS = (categories: readonly string[]) => [
   ...categories.map((category) => ({ label: category, value: category })),
 ];
 
-const TYPE_OPTIONS = [
-  { label: "Todos os tipos", value: "" },
-  { label: "Artigos", value: "ARTICLE" },
-  { label: "PDFs", value: "PDF" },
-  { label: "Guias", value: "GUIDE" },
-  { label: "Links", value: "LINK" },
-  { label: "Vídeos", value: "VIDEO" },
-];
-
-const LANGUAGE_OPTIONS = [
-  { label: "Todos os idiomas", value: "" },
-  { label: "Português", value: "pt" },
-  { label: "English", value: "en" },
-  { label: "Español", value: "es" },
-];
-
 const DIFFICULTY_OPTIONS = [
   { label: "Todos os níveis", value: "" },
   { label: "Introdutório", value: "INTRODUCTORY" },
   { label: "Intermediário", value: "INTERMEDIATE" },
   { label: "Avançado", value: "ADVANCED" },
-];
-
-const SORT_OPTIONS = [
-  { label: "Mais recentes", value: "recent" },
-  { label: "Mais relevantes", value: "relevant" },
 ];
 
 const LibraryNavigationContext = createContext<
@@ -119,20 +92,11 @@ const makeHref = (filters: LibraryFilterValues) => {
   if (filters.q.trim()) {
     params.set("q", filters.q.trim());
   }
-  if (filters.kind) {
-    params.set("kind", filters.kind);
-  }
   if (filters.category) {
     params.set("category", filters.category);
   }
-  if (filters.language) {
-    params.set("language", filters.language);
-  }
   if (filters.difficulty) {
     params.set("difficulty", filters.difficulty);
-  }
-  if (filters.sort !== "recent") {
-    params.set("sort", filters.sort);
   }
   if (filters.titulos === "pt") {
     params.set("titulos", "pt");
@@ -146,10 +110,7 @@ const valuesFromSearch = (search: string): LibraryFilterValues => {
   return {
     category: params.get("category") ?? "",
     difficulty: params.get("difficulty") ?? "",
-    kind: params.get("kind") ?? "",
-    language: params.get("language") ?? "",
     q: params.get("q") ?? "",
-    sort: params.get("sort") === "relevant" ? "relevant" : "recent",
     titulos: params.get("titulos") === "pt" ? "pt" : "",
   };
 };
@@ -225,29 +186,6 @@ const ActiveFilterChips = ({
             label: "Categoria",
             name: "category" as const,
             value: applied.category,
-          },
-        ]
-      : []),
-    ...(applied.kind
-      ? [
-          {
-            label: "Tipo",
-            name: "kind" as const,
-            value:
-              TYPE_OPTIONS.find((option) => option.value === applied.kind)
-                ?.label ?? applied.kind,
-          },
-        ]
-      : []),
-    ...(applied.language
-      ? [
-          {
-            label: "Idioma",
-            name: "language" as const,
-            value:
-              LANGUAGE_OPTIONS.find(
-                (option) => option.value === applied.language
-              )?.label ?? applied.language,
           },
         ]
       : []),
@@ -357,8 +295,6 @@ const FilterDialogContent = ({
       name: "category" as const,
       options: CATEGORY_OPTIONS(categories),
     },
-    { label: "Tipo", name: "kind" as const, options: TYPE_OPTIONS },
-    { label: "Idioma", name: "language" as const, options: LANGUAGE_OPTIONS },
     {
       label: "Nível",
       name: "difficulty" as const,
@@ -410,15 +346,6 @@ const FilterDialogContent = ({
             value={filters[field.name]}
           />
         ))}
-        <div className="md:col-span-2">
-          <FilterField
-            id={`${id}-sort`}
-            label="Ordenação"
-            onChange={(value) => onChange("sort", value)}
-            options={SORT_OPTIONS}
-            value={filters.sort}
-          />
-        </div>
       </div>
       <div className="flex items-center justify-between gap-4 border-[#E2D6D1] border-t px-5 pt-3 pb-[max(1.5rem,env(safe-area-inset-bottom))] md:border-0 md:p-0 md:pt-4">
         <button
@@ -562,12 +489,9 @@ export const LibraryExperience = ({
     lastFilterTrigger.current = trigger;
     setFiltersOpen(true);
   };
-  const activeFilterCount = [
-    applied.category,
-    applied.kind,
-    applied.language,
-    applied.difficulty,
-  ].filter(Boolean).length;
+  const activeFilterCount = [applied.category, applied.difficulty].filter(
+    Boolean
+  ).length;
 
   const navigateToResults = useCallback(
     (href: string, focusTarget: FocusTarget = "results") => {
@@ -669,11 +593,9 @@ export const LibraryExperience = ({
   };
 
   const updateDraft = (name: keyof LibraryFilterValues, value: string) => {
-    const normalizedValue =
-      name === "sort" && value !== "relevant" ? "recent" : value;
     setDraft((current) => ({
       ...current,
-      [name]: normalizedValue,
+      [name]: value,
     }));
     if (name === "q") {
       scheduleAutoSearch(value);
@@ -690,9 +612,6 @@ export const LibraryExperience = ({
       ...current,
       category: "",
       difficulty: "",
-      kind: "",
-      language: "",
-      sort: "recent",
     }));
   };
 
@@ -702,9 +621,6 @@ export const LibraryExperience = ({
         ...applied,
         category: "",
         difficulty: "",
-        kind: "",
-        language: "",
-        sort: "recent",
       },
       "chips"
     );
@@ -717,22 +633,15 @@ export const LibraryExperience = ({
         name: "category" as const,
         options: CATEGORY_OPTIONS(categories),
       },
-      { label: "Tipo", name: "kind" as const, options: TYPE_OPTIONS },
-      { label: "Idioma", name: "language" as const, options: LANGUAGE_OPTIONS },
       {
         label: "Nível",
         name: "difficulty" as const,
         options: DIFFICULTY_OPTIONS,
       },
-      { label: "Ordenação", name: "sort" as const, options: SORT_OPTIONS },
     ];
     return fields.map((field) => (
       <FilterField
-        active={
-          field.name === "sort"
-            ? draft.sort === "relevant"
-            : Boolean(draft[field.name])
-        }
+        active={Boolean(draft[field.name])}
         className={compact ? "min-w-0" : undefined}
         compact={compact}
         id={`${id}-${suffix}-${field.name}`}

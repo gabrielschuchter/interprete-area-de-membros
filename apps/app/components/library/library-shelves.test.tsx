@@ -33,7 +33,6 @@ const item = (
   accessType: "FREE_TO_READ",
   authors: "Sterne JAC; Savović J",
   category: "Risco de viés",
-  coverUrl: null,
   description: "Ferramenta para avaliar risco de viés.",
   difficulty: "ADVANCED",
   id,

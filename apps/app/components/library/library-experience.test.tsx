@@ -30,10 +30,7 @@ import {
 const FILTERS: LibraryFilterValues = {
   category: "",
   difficulty: "",
-  kind: "",
-  language: "",
   q: "",
-  sort: "recent",
   titulos: "",
 };
 
@@ -112,14 +109,14 @@ describe("busca automática da Biblioteca", () => {
   });
 
   test("mantém filtros aplicados e o botão de títulos em português", () => {
-    mocks.search.current = "kind=PDF&titulos=pt";
-    renderLibrary({ ...FILTERS, kind: "PDF", titulos: "pt" });
+    mocks.search.current = "difficulty=ADVANCED&titulos=pt";
+    renderLibrary({ ...FILTERS, difficulty: "ADVANCED", titulos: "pt" });
     fireEvent.change(panelSearch(), { target: { value: "prisma" } });
     act(() => {
       vi.advanceTimersByTime(400);
     });
     expect(mocks.replace).toHaveBeenCalledWith(
-      "/biblioteca?q=prisma&kind=PDF&titulos=pt",
+      "/biblioteca?q=prisma&difficulty=ADVANCED&titulos=pt",
       { scroll: false }
     );
   });

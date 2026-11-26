@@ -26,10 +26,7 @@ const readFilters = (
     return category ? libraryCategoryGroup(category) : "";
   })(),
   difficulty: firstValue(params.difficulty) ?? "",
-  kind: firstValue(params.kind) ?? "",
-  language: firstValue(params.language) ?? "",
   q: firstValue(params.q) ?? "",
-  sort: firstValue(params.sort) === "relevant" ? "relevant" : "recent",
   titulos: firstValue(params.titulos) === "pt" ? "pt" : "",
 });
 
@@ -43,8 +40,6 @@ const LibraryPage = async ({ searchParams }: LibraryPageProperties) => {
   const showingDefaultShelf = !(
     filters.q ||
     filters.category ||
-    filters.kind ||
-    filters.language ||
     filters.difficulty
   );
 

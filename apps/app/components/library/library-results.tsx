@@ -58,11 +58,8 @@ export const LibraryResults = async ({
   const items = await tracePerformance("member.route.library.items", () =>
     getLibraryShelfItems({
       query: filters.q,
-      kind: filters.kind,
       category: filters.category,
-      language: filters.language,
       difficulty: filters.difficulty,
-      sort: filters.sort,
       memberId,
     })
   );
@@ -91,9 +88,8 @@ export const LibraryResults = async ({
       </header>
       <div className="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
         <p className="max-w-4xl text-[#7A5A69] text-[13px] leading-[1.6] md:text-sm">
-          {filters.sort === "relevant"
-            ? "Em cada estante, primeiro o que mais gente da turma abriu e salvou."
-            : "Em cada estante, os materiais mais recentes aparecem primeiro. Toque num livro para ver os detalhes."}
+          Em cada estante, os materiais mais recentes aparecem primeiro. Toque
+          num livro para ver os detalhes.
         </p>
         <LibraryTitleTranslationToggle filters={filters} />
       </div>

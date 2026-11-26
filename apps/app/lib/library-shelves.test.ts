@@ -16,7 +16,6 @@ const item = (
   accessType: null,
   authors: null,
   category,
-  coverUrl: null,
   description: null,
   difficulty: null,
   id,

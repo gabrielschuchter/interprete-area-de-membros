@@ -8,7 +8,6 @@ export interface LibraryShelfItem {
   readonly accessType: string | null;
   readonly authors: string | null;
   readonly category: string | null;
-  readonly coverUrl: string | null;
   readonly description: string | null;
   readonly difficulty: string | null;
   readonly id: string;
