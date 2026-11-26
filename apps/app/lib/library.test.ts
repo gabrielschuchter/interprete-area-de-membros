@@ -41,6 +41,7 @@ vi.mock("./learning-assignments", () => ({ markLearningAssignmentStarted }));
 import {
   getLibraryItems,
   getMostAccessedLibraryItems,
+  getPersonalLibraryShelfItems,
   getPublishedLibraryItem,
   getStaffLibraryItems,
 } from "./library";
@@ -407,6 +408,39 @@ describe("materiais mais acessados", () => {
     expect(libraryLaunchPicks).toHaveLength(10);
     expect(new Set(libraryLaunchPickUrls).size).toBe(
       libraryLaunchPickUrls.length
+    );
+  });
+});
+
+describe("biblioteca pessoal em estante", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getLearningAccessScope.mockResolvedValue({
+      fullAccess: true,
+      libraryItemIds: new Set(),
+    });
+  });
+
+  test("traz só materiais salvos pelo membro, do salvo mais recente ao mais antigo", async () => {
+    const row = (id: string, savedAt: string) => ({
+      id,
+      title: id,
+      lesson: null,
+      bookmarks: [{ createdAt: new Date(savedAt), id: `b-${id}` }],
+    });
+    database.libraryItem.findMany.mockResolvedValue([
+      row("antigo", "2026-01-01"),
+      row("novo", "2026-03-01"),
+      row("meio", "2026-02-01"),
+    ]);
+
+    const items = await getPersonalLibraryShelfItems("member-1");
+
+    expect(items.map(({ id }) => id)).toEqual(["novo", "meio", "antigo"]);
+    expect(items.every(({ isBookmarked }) => isBookmarked)).toBe(true);
+    const query = database.libraryItem.findMany.mock.calls[0]?.[0];
+    expect(JSON.stringify(query.where)).toContain(
+      JSON.stringify({ bookmarks: { some: { memberId: "member-1" } } })
     );
   });
 });

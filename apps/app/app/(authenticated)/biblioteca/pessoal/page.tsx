@@ -2,13 +2,13 @@ import { Button } from "@repo/design-system/components/ui/button";
 import { ArrowLeftIcon } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { PersonalLibraryGrid } from "@/components/library/personal-library-grid";
+import { LibraryShelves } from "@/components/library/library-shelves";
 import { requireMemberId } from "@/lib/learning";
-import { getPersonalLibraryItems } from "@/lib/library";
+import { getPersonalLibraryShelfItems } from "@/lib/library";
 
 const PersonalLibraryPage = async () => {
   const memberId = await requireMemberId();
-  const items = await getPersonalLibraryItems(memberId);
+  const items = await getPersonalLibraryShelfItems(memberId);
 
   return (
     <main className="mx-auto min-h-full w-full max-w-[1080px] bg-[#F1EBE8] px-5 pt-4 pb-12 md:px-8 md:pt-8 md:pb-16 lg:px-12 lg:pt-10">
@@ -30,7 +30,7 @@ const PersonalLibraryPage = async () => {
           Biblioteca pessoal.
         </h1>
         <p className="mt-3 text-[#7A5A69] text-[15px] leading-[1.6]">
-          Aulas, materiais e cursos que você salvou, reunidos em um só lugar e
+          Os materiais da biblioteca que você salvou, reunidos em uma estante e
           sincronizados com a sua conta.
         </p>
       </header>
@@ -53,8 +53,8 @@ const PersonalLibraryPage = async () => {
               Nenhum item salvo ainda.
             </h2>
             <p className="mt-3 text-[#7A5A69] text-sm leading-6">
-              Use o marcador Salvar nos cards de Cursos ou nos materiais da
-              biblioteca para guardar itens e voltar a eles depois.
+              Use o marcador Salvar nos materiais da biblioteca para guardar
+              itens e voltar a eles depois.
             </p>
             <div className="mt-4 flex flex-wrap gap-3">
               <Button asChild className="h-11">
@@ -75,7 +75,19 @@ const PersonalLibraryPage = async () => {
           </div>
         </section>
       ) : (
-        <PersonalLibraryGrid items={items} />
+        <div className="mt-7 md:mt-10">
+          <LibraryShelves
+            shelves={[
+              {
+                art: "/library/shelves/minha-biblioteca.webp",
+                id: "estante-minha-biblioteca",
+                items,
+                label: "Minha biblioteca",
+              },
+            ]}
+            translateTitles={false}
+          />
+        </div>
       )}
     </main>
   );

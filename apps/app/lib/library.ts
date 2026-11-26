@@ -352,6 +352,39 @@ export const getLibraryItems = async ({
   };
 };
 
+/** Campos que as estantes e o card de detalhes usam de cada material. */
+const shelfItemSelect = (memberId: string) =>
+  ({
+    id: true,
+    title: true,
+    titlePt: true,
+    description: true,
+    kind: true,
+    category: true,
+    tags: true,
+    authors: true,
+    year: true,
+    language: true,
+    difficulty: true,
+    accessType: true,
+    version: true,
+    lesson: {
+      select: {
+        id: true,
+        status: true,
+        moduleId: true,
+        module: {
+          select: {
+            status: true,
+            courseId: true,
+            course: { select: { status: true } },
+          },
+        },
+      },
+    },
+    bookmarks: { where: { memberId }, select: { id: true } },
+  }) satisfies Prisma.LibraryItemSelect;
+
 /** Teto de materiais por consulta de estantes (o acervo cabe com folga). */
 const MAX_SHELF_ITEMS = 400;
 
@@ -388,36 +421,7 @@ export const getLibraryShelfItems = async ({
             ]
           : [{ createdAt: "desc" }, { id: "desc" }],
       take: MAX_SHELF_ITEMS,
-      select: {
-        id: true,
-        title: true,
-        titlePt: true,
-        description: true,
-        kind: true,
-        category: true,
-        tags: true,
-        authors: true,
-        year: true,
-        language: true,
-        difficulty: true,
-        accessType: true,
-        version: true,
-        lesson: {
-          select: {
-            id: true,
-            status: true,
-            moduleId: true,
-            module: {
-              select: {
-                status: true,
-                courseId: true,
-                course: { select: { status: true } },
-              },
-            },
-          },
-        },
-        bookmarks: { where: { memberId }, select: { id: true } },
-      },
+      select: shelfItemSelect(memberId),
     })
   );
   return rows
@@ -427,6 +431,54 @@ export const getLibraryShelfItems = async ({
     .map(({ bookmarks, lesson: _lesson, ...row }) => ({
       ...row,
       isBookmarked: bookmarks.length > 0,
+    }));
+};
+
+/**
+ * Só os materiais da Biblioteca que o membro salvou (sem cursos, módulos,
+ * aulas ou arquivos), do salvo mais recente para o mais antigo, no mesmo
+ * formato das estantes. Respeita o mesmo escopo de acesso.
+ */
+export const getPersonalLibraryShelfItems = async (memberId: string) => {
+  const { where } = buildLibraryWhere({
+    category: "",
+    difficulty: "",
+    kind: "",
+    language: "",
+    query: "",
+  });
+  const scope = await getLearningAccessScope(memberId);
+  const rows = await tracePerformance("member.library.personal-shelf", () =>
+    database.libraryItem.findMany({
+      where: {
+        AND: [
+          where,
+          buildLibraryItemAccessWhere(scope),
+          { bookmarks: { some: { memberId } } },
+        ],
+      },
+      take: MAX_SHELF_ITEMS,
+      select: {
+        ...shelfItemSelect(memberId),
+        bookmarks: {
+          where: { memberId },
+          select: { id: true, createdAt: true },
+        },
+      },
+    })
+  );
+  return rows
+    .filter(
+      (row) => !row.lesson || hasLinkedLessonAccess(row.id, row.lesson, scope)
+    )
+    .sort(
+      (left, right) =>
+        (right.bookmarks[0]?.createdAt.valueOf() ?? 0) -
+        (left.bookmarks[0]?.createdAt.valueOf() ?? 0)
+    )
+    .map(({ bookmarks: _bookmarks, lesson: _lesson, ...row }) => ({
+      ...row,
+      isBookmarked: true,
     }));
 };
 

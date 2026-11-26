@@ -15,7 +15,6 @@ import {
   ChevronRightIcon,
   XIcon,
 } from "lucide-react";
-import Link from "next/link";
 import { type PointerEvent, useEffect, useRef, useState } from "react";
 import { LibraryBookmarkButton } from "@/components/library/library-bookmark-button";
 import { libraryCategoryGroups } from "@/lib/library-categories";
@@ -421,13 +420,6 @@ const ItemDetails = ({
             targetId={item.id}
             targetType="LIBRARY_ITEM"
           />
-          <Link
-            className="min-h-11 content-center font-semibold text-[#8C1535] text-sm underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-[#8C1535] focus-visible:outline-offset-2"
-            href={`/biblioteca/${item.id}`}
-            prefetch={false}
-          >
-            Ver página do material
-          </Link>
         </div>
       </div>
     </div>

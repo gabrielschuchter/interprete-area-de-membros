@@ -105,11 +105,6 @@ const LibraryItemPage = async ({ params }: LibraryItemPageProperties) => {
               targetType="LIBRARY_ITEM"
             />
           </div>
-          {item.accessNote && (
-            <p className="mt-5 max-w-2xl border-brand-action/50 border-l-2 pl-4 text-muted-foreground text-sm leading-6">
-              {item.accessNote}
-            </p>
-          )}
           {item.linkCheckedAt && (
             <p className="mt-3 text-muted-foreground text-xs">
               Link conferido em{" "}
@@ -118,15 +113,6 @@ const LibraryItemPage = async ({ params }: LibraryItemPageProperties) => {
                 timeZone: "UTC",
               }).format(item.linkCheckedAt)}
             </p>
-          )}
-          {item.tags.length > 0 && (
-            <div className="mt-7 flex flex-wrap gap-2">
-              {item.tags.map((tag) => (
-                <Badge key={tag} variant="secondary">
-                  {tag}
-                </Badge>
-              ))}
-            </div>
           )}
           <div className="mt-10 border-border border-t pt-7">
             <a
