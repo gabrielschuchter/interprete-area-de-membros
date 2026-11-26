@@ -63,7 +63,7 @@ export const LibraryResults = async ({
       memberId,
     })
   );
-  const shelves = groupLibraryShelves(items);
+  const shelves = groupLibraryShelves(items, filters.category || undefined);
 
   return (
     <div data-route-content-ready="library">
@@ -97,6 +97,7 @@ export const LibraryResults = async ({
         <EmptyLibraryResults />
       ) : (
         <LibraryShelves
+          expandAll={Boolean(filters.category)}
           shelves={shelves}
           translateTitles={filters.titulos === "pt"}
         />

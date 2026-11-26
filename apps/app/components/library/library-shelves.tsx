@@ -160,17 +160,19 @@ const SavedRibbon = ({ large = false }: { readonly large?: boolean }) => (
 );
 
 const Shelf = ({
+  defaultExpanded,
   isSaved,
   onOpen,
   shelf,
   translateTitles,
 }: {
+  readonly defaultExpanded: boolean;
   readonly isSaved: (item: LibraryShelfItem) => boolean;
   readonly onOpen: (shelfId: string, itemId: string) => void;
   readonly shelf: LibraryShelf;
   readonly translateTitles: boolean;
 }) => {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(defaultExpanded);
   const railRef = useRef<HTMLDivElement>(null);
   const speedRef = useRef(0);
   const frameRef = useRef(0);
@@ -427,9 +429,12 @@ const ItemDetails = ({
 };
 
 export const LibraryShelves = ({
+  expandAll = false,
   shelves,
   translateTitles,
 }: {
+  /** Abre as estantes inteiras (todos os livros à vista), ex.: ao filtrar por categoria. */
+  readonly expandAll?: boolean;
   readonly shelves: readonly LibraryShelf[];
   readonly translateTitles: boolean;
 }) => {
@@ -452,8 +457,9 @@ export const LibraryShelves = ({
     <>
       {shelves.map((entry) => (
         <Shelf
+          defaultExpanded={expandAll}
           isSaved={isSaved}
-          key={entry.id}
+          key={`${entry.id}-${expandAll}`}
           onOpen={(shelfId, itemId) => setSelection({ itemId, shelfId })}
           shelf={entry}
           translateTitles={translateTitles}

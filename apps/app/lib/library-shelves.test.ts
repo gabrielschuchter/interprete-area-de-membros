@@ -76,6 +76,32 @@ describe("groupLibraryShelves", () => {
     expect(shelf?.art.endsWith(".webp")).toBe(true);
   });
 
+  it("com uma categoria escolhida, mostra só a estante dela com todos os livros registrados nela", () => {
+    const shelves = groupLibraryShelves(
+      [
+        item("a", "Revisões sistemáticas e busca"),
+        item("b", "Busca da evidência"),
+        item("c", "Fundamentos da PBE e busca"),
+        item("solto", null),
+      ],
+      "Busca da evidência"
+    );
+
+    expect(shelves.map(({ label }) => label)).toEqual(["Busca da evidência"]);
+    expect(shelves[0]?.items.map(({ id }) => id)).toEqual(["a", "b", "c"]);
+  });
+
+  it("dá ilustração própria a busca, registros e risco de viés", () => {
+    const art = (category: string) =>
+      groupLibraryShelves([item("x", category)])[0]?.art;
+
+    expect(art("Busca da evidência")).toBe("/library/shelves/busca.webp");
+    expect(art("Registros de protocolo")).toBe(
+      "/library/shelves/registros.webp"
+    );
+    expect(art("Risco de viés")).toBe("/library/shelves/risco-de-vies.webp");
+  });
+
   it("não cria estante vazia", () => {
     expect(groupLibraryShelves([])).toEqual([]);
   });

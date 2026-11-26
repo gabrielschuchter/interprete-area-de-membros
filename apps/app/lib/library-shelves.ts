@@ -30,18 +30,17 @@ export interface LibraryShelf {
 
 const SHELF_ART_BY_GROUP: Readonly<Record<string, string>> = {
   "Bioestatística e interpretação": "/library/shelves/bioestatistica.webp",
-  "Busca da evidência": "/library/shelves/revisoes-busca.webp",
+  "Busca da evidência": "/library/shelves/busca.webp",
   "Diretrizes e decisão clínica": "/library/shelves/diretrizes.webp",
   "Epidemiologia e desenhos de estudo": "/library/shelves/epidemiologia.webp",
   "Fundamentos da PBE": "/library/shelves/fundamentos.webp",
   "Leitura crítica e certeza da evidência":
     "/library/shelves/leitura-critica.webp",
   "Nutrição baseada em evidências": "/library/shelves/nutricao.webp",
-  "Registros de protocolo": "/library/shelves/revisoes-busca.webp",
+  "Registros de protocolo": "/library/shelves/registros.webp",
   "Relato e ciência aberta": "/library/shelves/relato.webp",
   "Revisões sistemáticas": "/library/shelves/revisoes-busca.webp",
-  // Provisória: o Risco de viés ainda não tem ilustração própria.
-  "Risco de viés": "/library/shelves/leitura-critica.webp",
+  "Risco de viés": "/library/shelves/risco-de-vies.webp",
 };
 
 const FALLBACK_SHELF_ART = "/library/shelves/fundamentos.webp";
@@ -60,13 +59,16 @@ const slugify = (label: string) =>
  * material de categoria combinada aparece em cada estante a que pertence.
  */
 export const groupLibraryShelves = (
-  items: readonly LibraryShelfItem[]
+  items: readonly LibraryShelfItem[],
+  /** Com um grupo escolhido no filtro, mostra só a estante dele. */
+  onlyGroup?: string
 ): LibraryShelf[] => {
   const categories = items.flatMap(({ category }) =>
     category?.trim() ? [category] : []
   );
-  const shelves: LibraryShelf[] = libraryCategoryGroupsFor(categories).map(
-    (label) => ({
+  const shelves: LibraryShelf[] = libraryCategoryGroupsFor(categories)
+    .filter((label) => !onlyGroup || label === onlyGroup)
+    .map((label) => ({
       art: SHELF_ART_BY_GROUP[label] ?? FALLBACK_SHELF_ART,
       id: `estante-${slugify(label)}`,
       items: items.filter(
@@ -74,10 +76,9 @@ export const groupLibraryShelves = (
           category?.trim() && libraryCategoryGroups(category).includes(label)
       ),
       label,
-    })
-  );
+    }));
   const loose = items.filter(({ category }) => !category?.trim());
-  if (loose.length > 0) {
+  if (loose.length > 0 && !onlyGroup) {
     shelves.push({
       art: FALLBACK_SHELF_ART,
       id: `estante-${slugify(UNCATEGORIZED_LABEL)}`,
