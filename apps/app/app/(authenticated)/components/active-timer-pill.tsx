@@ -520,8 +520,9 @@ const ActiveTimerControls = ({
       </Button>
     )}
     {detailsOpen && (
-      <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-[#E2D6D1] border-t pt-2 md:absolute md:top-11 md:right-0 md:mt-0 md:w-[340px] md:rounded-xl md:border md:bg-[#FBF8F5] md:p-4 md:shadow-xl">
-        <div className="min-w-0 flex-1">
+      <div className="mt-2 flex flex-wrap items-center justify-end gap-2 border-[#E2D6D1] border-t pt-2 md:absolute md:top-11 md:right-0 md:mt-0 md:w-[340px] md:rounded-xl md:border md:bg-[#FBF8F5] md:p-4 md:shadow-xl">
+        {/* Linha inteira: com flex-1 e base 0 o texto encolhia até caber uma letra por linha. */}
+        <div className="w-full min-w-0">
           <p className="font-display text-[#40222F] text-lg">
             {active.title || labelForMode(active.mode)}
           </p>

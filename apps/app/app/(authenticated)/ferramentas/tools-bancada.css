@@ -1,5 +1,4 @@
-/* Animações da bancada: poeira dourada, grãos de areia, livros e carimbo.
-   Tudo respeita prefers-reduced-motion. */
+/* Animações da bancada: poeira dourada, grãos de areia, livros e carimbo. */
 .bancada-dust {
   animation: bancada-dust 6s ease-in-out infinite;
 }
@@ -99,19 +98,5 @@
   100% {
     opacity: 0;
     transform: translate(18px, -110px);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .bancada-dust,
-  .bancada-grain,
-  .bancada-stream,
-  .bancada-book,
-  .bancada-stamp,
-  .bancada-hero-dust {
-    animation: none;
-  }
-  .bancada-sand {
-    transition: none;
   }
 }

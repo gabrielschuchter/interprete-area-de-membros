@@ -1331,6 +1331,15 @@
     padding-left: 1.5rem;
   }
 
+  /* O reset do Tailwind zera list-style; sem isto os marcadores somem. */
+  .prose-editor ul:not([data-type="taskList"]) {
+    list-style: disc outside;
+  }
+
+  .prose-editor ol {
+    list-style: decimal outside;
+  }
+
   .prose-editor ul[data-type="taskList"] {
     padding-left: 0;
     list-style: none;

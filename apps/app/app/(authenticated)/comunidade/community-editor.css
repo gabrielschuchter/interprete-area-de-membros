@@ -752,7 +752,7 @@
 .community-editor-sheet .prose-editor li::marker {
   font-family: var(--font-mono-family), monospace;
   font-size: 0.9em;
-  color: #8c1535;
+  color: currentColor;
 }
 
 .community-editor-sheet .prose-editor li p {

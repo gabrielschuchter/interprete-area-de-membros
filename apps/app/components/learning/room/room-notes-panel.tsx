@@ -225,6 +225,8 @@ export const RoomNotesPanel = ({
   const [stamp, setStamp] = useState<number | null>(null);
   const [trashed, setTrashed] = useState<RoomNote | null>(null);
   const capturedRef = useRef<number | null>(null);
+  // A pessoa desligou o tempo de propósito: não recapturar ao digitar.
+  const stampDismissedRef = useRef(false);
 
   const upsert = useCallback((note: RoomNote) => {
     setNotes((current) => {
@@ -234,6 +236,23 @@ export const RoomNotesPanel = ({
     setEditingId(note.id);
   }, []);
   const autosave = useNoteAutosave({ lessonId, onSaved: upsert });
+
+  const captureStampIfMissing = () => {
+    if (
+      autosave.noteIdRef.current ||
+      autosave.stampRef.current !== null ||
+      stampDismissedRef.current
+    ) {
+      return;
+    }
+    const now = controlsRef.current?.currentTime() ?? null;
+    if (now === null) {
+      return;
+    }
+    capturedRef.current = now;
+    autosave.stampRef.current = now;
+    setStamp(now);
+  };
 
   const editor = useEditor({
     content: emptyDocument,
@@ -256,15 +275,15 @@ export const RoomNotesPanel = ({
     ],
     immediatelyRender: false,
     shouldRerenderOnTransaction: true,
-    onFocus: () => {
-      if (!autosave.noteIdRef.current && autosave.stampRef.current === null) {
-        const now = controlsRef.current?.currentTime() ?? null;
-        capturedRef.current = now;
-        autosave.stampRef.current = now;
-        setStamp(now);
-      }
+    // Nota nova pega o tempo do vídeo ao focar e, se o vídeo ainda não
+    // estava carregado nesse momento, no primeiro texto digitado com ele
+    // pronto. Antes só o foco contava: quem clicava na nota antes de dar
+    // play ficava com "sem tempo" para sempre.
+    onFocus: () => captureStampIfMissing(),
+    onUpdate: () => {
+      captureStampIfMissing();
+      autosave.schedule();
     },
-    onUpdate: () => autosave.schedule(),
   });
 
   useEffect(() => {
@@ -301,6 +320,7 @@ export const RoomNotesPanel = ({
     autosave.pinnedRef.current = false;
     autosave.stampRef.current = null;
     capturedRef.current = null;
+    stampDismissedRef.current = false;
     autosave.setStatus("idle");
     setStamp(null);
     setEditingId(null);
@@ -367,6 +387,7 @@ export const RoomNotesPanel = ({
       stamp === null
         ? (capturedRef.current ?? controlsRef.current?.currentTime() ?? null)
         : null;
+    stampDismissedRef.current = next === null;
     autosave.stampRef.current = next;
     setStamp(next);
     if (autosave.noteIdRef.current) {

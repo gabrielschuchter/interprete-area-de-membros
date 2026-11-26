@@ -338,7 +338,7 @@ a.cp-author__identity:hover .cp-author__name {
   list-style: decimal outside;
 }
 .cp-body li::marker {
-  color: var(--cp-band);
+  color: currentColor;
 }
 .cp-body li + li {
   margin-top: 6px;
