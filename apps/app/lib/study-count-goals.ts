@@ -14,54 +14,74 @@ import {
 
 interface CountRow {
   readonly activityKind: string;
-  readonly resources: number | bigint;
+  readonly resourceId: string;
+}
+
+interface Window {
+  readonly weekEnd: Date;
+  readonly weekStart: Date;
 }
 
 /**
- * Quantos recursos distintos o membro estudou na janela da semana, com pelo
- * menos 1 min de tempo registrado cada. Usa o mesmo rastreio da meta em
- * minutos, então tudo que tem cronômetro (aula, leitura da biblioteca,
- * exercício) conta sem depender de outra tabela.
+ * Recursos estudados na semana com pelo menos 1 min de tempo registrado.
+ * Devolve uma lista (tipo + id) para que aulas concluídas possam ser
+ * somadas sem contar a mesma aula duas vezes.
  */
-const countStudiedResources = async (
-  memberId: string,
-  window: { readonly weekEnd: Date; readonly weekStart: Date }
-) => {
-  const rows = await database.$queryRaw<CountRow[]>(Prisma.sql`
-    SELECT per_resource."activityKind", COUNT(*) AS "resources"
-    FROM (
-      SELECT tracking."activityKind"::text AS "activityKind", tracking."resourceId"
-      FROM "StudyActivityInterval" AS study_interval
-      JOIN "StudyTrackingSession" AS tracking ON tracking."id" = study_interval."sessionId"
-      WHERE study_interval."memberId" = ${memberId}
-        AND study_interval."startedAt" >= ${window.weekStart}
-        AND study_interval."startedAt" < ${window.weekEnd}
-        AND tracking."resourceId" IS NOT NULL
-      GROUP BY tracking."activityKind", tracking."resourceId"
-      HAVING SUM(study_interval."seconds") >= ${COUNT_GOAL_MIN_SECONDS}
-    ) AS per_resource
-    GROUP BY per_resource."activityKind"
+const trackedResources = (memberId: string, window: Window) =>
+  database.$queryRaw<CountRow[]>(Prisma.sql`
+    SELECT tracking."activityKind"::text AS "activityKind", tracking."resourceId"
+    FROM "StudyActivityInterval" AS study_interval
+    JOIN "StudyTrackingSession" AS tracking ON tracking."id" = study_interval."sessionId"
+    WHERE study_interval."memberId" = ${memberId}
+      AND study_interval."startedAt" >= ${window.weekStart}
+      AND study_interval."startedAt" < ${window.weekEnd}
+      AND tracking."resourceId" IS NOT NULL
+    GROUP BY tracking."activityKind", tracking."resourceId"
+    HAVING SUM(study_interval."seconds") >= ${COUNT_GOAL_MIN_SECONDS}
   `);
-  const byKind = new Map(
-    rows.map((row) => [row.activityKind, Number(row.resources)])
-  );
-  const done: Record<CountGoalKind, number> = {
-    LESSONS: 0,
-    READINGS: 0,
-    EXERCISES: 0,
-  };
-  for (const kind of countGoalKinds) {
-    done[kind] = countGoalActivityKinds[kind].reduce(
-      (sum, activity) => sum + (byKind.get(activity) ?? 0),
-      0
+
+/**
+ * Aulas: estudadas por pelo menos 1 min OU concluídas na semana (a mesma
+ * aula conta uma vez). Leituras: itens da biblioteca com pelo menos 1 min.
+ * Exercícios: questões respondidas na semana, mais atividades estudadas.
+ */
+const countStudiedResources = async (memberId: string, window: Window) => {
+  const [tracked, completed, answers] = await Promise.all([
+    trackedResources(memberId, window),
+    database.lessonProgress.findMany({
+      where: {
+        memberId,
+        completedAt: { gte: window.weekStart, lt: window.weekEnd },
+      },
+      select: { lessonId: true },
+    }),
+    database.exerciseAnswer.count({
+      where: {
+        answeredAt: { gte: window.weekStart, lt: window.weekEnd },
+        sessionQuestion: { session: { memberId } },
+      },
+    }),
+  ]);
+  const distinct = (kinds: readonly string[]) =>
+    new Set(
+      tracked
+        .filter((row) => kinds.includes(row.activityKind))
+        .map((row) => row.resourceId)
     );
+  const lessons = distinct(countGoalActivityKinds.LESSONS);
+  for (const item of completed) {
+    lessons.add(item.lessonId);
   }
-  return done;
+  return {
+    LESSONS: lessons.size,
+    READINGS: distinct(countGoalActivityKinds.READINGS).size,
+    EXERCISES: answers + distinct(countGoalActivityKinds.EXERCISES_EXTRA).size,
+  } satisfies Record<CountGoalKind, number>;
 };
 
 export const getCountGoalsOverview = async (
   memberId: string,
-  window: { readonly weekEnd: Date; readonly weekStart: Date }
+  window: Window
 ): Promise<CountGoalsOverview> => {
   const [goals, done] = await Promise.all([
     database.studyCountGoal.findMany({

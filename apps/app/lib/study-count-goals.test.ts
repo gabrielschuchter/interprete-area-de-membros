@@ -3,6 +3,8 @@ import { beforeEach, expect, test, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 const database = {
   $queryRaw: vi.fn(),
+  exerciseAnswer: { count: vi.fn() },
+  lessonProgress: { findMany: vi.fn() },
   studyCountGoal: {
     deleteMany: vi.fn(),
     findMany: vi.fn(),
@@ -28,22 +30,30 @@ beforeEach(() => {
   database.studyCountGoal.upsert.mockResolvedValue({});
 });
 
-test("soma aulas e gravações em aulas, biblioteca em leituras e exercício+atividade em exercícios", async () => {
+test("aulas somam estudadas e concluídas sem repetir; exercícios contam questões respondidas", async () => {
   database.$queryRaw.mockResolvedValue([
-    { activityKind: "LESSON", resources: 2n },
-    { activityKind: "RECORDING", resources: 1 },
-    { activityKind: "LIBRARY_ITEM", resources: 4 },
-    { activityKind: "EXERCISE", resources: 3 },
-    { activityKind: "ACTIVITY", resources: 1 },
-    { activityKind: "COMMUNITY", resources: 9 },
+    { activityKind: "LESSON", resourceId: "l1" },
+    { activityKind: "RECORDING", resourceId: "r1" },
+    { activityKind: "LIBRARY_ITEM", resourceId: "b1" },
+    { activityKind: "LIBRARY_ITEM", resourceId: "b2" },
+    { activityKind: "ACTIVITY", resourceId: "a1" },
+    { activityKind: "COMMUNITY", resourceId: "c1" },
   ]);
+  database.lessonProgress.findMany.mockResolvedValue([
+    { lessonId: "l1" },
+    { lessonId: "l2" },
+  ]);
+  database.exerciseAnswer.count.mockResolvedValue(8);
   database.studyCountGoal.findMany.mockResolvedValue([
     { kind: "LESSONS", target: 5 },
   ]);
   const overview = await getCountGoalsOverview("m1", window);
   expect(overview.LESSONS).toEqual({ done: 3, target: 5 });
-  expect(overview.READINGS).toEqual({ done: 4, target: null });
-  expect(overview.EXERCISES).toEqual({ done: 4, target: null });
+  expect(overview.READINGS).toEqual({ done: 2, target: null });
+  expect(overview.EXERCISES).toEqual({ done: 9, target: null });
+  expect(database.exerciseAnswer.count.mock.calls[0]?.[0].where).toMatchObject({
+    sessionQuestion: { session: { memberId: "m1" } },
+  });
 });
 
 test("salva a meta semanal do tipo escolhido", async () => {

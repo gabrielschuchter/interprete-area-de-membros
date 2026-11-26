@@ -20,11 +20,12 @@ export const countGoalUnits: Record<CountGoalKind, [string, string]> = {
 };
 
 /** Quais tipos de atividade do rastreio alimentam cada meta. */
-export const countGoalActivityKinds: Record<CountGoalKind, string[]> = {
+export const countGoalActivityKinds = {
   LESSONS: ["LESSON", "RECORDING"],
   READINGS: ["LIBRARY_ITEM"],
-  EXERCISES: ["EXERCISE", "ACTIVITY"],
-};
+  /** Exercícios contam questões respondidas; atividades entram por tempo. */
+  EXERCISES_EXTRA: ["ACTIVITY"],
+} as const satisfies Record<string, readonly string[]>;
 
 const basePresets: Record<CountGoalKind, number[]> = {
   LESSONS: [3, 5, 8, 12],
@@ -103,4 +104,13 @@ export const goalProgress = (
     unit: unitFor(mode, remaining),
     unitTotal: unitFor(mode, target),
   };
+};
+
+export const countGoalHelp: Record<CountGoalKind, string> = {
+  LESSONS:
+    "Conta cada aula diferente que você concluiu ou estudou por pelo menos 1 min na semana.",
+  READINGS:
+    "Conta cada leitura da biblioteca diferente com pelo menos 1 min de estudo na semana.",
+  EXERCISES:
+    "Conta cada questão de exercício que você responde na semana, mesmo que rápido.",
 };

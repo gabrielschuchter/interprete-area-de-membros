@@ -5,6 +5,7 @@ import { cn } from "@repo/design-system/lib/utils";
 import { useState } from "react";
 import {
   type CountGoalsOverview,
+  countGoalHelp,
   countGoalKinds,
   countGoalLabels,
   countGoalPresets,
@@ -180,10 +181,7 @@ const CountGoalNote = ({
   readonly run: GoalHourglassCardProps["run"];
 }) => (
   <>
-    <span className="text-[#7D5A6C] text-xs">
-      Conta cada {countGoalUnit(kind, 1)} diferente com pelo menos 1 min de
-      estudo registrado na semana.
-    </span>
+    <span className="text-[#7D5A6C] text-xs">{countGoalHelp[kind]}</span>
     {hasGoal ? (
       <button
         className="self-start text-[#8C1535] text-xs underline underline-offset-2"
