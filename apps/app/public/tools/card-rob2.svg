@@ -37,22 +37,44 @@
 <rect x="289" y="136" width="9" height="36" fill="#7A2446"/>
 <rect x="289" y="136" width="2" height="36" fill="#000" opacity="0.18"/>
 <rect x="290" y="142" width="7" height="1.6" fill="#D9A86B"/><rect x="290" y="162" width="7" height="1.6" fill="#D9A86B"/>
-<ellipse cx="240" cy="171" rx="40" ry="3" fill="#000" opacity="0.35"/>
-<path d="M212 172 L220 162 H260 L268 172 Z" fill="url(#gold)"/>
-<rect x="237" y="52" width="6" height="112" fill="url(#gold)"/>
-<circle cx="240" cy="48" r="7" fill="url(#gold)"/><path d="M240 38 l4 5 l-4 5 l-4 -5 Z" fill="#F0C98A"/>
-<line x1="190" y1="72" x2="290" y2="62" stroke="url(#gold)" stroke-width="4" stroke-linecap="round"/>
-<circle cx="190" cy="72" r="3" fill="#F0C98A"/>
-<line x1="190" y1="72" x2="174" y2="116" stroke="#D9A86B" stroke-width="1"/><line x1="190" y1="72" x2="206" y2="116" stroke="#D9A86B" stroke-width="1"/>
-<path d="M170 116 H210 Q190 130 170 116 Z" fill="url(#gold)"/>
-<rect x="176" y="102" width="12" height="14" fill="#C8333F"/><rect x="190" y="106" width="12" height="10" fill="#E2565A"/><rect x="184" y="94" width="10" height="8" fill="#C8333F"/>
-<circle cx="290" cy="62" r="3" fill="#F0C98A"/>
-<line x1="290" y1="62" x2="274" y2="106" stroke="#D9A86B" stroke-width="1"/><line x1="290" y1="62" x2="306" y2="106" stroke="#D9A86B" stroke-width="1"/>
-<path d="M270 106 H310 Q290 120 270 106 Z" fill="url(#gold)"/>
-<rect x="282" y="98" width="16" height="8" fill="#F0E4D8"/>
-<line x1="314" y1="156" x2="330" y2="172" stroke="#C9A57A" stroke-width="6" stroke-linecap="round"/>
-<circle cx="304" cy="146" r="14" fill="#F5C7A0" fill-opacity="0.18" stroke="url(#gold)" stroke-width="4"/>
-<path d="M294 138 q6 -8 14 -6" fill="none" stroke="#FFF" stroke-opacity="0.6" stroke-width="2"/>
+<ellipse cx="240" cy="171" rx="50" ry="3" fill="#000" opacity="0.35"/>
+<line x1="210" y1="172" x2="226" y2="68" stroke="url(#goldv)" stroke-width="4"/>
+<line x1="270" y1="172" x2="254" y2="68" stroke="url(#goldv)" stroke-width="4"/>
+<rect x="190" y="142" width="100" height="5" rx="1" fill="url(#gold)"/>
+<rect x="205" y="59" width="76" height="88" fill="#000" opacity="0.3"/>
+<rect x="202" y="56" width="76" height="88" fill="#F0E4D8"/>
+<path d="M264 56 H278 V70 Z" fill="#E6D6C6"/>
+<rect x="210" y="64" width="44" height="4" fill="#5A1A3A"/><rect x="210" y="71" width="30" height="2.5" fill="#7A2446" opacity="0.5"/>
+<text x="210" y="85.5" font-family="IBM Plex Mono, monospace" font-size="7" fill="#7A2446">D1</text>
+<rect x="224" y="81" width="36" height="2.2" fill="#7A2446" opacity="0.35"/>
+<circle cx="264" cy="82" r="5" fill="#C9A57A"/>
+<path d="M261 82 h6 M264 79 v6" stroke="#FFF" stroke-width="1.4"/>
+<text x="210" y="96.5" font-family="IBM Plex Mono, monospace" font-size="7" fill="#7A2446">D2</text>
+<rect x="224" y="92" width="28" height="2.2" fill="#7A2446" opacity="0.35"/>
+<circle cx="264" cy="93" r="5" fill="#E8A25A"/>
+<path d="M261 93 h6" stroke="#FFF" stroke-width="1.4"/>
+<text x="210" y="107.5" font-family="IBM Plex Mono, monospace" font-size="7" fill="#7A2446">D3</text>
+<rect x="224" y="103" width="36" height="2.2" fill="#7A2446" opacity="0.35"/>
+<circle cx="264" cy="104" r="5" fill="#C9A57A"/>
+<path d="M261 104 h6 M264 101 v6" stroke="#FFF" stroke-width="1.4"/>
+<text x="210" y="118.5" font-family="IBM Plex Mono, monospace" font-size="7" fill="#7A2446">D4</text>
+<rect x="224" y="114" width="28" height="2.2" fill="#7A2446" opacity="0.35"/>
+<circle cx="264" cy="115" r="5" fill="#C8333F"/>
+<path d="M261.5 112.5 l5 5 M266.5 112.5 l-5 5" stroke="#FFF" stroke-width="1.4"/>
+<text x="210" y="129.5" font-family="IBM Plex Mono, monospace" font-size="7" fill="#7A2446">D5</text>
+<rect x="224" y="125" width="36" height="2.2" fill="#7A2446" opacity="0.35"/>
+<circle cx="264" cy="126" r="5" fill="#C9A57A"/>
+<path d="M261 126 h6 M264 123 v6" stroke="#FFF" stroke-width="1.4"/>
+<line x1="210" y1="130" x2="270" y2="130" stroke="#7A2446" stroke-opacity="0.3"/>
+<text x="210" y="139" font-family="IBM Plex Mono, monospace" font-size="6.5" letter-spacing="1" fill="#5A1A3A">GERAL</text>
+<rect x="248" y="133" width="22" height="8" rx="1" fill="#C8333F"/>
+<line x1="280" y1="131" x2="304" y2="161" stroke="#C9A57A" stroke-width="7" stroke-linecap="round"/>
+<line x1="280" y1="131" x2="286" y2="138" stroke="url(#gold)" stroke-width="8"/>
+<circle cx="264" cy="115" r="20" fill="#F5C7A0" fill-opacity="0.16"/>
+<circle cx="264" cy="115" r="10" fill="#C8333F"/>
+<path d="M259.5 110.5 l9 9 M268.5 110.5 l-9 9" stroke="#FFF" stroke-width="2.2"/>
+<circle cx="264" cy="115" r="20" fill="none" stroke="url(#gold)" stroke-width="4"/>
+<path d="M251 109 a14 14 0 0 1 8 -9" fill="none" stroke="#FFF" stroke-opacity="0.6" stroke-width="2" stroke-linecap="round"/>
 <rect x="140" y="172" width="200" height="7" fill="#5A2233"/><rect x="140" y="179" width="200" height="5" fill="#3B1222"/><rect x="140" y="184" width="200" height="20" fill="#000" opacity="0.25"/>
 <circle cx="304" cy="55" r="0.7" fill="#FFE3C8" opacity="0.4"/>
 <circle cx="296" cy="59" r="0.7" fill="#FFE3C8" opacity="0.85"/>
