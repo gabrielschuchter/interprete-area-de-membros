@@ -1,15 +1,25 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react";
 import { afterEach, expect, test, vi } from "vitest";
 import { buildShelfDays } from "@/lib/study-week-shelf-model";
 
 const CUMPRIDA = /cumprida/;
 const LANCAR_30 = /Lançar 30 min/;
 const DESFAZER = /Desfazer/;
+const FORA = /Estudou fora/;
+const TIPO = /Tipo de meta/;
 
 const refresh = vi.fn();
 const addAction = vi.fn(() => Promise.resolve({ id: "x" }));
 const deleteAction = vi.fn(() => Promise.resolve({ id: "x" }));
 const goalAction = vi.fn(() => Promise.resolve({}));
+const countSave = vi.fn(() => Promise.resolve({}));
+const countDelete = vi.fn(() => Promise.resolve());
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
 vi.mock("@repo/design-system/lib/toast", () => ({
@@ -18,6 +28,10 @@ vi.mock("@repo/design-system/lib/toast", () => ({
 vi.mock("./study-manual-actions", () => ({
   addManualStudyEntryAction: addAction,
   deleteManualStudyEntryAction: deleteAction,
+}));
+vi.mock("./count-goal-actions", () => ({
+  deleteCountGoalAction: countDelete,
+  saveCountGoalAction: countSave,
 }));
 vi.mock("./planner-actions", () => ({ savePlannerGoalAction: goalAction }));
 
@@ -35,6 +49,11 @@ const days = buildShelfDays(
 );
 
 const baseProps = {
+  countGoals: {
+    LESSONS: { done: 2, target: 5 },
+    READINGS: { done: 0, target: null },
+    EXERCISES: { done: 12, target: 10 },
+  },
   days,
   manualEntries: [],
   studiedMinutes: 60,
@@ -68,7 +87,11 @@ test("lança o tempo manual escolhido e desfaz o último lançamento", () => {
       ]}
     />
   );
-  fireEvent.click(screen.getByRole("button", { name: "Exercícios" }));
+  fireEvent.click(
+    within(screen.getByRole("group", { name: FORA })).getByRole("button", {
+      name: "Exercícios",
+    })
+  );
   fireEvent.click(screen.getByRole("button", { name: "30 min" }));
   fireEvent.click(screen.getByRole("button", { name: LANCAR_30 }));
   expect(addAction).toHaveBeenCalledWith({ group: "exercise", minutes: 30 });
@@ -83,4 +106,37 @@ test("a fita de meta salva a meta semanal", () => {
     period: "WEEKLY",
     targetMinutes: 420,
   });
+});
+
+test("troca o tipo da meta para aulas e mostra o progresso por quantidade", () => {
+  render(<WeekShelf {...baseProps} />);
+  fireEvent.click(screen.getByRole("button", { name: "Aulas" }));
+  expect(screen.getByText("Faltam 3 aulas")).toBeTruthy();
+  expect(screen.getByText("2 / 5 aulas")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Meta de 8 aulas" }));
+  expect(countSave).toHaveBeenCalledWith({ kind: "LESSONS", target: 8 });
+  expect(goalAction).not.toHaveBeenCalled();
+});
+
+test("meta de exercícios batida mostra meta batida e permite remover a meta", () => {
+  render(<WeekShelf {...baseProps} />);
+  fireEvent.click(
+    within(screen.getByRole("group", { name: TIPO })).getByRole("button", {
+      name: "Exercícios",
+    })
+  );
+  expect(screen.getByText("Meta batida")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Remover esta meta" }));
+  expect(countDelete).toHaveBeenCalledWith("EXERCISES");
+});
+
+test("valor personalizado salva a meta do tipo escolhido", () => {
+  render(<WeekShelf {...baseProps} />);
+  fireEvent.click(screen.getByRole("button", { name: "Leituras" }));
+  expect(screen.getByText("Defina sua meta")).toBeTruthy();
+  fireEvent.change(screen.getByLabelText("Outro valor para a meta"), {
+    target: { value: "7" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
+  expect(countSave).toHaveBeenCalledWith({ kind: "READINGS", target: 7 });
 });

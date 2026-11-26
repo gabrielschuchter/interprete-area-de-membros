@@ -10,6 +10,7 @@ import {
   getFocusTimerState,
 } from "@/lib/focus-timer";
 import { getPlannerDashboard } from "@/lib/planner";
+import { getCountGoalsOverview } from "@/lib/study-count-goals";
 import { getStudyGoalTopicOverview } from "@/lib/study-goal-topics";
 import { getStudyWeekShelf } from "@/lib/study-week-shelf";
 import type { GradeSelected } from "./grade-workspace";
@@ -126,7 +127,8 @@ const loadWeekShelf = async (
   );
   const weeklyTarget =
     data.goals.find((goal) => goal.period === "WEEKLY")?.targetMinutes ?? null;
-  return { ...shelf, weeklyTarget };
+  const countGoals = await getCountGoalsOverview(memberId, data.goalWindows);
+  return { ...shelf, countGoals, weeklyTarget };
 };
 
 const resolveView = (
@@ -171,6 +173,7 @@ const loadPlannerContent = async (
     <>
       {shelf ? (
         <WeekShelf
+          countGoals={shelf.countGoals}
           days={shelf.days}
           manualEntries={shelf.manualEntries}
           studiedMinutes={data.stats.weeklyMinutes}

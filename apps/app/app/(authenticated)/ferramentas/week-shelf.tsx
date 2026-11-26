@@ -6,21 +6,19 @@ import { cn } from "@repo/design-system/lib/utils";
 import { Undo2Icon, XIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import type { CountGoalsOverview } from "@/lib/study-count-goals-model";
 import type { ManualStudyEntry } from "@/lib/study-week-shelf";
 import {
   bookHeight,
   dayTotalMinutes,
-  hourglassRemainingFraction,
   isoWeekNumber,
   type ShelfDay,
   type ShelfGroup,
   shelfGroupColors,
   shelfGroupLabels,
   shelfGroups,
-  weeklyGoalPresets,
 } from "@/lib/study-week-shelf-model";
-import { ArchHourglass } from "./arch-hourglass";
-import { savePlannerGoalAction } from "./planner-actions";
+import { GoalHourglassCard } from "./goal-hourglass-card";
 import {
   addManualStudyEntryAction,
   deleteManualStudyEntryAction,
@@ -48,6 +46,7 @@ const showError = (error: unknown) =>
   );
 
 export interface WeekShelfProps {
+  readonly countGoals: CountGoalsOverview;
   readonly days: readonly ShelfDay[];
   readonly manualEntries: readonly ManualStudyEntry[];
   readonly studiedMinutes: number;
@@ -84,6 +83,7 @@ const entryTimeLabel = (iso: string) =>
   }).format(new Date(iso));
 
 export const WeekShelf = ({
+  countGoals,
   days,
   manualEntries,
   studiedMinutes,
@@ -95,28 +95,10 @@ export const WeekShelf = ({
   const [group, setGroup] = useState<ShelfGroup>("reading");
   const [minutes, setMinutes] = useState<number>(15);
 
-  const target = targetMinutes ?? 0;
-  const hasGoal = target > 0;
-  const remaining = hasGoal ? Math.max(0, target - studiedMinutes) : 0;
-  const reached = hasGoal && studiedMinutes >= target;
-  const fraction = hasGoal
-    ? hourglassRemainingFraction(studiedMinutes, target)
-    : 1;
-  const percent = hasGoal
-    ? Math.min(100, Math.round((studiedMinutes / target) * 100))
-    : 0;
   const daysLeft = days.filter((day) => day.today || day.future).length;
-  const pace =
-    hasGoal && remaining > 0 && daysLeft > 0
-      ? `≈ ${Math.ceil(remaining / daysLeft)} min por dia`
-      : null;
+  const target = targetMinutes ?? 0;
+  const reached = target > 0 && studiedMinutes >= target;
   const lastManual = manualEntries[0] ?? null;
-  let goalTitle = "Defina sua meta";
-  if (hasGoal) {
-    goalTitle = reached
-      ? "Meta batida"
-      : `Faltam ${remaining.toLocaleString("pt-BR")} min`;
-  }
 
   const run = (task: () => Promise<unknown>, success?: string) => {
     startTransition(() => {
@@ -151,7 +133,10 @@ export const WeekShelf = ({
               </span>
               <span className="font-display font-semibold text-[28px] leading-tight">
                 {studiedMinutes.toLocaleString("pt-BR")}
-                {hasGoal ? ` de ${target.toLocaleString("pt-BR")}` : ""} min
+                {targetMinutes
+                  ? ` de ${targetMinutes.toLocaleString("pt-BR")}`
+                  : ""}{" "}
+                min
               </span>
             </div>
             <span className="text-[#E9C3C4] text-[13px]">
@@ -319,102 +304,14 @@ export const WeekShelf = ({
           ) : null}
         </div>
 
-        <div className="flex min-w-0 flex-[1_1_300px] flex-col gap-4 rounded-lg border border-[#E2D6D1] bg-[#F7F3F1] p-5 sm:p-6">
-          <span
-            className={cn(
-              MONO,
-              "text-[#7D5A6C] text-[11px] uppercase tracking-[.2em]"
-            )}
-          >
-            Ampulheta da meta
-          </span>
-          <div className="flex flex-wrap items-center gap-5">
-            <ArchHourglass
-              className="h-[206px] w-[150px] shrink-0"
-              flowing={hasGoal && !reached}
-              glow={0.2 + 0.5 * (1 - fraction)}
-              label={
-                hasGoal
-                  ? `Ampulheta: faltam ${remaining} minutos para a meta semanal`
-                  : "Ampulheta aguardando uma meta semanal"
-              }
-              remaining={fraction}
-            />
-            <div className="flex min-w-[140px] flex-1 flex-col gap-2">
-              <span className="font-display font-semibold text-[#2A0A1A] text-[28px] leading-[1.1]">
-                {goalTitle}
-              </span>
-              <span className={cn(MONO, "text-[#7D5A6C] text-sm")}>
-                {pace ??
-                  (hasGoal ? "Sobrou tempo para respirar" : "Escolha abaixo")}
-              </span>
-              <div
-                aria-label={`${percent}% da meta semanal`}
-                aria-valuemax={100}
-                aria-valuemin={0}
-                aria-valuenow={percent}
-                className="mt-1 h-1.5 overflow-hidden rounded-[3px] bg-[#E7DEDC]"
-                role="progressbar"
-              >
-                <span
-                  className="block h-full bg-[#8C1535] transition-[width] duration-700"
-                  style={{ width: `${percent}%` }}
-                />
-              </div>
-              <span
-                className={cn(
-                  MONO,
-                  "text-[#7D5A6C] text-[11px] uppercase tracking-[.2em]"
-                )}
-              >
-                {studiedMinutes} / {hasGoal ? target : "—"} min
-              </span>
-            </div>
-          </div>
-          <div className="flex flex-col gap-2.5 border-[#DCD0CF] border-t pt-4">
-            <span className="text-[#7D5A6C] text-[13px]">
-              Quanto você quer nesta semana?
-            </span>
-            <div className="flex items-start gap-2.5">
-              {weeklyGoalPresets(targetMinutes).map((value, index) => {
-                const active = value === targetMinutes;
-                return (
-                  <button
-                    aria-label={`Meta de ${value} minutos`}
-                    aria-pressed={active}
-                    className={cn(
-                      "flex min-h-11 flex-1 flex-col items-center gap-0.5 pt-2.5 transition-colors [clip-path:polygon(0_0,100%_0,100%_100%,50%_86%,0_100%)]",
-                      MONO,
-                      active
-                        ? "bg-[#8C1535] text-[#F1EBE8]"
-                        : "bg-[#E7DEDC] text-[#4A3340] hover:bg-[#DDD0CC]"
-                    )}
-                    disabled={pending}
-                    key={value}
-                    onClick={() =>
-                      run(
-                        () =>
-                          savePlannerGoalAction({
-                            period: "WEEKLY",
-                            targetMinutes: value,
-                          }),
-                        "Meta semanal salva."
-                      )
-                    }
-                    style={{ height: 62 + index * 8 }}
-                    type="button"
-                  >
-                    <span className="text-lg">{value}</span>
-                    <span className="text-[10px] tracking-[.15em]">MIN</span>
-                  </button>
-                );
-              })}
-            </div>
-            <span className="text-[#7D5A6C] text-xs">
-              Para outro valor, ajuste a meta semanal no cartão abaixo.
-            </span>
-          </div>
-        </div>
+        <GoalHourglassCard
+          countGoals={countGoals}
+          daysLeft={daysLeft}
+          pending={pending}
+          run={run}
+          studiedMinutes={studiedMinutes}
+          targetMinutes={targetMinutes}
+        />
       </div>
 
       {manualEntries.length > 0 ? (
