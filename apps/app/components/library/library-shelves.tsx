@@ -59,12 +59,14 @@ const BookCover = ({
   item,
   large = false,
   mini = false,
+  saved = false,
   title,
 }: {
   readonly className?: string;
   readonly item: LibraryShelfItem;
   readonly large?: boolean;
   readonly mini?: boolean;
+  readonly saved?: boolean;
   readonly title: string;
 }) => {
   const palette = libraryCoverPalette(item.id);
@@ -117,6 +119,7 @@ const BookCover = ({
         >
           <span className="line-clamp-3">{title}</span>
         </span>
+        {saved && <SavedRibbon large={large} />}
       </span>
     );
   }
@@ -190,14 +193,18 @@ const BookCover = ({
           {short}
         </span>
       </span>
+      {saved && <SavedRibbon large={large} />}
     </span>
   );
 };
 
-const SavedRibbon = () => (
+const SavedRibbon = ({ large = false }: { readonly large?: boolean }) => (
   <span
     aria-hidden="true"
-    className="absolute top-0 right-2.5 z-10 h-[22px] w-3 bg-[#D62839] [clip-path:polygon(0_0,100%_0,100%_100%,50%_74%,0_100%)]"
+    className={cn(
+      "absolute top-0 z-10 bg-[#D62839] [clip-path:polygon(0_0,100%_0,100%_100%,50%_74%,0_100%)]",
+      large ? "right-5 h-7 w-4" : "right-3 h-[22px] w-3"
+    )}
   />
 );
 
@@ -378,9 +385,9 @@ const Shelf = ({
                       <BookCover
                         className="h-[190px] w-full transition-transform duration-[120ms] ease-[cubic-bezier(.2,0,0,1)] group-hover/tile:-translate-y-3 group-hover/tile:-rotate-[1.5deg] group-focus-visible/tile:-translate-y-3 group-focus-visible/tile:-rotate-[1.5deg] motion-reduce:transition-none md:h-[218px]"
                         item={item}
+                        saved={isSaved(item)}
                         title={title}
                       />
-                      {isSaved(item) && <SavedRibbon />}
                     </button>
                   </li>
                 );
@@ -396,6 +403,7 @@ const Shelf = ({
 const ItemDetails = ({
   item,
   onSavedChange,
+  saved,
   onSelect,
   siblings,
   translateTitles,
@@ -403,6 +411,7 @@ const ItemDetails = ({
   readonly item: LibraryShelfItem;
   readonly onSavedChange: (saved: boolean) => void;
   readonly onSelect: (itemId: string) => void;
+  readonly saved: boolean;
   readonly siblings: readonly LibraryShelfItem[];
   readonly translateTitles: boolean;
 }) => {
@@ -417,6 +426,7 @@ const ItemDetails = ({
           className="h-[156px] w-[112px] shrink-0 md:h-[308px] md:w-[220px]"
           item={item}
           large
+          saved={saved}
           title={title}
         />
         <div className="flex min-w-0 flex-1 flex-col gap-3 md:pr-6">
@@ -580,6 +590,7 @@ export const LibraryShelves = ({
                   current ? { ...current, itemId } : current
                 )
               }
+              saved={isSaved(item)}
               siblings={siblings}
               translateTitles={translateTitles}
             />
