@@ -39,14 +39,26 @@ test("grava a sessão manual como cronômetro pessoal com um intervalo contável
     .data as {
     activityKind: string;
     clientSessionId: string;
-    intervals: { create: { isPlayback: boolean; seconds: number } };
+    intervals: {
+      createMany: {
+        data: Array<{ isPlayback: boolean; seconds: number; sequence: number }>;
+      };
+    };
+    lastSequence: number;
     memberId: string;
   };
   expect(data.memberId).toBe("m1");
   expect(data.activityKind).toBe("PERSONAL_TIMER");
   expect(data.clientSessionId.startsWith("manual:reading:")).toBe(true);
-  expect(data.intervals.create.seconds).toBe(1800);
-  expect(data.intervals.create.isPlayback).toBe(false);
+  const rows = data.intervals.createMany.data;
+  expect(rows).toHaveLength(60);
+  expect(rows.every((row) => row.seconds > 0 && row.seconds <= 30)).toBe(true);
+  expect(rows.reduce((sum, row) => sum + row.seconds, 0)).toBe(1800);
+  expect(rows.some((row) => row.isPlayback)).toBe(false);
+  expect(rows.map((row) => row.sequence)).toEqual(
+    Array.from({ length: 60 }, (_, index) => index)
+  );
+  expect(data.lastSequence).toBe(59);
 });
 
 test("recusa minutos fora do limite e grupos desconhecidos", async () => {

@@ -19,6 +19,41 @@ const manualEntrySchema = z.object({
   minutes: z.number().int().min(MANUAL_MIN_MINUTES).max(MANUAL_MAX_MINUTES),
 });
 
+/** O banco só aceita intervalos de até 30 s (como o cronômetro grava). */
+const MAX_INTERVAL_SECONDS = 30;
+
+const manualIntervals = (
+  memberId: string,
+  startedAt: Date,
+  seconds: number
+) => {
+  const rows: Array<{
+    endedAt: Date;
+    isPlayback: boolean;
+    memberId: string;
+    seconds: number;
+    sequence: number;
+    startedAt: Date;
+  }> = [];
+  let cursor = startedAt;
+  let left = seconds;
+  while (left > 0) {
+    const chunk = Math.min(MAX_INTERVAL_SECONDS, left);
+    const endedAt = new Date(cursor.getTime() + chunk * 1000);
+    rows.push({
+      memberId,
+      sequence: rows.length,
+      startedAt: cursor,
+      endedAt,
+      seconds: chunk,
+      isPlayback: false,
+    });
+    left -= chunk;
+    cursor = endedAt;
+  }
+  return rows;
+};
+
 /**
  * Lançamento manual de estudo (papel, aula presencial, leitura fora da
  * plataforma). Grava uma sessão e um intervalo no mesmo modelo do cronômetro
@@ -37,6 +72,7 @@ export const addManualStudyEntry = async (memberId: string, input: unknown) => {
     Math.max(now.getTime() - seconds * 1000, dayStart.getTime())
   );
   const endedAt = new Date(startedAt.getTime() + seconds * 1000);
+  const intervals = manualIntervals(memberId, startedAt, seconds);
 
   const entry = await database.$transaction(async (transaction) => {
     const today = await transaction.studyTrackingSession.findMany({
@@ -65,20 +101,11 @@ export const addManualStudyEntry = async (memberId: string, input: unknown) => {
         clientSessionId: manualClientSessionId(parsed.group, randomUUID()),
         activityKind: StudyActivityKind.PERSONAL_TIMER,
         resourceId: null,
-        lastSequence: 0,
+        lastSequence: intervals.length - 1,
         lastHeartbeatAt: endedAt,
         startedAt,
         endedAt,
-        intervals: {
-          create: {
-            memberId,
-            sequence: 0,
-            startedAt,
-            endedAt,
-            seconds,
-            isPlayback: false,
-          },
-        },
+        intervals: { createMany: { data: intervals } },
       },
       select: { id: true },
     });
