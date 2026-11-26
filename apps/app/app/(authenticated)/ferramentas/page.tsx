@@ -44,26 +44,31 @@ type ToolsView = (typeof views)[number]["id"];
 const pickerItems = [
   {
     id: "goals",
+    illustration: "metas",
     label: "Metas",
     description: "Estante da semana e ampulheta da meta.",
   },
   {
     id: "calendar",
+    illustration: "calendario",
     label: "Calendário",
     description: "Encontros, prazos e o que você marcou.",
   },
   {
     id: "timer",
+    illustration: "cronometro",
     label: "Cronômetro",
     description: "Pomodoro, cronômetro livre e contagem.",
   },
   {
     id: "rob2",
+    illustration: "rob2",
     label: "RoB 2",
     description: "Risco de viés, domínio a domínio.",
   },
   {
     id: "grade",
+    illustration: "grade",
     label: "GRADE",
     description: "Certeza da evidência por desfecho.",
   },

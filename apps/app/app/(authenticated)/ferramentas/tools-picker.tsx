@@ -1,10 +1,10 @@
 import { cn } from "@repo/design-system/lib/utils";
 import Link from "next/link";
-import { ToolIllustration } from "./tool-illustrations";
 
 export interface ToolsPickerItem {
   readonly description: string;
   readonly id: string;
+  readonly illustration: string;
   readonly label: string;
 }
 
@@ -40,14 +40,18 @@ export const ToolsPicker = ({
           prefetch={false}
           scroll={false}
         >
-          <span
-            className="relative block h-[76px] overflow-hidden border-[#E9C48E]/20 border-b"
-            style={{
-              background: "linear-gradient(120deg,#410230,#560A2A 55%,#7A1230)",
-            }}
-          >
-            <ToolIllustration active={active} id={item.id} />
-            <span className="absolute top-2 right-2.5 font-data text-[#E9C48E]/80 text-[11px] tracking-[.1em]">
+          <span className="relative block aspect-[12/5] overflow-hidden border-[#E9C48E]/20 border-b bg-[#560A2A]">
+            {/* biome-ignore lint/performance/noImgElement: static local SVG artwork with a fixed aspect ratio. */}
+            <img
+              alt=""
+              className="h-full w-full object-cover"
+              decoding="async"
+              height={200}
+              loading="lazy"
+              src={`/tools/card-${item.illustration}.svg`}
+              width={480}
+            />
+            <span className="absolute top-2 right-2.5 font-data text-[#E9C48E] text-[11px] tracking-[.1em]">
               0{index + 1}
             </span>
           </span>
