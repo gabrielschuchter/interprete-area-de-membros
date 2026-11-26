@@ -204,8 +204,7 @@ const Shelf = ({
       event.pointerType !== "mouse" ||
       expanded ||
       !rail ||
-      rail.scrollWidth <= rail.clientWidth ||
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      rail.scrollWidth <= rail.clientWidth
     ) {
       speedRef.current = 0;
       return;
@@ -336,7 +335,7 @@ const Shelf = ({
                       type="button"
                     >
                       <BookCover
-                        className="h-[190px] w-full transition-transform duration-[120ms] ease-[cubic-bezier(.2,0,0,1)] group-hover/tile:-translate-y-3 group-hover/tile:-rotate-[1.5deg] group-focus-visible/tile:-translate-y-3 group-focus-visible/tile:-rotate-[1.5deg] motion-reduce:transition-none md:h-[218px]"
+                        className="h-[190px] w-full transition-transform duration-[120ms] ease-[cubic-bezier(.2,0,0,1)] group-hover/tile:-translate-y-3 group-hover/tile:-rotate-[1.5deg] group-focus-visible/tile:-translate-y-3 group-focus-visible/tile:-rotate-[1.5deg] md:h-[218px]"
                         item={item}
                         saved={isSaved(item)}
                         title={title}

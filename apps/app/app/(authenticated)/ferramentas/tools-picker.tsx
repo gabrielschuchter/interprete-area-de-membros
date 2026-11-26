@@ -30,7 +30,7 @@ export const ToolsPicker = ({
         <Link
           aria-current={active ? "page" : undefined}
           className={cn(
-            "group flex min-h-[88px] flex-col gap-2 rounded-lg border p-3.5 transition-[transform,border-color,background-color] duration-200 hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-[#D9A86B] focus-visible:outline-offset-2 motion-reduce:transition-none motion-reduce:hover:translate-y-0",
+            "group flex min-h-[88px] flex-col gap-2 rounded-lg border p-3.5 transition-[transform,border-color,background-color] duration-200 hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-[#D9A86B] focus-visible:outline-offset-2",
             active
               ? "border-[#D9A86B] bg-[#410230] text-[#F1EBE8]"
               : "border-[#E2D6D1] bg-[#FBF8F5] text-[#2A0A1A] hover:border-[#8C1535]/40"

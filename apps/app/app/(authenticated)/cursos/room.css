@@ -1123,6 +1123,18 @@ button.room-chip {
 .room-notes__editor ul {
   padding-left: 20px;
   margin: 0 0 6px;
+  /* O reset do Tailwind zera list-style; sem isto os marcadores somem. */
+  list-style: disc outside;
+}
+
+.room-notes__editor ol {
+  padding-left: 20px;
+  margin: 0 0 6px;
+  list-style: decimal outside;
+}
+
+.room-notes__editor li::marker {
+  color: var(--room-ink);
 }
 
 .room-notes__footer {

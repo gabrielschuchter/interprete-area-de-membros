@@ -14,7 +14,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@repo/design-system/components/ui/dropdown-menu";
-import { Separator } from "@repo/design-system/components/ui/separator";
 import {
   Sidebar,
   SidebarContent,
@@ -363,7 +362,6 @@ const MemberAreaSidebarView = ({
             </SidebarMenu>
           </SidebarGroup>
         </SidebarHeader>
-        <Separator className="mx-4 w-auto bg-sidebar-border" />
         <SidebarContent>
           <SidebarGroup className="pt-3 group-data-[collapsible=icon]:px-0">
             <SidebarMenu>

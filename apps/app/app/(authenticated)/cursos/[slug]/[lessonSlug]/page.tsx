@@ -30,7 +30,6 @@ const assetKindLabel = (kind: string) => {
   }
 };
 
-import { EditInGestaoBar } from "@/components/gestao/edit-in-gestao-bar";
 import { RichDocument } from "@/components/learning/rich-document";
 import {
   getCourseExperience,
@@ -442,14 +441,4 @@ const LessonPageContent = async ({
   );
 };
 
-const LessonPage = async (properties: LessonPageProperties) => {
-  const { lessonSlug, slug } = await properties.params;
-  return (
-    <>
-      <EditInGestaoBar courseSlug={slug} lessonSlug={lessonSlug} />
-      <LessonPageContent {...properties} />
-    </>
-  );
-};
-
-export default LessonPage;
+export default LessonPageContent;
