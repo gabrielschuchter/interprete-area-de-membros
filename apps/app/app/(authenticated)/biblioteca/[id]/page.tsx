@@ -10,6 +10,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { StudyHeartbeat } from "@/components/learning/study-heartbeat";
 import { LibraryBookmarkButton } from "@/components/library/library-bookmark-button";
+import { OpenMaterialLink } from "@/components/library/open-material-link";
 import { requireMemberId } from "@/lib/learning";
 import { getPublishedLibraryItem } from "@/lib/library";
 import { libraryItemGroups } from "@/lib/library-categories";
@@ -18,7 +19,6 @@ import {
   libraryDifficultyLabel,
   libraryLanguageLabel,
 } from "@/lib/library-presentation";
-import { OpenMaterialLink } from "./open-material-link";
 
 interface LibraryItemPageProperties {
   readonly params: Promise<{ id: string }>;

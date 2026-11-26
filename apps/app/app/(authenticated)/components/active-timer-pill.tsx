@@ -18,8 +18,8 @@ import {
   stopTimerCompletionAlarm,
   unlockTimerAudio,
 } from "@/components/focus-timer-audio";
+import { TIMER_REFRESH_EVENT } from "@/components/focus-timer-refresh-event";
 import type { ActiveTimerSnapshot, TimerMode } from "./active-timer-controls";
-import { TIMER_REFRESH_EVENT } from "./timer-refresh-event";
 
 // A janela do cronômetro em andamento só baixa quando há um cronômetro
 // rodando; assim não pesa nas páginas de quem não usa o cronômetro.

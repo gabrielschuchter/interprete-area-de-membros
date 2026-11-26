@@ -9,12 +9,7 @@ import {
   DialogTitle,
 } from "@repo/design-system/components/ui/dialog";
 import { cn } from "@repo/design-system/lib/utils";
-import {
-  ArrowUpRightIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  XIcon,
-} from "lucide-react";
+import { ChevronLeftIcon, ChevronRightIcon, XIcon } from "lucide-react";
 import { type PointerEvent, useEffect, useRef, useState } from "react";
 import { LibraryBookmarkButton } from "@/components/library/library-bookmark-button";
 import { libraryItemGroups } from "@/lib/library-categories";
@@ -31,6 +26,7 @@ import {
   libraryDisplayTitle,
   libraryShortAuthors,
 } from "@/lib/library-shelves";
+import { OpenMaterialLink } from "./open-material-link";
 
 const KIND_LABEL = {
   ARTICLE: "Artigo",
@@ -403,17 +399,12 @@ const ItemDetails = ({
           {item.accessType ? ` · ${libraryAccessLabel(item.accessType)}` : ""}
         </p>
         <div className="mt-auto flex flex-wrap items-center gap-x-5 gap-y-2 pt-2">
-          <a
-            aria-label={`Abrir material: ${title}, em nova aba`}
-            className="inline-flex h-12 items-center justify-center gap-2 rounded-md border-2 border-[#8C1535] bg-[#8C1535] px-5 font-semibold text-sm text-white transition-colors hover:bg-[#6f102b] focus-visible:outline-2 focus-visible:outline-[#8C1535] focus-visible:outline-offset-2 max-md:flex-1"
+          <OpenMaterialLink
+            className="max-md:flex-1"
             href={`/biblioteca/abrir/${item.id}`}
-            rel="noopener noreferrer"
-            target="_blank"
-            title="Abre em nova aba"
-          >
-            Abrir material
-            <ArrowUpRightIcon aria-hidden="true" className="size-4" />
-          </a>
+            itemId={item.id}
+            title={title}
+          />
           <LibraryBookmarkButton
             initialSaved={item.isBookmarked}
             key={item.id}
