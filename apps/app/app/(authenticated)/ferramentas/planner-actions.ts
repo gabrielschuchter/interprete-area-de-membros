@@ -19,7 +19,6 @@ import {
   savePlannerTaskOccurrence,
   setPlannerTimezone,
 } from "@/lib/planner";
-import { saveStudyGoalTopics } from "@/lib/study-goal-topics";
 
 export const loadPlannerAction = async (range?: {
   start?: string;
@@ -32,17 +31,8 @@ const refreshPlannerViews = () => {
   revalidatePath("/ferramentas");
 };
 
-export const saveStudyGoalTopicsAction = async (input: {
-  period: "WEEKLY" | "MONTHLY";
-  topics: { topic: string; sharePercent: number }[];
-}) => {
-  const result = await saveStudyGoalTopics(await requireMemberId(), input);
-  revalidatePath("/ferramentas");
-  return result;
-};
-
 export const savePlannerGoalAction = async (input: {
-  period: "WEEKLY" | "MONTHLY";
+  period: "WEEKLY";
   targetMinutes: number;
 }) => {
   const result = await savePlannerGoal(await requireMemberId(), input);

@@ -89,7 +89,7 @@ export const getStudyDashboardData = (memberId: string) =>
     ] = await Promise.all([
       readMemberStudyTotals(memberId, thirtyDaysAgo, now),
       database.studyGoal.findMany({
-        where: { memberId },
+        where: { memberId, period: StudyGoalPeriod.WEEKLY },
         select: { period: true, targetMinutes: true },
       }),
       database.learningTaskRecipient.findMany({
@@ -248,7 +248,6 @@ export const getStudyDashboardData = (memberId: string) =>
       days,
       exerciseAnswers,
       goals: {
-        monthlyMinutes: currentGoals.get(StudyGoalPeriod.MONTHLY) ?? null,
         weeklyMinutes: currentGoals.get(StudyGoalPeriod.WEEKLY) ?? null,
       },
       lessonsConsumed,

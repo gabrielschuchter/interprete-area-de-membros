@@ -60,7 +60,9 @@ describe("CommunityEmptyState", () => {
     render(<CommunityEmptyState hasFilters={false} sort="recent" />);
 
     expect(
-      screen.getByRole("heading", { name: "Ninguém abriu a primeira discussão ainda" })
+      screen.getByRole("heading", {
+        name: "Ninguém abriu a primeira discussão ainda",
+      })
     ).toBeTruthy();
     expect(
       screen.getByRole("button", { name: "Nova publicação" })
@@ -76,7 +78,9 @@ describe("CommunityEmptyState", () => {
     );
 
     expect(
-      screen.getByRole("heading", { name: "Toda pergunta já recebeu resposta." })
+      screen.getByRole("heading", {
+        name: "Toda pergunta já recebeu resposta.",
+      })
     ).toBeTruthy();
     expect(
       screen.queryByRole("heading", { name: NO_RESULTS_HEADING })

@@ -739,7 +739,7 @@ export const getPlannerDashboard = async (
       },
     }),
     database.studyGoal.findMany({
-      where: { memberId },
+      where: { memberId, period: StudyGoalPeriod.WEEKLY },
       select: { id: true, period: true, targetMinutes: true, updatedAt: true },
       orderBy: { period: "asc" },
     }),
@@ -1086,11 +1086,11 @@ export const getPlannerDashboard = async (
 
 export const savePlannerGoal = (
   memberId: string,
-  input: { period: StudyGoalPeriod; targetMinutes: number }
+  input: { period: typeof StudyGoalPeriod.WEEKLY; targetMinutes: number }
 ) => {
   const parsed = z
     .object({
-      period: z.nativeEnum(StudyGoalPeriod),
+      period: z.literal(StudyGoalPeriod.WEEKLY),
       targetMinutes: z.number().int().min(1).max(10_080),
     })
     .parse(input);

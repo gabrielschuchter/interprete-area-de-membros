@@ -152,7 +152,7 @@ const upsertReachedStudyGoals = async (
   now: Date
 ) => {
   const goals = await transaction.studyGoal.findMany({
-    where: { memberId },
+    where: { memberId, period: StudyGoalPeriod.WEEKLY },
     select: { id: true, period: true, targetMinutes: true },
   });
   const today = studyLocalDayKey(now);

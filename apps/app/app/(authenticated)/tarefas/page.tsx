@@ -83,10 +83,7 @@ const TasksPage = async ({ searchParams }: TasksPageProperties) => {
         </div>
         <div className="mt-5 grid gap-4 md:grid-cols-2">
           {(
-            [
-              ["WEEKLY", "Meta semanal", dashboard.goals.weeklyMinutes],
-              ["MONTHLY", "Meta mensal", dashboard.goals.monthlyMinutes],
-            ] as const
+            [["WEEKLY", "Meta semanal", dashboard.goals.weeklyMinutes]] as const
           ).map(([period, label, target]) => (
             <SingleFlightForm
               action={savePersonalStudyGoal}

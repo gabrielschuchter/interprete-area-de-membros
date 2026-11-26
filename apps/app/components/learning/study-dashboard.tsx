@@ -161,17 +161,11 @@ const StudyDashboard = ({ data }: { readonly data: MemberStudyDashboard }) => {
                   style={{ width: `${weeklyProgress}%` }}
                 />
               </div>
-              <p className="mt-3 text-muted-foreground text-sm">
-                Meta mensal:{" "}
-                {data.goals.monthlyMinutes
-                  ? minutesLabel(data.goals.monthlyMinutes)
-                  : "ainda não definida"}
-              </p>
             </>
           ) : (
             <p className="mt-5 text-muted-foreground text-sm leading-6">
-              Defina sua meta semanal e mensal. O histórico permanece salvo
-              quando você ajustar o objetivo.
+              Defina sua meta semanal. O histórico permanece salvo quando você
+              ajustar o objetivo.
             </p>
           )}
           <Button asChild className="mt-5" size="sm" variant="outline">

@@ -30,9 +30,7 @@ export const MemberAreaPickerSheet = ({
   <Sheet onOpenChange={onOpenChange} open={open}>
     <SheetContent className="w-[min(88vw,360px)] bg-background" side="left">
       <SheetHeader className="border-b px-5 py-5 text-left">
-        <SheetTitle className="font-display text-2xl">
-          {label}
-        </SheetTitle>
+        <SheetTitle className="font-display text-2xl">{label}</SheetTitle>
         <SheetDescription>Escolha uma área para continuar.</SheetDescription>
       </SheetHeader>
       <nav aria-label={label} className="grid gap-1 px-3 py-4">

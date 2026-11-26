@@ -133,16 +133,13 @@ export const archivePersonalLearningTask = async (formData: FormData) => {
 
 export const savePersonalStudyGoal = async (formData: FormData) => {
   const memberId = await requireMemberId();
-  const period = textValue(formData, "period") as StudyGoalPeriod;
+  const period = StudyGoalPeriod.WEEKLY;
   const targetMinutes = Number.parseInt(
     textValue(formData, "targetMinutes"),
     10
   );
   if (
-    !(
-      Object.values(StudyGoalPeriod).includes(period) &&
-      Number.isInteger(targetMinutes)
-    ) ||
+    !Number.isInteger(targetMinutes) ||
     targetMinutes < 15 ||
     targetMinutes > 100_800
   ) {
