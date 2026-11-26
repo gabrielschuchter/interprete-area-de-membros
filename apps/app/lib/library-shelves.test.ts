@@ -89,10 +89,15 @@ describe("capa com título", () => {
 
   it("reduz o corpo do título conforme o tamanho do texto", () => {
     expect(libraryCoverTitleSize("GRADE Handbook")).toBe(22);
-    expect(libraryCoverTitleSize("x".repeat(40))).toBe(19);
-    expect(libraryCoverTitleSize("x".repeat(70))).toBe(16);
-    expect(libraryCoverTitleSize("x".repeat(120))).toBe(14);
+    expect(libraryCoverTitleSize("abc ".repeat(10))).toBe(19);
+    expect(libraryCoverTitleSize("abc ".repeat(18))).toBe(16);
+    expect(libraryCoverTitleSize("abc ".repeat(30))).toBe(14);
     expect(libraryCoverTitleSize("GRADE Handbook", true)).toBeGreaterThan(22);
+  });
+
+  it("encolhe o título quando uma palavra é comprida demais para a capa", () => {
+    expect(libraryCoverTitleSize("ClinicalTrials.gov")).toBe(13);
+    expect(libraryCoverTitleSize("Interpretation")).toBeLessThan(22);
   });
 
   it("abrevia os autores", () => {

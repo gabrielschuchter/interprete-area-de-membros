@@ -16,7 +16,7 @@ import {
   XIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { type PointerEvent, useEffect, useRef, useState } from "react";
 import { LibraryBookmarkButton } from "@/components/library/library-bookmark-button";
 import { libraryCategoryGroups } from "@/lib/library-categories";
 import {
@@ -42,6 +42,9 @@ const KIND_LABEL = {
 } as const;
 
 const SCROLL_SHARE = 0.8;
+const EDGE_ZONE_MAX = 180;
+const EDGE_ZONE_SHARE = 0.22;
+const EDGE_SCROLL_SPEED = 11;
 const MAX_SAME_SHELF = 4;
 
 const kicker = (item: LibraryShelfItem) =>
@@ -156,7 +159,14 @@ const BookCover = ({
         )}
         style={{ fontSize: size }}
       >
-        <span className={large ? "line-clamp-8" : "line-clamp-6"}>{title}</span>
+        <span
+          className={cn(
+            "[overflow-wrap:anywhere]",
+            large ? "line-clamp-8" : "line-clamp-6"
+          )}
+        >
+          {title}
+        </span>
       </span>
       <span
         className={cn(
@@ -203,9 +213,61 @@ const Shelf = ({
   readonly translateTitles: boolean;
 }) => {
   const [expanded, setExpanded] = useState(false);
-  const railRef = useRef<HTMLUListElement>(null);
+  const railRef = useRef<HTMLDivElement>(null);
+  const speedRef = useRef(0);
+  const frameRef = useRef(0);
   const headingId = `${shelf.id}-titulo`;
   const count = shelf.items.length;
+
+  useEffect(
+    () => () => {
+      speedRef.current = 0;
+      cancelAnimationFrame(frameRef.current);
+    },
+    []
+  );
+
+  const tick = () => {
+    const rail = railRef.current;
+    if (!rail || speedRef.current === 0) {
+      frameRef.current = 0;
+      return;
+    }
+    rail.scrollLeft += speedRef.current;
+    frameRef.current = requestAnimationFrame(tick);
+  };
+
+  /** Mouse perto das bordas da estante rola a esteira, mais rápido quanto mais perto. */
+  const onPointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    const rail = railRef.current;
+    if (
+      event.pointerType !== "mouse" ||
+      expanded ||
+      !rail ||
+      rail.scrollWidth <= rail.clientWidth ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      speedRef.current = 0;
+      return;
+    }
+    const rect = rail.getBoundingClientRect();
+    const zone = Math.min(EDGE_ZONE_MAX, rect.width * EDGE_ZONE_SHARE);
+    const x = event.clientX - rect.left;
+    let speed = 0;
+    if (x < zone) {
+      speed = -(1 - x / zone) * EDGE_SCROLL_SPEED;
+    } else if (x > rect.width - zone) {
+      speed = (1 - (rect.width - x) / zone) * EDGE_SCROLL_SPEED;
+    }
+    speedRef.current = speed;
+    if (speed !== 0 && frameRef.current === 0) {
+      frameRef.current = requestAnimationFrame(tick);
+    }
+  };
+
+  const stopAutoScroll = () => {
+    speedRef.current = 0;
+  };
 
   const scroll = (direction: 1 | -1) => {
     const rail = railRef.current;
@@ -257,7 +319,11 @@ const Shelf = ({
             </button>
           )}
         </div>
-        <div className="group/rail relative mt-1.5">
+        <div
+          className="group/rail relative mt-1.5"
+          onPointerLeave={stopAutoScroll}
+          onPointerMove={onPointerMove}
+        >
           {!expanded && (
             <>
               <button
@@ -278,36 +344,49 @@ const Shelf = ({
               </button>
             </>
           )}
-          <ul
+          <div
             className={cn(
-              "flex px-2 pt-1.5 md:px-3.5",
-              expanded
-                ? "flex-wrap"
-                : "snap-x snap-proximity overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              "pt-1.5",
+              !expanded &&
+                "overflow-x-auto overscroll-x-contain [scrollbar-width:none] max-md:snap-x max-md:snap-proximity [&::-webkit-scrollbar]:hidden"
             )}
             ref={railRef}
           >
-            {shelf.items.map((item) => {
-              const title = libraryDisplayTitle(item, translateTitles);
-              return (
-                <li className="snap-start" key={item.id}>
-                  <button
-                    aria-label={`${title}, ${KIND_LABEL[item.kind]}${item.year ? `, ${item.year}` : ""}`}
-                    className="group/tile relative flex h-[212px] w-[140px] flex-col justify-end px-2 pb-2 after:absolute after:inset-x-0 after:bottom-0 after:h-2 after:border-[#b98a6e] after:border-t-2 after:bg-[#3a0526] after:content-[''] focus-visible:outline-2 focus-visible:outline-[#F1EBE8] focus-visible:-outline-offset-2 md:h-[244px] md:w-[168px] md:px-2.5 md:pb-2.5 md:after:h-2.5"
-                    onClick={() => onOpen(shelf.id, item.id)}
-                    type="button"
-                  >
-                    <BookCover
-                      className="h-[190px] w-full transition-transform duration-[120ms] ease-[cubic-bezier(.2,0,0,1)] group-hover/tile:-translate-y-3 group-hover/tile:-rotate-[1.5deg] group-focus-visible/tile:-translate-y-3 group-focus-visible/tile:-rotate-[1.5deg] motion-reduce:transition-none md:h-[218px]"
-                      item={item}
-                      title={title}
-                    />
-                    {isSaved(item) && <SavedRibbon />}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
+            <ul
+              className={cn(
+                "flex px-2 md:px-3.5",
+                expanded
+                  ? "flex-wrap"
+                  : "relative w-max min-w-full pb-2 after:absolute after:inset-x-0 after:bottom-0 after:h-2 after:border-[#b98a6e] after:border-t-2 after:bg-[#3a0526] after:content-[''] md:pb-2.5 md:after:h-2.5"
+              )}
+            >
+              {shelf.items.map((item) => {
+                const title = libraryDisplayTitle(item, translateTitles);
+                return (
+                  <li className="shrink-0 snap-start" key={item.id}>
+                    <button
+                      aria-label={`${title}, ${KIND_LABEL[item.kind]}${item.year ? `, ${item.year}` : ""}`}
+                      className={cn(
+                        "group/tile relative flex h-[204px] w-[148px] flex-col justify-end px-2.5 focus-visible:outline-2 focus-visible:outline-[#F1EBE8] focus-visible:-outline-offset-2 md:h-[236px] md:w-[184px] md:px-3.5",
+                        expanded
+                          ? "pb-2 after:absolute after:inset-x-0 after:bottom-0 after:h-2 after:border-[#b98a6e] after:border-t-2 after:bg-[#3a0526] after:content-[''] md:pb-2.5 md:after:h-2.5"
+                          : "pb-0"
+                      )}
+                      onClick={() => onOpen(shelf.id, item.id)}
+                      type="button"
+                    >
+                      <BookCover
+                        className="h-[190px] w-full transition-transform duration-[120ms] ease-[cubic-bezier(.2,0,0,1)] group-hover/tile:-translate-y-3 group-hover/tile:-rotate-[1.5deg] group-focus-visible/tile:-translate-y-3 group-focus-visible/tile:-rotate-[1.5deg] motion-reduce:transition-none md:h-[218px]"
+                        item={item}
+                        title={title}
+                      />
+                      {isSaved(item) && <SavedRibbon />}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
         </div>
       </div>
     </section>

@@ -144,17 +144,34 @@ export const libraryCoverPalette = (id: string): LibraryCoverPalette => {
   return COVER_PALETTES[hash % COVER_PALETTES.length] as LibraryCoverPalette;
 };
 
-/** Corpo do título impresso na capa, menor quanto mais longo o título. */
+/** Largura útil do título numa capa estreita, em px, e largura média de um caractere em em. */
+const COVER_TEXT_WIDTH = 104;
+const AVERAGE_CHAR_EM = 0.56;
+const MIN_COVER_TITLE_SIZE = 13;
+const WHITESPACE = /\s+/;
+
+/**
+ * Corpo do título impresso na capa: menor quanto mais longo o título e quanto
+ * maior a palavra mais comprida, para nenhuma palavra quebrar no meio.
+ */
 export const libraryCoverTitleSize = (title: string, large = false) => {
-  const length = title.trim().length;
+  const text = title.trim();
   let size = 14;
-  if (length <= 24) {
+  if (text.length <= 24) {
     size = 22;
-  } else if (length <= 50) {
+  } else if (text.length <= 50) {
     size = 19;
-  } else if (length <= 80) {
+  } else if (text.length <= 80) {
     size = 16;
   }
+  const longestWord = Math.max(
+    1,
+    ...text.split(WHITESPACE).map((word) => word.length)
+  );
+  const fitting = Math.floor(
+    COVER_TEXT_WIDTH / (AVERAGE_CHAR_EM * longestWord)
+  );
+  size = Math.min(size, Math.max(MIN_COVER_TITLE_SIZE, fitting));
   return large ? Math.round(size * 1.2) : size;
 };
 
