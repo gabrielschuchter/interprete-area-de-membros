@@ -558,7 +558,6 @@ export const getFocusTimerState = (memberId: string) => {
           COUNT(DISTINCT study_interval."sessionId")::int AS "sessions"
         FROM "StudyActivityInterval" AS study_interval
         WHERE study_interval."memberId" = ${memberId}
-          AND study_interval."isPlayback" = false
           AND study_interval."startedAt" >= ${weekStart}
           AND study_interval."startedAt" < ${weekEnd}
         GROUP BY "dayKey"

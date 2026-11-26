@@ -41,7 +41,8 @@ const dayKeyFormatter = (timezone: string) =>
 
 /**
  * Tempo da semana por dia e por prateleira. Usa o mesmo filtro da meta
- * semanal (`isPlayback = false`, janela da semana do planner), então a soma da
+ * semanal (todo o tempo registrado, inclusive vídeo tocando, na janela da
+ * semana do planner), então a soma da
  * estante é sempre igual aos minutos que a meta enxerga.
  */
 export const getStudyWeekShelf = async (
@@ -65,7 +66,6 @@ export const getStudyWeekShelf = async (
       FROM "StudyActivityInterval" AS study_interval
       JOIN "StudyTrackingSession" AS tracking ON tracking."id" = study_interval."sessionId"
       WHERE study_interval."memberId" = ${memberId}
-        AND study_interval."isPlayback" = false
         AND study_interval."startedAt" >= ${window.weekStart}
         AND study_interval."startedAt" < ${window.weekEnd}
       GROUP BY 1, 2, 3

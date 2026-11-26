@@ -746,7 +746,6 @@ export const getPlannerDashboard = async (
     database.studyActivityInterval.aggregate({
       where: {
         memberId,
-        isPlayback: false,
         startedAt: { gte: weekStartDate, lt: weekEnd },
       },
       _sum: { seconds: true },
@@ -754,7 +753,6 @@ export const getPlannerDashboard = async (
     database.studyActivityInterval.aggregate({
       where: {
         memberId,
-        isPlayback: false,
         startedAt: { gte: monthStart, lt: monthEnd },
       },
       _sum: { seconds: true },
@@ -804,7 +802,6 @@ export const getPlannerDashboard = async (
         by: ["sessionId"],
         where: {
           memberId,
-          isPlayback: false,
           sessionId: { in: studyTrackingSessions.map((session) => session.id) },
         },
         _sum: { seconds: true },

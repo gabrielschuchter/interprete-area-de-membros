@@ -237,7 +237,7 @@ const minutesByTopic = async (
 ) => {
   const grouped = await database.studyActivityInterval.groupBy({
     by: ["sessionId"],
-    where: { memberId, isPlayback: false, startedAt: { gte: start, lt: end } },
+    where: { memberId, startedAt: { gte: start, lt: end } },
     _sum: { seconds: true },
   });
   const seconds = new Map<string | null, number>();
@@ -298,7 +298,6 @@ export const getStudyGoalTopicOverview = async (
       memberId,
       intervals: {
         some: {
-          isPlayback: false,
           startedAt: { gte: rangeStart, lt: rangeEnd },
         },
       },
