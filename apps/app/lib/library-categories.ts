@@ -40,8 +40,9 @@ export const LIBRARY_CATEGORY_GROUPS = [
     aliases: ["Risco de viés"],
   },
   {
-    label: "Relato e ciência aberta",
+    label: "Relato",
     aliases: [
+      "Relato",
       "Relato e ciência aberta",
       "Relato científico",
       "Reporting guidelines",

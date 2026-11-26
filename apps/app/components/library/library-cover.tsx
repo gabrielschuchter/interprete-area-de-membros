@@ -14,7 +14,7 @@ const COVER_BY_GROUP: Readonly<Record<string, string>> = {
   "Nutrição baseada em evidências":
     "/library/illustrations/nutrition-evidence.svg",
   "Registros de protocolo": "/library/illustrations/protocols.svg",
-  "Relato e ciência aberta": "/library/illustrations/scientific-report.svg",
+  Relato: "/library/illustrations/scientific-report.svg",
   "Revisões sistemáticas": "/library/illustrations/systematic-reviews.svg",
   "Risco de viés": "/library/illustrations/risk-of-bias.svg",
 };

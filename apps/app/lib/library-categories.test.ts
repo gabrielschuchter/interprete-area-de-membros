@@ -147,3 +147,12 @@ test("a lista escolhida no cadastro vira grupos canônicos, sem repetição", ()
   ).toEqual(["Busca da evidência", "Registros de protocolo"]);
   expect(normalizeLibraryCategories([])).toEqual([]);
 });
+
+test("Relato é o nome do grupo e o nome antigo continua valendo como apelido", () => {
+  expect(libraryCategoryGroup("Relato")).toBe("Relato");
+  expect(libraryCategoryGroup("Relato e ciência aberta")).toBe("Relato");
+  expect(libraryCategoryGroup("Reporting guidelines")).toBe("Relato");
+  expect(libraryCategoryFilterValues("Relato")).toContain(
+    "Relato e ciência aberta"
+  );
+});

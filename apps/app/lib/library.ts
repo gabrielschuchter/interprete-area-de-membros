@@ -57,7 +57,12 @@ const libraryCategoryWhere = (
   const group = libraryCategoryGroup(selected);
   return {
     OR: [
-      { categories: { has: group } },
+      // Aceita também os apelidos antigos que ainda estejam gravados na lista.
+      {
+        categories: {
+          hasSome: [group, ...libraryCategoryFilterValues(selected)],
+        },
+      },
       {
         categories: { isEmpty: true },
         category: { in: libraryCategoryFilterValues(selected) },

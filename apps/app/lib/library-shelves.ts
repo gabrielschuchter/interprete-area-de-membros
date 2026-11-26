@@ -39,7 +39,7 @@ const SHELF_ART_BY_GROUP: Readonly<Record<string, string>> = {
     "/library/shelves/leitura-critica.webp",
   "Nutrição baseada em evidências": "/library/shelves/nutricao.webp",
   "Registros de protocolo": "/library/shelves/registros.webp",
-  "Relato e ciência aberta": "/library/shelves/relato.webp",
+  Relato: "/library/shelves/relato.webp",
   "Revisões sistemáticas": "/library/shelves/revisoes-busca.webp",
   "Risco de viés": "/library/shelves/risco-de-vies.webp",
 };
