@@ -3,101 +3,139 @@ import "server-only";
 import { database, Prisma, StudyGoalPeriod } from "@repo/database";
 import { z } from "zod";
 import {
+  aggregateWeekActivity,
   COUNT_GOAL_MAX,
-  COUNT_GOAL_MIN_SECONDS,
-  type CountGoalKind,
   type CountGoalsOverview,
-  countGoalActivityKinds,
   countGoalKinds,
-  emptyCountGoals,
+  type LinkedTimerRow,
+  mergeCountGoals,
+  type TrackedRow,
+  type WeekActivityCounts,
 } from "./study-count-goals-model";
-
-interface CountRow {
-  readonly activityKind: string;
-  readonly resourceId: string;
-}
 
 interface Window {
   readonly weekEnd: Date;
   readonly weekStart: Date;
 }
 
-/**
- * Recursos estudados na semana com pelo menos 1 min de tempo registrado.
- * Devolve uma lista (tipo + id) para que aulas concluídas possam ser
- * somadas sem contar a mesma aula duas vezes.
- */
-const trackedResources = (memberId: string, window: Window) =>
-  database.$queryRaw<CountRow[]>(Prisma.sql`
-    SELECT tracking."activityKind"::text AS "activityKind", tracking."resourceId"
+const dayKeyFormatter = (timezone: string) =>
+  new Intl.DateTimeFormat("en-CA", {
+    day: "2-digit",
+    month: "2-digit",
+    timeZone: timezone,
+    year: "numeric",
+  });
+
+const trackedRows = (memberId: string, window: Window, timezone: string) =>
+  database.$queryRaw<
+    Array<Omit<TrackedRow, "seconds"> & { seconds: number | bigint }>
+  >(Prisma.sql`
+    SELECT
+      TO_CHAR((study_interval."startedAt" AT TIME ZONE 'UTC') AT TIME ZONE ${timezone}, 'YYYY-MM-DD') AS "dayKey",
+      tracking."activityKind"::text AS "activityKind",
+      tracking."resourceId" AS "resourceId",
+      SUM(study_interval."seconds") AS "seconds"
     FROM "StudyActivityInterval" AS study_interval
     JOIN "StudyTrackingSession" AS tracking ON tracking."id" = study_interval."sessionId"
     WHERE study_interval."memberId" = ${memberId}
       AND study_interval."startedAt" >= ${window.weekStart}
       AND study_interval."startedAt" < ${window.weekEnd}
       AND tracking."resourceId" IS NOT NULL
-    GROUP BY tracking."activityKind", tracking."resourceId"
-    HAVING SUM(study_interval."seconds") >= ${COUNT_GOAL_MIN_SECONDS}
+      AND tracking."activityKind" <> 'PERSONAL_TIMER'
+    GROUP BY 1, 2, 3
   `);
 
+/** Cronômetros pessoais ligados a uma aula ou a uma leitura da biblioteca. */
+const linkedTimerRows = (memberId: string, window: Window, timezone: string) =>
+  database.$queryRaw<
+    Array<Omit<LinkedTimerRow, "seconds"> & { seconds: number | bigint }>
+  >(Prisma.sql`
+    SELECT
+      TO_CHAR((study_interval."startedAt" AT TIME ZONE 'UTC') AT TIME ZONE ${timezone}, 'YYYY-MM-DD') AS "dayKey",
+      timer."linkedResourceType" AS "linkedType",
+      timer."linkedResourceId" AS "resourceId",
+      SUM(study_interval."seconds") AS "seconds"
+    FROM "StudyActivityInterval" AS study_interval
+    JOIN "StudyTrackingSession" AS tracking ON tracking."id" = study_interval."sessionId"
+    JOIN "FocusTimerSession" AS timer
+      ON timer."id" = tracking."clientSessionId" AND timer."memberId" = tracking."memberId"
+    WHERE study_interval."memberId" = ${memberId}
+      AND study_interval."startedAt" >= ${window.weekStart}
+      AND study_interval."startedAt" < ${window.weekEnd}
+      AND tracking."activityKind" = 'PERSONAL_TIMER'
+      AND timer."linkedResourceId" IS NOT NULL
+      AND timer."linkedResourceType" IN ('LESSON', 'LIBRARY_ITEM')
+    GROUP BY 1, 2, 3
+  `);
+
+const answerRows = (memberId: string, window: Window, timezone: string) =>
+  database.$queryRaw<Array<{ count: number | bigint; dayKey: string }>>(
+    Prisma.sql`
+    SELECT
+      TO_CHAR((answer."answeredAt" AT TIME ZONE 'UTC') AT TIME ZONE ${timezone}, 'YYYY-MM-DD') AS "dayKey",
+      COUNT(*) AS "count"
+    FROM "ExerciseAnswer" AS answer
+    JOIN "ExerciseSessionQuestion" AS question ON question."id" = answer."sessionQuestionId"
+    JOIN "ExerciseSession" AS session ON session."id" = question."sessionId"
+    WHERE session."memberId" = ${memberId}
+      AND answer."answeredAt" >= ${window.weekStart}
+      AND answer."answeredAt" < ${window.weekEnd}
+    GROUP BY 1
+  `
+  );
+
 /**
- * Aulas: estudadas por pelo menos 1 min OU concluídas na semana (a mesma
- * aula conta uma vez). Leituras: itens da biblioteca com pelo menos 1 min.
- * Exercícios: questões respondidas na semana, mais atividades estudadas.
+ * Contagem da semana por aulas, leituras e exercícios, no total e por dia.
+ * É a única fonte dos números da ampulheta, da estante e do card de
+ * progresso, então as três telas não divergem.
  */
-const countStudiedResources = async (memberId: string, window: Window) => {
-  const [tracked, completed, answers] = await Promise.all([
-    trackedResources(memberId, window),
+export const getWeekActivityCounts = async (
+  memberId: string,
+  window: Window,
+  timezone: string
+): Promise<WeekActivityCounts> => {
+  const formatter = dayKeyFormatter(timezone);
+  const [tracked, linked, completed, answers] = await Promise.all([
+    trackedRows(memberId, window, timezone),
+    linkedTimerRows(memberId, window, timezone),
     database.lessonProgress.findMany({
       where: {
         memberId,
         completedAt: { gte: window.weekStart, lt: window.weekEnd },
       },
-      select: { lessonId: true },
+      select: { completedAt: true, lessonId: true },
     }),
-    database.exerciseAnswer.count({
-      where: {
-        answeredAt: { gte: window.weekStart, lt: window.weekEnd },
-        sessionQuestion: { session: { memberId } },
-      },
-    }),
+    answerRows(memberId, window, timezone),
   ]);
-  const distinct = (kinds: readonly string[]) =>
-    new Set(
-      tracked
-        .filter((row) => kinds.includes(row.activityKind))
-        .map((row) => row.resourceId)
-    );
-  const lessons = distinct(countGoalActivityKinds.LESSONS);
-  for (const item of completed) {
-    lessons.add(item.lessonId);
-  }
-  return {
-    LESSONS: lessons.size,
-    READINGS: distinct(countGoalActivityKinds.READINGS).size,
-    EXERCISES: answers + distinct(countGoalActivityKinds.EXERCISES_EXTRA).size,
-  } satisfies Record<CountGoalKind, number>;
+  return aggregateWeekActivity({
+    tracked: tracked.map((row) => ({ ...row, seconds: Number(row.seconds) })),
+    linked: linked.map((row) => ({ ...row, seconds: Number(row.seconds) })),
+    completedLessons: completed.flatMap((item) =>
+      item.completedAt
+        ? [
+            {
+              dayKey: formatter.format(item.completedAt),
+              lessonId: item.lessonId,
+            },
+          ]
+        : []
+    ),
+    answersByDay: answers.map((row) => ({
+      dayKey: row.dayKey,
+      count: Number(row.count),
+    })),
+  });
 };
 
 export const getCountGoalsOverview = async (
   memberId: string,
-  window: Window
+  counts: WeekActivityCounts
 ): Promise<CountGoalsOverview> => {
-  const [goals, done] = await Promise.all([
-    database.studyCountGoal.findMany({
-      where: { memberId, period: StudyGoalPeriod.WEEKLY },
-      select: { kind: true, target: true },
-    }),
-    countStudiedResources(memberId, window),
-  ]);
-  const overview = emptyCountGoals();
-  for (const kind of countGoalKinds) {
-    overview[kind] = {
-      done: done[kind],
-      target: goals.find((goal) => goal.kind === kind)?.target ?? null,
-    };
-  }
-  return overview;
+  const goals = await database.studyCountGoal.findMany({
+    where: { memberId, period: StudyGoalPeriod.WEEKLY },
+    select: { kind: true, target: true },
+  });
+  return mergeCountGoals(goals, counts.week);
 };
 
 const saveSchema = z.object({

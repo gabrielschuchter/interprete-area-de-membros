@@ -42,14 +42,19 @@ export const parseManualGroup = (
     : null;
 };
 
-/** Aula e gravação são aula; exercícios e atividades são exercícios. */
+/** Aula, gravação e cronômetro ligado a aula são aula; exercícios e atividades são exercícios. */
 export const groupForActivity = (
   activityKind: string,
-  clientSessionId: string | null | undefined
+  clientSessionId: string | null | undefined,
+  linkedType?: string | null
 ): ShelfGroup => {
   const manual = parseManualGroup(clientSessionId);
   if (manual) {
     return manual;
+  }
+  // Cronômetro pessoal ligado a uma aula conta como aula.
+  if (activityKind === "PERSONAL_TIMER" && linkedType === "LESSON") {
+    return "lesson";
   }
   switch (activityKind) {
     case "LESSON":

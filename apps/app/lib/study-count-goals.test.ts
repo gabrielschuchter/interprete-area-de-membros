@@ -3,7 +3,6 @@ import { beforeEach, expect, test, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 const database = {
   $queryRaw: vi.fn(),
-  exerciseAnswer: { count: vi.fn() },
   lessonProgress: { findMany: vi.fn() },
   studyCountGoal: {
     deleteMany: vi.fn(),
@@ -17,9 +16,12 @@ vi.mock("@repo/database", () => ({
   StudyGoalPeriod: { WEEKLY: "WEEKLY" },
 }));
 
-const { deleteCountGoal, getCountGoalsOverview, saveCountGoal } = await import(
-  "./study-count-goals"
-);
+const {
+  deleteCountGoal,
+  getCountGoalsOverview,
+  getWeekActivityCounts,
+  saveCountGoal,
+} = await import("./study-count-goals");
 const window = {
   weekEnd: new Date("2026-11-30T03:00:00Z"),
   weekStart: new Date("2026-11-23T03:00:00Z"),
@@ -30,30 +32,53 @@ beforeEach(() => {
   database.studyCountGoal.upsert.mockResolvedValue({});
 });
 
-test("aulas somam estudadas e concluídas sem repetir; exercícios contam questões respondidas", async () => {
-  database.$queryRaw.mockResolvedValue([
-    { activityKind: "LESSON", resourceId: "l1" },
-    { activityKind: "RECORDING", resourceId: "r1" },
-    { activityKind: "LIBRARY_ITEM", resourceId: "b1" },
-    { activityKind: "LIBRARY_ITEM", resourceId: "b2" },
-    { activityKind: "ACTIVITY", resourceId: "a1" },
-    { activityKind: "COMMUNITY", resourceId: "c1" },
-  ]);
+test("combina heartbeat, cronômetro ligado, aulas concluídas e questões respondidas", async () => {
+  database.$queryRaw
+    .mockResolvedValueOnce([
+      {
+        activityKind: "LESSON",
+        dayKey: "2026-11-24",
+        resourceId: "l1",
+        seconds: 120n,
+      },
+      {
+        activityKind: "COMMUNITY",
+        dayKey: "2026-11-24",
+        resourceId: "c1",
+        seconds: 500,
+      },
+    ])
+    .mockResolvedValueOnce([
+      {
+        dayKey: "2026-11-25",
+        linkedType: "LIBRARY_ITEM",
+        resourceId: "b1",
+        seconds: 30,
+      },
+    ])
+    .mockResolvedValueOnce([{ dayKey: "2026-11-26", count: 8n }]);
   database.lessonProgress.findMany.mockResolvedValue([
-    { lessonId: "l1" },
-    { lessonId: "l2" },
+    { lessonId: "l2", completedAt: new Date("2026-11-26T15:00:00Z") },
   ]);
-  database.exerciseAnswer.count.mockResolvedValue(8);
-  database.studyCountGoal.findMany.mockResolvedValue([
-    { kind: "LESSONS", target: 5 },
-  ]);
-  const overview = await getCountGoalsOverview("m1", window);
-  expect(overview.LESSONS).toEqual({ done: 3, target: 5 });
-  expect(overview.READINGS).toEqual({ done: 2, target: null });
-  expect(overview.EXERCISES).toEqual({ done: 9, target: null });
-  expect(database.exerciseAnswer.count.mock.calls[0]?.[0].where).toMatchObject({
-    sessionQuestion: { session: { memberId: "m1" } },
+  const counts = await getWeekActivityCounts("m1", window, "America/Sao_Paulo");
+  expect(counts.week).toEqual({ LESSONS: 2, READINGS: 1, EXERCISES: 8 });
+  expect(counts.perDay["2026-11-26"]).toEqual({
+    LESSONS: 1,
+    READINGS: 0,
+    EXERCISES: 8,
   });
+});
+
+test("junta as metas salvas com a contagem", async () => {
+  database.studyCountGoal.findMany.mockResolvedValue([
+    { kind: "EXERCISES", target: 10 },
+  ]);
+  const overview = await getCountGoalsOverview("m1", {
+    perDay: {},
+    week: { LESSONS: 0, READINGS: 0, EXERCISES: 12 },
+  });
+  expect(overview.EXERCISES).toEqual({ done: 12, target: 10 });
+  expect(overview.LESSONS.target).toBeNull();
 });
 
 test("salva a meta semanal do tipo escolhido", async () => {

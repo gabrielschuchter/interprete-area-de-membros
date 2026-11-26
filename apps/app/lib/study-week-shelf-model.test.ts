@@ -74,3 +74,12 @@ test("preserva a meta atual entre as opções rápidas", () => {
   expect(weeklyGoalPresets(360)).toEqual([180, 300, 360, 420, 600]);
   expect(weeklyGoalPresets(300)).toEqual([180, 300, 420, 600]);
 });
+
+test("cronômetro pessoal ligado a aula cai na prateleira de aula", async () => {
+  const { groupForActivity } = await import("./study-week-shelf-model");
+  expect(groupForActivity("PERSONAL_TIMER", "t1", "LESSON")).toBe("lesson");
+  expect(groupForActivity("PERSONAL_TIMER", "t1", "LIBRARY_ITEM")).toBe(
+    "reading"
+  );
+  expect(groupForActivity("PERSONAL_TIMER", "t1", null)).toBe("reading");
+});

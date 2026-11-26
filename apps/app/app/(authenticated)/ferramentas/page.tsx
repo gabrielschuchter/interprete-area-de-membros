@@ -9,8 +9,12 @@ import {
   getFocusTimerLinkResources,
   getFocusTimerState,
 } from "@/lib/focus-timer";
+import { memberActivitiesEnabled } from "@/lib/member-features";
 import { getPlannerDashboard } from "@/lib/planner";
-import { getCountGoalsOverview } from "@/lib/study-count-goals";
+import {
+  getCountGoalsOverview,
+  getWeekActivityCounts,
+} from "@/lib/study-count-goals";
 import { getStudyWeekShelf } from "@/lib/study-week-shelf";
 import type { GradeSelected } from "./grade-workspace";
 import type { Rob2Selected } from "./rob2-workspace";
@@ -22,6 +26,7 @@ import {
   Rob2View,
   TimerView,
 } from "./tools-view-loader";
+import { WeekProgress } from "./week-progress";
 import { WeekShelf } from "./week-shelf";
 
 export const metadata: Metadata = { title: "Ferramentas | Interprete" };
@@ -126,9 +131,25 @@ const loadWeekShelf = async (
   );
   const weeklyTarget =
     data.goals.find((goal) => goal.period === "WEEKLY")?.targetMinutes ?? null;
-  const countGoals = await getCountGoalsOverview(memberId, data.goalWindows);
-  return { ...shelf, countGoals, weeklyTarget };
+  const activity = await getWeekActivityCounts(
+    memberId,
+    data.goalWindows,
+    data.preferences.timezone
+  );
+  const countGoals = await getCountGoalsOverview(memberId, activity);
+  return { ...shelf, activity, countGoals, weeklyTarget };
 };
+
+const progressHistory = (
+  stats: Awaited<ReturnType<typeof getPlannerDashboard>>["stats"]
+) => [
+  { count: stats.completedLessons, label: "aulas concluídas" },
+  ...(memberActivitiesEnabled
+    ? [{ count: stats.submittedActivities, label: "atividades entregues" }]
+    : []),
+  { count: stats.completedAssignedTasks, label: "tarefas atribuídas feitas" },
+  { count: stats.completedPlannerTasks, label: "tarefas pessoais feitas" },
+];
 
 const resolveView = (
   params: Record<string, string | string[] | undefined>
@@ -168,12 +189,21 @@ const loadPlannerContent = async (
     <>
       {shelf ? (
         <WeekShelf
+          activity={shelf.activity}
           countGoals={shelf.countGoals}
           days={shelf.days}
           manualEntries={shelf.manualEntries}
           studiedMinutes={data.stats.weeklyMinutes}
           targetMinutes={shelf.weeklyTarget}
           weekStartKey={shelf.weekNumberKey}
+        />
+      ) : null}
+      {shelf ? (
+        <WeekProgress
+          counts={shelf.activity.week}
+          history={progressHistory(data.stats)}
+          minutes={data.stats.weeklyMinutes}
+          targetMinutes={shelf.weeklyTarget}
         />
       ) : null}
       <PlannerView

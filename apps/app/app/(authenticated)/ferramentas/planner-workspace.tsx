@@ -27,7 +27,6 @@ import {
   useState,
 } from "react";
 import { cohortCalendarEventDateRange } from "@/lib/cohort-calendar-domain";
-import { memberActivitiesEnabled } from "@/lib/member-features";
 import type { getPlannerDashboard } from "@/lib/planner";
 import {
   deletePlannerEventAction,
@@ -1753,64 +1752,6 @@ function PlannerWorkspaceContent({
       event.occurrenceKey === editingEvent?.occurrenceKey
   );
 
-  const renderGoalsPanel = () => (
-    <>
-      {view === "goals" ? (
-        <div>
-          <section
-            aria-labelledby="planner-progress-heading"
-            className="mt-6 rounded-xl border border-[#E2D6D1] bg-[#F8F4F1] p-5 sm:p-6"
-          >
-            <p className="brand-eyebrow text-[#8C1535]">Progresso registrado</p>
-            <h2
-              className="mt-2 font-display text-2xl text-[#40222F]"
-              id="planner-progress-heading"
-            >
-              O que você concluiu
-            </h2>
-            <div
-              className={`mt-5 grid gap-3 sm:grid-cols-2 ${memberActivitiesEnabled ? "lg:grid-cols-4" : "lg:grid-cols-3"}`}
-            >
-              {[
-                ["Aulas", currentData.stats.completedLessons] as const,
-                ...(memberActivitiesEnabled
-                  ? [
-                      [
-                        "Atividades entregues",
-                        currentData.stats.submittedActivities,
-                      ] as const,
-                    ]
-                  : []),
-                [
-                  "Tarefas atribuídas concluídas",
-                  currentData.stats.completedAssignedTasks,
-                ],
-                [
-                  "Tarefas pessoais concluídas",
-                  currentData.stats.completedPlannerTasks,
-                ],
-              ].map(([label, count]) => (
-                <div
-                  className="rounded-lg border border-[#E2D6D1] bg-white p-4"
-                  key={label}
-                >
-                  <p className="text-[#7A5A69] text-sm">{label}</p>
-                  <p className="mt-1 font-display text-3xl text-[#40222F]">
-                    {count}
-                  </p>
-                </div>
-              ))}
-            </div>
-            <p className="mt-4 text-[#7A5A69] text-xs">
-              Conta só o que ficou registrado: aulas concluídas e tarefas
-              marcadas como feitas.
-            </p>
-          </section>
-        </div>
-      ) : null}
-    </>
-  );
-
   const renderMonthCalendar = () => (
     <>
       {calendarMode === "month" && (
@@ -2471,8 +2412,6 @@ function PlannerWorkspaceContent({
 
   return (
     <section className="mt-8 space-y-6">
-      {renderGoalsPanel()}
-
       {renderCalendarPanel()}
 
       <TaskEditorDialog

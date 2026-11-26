@@ -6,7 +6,15 @@ import { cn } from "@repo/design-system/lib/utils";
 import { Undo2Icon, XIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import type { CountGoalsOverview } from "@/lib/study-count-goals-model";
+import {
+  type CountGoalKind,
+  type CountGoalsOverview,
+  countGoalKinds,
+  countGoalUnit,
+  type KindCounts,
+  type WeekActivityCounts,
+  weekActivitySummary,
+} from "@/lib/study-count-goals-model";
 import type { ManualStudyEntry } from "@/lib/study-week-shelf";
 import {
   bookHeight,
@@ -38,6 +46,37 @@ const nicheClass = (day: ShelfDay) => {
     tone
   );
 };
+const COUNT_GROUP: Record<CountGoalKind, ShelfGroup> = {
+  LESSONS: "lesson",
+  READINGS: "reading",
+  EXERCISES: "exercise",
+};
+
+const DayCounts = ({ counts }: { readonly counts: KindCounts | undefined }) => {
+  const visible = countGoalKinds.filter((kind) => (counts?.[kind] ?? 0) > 0);
+  if (!counts || visible.length === 0) {
+    return null;
+  }
+  return (
+    <span className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-0.5">
+      {visible.map((kind) => (
+        <span
+          className="inline-flex items-center gap-0.5 text-[#E9C3C4] text-[10px]"
+          key={kind}
+          title={`${counts[kind]} ${countGoalUnit(kind, counts[kind])}`}
+        >
+          <i
+            aria-hidden="true"
+            className="inline-block size-1.5"
+            style={{ background: shelfGroupColors[COUNT_GROUP[kind]] }}
+          />
+          {counts[kind]}
+        </span>
+      ))}
+    </span>
+  );
+};
+
 const QUICK_MINUTES = [5, 15, 30, 60] as const;
 
 const showError = (error: unknown) =>
@@ -46,6 +85,7 @@ const showError = (error: unknown) =>
   );
 
 export interface WeekShelfProps {
+  readonly activity: WeekActivityCounts;
   readonly countGoals: CountGoalsOverview;
   readonly days: readonly ShelfDay[];
   readonly manualEntries: readonly ManualStudyEntry[];
@@ -83,6 +123,7 @@ const entryTimeLabel = (iso: string) =>
   }).format(new Date(iso));
 
 export const WeekShelf = ({
+  activity,
   countGoals,
   days,
   manualEntries,
@@ -140,7 +181,8 @@ export const WeekShelf = ({
               </span>
             </div>
             <span className="text-[#E9C3C4] text-[13px]">
-              Cada prateleira soma o tempo real de estudo do dia.
+              Esta semana: {weekActivitySummary(activity.week)}. Os livros
+              mostram o tempo; os números sob cada dia, a quantidade.
             </span>
           </div>
 
@@ -199,6 +241,7 @@ export const WeekShelf = ({
                   <span className="text-[#F1EBE8] text-[11px] sm:text-[13px]">
                     {day.future ? "—" : `${dayTotalMinutes(day)} min`}
                   </span>
+                  <DayCounts counts={activity.perDay[day.dayKey]} />
                 </div>
               ))}
             </div>

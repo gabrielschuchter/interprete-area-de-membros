@@ -24,6 +24,7 @@ export interface ActiveTimerSnapshot {
   durationSeconds: number | null;
   elapsedSeconds: number;
   id: string;
+  linkedResourceType?: string | null;
   mode: TimerMode;
   pausedAt: string | null;
   remainingSeconds: number | null;
@@ -218,17 +219,30 @@ export const ActiveTimerControls = ({
               </Link>
             </Button>
           )}
-          <Button
-            aria-label="Encerrar cronômetro"
-            className="text-[#8C1535]"
-            disabled={pending || activeFromOtherDevice || !clientId}
-            onClick={onStop}
-            size="icon"
-            type="button"
-            variant="outline"
-          >
-            <SquareIcon aria-hidden="true" className="size-4" />
-          </Button>
+          {active.linkedResourceType === "LIBRARY_ITEM" ? (
+            <Button
+              className="text-[#8C1535]"
+              disabled={pending || activeFromOtherDevice || !clientId}
+              onClick={onStop}
+              size="sm"
+              type="button"
+              variant="outline"
+            >
+              Terminei de ler
+            </Button>
+          ) : (
+            <Button
+              aria-label="Encerrar cronômetro"
+              className="text-[#8C1535]"
+              disabled={pending || activeFromOtherDevice || !clientId}
+              onClick={onStop}
+              size="icon"
+              type="button"
+              variant="outline"
+            >
+              <SquareIcon aria-hidden="true" className="size-4" />
+            </Button>
+          )}
           <Button
             disabled={activeFromOtherDevice}
             onClick={onFocus}

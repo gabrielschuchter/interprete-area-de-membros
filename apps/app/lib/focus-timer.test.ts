@@ -32,6 +32,9 @@ vi.mock("./learning", () => ({
   getPublishedLearningPaths: vi.fn().mockResolvedValue([]),
 }));
 const recordingLesson = vi.hoisted(() => vi.fn());
+vi.mock("./library", () => ({
+  hasPublishedLibraryItemAccess: vi.fn(),
+}));
 vi.mock("./recordings", () => ({
   getMemberAccessibleRecordingLesson: recordingLesson,
 }));

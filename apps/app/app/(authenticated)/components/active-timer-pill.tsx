@@ -19,6 +19,7 @@ import {
   unlockTimerAudio,
 } from "@/components/focus-timer-audio";
 import type { ActiveTimerSnapshot, TimerMode } from "./active-timer-controls";
+import { TIMER_REFRESH_EVENT } from "./timer-refresh-event";
 
 // A janela do cronômetro em andamento só baixa quando há um cronômetro
 // rodando; assim não pesa nas páginas de quem não usa o cronômetro.
@@ -236,10 +237,15 @@ const useGlobalTimerSync = (
       }
     };
     document.addEventListener("visibilitychange", onVisible);
+    // Outras telas (ex.: "Abrir material" na biblioteca) iniciam o cronômetro
+    // e pedem para a pílula reler o estado na hora.
+    const onRefresh = () => synchronizeQuietly(true);
+    window.addEventListener(TIMER_REFRESH_EVENT, onRefresh);
     return () => {
       mounted = false;
       window.clearInterval(interval);
       document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener(TIMER_REFRESH_EVENT, onRefresh);
     };
   }, [onTimerPage, pathname, synchronize]);
 };

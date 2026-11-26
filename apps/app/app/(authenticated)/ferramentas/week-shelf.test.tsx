@@ -12,6 +12,7 @@ const CUMPRIDA = /cumprida/;
 const LANCAR_30 = /Lançar 30 min/;
 const DESFAZER = /Desfazer/;
 const FORA = /Estudou fora/;
+const RESUMO = /Esta semana: 1 aula · 10 questões/;
 const TIPO = /Tipo de meta/;
 
 // O build da Vercel roda a suíte inteira em máquina lenta: dá folga ao render.
@@ -52,6 +53,10 @@ const days = buildShelfDays(
 );
 
 const baseProps = {
+  activity: {
+    perDay: { "2026-11-23": { LESSONS: 1, READINGS: 0, EXERCISES: 10 } },
+    week: { LESSONS: 1, READINGS: 0, EXERCISES: 10 },
+  },
   countGoals: {
     LESSONS: { done: 2, target: 5 },
     READINGS: { done: 0, target: null },
@@ -142,4 +147,11 @@ test("valor personalizado salva a meta do tipo escolhido", () => {
   });
   fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
   expect(countSave).toHaveBeenCalledWith({ kind: "READINGS", target: 7 });
+});
+
+test("mostra a quantidade da semana e por dia ao lado do tempo", () => {
+  render(<WeekShelf {...baseProps} />);
+  expect(screen.getByText(RESUMO)).toBeTruthy();
+  expect(screen.getByTitle("10 questões")).toBeTruthy();
+  expect(screen.getByTitle("1 aula")).toBeTruthy();
 });

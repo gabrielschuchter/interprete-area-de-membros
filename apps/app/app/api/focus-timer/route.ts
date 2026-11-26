@@ -30,7 +30,7 @@ const actionSchema = z.discriminatedUnion("action", [
     clientId: z.string().uuid(),
     mode: z.nativeEnum(FocusTimerMode),
     durationSeconds: z.number().int().min(1).max(86_400).nullable().optional(),
-    linkedResourceType: z.literal("LESSON").nullable().optional(),
+    linkedResourceType: z.enum(["LESSON", "LIBRARY_ITEM"]).nullable().optional(),
     linkedResourceId: z.string().trim().max(255).nullable().optional(),
     title: z.string().trim().max(180).nullable().optional(),
   }),

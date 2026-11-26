@@ -27,6 +27,7 @@ export interface StudyWeekShelf {
 interface WeekRow {
   readonly dayKey: string;
   readonly kind: string;
+  readonly linkedType: string | null;
   readonly seconds: number;
   readonly sessionKey: string | null;
 }
@@ -62,13 +63,19 @@ export const getStudyWeekShelf = async (
         tracking."activityKind"::text AS "kind",
         CASE WHEN tracking."clientSessionId" LIKE ${`${MANUAL_SESSION_PREFIX}%`}
           THEN tracking."clientSessionId" ELSE NULL END AS "sessionKey",
+        CASE WHEN tracking."activityKind" = 'PERSONAL_TIMER'
+          THEN timer."linkedResourceType" ELSE NULL END AS "linkedType",
         SUM(study_interval."seconds")::int AS "seconds"
       FROM "StudyActivityInterval" AS study_interval
       JOIN "StudyTrackingSession" AS tracking ON tracking."id" = study_interval."sessionId"
+      LEFT JOIN "FocusTimerSession" AS timer
+        ON tracking."activityKind" = 'PERSONAL_TIMER'
+        AND timer."id" = tracking."clientSessionId"
+        AND timer."memberId" = tracking."memberId"
       WHERE study_interval."memberId" = ${memberId}
         AND study_interval."startedAt" >= ${window.weekStart}
         AND study_interval."startedAt" < ${window.weekEnd}
-      GROUP BY 1, 2, 3
+      GROUP BY 1, 2, 3, 4
     `),
     database.studyTrackingSession.findMany({
       where: {
@@ -90,7 +97,7 @@ export const getStudyWeekShelf = async (
   const shelfRows: ShelfRow[] = rows.map((row) => ({
     dayKey: row.dayKey,
     seconds: Number(row.seconds),
-    group: groupForActivity(row.kind, row.sessionKey),
+    group: groupForActivity(row.kind, row.sessionKey, row.linkedType),
   }));
 
   const manualEntries: ManualStudyEntry[] = [];

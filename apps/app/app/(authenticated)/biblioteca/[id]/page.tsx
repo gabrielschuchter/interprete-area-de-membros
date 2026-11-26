@@ -2,7 +2,6 @@ import { Badge } from "@repo/design-system/components/ui/badge";
 import { Button } from "@repo/design-system/components/ui/button";
 import {
   ArrowLeftIcon,
-  ArrowUpRightIcon,
   BookOpenIcon,
   FileTextIcon,
   LinkIcon,
@@ -19,6 +18,7 @@ import {
   libraryDifficultyLabel,
   libraryLanguageLabel,
 } from "@/lib/library-presentation";
+import { OpenMaterialLink } from "./open-material-link";
 
 interface LibraryItemPageProperties {
   readonly params: Promise<{ id: string }>;
@@ -118,16 +118,11 @@ const LibraryItemPage = async ({ params }: LibraryItemPageProperties) => {
             </p>
           )}
           <div className="mt-10 border-border border-t pt-7">
-            <a
-              aria-label={`Abrir material: ${item.title}, em nova aba`}
-              className="inline-flex h-12 items-center justify-center gap-2 rounded-md border-2 border-[#8C1535] bg-[#8C1535] px-6 font-semibold text-sm text-white transition-colors hover:bg-[#6f102b] focus-visible:outline-2 focus-visible:outline-[#8C1535] focus-visible:outline-offset-2"
+            <OpenMaterialLink
               href={`/biblioteca/abrir/${item.id}`}
-              rel="noopener noreferrer"
-              target="_blank"
-              title="Abre em nova aba"
-            >
-              Abrir material <ArrowUpRightIcon aria-hidden="true" />
-            </a>
+              itemId={item.id}
+              title={item.title}
+            />
           </div>
         </article>
       </main>

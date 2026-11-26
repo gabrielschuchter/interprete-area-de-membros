@@ -11,6 +11,7 @@ import {
 import { z } from "zod";
 import { defaultTimerSettings } from "./focus-timer-settings";
 import { getPublishedLearningPaths } from "./learning";
+import { hasPublishedLibraryItemAccess } from "./library";
 import { getMemberAccessibleRecordingLesson } from "./recordings";
 
 const DEFAULT_TIMEZONE = "America/Sao_Paulo";
@@ -720,17 +721,30 @@ export const startFocusTimer = async (
         .max(86_400)
         .nullable()
         .optional(),
-      linkedResourceType: z.literal("LESSON").nullable().optional(),
+      linkedResourceType: z
+        .enum(["LESSON", "LIBRARY_ITEM"])
+        .nullable()
+        .optional(),
       linkedResourceId: z.string().trim().max(255).nullable().optional(),
       title: z.string().trim().max(180).nullable().optional(),
     })
     .parse(input);
   await ensureTimerDefaults(memberId);
-  if (
-    parsed.linkedResourceId &&
-    !(await isLinkableLesson(memberId, parsed.linkedResourceId))
-  ) {
-    throw new Error("A aula vinculada não está disponível para esta conta.");
+  if (parsed.linkedResourceId) {
+    if (parsed.linkedResourceType === "LIBRARY_ITEM") {
+      if (
+        !(await hasPublishedLibraryItemAccess(
+          parsed.linkedResourceId,
+          memberId
+        ))
+      ) {
+        throw new Error(
+          "O material vinculado não está disponível para esta conta."
+        );
+      }
+    } else if (!(await isLinkableLesson(memberId, parsed.linkedResourceId))) {
+      throw new Error("A aula vinculada não está disponível para esta conta.");
+    }
   }
   const preferences = await database.plannerPreferences.findUniqueOrThrow({
     where: { memberId },
