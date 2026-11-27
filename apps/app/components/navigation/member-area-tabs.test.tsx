@@ -12,7 +12,11 @@ import {
   type MemberNavigationContextValue,
   type PortalTransition,
 } from "@/app/(authenticated)/components/member-navigation-context";
-import { MemberAreaTabs } from "./member-area-tabs";
+import {
+  MemberAreaNav,
+  MemberAreaTabs,
+  useMemberAreas,
+} from "./member-area-tabs";
 
 const navigationState = vi.hoisted(() => ({ pathname: "/cursos" }));
 
@@ -44,6 +48,11 @@ const transition = (
   vector: null,
 });
 
+const HeaderNav = () => {
+  const areas = useMemberAreas();
+  return areas ? <MemberAreaNav areas={areas} /> : null;
+};
+
 const renderTabs = (active: PortalTransition | null) =>
   render(
     <MemberNavigationContext.Provider
@@ -53,6 +62,7 @@ const renderTabs = (active: PortalTransition | null) =>
         } as unknown as MemberNavigationContextValue
       }
     >
+      <HeaderNav />
       <MemberAreaTabs />
     </MemberNavigationContext.Provider>
   );

@@ -5,6 +5,10 @@ import { ArrowLeftIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { BrandWordmark } from "@/components/brand/brand-mark";
+import {
+  MemberAreaNav,
+  useMemberAreas,
+} from "@/components/navigation/member-area-tabs";
 import { MemberHeaderControls } from "./member-header-controls";
 import {
   memberBreadcrumbForPathname,
@@ -72,6 +76,7 @@ export const MemberHeader = ({
   })();
   const mobileShellHeaderHidden = isSessionRoute || isFavoriteAttempt;
   const mobileShellTitle = mobileTitleForPath(pathname);
+  const memberAreas = useMemberAreas();
 
   if (pathname === "/" || !chromeVisible) {
     return null;
@@ -115,7 +120,7 @@ export const MemberHeader = ({
         </div>
       )}
       <div
-        className={`${mobileExerciseHeader || mobileShellHeaderHidden || mobileNoteEditorHeader ? "hidden md:flex" : "flex"} min-w-0 flex-1 items-center gap-2 sm:gap-3`}
+        className={`${mobileExerciseHeader || mobileShellHeaderHidden || mobileNoteEditorHeader ? "hidden md:flex" : "flex"} h-full min-w-0 flex-1 items-center gap-2 sm:gap-3`}
       >
         <MemberSidebarControl
           className="-ml-2 min-[1250px]:hidden"
@@ -132,13 +137,19 @@ export const MemberHeader = ({
             <BrandWordmark className="w-24 md:hidden" />
           </>
         )}
-        <div className="hidden min-w-0 items-center gap-3 md:flex">
-          {resolvedSection ? (
-            <p className="brand-eyebrow truncate text-foreground/75">
-              {resolvedSection}
-            </p>
-          ) : null}
-        </div>
+        {memberAreas ? (
+          <div className="hidden min-w-0 flex-1 self-stretch md:flex">
+            <MemberAreaNav areas={memberAreas} />
+          </div>
+        ) : (
+          <div className="hidden min-w-0 items-center gap-3 md:flex">
+            {resolvedSection ? (
+              <p className="brand-eyebrow truncate text-foreground/75">
+                {resolvedSection}
+              </p>
+            ) : null}
+          </div>
+        )}
         <MemberHeaderControls memberId={memberId} />
       </div>
     </header>

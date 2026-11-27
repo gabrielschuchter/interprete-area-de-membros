@@ -679,7 +679,7 @@ export const LibraryExperience = ({
           <div
             aria-hidden={!fixedBarVisible}
             className={cn(
-              "fixed top-16 z-40",
+              "fixed top-14 z-40",
               fixedBarVisible ? "visible" : "pointer-events-none invisible"
             )}
             inert={!fixedBarVisible}

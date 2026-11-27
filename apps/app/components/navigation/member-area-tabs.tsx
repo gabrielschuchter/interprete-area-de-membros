@@ -86,7 +86,7 @@ const navigationAreasForPath = (
   return [];
 };
 
-export const MemberAreaTabs = () => {
+export const useMemberAreas = () => {
   const committedPathname = usePathname();
   const searchParams = useSearchParams();
   const transition = useMemberNavigation()?.transition;
@@ -115,6 +115,59 @@ export const MemberAreaTabs = () => {
     );
   const areas = navigationAreasForPath(isStudyPath, isCommunityPath);
   const sectionLabel = isStudyPath ? "Estudar" : "Comunidade";
+  if (areas.length === 0) {
+    return null;
+  }
+  const activeArea = isStudyPath
+    ? (areas
+        .filter((area) => matchesPath(pathname, area.href))
+        .sort((left, right) => right.href.length - left.href.length)[0] ??
+      areas[0])
+    : communityActiveArea(pathname);
+  return {
+    activeArea,
+    areas,
+    isStudyPath,
+    noteEditorOpen,
+    sectionHref: isStudyPath ? "/cursos" : "/comunidade",
+    sectionLabel,
+  };
+};
+
+export type MemberAreas = NonNullable<ReturnType<typeof useMemberAreas>>;
+
+/** Abas das áreas no desktop: ficam dentro do cabeçalho, ao lado dos atalhos. */
+export const MemberAreaNav = ({ areas }: { readonly areas: MemberAreas }) => (
+  <nav
+    aria-label={`${areas.sectionLabel} · áreas`}
+    className="member-area-tabs-desktop"
+  >
+    <span aria-hidden="true" className="member-area-tabs-section">
+      {areas.sectionLabel}
+    </span>
+    <div className="member-area-tabs-links">
+      {areas.areas.map((area) => (
+        <IntentLink
+          aria-current={
+            area.label === areas.activeArea.label ? "page" : undefined
+          }
+          className={
+            area.label === areas.activeArea.label
+              ? "member-area-tab member-area-tab--active"
+              : "member-area-tab"
+          }
+          href={area.href}
+          key={area.href}
+        >
+          {area.label}
+        </IntentLink>
+      ))}
+    </div>
+  </nav>
+);
+
+export const MemberAreaTabs = () => {
+  const memberAreas = useMemberAreas();
   const [areaPickerOpen, setAreaPickerOpen] = useState(false);
   const [areaPickerReady, setAreaPickerReady] = useState(false);
   const preloadAreaPicker = useCallback(() => {
@@ -125,17 +178,17 @@ export const MemberAreaTabs = () => {
     return preloadAreaPicker();
   }, [preloadAreaPicker]);
 
-  if (areas.length === 0) {
+  if (!memberAreas) {
     return null;
   }
-
-  const activeArea = isStudyPath
-    ? (areas
-        .filter((area) => matchesPath(pathname, area.href))
-        .sort((left, right) => right.href.length - left.href.length)[0] ??
-      areas[0])
-    : communityActiveArea(pathname);
-  const sectionHref = isStudyPath ? "/cursos" : "/comunidade";
+  const {
+    activeArea,
+    areas,
+    isStudyPath,
+    noteEditorOpen,
+    sectionHref,
+    sectionLabel,
+  } = memberAreas;
 
   return (
     <div
@@ -179,32 +232,6 @@ export const MemberAreaTabs = () => {
           </Button>
         </div>
       )}
-      <nav
-        aria-label={`${sectionLabel} · áreas`}
-        className="member-area-tabs-desktop"
-      >
-        <span aria-hidden="true" className="member-area-tabs-section">
-          {sectionLabel}
-        </span>
-        <div className="member-area-tabs-links">
-          {areas.map((area) => (
-            <IntentLink
-              aria-current={
-                area.label === activeArea.label ? "page" : undefined
-              }
-              className={
-                area.label === activeArea.label
-                  ? "member-area-tab member-area-tab--active"
-                  : "member-area-tab"
-              }
-              href={area.href}
-              key={area.href}
-            >
-              {area.label}
-            </IntentLink>
-          ))}
-        </div>
-      </nav>
       {areaPickerOpen ? (
         <AreaPickerSheet
           activeLabel={activeArea.label}

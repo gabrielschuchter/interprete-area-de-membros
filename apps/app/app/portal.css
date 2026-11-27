@@ -33,6 +33,13 @@ body:has(.portal) [data-slot="sheet-overlay"] {
   animation-duration: 220ms;
 }
 
+@media (min-width: 768px) {
+  /* No desktop as abas vivem no cabeçalho; esta faixa só existe no celular. */
+  .member-area-tabs-shell {
+    display: none;
+  }
+}
+
 .member-area-tabs-shell {
   position: sticky;
   top: 56px;
@@ -51,10 +58,13 @@ body:has(.portal) [data-slot="sheet-overlay"] {
 
 .member-area-tabs-desktop {
   display: flex;
+  flex: 1;
   gap: 20px;
   align-items: stretch;
-  min-height: 52px;
-  padding: 0 32px;
+  align-self: stretch;
+  min-width: 0;
+  min-height: 56px;
+  padding: 0;
 }
 
 .member-area-tabs-section {
@@ -80,7 +90,7 @@ body:has(.portal) [data-slot="sheet-overlay"] {
   display: inline-flex;
   flex: none;
   align-items: center;
-  min-height: 52px;
+  min-height: 56px;
   font-size: 13px;
   color: #6d5b63;
   text-decoration: none;
@@ -176,8 +186,6 @@ body:has(.portal) [data-slot="sheet-overlay"] {
 @media (max-width: 1023px) {
   .member-area-tabs-desktop {
     gap: 16px;
-    padding-right: 20px;
-    padding-left: 20px;
   }
 
   .member-area-tabs-section {
