@@ -95,6 +95,7 @@ afterEach(() => {
 
 const HISTORY_ROW = /Medidas de tendência central/u;
 const CLEAR_LINK = /Limpar/u;
+const RESUME_LINK = /^Retomar na questão 2/u;
 
 const LIST = {
   id: "list-1",
@@ -157,9 +158,7 @@ test("sessão em andamento aparece em destaque com o botão Retomar", async () =
   ).toBeTruthy();
   expect(screen.getByText("1 de 2 respondidas")).toBeTruthy();
   expect(
-    screen
-      .getByRole("link", { name: /^Retomar na questão 2/u })
-      .getAttribute("href")
+    screen.getByRole("link", { name: RESUME_LINK }).getAttribute("href")
   ).toBe("/exercicios/sessoes/session-1");
 });
 
