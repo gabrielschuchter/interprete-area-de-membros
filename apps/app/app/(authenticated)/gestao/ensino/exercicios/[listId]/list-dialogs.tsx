@@ -150,11 +150,13 @@ export const EditListDialog = ({
   description,
   listId,
   title,
+  topics,
 }: {
   readonly closeHref: string;
   readonly description: string;
   readonly listId: string;
   readonly title: string;
+  readonly topics: string;
 }) => {
   const router = useRouter();
   const [open, setOpen] = useState(true);
@@ -186,7 +188,7 @@ export const EditListDialog = ({
         <form onSubmit={submit}>
           <Head
             onClose={close}
-            sub="Título e descrição aparecem para o aluno na lista de exercícios."
+            sub="Título, descrição e temas aparecem para o aluno na lista de exercícios."
             title="Editar lista"
           />
           <div className="gk-modal-body">
@@ -215,6 +217,19 @@ export const EditListDialog = ({
                 name="description"
                 rows={3}
               />
+            </div>
+            <div className="gk-label">
+              <label htmlFor="list-edit-topics">Temas (opcional)</label>
+              <input
+                className="gk-input"
+                defaultValue={topics}
+                id="list-edit-topics"
+                name="topics"
+                placeholder="perguntas clínicas, busca, desenhos"
+              />
+              <p className="gk-modal-sub">
+                Aparecem como etiquetas no caderno do aluno. Separe por vírgula.
+              </p>
             </div>
             {error ? (
               <p className="gk-error-box" role="alert">

@@ -215,6 +215,18 @@ const ListForm = ({
           rows={3}
         />
       </Field>
+      <Field id="list-topics" label="Temas (opcional)">
+        <input
+          className="gk-input"
+          id="list-topics"
+          name="topics"
+          placeholder="perguntas clínicas, busca, desenhos"
+        />
+      </Field>
+      <p className="gk-modal-sub">
+        Os temas aparecem como etiquetas no caderno do aluno. Separe por
+        vírgula.
+      </p>
     </div>
     <div className="gk-modal-foot">
       <span className="gk-spacer" />

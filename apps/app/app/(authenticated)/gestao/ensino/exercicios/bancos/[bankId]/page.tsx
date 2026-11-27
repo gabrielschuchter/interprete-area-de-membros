@@ -186,6 +186,14 @@ const BankExerciseListsPage = async ({
                   name="description"
                 />
               </label>
+              <label htmlFor="new-exercise-list-topics">
+                <span>Temas (separados por vírgula, opcional)</span>
+                <Input
+                  id="new-exercise-list-topics"
+                  name="topics"
+                  placeholder="perguntas clínicas, busca, desenhos"
+                />
+              </label>
               <label htmlFor="new-exercise-list-cover">
                 <span>Capa por URL HTTPS (opcional)</span>
                 <Input

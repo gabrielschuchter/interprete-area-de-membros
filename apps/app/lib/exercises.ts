@@ -104,6 +104,7 @@ export const getPublishedExerciseLists = async (
       title: true,
       slug: true,
       description: true,
+      topics: true,
       coverUrl: true,
       bank: { select: { title: true } },
       _count: {
@@ -187,6 +188,7 @@ export const getPublishedExerciseList = async (slug: string) =>
       title: true,
       slug: true,
       description: true,
+      topics: true,
       coverUrl: true,
       bank: { select: { title: true } },
       items: {

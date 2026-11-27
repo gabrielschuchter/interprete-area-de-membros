@@ -23,6 +23,7 @@ import {
   findMissingExerciseExplanationOptionReferences,
   validateExerciseDraft,
 } from "@/lib/exercise-engine";
+import { parseExerciseListTopics } from "@/lib/exercise-list-tags";
 import {
   exerciseBankListPageSize,
   exerciseBankListsHref,
@@ -1021,6 +1022,7 @@ export const createExerciseList = async (formData: FormData) => {
     gestaoReturn && value(formData, "returnToBank") === "BANK";
   const title = value(formData, "title").slice(0, 160);
   const description = value(formData, "description").slice(0, 2000);
+  const topics = parseExerciseListTopics(value(formData, "topics"));
   const coverUrl = value(formData, "coverUrl");
   if (!(bankId && title) || (coverUrl && !isHttpsUrl(coverUrl))) {
     redirect(`${exerciseManagementPath(gestaoReturn)}?resultado=list-invalid`);
@@ -1042,6 +1044,7 @@ export const createExerciseList = async (formData: FormData) => {
         bankId: bank.id,
         title,
         description: description || null,
+        topics,
         coverUrl: coverUrl || null,
         slug: uniqueSlug(title),
         status: ContentStatus.DRAFT,

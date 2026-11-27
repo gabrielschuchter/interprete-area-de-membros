@@ -2,6 +2,7 @@
 
 import { ContentStatus, database } from "@repo/database";
 import { revalidatePath } from "next/cache";
+import { parseExerciseListTopics } from "@/lib/exercise-list-tags";
 import { recordAuditEvent } from "@/lib/gestao-audit";
 import { requireGestaoAction } from "@/lib/gestao-authorization";
 import { consumeMutationRateLimit } from "@/lib/mutation-reliability";
@@ -163,6 +164,7 @@ export const updateGestaoExerciseList = async (
   const listId = text(formData.get("listId"));
   const title = text(formData.get("title")).slice(0, 160);
   const description = text(formData.get("description")).slice(0, 2000);
+  const topics = parseExerciseListTopics(text(formData.get("topics")));
   if (!(listId && title)) {
     return { ok: false, message: "Informe o título da lista." };
   }
@@ -173,7 +175,7 @@ export const updateGestaoExerciseList = async (
   }
   await database.exerciseList.update({
     where: { id: listId },
-    data: { title, description: description || null },
+    data: { title, description: description || null, topics },
   });
   await recordAuditEvent({
     eventType: "gestao.exercise-list.updated",

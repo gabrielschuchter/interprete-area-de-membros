@@ -148,6 +148,7 @@ const loadListPage = async (
       bankId: true,
       title: true,
       description: true,
+      topics: true,
       status: true,
       publishedAt: true,
       updatedAt: true,
@@ -452,6 +453,7 @@ const GestaoExerciseListPage = async ({ params, searchParams }: Properties) => {
           description={list.description ?? ""}
           listId={list.id}
           title={list.title}
+          topics={list.topics.join(", ")}
         />
       ) : null}
     </section>

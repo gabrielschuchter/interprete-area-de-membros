@@ -2074,6 +2074,7 @@ model ExerciseList {
   title             String
   slug              String                  @unique
   description       String?                 @db.Text
+  topics            String[]                @default([])
   coverUrl          String?                 @db.Text
   status            ContentStatus           @default(DRAFT)
   position          Int                     @default(0)

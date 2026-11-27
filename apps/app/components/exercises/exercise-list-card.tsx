@@ -7,7 +7,6 @@ import {
   exerciseListStateLabel,
   exerciseListStateProgress,
 } from "@/lib/exercise-list-state";
-import { exerciseListTags } from "@/lib/exercise-list-tags";
 
 interface ExerciseListCardList {
   readonly _count: { readonly items: number };
@@ -17,42 +16,34 @@ interface ExerciseListCardList {
   readonly id: string;
   readonly slug: string;
   readonly title: string;
+  readonly topics?: readonly string[];
 }
 
 const ExerciseListTopics = ({
-  description,
+  topics,
 }: {
-  readonly description: string;
-}) => {
-  const tags = exerciseListTags(description);
-  return (
-    <details className="group/topics relative z-10 text-sm">
-      <summary className="flex min-h-8 w-fit cursor-pointer list-none items-center gap-1 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
-        Temas
-        <ChevronDownIcon
-          aria-hidden="true"
-          className="size-4 transition-transform group-open/topics:rotate-180 motion-reduce:transition-none"
-        />
-      </summary>
-      {tags ? (
-        <ul className="m-0 flex list-none flex-wrap gap-1.5 p-0 pt-1">
-          {tags.map((tag) => (
-            <li
-              className="rounded-[4px] border bg-muted/50 px-2 py-0.5 text-muted-foreground text-xs"
-              key={tag}
-            >
-              {tag}
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="pt-1 text-muted-foreground leading-[1.45]">
-          {description}
-        </p>
-      )}
-    </details>
-  );
-};
+  readonly topics: readonly string[];
+}) => (
+  <details className="group/topics relative z-10 text-sm">
+    <summary className="flex min-h-8 w-fit cursor-pointer list-none items-center gap-1 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
+      Temas
+      <ChevronDownIcon
+        aria-hidden="true"
+        className="size-4 transition-transform group-open/topics:rotate-180 motion-reduce:transition-none"
+      />
+    </summary>
+    <ul className="m-0 flex list-none flex-wrap gap-1.5 p-0 pt-1">
+      {topics.map((topic) => (
+        <li
+          className="rounded-[4px] border bg-muted/50 px-2 py-0.5 text-muted-foreground text-xs"
+          key={topic}
+        >
+          {topic}
+        </li>
+      ))}
+    </ul>
+  </details>
+);
 
 export const ExerciseListCard = ({
   list,
@@ -66,6 +57,7 @@ export const ExerciseListCard = ({
   readonly volume?: number;
 }) => {
   const total = list._count.items;
+  const topics = list.topics ?? [];
   const progress = exerciseListStateProgress(state);
   const isCompleted = state?.kind === "completed";
 
@@ -105,9 +97,7 @@ export const ExerciseListCard = ({
             {list.title}
           </IntentLink>
         </h3>
-        {list.description && (
-          <ExerciseListTopics description={list.description} />
-        )}
+        {topics.length > 0 && <ExerciseListTopics topics={topics} />}
         <div className="mt-auto flex flex-col gap-2 pt-2">
           <div
             aria-hidden="true"
