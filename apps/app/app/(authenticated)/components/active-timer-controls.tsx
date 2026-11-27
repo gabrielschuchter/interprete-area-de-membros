@@ -129,7 +129,7 @@ export const ActiveTimerControls = ({
     <aside
       aria-label="Cronômetro em andamento"
       className={cn(
-        "fixed z-30 rounded-full border border-[#D9C8C3] bg-[#FBF8F5] py-1 pr-2 pl-1 shadow-md",
+        "fixed z-[45] rounded-full border border-[#D9C8C3] bg-[#FBF8F5] py-1 pr-2 pl-1 shadow-md",
         placed ? null : "top-16 right-3 md:top-1.5 md:right-[156px]",
         floating.dragging && "cursor-grabbing select-none shadow-xl"
       )}
