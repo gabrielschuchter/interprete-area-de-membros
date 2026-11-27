@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { ContentLinksSection } from "@/components/gestao/content-links-section";
 import { GestaoLibraryItemForm } from "@/components/gestao/library-item-form";
 import { getCourseOptions } from "@/lib/admin-learning";
 import { requireGestaoAction } from "@/lib/gestao-authorization";
@@ -19,6 +20,7 @@ const GestaoEditLibraryItemPage = async ({
   return (
     <section className="gt-page gk-library">
       <GestaoLibraryItemForm courses={courses} item={item} />
+      <ContentLinksSection source={{ id: item.id, side: "libraryItem" }} />
     </section>
   );
 };

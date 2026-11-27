@@ -53,6 +53,8 @@ const isTypingTarget = (target: EventTarget | null) =>
 interface RoomViewProperties {
   readonly document: ReactNode;
   readonly moduleNumber: number;
+  /** "Continue praticando": listas e materiais que o professor vinculou à aula. */
+  readonly practice?: ReactNode;
   readonly room: RoomLessonData;
 }
 
@@ -160,6 +162,7 @@ const About = ({
 export const RoomView = ({
   document,
   moduleNumber,
+  practice = null,
   room,
 }: RoomViewProperties) => {
   const { panel, setPanel } = useRoomPanel();
@@ -349,6 +352,7 @@ export const RoomView = ({
                   </ul>
                 </section>
               ) : null}
+              {practice}
             </div>
           </div>
         </div>

@@ -628,6 +628,7 @@ model Lesson {
   collectionItems    ContentCollectionItem[]
   libraryBookmarks   LibraryBookmark[]
   cohortLessonReleases CohortLessonRelease[]
+  contentLinks       ContentLink[]
 
   @@unique([moduleId, slug])
   @@unique([moduleId, position])
@@ -1782,6 +1783,7 @@ model LibraryItem {
   activities      Activity[]              @relation("ActivityLibraryItem")
   collectionItems ContentCollectionItem[]
   views           LibraryItemView[]
+  contentLinks    ContentLink[]
 
   @@unique([createdBy, idempotencyKey])
   @@index([status, category, position])
@@ -2085,6 +2087,7 @@ model ExerciseList {
   sessions          ExerciseSession[]
   collectionItems   ContentCollectionItem[]
   bookmarks         ExerciseListBookmark[]
+  contentLinks      ContentLink[]
 
   @@index([status, position, publishedAt])
   @@index([bankId, status, position])
@@ -2737,4 +2740,25 @@ model EvidenceAssessment {
   member    Member           @relation(fields: [memberId], references: [id], onDelete: Cascade)
 
   @@index([memberId, tool, updatedAt])
+}
+
+/// Sugestão de estudo ligando dois conteúdos: aula, lista de exercícios ou
+/// material da Biblioteca. Vale nos dois sentidos; cada linha preenche
+/// exatamente duas das três colunas (garantido por CHECK no banco).
+model ContentLink {
+  id             String        @id @default(cuid())
+  lessonId       String?
+  exerciseListId String?
+  libraryItemId  String?
+  createdAt      DateTime      @default(now())
+  lesson         Lesson?       @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  exerciseList   ExerciseList? @relation(fields: [exerciseListId], references: [id], onDelete: Cascade)
+  libraryItem    LibraryItem?  @relation(fields: [libraryItemId], references: [id], onDelete: Cascade)
+
+  @@unique([lessonId, exerciseListId])
+  @@unique([lessonId, libraryItemId])
+  @@unique([exerciseListId, libraryItemId])
+  @@index([lessonId])
+  @@index([exerciseListId])
+  @@index([libraryItemId])
 }

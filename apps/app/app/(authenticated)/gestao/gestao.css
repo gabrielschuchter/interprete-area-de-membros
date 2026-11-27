@@ -11034,3 +11034,55 @@
     min-width: 0;
   }
 }
+
+/* Conteúdos relacionados (vínculos entre aula, lista e material). */
+.gl-content-links > header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.gl-content-links > header h2 {
+  margin: 0;
+}
+
+.gl-content-links-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.gl-content-links .gl-lesson-chips {
+  margin-top: 12px;
+}
+
+.gl-content-links li {
+  justify-content: flex-start;
+}
+
+.gl-content-links li a {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.gl-content-links li form {
+  margin-left: auto;
+}
+
+.gl-link-kind {
+  flex: none;
+  min-width: 64px;
+  font-family: var(--font-mono-family);
+  font-size: 10px;
+  color: var(--gestao-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.gl-link-note {
+  flex: none;
+  font-size: 11px;
+  color: var(--gestao-muted);
+}

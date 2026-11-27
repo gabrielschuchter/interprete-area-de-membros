@@ -50,6 +50,8 @@ export const gestaoAuditLabels: Readonly<Record<string, string>> = {
   "gestao.collection.item_removed": "Item removido da coleção",
   "gestao.collection.items_reordered": "Itens da coleção reordenados",
   "gestao.exercise-list.reordered": "Questões da lista reordenadas",
+  "gestao.content-link.added": "Conteúdo vinculado (aula, lista ou material)",
+  "gestao.content-link.removed": "Vínculo de conteúdo removido",
   "gestao.exercise-list.questions-removed": "Questões removidas da lista",
   "gestao.exercise-list.updated": "Lista de exercícios editada",
   "gestao.exercise-question.state-changed": "Situação da questão alterada",

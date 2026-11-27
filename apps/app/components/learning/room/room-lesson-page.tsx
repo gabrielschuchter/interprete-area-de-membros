@@ -1,5 +1,6 @@
 import "@/app/(authenticated)/cursos/room.css";
 import { forbidden, notFound, redirect } from "next/navigation";
+import { LessonPractice } from "@/components/learning/lesson-practice";
 import { RichDocument } from "@/components/learning/rich-document";
 import { StudyHeartbeat } from "@/components/learning/study-heartbeat";
 import { getCourseExperience, requireMemberId } from "@/lib/learning";
@@ -65,6 +66,15 @@ export const RoomLessonPage = async ({
         }
         key={room.id}
         moduleNumber={Math.max(1, moduleNumber)}
+        practice={
+          room.locked ? null : (
+            <LessonPractice
+              lessonId={room.id}
+              memberId={memberId}
+              variant="room"
+            />
+          )
+        }
         room={room}
       />
     </>

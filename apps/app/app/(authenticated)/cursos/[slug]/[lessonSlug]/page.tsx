@@ -14,6 +14,7 @@ import { notFound, redirect } from "next/navigation";
 import { CompleteLessonButton } from "@/components/learning/complete-lesson-button";
 import { LearningPageFrame } from "@/components/learning/learning-page-frame";
 import { LessonPlayer } from "@/components/learning/lesson-player";
+import { LessonPractice } from "@/components/learning/lesson-practice";
 import { LessonToolsDrawer } from "@/components/learning/lesson-tools-drawer";
 import { RoomLessonPage } from "@/components/learning/room/room-lesson-page";
 import { StudyHeartbeat } from "@/components/learning/study-heartbeat";
@@ -371,6 +372,12 @@ const LessonPageContent = async ({
               </div>
             </section>
           )}
+
+          <LessonPractice
+            lessonId={lesson.id}
+            memberId={memberId}
+            variant="page"
+          />
 
           <aside className="grid overflow-hidden border-y py-7 sm:grid-cols-[minmax(0,1fr)_14rem] sm:gap-8 sm:py-8">
             <div className="flex flex-col justify-center">

@@ -1,6 +1,7 @@
 import { ContentStatus, database, type Prisma } from "@repo/database";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ContentLinksSection } from "@/components/gestao/content-links-section";
 import { requireGestaoAction } from "@/lib/gestao-authorization";
 import { GestaoEraseButton } from "../../../apagar/erase-dialog";
 import { GestaoCrumbTail } from "../../../gestao-crumbs";
@@ -433,6 +434,8 @@ const GestaoExerciseListPage = async ({ params, searchParams }: Properties) => {
         }}
         total={data.filteredCount}
       />
+
+      <ContentLinksSection source={{ id: list.id, side: "exerciseList" }} />
 
       {reusable ? (
         <ReuseQuestionDialog

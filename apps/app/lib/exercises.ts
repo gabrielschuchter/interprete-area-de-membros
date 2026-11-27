@@ -22,7 +22,7 @@ import {
   exerciseSearchTerms,
 } from "./exercise-search";
 
-const publishedListWhere = {
+export const publishedListWhere = {
   status: ContentStatus.PUBLISHED,
   bank: { is: { status: ContentStatus.PUBLISHED } },
 } as const;
