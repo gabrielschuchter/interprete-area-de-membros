@@ -14,6 +14,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import {
   playTimerCompletionAlarm,
+  showTimerNotification,
   startTimerTitleAlert,
   stopTimerCompletionAlarm,
   unlockTimerAudio,
@@ -114,12 +115,8 @@ const notifyCompletion = (
   if (state.settings.timerVibrationEnabled && "vibrate" in navigator) {
     navigator.vibrate([180, 70, 180]);
   }
-  if (
-    state.settings.systemNotificationsEnabled &&
-    "Notification" in window &&
-    Notification.permission === "granted"
-  ) {
-    new Notification("Sessão concluída", {
+  if (state.settings.systemNotificationsEnabled) {
+    showTimerNotification("Sessão concluída", {
       body: "O tempo de foco foi salvo no seu histórico de estudo.",
       tag: `focus-timer-${id}`,
     });

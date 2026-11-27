@@ -235,3 +235,29 @@ export const playTimerTick = (settings: TimerSoundSettings) => {
     tick: true,
   });
 };
+
+/**
+ * Notificação do sistema. Em alguns navegadores de celular o construtor
+ * `new Notification()` lança erro (só o service worker pode mostrar); sem esta
+ * proteção o erro interrompia o restante do aviso de fim de fase.
+ */
+export const showTimerNotification = (
+  title: string,
+  options: { readonly body: string; readonly tag: string }
+) => {
+  if (
+    typeof window === "undefined" ||
+    !("Notification" in window) ||
+    Notification.permission !== "granted"
+  ) {
+    return;
+  }
+  try {
+    new Notification(title, options);
+  } catch {
+    navigator.serviceWorker
+      ?.getRegistration()
+      .then((registration) => registration?.showNotification(title, options))
+      .catch(() => undefined);
+  }
+};

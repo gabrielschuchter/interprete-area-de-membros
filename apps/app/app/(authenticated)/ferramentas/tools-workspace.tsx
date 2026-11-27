@@ -38,17 +38,16 @@ import {
   playTimerCompletionAlarm,
   playTimerCompletionSound,
   playTimerTick,
+  showTimerNotification,
   startTimerTitleAlert,
   stopTimerCompletionAlarm,
   unlockTimerAudio,
 } from "@/components/focus-timer-audio";
 import type { getFocusTimerState } from "@/lib/focus-timer";
-import {
-  defaultTimerSettings,
-  type TimerSettings,
-} from "@/lib/focus-timer-settings";
+import type { TimerSettings } from "@/lib/focus-timer-settings";
 import { formatStudyTimestamp as textDate } from "@/lib/study-date";
 import { ArchHourglass, timerHourglass } from "./arch-hourglass";
+import { TimerSettingsPanel } from "./timer-settings-panel";
 
 type TimerServerState = Awaited<ReturnType<typeof getFocusTimerState>>;
 interface TimerLinkResource {
@@ -338,23 +337,6 @@ function getCompletionMessage(mode: TimerMode) {
   return "Sessão concluída.";
 }
 
-function notificationPermissionDescription(
-  permission: NotificationPermission | "unsupported"
-) {
-  switch (permission) {
-    case "granted":
-      return "Ativadas neste navegador";
-    case "denied":
-      return "Bloqueadas nas configurações do navegador";
-    case "default":
-      return "Permissão ainda não solicitada";
-    case "unsupported":
-      return "Este navegador não oferece notificações do sistema";
-    default:
-      return "Este navegador não oferece notificações do sistema";
-  }
-}
-
 function runTimerCompletionAlerts(
   settings: TimerSettings,
   sessionId: string,
@@ -378,13 +360,8 @@ function runTimerCompletionAlerts(
   ) {
     navigator.vibrate([180, 70, 180]);
   }
-  if (
-    settings.systemNotificationsEnabled &&
-    typeof window !== "undefined" &&
-    "Notification" in window &&
-    Notification.permission === "granted"
-  ) {
-    new Notification("Sessão concluída", {
+  if (settings.systemNotificationsEnabled) {
+    showTimerNotification("Sessão concluída", {
       body: "Seu tempo de foco foi salvo no seu histórico de estudo.",
       tag: `focus-timer-${sessionId}`,
     });
@@ -1088,16 +1065,19 @@ function FocusTimerWorkspace({
 
   const settingsPanel = (
     <TimerSettingsPanel
+      experience={experience}
       handleSystemNotifications={handleSystemNotifications}
       notificationPermission={notificationPermission}
+      onClose={() => {
+        setSettingsDraft(state.settings);
+        setSettingsOpen(false);
+      }}
       pending={pending}
       previewTimerSound={previewTimerSound}
       saveSettings={saveSettings}
       setSettingsDraft={setSettingsDraft}
-      setSettingsOpen={setSettingsOpen}
       settingsDraft={settingsDraft}
       settingsOpen={settingsOpen}
-      state={state}
     />
   );
 
@@ -1566,349 +1546,6 @@ const TimerSummarySidebar = memo(function TimerSummarySidebar({
     </aside>
   );
 });
-function TimerSettingsPanel({
-  settingsOpen,
-  settingsDraft,
-  setSettingsDraft,
-  setSettingsOpen,
-  state,
-  pending,
-  handleSystemNotifications,
-  notificationPermission,
-  previewTimerSound,
-  saveSettings,
-}: {
-  settingsOpen: boolean;
-  settingsDraft: TimerSettings;
-  setSettingsDraft: (
-    next: TimerSettings | ((current: TimerSettings) => TimerSettings)
-  ) => void;
-  setSettingsOpen: (open: boolean) => void;
-  state: TimerClientState;
-  pending: boolean;
-  handleSystemNotifications: (enabled: boolean) => void;
-  notificationPermission: NotificationPermission | "unsupported";
-  previewTimerSound: () => void;
-  saveSettings: () => void;
-}) {
-  return settingsOpen ? (
-    <div className="mt-8 rounded-xl border border-[#E2D6D1] bg-white p-5">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="font-display text-[#40222F] text-xl">Preferências</h3>
-        <Button
-          onClick={() => setSettingsDraft(defaultTimerSettings)}
-          size="sm"
-          type="button"
-          variant="ghost"
-        >
-          Restaurar padrões
-        </Button>
-      </div>
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <label
-          className="grid gap-1.5 text-[#40222F] text-sm"
-          htmlFor="timer-focus-minutes"
-        >
-          Foco (minutos)
-          <Input
-            id="timer-focus-minutes"
-            max={180}
-            min={1}
-            onChange={(event) =>
-              setSettingsDraft({
-                ...settingsDraft,
-                focusMinutes: Number(event.target.value),
-              })
-            }
-            type="number"
-            value={settingsDraft.focusMinutes}
-          />
-        </label>
-        <label
-          className="grid gap-1.5 text-[#40222F] text-sm"
-          htmlFor="timer-short-break-minutes"
-        >
-          Pausa curta (minutos)
-          <Input
-            id="timer-short-break-minutes"
-            max={60}
-            min={1}
-            onChange={(event) =>
-              setSettingsDraft({
-                ...settingsDraft,
-                shortBreakMinutes: Number(event.target.value),
-              })
-            }
-            type="number"
-            value={settingsDraft.shortBreakMinutes}
-          />
-        </label>
-        <label
-          className="grid gap-1.5 text-[#40222F] text-sm"
-          htmlFor="timer-long-break-minutes"
-        >
-          Pausa longa (minutos)
-          <Input
-            id="timer-long-break-minutes"
-            max={90}
-            min={1}
-            onChange={(event) =>
-              setSettingsDraft({
-                ...settingsDraft,
-                longBreakMinutes: Number(event.target.value),
-              })
-            }
-            type="number"
-            value={settingsDraft.longBreakMinutes}
-          />
-        </label>
-        <label
-          className="grid gap-1.5 text-[#40222F] text-sm"
-          htmlFor="timer-long-break-every"
-        >
-          Pausa longa a cada
-          <Input
-            id="timer-long-break-every"
-            max={8}
-            min={2}
-            onChange={(event) =>
-              setSettingsDraft({
-                ...settingsDraft,
-                longBreakEvery: Number(event.target.value),
-              })
-            }
-            type="number"
-            value={settingsDraft.longBreakEvery}
-          />
-        </label>
-        <label
-          className="grid gap-1.5 text-[#40222F] text-sm sm:col-span-2"
-          htmlFor="timer-timezone"
-        >
-          Fuso horário
-          <Input
-            id="timer-timezone"
-            list="member-timezones"
-            maxLength={80}
-            onChange={(event) =>
-              setSettingsDraft({
-                ...settingsDraft,
-                timezone: event.target.value,
-              })
-            }
-            value={settingsDraft.timezone}
-          />
-          <datalist id="member-timezones">
-            <option value="America/Sao_Paulo" />
-            <option value="America/Manaus" />
-            <option value="America/Rio_Branco" />
-            <option value="America/Fortaleza" />
-            <option value="America/Belem" />
-            <option value="Europe/Lisbon" />
-            <option value="Europe/London" />
-            <option value="UTC" />
-          </datalist>
-        </label>
-      </div>
-      <div className="mt-4 grid gap-3 text-[#40222F] text-sm sm:grid-cols-2">
-        <label className="flex min-h-10 items-center gap-2">
-          <input
-            checked={settingsDraft.timerSoundEnabled}
-            onChange={(event) =>
-              setSettingsDraft({
-                ...settingsDraft,
-                timerSoundEnabled: event.target.checked,
-              })
-            }
-            type="checkbox"
-          />
-          Som ao concluir
-        </label>
-        <label className="flex min-h-10 items-center gap-2">
-          <input
-            checked={settingsDraft.systemNotificationsEnabled}
-            onChange={(event) =>
-              handleSystemNotifications(event.target.checked)
-            }
-            type="checkbox"
-          />
-          Notificação do dispositivo
-        </label>
-        <label className="flex min-h-10 items-center gap-2">
-          <input
-            checked={settingsDraft.timerAutoAdvance}
-            onChange={(event) =>
-              setSettingsDraft({
-                ...settingsDraft,
-                timerAutoAdvance: event.target.checked,
-              })
-            }
-            type="checkbox"
-          />
-          Começar a próxima fase automaticamente
-        </label>
-        <label className="flex min-h-10 items-center gap-2">
-          <input
-            checked={settingsDraft.timerOpenFocusOnStart}
-            onChange={(event) =>
-              setSettingsDraft({
-                ...settingsDraft,
-                timerOpenFocusOnStart: event.target.checked,
-              })
-            }
-            type="checkbox"
-          />
-          Abrir modo foco ao começar
-        </label>
-        <label className="flex min-h-10 items-center gap-2">
-          <input
-            checked={settingsDraft.timerVibrationEnabled}
-            onChange={(event) =>
-              setSettingsDraft({
-                ...settingsDraft,
-                timerVibrationEnabled: event.target.checked,
-              })
-            }
-            type="checkbox"
-          />
-          Vibrar ao fim de cada fase
-        </label>
-        <label className="flex min-h-10 items-center gap-2">
-          <input
-            checked={settingsDraft.keepScreenAwake}
-            onChange={(event) =>
-              setSettingsDraft({
-                ...settingsDraft,
-                keepScreenAwake: event.target.checked,
-              })
-            }
-            type="checkbox"
-          />
-          Manter a tela acesa durante o foco
-        </label>
-        <label className="flex min-h-10 items-center gap-2">
-          <input
-            checked={settingsDraft.timerTickEnabled}
-            onChange={(event) =>
-              setSettingsDraft({
-                ...settingsDraft,
-                timerTickEnabled: event.target.checked,
-              })
-            }
-            type="checkbox"
-          />
-          Som de tique-taque durante o foco
-        </label>
-      </div>
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <label className="grid gap-1.5 text-[#40222F] text-sm">
-          Som
-          <select
-            className="h-10 rounded-md border border-[#E2D6D1] bg-white px-3"
-            onChange={(event) =>
-              setSettingsDraft({
-                ...settingsDraft,
-                timerSoundType: event.target
-                  .value as TimerSettings["timerSoundType"],
-              })
-            }
-            value={settingsDraft.timerSoundType}
-          >
-            <option value="SOFT_BELL">Sino suave</option>
-            <option value="WOOD">Madeira</option>
-            <option value="DIGITAL">Digital</option>
-            <option value="NONE">Sem som</option>
-          </select>
-        </label>
-        <label className="grid gap-1.5 text-[#40222F] text-sm">
-          Volume · {settingsDraft.timerVolume}%
-          <input
-            className="h-10 accent-[#8C1535]"
-            max={100}
-            min={0}
-            onChange={(event) =>
-              setSettingsDraft({
-                ...settingsDraft,
-                timerVolume: Number(event.target.value),
-              })
-            }
-            type="range"
-            value={settingsDraft.timerVolume}
-          />
-        </label>
-      </div>
-      <div className="mt-3 flex justify-end">
-        <Button
-          disabled={
-            settingsDraft.timerSoundType === "NONE" ||
-            settingsDraft.timerVolume === 0
-          }
-          onClick={previewTimerSound}
-          type="button"
-          variant="outline"
-        >
-          <PlayIcon aria-hidden="true" className="mr-2 size-4" />
-          Ouvir som
-        </Button>
-      </div>
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[#E2D6D1] bg-[#F8F4F1] p-3 text-sm">
-        <div className="min-w-0 flex-1">
-          <p className="font-medium text-[#40222F]">
-            Notificações do navegador
-          </p>
-          <p className="text-[#7A5A69] text-xs">
-            {notificationPermissionDescription(notificationPermission)}
-          </p>
-          {notificationPermission === "denied" ? (
-            <p className="mt-1 text-[#7A5A69] text-xs">
-              Para liberar: abra as permissões do site ao lado do endereço e
-              permita notificações.
-            </p>
-          ) : null}
-        </div>
-        {notificationPermission === "default" && (
-          <Button
-            onClick={() => handleSystemNotifications(true)}
-            type="button"
-            variant="outline"
-          >
-            Ativar notificações
-          </Button>
-        )}
-        {notificationPermission === "granted" && (
-          <Button
-            onClick={() => {
-              new Notification("Aviso do cronômetro", {
-                body: "As notificações estão funcionando.",
-                tag: "focus-timer-test",
-              });
-            }}
-            type="button"
-            variant="outline"
-          >
-            Testar aviso
-          </Button>
-        )}
-      </div>
-      <div className="mt-4 flex justify-end gap-2">
-        <Button
-          onClick={() => {
-            setSettingsDraft(state.settings);
-            setSettingsOpen(false);
-          }}
-          type="button"
-          variant="outline"
-        >
-          Cancelar
-        </Button>
-        <Button disabled={pending} onClick={saveSettings} type="button">
-          Salvar preferências
-        </Button>
-      </div>
-    </div>
-  ) : null;
-}
-
 const FocusCycleDots = ({
   cycles,
   done,
