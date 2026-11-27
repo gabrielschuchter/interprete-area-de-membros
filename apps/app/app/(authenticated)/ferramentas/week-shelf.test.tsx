@@ -180,3 +180,11 @@ test("itens feitos sem tempo registrado viram um livro vazado com o detalhe", ()
     "10 questões respondidas"
   );
 });
+
+test("as barras não disparam a dica global (só o detalhe próprio)", () => {
+  render(<WeekShelf {...baseProps} />);
+  const book = screen.getByRole("button", {
+    name: "Aula · 60 min, 1 aula concluída",
+  });
+  expect(book.hasAttribute("data-tooltip-off")).toBe(true);
+});

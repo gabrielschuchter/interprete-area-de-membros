@@ -110,6 +110,7 @@ const ShelfBook = ({
             ? "border-[1.5px] border-dashed bg-transparent"
             : "bancada-book border-0 shadow-[inset_4px_0_0_rgba(0,0,0,.18)]"
         )}
+        data-tooltip-off
         onBlur={() => onOpenChange(false)}
         onClick={() => onOpenChange(true)}
         onMouseEnter={() => onOpenChange(true)}
