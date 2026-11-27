@@ -90,6 +90,7 @@ type FocusTimerAction =
   | { action: "claim"; sessionId: string; clientId: string }
   | { action: "link"; linkedResourceId: string | null }
   | { action: "review"; id: string; note: string; saveStudy: boolean }
+  | { action: "reopen"; id: string }
   | {
       action: "history-add" | "history-update";
       session: Record<string, unknown>;
@@ -111,6 +112,7 @@ interface TimerHistoryItem {
   title: string | null;
 }
 interface TimerReviewItem {
+  completedAt?: Date | string | null;
   elapsedBeforePause: number;
   endedAt: Date | string | null;
   id: string;
@@ -851,6 +853,9 @@ function FocusTimerWorkspace({
             ? "Aula vinculada à sessão."
             : "Vínculo removido."
         );
+        break;
+      case "reopen":
+        toast.success("Cronômetro retomado em pausa. Toque em Continuar.");
         break;
       case "review": {
         const reviewResult = resultValue as {
@@ -1903,10 +1908,21 @@ function TimerDialogs({
   linkResources: readonly TimerLinkResource[];
   isoFromDateTimeInput: (value: string, timezone: string) => string;
 }) {
+  const canReopen = Boolean(
+    state.pendingReview && !state.pendingReview.completedAt
+  );
   return (
     <>
       {" "}
-      <Dialog onOpenChange={() => undefined} open={Boolean(sessionReview)}>
+      <Dialog
+        onOpenChange={(open) => {
+          // O X volta ao cronômetro; só não vale para sessão que terminou sozinha.
+          if (!open && sessionReview && canReopen && !pending) {
+            sendAction({ action: "reopen", id: sessionReview.id });
+          }
+        }}
+        open={Boolean(sessionReview)}
+      >
         <DialogContent
           className="max-w-lg border-[#E2D6D1] bg-[#FBF8F5]"
           onEscapeKeyDown={(event) => event.preventDefault()}
@@ -1938,6 +1954,20 @@ function TimerDialogs({
             />
           </label>
           <DialogFooter className="flex-col-reverse sm:flex-row">
+            {canReopen ? (
+              <Button
+                className="sm:mr-auto"
+                disabled={pending || !sessionReview}
+                onClick={() =>
+                  sessionReview &&
+                  sendAction({ action: "reopen", id: sessionReview.id })
+                }
+                type="button"
+                variant="ghost"
+              >
+                Voltar ao cronômetro
+              </Button>
+            ) : null}
             <Button
               disabled={pending}
               onClick={() =>

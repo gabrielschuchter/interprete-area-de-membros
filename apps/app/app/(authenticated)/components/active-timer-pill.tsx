@@ -39,6 +39,7 @@ interface ActiveTimerResponse {
     nextDurationSeconds?: number;
   } | null;
   pendingReview: {
+    completedAt?: string | Date | null;
     elapsedBeforePause: number;
     id: string;
     mode: TimerMode;
@@ -314,17 +315,29 @@ const TimerAlarmNoticeView = ({
 );
 
 const TimerSessionReviewDialog = ({
+  canReopen,
   onChangeNote,
+  onReopen,
   onReview,
   pending,
   sessionReview,
 }: {
+  readonly canReopen: boolean;
   readonly onChangeNote: (note: string) => void;
+  readonly onReopen: () => void;
   readonly onReview: (saveStudy: boolean) => void;
   readonly pending: boolean;
   readonly sessionReview: TimerSessionReview;
 }) => (
-  <Dialog onOpenChange={() => undefined} open>
+  <Dialog
+    onOpenChange={(open) => {
+      // O X volta ao cronômetro; só não vale para sessão que terminou sozinha.
+      if (!open && canReopen && !pending) {
+        onReopen();
+      }
+    }}
+    open
+  >
     <DialogContent
       className="max-w-lg border-[#E2D6D1] bg-[#FBF8F5]"
       onEscapeKeyDown={(event) => event.preventDefault()}
@@ -349,6 +362,17 @@ const TimerSessionReviewDialog = ({
         />
       </label>
       <DialogFooter className="flex-col-reverse sm:flex-row">
+        {canReopen ? (
+          <Button
+            className="sm:mr-auto"
+            disabled={pending}
+            onClick={onReopen}
+            type="button"
+            variant="ghost"
+          >
+            Voltar ao cronômetro
+          </Button>
+        ) : null}
         <Button
           disabled={pending}
           onClick={() => onReview(false)}
@@ -404,6 +428,39 @@ export const ActiveTimerPill = () => {
   }, [completionId]);
 
   useGlobalTimerSync(pathname, onTimerPage, synchronize);
+
+  const reopenSession = async () => {
+    if (!sessionReview) {
+      return;
+    }
+    setPending(true);
+    try {
+      const response = await fetch("/api/focus-timer", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ action: "reopen", id: sessionReview.id }),
+      });
+      const result = (await response.json()) as { error?: string };
+      if (!response.ok) {
+        throw new Error(
+          result.error ?? "Não foi possível voltar ao cronômetro."
+        );
+      }
+      await synchronize();
+      toast.success("Cronômetro retomado em pausa. Toque em Continuar.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível voltar ao cronômetro."
+      );
+    } finally {
+      setPending(false);
+    }
+  };
 
   const submitSessionReview = async (saveStudy: boolean) => {
     if (!sessionReview) {
@@ -595,7 +652,11 @@ export const ActiveTimerPill = () => {
       )}
       {sessionReview && (
         <TimerSessionReviewDialog
+          canReopen={Boolean(
+            state?.pendingReview && !state.pendingReview.completedAt
+          )}
           onChangeNote={changeReviewNote}
+          onReopen={reopenSession}
           onReview={submitSessionReview}
           pending={pending}
           sessionReview={sessionReview}

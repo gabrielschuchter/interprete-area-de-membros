@@ -10,6 +10,7 @@ import {
   getFocusTimerState,
   linkFocusTimer,
   pauseFocusTimer,
+  reopenFocusTimerSession,
   resumeFocusTimer,
   reviewFocusTimerSession,
   saveFocusTimerSettings,
@@ -30,7 +31,10 @@ const actionSchema = z.discriminatedUnion("action", [
     clientId: z.string().uuid(),
     mode: z.nativeEnum(FocusTimerMode),
     durationSeconds: z.number().int().min(1).max(86_400).nullable().optional(),
-    linkedResourceType: z.enum(["LESSON", "LIBRARY_ITEM"]).nullable().optional(),
+    linkedResourceType: z
+      .enum(["LESSON", "LIBRARY_ITEM"])
+      .nullable()
+      .optional(),
     linkedResourceId: z.string().trim().max(255).nullable().optional(),
     title: z.string().trim().max(180).nullable().optional(),
   }),
@@ -52,6 +56,7 @@ const actionSchema = z.discriminatedUnion("action", [
     note: z.string().trim().max(4000),
     saveStudy: z.boolean(),
   }),
+  z.object({ action: z.literal("reopen"), id: z.string().min(1).max(255) }),
   z.object({ action: z.literal("history-add"), session: z.unknown() }),
   z.object({ action: z.literal("history-update"), session: z.unknown() }),
   z.object({
@@ -132,6 +137,9 @@ export const POST = async (request: Request) => {
         break;
       case "review":
         result = await reviewFocusTimerSession(memberId, action);
+        break;
+      case "reopen":
+        result = await reopenFocusTimerSession(memberId, action);
         break;
       case "history-add":
         result = await addManualFocusTimerSession(memberId, action.session);

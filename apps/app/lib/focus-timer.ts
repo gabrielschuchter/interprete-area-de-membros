@@ -494,6 +494,7 @@ export const getFocusTimerState = (memberId: string) => {
         elapsedBeforePause: true,
         startedAt: true,
         endedAt: true,
+        completedAt: true,
         sessionNote: true,
       },
     });
@@ -657,6 +658,7 @@ export const getActiveFocusTimerState = (memberId: string) => {
         elapsedBeforePause: true,
         startedAt: true,
         endedAt: true,
+        completedAt: true,
         sessionNote: true,
       },
     });
@@ -1050,6 +1052,67 @@ export const reviewFocusTimerSession = (memberId: string, input: unknown) => {
         saved: true,
         studyLogged: Boolean(studySessionId),
       };
+    },
+    { isolationLevel: "Serializable" }
+  );
+};
+
+/**
+ * Desfaz um encerramento acidental: a sessão volta pausada, com o tempo que já
+ * tinha, para o membro tocar em Continuar. Só vale para quem encerrou na mão;
+ * sessão que terminou sozinha (contagem regressiva esgotada) não reabre.
+ */
+export const reopenFocusTimerSession = (memberId: string, input: unknown) => {
+  const parsed = z.object({ id: z.string().min(1).max(255) }).parse(input);
+  return database.$transaction(
+    async (transaction) => {
+      const now = new Date();
+      const running = await transaction.focusTimerSession.findFirst({
+        where: { memberId, endedAt: null },
+        select: { id: true },
+      });
+      if (running) {
+        throw new Error("Já existe um cronômetro em andamento.");
+      }
+      const session = await transaction.focusTimerSession.findFirst({
+        where: {
+          id: parsed.id,
+          memberId,
+          endedAt: { not: null },
+          needsReview: true,
+        },
+        include: { segments: { orderBy: { startedAt: "asc" } } },
+      });
+      if (!session) {
+        throw new Error("Esta sessão já foi revisada ou não está disponível.");
+      }
+      if (
+        session.completedAt ||
+        (session.durationSeconds &&
+          session.elapsedBeforePause >= session.durationSeconds)
+      ) {
+        throw new Error(
+          "Esta sessão terminou sozinha e não pode ser retomada."
+        );
+      }
+      const reopened = await transaction.focusTimerSession.updateMany({
+        where: {
+          id: session.id,
+          memberId,
+          endedAt: { not: null },
+          needsReview: true,
+        },
+        data: {
+          endedAt: null,
+          needsReview: false,
+          pausedAt: now,
+          runStartedAt: null,
+        },
+      });
+      if (reopened.count !== 1) {
+        throw new Error("Esta sessão já foi revisada. Atualize o histórico.");
+      }
+      return { id: session.id, reopened: true };
     },
     { isolationLevel: "Serializable" }
   );

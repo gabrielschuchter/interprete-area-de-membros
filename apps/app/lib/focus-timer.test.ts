@@ -43,6 +43,7 @@ import {
   addManualFocusTimerSession,
   getActiveFocusTimerState,
   getFocusTimerState,
+  reopenFocusTimerSession,
   updateFocusTimerHistorySession,
 } from "./focus-timer";
 import { defaultTimerSettings } from "./focus-timer-settings";
@@ -158,6 +159,69 @@ describe("links to the lesson behind a recording", () => {
     expect(recordingLesson).toHaveBeenCalledWith(
       "member_1",
       "lesson_recording"
+    );
+  });
+});
+
+describe("reopening an accidentally stopped session", () => {
+  const find = vi.fn();
+  const update = vi.fn();
+  const arrange = (running: unknown, session: unknown, count = 1) => {
+    find.mockReset();
+    update.mockReset();
+    find.mockResolvedValueOnce(running).mockResolvedValueOnce(session);
+    update.mockResolvedValue({ count });
+    mocks.transaction.mockImplementation((callback) =>
+      callback({
+        focusTimerSession: { findFirst: find, updateMany: update },
+      })
+    );
+  };
+  const stopped = {
+    id: "s1",
+    completedAt: null,
+    durationSeconds: null,
+    elapsedBeforePause: 600,
+  };
+
+  test("volta pausada, sem mexer no tempo já contado", async () => {
+    arrange(null, stopped);
+    await expect(reopenFocusTimerSession("m1", { id: "s1" })).resolves.toEqual({
+      id: "s1",
+      reopened: true,
+    });
+    const data = update.mock.calls[0][0].data;
+    expect(data.endedAt).toBeNull();
+    expect(data.needsReview).toBe(false);
+    expect(data.runStartedAt).toBeNull();
+    expect(data.pausedAt).toBeInstanceOf(Date);
+    expect(data).not.toHaveProperty("elapsedBeforePause");
+  });
+
+  test("não reabre se já há outro cronômetro em andamento", async () => {
+    arrange({ id: "other" }, stopped);
+    await expect(reopenFocusTimerSession("m1", { id: "s1" })).rejects.toThrow(
+      "em andamento"
+    );
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  test("não reabre sessão que terminou sozinha", async () => {
+    arrange(null, { ...stopped, completedAt: new Date() });
+    await expect(reopenFocusTimerSession("m1", { id: "s1" })).rejects.toThrow(
+      "terminou sozinha"
+    );
+    arrange(null, { ...stopped, durationSeconds: 600 });
+    await expect(reopenFocusTimerSession("m1", { id: "s1" })).rejects.toThrow(
+      "terminou sozinha"
+    );
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  test("avisa quando a sessão já foi revisada", async () => {
+    arrange(null, null);
+    await expect(reopenFocusTimerSession("m1", { id: "s1" })).rejects.toThrow(
+      "já foi revisada"
     );
   });
 });
