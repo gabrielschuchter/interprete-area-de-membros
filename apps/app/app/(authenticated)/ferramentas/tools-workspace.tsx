@@ -1953,10 +1953,44 @@ function TimerDialogs({
               value={sessionReview?.note ?? ""}
             />
           </label>
-          <DialogFooter className="flex-col-reverse sm:flex-row">
+          <DialogFooter className="flex-col gap-2 sm:flex-col sm:space-x-0">
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <Button
+                disabled={pending}
+                onClick={() =>
+                  sessionReview &&
+                  sendAction({
+                    action: "review",
+                    id: sessionReview.id,
+                    note: sessionReview.note,
+                    saveStudy: false,
+                  })
+                }
+                type="button"
+                variant="outline"
+              >
+                Descartar sessão
+              </Button>
+              <Button
+                className="bg-[#8C1535] text-white hover:bg-[#6D102A]"
+                disabled={pending || !sessionReview}
+                onClick={() =>
+                  sessionReview &&
+                  sendAction({
+                    action: "review",
+                    id: sessionReview.id,
+                    note: sessionReview.note,
+                    saveStudy: true,
+                  })
+                }
+                type="button"
+              >
+                Registrar no histórico de estudo
+              </Button>
+            </div>
             {canReopen ? (
               <Button
-                className="sm:mr-auto"
+                className="self-start text-[#8C1535] hover:bg-[#F1EBE8] hover:text-[#6D102A]"
                 disabled={pending || !sessionReview}
                 onClick={() =>
                   sessionReview &&
@@ -1968,38 +2002,6 @@ function TimerDialogs({
                 Voltar ao cronômetro
               </Button>
             ) : null}
-            <Button
-              disabled={pending}
-              onClick={() =>
-                sessionReview &&
-                sendAction({
-                  action: "review",
-                  id: sessionReview.id,
-                  note: sessionReview.note,
-                  saveStudy: false,
-                })
-              }
-              type="button"
-              variant="outline"
-            >
-              Descartar sessão
-            </Button>
-            <Button
-              className="bg-[#8C1535] text-white hover:bg-[#6D102A]"
-              disabled={pending || !sessionReview}
-              onClick={() =>
-                sessionReview &&
-                sendAction({
-                  action: "review",
-                  id: sessionReview.id,
-                  note: sessionReview.note,
-                  saveStudy: true,
-                })
-              }
-              type="button"
-            >
-              Registrar no histórico de estudo
-            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
