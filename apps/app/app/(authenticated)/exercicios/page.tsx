@@ -14,6 +14,7 @@ import { scoreExerciseSession } from "@/lib/exercise-engine";
 import { summarizeExerciseListStates } from "@/lib/exercise-list-state";
 import {
   countMemberExerciseFavorites,
+  getExerciseListVolumes,
   getMemberBookmarkedExerciseListIds,
   getMemberExerciseHistory,
   getMemberExerciseListSessions,
@@ -100,6 +101,7 @@ const ExercisesPage = async ({ searchParams }: ExercisesPageProperties) => {
     history,
     favoritesCount,
     savedListIds,
+    listVolumes,
   ] = await Promise.all([
     getPublishedExerciseLists(filters.q, filters.categoria),
     getPublishedExerciseCategories(),
@@ -107,6 +109,7 @@ const ExercisesPage = async ({ searchParams }: ExercisesPageProperties) => {
     getMemberExerciseHistory(memberId),
     countMemberExerciseFavorites(memberId),
     getMemberBookmarkedExerciseListIds(memberId),
+    getExerciseListVolumes(),
   ]);
   const savedOnly = filters.salvas === "1";
   const lists = savedOnly
@@ -257,6 +260,7 @@ const ExercisesPage = async ({ searchParams }: ExercisesPageProperties) => {
                 list={list}
                 saved={savedListIds.has(list.id)}
                 state={listStates.get(list.id)}
+                volume={listVolumes.get(list.slug)}
               />
             ))}
           </div>

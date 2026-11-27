@@ -48,6 +48,7 @@ vi.mock("@/lib/learning", () => ({
 }));
 
 vi.mock("@/lib/exercises", () => ({
+  getExerciseListVolumes: async () => new Map<string, number>(),
   getPublishedExerciseLists: async () => state.lists,
   getPublishedExerciseCategories: async () => [],
   getMemberInProgressExerciseSessions: async () => state.inProgressSessions,

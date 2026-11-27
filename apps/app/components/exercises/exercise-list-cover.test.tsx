@@ -1,82 +1,71 @@
-import { existsSync } from "node:fs";
-import { resolve } from "node:path";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, expect, test } from "vitest";
-import { exerciseCoverSrc } from "@/lib/exercise-cover";
 import { ExerciseListCover } from "./exercise-list-cover";
 
 afterEach(cleanup);
 
-const cases = [
-  [
-    "Prática Baseada em Evidências | 10 questões",
-    "Banco PBE",
-    "pbe",
-    "/exercises/capas/pbe-sem-volume.webp",
-  ],
-  [
-    "Bioestatística · Vol. II",
-    "Bioestatística",
-    "bio-2",
-    "/exercises/capas/bioestatistica-vol-ii.webp",
-  ],
-  [
-    "Epidemiologia volume 3",
-    "Epidemiologia",
-    "epi",
-    "/exercises/capas/epidemiologia-vol-iii.webp",
-  ],
-  [
-    "Medidas de associação",
-    "Outro banco",
-    "medidas",
-    "/exercises/capas/generico-sem-volume.webp",
-  ],
-  [
-    "Coortes",
-    "Epidemiologia",
-    "coortes-vol-i",
-    "/exercises/capas/epidemiologia-vol-i.webp",
-  ],
-] as const;
+const TITLE = "Bioestatística | 10 questões fundamentais";
+const NAME = `Capa da lista: ${TITLE}`;
 
-for (const [title, bank, slug, src] of cases) {
-  test(`escolhe a capa certa para ${title}`, () => {
-    expect(exerciseCoverSrc(title, bank, slug)).toBe(src);
-    expect(existsSync(resolve(process.cwd(), `public${src}`))).toBe(true);
-  });
-}
-
-test("mostra a capa da coleção com proporção fixa", () => {
+test("mostra a etiqueta da coleção com o volume, em proporção fixa", () => {
   render(
     <ExerciseListCover
       bankTitle="Bioestatística — Fundamentos"
       coverUrl={null}
       listSlug="bioestatistica-fundamentos"
-      title="Bioestatística | 10 questões fundamentais"
+      title={TITLE}
+      volume={2}
     />
   );
-  const image = screen.getByRole("img", {
-    name: "Capa da lista: Bioestatística | 10 questões fundamentais",
-  });
-  expect(image.getAttribute("src")).toBe(
-    "/exercises/capas/bioestatistica-sem-volume.webp"
-  );
-  expect(image.className).toContain("aspect-[12/5]");
+  const cover = screen.getByRole("img", { name: NAME });
+  expect(cover.className).toContain("aspect-[12/5]");
+  expect(cover.textContent).toContain("Bioestatística");
+  expect(cover.textContent).toContain("Vol. II");
 });
 
-test("mantém a capa cadastrada à frente da capa da coleção", () => {
+test("usa o nome genérico e a cor própria quando o tema não é conhecido", () => {
+  render(
+    <ExerciseListCover
+      bankTitle="Outro banco"
+      coverUrl={null}
+      listSlug="medidas"
+      title="Medidas de associação"
+      volume={1}
+    />
+  );
+  const cover = screen.getByRole("img", {
+    name: "Capa da lista: Medidas de associação",
+  });
+  expect(cover.textContent).toContain("Caderno de prática");
+  expect(cover.textContent).toContain("Vol. I");
+});
+
+test("sem volume mostra só o nome da coleção", () => {
+  render(
+    <ExerciseListCover
+      bankTitle="Epidemiologia"
+      coverUrl={null}
+      listSlug="coortes"
+      title="Coortes"
+    />
+  );
+  const cover = screen.getByRole("img", { name: "Capa da lista: Coortes" });
+  expect(cover.textContent).toContain("Epidemiologia");
+  expect(cover.textContent).not.toContain("Vol.");
+});
+
+test("mantém a capa cadastrada à frente da etiqueta", () => {
   const registeredCover = "https://cdn.example.test/covers/real-list.webp";
   render(
     <ExerciseListCover
       bankTitle="Bioestatística — Fundamentos"
       coverUrl={registeredCover}
       listSlug="bioestatistica-fundamentos"
-      title="Bioestatística | 10 questões fundamentais"
+      title={TITLE}
+      volume={1}
     />
   );
-  const image = screen.getByRole("img", {
-    name: "Capa da lista: Bioestatística | 10 questões fundamentais",
-  });
-  expect(image.getAttribute("src")).toBe(registeredCover);
+  expect(screen.getByRole("img", { name: NAME }).getAttribute("src")).toBe(
+    registeredCover
+  );
 });

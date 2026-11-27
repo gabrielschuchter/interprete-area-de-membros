@@ -13,6 +13,7 @@ import { ExerciseListBookmarkButton } from "@/components/exercises/exercise-list
 import { ExerciseListCover } from "@/components/exercises/exercise-list-cover";
 import { ExerciseProgress } from "@/components/exercises/exercise-progress";
 import {
+  getExerciseListVolumes,
   getMemberInProgressExerciseSessionForList,
   getPublishedExerciseList,
   isExerciseListBookmarked,
@@ -26,7 +27,10 @@ interface ExerciseListPageProperties {
 
 const ExerciseListPage = async ({ params }: ExerciseListPageProperties) => {
   const [{ slug }, memberId] = await Promise.all([params, requireMemberId()]);
-  const list = await getPublishedExerciseList(slug);
+  const [list, listVolumes] = await Promise.all([
+    getPublishedExerciseList(slug),
+    getExerciseListVolumes(),
+  ]);
   if (!list) {
     notFound();
   }
@@ -65,6 +69,7 @@ const ExerciseListPage = async ({ params }: ExerciseListPageProperties) => {
             coverUrl={list.coverUrl}
             listSlug={list.slug}
             title={list.title}
+            volume={listVolumes.get(list.slug)}
           />
         </div>
         <div className="p-5 md:p-9 md:pt-6">

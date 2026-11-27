@@ -6,6 +6,8 @@ import {
   ExerciseSessionKind,
   ExerciseSessionStatus,
 } from "@repo/database";
+import { cache } from "react";
+import { rankExerciseListVolumes } from "./exercise-cover";
 import {
   decodeExerciseFavoriteCursor,
   encodeExerciseFavoriteCursor,
@@ -24,6 +26,30 @@ const publishedListWhere = {
   status: ContentStatus.PUBLISHED,
   bank: { is: { status: ContentStatus.PUBLISHED } },
 } as const;
+
+/**
+ * Volume de cada lista publicada (por endereço), contado dentro do tema na
+ * ordem fixa posição → criação. Considera todas as listas, não só as que
+ * passaram por um filtro, para o número não mudar com a busca.
+ */
+export const getExerciseListVolumes = cache(async () => {
+  const rows = await database.exerciseList.findMany({
+    where: publishedListWhere,
+    orderBy: [{ position: "asc" }, { createdAt: "asc" }, { id: "asc" }],
+    select: {
+      slug: true,
+      title: true,
+      bank: { select: { title: true } },
+    },
+  });
+  return rankExerciseListVolumes(
+    rows.map(({ bank, slug, title }) => ({
+      bankTitle: bank.title,
+      slug,
+      title,
+    }))
+  );
+});
 
 export const getPublishedExerciseLists = async (
   query?: string,

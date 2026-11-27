@@ -7,12 +7,14 @@ export const ExerciseNotebookCover = ({
   listSlug,
   state,
   title,
+  volume,
 }: {
   readonly bankTitle: string;
   readonly coverUrl: string | null;
   readonly listSlug: string;
   readonly state: "new" | "in-progress" | "completed";
   readonly title: string;
+  readonly volume?: number;
 }) => {
   return (
     <span className="relative block overflow-hidden">
@@ -21,6 +23,7 @@ export const ExerciseNotebookCover = ({
         coverUrl={coverUrl}
         listSlug={listSlug}
         title={title}
+        volume={volume}
       />
       {state === "in-progress" && (
         <span

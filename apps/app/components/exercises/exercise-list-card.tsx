@@ -21,10 +21,12 @@ export const ExerciseListCard = ({
   list,
   saved = false,
   state,
+  volume,
 }: {
   readonly list: ExerciseListCardList;
   readonly saved?: boolean;
   readonly state?: ExerciseListState;
+  readonly volume?: number;
 }) => {
   const total = list._count.items;
   const progress = exerciseListStateProgress(state);
@@ -50,6 +52,7 @@ export const ExerciseListCard = ({
         listSlug={list.slug}
         state={kind}
         title={list.title}
+        volume={volume}
       />
       <div className="flex flex-1 flex-col gap-1.5 px-4 pt-3 pb-3.5">
         <h3 className="font-display font-semibold text-lg leading-[1.2]">
