@@ -247,7 +247,9 @@ export const getMemberExerciseSession = async (
               type: true,
               statement: true,
               explanation: true,
-              question: { select: { id: true } },
+              question: {
+                select: { id: true, category: { select: { title: true } } },
+              },
               options: {
                 orderBy: { position: "asc" },
                 select: { id: true, label: true, content: true },

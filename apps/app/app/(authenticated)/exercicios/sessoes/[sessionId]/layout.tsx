@@ -14,7 +14,7 @@ const ExerciseSessionLayout = async ({
   const { sessionId } = await params;
   return (
     <ExerciseSessionDraftProvider key={sessionId} storageKey={sessionId}>
-      <ExerciseSessionMobileHeader sessionId={sessionId} />
+      <ExerciseSessionMobileHeader />
       {children}
     </ExerciseSessionDraftProvider>
   );

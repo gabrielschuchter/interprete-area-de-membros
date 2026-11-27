@@ -23,7 +23,10 @@ interface MemberSession {
     readonly questionVersion: {
       readonly statement: string;
       readonly type: string;
-      readonly question: { readonly id: string };
+      readonly question: {
+        readonly category?: { readonly title: string } | null;
+        readonly id: string;
+      };
       readonly options: readonly {
         readonly content: string;
         readonly id: string;
@@ -51,6 +54,15 @@ export const ExerciseSessionWorkspace = ({
   readonly session: MemberSession;
 }) => {
   const question = session.questions.find(({ id }) => id === currentQuestionId);
+  const categories = [
+    ...new Set(
+      session.questions.flatMap(({ questionVersion }) =>
+        questionVersion.question.category
+          ? [questionVersion.question.category.title]
+          : []
+      )
+    ),
+  ];
   const { draftFor, setDraftFor } = useExerciseSessionDrafts();
   const [confirmedAnswers, setConfirmedAnswers] = useState<
     Readonly<Record<string, boolean>>
@@ -133,9 +145,11 @@ export const ExerciseSessionWorkspace = ({
           <ExerciseSessionExitControl />
         </div>
         <header className="mt-3.5 hidden md:block">
-          <ExerciseEyebrow>Sessão · {session.list.title}</ExerciseEyebrow>
+          {categories.length > 0 && (
+            <ExerciseEyebrow>{categories.join(" · ")}</ExerciseEyebrow>
+          )}
           <h1 className="mt-3.5 font-display text-[42px] leading-[1.1] tracking-[-0.02em]">
-            Pratique no seu ritmo
+            {session.list.title}
           </h1>
           <div className="mt-6 flex flex-col gap-2.5">
             <div className="flex flex-wrap items-center justify-between gap-3">

@@ -14,7 +14,6 @@ import {
 } from "@repo/design-system/components/ui/sheet";
 import { ArrowLeftIcon, CheckIcon, InfoIcon, XIcon } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { useExerciseSessionDrafts } from "./exercise-session-drafts";
 
@@ -350,19 +349,10 @@ export const ExerciseMobileExitHeader = ({
   </header>
 );
 
-export const ExerciseSessionMobileHeader = ({
-  sessionId,
-}: {
-  readonly sessionId: string;
-}) => {
-  const pathname = usePathname();
-  const isActiveSession = pathname === `/exercicios/sessoes/${sessionId}`;
-
-  return (
-    <ExerciseMobileExitHeader
-      backLabel="Voltar para Exercícios"
-      destination="/exercicios"
-      title={isActiveSession ? "Pratique no seu ritmo" : "Exercícios"}
-    />
-  );
-};
+export const ExerciseSessionMobileHeader = () => (
+  <ExerciseMobileExitHeader
+    backLabel="Voltar para Exercícios"
+    destination="/exercicios"
+    title="Exercícios"
+  />
+);

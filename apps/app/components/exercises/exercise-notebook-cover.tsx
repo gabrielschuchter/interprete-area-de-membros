@@ -25,14 +25,6 @@ export const ExerciseNotebookCover = ({
         title={title}
         volume={volume}
       />
-      {state === "in-progress" && (
-        <span
-          aria-hidden="true"
-          className="absolute top-2.5 right-5 rotate-[8deg] bg-[#F7C873] px-2 py-0.5 font-data font-semibold text-[#410230] text-[11px] tracking-[.15em]"
-        >
-          EM ANDAMENTO
-        </span>
-      )}
       {state === "new" && (
         <span
           aria-hidden="true"

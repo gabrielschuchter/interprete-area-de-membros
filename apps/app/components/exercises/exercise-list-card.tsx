@@ -1,3 +1,4 @@
+import { ChevronDownIcon } from "lucide-react";
 import { IntentLink } from "@/app/(authenticated)/components/intent-link";
 import { ExerciseListBookmarkButton } from "@/components/exercises/exercise-list-bookmark-button";
 import { ExerciseNotebookCover } from "@/components/exercises/exercise-notebook-cover";
@@ -6,6 +7,7 @@ import {
   exerciseListStateLabel,
   exerciseListStateProgress,
 } from "@/lib/exercise-list-state";
+import { exerciseListTags } from "@/lib/exercise-list-tags";
 
 interface ExerciseListCardList {
   readonly _count: { readonly items: number };
@@ -16,6 +18,41 @@ interface ExerciseListCardList {
   readonly slug: string;
   readonly title: string;
 }
+
+const ExerciseListTopics = ({
+  description,
+}: {
+  readonly description: string;
+}) => {
+  const tags = exerciseListTags(description);
+  return (
+    <details className="group/topics relative z-10 text-sm">
+      <summary className="flex min-h-8 w-fit cursor-pointer list-none items-center gap-1 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
+        Temas
+        <ChevronDownIcon
+          aria-hidden="true"
+          className="size-4 transition-transform group-open/topics:rotate-180 motion-reduce:transition-none"
+        />
+      </summary>
+      {tags ? (
+        <ul className="m-0 flex list-none flex-wrap gap-1.5 p-0 pt-1">
+          {tags.map((tag) => (
+            <li
+              className="rounded-[4px] border bg-muted/50 px-2 py-0.5 text-muted-foreground text-xs"
+              key={tag}
+            >
+              {tag}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="pt-1 text-muted-foreground leading-[1.45]">
+          {description}
+        </p>
+      )}
+    </details>
+  );
+};
 
 export const ExerciseListCard = ({
   list,
@@ -31,6 +68,11 @@ export const ExerciseListCard = ({
   const total = list._count.items;
   const progress = exerciseListStateProgress(state);
   const isCompleted = state?.kind === "completed";
+
+  const questionsLabel = `${total} ${total === 1 ? "questão" : "questões"}`;
+  // Em andamento já traz o total ("6 de 10"): basta acrescentar "questões".
+  const countLabel =
+    state?.kind === "in-progress" ? "questões" : questionsLabel;
 
   const kind = state?.kind ?? "new";
   const cta = {
@@ -64,9 +106,7 @@ export const ExerciseListCard = ({
           </IntentLink>
         </h3>
         {list.description && (
-          <p className="line-clamp-2 text-muted-foreground text-sm leading-[1.45]">
-            {list.description}
-          </p>
+          <ExerciseListTopics description={list.description} />
         )}
         <div className="mt-auto flex flex-col gap-2 pt-2">
           <div
@@ -83,9 +123,7 @@ export const ExerciseListCard = ({
               <span className={isCompleted ? "font-medium text-success" : ""}>
                 {exerciseListStateLabel(state)}
               </span>
-              <span className="text-muted-foreground">
-                {total} {total === 1 ? "questão" : "questões"}
-              </span>
+              <span className="text-muted-foreground">{countLabel}</span>
             </p>
             <span
               aria-hidden="true"

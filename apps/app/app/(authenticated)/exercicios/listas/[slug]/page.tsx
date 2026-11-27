@@ -8,7 +8,6 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ExerciseEyebrow } from "@/components/exercises/exercise-eyebrow";
 import { ExerciseListBookmarkButton } from "@/components/exercises/exercise-list-bookmark-button";
 import { ExerciseListCover } from "@/components/exercises/exercise-list-cover";
 import { ExerciseProgress } from "@/components/exercises/exercise-progress";
@@ -73,10 +72,7 @@ const ExerciseListPage = async ({ params }: ExerciseListPageProperties) => {
           />
         </div>
         <div className="p-5 md:p-9 md:pt-6">
-          <ExerciseEyebrow>
-            {list.bank.title} · lista de exercícios
-          </ExerciseEyebrow>
-          <h1 className="mt-3 font-display font-semibold text-3xl leading-[1.1] tracking-[-.02em] md:text-[42px]">
+          <h1 className="font-display font-semibold text-3xl leading-[1.1] tracking-[-.02em] md:text-[42px]">
             {list.title}
           </h1>
           {list.description && (
