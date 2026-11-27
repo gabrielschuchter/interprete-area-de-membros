@@ -3,13 +3,11 @@
 import { toast } from "@repo/design-system/lib/toast";
 import { cn } from "@repo/design-system/lib/utils";
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import {
   type CountGoalKind,
   type CountGoalsOverview,
-  countGoalKinds,
   countGoalUnit,
-  type KindCounts,
   type WeekActivityCounts,
   weekActivitySummary,
 } from "@/lib/study-count-goals-model";
@@ -41,34 +39,97 @@ const nicheClass = (day: ShelfDay) => {
     tone
   );
 };
-const COUNT_GROUP: Record<CountGoalKind, ShelfGroup> = {
-  LESSONS: "lesson",
-  READINGS: "reading",
-  EXERCISES: "exercise",
+const GROUP_KIND: Record<ShelfGroup, CountGoalKind> = {
+  lesson: "LESSONS",
+  reading: "READINGS",
+  exercise: "EXERCISES",
+};
+const DONE_WORD: Record<ShelfGroup, [string, string]> = {
+  lesson: ["concluída", "concluídas"],
+  reading: ["concluída", "concluídas"],
+  exercise: ["respondida", "respondidas"],
 };
 
-const DayCounts = ({ counts }: { readonly counts: KindCounts | undefined }) => {
-  const visible = countGoalKinds.filter((kind) => (counts?.[kind] ?? 0) > 0);
-  if (!counts || visible.length === 0) {
-    return null;
-  }
+const barDetails = (
+  group: ShelfGroup,
+  minutes: number,
+  count: number
+): { readonly note: string | null; readonly title: string } => {
+  const kind = GROUP_KIND[group];
+  const time = minutes > 0 ? `${minutes} min` : "menos de 1 min";
+  const done = DONE_WORD[group][count === 1 ? 0 : 1];
+  return {
+    title: `${shelfGroupLabels[group]} · ${time}`,
+    note: count > 0 ? `${count} ${countGoalUnit(kind, count)} ${done}` : null,
+  };
+};
+
+/**
+ * Uma barrinha da estante: tempo registrado naquele tipo. Sem tempo (menos de
+ * 1 min) mas com itens feitos, vira um livro só de contorno. O detalhe abre ao
+ * passar o mouse, focar ou tocar.
+ */
+const ShelfBook = ({
+  animationDelay,
+  count,
+  group,
+  minutes,
+  onOpenChange,
+  open,
+}: {
+  readonly animationDelay: string;
+  readonly count: number;
+  readonly group: ShelfGroup;
+  readonly minutes: number;
+  readonly onOpenChange: (open: boolean) => void;
+  readonly open: boolean;
+}) => {
+  const hollow = minutes === 0;
+  const { note, title } = barDetails(group, minutes, count);
+  const color = shelfGroupColors[group];
   return (
-    <span className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-0.5">
-      {visible.map((kind) => (
-        <span
-          className="inline-flex items-center gap-0.5 text-[#E9C3C4] text-[10px]"
-          key={kind}
-          title={`${counts[kind]} ${countGoalUnit(kind, counts[kind])}`}
-        >
-          <i
-            aria-hidden="true"
-            className="inline-block size-1.5"
-            style={{ background: shelfGroupColors[COUNT_GROUP[kind]] }}
-          />
-          {counts[kind]}
-        </span>
-      ))}
-    </span>
+    <div className="relative flex items-end">
+      {open ? (
+        <output className="absolute bottom-[calc(100%+8px)] left-1/2 z-10 block -translate-x-1/2 whitespace-nowrap rounded-[4px] border border-[#D9A86B] bg-[#F7F3F1] px-2.5 py-1.5 text-[#410230] text-xs leading-snug">
+          <span className="flex items-center gap-1.5 font-medium">
+            <i
+              aria-hidden="true"
+              className="inline-block size-2"
+              style={{ background: color }}
+            />
+            {title}
+          </span>
+          {note ? <span className="block text-[#6B4A5C]">{note}</span> : null}
+        </output>
+      ) : null}
+      <button
+        aria-label={note ? `${title}, ${note}` : title}
+        className={cn(
+          "relative block w-[14px] cursor-pointer p-0 focus-visible:outline-2 focus-visible:outline-[#F0C98A] focus-visible:outline-offset-2 sm:w-[18px]",
+          hollow
+            ? "border-[1.5px] border-dashed bg-transparent"
+            : "bancada-book border-0 shadow-[inset_4px_0_0_rgba(0,0,0,.18)]"
+        )}
+        onBlur={() => onOpenChange(false)}
+        onClick={() => onOpenChange(true)}
+        onMouseEnter={() => onOpenChange(true)}
+        onMouseLeave={() => onOpenChange(false)}
+        style={{
+          animationDelay,
+          background: hollow ? "transparent" : color,
+          borderColor: hollow ? color : undefined,
+          height: hollow ? 30 : bookHeight(minutes),
+        }}
+        type="button"
+      >
+        {hollow ? null : (
+          <>
+            <span className="absolute top-2 right-px left-px h-0.5 bg-[#D9A86B]" />
+            <span className="absolute right-px bottom-2 left-px h-0.5 bg-[#D9A86B]" />
+          </>
+        )}
+      </button>
+    </div>
   );
 };
 
@@ -117,6 +178,7 @@ export const WeekShelf = ({
 }: WeekShelfProps) => {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [openBook, setOpenBook] = useState<string | null>(null);
 
   const daysLeft = days.filter((day) => day.today || day.future).length;
   const target = targetMinutes ?? 0;
@@ -176,23 +238,36 @@ export const WeekShelf = ({
                 return (
                   <div className={nicheClass(day)} key={day.dayKey}>
                     {shelfGroups
-                      .filter((item) => day.minutes[item] > 0)
-                      .map((item, bookIndex) => (
-                        <div
-                          className="bancada-book relative w-[14px] shadow-[inset_4px_0_0_rgba(0,0,0,.18)] sm:w-[18px]"
-                          key={item}
-                          style={{
-                            animationDelay: `${dayIndex * 80 + bookIndex * 90}ms`,
-                            background: shelfGroupColors[item],
-                            height: bookHeight(day.minutes[item]),
-                            transition: "height .5s cubic-bezier(.2,.8,.2,1)",
-                          }}
-                          title={`${shelfGroupLabels[item]}: ${day.minutes[item]} min`}
-                        >
-                          <span className="absolute top-2 right-px left-px h-0.5 bg-[#D9A86B]" />
-                          <span className="absolute right-px bottom-2 left-px h-0.5 bg-[#D9A86B]" />
-                        </div>
-                      ))}
+                      .filter(
+                        (item) =>
+                          day.minutes[item] > 0 ||
+                          (activity.perDay[day.dayKey]?.[GROUP_KIND[item]] ??
+                            0) > 0
+                      )
+                      .map((item, bookIndex) => {
+                        const id = `${day.dayKey}:${item}`;
+                        return (
+                          <ShelfBook
+                            animationDelay={`${dayIndex * 80 + bookIndex * 90}ms`}
+                            count={
+                              activity.perDay[day.dayKey]?.[GROUP_KIND[item]] ??
+                              0
+                            }
+                            group={item}
+                            key={item}
+                            minutes={day.minutes[item]}
+                            onOpenChange={(next) =>
+                              setOpenBook((current) => {
+                                if (next) {
+                                  return id;
+                                }
+                                return current === id ? null : current;
+                              })
+                            }
+                            open={openBook === id}
+                          />
+                        );
+                      })}
                     {day.future && total === 0 ? (
                       <span className="self-center font-display text-[#7A2446] text-[28px]">
                         ?
@@ -221,27 +296,12 @@ export const WeekShelf = ({
                   <span className="text-[#F1EBE8] text-[11px] sm:text-[13px]">
                     {day.future ? "—" : `${dayTotalMinutes(day)} min`}
                   </span>
-                  <DayCounts counts={activity.perDay[day.dayKey]} />
                 </div>
               ))}
             </div>
           </figure>
 
           <div className="flex flex-col gap-4 border-[#5A2233] border-t pt-4">
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[#E9C3C4] text-[13px]">
-              {shelfGroups.map((item) => (
-                <span className="inline-flex items-center gap-1.5" key={item}>
-                  <i
-                    className="inline-block h-3.5 w-2.5"
-                    style={{ background: shelfGroupColors[item] }}
-                  />
-                  {shelfGroupLabels[item]}
-                </span>
-              ))}
-              <span className="text-[#CDB9B2] text-xs">
-                Números sob o dia = quantidade
-              </span>
-            </div>
             <ManualEntry entries={manualEntries} pending={pending} run={run} />
           </div>
 

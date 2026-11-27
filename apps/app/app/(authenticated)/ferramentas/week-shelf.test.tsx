@@ -154,9 +154,29 @@ test("valor personalizado salva a meta do tipo escolhido", () => {
   expect(countSave).toHaveBeenCalledWith({ kind: "READINGS", target: 7 });
 });
 
-test("mostra a quantidade da semana e por dia ao lado do tempo", () => {
+test("mantém o resumo da semana e mostra o detalhe do tipo ao passar o mouse", () => {
   render(<WeekShelf {...baseProps} />);
   expect(screen.getByText(RESUMO)).toBeTruthy();
-  expect(screen.getByTitle("10 questões")).toBeTruthy();
-  expect(screen.getByTitle("1 aula")).toBeTruthy();
+  // Sem legenda fixa: o detalhe só aparece sob demanda.
+  expect(screen.queryByRole("status")).toBeNull();
+  fireEvent.mouseEnter(
+    screen.getByRole("button", { name: "Aula · 60 min, 1 aula concluída" })
+  );
+  expect(screen.getByRole("status").textContent).toContain("Aula · 60 min");
+  expect(screen.getByRole("status").textContent).toContain("1 aula concluída");
+  fireEvent.mouseLeave(
+    screen.getByRole("button", { name: "Aula · 60 min, 1 aula concluída" })
+  );
+  expect(screen.queryByRole("status")).toBeNull();
+});
+
+test("itens feitos sem tempo registrado viram um livro vazado com o detalhe", () => {
+  render(<WeekShelf {...baseProps} />);
+  const book = screen.getByRole("button", {
+    name: "Exercícios · menos de 1 min, 10 questões respondidas",
+  });
+  fireEvent.click(book);
+  expect(screen.getByRole("status").textContent).toContain(
+    "10 questões respondidas"
+  );
 });
