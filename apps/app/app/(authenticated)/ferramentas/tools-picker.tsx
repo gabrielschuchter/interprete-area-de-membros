@@ -10,7 +10,7 @@ export interface ToolsPickerItem {
 }
 
 /**
- * Dock de ferramentas: uma prateleira com um ícone ilustrado por ferramenta.
+ * Dock de ferramentas: ícones ilustrados soltos sobre o fundo da página.
  * Cada ícone é um link para `?view=<id>` (navegação real, funciona sem
  * JavaScript e mantém o histórico). No desktop os ícones crescem perto do
  * cursor; no celular a fileira rola de lado.
@@ -24,17 +24,18 @@ export const ToolsPicker = ({
 }) => (
   <nav
     aria-label="Ferramentas"
-    className="mt-6 overflow-hidden rounded-lg bg-[#410230]"
+    className="mt-6 sm:mt-10"
     data-tools-page-switcher
   >
-    <ul className="m-0 flex list-none items-end gap-3 overflow-x-auto px-5 pt-8 pb-0 [scrollbar-width:none] max-sm:snap-x sm:justify-center sm:gap-4 sm:px-8 [&::-webkit-scrollbar]:hidden">
+    {/* Altura fixa no desktop: o ícone cresce para cima sem empurrar o conteúdo abaixo. */}
+    <ul className="m-0 flex list-none items-end gap-3 px-1 pb-0 [scrollbar-width:none] max-sm:snap-x max-sm:overflow-x-auto sm:h-[154px] sm:justify-center sm:gap-10 [&::-webkit-scrollbar]:hidden">
       {items.map((item, index) => {
         const active = item.id === activeView;
         return (
           <li className="shrink-0 snap-center" key={item.id}>
             <Link
               aria-current={active ? "page" : undefined}
-              className="group flex flex-col items-center gap-2 rounded-t-[44px] focus-visible:outline-2 focus-visible:outline-[#D9A86B] focus-visible:outline-offset-2"
+              className="group flex flex-col items-center gap-2 rounded-t-[44px] focus-visible:outline-2 focus-visible:outline-[#8C1535] focus-visible:outline-offset-2"
               href={`/ferramentas?view=${item.id}`}
               prefetch={false}
               scroll={false}
@@ -59,7 +60,7 @@ export const ToolsPicker = ({
               <span
                 className={cn(
                   "font-data text-[11px] uppercase tracking-[.2em]",
-                  active ? "text-[#F0C98A]" : "text-[#E9C3C4]"
+                  active ? "font-medium text-[#8C1535]" : "text-[#6B4A5C]"
                 )}
               >
                 {item.label}
@@ -69,7 +70,7 @@ export const ToolsPicker = ({
                 aria-hidden="true"
                 className={cn(
                   "mb-2 size-1 rounded-full",
-                  active ? "bg-[#D9A86B]" : "bg-transparent"
+                  active ? "bg-[#8C1535]" : "bg-transparent"
                 )}
               />
             </Link>
@@ -77,7 +78,5 @@ export const ToolsPicker = ({
         );
       })}
     </ul>
-    <div aria-hidden="true" className="h-0.5 bg-[#D9A86B]" />
-    <div aria-hidden="true" className="h-2.5 bg-[#5A2233]" />
   </nav>
 );
