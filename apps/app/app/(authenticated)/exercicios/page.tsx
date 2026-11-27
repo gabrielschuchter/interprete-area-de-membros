@@ -152,11 +152,11 @@ const ExercisesPage = async ({ searchParams }: ExercisesPageProperties) => {
 
               return (
                 <article
-                  className="relative flex flex-col gap-3 rounded-[4px] border bg-[repeating-linear-gradient(180deg,transparent_0_27px,#ece2df_27px_28px)] bg-card py-5 pr-5 pl-[46px] transition-transform motion-safe:hover:rotate-0 md:py-[22px] md:pl-[46px]"
+                  className="group/sheet relative flex min-h-[244px] flex-1 rotate-[var(--tilt)] flex-col gap-3 rounded-[4px] border bg-[repeating-linear-gradient(180deg,transparent_0_27px,#ece2df_27px_28px)] bg-card py-5 pr-5 pl-[46px] transition-[translate,rotate,border-color] duration-200 ease-[cubic-bezier(.2,0,0,1)] focus-within:-translate-y-2 focus-within:rotate-0 focus-within:border-primary hover:-translate-y-2 hover:rotate-0 hover:border-primary motion-reduce:transition-none md:py-[22px]"
                   key={session.id}
                   style={
                     {
-                      "--tilt": index % 2 === 0 ? "-0.5deg" : "0.4deg",
+                      "--tilt": index % 2 === 0 ? "-1.2deg" : "1deg",
                     } as CSSProperties
                   }
                 >
@@ -229,7 +229,7 @@ const ExercisesPage = async ({ searchParams }: ExercisesPageProperties) => {
         />
 
         {lists.length > 0 && (
-          <div className="mt-6 grid gap-4 md:grid-cols-[repeat(auto-fill,minmax(300px,1fr))] md:gap-6">
+          <div className="mt-6 grid gap-4 md:grid-cols-[repeat(auto-fill,minmax(280px,1fr))] md:gap-5">
             {lists.map((list) => (
               <ExerciseListCard
                 key={list.id}

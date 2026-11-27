@@ -244,3 +244,22 @@ test("a seção de listas sempre se chama Escolha um caderno, sem limpar filtros
   ).toBeTruthy();
   expect(screen.queryByText("Limpar filtros")).toBeNull();
 });
+
+test("a folha em andamento tem altura mínima fixa e se endireita ao passar o mouse", async () => {
+  state.inProgressSessions = [
+    {
+      id: "session-1",
+      list: { title: "Prática em andamento" },
+      questions: [{ answer: null }],
+    },
+  ];
+
+  render(await ExercisesPage({ searchParams: Promise.resolve({}) }));
+
+  const sheet = screen
+    .getByRole("heading", { level: 3, name: "Prática em andamento" })
+    .closest("article");
+  expect(sheet?.className).toContain("min-h-[244px]");
+  expect(sheet?.className).toContain("hover:rotate-0");
+  expect(sheet?.className).toContain("hover:-translate-y-2");
+});
