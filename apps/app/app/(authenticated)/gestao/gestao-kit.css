@@ -366,6 +366,13 @@
   border-radius: 8px;
   box-shadow: 0 16px 40px rgb(64 34 47 / 28%);
 }
+/* O formulário é o único filho: sem isso o corpo não rola e o rodapé fica cortado. */
+:where(.gk-modal[data-slot="dialog-content"]) > form {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
 .gk-modal-head {
   display: flex;
   gap: 12px;
@@ -405,6 +412,7 @@
   flex: 1;
   flex-direction: column;
   gap: 16px;
+  min-height: 0;
   padding: 8px 24px 20px;
   overflow-y: auto;
 }
