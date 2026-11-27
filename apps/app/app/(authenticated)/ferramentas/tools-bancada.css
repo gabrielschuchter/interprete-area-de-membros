@@ -100,3 +100,37 @@
     transform: translate(18px, -110px);
   }
 }
+
+/* Dock de ferramentas: os ícones crescem perto do cursor (só com hover real). */
+.tools-dock-item {
+  width: 76px;
+  height: 95px;
+  transition:
+    width 200ms cubic-bezier(0.2, 0, 0, 1),
+    height 200ms cubic-bezier(0.2, 0, 0, 1);
+}
+@media (min-width: 640px) {
+  .tools-dock-item {
+    width: 88px;
+    height: 110px;
+  }
+}
+@media (hover: hover) and (min-width: 640px) {
+  .tools-dock-item:hover,
+  .tools-dock-item:focus-visible {
+    width: 120px;
+    height: 150px;
+  }
+  .tools-dock-item:has(+ .tools-dock-item:hover),
+  .tools-dock-item:hover + .tools-dock-item,
+  .tools-dock-item:has(+ .tools-dock-item:focus-visible),
+  .tools-dock-item:focus-visible + .tools-dock-item {
+    width: 100px;
+    height: 125px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tools-dock-item {
+    transition: none;
+  }
+}

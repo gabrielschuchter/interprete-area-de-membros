@@ -1,5 +1,6 @@
 import { cn } from "@repo/design-system/lib/utils";
 import Link from "next/link";
+import "./tools-bancada.css";
 
 export interface ToolsPickerItem {
   readonly description: string;
@@ -9,8 +10,10 @@ export interface ToolsPickerItem {
 }
 
 /**
- * Seletor de ferramentas em cartões. Cada cartão é um link para
- * `?view=<id>`: navegação real, funciona sem JavaScript e mantém o histórico.
+ * Dock de ferramentas: uma prateleira com um ícone ilustrado por ferramenta.
+ * Cada ícone é um link para `?view=<id>` (navegação real, funciona sem
+ * JavaScript e mantém o histórico). No desktop os ícones crescem perto do
+ * cursor; no celular a fileira rola de lado.
  */
 export const ToolsPicker = ({
   activeView,
@@ -21,53 +24,60 @@ export const ToolsPicker = ({
 }) => (
   <nav
     aria-label="Ferramentas"
-    className="mt-6 grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-5"
+    className="mt-6 overflow-hidden rounded-lg bg-[#410230]"
     data-tools-page-switcher
   >
-    {items.map((item, index) => {
-      const active = item.id === activeView;
-      return (
-        <Link
-          aria-current={active ? "page" : undefined}
-          className={cn(
-            "group flex flex-col overflow-hidden rounded-lg border transition-[transform,border-color,background-color] duration-200 hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-[#D9A86B] focus-visible:outline-offset-2",
-            active
-              ? "border-[#D9A86B] bg-[#410230] text-[#F1EBE8]"
-              : "border-[#E2D6D1] bg-[#FBF8F5] text-[#2A0A1A] hover:border-[#8C1535]/40"
-          )}
-          href={`/ferramentas?view=${item.id}`}
-          key={item.id}
-          prefetch={false}
-          scroll={false}
-        >
-          <span className="relative block aspect-[12/5] overflow-hidden border-[#E9C48E]/20 border-b bg-[#560A2A]">
-            {/* biome-ignore lint/performance/noImgElement: static local SVG artwork with a fixed aspect ratio. */}
-            <img
-              alt=""
-              className="h-full w-full object-cover"
-              decoding="async"
-              height={200}
-              loading="lazy"
-              src={`/tools/card-${item.illustration}.svg`}
-              width={480}
-            />
-            <span className="absolute top-2 right-2.5 font-data text-[#E9C48E] text-[11px] tracking-[.1em]">
-              0{index + 1}
-            </span>
-          </span>
-          <span className="px-3.5 pt-3 pb-3 font-display font-semibold text-lg leading-tight sm:pb-0">
-            {item.label}
-          </span>
-          <span
-            className={cn(
-              "px-3.5 pt-1 pb-3.5 text-[13px] leading-snug max-sm:hidden",
-              active ? "text-[#E5CFCB]" : "text-[#7A5A69]"
-            )}
-          >
-            {item.description}
-          </span>
-        </Link>
-      );
-    })}
+    <ul className="m-0 flex list-none items-end gap-3 overflow-x-auto px-5 pt-8 pb-0 [scrollbar-width:none] max-sm:snap-x sm:justify-center sm:gap-4 sm:px-8 [&::-webkit-scrollbar]:hidden">
+      {items.map((item, index) => {
+        const active = item.id === activeView;
+        return (
+          <li className="shrink-0 snap-center" key={item.id}>
+            <Link
+              aria-current={active ? "page" : undefined}
+              className="group flex flex-col items-center gap-2 rounded-t-[44px] focus-visible:outline-2 focus-visible:outline-[#D9A86B] focus-visible:outline-offset-2"
+              href={`/ferramentas?view=${item.id}`}
+              prefetch={false}
+              scroll={false}
+            >
+              <span
+                className={cn(
+                  "tools-dock-item relative block overflow-hidden rounded-t-[44px] transition-opacity",
+                  active ? "opacity-100" : "opacity-90 group-hover:opacity-100"
+                )}
+              >
+                {/* biome-ignore lint/performance/noImgElement: static local artwork with a fixed aspect ratio. */}
+                <img
+                  alt=""
+                  className="h-full w-full object-cover"
+                  decoding="async"
+                  height={300}
+                  loading={index < 3 ? "eager" : "lazy"}
+                  src={`/tools/dock-${item.illustration}.webp`}
+                  width={240}
+                />
+              </span>
+              <span
+                className={cn(
+                  "font-data text-[11px] uppercase tracking-[.2em]",
+                  active ? "text-[#F0C98A]" : "text-[#E9C3C4]"
+                )}
+              >
+                {item.label}
+              </span>
+              <span className="sr-only">{item.description}</span>
+              <span
+                aria-hidden="true"
+                className={cn(
+                  "mb-2 size-1 rounded-full",
+                  active ? "bg-[#D9A86B]" : "bg-transparent"
+                )}
+              />
+            </Link>
+          </li>
+        );
+      })}
+    </ul>
+    <div aria-hidden="true" className="h-0.5 bg-[#D9A86B]" />
+    <div aria-hidden="true" className="h-2.5 bg-[#5A2233]" />
   </nav>
 );
