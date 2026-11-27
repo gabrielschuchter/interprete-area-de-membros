@@ -35,11 +35,9 @@ import {
 } from "react";
 import {
   armTimerAudioUnlock,
-  playTimerCompletionAlarm,
   playTimerCompletionSound,
   playTimerTick,
-  showTimerNotification,
-  startTimerTitleAlert,
+  runTimerCompletionAlerts,
   stopTimerCompletionAlarm,
   unlockTimerAudio,
 } from "@/components/focus-timer-audio";
@@ -337,37 +335,6 @@ function getCompletionMessage(mode: TimerMode) {
   return "Sessão concluída.";
 }
 
-function runTimerCompletionAlerts(
-  settings: TimerSettings,
-  sessionId: string,
-  stopAlarm: () => void,
-  activateAlarm: () => void
-) {
-  stopAlarm();
-  playTimerCompletionAlarm(settings);
-  if (
-    settings.timerSoundEnabled &&
-    settings.timerSoundType !== "NONE" &&
-    settings.timerVolume > 0
-  ) {
-    activateAlarm();
-  }
-  startTimerTitleAlert();
-  if (
-    settings.timerVibrationEnabled &&
-    typeof navigator !== "undefined" &&
-    "vibrate" in navigator
-  ) {
-    navigator.vibrate([180, 70, 180]);
-  }
-  if (settings.systemNotificationsEnabled) {
-    showTimerNotification("Sessão concluída", {
-      body: "Seu tempo de foco foi salvo no seu histórico de estudo.",
-      tag: `focus-timer-${sessionId}`,
-    });
-  }
-}
-
 const dateTimeInputInTimezone = (value: Date | string, timezone: string) => {
   const date = value instanceof Date ? value : new Date(value);
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -592,12 +559,17 @@ function FocusTimerWorkspace({
           `${completionMessage} O tempo foi salvo no histórico de estudo.`
         );
       }
-      runTimerCompletionAlerts(state.settings, completed.id, stopAlarm, () => {
-        setAlarmActive(true);
-        alarmTimeoutRef.current = window.setTimeout(
-          () => setAlarmActive(false),
-          20_000
-        );
+      stopAlarm();
+      runTimerCompletionAlerts(state.settings, {
+        sessionId: completed.id,
+        mode: completed.mode,
+        onAlarmActive: () => {
+          setAlarmActive(true);
+          alarmTimeoutRef.current = window.setTimeout(
+            () => setAlarmActive(false),
+            20_000
+          );
+        },
       });
     },
     [state.history, state.settings, stopAlarm]
@@ -677,20 +649,43 @@ function FocusTimerWorkspace({
     }
     const wakeNavigator = navigator as Navigator & {
       wakeLock?: {
-        request: (type: "screen") => Promise<{ release: () => Promise<void> }>;
+        request: (
+          type: "screen"
+        ) => Promise<{ released?: boolean; release: () => Promise<void> }>;
       };
     };
     if (!wakeNavigator.wakeLock) {
       return;
     }
-    let lock: { release: () => Promise<void> } | null = null;
-    wakeNavigator.wakeLock
-      .request("screen")
-      .then((next) => {
-        lock = next;
-      })
-      .catch(() => undefined);
+    let lock: { released?: boolean; release: () => Promise<void> } | null =
+      null;
+    let cancelled = false;
+    const acquire = () => {
+      if (cancelled || (lock && lock.released !== true)) {
+        return;
+      }
+      wakeNavigator.wakeLock
+        ?.request("screen")
+        .then((next) => {
+          if (cancelled) {
+            next.release().catch(() => undefined);
+            return;
+          }
+          lock = next;
+        })
+        .catch(() => undefined);
+    };
+    // O navegador solta a trava ao sair da aba; pede de novo ao voltar.
+    const onVisible = () => {
+      if (document.visibilityState === "visible") {
+        acquire();
+      }
+    };
+    acquire();
+    document.addEventListener("visibilitychange", onVisible);
     return () => {
+      cancelled = true;
+      document.removeEventListener("visibilitychange", onVisible);
       if (lock) {
         lock.release().catch(() => undefined);
       }

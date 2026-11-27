@@ -13,9 +13,7 @@ import { toast } from "@repo/design-system/lib/toast";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import {
-  playTimerCompletionAlarm,
-  showTimerNotification,
-  startTimerTitleAlert,
+  runTimerCompletionAlerts,
   stopTimerCompletionAlarm,
   unlockTimerAudio,
 } from "@/components/focus-timer-audio";
@@ -102,25 +100,14 @@ const notifyCompletion = (
       ? `Foco concluído. Hora da pausa de ${Math.round((state.completed.nextDurationSeconds ?? state.settings.shortBreakMinutes * 60) / 60)} minutos.`
       : "Sessão concluída. O tempo de foco foi salvo no histórico.";
   toast.success(message);
-  playTimerCompletionAlarm(state.settings);
-  if (
-    state.settings.timerSoundEnabled &&
-    state.settings.timerSoundType !== "NONE" &&
-    state.settings.timerVolume > 0
-  ) {
-    setAlarmActive(true);
-    window.setTimeout(() => setAlarmActive(false), 20_000);
-  }
-  startTimerTitleAlert();
-  if (state.settings.timerVibrationEnabled && "vibrate" in navigator) {
-    navigator.vibrate([180, 70, 180]);
-  }
-  if (state.settings.systemNotificationsEnabled) {
-    showTimerNotification("Sessão concluída", {
-      body: "O tempo de foco foi salvo no seu histórico de estudo.",
-      tag: `focus-timer-${id}`,
-    });
-  }
+  runTimerCompletionAlerts(state.settings, {
+    sessionId: id,
+    mode: state.completed.mode,
+    onAlarmActive: () => {
+      setAlarmActive(true);
+      window.setTimeout(() => setAlarmActive(false), 20_000);
+    },
+  });
 };
 
 const usePersistentTimerClientId = () => {

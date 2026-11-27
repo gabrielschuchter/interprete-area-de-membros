@@ -204,7 +204,7 @@ export const stopTimerTitleAlert = () => {
   originalTitle = null;
 };
 
-export const startTimerTitleAlert = () => {
+export const startTimerTitleAlert = (label = "Foco concluído") => {
   if (
     typeof document === "undefined" ||
     document.visibilityState !== "hidden"
@@ -214,7 +214,7 @@ export const startTimerTitleAlert = () => {
   stopTimerTitleAlert();
   originalTitle = document.title;
   let showingAlert = true;
-  const alertTitle = "⏰ Foco concluído · Interprete.";
+  const alertTitle = `⏰ ${label} · Interprete.`;
   titleAlertInterval = window.setInterval(() => {
     showingAlert = !showingAlert;
     document.title = showingAlert ? alertTitle : (originalTitle ?? alertTitle);
@@ -259,5 +259,68 @@ export const showTimerNotification = (
       ?.getRegistration()
       .then((registration) => registration?.showNotification(title, options))
       .catch(() => undefined);
+  }
+};
+
+/** Texto do aviso conforme a fase que terminou (foco, pausa ou sessão livre). */
+export const timerCompletionCopy = (mode: string | null | undefined) => {
+  if (mode === "FOCUS") {
+    return {
+      title: "Foco concluído",
+      body: "Hora da pausa. O tempo foi salvo no seu histórico de estudo.",
+    };
+  }
+  if (mode === "SHORT_BREAK" || mode === "LONG_BREAK") {
+    return {
+      title: "Pausa concluída",
+      body: "Pronto para voltar ao foco?",
+    };
+  }
+  return {
+    title: "Sessão concluída",
+    body: "O tempo foi salvo no seu histórico de estudo.",
+  };
+};
+
+type CompletionAlertSettings = TimerSoundSettings & {
+  readonly systemNotificationsEnabled: boolean;
+  readonly timerVibrationEnabled: boolean;
+};
+
+/**
+ * Todos os avisos de fim de fase (som, título da aba, vibração, notificação).
+ * Usado pela tela do cronômetro e pela pílula global, para não divergirem.
+ * `onAlarmActive` é chamado só quando há alarme sonoro tocando.
+ */
+export const runTimerCompletionAlerts = (
+  settings: CompletionAlertSettings,
+  options: {
+    readonly sessionId: string;
+    readonly mode: string | null | undefined;
+    readonly onAlarmActive?: () => void;
+  }
+) => {
+  const copy = timerCompletionCopy(options.mode);
+  playTimerCompletionAlarm(settings);
+  if (
+    settings.timerSoundEnabled &&
+    settings.timerSoundType !== "NONE" &&
+    settings.timerVolume > 0
+  ) {
+    options.onAlarmActive?.();
+  }
+  startTimerTitleAlert(copy.title);
+  if (
+    settings.timerVibrationEnabled &&
+    typeof navigator !== "undefined" &&
+    "vibrate" in navigator
+  ) {
+    navigator.vibrate([180, 70, 180]);
+  }
+  if (settings.systemNotificationsEnabled) {
+    showTimerNotification(copy.title, {
+      body: copy.body,
+      tag: `focus-timer-${options.sessionId}`,
+    });
   }
 };
