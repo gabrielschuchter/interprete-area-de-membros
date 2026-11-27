@@ -30,10 +30,10 @@ export const exerciseFiltersHref = (query: string, categorySlug?: string) => {
 };
 
 const chipClass = (active: boolean) =>
-  `inline-flex min-h-9 items-center rounded-full border px-3.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+  `-mb-px inline-flex min-h-11 shrink-0 items-center whitespace-nowrap border-b-2 px-3.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
     active
-      ? "border-primary bg-primary text-primary-foreground"
-      : "border-border bg-card text-foreground hover:border-primary hover:text-primary"
+      ? "border-[#8C1535] font-semibold text-primary"
+      : "border-transparent text-muted-foreground hover:text-primary"
   }`;
 
 export const ExerciseSearchControls = ({
@@ -128,7 +128,7 @@ export const ExerciseSearchControls = ({
         )}
       </form>
       {categories.length > 0 && (
-        <nav aria-label="Categorias" className="flex flex-wrap gap-2">
+        <nav aria-label="Categorias" className="flex overflow-x-auto border-b">
           <Link
             aria-current={categorySlug ? undefined : "true"}
             className={chipClass(!categorySlug)}

@@ -6,6 +6,7 @@ import {
   PlayIcon,
 } from "lucide-react";
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { IntentLink } from "@/app/(authenticated)/components/intent-link";
 import { ExerciseEmptyIllustration } from "@/components/exercises/exercise-empty-illustration";
@@ -33,27 +34,65 @@ interface ExercisesPageProperties {
   }>;
 }
 
-const historyDateFormatter = new Intl.DateTimeFormat("pt-BR", {
+const historyDayFormatter = new Intl.DateTimeFormat("pt-BR", {
   day: "2-digit",
+  timeZone: "America/Sao_Paulo",
+});
+const historyMonthFormatter = new Intl.DateTimeFormat("pt-BR", {
   month: "short",
   timeZone: "America/Sao_Paulo",
 });
 
-const scoreToneClass = (answered: number, percentage: number) => {
+const ringColor = (answered: number, percentage: number) => {
   if (answered === 0) {
-    return "bg-muted text-muted-foreground";
+    return "#dcd0cf";
   }
   if (percentage >= 70) {
-    return "bg-success/10 text-success";
+    return "var(--success, #2f7d4f)";
   }
   if (percentage >= 50) {
-    return "bg-warning/10 text-warning";
+    return "#D9A86B";
   }
-  return "bg-destructive/10 text-destructive";
+  return "#C8333F";
+};
+
+const SessionBubbles = ({
+  questions,
+}: {
+  readonly questions: readonly { readonly answer: unknown }[];
+}) => {
+  const nextIndex = questions.findIndex(({ answer }) => answer === null);
+  const answered = questions.filter(({ answer }) => answer !== null).length;
+  return (
+    <ol
+      aria-label={`${answered} de ${questions.length} questões respondidas`}
+      className="m-0 flex list-none flex-wrap gap-1.5 p-0"
+    >
+      {questions.map((question, index) => {
+        let tone = "border-[#dcd0cf] bg-transparent text-muted-foreground";
+        if (question.answer !== null) {
+          tone = "border-primary bg-primary text-primary-foreground";
+        } else if (index === nextIndex) {
+          tone =
+            "border-[#8C1535] bg-[#F7C873]/40 text-primary motion-safe:animate-pulse";
+        }
+        return (
+          <li
+            aria-hidden="true"
+            className={`flex size-7 items-center justify-center rounded-full border font-data text-[11px] ${tone}`}
+            // biome-ignore lint/suspicious/noArrayIndexKey: posições fixas da sessão
+            key={index}
+          >
+            {index + 1}
+          </li>
+        );
+      })}
+    </ol>
+  );
 };
 
 const shortcutClass =
-  "inline-flex h-9 items-center gap-2 rounded-full border bg-card px-3.5 text-foreground text-sm transition-colors hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+  "inline-flex h-10 items-center gap-2 rounded-full border border-[#E9C48E]/50 bg-white/10 px-4 text-[#F7F3F1] text-sm transition-colors hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F7C873]";
 
 const ExercisesPage = async ({ searchParams }: ExercisesPageProperties) => {
   const [memberId, filters] = await Promise.all([
@@ -76,34 +115,53 @@ const ExercisesPage = async ({ searchParams }: ExercisesPageProperties) => {
   );
   const query = filters.q?.trim() ?? "";
   const isFiltering = Boolean(query || filters.categoria);
+  const compactHero = inProgressSessions.length >= 3;
 
   return (
     <main className="mx-auto w-full max-w-[1080px] px-5 pt-5 pb-14 md:px-8 md:pt-8 md:pb-20 lg:px-12 lg:pt-12 lg:pb-[120px]">
-      <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
-        <div className="flex flex-col gap-3">
+      <header
+        className={`relative overflow-hidden rounded-lg bg-[linear-gradient(120deg,#410230,#560A2A_55%,#7A1230)] text-[#F7F3F1] ${compactHero ? "p-5 md:p-6" : "p-6 md:p-10"}`}
+      >
+        <Image
+          alt=""
+          aria-hidden="true"
+          className={`pointer-events-none absolute right-0 bottom-0 hidden h-full w-auto object-contain object-right-bottom opacity-95 md:block ${compactHero ? "max-h-[170px]" : ""}`}
+          height={560}
+          src="/exercises/hero-lousa.svg"
+          unoptimized
+          width={520}
+        />
+        <div className="relative flex max-w-[560px] flex-col gap-3">
           <ExerciseEyebrow>Prática e revisão</ExerciseEyebrow>
-          <h1 className="m-0 font-display text-[40px] leading-[1.05] tracking-[-0.02em] md:text-5xl">
+          <h1
+            className={`m-0 font-display leading-[1.05] tracking-[-0.02em] ${compactHero ? "text-4xl" : "text-[40px] md:text-5xl"}`}
+          >
             Exercícios
           </h1>
+          {!compactHero && (
+            <p className="m-0 max-w-[460px] text-[#F7F3F1]/80 text-[15px] leading-[1.6]">
+              {inProgressSessions.length > 0
+                ? "Retome a folha aberta ou escolha uma nova lista para praticar."
+                : "Nenhuma folha aberta ainda. Escolha uma lista abaixo para começar a praticar."}
+            </p>
+          )}
+          <nav
+            aria-label="Atalhos de exercícios"
+            className="mt-1 flex flex-wrap gap-2"
+          >
+            <Link className={shortcutClass} href="/exercicios/historico">
+              <HistoryIcon aria-hidden="true" className="size-4" />
+              Histórico
+            </Link>
+            <Link className={shortcutClass} href="/exercicios/favoritas">
+              <BookmarkIcon aria-hidden="true" className="size-4" />
+              Questões salvas
+              {favoritesCount > 0 && (
+                <span className="text-[#E9C48E] text-xs">{favoritesCount}</span>
+              )}
+            </Link>
+          </nav>
         </div>
-        <nav
-          aria-label="Atalhos de exercícios"
-          className="flex flex-wrap gap-2"
-        >
-          <Link className={shortcutClass} href="/exercicios/historico">
-            <HistoryIcon aria-hidden="true" className="size-4" />
-            Histórico
-          </Link>
-          <Link className={shortcutClass} href="/exercicios/favoritas">
-            <BookmarkIcon aria-hidden="true" className="size-4" />
-            Questões salvas
-            {favoritesCount > 0 && (
-              <span className="text-muted-foreground text-xs">
-                {favoritesCount}
-              </span>
-            )}
-          </Link>
-        </nav>
       </header>
 
       {filters.estado === "lista-indisponivel" && (
@@ -127,7 +185,7 @@ const ExercisesPage = async ({ searchParams }: ExercisesPageProperties) => {
 
             return (
               <article
-                className="flex flex-wrap items-center gap-x-6 gap-y-4 rounded-lg border border-l-[3px] border-l-primary bg-card p-4 md:px-5"
+                className="flex flex-wrap items-center gap-x-6 gap-y-4 rounded-lg border border-l-[3px] border-l-primary bg-[repeating-linear-gradient(transparent,transparent_27px,#E2D6D1_28px)] bg-card p-4 md:px-5"
                 key={session.id}
               >
                 <div className="flex min-w-0 flex-[1_1_260px] flex-col gap-2">
@@ -137,11 +195,15 @@ const ExercisesPage = async ({ searchParams }: ExercisesPageProperties) => {
                   <h3 className="font-display text-xl leading-[1.25]">
                     {session.list.title}
                   </h3>
-                  <ExerciseProgress
-                    className="mt-0"
-                    questions={session.questions}
-                    showAnswerStatus={false}
-                  />
+                  {session.questions.length > 30 ? (
+                    <ExerciseProgress
+                      className="mt-0"
+                      questions={session.questions}
+                      showAnswerStatus={false}
+                    />
+                  ) : (
+                    <SessionBubbles questions={session.questions} />
+                  )}
                   <p className="m-0 text-[12.5px] text-muted-foreground">
                     {answered} de {session.questions.length} respondidas
                   </p>
@@ -269,10 +331,17 @@ const ExercisesPage = async ({ searchParams }: ExercisesPageProperties) => {
                     className="flex items-center gap-3 px-1 py-3.5 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:gap-4"
                     href={href}
                   >
-                    <span className="w-14 shrink-0 font-mono text-muted-foreground text-xs uppercase">
-                      {historyDateFormatter.format(
-                        session.completedAt ?? session.startedAt
-                      )}
+                    <span className="flex w-12 shrink-0 flex-col items-center rounded-[4px] border border-[#D9A86B]/70 bg-card py-1 font-data uppercase leading-none">
+                      <span className="font-semibold text-base text-foreground">
+                        {historyDayFormatter.format(
+                          session.completedAt ?? session.startedAt
+                        )}
+                      </span>
+                      <span className="mt-0.5 text-[10px] text-muted-foreground tracking-[.08em]">
+                        {historyMonthFormatter
+                          .format(session.completedAt ?? session.startedAt)
+                          .replace(".", "")}
+                      </span>
                     </span>
                     <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                       <span className="line-clamp-1 text-[15px] text-foreground">
@@ -285,10 +354,15 @@ const ExercisesPage = async ({ searchParams }: ExercisesPageProperties) => {
                       )}
                     </span>
                     <span
-                      className={`min-w-[52px] shrink-0 rounded-full px-2 py-1 text-center font-mono text-xs ${scoreToneClass(score.answered, score.percentage)}`}
+                      className="flex size-12 shrink-0 items-center justify-center rounded-full"
+                      style={{
+                        background: `conic-gradient(${ringColor(score.answered, score.percentage)} ${score.answered === 0 ? 0 : score.percentage}%, #E2D6D1 0)`,
+                      }}
                       title={`${score.correct} de ${score.answered} corretas`}
                     >
-                      {score.answered === 0 ? "—" : `${score.percentage}%`}
+                      <span className="flex size-[38px] items-center justify-center rounded-full bg-background font-data text-foreground text-xs">
+                        {score.answered === 0 ? "—" : `${score.percentage}%`}
+                      </span>
                     </span>
                     <ChevronRightIcon
                       aria-hidden="true"
