@@ -62,7 +62,7 @@ const ExerciseFavoriteQuestionPage = async ({
   }
 
   return (
-    <main className="mx-auto w-full max-w-[760px] px-4 pt-2 pb-5 md:px-8 md:py-10 lg:px-0">
+    <main className="mx-auto w-full max-w-[760px] px-5 pt-3 pb-24 sm:px-8 sm:pt-10 lg:px-0">
       <Link
         className="hidden text-muted-foreground text-sm hover:text-foreground md:inline-flex"
         href="/exercicios/favoritas"
@@ -72,7 +72,7 @@ const ExerciseFavoriteQuestionPage = async ({
       <ExerciseEyebrow className="mt-0 md:mt-6">
         Questão salva · {list.bank.title} · {list.title}
       </ExerciseEyebrow>
-      <h1 className="mt-2 font-display text-4xl leading-tight md:text-5xl">
+      <h1 className="mt-2 font-display font-semibold text-4xl leading-[1.05] tracking-[-.02em] md:text-[52px]">
         Responder questão salva
       </h1>
       <article className="mt-6 rounded-md border bg-card p-5 md:p-8">

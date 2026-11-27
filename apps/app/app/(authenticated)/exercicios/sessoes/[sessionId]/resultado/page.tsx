@@ -33,7 +33,7 @@ const ExerciseSessionResultPage = async ({
   );
 
   return (
-    <main className="mx-auto w-full max-w-[1080px] px-5 pt-[68px] pb-14 md:px-8 md:pt-12 md:pb-[120px] lg:px-12">
+    <main className="mx-auto w-full max-w-[1080px] px-5 pt-[68px] pb-24 md:px-8 md:pt-10 lg:px-12 lg:pt-12">
       <div className="mx-auto max-w-[760px]">
         <header className="flex flex-col gap-3.5">
           <Link
@@ -46,7 +46,7 @@ const ExerciseSessionResultPage = async ({
             Sessão concluída · {session.list.title} | {session.questions.length}{" "}
             questões fundamentais
           </ExerciseEyebrow>
-          <h1 className="m-0 font-display font-semibold text-[32px] leading-[1.05] tracking-[-.02em] md:text-[52px]">
+          <h1 className="m-0 font-display font-semibold text-4xl leading-[1.05] tracking-[-.02em] md:text-[52px]">
             Resultado
           </h1>
         </header>

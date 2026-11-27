@@ -73,7 +73,7 @@ const ExerciseFavoritesPage = async ({
         className="mt-6 flex max-w-[760px] flex-wrap items-center gap-x-10 gap-y-7 rounded-lg border bg-card p-6 md:mt-6 md:p-10"
       >
         <div className="flex min-w-0 flex-[1_1_300px] flex-col gap-3">
-          <h2 className="m-0 font-display font-semibold text-2xl leading-[1.2] md:text-[28px]">
+          <h2 className="m-0 font-display font-semibold text-2xl leading-[1.2] tracking-[-.01em]">
             Esta página da lista ficou desatualizada.
           </h2>
           <p className="m-0 text-[15px] text-muted-foreground leading-[1.6]">
@@ -91,7 +91,7 @@ const ExerciseFavoritesPage = async ({
       <section className="mt-6 flex max-w-[760px] flex-wrap items-center gap-x-10 gap-y-7 rounded-lg border bg-card p-6 md:mt-6 md:p-10">
         <ExerciseEmptyIllustration />
         <div className="flex min-w-0 flex-[1_1_300px] flex-col gap-3">
-          <h2 className="m-0 font-display font-semibold text-2xl leading-[1.2] md:text-[28px]">
+          <h2 className="m-0 font-display font-semibold text-2xl leading-[1.2] tracking-[-.01em]">
             Você ainda não salvou questões.
           </h2>
           <p className="m-0 text-[15px] text-muted-foreground leading-[1.6]">
@@ -106,7 +106,7 @@ const ExerciseFavoritesPage = async ({
   }
 
   return (
-    <main className="mx-auto w-full max-w-[1080px] px-5 pt-3 pb-14 md:px-8 md:pt-12 md:pb-[120px] lg:px-12">
+    <main className="mx-auto w-full max-w-[1080px] px-5 pt-3 pb-24 sm:px-8 sm:pt-10 lg:px-12 lg:pt-12">
       <div className="max-w-[820px]">
         <header className="flex flex-col gap-3.5">
           <Link

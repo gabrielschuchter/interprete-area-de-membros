@@ -36,7 +36,7 @@ const ExerciseHistoryPage = async ({
   );
 
   return (
-    <main className="mx-auto w-full max-w-[1080px] px-5 pt-3 pb-14 md:px-8 md:pt-12 md:pb-[120px] lg:px-12">
+    <main className="mx-auto w-full max-w-[1080px] px-5 pt-3 pb-24 sm:px-8 sm:pt-10 lg:px-12 lg:pt-12">
       <header className="flex flex-col gap-3.5">
         <Link
           className="hidden min-h-11 items-center gap-2 text-muted-foreground text-sm hover:text-foreground md:inline-flex"

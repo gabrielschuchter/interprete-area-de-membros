@@ -50,7 +50,7 @@ const ExerciseListPage = async ({ params }: ExerciseListPageProperties) => {
     activeSession?.questions.filter(({ answer }) => answer).length ?? 0;
 
   return (
-    <main className="mx-auto w-full max-w-[1080px] px-5 pt-2 pb-14 md:px-8 md:pt-12 md:pb-[120px] lg:px-12">
+    <main className="mx-auto w-full max-w-[1080px] px-5 pt-3 pb-24 sm:px-8 sm:pt-10 lg:px-12 lg:pt-12">
       <Link
         className="hidden min-h-11 items-center gap-2 text-muted-foreground text-sm hover:text-foreground md:inline-flex"
         href="/exercicios"
@@ -71,7 +71,7 @@ const ExerciseListPage = async ({ params }: ExerciseListPageProperties) => {
           <ExerciseEyebrow>
             {list.bank.title} · lista de exercícios
           </ExerciseEyebrow>
-          <h1 className="mt-3 font-display text-3xl leading-[1.12] tracking-[-.015em] md:text-[42px]">
+          <h1 className="mt-3 font-display font-semibold text-3xl leading-[1.1] tracking-[-.02em] md:text-[42px]">
             {list.title}
           </h1>
           {list.description && (
