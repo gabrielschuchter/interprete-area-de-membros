@@ -1,9 +1,9 @@
 import Image from "next/image";
 import { useId } from "react";
 
-type CoverKind = "pico" | "curve" | "cohort" | "book";
+export type CoverKind = "pico" | "curve" | "cohort" | "book";
 
-const kindForList = (
+export const kindForList = (
   title: string,
   bankTitle: string,
   slug: string

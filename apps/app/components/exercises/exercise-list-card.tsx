@@ -1,5 +1,5 @@
 import { IntentLink } from "@/app/(authenticated)/components/intent-link";
-import { ExerciseListCover } from "@/components/exercises/exercise-list-cover";
+import { ExerciseNotebookCover } from "@/components/exercises/exercise-notebook-cover";
 import {
   type ExerciseListState,
   exerciseListStateLabel,
@@ -25,40 +25,31 @@ export const ExerciseListCard = ({
   const total = list._count.items;
   const progress = exerciseListStateProgress(state);
   const isCompleted = state?.kind === "completed";
-  const isNew = !state || state.kind === "new";
+
+  const kind = state?.kind ?? "new";
+  const answered = state?.kind === "in-progress" ? state.answered : 0;
+  const cta = {
+    new: "Começar",
+    "in-progress": "Continuar",
+    completed: "Refazer",
+  }[kind];
 
   return (
     <article className="group relative flex flex-col overflow-hidden rounded-lg border bg-card transition-colors focus-within:border-primary hover:border-primary">
-      <div className="relative border-[#D9A86B]/60 border-b">
-        <ExerciseListCover
-          bankTitle={list.bank.title}
-          className="h-[104px]"
-          coverUrl={list.coverUrl ?? null}
-          listSlug={list.slug}
-          title={list.title}
-        />
-        {isNew && (
-          <span
-            aria-hidden="true"
-            className="absolute top-2 right-2 rounded-[3px] bg-[#F7C873] px-1.5 py-0.5 font-data font-semibold text-[#410230] text-[10px] uppercase tracking-[.1em]"
-          >
-            Novo
-          </span>
-        )}
-        {isCompleted && (
-          <span
-            aria-hidden="true"
-            className="absolute top-2 right-2 rounded-[3px] bg-[#410230] px-1.5 py-0.5 font-data font-semibold text-[#E9C48E] text-[10px] uppercase tracking-[.1em]"
-          >
-            ◆ Concluída
-          </span>
-        )}
-      </div>
-      <div className="flex flex-1 flex-col gap-2.5 border-l-[3px] border-l-primary p-4">
-        <p className="m-0 font-data font-medium text-[10.5px] text-muted-foreground uppercase leading-[1.4] tracking-[.08em]">
+      <ExerciseNotebookCover
+        answered={answered}
+        bankTitle={list.bank.title}
+        coverUrl={list.coverUrl ?? null}
+        listSlug={list.slug}
+        state={kind}
+        title={list.title}
+        total={total}
+      />
+      <div className="flex flex-1 flex-col gap-2 px-[18px] pt-4 pb-[18px]">
+        <p className="m-0 font-data font-medium text-[11px] text-muted-foreground uppercase leading-[1.4] tracking-[.16em]">
           {list.bank.title}
         </p>
-        <h3 className="font-display text-lg leading-tight">
+        <h3 className="font-display font-semibold text-xl leading-[1.2]">
           <IntentLink
             className="text-foreground after:absolute after:inset-0 after:rounded-lg hover:text-primary focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring"
             href={`/exercicios/listas/${list.slug}`}
@@ -67,11 +58,11 @@ export const ExerciseListCard = ({
           </IntentLink>
         </h3>
         {list.description && (
-          <p className="line-clamp-2 text-muted-foreground text-sm leading-[1.5]">
+          <p className="line-clamp-2 text-muted-foreground text-sm leading-[1.45]">
             {list.description}
           </p>
         )}
-        <div className="mt-auto flex flex-col gap-1.5 pt-1.5">
+        <div className="mt-auto flex flex-col gap-2 pt-3">
           <div
             aria-hidden="true"
             className="h-1 overflow-hidden rounded-sm bg-muted"
@@ -81,14 +72,22 @@ export const ExerciseListCard = ({
               style={{ width: `${progress}%` }}
             />
           </div>
-          <p className="m-0 flex justify-between text-[12.5px] text-muted-foreground">
-            <span>
-              {total} {total === 1 ? "questão" : "questões"}
+          <div className="flex items-center justify-between gap-2 border-border border-t pt-3">
+            <p className="m-0 flex flex-col font-data text-[13px] leading-tight">
+              <span className={isCompleted ? "font-medium text-success" : ""}>
+                {exerciseListStateLabel(state)}
+              </span>
+              <span className="text-[11.5px] text-muted-foreground">
+                {total} {total === 1 ? "questão" : "questões"}
+              </span>
+            </p>
+            <span
+              aria-hidden="true"
+              className="inline-flex min-h-10 items-center rounded-[4px] border border-primary px-3.5 font-medium text-primary text-sm transition-colors group-hover:bg-primary group-hover:text-primary-foreground"
+            >
+              {cta}
             </span>
-            <span className={isCompleted ? "font-medium text-success" : ""}>
-              {exerciseListStateLabel(state)}
-            </span>
-          </p>
+          </div>
         </div>
       </div>
     </article>

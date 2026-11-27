@@ -178,6 +178,13 @@ const ExercisesPage = async ({ searchParams }: ExercisesPageProperties) => {
           <h2 className="sr-only" id="exercise-resume-title">
             Continue de onde parou
           </h2>
+          <div
+            aria-hidden="true"
+            className="flex items-center gap-3 font-data text-[11px] text-muted-foreground tracking-[.2em]"
+          >
+            NA CARTEIRA
+            <span className="h-px flex-1 bg-border" />
+          </div>
           {inProgressSessions.map((session) => {
             const answered = session.questions.filter(
               ({ answer }) => answer !== null
@@ -224,33 +231,33 @@ const ExercisesPage = async ({ searchParams }: ExercisesPageProperties) => {
         <ExerciseSearchControls
           categories={categories}
           categorySlug={filters.categoria}
+          heading={
+            <div className="flex flex-col gap-2">
+              <p className="m-0 font-data text-[11px] text-muted-foreground uppercase tracking-[.2em]">
+                Escolha um caderno · {lists.length}{" "}
+                {lists.length === 1 ? "lista" : "listas"}
+              </p>
+              <h2
+                className="font-display font-semibold text-[26px] leading-[1.2] tracking-[-0.01em] md:text-[30px]"
+                id="exercise-lists-title"
+              >
+                {isFiltering ? "Resultados" : "Listas para praticar"}
+              </h2>
+              {isFiltering && (
+                <Link
+                  className="font-semibold text-brand-action-text text-sm hover:underline"
+                  href="/exercicios"
+                >
+                  Limpar filtros
+                </Link>
+              )}
+            </div>
+          }
           query={query}
         />
 
-        <div className="mt-6 flex flex-wrap items-baseline justify-between gap-x-5 gap-y-1">
-          <h2
-            className="font-display text-2xl leading-[1.25] tracking-[-0.005em] md:text-[28px]"
-            id="exercise-lists-title"
-          >
-            {isFiltering ? "Resultados" : "Listas para praticar"}
-          </h2>
-          <p className="m-0 flex items-baseline gap-4 text-muted-foreground text-xs">
-            {isFiltering && (
-              <Link
-                className="font-semibold text-brand-action-text text-sm hover:underline"
-                href="/exercicios"
-              >
-                Limpar filtros
-              </Link>
-            )}
-            <span className="font-mono uppercase tracking-widest">
-              {lists.length} {lists.length === 1 ? "lista" : "listas"}
-            </span>
-          </p>
-        </div>
-
         {lists.length > 0 && (
-          <div className="mt-4 grid gap-3 md:grid-cols-[repeat(auto-fill,minmax(260px,1fr))] md:gap-4">
+          <div className="mt-6 grid gap-4 md:grid-cols-[repeat(auto-fill,minmax(300px,1fr))] md:gap-6">
             {lists.map((list) => (
               <ExerciseListCard
                 key={list.id}

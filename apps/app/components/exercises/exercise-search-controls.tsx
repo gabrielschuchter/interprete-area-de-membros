@@ -4,7 +4,7 @@ import { Input } from "@repo/design-system/components/ui/input";
 import { SearchIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { FormEvent } from "react";
+import type { FormEvent, ReactNode } from "react";
 import { startTransition, useEffect, useRef, useState } from "react";
 import {
   LIBRARY_AUTO_SEARCH_DELAY_MS,
@@ -30,19 +30,28 @@ export const exerciseFiltersHref = (query: string, categorySlug?: string) => {
 };
 
 const chipClass = (active: boolean) =>
-  `-mb-px inline-flex min-h-11 shrink-0 items-center whitespace-nowrap border-b-2 px-3.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+  `inline-flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-t-md px-4 font-medium text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
     active
-      ? "border-[#8C1535] font-semibold text-primary"
-      : "border-transparent text-muted-foreground hover:text-primary"
+      ? "bg-primary text-primary-foreground"
+      : "bg-[#e7dedc] text-primary hover:bg-[#dcd0cf]"
   }`;
+
+const TabDot = ({ active }: { readonly active: boolean }) => (
+  <span
+    aria-hidden="true"
+    className={`size-2 rounded-full ${active ? "bg-[#F7C873]" : "bg-[#8C1535]"}`}
+  />
+);
 
 export const ExerciseSearchControls = ({
   categories,
+  heading,
   categorySlug,
   query,
 }: {
   readonly categories: readonly ExerciseSearchCategory[];
   readonly categorySlug?: string;
+  readonly heading?: ReactNode;
   readonly query: string;
 }) => {
   const router = useRouter();
@@ -104,37 +113,44 @@ export const ExerciseSearchControls = ({
   };
 
   return (
-    <search className="flex flex-col gap-3">
-      <form onSubmit={onSubmit}>
-        <label className="relative block" htmlFor="exercise-search-query">
-          <span className="sr-only">Buscar listas e temas</span>
-          <SearchIcon
-            aria-hidden="true"
-            className="absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground"
-          />
-          <Input
-            autoComplete="off"
-            className="h-11 bg-card pl-10"
-            id="exercise-search-query"
-            name="q"
-            onChange={(event) => onChange(event.target.value)}
-            placeholder="Buscar listas ou temas"
-            type="search"
-            value={typed}
-          />
-        </label>
-        {categorySlug && (
-          <input name="categoria" type="hidden" value={categorySlug} />
-        )}
-      </form>
+    <search className="flex flex-col gap-5">
+      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
+        {heading}
+        <form className="flex-[0_1_320px]" onSubmit={onSubmit}>
+          <label className="relative block" htmlFor="exercise-search-query">
+            <span className="sr-only">Buscar listas e temas</span>
+            <SearchIcon
+              aria-hidden="true"
+              className="absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground"
+            />
+            <Input
+              autoComplete="off"
+              className="h-11 border-[#b8a5aa] bg-card pl-10"
+              id="exercise-search-query"
+              name="q"
+              onChange={(event) => onChange(event.target.value)}
+              placeholder="Buscar listas ou temas"
+              type="search"
+              value={typed}
+            />
+          </label>
+          {categorySlug && (
+            <input name="categoria" type="hidden" value={categorySlug} />
+          )}
+        </form>
+      </div>
       {categories.length > 0 && (
-        <nav aria-label="Categorias" className="flex overflow-x-auto border-b">
+        <nav
+          aria-label="Categorias"
+          className="flex gap-1 overflow-x-auto border-primary border-b-[3px]"
+        >
           <Link
             aria-current={categorySlug ? undefined : "true"}
             className={chipClass(!categorySlug)}
             href={exerciseFiltersHref(typed)}
             prefetch={false}
           >
+            <TabDot active={!categorySlug} />
             Todas
           </Link>
           {categories.map((category) => (
@@ -145,6 +161,7 @@ export const ExerciseSearchControls = ({
               key={category.id}
               prefetch={false}
             >
+              <TabDot active={category.slug === categorySlug} />
               {category.title}
             </Link>
           ))}
