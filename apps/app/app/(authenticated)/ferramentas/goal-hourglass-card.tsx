@@ -13,15 +13,16 @@ import {
   type GoalMode,
   goalProgress,
 } from "@/lib/study-count-goals-model";
+import { goalArtModel } from "@/lib/study-goal-art-model";
 import {
   hourglassRemainingFraction,
   weeklyGoalPresets,
 } from "@/lib/study-week-shelf-model";
-import { ArchHourglass } from "./arch-hourglass";
 import {
   deleteCountGoalAction,
   saveCountGoalAction,
 } from "./count-goal-actions";
+import { GoalTypeArt } from "./goal-type-art";
 import { savePlannerGoalAction } from "./planner-actions";
 
 const MONO = "font-data";
@@ -44,14 +45,24 @@ export interface GoalHourglassCardProps {
   readonly targetMinutes: number | null;
 }
 
-const GLYPHS: Record<GoalMode, string> = {
-  MINUTES:
-    "M6 2h12M6 22h12M7 2c0 6 10 6 10 10S7 16 7 22M17 2c0 6-10 6-10 10s10 4 10 10",
-  LESSONS: "M4 5h16v11H4zM10 8.5l5 2.5-5 2.5zM8 20h8M12 16v4",
-  READINGS:
-    "M3 6c3-1.5 6-1.5 9 0 3-1.5 6-1.5 9 0v13c-3-1.5-6-1.5-9 0-3-1.5-6-1.5-9 0zM12 6v13",
-  EXERCISES:
-    "M6 3h12v18H6zM9 9l1.5 1.5L13 8M9 15l1.5 1.5L13 14M15 9.5h1.5M15 15.5h1.5",
+const CARD_LABEL: Record<GoalMode, string> = {
+  MINUTES: "Ampulheta da meta",
+  LESSONS: "Ingresso da meta",
+  READINGS: "Prateleira da meta",
+  EXERCISES: "Gabarito da meta",
+};
+
+const DONE_NOTE: Record<GoalMode, string> = {
+  MINUTES: "Sobrou tempo para respirar",
+  LESSONS: "Ingresso completo",
+  READINGS: "Prateleira completa",
+  EXERCISES: "Gabarito cheio",
+};
+
+const PIECE_NAME: Record<Exclude<GoalMode, "MINUTES">, string> = {
+  LESSONS: "furo",
+  READINGS: "livro",
+  EXERCISES: "bolinha",
 };
 
 const GoalTypeTabs = ({
@@ -61,33 +72,24 @@ const GoalTypeTabs = ({
   readonly mode: GoalMode;
   readonly onChange: (next: GoalMode) => void;
 }) => (
-  <fieldset className="m-0 grid min-w-0 grid-cols-2 gap-1.5 border-0 p-0">
+  <fieldset className="m-0 grid min-w-0 grid-cols-2 gap-2 border-0 p-0">
     <legend className="sr-only">Tipo de meta semanal</legend>
-    {MODES.map((item) => (
+    {MODES.map((item, index) => (
       <button
         aria-pressed={mode === item}
         className={cn(
-          "flex min-h-11 items-center justify-center gap-2 rounded border px-3 text-[13px] transition-colors",
+          "flex min-h-[46px] items-center justify-center gap-2 rounded border px-3 text-[15px] transition-colors",
           mode === item
             ? "border-[#8C1535] bg-[#8C1535] font-semibold text-[#F1EBE8]"
-            : "border-[#DCD0CF] bg-[#FBF8F5] text-[#4A3340] hover:bg-[#F1EBE8]"
+            : "border-[#DCD0CF] bg-[#FFFDFB] text-[#410230] hover:bg-[#E7DEDC]"
         )}
         key={item}
         onClick={() => onChange(item)}
         type="button"
       >
-        <svg
-          aria-hidden="true"
-          className="size-4 shrink-0"
-          fill="none"
-          stroke="currentColor"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth="1.6"
-          viewBox="0 0 24 24"
-        >
-          <path d={GLYPHS[item]} />
-        </svg>
+        <span aria-hidden="true" className={cn(MONO, "text-[11px] opacity-70")}>
+          {String(index + 1).padStart(2, "0")}
+        </span>
         {modeLabel(item)}
       </button>
     ))}
@@ -237,6 +239,19 @@ export const GoalHourglassCard = ({
   const label = modeLabel(mode).toLowerCase();
   const pace = paceLabel(mode, progress.remaining, daysLeft);
   const current = progress.hasGoal ? progress.target : null;
+  const perPiece =
+    mode === "MINUTES"
+      ? 1
+      : goalArtModel(mode, progress.studied, progress.target).perCell;
+  let note = "Escolha abaixo";
+  if (progress.reached) {
+    note = DONE_NOTE[mode];
+  } else if (progress.hasGoal) {
+    note = pace ?? "Semana encerrada";
+  }
+  if (mode !== "MINUTES" && perPiece > 1 && !progress.reached) {
+    note = `${note} · cada ${PIECE_NAME[mode]} = ${perPiece}`;
+  }
 
   return (
     <div className="flex min-w-0 flex-[1_1_300px] flex-col gap-4 rounded-lg border border-[#E2D6D1] bg-[#F7F3F1] p-5 sm:p-6">
@@ -246,31 +261,30 @@ export const GoalHourglassCard = ({
           "text-[#7D5A6C] text-[11px] uppercase tracking-[.2em]"
         )}
       >
-        Ampulheta da meta
+        {CARD_LABEL[mode]}
       </span>
       <GoalTypeTabs mode={mode} onChange={setMode} />
       <div className="flex flex-wrap items-center gap-5">
-        <ArchHourglass
+        <GoalTypeArt
           className="h-[206px] w-[150px] shrink-0"
           flowing={progress.hasGoal && !progress.reached}
           glow={0.2 + 0.5 * (1 - fraction)}
-          label={
+          hourglassLabel={
             progress.hasGoal
               ? `Ampulheta: faltam ${progress.remaining} ${progress.unit} para a meta semanal de ${label}`
               : "Ampulheta aguardando uma meta semanal"
           }
+          mode={mode}
+          reached={progress.reached}
           remaining={fraction}
+          studied={progress.studied}
+          target={progress.target}
         />
         <div className="flex min-w-[140px] flex-1 flex-col gap-2">
           <span className="font-display font-semibold text-[#2A0A1A] text-[28px] leading-[1.1]">
             {progress.title}
           </span>
-          <span className={cn(MONO, "text-[#7D5A6C] text-sm")}>
-            {pace ??
-              (progress.hasGoal
-                ? "Sobrou tempo para respirar"
-                : "Escolha abaixo")}
-          </span>
+          <span className={cn(MONO, "text-[#7D5A6C] text-sm")}>{note}</span>
           <div
             aria-label={`${progress.percent}% da meta semanal de ${label}`}
             aria-valuemax={100}
@@ -280,7 +294,10 @@ export const GoalHourglassCard = ({
             role="progressbar"
           >
             <span
-              className="block h-full bg-[#8C1535] transition-[width] duration-700"
+              className={cn(
+                "block h-full transition-[width] duration-700",
+                progress.reached ? "bg-[#D9A86B]" : "bg-[#8C1535]"
+              )}
               style={{ width: `${progress.percent}%` }}
             />
           </div>
