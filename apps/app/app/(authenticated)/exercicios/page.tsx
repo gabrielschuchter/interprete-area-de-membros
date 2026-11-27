@@ -2,6 +2,7 @@ import { Button } from "@repo/design-system/components/ui/button";
 import { ChevronRightIcon } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
+import type { CSSProperties } from "react";
 import { IntentLink } from "@/app/(authenticated)/components/intent-link";
 import { ExerciseEmptyIllustration } from "@/components/exercises/exercise-empty-illustration";
 import { ExercisesHero } from "@/components/exercises/exercise-hero";
@@ -153,9 +154,11 @@ const ExercisesPage = async ({ searchParams }: ExercisesPageProperties) => {
                 <article
                   className="relative flex flex-col gap-3 rounded-[4px] border bg-[repeating-linear-gradient(180deg,transparent_0_27px,#ece2df_27px_28px)] bg-card py-5 pr-5 pl-[46px] transition-transform motion-safe:hover:rotate-0 md:py-[22px] md:pl-[46px]"
                   key={session.id}
-                  style={{
-                    transform: `rotate(${index % 2 === 0 ? -0.5 : 0.4}deg)`,
-                  }}
+                  style={
+                    {
+                      "--tilt": index % 2 === 0 ? "-0.5deg" : "0.4deg",
+                    } as CSSProperties
+                  }
                 >
                   <span
                     aria-hidden="true"
@@ -178,13 +181,19 @@ const ExercisesPage = async ({ searchParams }: ExercisesPageProperties) => {
                   ) : (
                     <SessionBubbles questions={session.questions} />
                   )}
-                  <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+                  <div className="mt-auto flex flex-wrap items-center justify-between gap-3 pt-1">
                     <p className="m-0 font-data text-[13px] text-muted-foreground">
                       {answered} de {session.questions.length} respondidas
                     </p>
                     <Button asChild className="h-11 rounded-[4px]">
                       <IntentLink href={`/exercicios/sessoes/${session.id}`}>
-                        Retomar na questão {next} →
+                        Retomar na questão {next}{" "}
+                        <span
+                          aria-hidden="true"
+                          className="transition-transform group-hover/sheet:translate-x-0.5"
+                        >
+                          →
+                        </span>
                       </IntentLink>
                     </Button>
                   </div>

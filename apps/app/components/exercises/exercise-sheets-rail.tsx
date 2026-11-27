@@ -141,7 +141,7 @@ export const ExerciseSheetsRail = ({
         ref={railRef}
       >
         {Children.map(children, (child) => (
-          <div className="w-[88%] shrink-0 snap-start md:w-[calc(50%-12px)]">
+          <div className="flex w-[88%] shrink-0 snap-start md:w-[calc(50%-12px)]">
             {child}
           </div>
         ))}

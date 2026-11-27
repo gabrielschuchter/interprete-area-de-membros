@@ -158,7 +158,7 @@ test("sessão em andamento aparece em destaque com o botão Retomar", async () =
   expect(screen.getByText("1 de 2 respondidas")).toBeTruthy();
   expect(
     screen
-      .getByRole("link", { name: "Retomar na questão 2 →" })
+      .getByRole("link", { name: /^Retomar na questão 2/u })
       .getAttribute("href")
   ).toBe("/exercicios/sessoes/session-1");
 });

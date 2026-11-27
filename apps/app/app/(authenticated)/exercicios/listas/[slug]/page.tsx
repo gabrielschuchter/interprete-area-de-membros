@@ -56,14 +56,16 @@ const ExerciseListPage = async ({ params }: ExerciseListPageProperties) => {
         <span aria-hidden="true">←</span> Voltar para Exercícios
       </Link>
       <article className="mt-6 max-w-[820px] overflow-hidden rounded-lg border bg-card">
-        <ExerciseListCover
-          bankTitle={list.bank.title}
-          className="h-24 md:h-[120px]"
-          coverUrl={list.coverUrl}
-          listSlug={list.slug}
-          title={list.title}
-        />
-        <div className="p-5 md:p-9">
+        <div className="px-5 pt-5 md:px-9 md:pt-9">
+          <ExerciseListCover
+            bankTitle={list.bank.title}
+            className="max-w-[360px] rounded-md"
+            coverUrl={list.coverUrl}
+            listSlug={list.slug}
+            title={list.title}
+          />
+        </div>
+        <div className="p-5 md:p-9 md:pt-6">
           <ExerciseEyebrow>
             {list.bank.title} · lista de exercícios
           </ExerciseEyebrow>
