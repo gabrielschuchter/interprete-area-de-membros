@@ -349,6 +349,16 @@ export const getMemberExerciseListSessions = (
         },
       });
 
+export const getMemberBookmarkedExerciseListIds = async (memberId: string) =>
+  new Set(
+    (
+      await database.exerciseListBookmark.findMany({
+        where: { memberId, list: { is: publishedListWhere } },
+        select: { listId: true },
+      })
+    ).map(({ listId }) => listId)
+  );
+
 export const countMemberExerciseFavorites = (memberId: string) =>
   database.exerciseQuestionBookmark.count({
     where: { memberId, ...publishedExerciseFavoriteWhere },

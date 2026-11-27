@@ -1,4 +1,5 @@
 import { IntentLink } from "@/app/(authenticated)/components/intent-link";
+import { ExerciseListBookmarkButton } from "@/components/exercises/exercise-list-bookmark-button";
 import { ExerciseNotebookCover } from "@/components/exercises/exercise-notebook-cover";
 import {
   type ExerciseListState,
@@ -11,15 +12,18 @@ interface ExerciseListCardList {
   readonly bank: { readonly title: string };
   readonly coverUrl?: string | null;
   readonly description: string | null;
+  readonly id: string;
   readonly slug: string;
   readonly title: string;
 }
 
 export const ExerciseListCard = ({
   list,
+  saved = false,
   state,
 }: {
   readonly list: ExerciseListCardList;
+  readonly saved?: boolean;
   readonly state?: ExerciseListState;
 }) => {
   const total = list._count.items;
@@ -35,6 +39,11 @@ export const ExerciseListCard = ({
 
   return (
     <article className="group relative flex flex-col overflow-hidden rounded-lg border bg-card transition-[translate,border-color] duration-200 focus-within:border-primary hover:-translate-y-[3px] hover:border-primary motion-reduce:transition-none">
+      <ExerciseListBookmarkButton
+        initialSaved={saved}
+        listId={list.id}
+        title={list.title}
+      />
       <ExerciseNotebookCover
         bankTitle={list.bank.title}
         coverUrl={list.coverUrl ?? null}

@@ -31,6 +31,8 @@ import {
   exerciseFiltersHref,
 } from "./exercise-search-controls";
 
+const SAVED_TAB = /Salvas/u;
+
 const CATEGORIES = [
   { id: "c1", slug: "pbe", title: "Prática baseada em evidências" },
   { id: "c2", slug: "bio", title: "Bioestatística" },
@@ -51,6 +53,23 @@ test("monta o endereço com busca e categoria", () => {
   expect(exerciseFiltersHref(" coorte ")).toBe("/exercicios?q=coorte");
   expect(exerciseFiltersHref("a b", "bio")).toBe(
     "/exercicios?q=a+b&categoria=bio"
+  );
+});
+
+test("a aba Salvas mantém a busca e marca a seleção", () => {
+  render(
+    <ExerciseSearchControls
+      categories={CATEGORIES}
+      query="coorte"
+      savedCount={3}
+      savedOnly
+    />
+  );
+  const tab = screen.getByRole("link", { name: SAVED_TAB });
+  expect(tab.getAttribute("aria-current")).toBe("true");
+  expect(tab.getAttribute("href")).toBe("/exercicios?q=coorte&salvas=1");
+  expect(screen.getByRole("link", { name: "Todas" }).getAttribute("href")).toBe(
+    "/exercicios?q=coorte"
   );
 });
 

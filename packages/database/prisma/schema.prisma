@@ -470,6 +470,7 @@ model Member {
   exerciseListsCreated                ExerciseList[]                     @relation("ExerciseListCreator")
   exerciseSessions                    ExerciseSession[]
   exerciseQuestionBookmarks           ExerciseQuestionBookmark[]
+  exerciseListBookmarks               ExerciseListBookmark[]
   studyTrackingSessions               StudyTrackingSession[]
   studyActivityIntervals              StudyActivityInterval[]
   presenceHours                       MemberPresenceHour[]
@@ -2083,9 +2084,22 @@ model ExerciseList {
   items             ExerciseListItem[]
   sessions          ExerciseSession[]
   collectionItems   ContentCollectionItem[]
+  bookmarks         ExerciseListBookmark[]
 
   @@index([status, position, publishedAt])
   @@index([bankId, status, position])
+}
+
+model ExerciseListBookmark {
+  id        String       @id @default(cuid())
+  memberId  String
+  listId    String
+  createdAt DateTime     @default(now())
+  member    Member       @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  list      ExerciseList @relation(fields: [listId], references: [id], onDelete: Cascade)
+
+  @@unique([memberId, listId])
+  @@index([memberId, createdAt])
 }
 
 model ExerciseListItem {

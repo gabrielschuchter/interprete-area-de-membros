@@ -14,6 +14,7 @@ import { scoreExerciseSession } from "@/lib/exercise-engine";
 import { summarizeExerciseListStates } from "@/lib/exercise-list-state";
 import {
   countMemberExerciseFavorites,
+  getMemberBookmarkedExerciseListIds,
   getMemberExerciseHistory,
   getMemberExerciseListSessions,
   getMemberInProgressExerciseSessions,
@@ -27,6 +28,7 @@ interface ExercisesPageProperties {
     readonly categoria?: string;
     readonly q?: string;
     readonly estado?: string;
+    readonly salvas?: string;
   }>;
 }
 
@@ -91,14 +93,25 @@ const ExercisesPage = async ({ searchParams }: ExercisesPageProperties) => {
     requireMemberId(),
     searchParams,
   ]);
-  const [lists, categories, inProgressSessions, history, favoritesCount] =
-    await Promise.all([
-      getPublishedExerciseLists(filters.q, filters.categoria),
-      getPublishedExerciseCategories(),
-      getMemberInProgressExerciseSessions(memberId),
-      getMemberExerciseHistory(memberId),
-      countMemberExerciseFavorites(memberId),
-    ]);
+  const [
+    allLists,
+    categories,
+    inProgressSessions,
+    history,
+    favoritesCount,
+    savedListIds,
+  ] = await Promise.all([
+    getPublishedExerciseLists(filters.q, filters.categoria),
+    getPublishedExerciseCategories(),
+    getMemberInProgressExerciseSessions(memberId),
+    getMemberExerciseHistory(memberId),
+    countMemberExerciseFavorites(memberId),
+    getMemberBookmarkedExerciseListIds(memberId),
+  ]);
+  const savedOnly = filters.salvas === "1";
+  const lists = savedOnly
+    ? allLists.filter(({ id }) => savedListIds.has(id))
+    : allLists;
   const listStates = summarizeExerciseListStates(
     await getMemberExerciseListSessions(
       memberId,
@@ -106,7 +119,15 @@ const ExercisesPage = async ({ searchParams }: ExercisesPageProperties) => {
     )
   );
   const query = filters.q?.trim() ?? "";
-  const isFiltering = Boolean(query || filters.categoria);
+  const isFiltering = Boolean(query || filters.categoria || savedOnly);
+  const emptyTitle =
+    savedOnly && !query
+      ? "Você ainda não salvou nenhuma lista."
+      : "Nenhuma lista encontrada para esta busca.";
+  const emptyHint =
+    savedOnly && !query
+      ? "Toque no marcador de uma lista para guardá-la aqui."
+      : "Tente outro termo ou escolha outra categoria para ver todas as listas.";
   const compactHero = inProgressSessions.length >= 3;
   const firstSession = inProgressSessions[0];
 
@@ -226,6 +247,8 @@ const ExercisesPage = async ({ searchParams }: ExercisesPageProperties) => {
             </div>
           }
           query={query}
+          savedCount={savedListIds.size}
+          savedOnly={savedOnly}
         />
 
         {lists.length > 0 && (
@@ -234,6 +257,7 @@ const ExercisesPage = async ({ searchParams }: ExercisesPageProperties) => {
               <ExerciseListCard
                 key={list.id}
                 list={list}
+                saved={savedListIds.has(list.id)}
                 state={listStates.get(list.id)}
               />
             ))}
@@ -244,12 +268,9 @@ const ExercisesPage = async ({ searchParams }: ExercisesPageProperties) => {
             <ExerciseEmptyIllustration />
             <div>
               <p className="brand-eyebrow">Nada encontrado</p>
-              <h3 className="mt-2 font-display text-2xl">
-                Nenhuma lista encontrada para esta busca.
-              </h3>
+              <h3 className="mt-2 font-display text-2xl">{emptyTitle}</h3>
               <p className="mt-2 text-muted-foreground text-sm leading-6">
-                Tente outro termo ou escolha outra categoria para ver todas as
-                listas.
+                {emptyHint}
               </p>
               <Button asChild className="mt-4" variant="outline">
                 <Link href="/exercicios">Limpar busca</Link>

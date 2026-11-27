@@ -30,6 +30,7 @@ import {
   exerciseManagementPath,
   resolveExerciseQuestionSwap,
 } from "@/lib/exercise-management";
+import { memberCanReadExerciseList } from "@/lib/exercises";
 import { requireMemberId } from "@/lib/learning";
 import {
   markLearningAssignmentCompleted,
@@ -1569,4 +1570,27 @@ const isHttpsUrl = (candidate: string) => {
   } catch {
     return false;
   }
+};
+
+export const setExerciseListBookmark = async (input: {
+  readonly listId: string;
+  readonly saved: boolean;
+}) => {
+  const memberId = await requireMemberId();
+  if (!(await memberCanReadExerciseList(memberId, input.listId))) {
+    return { ok: false as const };
+  }
+  if (input.saved) {
+    await database.exerciseListBookmark.upsert({
+      where: { memberId_listId: { memberId, listId: input.listId } },
+      create: { memberId, listId: input.listId },
+      update: {},
+    });
+  } else {
+    await database.exerciseListBookmark.deleteMany({
+      where: { memberId, listId: input.listId },
+    });
+  }
+  revalidatePath("/exercicios");
+  return { ok: true as const, saved: input.saved };
 };

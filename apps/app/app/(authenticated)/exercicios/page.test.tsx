@@ -10,9 +10,14 @@ const state = vi.hoisted(() => ({
   listSessions: [] as Record<string, unknown>[],
   history: [] as Record<string, unknown>[],
   favorites: 0,
+  savedLists: [] as string[],
 }));
 
 vi.mock("server-only", () => ({}));
+
+vi.mock("./actions", () => ({
+  setExerciseListBookmark: vi.fn(async () => ({ ok: true, saved: true })),
+}));
 
 vi.mock("next/navigation", () => ({
   usePathname: () => state.pathname,
@@ -48,6 +53,7 @@ vi.mock("@/lib/exercises", () => ({
   getMemberInProgressExerciseSessions: async () => state.inProgressSessions,
   getMemberExerciseHistory: async () => state.history,
   getMemberExerciseListSessions: async () => state.listSessions,
+  getMemberBookmarkedExerciseListIds: async () => new Set(state.savedLists),
   countMemberExerciseFavorites: async () => state.favorites,
 }));
 
@@ -91,10 +97,12 @@ afterEach(() => {
   state.listSessions = [];
   state.history = [];
   state.favorites = 0;
+  state.savedLists = [];
 });
 
 const HISTORY_ROW = /Medidas de tendência central/u;
 const CLEAR_LINK = /Limpar/u;
+const SAVED_TAB = /Salvas/u;
 const RESUME_LINK = /^Retomar na questão 2/u;
 
 const LIST = {
@@ -262,4 +270,25 @@ test("a folha em andamento tem altura mínima fixa e se endireita ao passar o mo
   expect(sheet?.className).toContain("min-h-[244px]");
   expect(sheet?.className).toContain("hover:rotate-0");
   expect(sheet?.className).toContain("hover:-translate-y-2");
+});
+
+test("a lista salva aparece marcada e dá para desmarcar; a aba Salvas filtra", async () => {
+  state.lists = [
+    LIST,
+    { ...LIST, id: "list-2", title: "Epidemiologia", slug: "epi" },
+  ];
+  state.savedLists = ["list-1"];
+
+  render(
+    await ExercisesPage({ searchParams: Promise.resolve({ salvas: "1" }) })
+  );
+
+  const marked = screen.getByRole("button", {
+    name: "Remover Bioestatística das salvas",
+  });
+  expect(marked.getAttribute("aria-pressed")).toBe("true");
+  expect(screen.queryByRole("link", { name: "Epidemiologia" })).toBeNull();
+  expect(
+    screen.getByRole("link", { name: SAVED_TAB }).getAttribute("aria-current")
+  ).toBe("true");
 });
