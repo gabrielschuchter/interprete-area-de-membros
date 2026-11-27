@@ -8,6 +8,7 @@ import { ExercisesHero } from "@/components/exercises/exercise-hero";
 import { ExerciseListCard } from "@/components/exercises/exercise-list-card";
 import { ExerciseProgress } from "@/components/exercises/exercise-progress";
 import { ExerciseSearchControls } from "@/components/exercises/exercise-search-controls";
+import { ExerciseSheetsRail } from "@/components/exercises/exercise-sheets-rail";
 import { scoreExerciseSession } from "@/lib/exercise-engine";
 import { summarizeExerciseListStates } from "@/lib/exercise-list-state";
 import {
@@ -141,7 +142,7 @@ const ExercisesPage = async ({ searchParams }: ExercisesPageProperties) => {
           >
             Continue de onde parou
           </h2>
-          <div className="grid gap-5 md:grid-cols-2 md:gap-6">
+          <ExerciseSheetsRail label="folhas em andamento">
             {inProgressSessions.map((session, index) => {
               const answered = session.questions.filter(
                 ({ answer }) => answer !== null
@@ -190,7 +191,7 @@ const ExercisesPage = async ({ searchParams }: ExercisesPageProperties) => {
                 </article>
               );
             })}
-          </div>
+          </ExerciseSheetsRail>
         </section>
       )}
 
