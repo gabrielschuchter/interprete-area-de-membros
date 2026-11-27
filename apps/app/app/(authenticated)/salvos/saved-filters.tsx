@@ -16,7 +16,7 @@ const filters: readonly {
   { id: "todos", label: "Todos" },
   { id: "aulas", label: "Aulas" },
   { id: "materiais", label: "Materiais" },
-  { id: "questoes", label: "Questões" },
+  { id: "questoes", label: "Exercícios" },
   { id: "comunidade", label: "Comunidade" },
 ];
 

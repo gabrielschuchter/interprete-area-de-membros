@@ -94,6 +94,9 @@ export const ExercisesHero = ({
               <span className="text-[#E9C48E]">{favoritesCount}</span>
             )}
           </Link>
+          <Link className={heroLinkClass} href="/salvos">
+            Todos os salvos
+          </Link>
         </nav>
       </div>
       <Image

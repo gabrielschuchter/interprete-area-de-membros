@@ -9,11 +9,13 @@ import {
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ExerciseEyebrow } from "@/components/exercises/exercise-eyebrow";
+import { ExerciseListBookmarkButton } from "@/components/exercises/exercise-list-bookmark-button";
 import { ExerciseListCover } from "@/components/exercises/exercise-list-cover";
 import { ExerciseProgress } from "@/components/exercises/exercise-progress";
 import {
   getMemberInProgressExerciseSessionForList,
   getPublishedExerciseList,
+  isExerciseListBookmarked,
 } from "@/lib/exercises";
 import { requireMemberId } from "@/lib/learning";
 import { startExerciseSession } from "../../actions";
@@ -40,10 +42,10 @@ const ExerciseListPage = async ({ params }: ExerciseListPageProperties) => {
       )
     ),
   ];
-  const activeSession = await getMemberInProgressExerciseSessionForList(
-    memberId,
-    list.id
-  );
+  const [activeSession, saved] = await Promise.all([
+    getMemberInProgressExerciseSessionForList(memberId, list.id),
+    isExerciseListBookmarked(memberId, list.id),
+  ]);
   const answeredQuestionCount =
     activeSession?.questions.filter(({ answer }) => answer).length ?? 0;
 
@@ -117,7 +119,15 @@ const ExerciseListPage = async ({ params }: ExerciseListPageProperties) => {
               Resultado salvo no seu perfil
             </li>
           </ul>
-          <div className="mt-5">
+          <div className="mt-5 flex flex-col gap-4">
+            <div>
+              <ExerciseListBookmarkButton
+                initialSaved={saved}
+                listId={list.id}
+                title={list.title}
+                variant="inline"
+              />
+            </div>
             {activeSession ? (
               <div className="flex flex-col gap-2.5 rounded-lg border bg-muted/60 p-5">
                 <p className="m-0 font-data text-[10.5px] text-primary uppercase leading-[1.3] tracking-[.1em]">

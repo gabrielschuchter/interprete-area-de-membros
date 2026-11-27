@@ -31,7 +31,7 @@ import {
   exerciseFiltersHref,
 } from "./exercise-search-controls";
 
-const SAVED_TAB = /Salvas/u;
+const SAVED_TAB = /Listas salvas/u;
 
 const CATEGORIES = [
   { id: "c1", slug: "pbe", title: "Prática baseada em evidências" },
@@ -56,7 +56,7 @@ test("monta o endereço com busca e categoria", () => {
   );
 });
 
-test("a aba Salvas mantém a busca e marca a seleção", () => {
+test("a aba Listas salvas mantém a busca e marca a seleção", () => {
   render(
     <ExerciseSearchControls
       categories={CATEGORIES}

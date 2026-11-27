@@ -9,7 +9,9 @@ export const ExerciseListBookmarkButton = ({
   initialSaved,
   listId,
   title,
+  variant = "cover",
 }: {
+  readonly variant?: "cover" | "inline";
   readonly initialSaved: boolean;
   readonly listId: string;
   readonly title: string;
@@ -32,11 +34,32 @@ export const ExerciseListBookmarkButton = ({
     });
   };
 
+  const label = saved
+    ? `Remover ${title} das salvas`
+    : `Salvar ${title} para depois`;
+
+  if (variant === "inline") {
+    return (
+      <button
+        aria-label={label}
+        aria-pressed={saved}
+        className="inline-flex h-11 items-center gap-2 rounded-[4px] border border-[#8C1535] px-4 font-medium text-[#8C1535] text-sm transition-colors hover:bg-[#F1E4E1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8C1535]"
+        onClick={toggle}
+        type="button"
+      >
+        <BookmarkIcon
+          aria-hidden="true"
+          className="size-[18px]"
+          fill={saved ? "currentColor" : "none"}
+        />
+        {saved ? "Salva" : "Salvar lista"}
+      </button>
+    );
+  }
+
   return (
     <button
-      aria-label={
-        saved ? `Remover ${title} das salvas` : `Salvar ${title} para depois`
-      }
+      aria-label={label}
       aria-pressed={saved}
       className="absolute top-1.5 left-9 z-10 grid size-11 place-items-center rounded-full text-[#F1EBE8] transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F7C873] motion-reduce:transition-none"
       onClick={toggle}

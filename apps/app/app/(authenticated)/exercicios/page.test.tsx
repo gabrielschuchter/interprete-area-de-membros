@@ -102,7 +102,7 @@ afterEach(() => {
 
 const HISTORY_ROW = /Medidas de tendência central/u;
 const CLEAR_LINK = /Limpar/u;
-const SAVED_TAB = /Salvas/u;
+const SAVED_TAB = /Listas salvas/u;
 const RESUME_LINK = /^Retomar na questão 2/u;
 
 const LIST = {
@@ -272,7 +272,7 @@ test("a folha em andamento tem altura mínima fixa e se endireita ao passar o mo
   expect(sheet?.className).toContain("hover:-translate-y-2");
 });
 
-test("a lista salva aparece marcada e dá para desmarcar; a aba Salvas filtra", async () => {
+test("a lista salva aparece marcada e dá para desmarcar; a aba Listas salvas filtra", async () => {
   state.lists = [
     LIST,
     { ...LIST, id: "list-2", title: "Epidemiologia", slug: "epi" },
@@ -291,4 +291,12 @@ test("a lista salva aparece marcada e dá para desmarcar; a aba Salvas filtra", 
   expect(
     screen.getByRole("link", { name: SAVED_TAB }).getAttribute("aria-current")
   ).toBe("true");
+});
+
+test("o topo leva à central de salvos", async () => {
+  render(await ExercisesPage({ searchParams: Promise.resolve({}) }));
+
+  expect(
+    screen.getByRole("link", { name: "Todos os salvos" }).getAttribute("href")
+  ).toBe("/salvos");
 });

@@ -12,12 +12,16 @@ import { toggleLearningBookmark } from "@/app/(authenticated)/biblioteca/actions
 import { IntentLink } from "@/app/(authenticated)/components/intent-link";
 import { toggleBookmark } from "@/app/(authenticated)/comunidade/actions";
 import { ExerciseFavoriteControl } from "@/components/exercises/exercise-favorite-control";
+import { ExerciseListBookmarkButton } from "@/components/exercises/exercise-list-bookmark-button";
 import {
   SingleFlightForm,
   SingleFlightSubmit,
 } from "@/components/mutations/single-flight-form";
 import { communityPostHref, getSavedCommunityPosts } from "@/lib/community";
-import { getMemberExerciseFavorites } from "@/lib/exercises";
+import {
+  getMemberExerciseFavorites,
+  getMemberSavedExerciseLists,
+} from "@/lib/exercises";
 import { requireMemberId } from "@/lib/learning";
 import { getPersonalLibraryItems } from "@/lib/library";
 import type { SavedContentFilter } from "./saved-filters";
@@ -36,6 +40,7 @@ interface SavedRow {
   readonly href: string;
   readonly id: string;
   readonly label: string;
+  readonly listId?: string;
   readonly postId?: string;
   readonly questionId?: string;
   readonly savedAt: Date;
@@ -47,6 +52,17 @@ interface SavedRow {
 }
 
 const SavedRowBookmarkAction = ({ row }: { readonly row: SavedRow }) => {
+  if (row.listId) {
+    return (
+      <ExerciseListBookmarkButton
+        initialSaved
+        listId={row.listId}
+        title={row.title}
+        variant="inline"
+      />
+    );
+  }
+
   if (row.questionId) {
     return (
       <ExerciseFavoriteControl
@@ -118,17 +134,22 @@ const SavedPage = async ({ searchParams }: SavedPageProperties) => {
     requireMemberId(),
     searchParams,
   ]);
-  const [libraryItems, favorites, communitySaved] = await Promise.all([
-    getPersonalLibraryItems(memberId),
-    getMemberExerciseFavorites(memberId, undefined, "after", 20),
-    getSavedCommunityPosts(memberId, {
-      take: savedFilter(query.tipo) === "comunidade" ? 100 : 12,
-    }),
-  ]);
+  const [libraryItems, favorites, communitySaved, savedLists] =
+    await Promise.all([
+      getPersonalLibraryItems(memberId),
+      getMemberExerciseFavorites(memberId, undefined, "after", 20),
+      getSavedCommunityPosts(memberId, {
+        take: savedFilter(query.tipo) === "comunidade" ? 100 : 12,
+      }),
+      getMemberSavedExerciseLists(memberId),
+    ]);
   const selected = savedFilter(query.tipo);
   const counts = {
     todos:
-      libraryItems.length + favorites.totalCount + communitySaved.totalCount,
+      libraryItems.length +
+      favorites.totalCount +
+      savedLists.length +
+      communitySaved.totalCount,
     aulas: libraryItems.filter(
       (item) =>
         item.targetType === "COURSE" ||
@@ -139,7 +160,7 @@ const SavedPage = async ({ searchParams }: SavedPageProperties) => {
       (item) =>
         item.targetType === "LIBRARY_ITEM" || item.targetType === "ASSET"
     ).length,
-    questoes: favorites.totalCount,
+    questoes: favorites.totalCount + savedLists.length,
     comunidade: communitySaved.totalCount,
   } satisfies Record<SavedContentFilter, number>;
 
@@ -173,6 +194,16 @@ const SavedPage = async ({ searchParams }: SavedPageProperties) => {
         "Esta questão não está mais disponível.",
     };
   });
+  const listRows: SavedRow[] = savedLists.map((bookmark) => ({
+    category: "questoes",
+    href: `/exercicios/listas/${encodeURIComponent(bookmark.list.slug)}`,
+    id: `list:${bookmark.id}`,
+    label: "Lista de exercícios",
+    listId: bookmark.list.id,
+    savedAt: bookmark.createdAt,
+    source: `Exercícios · ${bookmark.list.bank.title}`,
+    title: bookmark.list.title,
+  }));
   const savedReturnTo =
     selected === "todos"
       ? "/salvos"
@@ -188,7 +219,7 @@ const SavedPage = async ({ searchParams }: SavedPageProperties) => {
     title: post.title,
     spaceSlug: post.space?.slug ?? "",
   }));
-  const rows = [...libraryRows, ...questionRows, ...communityRows]
+  const rows = [...libraryRows, ...questionRows, ...listRows, ...communityRows]
     .filter((row) => selected === "todos" || row.category === selected)
     .sort((left, right) => right.savedAt.getTime() - left.savedAt.getTime());
   const totalCount = counts[selected];

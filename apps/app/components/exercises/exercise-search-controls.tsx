@@ -213,7 +213,7 @@ export const ExerciseSearchControls = ({
               scroll={false}
             >
               <BookmarkIcon aria-hidden="true" className="size-3.5" />
-              Salvas
+              Listas salvas
               <span className="font-data text-xs opacity-80">{savedCount}</span>
             </Link>
           )}

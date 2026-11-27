@@ -26,7 +26,7 @@ describe("SavedFilters", () => {
   test("changes category and announces its count", () => {
     render(<SavedFilters counts={counts} selected="todos" />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Questões 4" }));
+    fireEvent.click(screen.getByRole("button", { name: "Exercícios 4" }));
 
     expect(router.push).toHaveBeenCalledWith("/salvos?tipo=questoes", {
       scroll: false,

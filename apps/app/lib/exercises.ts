@@ -359,6 +359,35 @@ export const getMemberBookmarkedExerciseListIds = async (memberId: string) =>
     ).map(({ listId }) => listId)
   );
 
+export const getMemberSavedExerciseLists = (memberId: string) =>
+  database.exerciseListBookmark.findMany({
+    where: { memberId, list: { is: publishedListWhere } },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    select: {
+      id: true,
+      createdAt: true,
+      list: {
+        select: {
+          id: true,
+          title: true,
+          slug: true,
+          bank: { select: { title: true } },
+        },
+      },
+    },
+  });
+
+export const isExerciseListBookmarked = async (
+  memberId: string,
+  listId: string
+) =>
+  Boolean(
+    await database.exerciseListBookmark.findUnique({
+      where: { memberId_listId: { memberId, listId } },
+      select: { id: true },
+    })
+  );
+
 export const countMemberExerciseFavorites = (memberId: string) =>
   database.exerciseQuestionBookmark.count({
     where: { memberId, ...publishedExerciseFavoriteWhere },

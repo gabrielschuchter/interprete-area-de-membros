@@ -1580,6 +1580,13 @@ export const setExerciseListBookmark = async (input: {
   if (!(await memberCanReadExerciseList(memberId, input.listId))) {
     return { ok: false as const };
   }
+  const list = await database.exerciseList.findUnique({
+    where: { id: input.listId },
+    select: { slug: true },
+  });
+  if (!list) {
+    return { ok: false as const };
+  }
   if (input.saved) {
     await database.exerciseListBookmark.upsert({
       where: { memberId_listId: { memberId, listId: input.listId } },
@@ -1592,5 +1599,7 @@ export const setExerciseListBookmark = async (input: {
     });
   }
   revalidatePath("/exercicios");
+  revalidatePath("/salvos");
+  revalidatePath(`/exercicios/listas/${list.slug}`);
   return { ok: true as const, saved: input.saved };
 };
