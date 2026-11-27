@@ -128,13 +128,11 @@ const ExercisesPage = async ({ searchParams }: ExercisesPageProperties) => {
     savedOnly && !query
       ? "Toque no marcador de uma lista para guardá-la aqui."
       : "Tente outro termo ou escolha outra categoria para ver todas as listas.";
-  const compactHero = inProgressSessions.length >= 3;
   const firstSession = inProgressSessions[0];
 
   return (
-    <main className="mx-auto w-full max-w-[1080px] px-5 pt-5 pb-14 md:px-8 md:pt-8 md:pb-20 lg:px-12 lg:pt-12 lg:pb-[120px]">
+    <main className="mx-auto w-full max-w-[1080px] px-5 pt-5 pb-24 sm:px-8 sm:pt-10 lg:px-12 lg:pt-12">
       <ExercisesHero
-        compact={compactHero}
         favoritesCount={favoritesCount}
         firstSession={firstSession}
         sessionCount={inProgressSessions.length}
@@ -159,7 +157,7 @@ const ExercisesPage = async ({ searchParams }: ExercisesPageProperties) => {
             <span className="h-px flex-1 bg-border" />
           </div>
           <h2
-            className="m-0 font-display font-semibold text-[26px] leading-[1.2] tracking-[-0.01em] md:text-[30px]"
+            className="m-0 font-display font-semibold text-2xl leading-[1.2] tracking-[-.01em]"
             id="exercise-resume-title"
           >
             Continue de onde parou
@@ -190,7 +188,7 @@ const ExercisesPage = async ({ searchParams }: ExercisesPageProperties) => {
                       {session.list.bank.title}
                     </p>
                   )}
-                  <h3 className="font-display font-semibold text-[21px] leading-[1.2]">
+                  <h3 className="font-display font-semibold text-xl leading-[1.2]">
                     {session.list.title}
                   </h3>
                   {session.questions.length > 30 ? (
@@ -239,7 +237,7 @@ const ExercisesPage = async ({ searchParams }: ExercisesPageProperties) => {
                 {lists.length} {lists.length === 1 ? "lista" : "listas"}
               </p>
               <h2
-                className="font-display font-semibold text-[26px] leading-[1.2] tracking-[-0.01em] md:text-[30px]"
+                className="font-display font-semibold text-2xl leading-[1.2] tracking-[-.01em]"
                 id="exercise-lists-title"
               >
                 Escolha um caderno
@@ -268,7 +266,9 @@ const ExercisesPage = async ({ searchParams }: ExercisesPageProperties) => {
             <ExerciseEmptyIllustration />
             <div>
               <p className="brand-eyebrow">Nada encontrado</p>
-              <h3 className="mt-2 font-display text-2xl">{emptyTitle}</h3>
+              <h3 className="mt-2 font-display font-semibold text-2xl leading-[1.2] tracking-[-.01em]">
+                {emptyTitle}
+              </h3>
               <p className="mt-2 text-muted-foreground text-sm leading-6">
                 {emptyHint}
               </p>
@@ -290,12 +290,12 @@ const ExercisesPage = async ({ searchParams }: ExercisesPageProperties) => {
 
       <section
         aria-labelledby="history-title"
-        className="mt-10 md:mt-12"
+        className="mt-10 md:mt-14"
         id="historico"
       >
         <div className="flex flex-wrap items-baseline justify-between gap-x-5 gap-y-1">
           <h2
-            className="font-display text-2xl leading-[1.25] tracking-[-0.005em] md:text-[28px]"
+            className="font-display font-semibold text-2xl leading-[1.2] tracking-[-.01em]"
             id="history-title"
           >
             Últimas sessões
@@ -337,7 +337,7 @@ const ExercisesPage = async ({ searchParams }: ExercisesPageProperties) => {
                           session.completedAt ?? session.startedAt
                         )}
                       </span>
-                      <span className="mt-0.5 text-[10px] text-muted-foreground tracking-[.08em]">
+                      <span className="mt-0.5 text-[11px] text-muted-foreground tracking-[.08em]">
                         {historyMonthFormatter
                           .format(session.completedAt ?? session.startedAt)
                           .replace(".", "")}

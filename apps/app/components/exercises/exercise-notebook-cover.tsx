@@ -25,7 +25,7 @@ export const ExerciseNotebookCover = ({
       {state === "in-progress" && (
         <span
           aria-hidden="true"
-          className="absolute top-2.5 right-5 rotate-[8deg] bg-[#F7C873] px-2 py-0.5 font-data font-semibold text-[#410230] text-[10px] tracking-[.15em]"
+          className="absolute top-2.5 right-5 rotate-[8deg] bg-[#F7C873] px-2 py-0.5 font-data font-semibold text-[#410230] text-[11px] tracking-[.15em]"
         >
           EM ANDAMENTO
         </span>
@@ -33,7 +33,7 @@ export const ExerciseNotebookCover = ({
       {state === "new" && (
         <span
           aria-hidden="true"
-          className="absolute top-2.5 right-5 rotate-[8deg] border-2 border-[#F7C873] bg-[#1a0612]/45 px-2 py-0.5 font-data text-[#F7C873] text-[10px] tracking-[.2em]"
+          className="absolute top-2.5 right-5 rotate-[8deg] border-2 border-[#F7C873] bg-[#1a0612]/45 px-2 py-0.5 font-data text-[#F7C873] text-[11px] tracking-[.2em]"
         >
           NOVO
         </span>
@@ -41,7 +41,7 @@ export const ExerciseNotebookCover = ({
       {state === "completed" && (
         <span
           aria-hidden="true"
-          className="absolute top-2.5 right-5 rotate-[8deg] border-2 border-[#F7C873] bg-[#1a0612]/60 px-2 py-0.5 font-data text-[#F7C873] text-[10px] tracking-[.15em]"
+          className="absolute top-2.5 right-5 rotate-[8deg] border-2 border-[#F7C873] bg-[#1a0612]/60 px-2 py-0.5 font-data text-[#F7C873] text-[11px] tracking-[.15em]"
         >
           ◆ CONCLUÍDA
         </span>

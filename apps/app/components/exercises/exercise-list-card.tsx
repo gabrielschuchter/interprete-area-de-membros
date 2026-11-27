@@ -52,7 +52,7 @@ export const ExerciseListCard = ({
         title={list.title}
       />
       <div className="flex flex-1 flex-col gap-1.5 px-4 pt-3 pb-3.5">
-        <h3 className="font-display font-semibold text-[19px] leading-[1.2]">
+        <h3 className="font-display font-semibold text-lg leading-[1.2]">
           <IntentLink
             className="text-foreground after:absolute after:inset-0 after:rounded-lg hover:text-primary focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring"
             href={`/exercicios/listas/${list.slug}`}
@@ -61,7 +61,7 @@ export const ExerciseListCard = ({
           </IntentLink>
         </h3>
         {list.description && (
-          <p className="line-clamp-2 text-[13.5px] text-muted-foreground leading-[1.45]">
+          <p className="line-clamp-2 text-muted-foreground text-sm leading-[1.45]">
             {list.description}
           </p>
         )}
@@ -76,7 +76,7 @@ export const ExerciseListCard = ({
             />
           </div>
           <div className="flex items-center justify-between gap-2">
-            <p className="m-0 flex flex-wrap items-baseline gap-x-2 font-data text-[12.5px] leading-tight">
+            <p className="m-0 flex flex-wrap items-baseline gap-x-2 font-data text-[13px] leading-tight">
               <span className={isCompleted ? "font-medium text-success" : ""}>
                 {exerciseListStateLabel(state)}
               </span>
