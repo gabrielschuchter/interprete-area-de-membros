@@ -52,7 +52,9 @@ const labelForMode = (mode: TimerMode) => {
 
 const activeStatusLabel = (fromOtherDevice: boolean, paused: boolean) => {
   if (fromOtherDevice) {
-    return "Em andamento em outro aparelho";
+    return paused
+      ? "Pausado · iniciado em outro aparelho"
+      : "Em andamento em outro aparelho";
   }
   return paused ? "Pausado" : "Em andamento";
 };
@@ -87,6 +89,7 @@ export const ActiveTimerControls = ({
   clientId,
   detailsOpen,
   displayTime,
+  onClaim,
   onFocus,
   onPauseResume,
   onStop,
@@ -100,6 +103,7 @@ export const ActiveTimerControls = ({
   readonly clientId: string | null;
   readonly detailsOpen: boolean;
   readonly displayTime: number;
+  readonly onClaim: () => void;
   readonly onFocus: () => void;
   readonly onPauseResume: () => void;
   readonly onStop: () => void;
@@ -213,16 +217,19 @@ export const ActiveTimerControls = ({
             </p>
           </div>
           {activeFromOtherDevice && (
-            <Button asChild size="sm" type="button">
-              <Link href="/ferramentas?view=timer">
-                Continuar neste aparelho
-              </Link>
+            <Button
+              disabled={pending || !clientId}
+              onClick={onClaim}
+              size="sm"
+              type="button"
+            >
+              Continuar neste aparelho
             </Button>
           )}
           {active.linkedResourceType === "LIBRARY_ITEM" ? (
             <Button
               className="text-[#8C1535]"
-              disabled={pending || activeFromOtherDevice || !clientId}
+              disabled={pending || !clientId}
               onClick={onStop}
               size="sm"
               type="button"

@@ -540,6 +540,39 @@ export const ActiveTimerPill = () => {
     }
   };
 
+  const claimActive = async (sessionId: string) => {
+    if (!clientId) {
+      return;
+    }
+    setPending(true);
+    try {
+      const response = await fetch("/api/focus-timer", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ action: "claim", sessionId, clientId }),
+      });
+      const result = (await response.json()) as { error?: string };
+      if (!response.ok) {
+        throw new Error(
+          result.error ?? "Não foi possível assumir o cronômetro."
+        );
+      }
+      toast.success("Cronômetro assumido neste aparelho.");
+      await synchronize();
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível assumir o cronômetro."
+      );
+    } finally {
+      setPending(false);
+    }
+  };
+
   const active = onTimerPage ? null : (state?.active ?? null);
   const elapsed = active
     ? active.elapsedSeconds +
@@ -593,6 +626,7 @@ export const ActiveTimerPill = () => {
             clientId={clientId}
             detailsOpen={detailsOpen}
             displayTime={displayTime}
+            onClaim={() => claimActive(active.id)}
             onFocus={() => router.push("/ferramentas?view=timer&focus=1")}
             onPauseResume={() =>
               sendAction(active.pausedAt ? "resume" : "pause")
