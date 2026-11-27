@@ -35,7 +35,7 @@ export const ExerciseListCard = ({
   }[kind];
 
   return (
-    <article className="group relative flex flex-col overflow-hidden rounded-lg border bg-card transition-colors focus-within:border-primary hover:border-primary">
+    <article className="group relative flex flex-col overflow-hidden rounded-lg border bg-card transition-[transform,border-color] focus-within:border-primary hover:border-primary motion-safe:hover:-translate-y-[3px]">
       <ExerciseNotebookCover
         answered={answered}
         bankTitle={list.bank.title}

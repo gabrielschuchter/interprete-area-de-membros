@@ -268,3 +268,22 @@ body:has(.portal) [data-slot="sheet-overlay"] {
   border-radius: 0;
   transform: none;
 }
+
+/* Próxima questão da folha em andamento (Exercícios). */
+@keyframes exercise-next-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(217, 168, 107, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(217, 168, 107, 0);
+  }
+}
+.exercise-next-bubble {
+  animation: exercise-next-pulse 1.6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .exercise-next-bubble {
+    animation: none;
+  }
+}

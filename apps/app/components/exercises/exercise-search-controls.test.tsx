@@ -18,10 +18,12 @@ vi.mock("next/link", () => ({
   default: ({
     href,
     prefetch: _prefetch,
+    scroll: _scroll,
     ...properties
-  }: ComponentProps<"a"> & { readonly prefetch?: boolean }) => (
-    <a href={href} {...properties} />
-  ),
+  }: ComponentProps<"a"> & {
+    readonly prefetch?: boolean;
+    readonly scroll?: boolean;
+  }) => <a href={href} {...properties} />,
 }));
 
 import {
@@ -107,6 +109,20 @@ test("Enter busca na hora", () => {
   fireEvent.change(input, { target: { value: "pico" } });
   fireEvent.submit(input.closest("form") as HTMLFormElement);
   expect(replace).toHaveBeenCalledWith("/exercicios?q=pico", {
+    scroll: false,
+  });
+});
+
+test("o botão de limpar esvazia a busca na hora", () => {
+  render(
+    <ExerciseSearchControls
+      categories={CATEGORIES}
+      categorySlug="bio"
+      query="coorte"
+    />
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Limpar busca" }));
+  expect(replace).toHaveBeenCalledWith("/exercicios?categoria=bio", {
     scroll: false,
   });
 });

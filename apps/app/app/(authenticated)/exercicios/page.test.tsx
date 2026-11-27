@@ -24,8 +24,12 @@ vi.mock("next/link", () => ({
   default: ({
     href,
     prefetch,
+    scroll: _scroll,
     ...properties
-  }: ComponentProps<"a"> & { readonly prefetch?: boolean }) => (
+  }: ComponentProps<"a"> & {
+    readonly prefetch?: boolean;
+    readonly scroll?: boolean;
+  }) => (
     <a
       data-prefetch={prefetch === true ? "full" : "disabled"}
       href={href}
@@ -153,7 +157,9 @@ test("sessão em andamento aparece em destaque com o botão Retomar", async () =
   ).toBeTruthy();
   expect(screen.getByText("1 de 2 respondidas")).toBeTruthy();
   expect(
-    screen.getByRole("link", { name: "Retomar" }).getAttribute("href")
+    screen
+      .getByRole("link", { name: "Retomar na questão 2 →" })
+      .getAttribute("href")
   ).toBe("/exercicios/sessoes/session-1");
 });
 
@@ -166,7 +172,8 @@ test("atalhos de histórico e questões salvas ficam no topo com a contagem", as
     name: "Atalhos de exercícios",
   });
   expect(shortcuts.textContent).toContain("Histórico");
-  expect(shortcuts.textContent).toContain("Questões salvas8");
+  expect(shortcuts.textContent).toContain("Questões salvas");
+  expect(shortcuts.textContent).toContain("8");
 });
 
 test("o histórico mostra data, título e acerto em uma linha clicável", async () => {
@@ -207,4 +214,34 @@ test("sem resultado na busca mostra o estado vazio e limpa filtros", async () =>
   expect(
     screen.getAllByRole("link", { name: CLEAR_LINK }).length
   ).toBeGreaterThan(0);
+});
+
+test("o hero mostra quantas questões faltam e leva à questão certa", async () => {
+  state.inProgressSessions = [
+    {
+      id: "session-9",
+      list: { title: "Prática em andamento" },
+      questions: [
+        { answer: { isCorrect: true } },
+        { answer: { isCorrect: true } },
+        { answer: null },
+        { answer: null },
+      ],
+    },
+  ];
+
+  render(await ExercisesPage({ searchParams: Promise.resolve({}) }));
+
+  const cta = screen.getByRole("link", { name: "Continuar na questão 3 →" });
+  expect(cta.getAttribute("href")).toBe("/exercicios/sessoes/session-9");
+  expect(screen.getByText("2 questões")).toBeTruthy();
+});
+
+test("a seção de listas sempre se chama Escolha um caderno, sem limpar filtros", async () => {
+  render(await ExercisesPage({ searchParams: Promise.resolve({ q: "zzz" }) }));
+
+  expect(
+    screen.getByRole("heading", { level: 2, name: "Escolha um caderno" })
+  ).toBeTruthy();
+  expect(screen.queryByText("Limpar filtros")).toBeNull();
 });

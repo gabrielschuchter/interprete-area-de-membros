@@ -1,7 +1,7 @@
 "use client";
 
 import { Input } from "@repo/design-system/components/ui/input";
-import { SearchIcon } from "lucide-react";
+import { SearchIcon, XIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { FormEvent, ReactNode } from "react";
@@ -125,7 +125,7 @@ export const ExerciseSearchControls = ({
             />
             <Input
               autoComplete="off"
-              className="h-11 border-[#b8a5aa] bg-card pl-10"
+              className="h-11 border-[#b8a5aa] bg-card pr-10 pl-10 [&::-webkit-search-cancel-button]:hidden"
               id="exercise-search-query"
               name="q"
               onChange={(event) => onChange(event.target.value)}
@@ -133,6 +133,23 @@ export const ExerciseSearchControls = ({
               type="search"
               value={typed}
             />
+            {typed && (
+              <button
+                aria-label="Limpar busca"
+                className="absolute top-1/2 right-1 grid size-9 -translate-y-1/2 place-items-center rounded-[4px] text-muted-foreground hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                onClick={() => {
+                  if (timer.current) {
+                    clearTimeout(timer.current);
+                    timer.current = null;
+                  }
+                  setTyped("");
+                  go("");
+                }}
+                type="button"
+              >
+                <XIcon aria-hidden="true" className="size-4" />
+              </button>
+            )}
           </label>
           {categorySlug && (
             <input name="categoria" type="hidden" value={categorySlug} />
@@ -149,6 +166,7 @@ export const ExerciseSearchControls = ({
             className={chipClass(!categorySlug)}
             href={exerciseFiltersHref(typed)}
             prefetch={false}
+            scroll={false}
           >
             <TabDot active={!categorySlug} />
             Todas
@@ -160,6 +178,7 @@ export const ExerciseSearchControls = ({
               href={exerciseFiltersHref(typed, category.slug)}
               key={category.id}
               prefetch={false}
+              scroll={false}
             >
               <TabDot active={category.slug === categorySlug} />
               {category.title}

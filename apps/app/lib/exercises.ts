@@ -286,7 +286,9 @@ export const getMemberInProgressExerciseSessions = async (memberId: string) =>
     select: {
       id: true,
       kind: true,
-      list: { select: { title: true, slug: true } },
+      list: {
+        select: { title: true, slug: true, bank: { select: { title: true } } },
+      },
       questions: {
         orderBy: { position: "asc" },
         select: {

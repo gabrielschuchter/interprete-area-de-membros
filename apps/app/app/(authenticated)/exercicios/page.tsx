@@ -1,16 +1,10 @@
 import { Button } from "@repo/design-system/components/ui/button";
-import {
-  BookmarkIcon,
-  ChevronRightIcon,
-  HistoryIcon,
-  PlayIcon,
-} from "lucide-react";
+import { ChevronRightIcon } from "lucide-react";
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { IntentLink } from "@/app/(authenticated)/components/intent-link";
 import { ExerciseEmptyIllustration } from "@/components/exercises/exercise-empty-illustration";
-import { ExerciseEyebrow } from "@/components/exercises/exercise-eyebrow";
+import { ExercisesHero } from "@/components/exercises/exercise-hero";
 import { ExerciseListCard } from "@/components/exercises/exercise-list-card";
 import { ExerciseProgress } from "@/components/exercises/exercise-progress";
 import { ExerciseSearchControls } from "@/components/exercises/exercise-search-controls";
@@ -66,20 +60,19 @@ const SessionBubbles = ({
   return (
     <ol
       aria-label={`${answered} de ${questions.length} questões respondidas`}
-      className="m-0 flex list-none flex-wrap gap-1.5 p-0"
+      className="m-0 flex list-none flex-wrap gap-2 p-0"
     >
       {questions.map((question, index) => {
-        let tone = "border-[#dcd0cf] bg-transparent text-muted-foreground";
+        let tone = "border-[#a68f99] bg-card text-primary";
         if (question.answer !== null) {
-          tone = "border-primary bg-primary text-primary-foreground";
+          tone = "border-primary bg-primary text-[#F1EBE8]";
         } else if (index === nextIndex) {
-          tone =
-            "border-[#8C1535] bg-[#F7C873]/40 text-primary motion-safe:animate-pulse";
+          tone = "exercise-next-bubble border-[#D9A86B] bg-card text-primary";
         }
         return (
           <li
             aria-hidden="true"
-            className={`flex size-7 items-center justify-center rounded-full border font-data text-[11px] ${tone}`}
+            className={`box-border flex size-7 items-center justify-center rounded-full border-[1.5px] font-data text-[11px] ${tone}`}
             // biome-ignore lint/suspicious/noArrayIndexKey: posições fixas da sessão
             key={index}
           >
@@ -90,9 +83,6 @@ const SessionBubbles = ({
     </ol>
   );
 };
-
-const shortcutClass =
-  "inline-flex h-10 items-center gap-2 rounded-full border border-[#E9C48E]/50 bg-white/10 px-4 text-[#F7F3F1] text-sm transition-colors hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F7C873]";
 
 const ExercisesPage = async ({ searchParams }: ExercisesPageProperties) => {
   const [memberId, filters] = await Promise.all([
@@ -116,53 +106,16 @@ const ExercisesPage = async ({ searchParams }: ExercisesPageProperties) => {
   const query = filters.q?.trim() ?? "";
   const isFiltering = Boolean(query || filters.categoria);
   const compactHero = inProgressSessions.length >= 3;
+  const firstSession = inProgressSessions[0];
 
   return (
     <main className="mx-auto w-full max-w-[1080px] px-5 pt-5 pb-14 md:px-8 md:pt-8 md:pb-20 lg:px-12 lg:pt-12 lg:pb-[120px]">
-      <header
-        className={`relative overflow-hidden rounded-lg bg-[linear-gradient(120deg,#410230,#560A2A_55%,#7A1230)] text-[#F7F3F1] ${compactHero ? "p-5 md:p-6" : "p-6 md:p-10"}`}
-      >
-        <Image
-          alt=""
-          aria-hidden="true"
-          className={`pointer-events-none absolute right-0 bottom-0 hidden h-full w-auto object-contain object-right-bottom opacity-95 md:block ${compactHero ? "max-h-[170px]" : ""}`}
-          height={560}
-          src="/exercises/hero-lousa.svg"
-          unoptimized
-          width={520}
-        />
-        <div className="relative flex max-w-[560px] flex-col gap-3">
-          <ExerciseEyebrow>Prática e revisão</ExerciseEyebrow>
-          <h1
-            className={`m-0 font-display leading-[1.05] tracking-[-0.02em] ${compactHero ? "text-4xl" : "text-[40px] md:text-5xl"}`}
-          >
-            Exercícios
-          </h1>
-          {!compactHero && (
-            <p className="m-0 max-w-[460px] text-[#F7F3F1]/80 text-[15px] leading-[1.6]">
-              {inProgressSessions.length > 0
-                ? "Retome a folha aberta ou escolha uma nova lista para praticar."
-                : "Nenhuma folha aberta ainda. Escolha uma lista abaixo para começar a praticar."}
-            </p>
-          )}
-          <nav
-            aria-label="Atalhos de exercícios"
-            className="mt-1 flex flex-wrap gap-2"
-          >
-            <Link className={shortcutClass} href="/exercicios/historico">
-              <HistoryIcon aria-hidden="true" className="size-4" />
-              Histórico
-            </Link>
-            <Link className={shortcutClass} href="/exercicios/favoritas">
-              <BookmarkIcon aria-hidden="true" className="size-4" />
-              Questões salvas
-              {favoritesCount > 0 && (
-                <span className="text-[#E9C48E] text-xs">{favoritesCount}</span>
-              )}
-            </Link>
-          </nav>
-        </div>
-      </header>
+      <ExercisesHero
+        compact={compactHero}
+        favoritesCount={favoritesCount}
+        firstSession={firstSession}
+        sessionCount={inProgressSessions.length}
+      />
 
       {filters.estado === "lista-indisponivel" && (
         <p className="mt-5 rounded-md border border-destructive/40 bg-destructive/5 p-4 text-sm">
@@ -173,11 +126,8 @@ const ExercisesPage = async ({ searchParams }: ExercisesPageProperties) => {
       {inProgressSessions.length > 0 && (
         <section
           aria-labelledby="exercise-resume-title"
-          className="mt-6 flex flex-col gap-3 md:mt-8"
+          className="mt-10 flex flex-col gap-4 md:mt-14"
         >
-          <h2 className="sr-only" id="exercise-resume-title">
-            Continue de onde parou
-          </h2>
           <div
             aria-hidden="true"
             className="flex items-center gap-3 font-data text-[11px] text-muted-foreground tracking-[.2em]"
@@ -185,21 +135,37 @@ const ExercisesPage = async ({ searchParams }: ExercisesPageProperties) => {
             NA CARTEIRA
             <span className="h-px flex-1 bg-border" />
           </div>
-          {inProgressSessions.map((session) => {
-            const answered = session.questions.filter(
-              ({ answer }) => answer !== null
-            ).length;
+          <h2
+            className="m-0 font-display font-semibold text-[26px] leading-[1.2] tracking-[-0.01em] md:text-[30px]"
+            id="exercise-resume-title"
+          >
+            Continue de onde parou
+          </h2>
+          <div className="grid gap-5 md:grid-cols-2 md:gap-6">
+            {inProgressSessions.map((session, index) => {
+              const answered = session.questions.filter(
+                ({ answer }) => answer !== null
+              ).length;
+              const next = Math.min(answered + 1, session.questions.length);
 
-            return (
-              <article
-                className="flex flex-wrap items-center gap-x-6 gap-y-4 rounded-lg border border-l-[3px] border-l-primary bg-[repeating-linear-gradient(transparent,transparent_27px,#E2D6D1_28px)] bg-card p-4 md:px-5"
-                key={session.id}
-              >
-                <div className="flex min-w-0 flex-[1_1_260px] flex-col gap-2">
-                  <p className="m-0 font-data font-medium text-[10.5px] text-primary uppercase leading-[1.3] tracking-[.1em]">
-                    Continue de onde parou
-                  </p>
-                  <h3 className="font-display text-xl leading-[1.25]">
+              return (
+                <article
+                  className="relative flex flex-col gap-3 rounded-[4px] border bg-[repeating-linear-gradient(180deg,transparent_0_27px,#ece2df_27px_28px)] bg-card py-5 pr-5 pl-[46px] transition-transform motion-safe:hover:rotate-0 md:py-[22px] md:pl-[46px]"
+                  key={session.id}
+                  style={{
+                    transform: `rotate(${index % 2 === 0 ? -0.5 : 0.4}deg)`,
+                  }}
+                >
+                  <span
+                    aria-hidden="true"
+                    className="absolute inset-y-0 left-[30px] w-px bg-[#E2565A]"
+                  />
+                  {session.list.bank?.title && (
+                    <p className="m-0 font-data text-[#8C1535] text-[11px] uppercase tracking-[.2em]">
+                      {session.list.bank.title}
+                    </p>
+                  )}
+                  <h3 className="font-display font-semibold text-[21px] leading-[1.2]">
                     {session.list.title}
                   </h3>
                   {session.questions.length > 30 ? (
@@ -211,46 +177,42 @@ const ExercisesPage = async ({ searchParams }: ExercisesPageProperties) => {
                   ) : (
                     <SessionBubbles questions={session.questions} />
                   )}
-                  <p className="m-0 text-[12.5px] text-muted-foreground">
-                    {answered} de {session.questions.length} respondidas
-                  </p>
-                </div>
-                <Button asChild className="h-11 w-full md:w-auto">
-                  <IntentLink href={`/exercicios/sessoes/${session.id}`}>
-                    <PlayIcon aria-hidden="true" className="size-4" />
-                    Retomar
-                  </IntentLink>
-                </Button>
-              </article>
-            );
-          })}
+                  <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+                    <p className="m-0 font-data text-[13px] text-muted-foreground">
+                      {answered} de {session.questions.length} respondidas
+                    </p>
+                    <Button asChild className="h-11 rounded-[4px]">
+                      <IntentLink href={`/exercicios/sessoes/${session.id}`}>
+                        Retomar na questão {next} →
+                      </IntentLink>
+                    </Button>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
         </section>
       )}
 
-      <section aria-labelledby="exercise-lists-title" className="mt-8 md:mt-10">
+      <section
+        aria-labelledby="exercise-lists-title"
+        className="mt-10 scroll-mt-20 md:mt-14"
+        id="listas"
+      >
         <ExerciseSearchControls
           categories={categories}
           categorySlug={filters.categoria}
           heading={
             <div className="flex flex-col gap-2">
               <p className="m-0 font-data text-[11px] text-muted-foreground uppercase tracking-[.2em]">
-                Escolha um caderno · {lists.length}{" "}
-                {lists.length === 1 ? "lista" : "listas"}
+                {lists.length} {lists.length === 1 ? "lista" : "listas"}
               </p>
               <h2
                 className="font-display font-semibold text-[26px] leading-[1.2] tracking-[-0.01em] md:text-[30px]"
                 id="exercise-lists-title"
               >
-                {isFiltering ? "Resultados" : "Listas para praticar"}
+                Escolha um caderno
               </h2>
-              {isFiltering && (
-                <Link
-                  className="font-semibold text-brand-action-text text-sm hover:underline"
-                  href="/exercicios"
-                >
-                  Limpar filtros
-                </Link>
-              )}
             </div>
           }
           query={query}
