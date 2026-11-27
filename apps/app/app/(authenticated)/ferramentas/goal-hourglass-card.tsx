@@ -44,6 +44,16 @@ export interface GoalHourglassCardProps {
   readonly targetMinutes: number | null;
 }
 
+const GLYPHS: Record<GoalMode, string> = {
+  MINUTES:
+    "M6 2h12M6 22h12M7 2c0 6 10 6 10 10S7 16 7 22M17 2c0 6-10 6-10 10s10 4 10 10",
+  LESSONS: "M4 5h16v11H4zM10 8.5l5 2.5-5 2.5zM8 20h8M12 16v4",
+  READINGS:
+    "M3 6c3-1.5 6-1.5 9 0 3-1.5 6-1.5 9 0v13c-3-1.5-6-1.5-9 0-3-1.5-6-1.5-9 0zM12 6v13",
+  EXERCISES:
+    "M6 3h12v18H6zM9 9l1.5 1.5L13 8M9 15l1.5 1.5L13 14M15 9.5h1.5M15 15.5h1.5",
+};
+
 const GoalTypeTabs = ({
   mode,
   onChange,
@@ -51,13 +61,13 @@ const GoalTypeTabs = ({
   readonly mode: GoalMode;
   readonly onChange: (next: GoalMode) => void;
 }) => (
-  <fieldset className="m-0 flex min-w-0 flex-wrap gap-1.5 border-0 p-0">
+  <fieldset className="m-0 grid min-w-0 grid-cols-2 gap-1.5 border-0 p-0">
     <legend className="sr-only">Tipo de meta semanal</legend>
     {MODES.map((item) => (
       <button
         aria-pressed={mode === item}
         className={cn(
-          "min-h-11 flex-1 rounded border px-3 text-[13px] transition-colors",
+          "flex min-h-11 items-center justify-center gap-2 rounded border px-3 text-[13px] transition-colors",
           mode === item
             ? "border-[#8C1535] bg-[#8C1535] font-semibold text-[#F1EBE8]"
             : "border-[#DCD0CF] bg-[#FBF8F5] text-[#4A3340] hover:bg-[#F1EBE8]"
@@ -66,6 +76,18 @@ const GoalTypeTabs = ({
         onClick={() => onChange(item)}
         type="button"
       >
+        <svg
+          aria-hidden="true"
+          className="size-4 shrink-0"
+          fill="none"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="1.6"
+          viewBox="0 0 24 24"
+        >
+          <path d={GLYPHS[item]} />
+        </svg>
         {modeLabel(item)}
       </button>
     ))}
